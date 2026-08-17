@@ -62,3 +62,40 @@ sorted one.
   it is authored. Marking things as gates because it improves a score is how the
   formula stops meaning anything.
 - Until then Ranking cannot honestly exceed 4: half its input is silent.
+
+---
+
+## Attempted fix, REVERTED — and what it proved (same session, 03:0x)
+
+Tried the obvious next step: stamp `gateHolder` + `unlocks` onto foundational
+dominoes, sourcing both from the ladder the repo ALREADY declares
+(`_eventFoundationActions`, CommandCenter.jsx:1437, each rung stating in prose
+what it gates). Not an invented score — arithmetic over a declared order.
+
+**Two things went wrong, both caught by measuring rather than reasoning.**
+
+1. **Stamping at push time made the order WORSE.** "Add your guest list." arrives
+   as the ENGINE TOP, so it was already in `seen` and the foundation loop skipped
+   it — the FIRST domino stayed ungated while budget and food got the boost, and
+   guests fell from rank 1 to rank 3. Fixed by stamping in one post-pass keyed on
+   the resolved domain (`CATEGORY_TO_DOMAIN`), so an action is gated for WHAT IT
+   IS, not for which code path emitted it. That produced the right ladder:
+   guests (unlocks 2) → budget (1) → food (0).
+
+2. **Then four existing gates went red**, and they were right:
+   - `a critical blocker leads the queue › it is nextActions[0] at every stage`
+   - `every field the selector stamps survives into nextActions[0]`
+   - `host and engine name the same next decision › both say the venue`
+
+   The boosted dominoes outranked a Tier-0.6 BLOCKER ("Add the location"), which
+   the engine requires to lead. A foundation domino is a gate; a blocker is a
+   stop. Consequence alone cannot express the difference, and raising dominoes
+   without also expressing blocker precedence trades one mis-rank for another.
+
+**Reverted.** The measurement stands and is the point: the inputs really are
+empty, the ladder really is declared, and wiring the two together is a genuine
+improvement that CANNOT be done as a scoring tweak. It needs the blocker/gate
+relationship stated first — which is a board question, not a constant.
+
+Ranking stays **4/10**. The path to 5+ is now specific: express blocker-vs-gate
+precedence, then wire the declared ladder into consequence behind it.
