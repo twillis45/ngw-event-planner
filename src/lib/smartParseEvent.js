@@ -512,9 +512,23 @@ export function parseSmartEventText(text, opts = {}) {
   // on its own. Only ever a type the host actually said — never invented.
   let secondaryType = null;
   if (type) {
+    // A SECOND OCCASION IS JOINED, NOT ADJACENT (2026-08-17). This was bare
+    // substring inclusion, so "retirement dinner for 30" matched Dinner Party as
+    // a second occasion and the reveal named the event "My Retirement & Dinner"
+    // — the FIRST thing a new host reads about their own event, and wrong.
+    // "dinner" there is a descriptor of the retirement, not a second party.
+    //
+    // This block's own comment already states the rule: fire only when the text
+    // "clearly names a SECOND occasion". A conjunction is what makes it clear —
+    // "retirement AND 50th birthday" is two, "retirement dinner" is one. Adjacency
+    // never was evidence, so the match now requires a joiner between the two.
+    const lower = t.toLowerCase();
+    const JOINED = (key) => new RegExp(
+      '(?:\\band\\b|&|\\+|,|\\bplus\\b|\\bslash\\b|/)\\s*(?:a\\s+|an\\s+|the\\s+)?' + key
+      + '|' + key + '\\s*(?:\\band\\b|&|\\+|,|\\bplus\\b|/)', 'i').test(lower);
     const mentioned = HOST_TYPES.filter((ht) => {
       const key = ht.toLowerCase().replace(' party', '');
-      return key.length > 3 && t.toLowerCase().includes(key);
+      return key.length > 3 && lower.includes(key) && JOINED(key);
     });
     const milestoneType = /\d{1,3}(?:st|nd|rd|th)\s+birthday/i.test(t) ? 'Birthday'
       : /\d{1,3}(?:st|nd|rd|th)\s+anniversary/i.test(t) ? 'Anniversary'
