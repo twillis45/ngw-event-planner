@@ -2,7 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- viewport-fit=cover is REQUIRED, not decorative (2026-08-17). This
+         stylesheet reads env(safe-area-inset-*) in 15 places — .content bottom
+         padding, the .app spacer, the elegant hero's min-height, the fold
+         handle, the bottom rail. On iOS every one of those resolves to 0
+         WITHOUT this token, and Safari insets the whole page inside the safe
+         area instead of painting edge-to-edge: in landscape that shows bars
+         either side, which is what "too skinny for the viewport" looks like.
+         The CRA's index.html has carried it all along (public/index.html), and
+         MOBILE_LAYOUT_REPAIR_1 cites that file as already correct — hostv2 was
+         simply never given it. `git log -S viewport-fit` on this file returns
+         nothing: not removed, never present.
+         Tied to the CSS by safeAreaViewportFit.test.js so the two cannot drift. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Event Boss — Host Shell V2 (wired prototype)</title>
     <!-- ── PWA: ICONS ONLY (B4, board 2026-07-28) ────────────────────────────
          The board verified: manifest.json declared only favicon.ico (Chromium
