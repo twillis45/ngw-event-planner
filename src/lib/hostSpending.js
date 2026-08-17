@@ -81,7 +81,11 @@ function foodBoughtFrom(event, plan) {
   return { total: Math.max(0, Math.round(total)), firm: Math.max(0, Math.round(firm)) };
 }
 
-export function hostSpending(event, priceFactor) {
+// `itemFactors` (added 2026-08-16) carries the backend's PER-ITEM regional
+// factors alongside the basket mean. Optional and additive: every existing
+// two-argument caller keeps today's behavior exactly, because an absent map means
+// every line takes the mean, which is what they already got.
+export function hostSpending(event, priceFactor, itemFactors) {
   const ev = event || {};
   const rows = Array.isArray(ev.budget) ? ev.budget : [];
   const budgetedSum = rows.reduce((s, r) => s + num(r && r.budgeted), 0);
@@ -91,7 +95,10 @@ export function hostSpending(event, priceFactor) {
   // The SAME food plan the food panel renders — single source, no parallel math.
   let plan = null;
   try {
-    plan = playbookFoodPlan(ev, { priceFactor: num(priceFactor) > 0 ? num(priceFactor) : 1 });
+    plan = playbookFoodPlan(ev, {
+      priceFactor: num(priceFactor) > 0 ? num(priceFactor) : 1,
+      itemFactors: (itemFactors && typeof itemFactors === 'object') ? itemFactors : undefined,
+    });
   } catch (_e) { plan = null; }
 
   // ENGINE RULE: never create a food budget without a real guest count. The food plan

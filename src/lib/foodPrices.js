@@ -14,6 +14,9 @@ export function isFoodPricesConfigured() {
 const NEUTRAL = Object.freeze({
   factor: 1, region: 'us', regionLabel: 'U.S.', month: null,
   source: 'BLS Average Price', note: null,
+  // Per-item factors, keyed by geoItemMap's item names. Empty is the honest
+  // no-data answer: every line then takes the basket mean.
+  itemFactors: Object.freeze({}),
 });
 
 // getFoodPriceFactor({ region, state }) → { factor, region, regionLabel, month, source, note }.
@@ -36,6 +39,19 @@ export async function getFoodPriceFactor({ region, state } = {}) {
       month: d.month || null,
       source: d.source || 'BLS Average Price',
       note: d.note || null,
+      // Per-item regional factors (2026-08-16). The backend already computed
+      // these and discarded them with fmean; now it returns them. Only numbers
+      // in a sane band survive — a malformed payload must not reach a price.
+      itemFactors: (() => {
+        const raw = d && d.item_factors;
+        if (!raw || typeof raw !== 'object') return {};
+        const out = {};
+        for (const [k, v] of Object.entries(raw)) {
+          const n = Number(v);
+          if (n > 0.5 && n < 2) out[k] = n;
+        }
+        return out;
+      })(),
     };
   } catch {
     return NEUTRAL;

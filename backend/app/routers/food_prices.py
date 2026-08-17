@@ -35,6 +35,31 @@ _BASKET = {
 }
 _AREA = {"ne": "0100", "mw": "0200", "south": "0300", "west": "0400", "us": "0000"}
 
+# ─── PER-ITEM FACTORS (added 2026-08-16) ────────────────────────────────────
+# The basket above yields ONE mean factor applied to every priced line. Beer and
+# potatoes do not move together, so the mean describes neither — and this
+# endpoint already computed the per-item ratios and threw them away with fmean
+# one line later. A review board ruled that the precision belongs HERE, where the
+# data is fetched live and clamped, rather than in a hardcoded client table that
+# silently ages.
+#
+# DELIBERATELY NOT ADDED TO _BASKET. Folding these into the mean would change the
+# factor every existing host already sees — beer and wine are not staples, and
+# moving everyone's food estimate is not what was asked for. These are additive:
+# the mean is untouched, and a line only uses a specific factor when the client
+# has mapped it to one.
+#
+# Keys are the client's geo item names (src/lib/knowledge/geoItemMap.js decides
+# WHICH priced lines may claim each one — that mapping is judgment about dishes
+# and stays on the client, where the corpus is).
+_PER_ITEM = {
+    "720111": "beerMalt",       # malt beverages
+    "720311": "wineTable",      # table wine
+    "702111": "breadWhite",     # white pan bread
+    "706111": "chickenWhole",   # whole fryers
+    "706212": "chickenLegs",    # legs — regional coverage is partial; absent regions are simply omitted
+}
+
 # US state → census region (BLS publishes APU food at these four regions).
 _STATE_REGION = {
     **{s: "ne" for s in ["CT", "ME", "MA", "NH", "NJ", "NY", "PA", "RI", "VT"]},
@@ -102,24 +127,39 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
         return cached
 
     try:
-        ids = ([_series(_AREA[reg], it) for it in _BASKET]
-               + [_series(_AREA["us"], it) for it in _BASKET])
+        codes = list(_BASKET) + [c for c in _PER_ITEM if c not in _BASKET]
+        ids = ([_series(_AREA[reg], it) for it in codes]
+               + [_series(_AREA["us"], it) for it in codes])
         prices = await _fetch_latest(ids)
-        ratios = []
-        for it in _BASKET:
-            r = prices.get(_series(_AREA[reg], it))
-            n = prices.get(_series(_AREA["us"], it))
-            if r and n and n > 0:
-                ratios.append(r / n)
+
+        def _ratio(code):
+            r = prices.get(_series(_AREA[reg], code))
+            n = prices.get(_series(_AREA["us"], code))
+            return (r / n) if (r and n and n > 0) else None
+
+        ratios = [x for x in (_ratio(it) for it in _BASKET) if x is not None]
         if len(ratios) < 3:
             raise RuntimeError(f"insufficient BLS coverage for {reg} (got {len(ratios)})")
         factor = round(statistics.fmean(ratios), 3)
         # clamp to a sane band — guards against a bad/partial fetch skewing budgets.
         factor = max(0.8, min(1.3, factor))
+
+        # Per-item factors carry the SAME clamp as the mean. The clamp exists
+        # because a bad or partial fetch must not skew a budget, and that reason
+        # does not weaken just because the number is more specific. An item BLS
+        # does not publish for this region is omitted entirely — the client falls
+        # back to the mean, which is a real answer rather than a guessed one.
+        item_factors = {}
+        for code, key in _PER_ITEM.items():
+            x = _ratio(code)
+            if x is not None:
+                item_factors[key] = max(0.8, min(1.3, round(x, 3)))
+
         result = {
             "region": reg, "region_label": _REGION_LABEL[reg], "factor": factor,
             "month": month_key, "source": src, "basket": list(_BASKET.values()),
             "items_used": len(ratios),
+            "item_factors": item_factors,
         }
         _CACHE[(reg, month_key)] = result
         return result

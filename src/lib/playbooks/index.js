@@ -12,6 +12,7 @@ import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
 import { attendanceAdjustment } from '../hostIntel';
+import { geoItemForPurchase } from '../knowledge/geoItemMap';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -3348,6 +3349,27 @@ export function normalizeAlternative(alt) {
 export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
   const pf = Number(opts.priceFactor) > 0 ? Number(opts.priceFactor) : 1;
+  // ── ONE MULTIPLIER PER BAND, NEVER TWO (board ruling, 2026-08-16) ─────────
+  // `pf` is the regional BASKET mean — one number for every line. The backend
+  // also returns per-item factors now (it always computed them and discarded
+  // them with fmean), and geoItemMap says which priced lines may claim which
+  // commodity series. So a MAPPED line takes its own factor INSTEAD of the mean;
+  // everything else keeps the mean.
+  //
+  // "Instead", not "as well as", is the whole correctness condition. Two
+  // multipliers on one band would overcharge silently — a ~12% error in the
+  // Northeast that never throws and never looks wrong.
+  //
+  // Absent, malformed, or unmapped all resolve to the mean, which is a real
+  // answer rather than a guessed one.
+  const itemFactors = (opts.itemFactors && typeof opts.itemFactors === 'object') ? opts.itemFactors : {};
+  const factorFor = (purchase) => {
+    let key = null;
+    try { key = geoItemForPurchase(purchase); } catch { key = null; }
+    if (!key) return pf;
+    const f = Number(itemFactors[key]);
+    return (f > 0.5 && f < 2) ? f : pf;
+  };
   const playbook = getPlaybook(event.type);
   if (!playbook || !Array.isArray(playbook.purchases)) return null;
   // Size the spread from the ONE engine sizer (eventSizing → attendanceBand): the
@@ -3685,6 +3707,9 @@ export function playbookFoodPlan(event, opts = {}) {
       // General data-driven choice→cost factor — any playbook decision with costFactors/affects re-prices
       // its line here (single source of truth; no per-playbook hardcoding). Default option ⇒ 1.0.
       const _choiceF = choiceFactorFor(p);
+      // The ONE regional multiplier this line will take: its own commodity
+      // factor when geoItemMap maps it, otherwise the basket mean. Never both.
+      const ppf = factorFor(p);
       if (_choiceF !== 1) { uLow *= _choiceF; uHigh *= _choiceF; }
       // Global buyable-unit guardrail — if an author left this in a non-buyable
       // serving unit (e.g. "40 slices" of cake), convert to whole purchasable units
@@ -3771,14 +3796,14 @@ export function playbookFoodPlan(event, opts = {}) {
         // multiplying two independent uncertainties (attendance × price) into one
         // misleadingly wide range. The real attendance spread is disclosed on its
         // own (bandLow/bandHigh below), not folded into the dollar figure.
-        low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
+        low: Math.round(units * uLow * ppf), high: Math.round(units * uHigh * ppf),
         // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a
         // host understands the price, and sees the regional (pf) adjustment in it.
         // When the guardrail converted the line, the per-unit basis is the buyable
         // unit (cake/pizza/…) at its scaled cost — so the "× $/unit" math stays honest.
         units, unitBase: buyable ? buyable.unit : (p.unit || ''),
-        perUnitLow: Math.round(uLow * pf * 100) / 100,
-        perUnitHigh: Math.round(uHigh * pf * 100) / 100,
+        perUnitLow: Math.round(uLow * ppf * 100) / 100,
+        perUnitHigh: Math.round(uHigh * ppf * 100) / 100,
         skipped: !!skip[p.id],
         locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),

@@ -1238,17 +1238,20 @@ export default function HostShellV2() {
   // ── Regional price factor (queue item 3) — the production pipeline:
   // getFoodPriceFactor via the API base (BLS regional). State comes ONLY from
   // an explicit ', XX' in venueCity — never guessed. Neutral 1.0 otherwise.
-  const [foodPP, setFoodPP] = useState({ priceFactor: 1, priceContext: null });
+  const [foodPP, setFoodPP] = useState({ priceFactor: 1, priceContext: null, itemFactors: {} });
   useEffect(() => {
     let dead = false;
     const m = /,\s*([A-Za-z]{2})\s*$/.exec(vf.city);
     const state = (m ? m[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
-    if (!isFoodPricesConfigured() || !state) { setFoodPP({ priceFactor: 1, priceContext: null }); return undefined; }
+    if (!isFoodPricesConfigured() || !state) { setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); return undefined; }
     (async () => {
       try {
         const d = await getFoodPriceFactor({ state });
-        if (!dead) setFoodPP({ priceFactor: d.factor || 1, priceContext: d.factor !== 1 ? (d.regionLabel + (d.month ? ' · ' + d.month : '') + ' · ' + d.source) : null });
-      } catch { if (!dead) setFoodPP({ priceFactor: 1, priceContext: null }); }
+        // itemFactors: the backend's PER-ITEM regional factors. geoItemMap decides
+        // which priced lines may claim one; every other line keeps the basket mean.
+        // Exactly one multiplier lands on any band — see playbooks/index.js factorFor.
+        if (!dead) setFoodPP({ priceFactor: d.factor || 1, priceContext: d.factor !== 1 ? (d.regionLabel + (d.month ? ' · ' + d.month : '') + ' · ' + d.source) : null, itemFactors: d.itemFactors || {} });
+      } catch { if (!dead) setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); }
     })();
     return () => { dead = true; };
   }, [event.id, vf.city]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -2718,7 +2721,7 @@ export default function HostShellV2() {
     });
   };
   const spend = useMemo(() => {                          // lib/hostSpending — budget single-source
-    try { return hostSpending(event, foodPP.priceFactor); } catch { return { total: 0, spent: 0, committed: 0 }; }
+    try { return hostSpending(event, foodPP.priceFactor, foodPP.itemFactors); } catch { return { total: 0, spent: 0, committed: 0 }; }
   }, [event, foodPP.priceFactor]); // was missing priceFactor — the budget recovery panel below re-derives
     // the same total unmemoized (always fresh), so once regional pricing
     // resolved async after mount, this stale figure and the recovery panel's
@@ -4270,7 +4273,11 @@ export default function HostShellV2() {
   // The REAL spread: same food plan hostSpending bills from, sized by the
   // engine's own attendance band for this event.
   const foodPlan = useMemo(() => {
-    try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor }); } catch { return null; }
+    // itemFactors travels WITH priceFactor everywhere, or the food panel and the
+    // money panel would price the same event differently — the food sheet showing
+    // a per-item regional band while the budget rollup used the basket mean for
+    // the same line. One source, one set of numbers.
+    try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor, itemFactors: foodPP.itemFactors }); } catch { return null; }
   }, [event, foodPP.priceFactor]); // same missing-dependency bug as `spend` above
 
   // ROW-LEVEL CTA RULE, single source (was duplicated only inside the Budget
