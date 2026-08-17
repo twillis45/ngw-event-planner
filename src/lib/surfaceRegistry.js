@@ -63,7 +63,8 @@ import { openArrivalAsks } from './vendorAsks';
 import { playbookRisks, playbookDecisionBoard } from './playbooks';
 import { raisesToCommandBoard } from './riskSeverity';
 import { evidenceFromDecisionRow } from './decisionEvidence';
-import { daysUntil, isEventDay, isPastEvent, daysUntilEnd } from './dates';
+import { daysUntil, isEventDay, isPastEvent, daysUntilEnd, rsvpDeadlineFor } from './dates';
+import { rsvpHasResponded } from './rsvp';
 import { buildSeatingPlan } from './seatingPlan';
 import { buildTravelPlan } from './travelPlan';
 import { moneyDatesFor } from './moneyDates';
@@ -294,6 +295,80 @@ export const SURFACES = [
   // attn: seating.totals.unassigned > 0, gated on seating.hasRoster &&
   // seating.totals.confirmed > 0 — a hand-wired boolean the ranked list never
   // saw. Same engine (buildSeatingPlan), same predicate, mirrored exactly.
+  // ── THE REPLY-BY PASSED AND NOBODY SAID ANYTHING (2026-08-17) ────────────
+  // W8 named this as a Coverage cap — "the missing reply-by/silent-guest
+  // PRODUCER" — and re-derivation confirmed it, five weeks on. Measured: a
+  // Wedding with a hard reply-by five days past and three of five guests silent
+  // produced FOURTEEN raises and not one of them was about the silence. The only
+  // RSVP-ish match was the pre-authored risk card "Final headcount wrong or late
+  // to the caterer", which renders identically whether every guest has replied or
+  // none has — a standing worry, not a raise about this event's actual state.
+  //
+  // EVERY OTHER PIECE ALREADY EXISTED. `rsvpDeadlineFor` reads the date,
+  // `rsvpHasResponded` reads the state, and `draftRsvpChase` writes the message.
+  // The capability was complete and nothing asked for it — the same one-wire-short
+  // shape found repeatedly in this codebase.
+  //
+  // WHICH DEADLINES THIS CAN FIRE ON — corrected after red-proof, because my
+  // first comment here described behaviour the code does not have.
+  //
+  // I wrote "hard: true only for a date the HOST set". That is WRONG.
+  // `rsvpDeadlineFor` (dates.js:152) returns hard: true for BOTH the explicit
+  // `event.rsvpDeadline` override AND its own derived default of event − 7d;
+  // only the "<7 days out, no firm date to give" case is hard: false.
+  //
+  // In practice this raiser still fires only on a host-set date, but for a
+  // different reason than the guard below suggests: a DERIVED deadline is
+  // event − 7d, which is never in the past while the event is still ≥7 days
+  // away, and inside 7 days the answer switches to hard: false with a POSITIVE
+  // `days`. So neither non-override branch can satisfy `days <= 0`, and the
+  // `hard !== true` line is presently unreachable.
+  //
+  // It stays as belt-and-braces — if that derivation ever changes, this refuses
+  // rather than starts nagging about a date nobody agreed to — but it is
+  // documented as unreachable so nobody reads it as the load-bearing rule. The
+  // load-bearing rule is `days >= 0`.
+  //
+  // Found because a red-proof that removed the guard turned NOTHING red.
+  {
+    id: 'rsvpchase',
+    label: 'Guest list',
+    domain: 'guests',
+    route: { tab: 'Guests' },
+    bundleTitle: (n) => `${n} guests still have not replied`,
+    raise(event) {
+      if (isPastEvent(event && event.date)) return [];
+      let dl = null;
+      try { dl = rsvpDeadlineFor(event); } catch (_e) { return []; }
+      if (!dl || dl.hard !== true) return [];              // only a date the host actually set
+      // STRICTLY past, not "not future". `days > 0` let ZERO through, and zero is
+      // the derived deadline landing exactly on today — which happens at exactly
+      // 7 days out, since the derived date is event − 7d. The raise fired and
+      // rendered "Your reply-by date passed 0 days ago". Today is not late.
+      // Caught by sweeping the range instead of spot-checking at 20 days.
+      if (!Number.isFinite(dl.days) || dl.days >= 0) return [];
+      const guests = Array.isArray(event && event.guests) ? event.guests : [];
+      if (!guests.length) return [];                       // headcount events have nobody to chase
+      const silent = guests.filter((g) => {
+        try { return g && g.id != null && !rsvpHasResponded(g); } catch (_e) { return false; }
+      });
+      if (!silent.length) return [];                       // everyone answered — say nothing
+      // ROW-LEVEL OR NOT AT ALL: land on the first person still owed a reply.
+      const first = silent[0];
+      const n = silent.length;
+      const late = Math.abs(dl.days);
+      return [{
+        severity: 'attention',
+        title: n === 1 ? '1 guest still has not replied' : `${n} guests still have not replied`,
+        why: `Your reply-by date passed ${late === 1 ? 'yesterday' : `${late} days ago`} · ${guests.length - n} of ${guests.length} have answered`,
+        ask: 'Chase the missing replies.',
+        route: { tab: 'Guests', guestId: first.id },
+        key: 'rsvp-chase',
+        dueInDays: dl.days,                                 // negative: it is genuinely past
+        leadDays: null,
+      }];
+    },
+  },
   {
     id: 'seating',
     label: 'Who sits where',

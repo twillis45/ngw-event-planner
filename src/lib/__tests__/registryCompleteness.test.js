@@ -50,6 +50,23 @@ const SHELL_PATH = path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'Host
 const CONTRACT_IDS = [
   'risks', 'vendor-conflicts', 'vendor-arrivals', 'vendor-reconfirm', 'day-of',
   'seating', 'lodging', 'travel-air', 'travel-ground',
+  // ── THE CONSCIOUS EDIT THIS GATE ASKS FOR (2026-08-17) ──────────────────
+  // 'rsvpchase' closes W8's Coverage cap, "the missing reply-by/silent-guest
+  // PRODUCER". Re-derived five weeks on and still open: a Wedding with a HARD
+  // reply-by five days past and three of five guests silent produced fourteen
+  // raises, none about the silence. The only RSVP-ish match was the standing
+  // risk card "Final headcount wrong or late to the caterer", which renders the
+  // same whether every guest has replied or none has.
+  //
+  // Every other piece already existed — rsvpDeadlineFor reads the date,
+  // rsvpHasResponded reads the state, draftRsvpChase writes the message. Only
+  // the raiser was missing.
+  //
+  // Gated on `hard: true` deliberately: rsvpDeadlineFor's SOFT default is
+  // derived from the event date, and telling a host their guests are late
+  // against a date nobody agreed to would be the app inventing a promise on
+  // their behalf.
+  'rsvpchase',
   // Money-Safe Date Chain (program MVP #1, 2026-07-27): host-transcribed
   // booking deadlines (refund window / installment / headcount) raised inside
   // the 14-day action window, exposure-led when money is fronted.
