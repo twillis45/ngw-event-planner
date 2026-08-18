@@ -24,7 +24,7 @@ const PRICE_VINTAGE = (() => {
   try { const [y, m] = String(PRICE_TABLE_META.asOf || '').split('-'); if (!y || !m) return ''; return new Date(Number(y), Number(m) - 1, 15).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); } catch { return ''; }
 })();
 import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '@app/lib/vendorEstimator';
-import { parseVendorReply, isAiProxyConfigured } from '@app/lib/aiProxy';
+import { parseVendorReply, isAiProxyConfigured, extractDocumentAI } from '@app/lib/aiProxy';
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isSolemnEvent } from '@app/lib/solemn';
@@ -2076,6 +2076,15 @@ export default function HostShellV2() {
   // /'inviteStyle'/'gifts'.
   const [settledOpen, setSettledOpen] = useState({});
   const [contractUploading, setContractUploading] = useState({}); // per-vendor contract-file upload state
+  // AI DOCUMENT EXTRACTION (2026-08-18): wires an already-real, already-tested
+  // backend capability (/api/ai/extract-document, GPT-4o vision) that existed
+  // only in the frozen legacy App.js shell — hostv2 never called it, same
+  // engine-built-shell-never-wired shape this project has hit repeatedly
+  // (Adaptivity's hostExperience/hostCapacity, named in the 08-17 rescore).
+  // Per-vendor keyed state, same pattern as contractUploading above.
+  const [contractExtracting, setContractExtracting] = useState({});
+  const [contractExtracted, setContractExtracted] = useState({});
+  const [contractExtractErr, setContractExtractErr] = useState({});
   const [foodAddGroup, setFoodAddGroup] = useState(null); // Food/Drinks/Supplies override; null = auto-guess
   const [foodGroupsOpen, setFoodGroupsOpen] = useState({}); // spread accordion
   // Place-intelligence rows (Space sheet) — which one has its inline note
@@ -16499,6 +16508,21 @@ export default function HostShellV2() {
                                 <>
                                   <span className="vc-detail" style={{ margin: 0, flex: 1, minWidth: 120 }}>{v.contractFileName || 'On file'}</span>
                                   {v.contractUrl && <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">View</a>}
+                                  {isAiProxyConfigured() && v.contractUrl && (
+                                    <button className="mini" disabled={!!contractExtracting[v.id]}
+                                      onClick={async () => {
+                                        setContractExtracting(m => ({ ...m, [v.id]: true }));
+                                        setContractExtractErr(m => ({ ...m, [v.id]: null }));
+                                        try {
+                                          const out = await extractDocumentAI({ documentUrl: v.contractUrl, vendorName: v.name, eventName: event.name });
+                                          setContractExtracted(m => ({ ...m, [v.id]: out.extracted }));
+                                        } catch (e) {
+                                          setContractExtractErr(m => ({ ...m, [v.id]: (e && e.message) || 'Analysis failed — try again.' }));
+                                        } finally {
+                                          setContractExtracting(m => ({ ...m, [v.id]: false }));
+                                        }
+                                      }}>{contractExtracting[v.id] ? 'Analyzing…' : 'Analyze with AI'}</button>
+                                  )}
                                   <button className="mini" onClick={() => writeVendor(v.id, { contractStoragePath: null, contractFileName: null, contractUrl: null }, 'Contract file removed.')}>Remove</button>
                                 </>
                               ) : isStorageConfigured() ? (
@@ -16529,6 +16553,46 @@ export default function HostShellV2() {
                               )}
                             </div>
                           )}
+                          {/* AI-extracted contract summary — labeled, dismissible, review-required
+                              (no auto-write; the app never invents facts from a document scan). */}
+                          {contractExtractErr[v.id] && (
+                            <p className="v-meta" style={{ color: 'var(--danger)', margin: 'var(--sp-1) 0' }}>{contractExtractErr[v.id]}</p>
+                          )}
+                          {contractExtracted[v.id] && (() => {
+                            const ex = contractExtracted[v.id];
+                            return (
+                              <div style={{ border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3)', margin: 'var(--sp-1) 0' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-2)' }}>
+                                  <span className="v-meta" style={{ textTransform: 'uppercase', letterSpacing: '.06em' }}>AI-extracted — verify against the original</span>
+                                  <button className="mini" onClick={() => setContractExtracted(m => ({ ...m, [v.id]: null }))}>Dismiss</button>
+                                </div>
+                                {Array.isArray(ex.action_items) && ex.action_items.length > 0 && (
+                                  <div style={{ marginBottom: 'var(--sp-2)' }}>
+                                    <div className="v-meta" style={{ fontWeight: 650 }}>Action items</div>
+                                    {ex.action_items.map((a, ai) => (
+                                      <div key={ai} className="v-meta" style={{ color: a.priority === 'high' ? 'var(--danger)' : 'var(--ink-soft)' }}>
+                                        {a.task}{a.due_date ? ` — ${a.due_date}` : ''}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {Array.isArray(ex.key_dates) && ex.key_dates.length > 0 && (
+                                  <div style={{ marginBottom: 'var(--sp-2)' }}>
+                                    <div className="v-meta" style={{ fontWeight: 650 }}>Key dates</div>
+                                    {ex.key_dates.map((d, di) => (
+                                      <div key={di} className="v-meta">{d.label}: {d.date}</div>
+                                    ))}
+                                  </div>
+                                )}
+                                {ex.cancellation_policy && (
+                                  <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>{ex.cancellation_policy}</p>
+                                )}
+                                {ex.disclaimer && (
+                                  <p className="v-meta" style={{ margin: 0, fontStyle: 'italic' }}>{ex.disclaimer}</p>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {coiAct && (() => {
                             let coi = null; try { coi = getVendorCOIState(v, event); } catch { coi = null; }
                             return (

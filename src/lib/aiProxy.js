@@ -93,3 +93,39 @@ export async function parseVendorReply(reply, vendorCtx = {}) {
   if (!data?.ok) throw new Error('AI returned no result.');
   return data; // { ok, fields, confidence, truncated, disclaimer }
 }
+
+// extractDocumentAI({documentUrl, vendorName, eventName, documentType}) →
+// { ok, extracted: {key_dates[], payment_terms{}, key_contacts[], action_items[],
+//   cancellation_policy, important_notes[], confidence, disclaimer}, document_type }
+// | throws Error with a friendly message.
+//
+// The backend only fetches document_url through safe_fetch's storage-host
+// allowlist (2026-07-30 security fix) — a pasted external link that isn't on
+// the app's own storage will fail honestly (403), not silently.
+export async function extractDocumentAI({ documentUrl, vendorName, eventName, documentType = 'contract' }) {
+  if (!BASE) throw new Error('AI is not configured.');
+  if (!documentUrl) throw new Error('No document to analyze.');
+  let res;
+  try {
+    res = await fetch(`${BASE}/api/ai/extract-document`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        document_url: documentUrl,
+        document_type: documentType,
+        vendor_name: vendorName || null,
+        event_name: eventName || null,
+      }),
+    });
+  } catch {
+    throw new Error('Could not reach the AI service. Please try again.');
+  }
+  if (res.status === 401) throw new Error('Please sign in to use AI features.');
+  if (res.status === 403) throw new Error('That document isn’t on a file the AI can read — try re-attaching it.');
+  if (res.status === 429) throw new Error('You’re going a bit fast — please wait a moment and try again.');
+  if (res.status === 503) throw new Error('AI is unavailable right now.');
+  if (!res.ok) throw new Error('AI service error — please try again.');
+  const data = await res.json().catch(() => null);
+  if (!data?.ok) throw new Error('AI returned no result.');
+  return data;
+}
