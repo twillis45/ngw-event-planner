@@ -159,11 +159,11 @@ describe('1 — the source universe is what we think it is', () => {
   // close that gap. The OJ entry is the BLS frozen-concentrate series and its
   // claim states the reconstitution math, because quoting $4.82/16oz as a
   // per-glass price would overstate it roughly fourfold.)
-  test('20 axes, 190 source identities — verified, not assumed', () => {
+  test('20 axes, 192 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(190);
-    expect(unionIds().size).toBe(190);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(192);
+    expect(unionIds().size).toBe(192);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

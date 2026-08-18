@@ -518,6 +518,29 @@ export const COST_SOURCES = {
   // up personalised backdrops at $49-98 (Etsy, Zazzle, ubackdrop). That is a
   // different product from a party-store banner, and folding it in would put the
   // component above the whole kit band it is supposed to price.
+  // -- SMOKED SAUSAGE (registered 2026-08-18) ---------------------------------
+  // The boil and cookout rows band smoked sausage at $3-6/lb and had no source.
+  // The registry's only sausage evidence was directional — costco-groundbeef-2026
+  // says links "price below ground beef per lb" — which is a comparison, not a
+  // price, and cannot ground a band on its own.
+  //
+  // These two are BUTCHER prices and sit at the upper half of the band. That is
+  // stated rather than smoothed over: the floor of a $3-6 band is warehouse
+  // mass-brand (below Costco's $3.29/lb bulk ground beef), and the ceiling is a
+  // butcher ring. The two ends are different products at the same counter, which
+  // is what the spread in these rows is actually made of.
+  'sausage-butcher-2026': {
+    org: 'Wilson Beef Farms smoked kielbasa - fetched product page with an explicit per-pound price',
+    url: 'https://www.wilsonbeeffarms.com/product/smoked-kielbasa/',
+    fetched: '2026-08-18',
+    claim: 'Smoked kielbasa from a working butcher is $5.89 per pound (page states "Price per pound $5.89"), local pickup, prices subject to change.',
+  },
+  'sausage-producer-2026': {
+    org: 'US smoked-sausage producer listings, 2026 (listing - figures read from search results)',
+    url: 'https://ramcountrymeats.colostate.edu/product/smoked-polish-kielbasa-sausage/',
+    fetched: '2026-08-18',
+    claim: 'Smoked kielbasa per pound 2026 across independent producers: RAM Country Meats $5.49, Wilson Beef Farms $5.89, Full Quiver Farm $11.25 at the artisanal end. Andouille is carried by specialty butchers but is rarely listed at a standardised per-pound price, and major grocery chains sell these by package weight rather than per pound.',
+  },
   'balloon-kits-2026': {
     org: 'Shimmer & Confetti balloon garland collection - fetched catalogue with per-kit pricing',
     url: 'https://shimmerandconfetti.com/collections/balloon-garland',
