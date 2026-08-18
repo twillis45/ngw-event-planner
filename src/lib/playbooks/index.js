@@ -84,6 +84,12 @@ import { effectiveDietary, isGroundedDietary } from '../knowledge/dietaryContext
 import { effectiveBudget, isGroundedBudget } from '../knowledge/budgetContext';
 import { effectiveChildcare, isGroundedChildcare } from '../knowledge/childcareContext';
 import { authoredQuestion } from '../askVoice';
+// Imported here rather than beside its re-export below: an `import` in the
+// module BODY is an eslint `import/first` ERROR, and CRA treats it as a compile
+// failure — `gate:cra` has been red since f43155cc (2026-08-16) and Pages has not
+// deployed since. The local matrix never runs that gate, which is why every run
+// looked green.
+import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -709,7 +715,6 @@ function taskPhaseLabel(offset) {
 // definition. The array itself moved to a leaf module because importing it
 // from here put the whole corpus on the guest's critical path.
 export { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
-import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
 
 const DESTINATION_DECISIONS = [
   // ── weight ADDED 2026-08-06 (board ruling D) ─────────────────────────────
