@@ -3866,7 +3866,10 @@ function VendorReplyParser({ vendor, event, onPatchVendor, onAddLog, isOpen, onT
                         “{row.evidence}”
                       </div>
                     ) : (
-                      <div style={{ fontSize: type.size['xs'], color: P.textTertiary, marginTop: 2, lineHeight: 1.4 }}>
+                      /* UX_10 5b: was P.textTertiary -- the absence-warning
+                         is the more important half of this pair and should
+                         not be quieter than the citation it's warning about. */
+                      <div style={{ fontSize: type.size['xs'], color: P.textSecondary, marginTop: 2, lineHeight: 1.4 }}>
                         No supporting quote from the message — check the original before applying.
                       </div>
                     )}
@@ -3885,7 +3888,9 @@ function VendorReplyParser({ vendor, event, onPatchVendor, onAddLog, isOpen, onT
               </button>
             </div>
             {result.disclaimer && (
-              <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic', marginTop: space[3], lineHeight: 1.4 }}>
+              /* UX_10 5b: was P.textTertiary -- same reasoning as
+                 extracted.disclaimer above. */
+              <div style={{ fontSize: type.size['xs'], color: P.textSecondary, fontStyle: 'italic', marginTop: space[3], lineHeight: 1.4 }}>
                 {result.disclaimer}
               </div>
             )}

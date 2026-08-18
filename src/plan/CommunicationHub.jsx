@@ -1420,7 +1420,9 @@ function ContextPanel({ thread, event, onRoute }) {
                 </a>
               )}
             </div>
-            <div style={{ fontSize: type.size['2xs'], color: linkedVendor.status === 'Confirmed' ? P.green : P.amber, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF, marginTop: 6 }}>
+            {/* UX_10 5c: was type.size['2xs'] (9px) -- below the floor even
+                with correct signal color; status text needs to clear it. */}
+            <div style={{ fontSize: type.size['xs'], color: linkedVendor.status === 'Confirmed' ? P.green : P.amber, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF, marginTop: 6 }}>
               {(linkedVendor.status || '').toUpperCase()}
             </div>
             {onRoute && (
@@ -1437,7 +1439,9 @@ function ContextPanel({ thread, event, onRoute }) {
           <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
             <div style={{ fontSize: type.size['2xs'], letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>DECISION</div>
             <div style={{ fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{approvalMsg.subject || 'Approval request'}</div>
-            <span style={{ fontSize: type.size['2xs'], fontWeight: type.weight.medium, color: P.amber, letterSpacing: '0.06em', padding: '1px 5px', borderRadius: 2, border: `1px solid ${P.amber}44`, background: P.amber + '12', fontFamily: FF }}>PENDING</span>
+            {/* UX_10 5c: was type.size['2xs'] (9px) -- a pending decision
+                badge below the floor. */}
+            <span style={{ fontSize: type.size['xs'], fontWeight: type.weight.medium, color: P.amber, letterSpacing: '0.06em', padding: '1px 5px', borderRadius: 2, border: `1px solid ${P.amber}44`, background: P.amber + '12', fontFamily: FF }}>PENDING</span>
             {onRoute && (
               <button onClick={() => onRoute('Decisions', approvalMsg.id)}
                 style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.amber, fontSize: type.size.sm, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>

@@ -253,7 +253,8 @@ function ItemList({ items, filter, selected, onSelect }) {
                 }}>
                   {item.type}
                 </span>
-                <span style={{ fontSize: type.size.xs, color: P.textTertiary, fontFamily: FF }}>
+                {/* UX_10 5c: was P.textTertiary -- a decision's timestamp is data. */}
+                <span style={{ fontSize: type.size.xs, color: P.textSecondary, fontFamily: FF }}>
                   {fmtRelative(item.date)}
                 </span>
               </div>

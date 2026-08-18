@@ -157,7 +157,8 @@ function CheckRow({ task, event, onToggle, onOpen, urgency }) {
       </button>
 
       {task.owner && (
-        <span style={{ flexShrink: 0, fontFamily: FF, fontSize: type.size.xs, fontWeight: type.weight.medium, color: P.textTertiary, background: P.borderSubtle, borderRadius: r.sm, padding: `${sp[1]}px ${sp[3]}px`, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+        // UX_10 5c: was P.textTertiary -- accountability data, what a planner scans for.
+        <span style={{ flexShrink: 0, fontFamily: FF, fontSize: type.size.xs, fontWeight: type.weight.medium, color: P.textSecondary, background: P.borderSubtle, borderRadius: r.sm, padding: `${sp[1]}px ${sp[3]}px`, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
           {task.owner}
         </span>
       )}
