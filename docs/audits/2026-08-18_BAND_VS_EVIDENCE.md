@@ -6,7 +6,7 @@
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **fourteen** whose band the
+`unitCostRange`. Doing that across ~40 rows turned up **sixteen** whose band the
 evidence does not support. They are listed here rather than papered over with a
 citation, because a source that does not support the number is worse than no
 source: it makes an unverified figure look checked.
@@ -37,6 +37,8 @@ source: it makes an unverified figure look checked.
 |---|---|---|
 | `bachelorParty:72` chips, pretzels & jerky | $1–3 /lb | chips $3.64–6.56/lb (BLS $6.559/16oz), pretzels $3.98/lb |
 | `birthday:67` chips, veggie tray & salad | $1–3 /lb | same chips figures |
+| `crabFeast:205` Old Bay (or J.O.) seasoning | $4–9 /lb | Old Bay 6oz is $5.19–5.99, i.e. **$13.84–15.97/lb** — the whole band is below it |
+| `crawfishBoil:75` crab/crawfish boil seasoning | $1.50–4 /lb | Zatarain's 3oz $1.97 (~$10.50/lb), 4oz 4-pack $8.84 (~$8.80/lb); even a 50lb bulk case at $335 is **$6.70/lb** |
 | `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity |
 
 ## The pattern
@@ -49,8 +51,12 @@ tray rather than raw meat. If so the bands are right and the sources are simply
 pricing a different thing — but nothing in the corpus says so, so a reader cannot
 tell that from an over-estimate.
 
-**Snacks read low.** Chips are a genuinely expensive commodity by weight and the
-bands appear to be intuition rather than shelf prices.
+**Snacks and seasonings read low.** Chips are a genuinely expensive commodity by
+weight. Seasonings are worse: Old Bay is bought in a 6oz tin at $5.99, which
+*feels* cheap, but per pound it is $15.97 — four times the row's ceiling. Even
+a 50lb foodservice case of crab boil is $6.70/lb, above the crawfish row's
+entire band. A per-pound band written from the feel of a small tin will be wrong
+by roughly the ratio of the tin to a pound.
 
 That split — the same author estimating one category high and another low — is
 what makes this worth surfacing rather than silently correcting.
