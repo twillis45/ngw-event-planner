@@ -166,7 +166,13 @@ export const space = { 0: 0, 1: 2, 2: 4, 3: 8, 4: 12, 5: 16, 6: 20, 7: 24, 8: 32
 // system) — the plan/ components were rendering panels at 6/10/14, reading as
 // "different-shaped" surfaces. md = the canonical CARD radius; sm stays small
 // for chips/inputs/compact buttons.
-export const radius = { none: 0, sm: 8, md: 12, lg: 12, xl: 20, full: 999 };
+// `lg` was 12 — identical to `md`, so the scale had two names for one tier and
+// every `radius.lg` silently rendered as `md`. The four call sites that reach
+// for it (AlertBanner, three TimelineBuilder panels) are all large containers
+// whose author wanted something bigger than a card; 12 was the accident, not
+// the intent. 16 makes it a real step and gives a clean 8/12/16/20 progression.
+// `full` 999 → 9999 matches Figma; both round fully, so nothing moves.
+export const radius = { none: 0, sm: 8, md: 12, lg: 16, xl: 20, full: 9999 };
 
 // ── Typography (NGW Typography) ─────────────────────────────────────────
 export const type = {

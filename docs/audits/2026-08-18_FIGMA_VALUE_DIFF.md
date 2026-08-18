@@ -165,7 +165,27 @@ that does not exist.
 
 ---
 
-## 3. Radius — genuinely divergent
+## 3. Radius — **RESOLVED 2026-08-18**
+
+> **Fixed, in two parts.**
+>
+> **First, a real code defect.** `radius.md` and `radius.lg` were *both* 12px —
+> two names for one tier, so every `radius.lg` silently rendered as `md`. The
+> four call sites reaching for it (AlertBanner, three TimelineBuilder panels)
+> are all large containers whose author wanted something bigger than a card.
+> 12 was the accident; the intent was never honoured. `lg` is now **16**,
+> giving a clean 8/12/16/20 progression. `full` moved 999 → 9999 to match
+> Figma (both round fully; nothing moves).
+>
+> **Then pushed to Figma:** `radius/sm` 4→8, `md` 6→12, `lg` 8→16, `xl` 12→20.
+> `none` (0) and `full` (9999) already agreed. `radius/xs` (2px) is Figma-only
+> and was left alone — code has no counterpart and inventing one would be
+> speculative.
+>
+> **This one ships a visible change:** those four surfaces now render at 16px
+> instead of 12px. Deliberate — it is the tier the code asked for.
+
+The original finding, for the record:
 
 | Token | Figma | Code |
 |---|---|---|
@@ -182,7 +202,42 @@ collapsing a tier Figma keeps distinct.
 
 ---
 
-## 4. Typography — two different systems
+## 4. Typography — **DECIDED 2026-08-18: keep both, document the crosswalk**
+
+> **No change to either side.** The two vocabularies serve different readers and
+> cannot be confused, which is the key difference from the spacing hazard: there
+> the *same name* meant different values (`spacing/4` ≠ `space[4]`). Here the
+> names do not collide at all — nobody mistakes `size/h1` for `type.size['3xl']`.
+> It is a tidiness question, not a correctness one.
+>
+> Usage is heavily bottom-weighted and explains why code's scale is finer at the
+> small end: `caption`(12px) 266 uses, `sm`(11) 144, `base`(13) 103, `xs`(10) 77,
+> `2xs`(9) 33 — **89% of ~700 uses sit between 9 and 13px**. That is a dense
+> operational UI. Figma's semantic scale is built for composing layouts, and
+> stops at 11px.
+>
+> **Crosswalk** — where the two agree on px:
+>
+> | px | Figma | Code |
+> |---|---|---|
+> | 11 | `size/caption` | `sm` |
+> | 12 | `size/label` | `caption` |
+> | 13 | `size/body-sm` | `base` |
+> | 14 | `size/body` | `md` |
+> | 15 | `size/body-lead` | `lg` |
+> | 16 | `size/h3`, `size/data` | `xl` |
+> | 22 | `size/h1` | `3xl` |
+>
+> **Figma-only:** 18 (`h2`), 24 (`data-lg`), 28 (`op-hero`).
+> **Code-only:** 9 (`2xs`), 10 (`xs`), 17 (`section`), 20 (`2xl`), 26 (`4xl`), 30 (`5xl`).
+>
+> Note the collision-shaped trap in that table: `size/caption` is 11px while
+> code's `caption` is 12px. Same word, different value — the one place these
+> vocabularies *do* overlap in name. Do not translate by name; translate by px.
+>
+> **`4xl` (26px) has zero uses** in code and is a candidate for removal.
+
+The original finding, for the record:
 
 Figma is **semantic**: `size/h1` 22, `size/h2` 18, `size/h3` 16,
 `size/body-lead` 15, `size/body` 14, `size/body-sm` 13, `size/label` 12,
