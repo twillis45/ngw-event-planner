@@ -864,6 +864,32 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'GREEN (unroasted) Ethiopian coffee 2026: $8.85-12.75 a pound in 1lb quantities - organic Konga Yirgacheffe $9.25, Limu $8.85, Durato Bombe Sidamo $12.15, Worka Sakaro $12.75, and organic Yirgacheffe $9.85 at a second roaster. Green loses about 15-18% of its weight in roasting, so a pound of green yields about 0.83lb roasted and the per-roasted-pound cost runs above the green price.',
   },
+  // -- KENTE, TIARAS AND PRIZES (2026-08-18) ---------------------------------
+  // THREE ITEMS IN THIS RESEARCH WERE REFUSED RATHER THAN SUBSTITUTED, and that
+  // refusal is the reason to trust what is here. Fandisha (ceremony popcorn) had
+  // no US listing as a sold product - only generic popcorn kernels, which is a
+  // substitute, so it is not priced. Ketema strewing grass likewise: only
+  // florist ornamental grass had published prices, and it is reported under its
+  // own name below rather than as ketema. Tena adam reached only one US
+  // publisher. Each is a gap, not a number.
+  'kente-specialist-2026': {
+    org: 'Africa Imports and Bynelo, African-goods specialist retailers, with Sankofa Edition (Black-owned) for stoles (all fetched)',
+    url: 'https://africaimports.com/kente-scarftable-runner-1/',
+    fetched: '2026-08-18',
+    claim: 'Kente 2026 from specialist retailers. TABLE RUNNERS: a 12x44in premium kente scarf/runner $7.90 retail ($4.95 wholesale, 16.67% off at 12+); a full-length 70-90in linen kente runner $46.00. These are different product classes - a short scarf against a table-length runner - and should not be averaged. STOLES: authentic handwoven kente graduation stoles $24.87-35.18 each from a Black-owned specialist.',
+  },
+  'tiaras-prizes-2026': {
+    org: 'CB Flowers & Crafts, Oriental Trading and Carnival Savers (all fetched)',
+    url: 'https://www.cbflowerscrafts.com/gold-jeweled-tiara-party-favor-pack-of-12-plastic-crowns/',
+    fetched: '2026-08-18',
+    claim: 'Tiaras and prizes 2026, sold standalone rather than bundled. TIARAS: a 12-pack of gold jewelled plastic crowns $8.30 ($0.69 each, 5.5in wide); sequin pastel 12-pack $14.38 ($1.20 each); foam princess 12-pack $5.78 ($0.48); a 48-piece bulk pack $30.58 ($0.64). PRIZES: a 100-piece mini toy assortment $17.98 on sale, $24.99 full ($0.18-0.25 a prize); a 572-piece carnival prize lot $84.95 (about $0.15 a prize).',
+  },
+  'florist-greenery-2026': {
+    org: 'Blooms By The Box and FiftyFlowers wholesale florist listings (both fetched)',
+    url: 'https://www.bloomsbythebox.com/greenery/assorted-fancy-grasses_7672/',
+    fetched: '2026-08-18',
+    claim: 'FLORIST ornamental grass foliage by the bunch 2026 - NOT fresh-cut lawn grass and NOT ketema strewing grass, for which no US retail price exists. Assorted fancy grasses $79.20 a box of 6 bunches at 10 stems each ($13.20 a bunch, $1.32 a stem); bulk fountain grass $179.99 for 5 bunches down to $404.99 for 20 ($20.25-36.00 a bunch at 5-8 stems each).',
+  },
   'zawadi-blackowned-2026': {
     org: 'MahoganyBooks, Umoja Books, The Black Art Depot and Seven Symbols of Kwanzaa - all Black-owned retailers (all fetched)',
     url: 'https://www.mahoganybooks.com/9780593474235',
