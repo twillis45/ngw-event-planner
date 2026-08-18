@@ -557,6 +557,24 @@ export const COST_SOURCES = {
   // establishes that the snack bands run BELOW their commodity - the opposite
   // direction from the drinks bands. Recording the evidence is the point; a
   // future pass should not have to re-derive it.
+  // -- BUNS (registered 2026-08-18) -------------------------------------------
+  // The bread sources price LOAVES ($2.50 mass-market, $6.00 artisan) and the
+  // bun rows band per BUN. A loaf and an 8-pack of buns are different products
+  // that happen to sit at similar shelf prices, and substituting one for the
+  // other is the same unit error as pricing pre-cut watermelon as whole, or
+  // reading a cup-equivalent as a pound. Two retailer sources instead.
+  'buns-kroger-2026': {
+    org: 'Kroger hamburger and hot dog bun listings with unit pricing, 2026 (listing - figures read from search results)',
+    url: 'https://www.kroger.com/q/hot+dog+bun+8+pack',
+    fetched: '2026-08-18',
+    claim: 'Kroger 8-count bun packs August 2026: Private Selection sweet Hawaiian hot dog buns 17oz $3.99 (from $5.49, $0.31/oz); Kroger CARBmaster Hawaiian hamburger buns 14oz $3.99 (from $5.49, $0.40/oz); Artesano potato hot dog buns 16oz $3.99. At 8 to a pack that is about $0.50 a bun on promotion and about $0.69 at the undiscounted price.',
+  },
+  'buns-walmart-2026': {
+    org: 'Walmart bun listings with per-ounce unit pricing, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/browse/food/buns/976759_976779_5829009',
+    fetched: '2026-08-18',
+    claim: 'Walmart Loves hamburger buns 8-pack $4.64 (30.9 cents an ounce), about $0.58 a bun. Typical 8-packs run $3.99-4.64 across brands and styles - brioche, Hawaiian and potato buns price above plain white.',
+  },
   'chips-bls-2026': {
     org: 'US Bureau of Labor Statistics CPI Average Price Data, potato chips per 16 ounces (series APU0000718311), via FRED (listing - figures read from search results)',
     url: 'https://fred.stlouisfed.org/series/APU0000718311',
