@@ -717,6 +717,184 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'BLS average retail butter (stick) $4.314 per pound through February 2026, against $4.408 in December 2025. USDA wholesale Grade AA averaged $1.64 per pound for the week ending 2026-07-18 - the retail-to-wholesale gap is large for this commodity.',
   },
+  // -- SAFETY EQUIPMENT (registered 2026-08-18, researched in parallel) -------
+  // CLASS K IS NOT PRICED HERE and that is load-bearing. A 1-A:10-B:C household
+  // extinguisher covers class B; a class K wet-chemical unit is a commercial
+  // kitchen product at a materially higher price, and no figure for one was
+  // found. Any row naming "B/K" is therefore grounded on its B half only, which
+  // its claim states rather than implying the pair is covered.
+  // -- CRAB-TABLE GOODS AND CULTURAL OBJECTS (2026-08-18, parallel research) --
+  // The cultural entries deliberately cite COMMUNITY AND SPECIALIST retailers.
+  // A kinara is not "a candle holder" and injera is not "flatbread"; pricing
+  // either from a generic substitute would be wrong about the object as well as
+  // the number.
+  // -- GLASSWARE AND COCKTAIL GARNISH (2026-08-18, parallel research) ---------
+  // -- PANTRY, PRODUCE AND APPETIZERS (2026-08-18, parallel research) ---------
+  // Two cautions carried from the research and worth keeping in front of anyone
+  // reading these:
+  //
+  //   1. PUBLISHER MARKUP IS SYSTEMATIC, NOT NOISE. The identical 13.7oz Ritz
+  //      box was $3.99 at Target and $8.99 at a delivery grocer - 2.25x. The
+  //      channel matters more than the figure.
+  //   2. USDA AMS FEATURE PRICES ARE ADVERTISED, NOT SHELF. They are promotional
+  //      by construction and sit below everyday shelf; sweet potatoes moved
+  //      $0.78 to $1.05 in a single week.
+  'bls-pasta-2026': {
+    org: 'US Bureau of Labor Statistics CPI Average Price Data, spaghetti and macaroni per pound (series APU0000701322), read from the FRED CSV endpoint (the HTML pages return 403)',
+    url: 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=APU0000701322',
+    fetched: '2026-08-18',
+    claim: 'BLS US city average for spaghetti and macaroni: $1.381/lb in July 2026, $1.367 in June, $1.311 in December 2025. The series covers all long thin pasta except fettuccine and linguine, plus macaroni and shells, any packaging. White all-purpose flour (APU0000701111) was $0.543/lb in July 2026.',
+  },
+  'grits-retail-2026': {
+    org: 'Target and a Louisiana grocer, both listing the same Quaker 24oz quick grits (both fetched)',
+    url: 'https://www.target.com/p/quaker-original-quick-5-minute-grits-24oz/-/A-13331196',
+    fetched: '2026-08-18',
+    claim: 'Quaker original quick 5-minute grits, 24oz: $3.39 at Target ($0.14 an ounce, about 18 servings) and $3.44 at GJ Curbside - $2.26-2.29 a pound. No BLS average-price series exists for grits.',
+  },
+  'usda-feature-produce-2026': {
+    org: 'USDA AMS Specialty Crops Market News, "Weekly Grocery Store Specialty Crops Feature Activity" (FVWRETAIL, 2026-08-14, ads 8/8-8/20), surveying 270+ retailers and 29,000+ stores; PDF extracted locally because WebFetch could not parse it',
+    url: 'https://www.ams.usda.gov/mnreports/fvwretail.pdf',
+    fetched: '2026-08-18',
+    claim: 'ADVERTISED FEATURE prices, not shelf prices. Green round cabbage $0.70/lb nationally this week (1,511 ads) against $0.69 last week and $0.73 last year, with regional weighted averages $0.59-0.99; red cabbage is a separate higher line at $0.90/lb. Sweet potatoes $1.05/lb this week (108 ads, range $0.99-1.19) against $0.78 last week - a 35% swing in seven days. One grocer shelf-priced cabbage at $0.81/lb and sweet potatoes at $0.58/lb, so shelf and feature diverge in both directions.',
+  },
+  'appetizers-frozen-2026': {
+    org: 'Target frozen party-appetizer listings with piece counts (fetched)',
+    url: 'https://www.target.com/p/frozen-petite-quiche-collection-6-25oz-12ct-good-38-gather-8482/-/A-78649200',
+    fetched: '2026-08-18',
+    claim: 'Frozen party appetizers 2026 at Target: petite quiche 6.25oz/12ct $5.99 (about $0.50 a piece); spanakopita 8.5oz/12ct $5.99 (about $0.50 a piece); Italian-style beef, pork and chicken meatballs 26oz $6.99 ($0.27 an ounce, about $4.30/lb) with NO piece count published, so no per-piece figure is derivable for meatballs. A delivery marketplace listed 12-count mini quiche at $8.59 and 15-count at $14.99, i.e. $0.72-1.00 a piece with marketplace markup.',
+  },
+  'glassware-disposable-2026': {
+    org: 'WebstaurantStore and Oriental Trading disposable champagne flute listings (both fetched)',
+    url: 'https://www.webstaurantstore.com/visions-5-oz-clear-2-piece-plastic-champagne-flute-case/347FC2P5.html',
+    fetched: '2026-08-18',
+    claim: 'Disposable plastic flutes 2026. Foodservice: Visions 5oz two-piece flute $33.99 a case of 120 ($0.28 each), $32.29 at 2+ cases. Party retail: 100-count packs $60.99-82.99 ($0.61-0.83 each), 25-count packs $15.98-24.99 ($0.64-1.00 each). The channel moves the per-glass price about 3x.',
+  },
+  'glassware-rental-2026': {
+    org: 'EventWorks, A to Z Event Rentals of PA and Big D Party Rentals stemware rate cards (all fetched)',
+    url: 'https://atozeventrentalsofpa.com/glassware-rentals-in-pa/',
+    fetched: '2026-08-18',
+    claim: 'Rental stemware 2026, priced PER GLASS per event: basic champagne flute $0.59-0.75, water goblet $0.57-0.75, wine glass $0.57-0.75; premium and designer stemware $1.25-2.99 (Riedel and gold-rim $1.75-2.50, Bali $2.99). Washing and breakage fees are not included. Rental at $0.57-0.75 is roughly 2-3x the disposable foodservice unit cost.',
+  },
+  'garnish-produce-2026': {
+    org: 'Target produce listings with USDA AMS specialty-crop retail report (Target fetched; the USDA PDF did not parse, so its figures are search-snippet grade)',
+    url: 'https://www.target.com/p/lime-each/-/A-15026731',
+    fetched: '2026-08-18',
+    claim: 'Cocktail garnish produce 2026: a lime is $0.39 each at Target, against a USDA weekly retail report showing limes $0.69-0.79/lb (weighted average $0.75) and individually $0.12-0.69. Fresh mint is sold as a 0.5oz clamshell at $1.99-2.80, not as a loose bunch. Blueberries $3.99 a 1-pint (11.2oz) package; strawberries $2.99/lb, with a BLS dry-pint average of $2.404 per 12oz.',
+  },
+  'barsyrup-bitters-2026': {
+    org: 'WebstaurantStore, LollicupStore and Target listings for Monin cane syrup and Angostura bitters (all fetched)',
+    url: 'https://www.webstaurantstore.com/monin-750-ml-premium-pure-cane-syrup/544SYPAR000A.html',
+    fetched: '2026-08-18',
+    claim: 'Bar consumables 2026: Monin pure cane syrup 750ml $7.09-8.79, about 25 one-ounce servings a bottle, i.e. $0.28-0.35 an ounce. Angostura aromatic bitters 4 fl oz $10.49-12.99 retail ($8.40 a bottle in a 48-case); one bottle yields about 47 half-teaspoon dashes, so roughly $0.22-0.28 a dash.',
+  },
+  'bibs-foodservice-2026': {
+    org: 'WebstaurantStore disposable crab and lobster bib listings (fetched)',
+    url: 'https://www.webstaurantstore.com/277/disposable-bibs-and-kids-bibs.html',
+    fetched: '2026-08-18',
+    claim: 'Royal Paper PB24 disposable poly crab bib and PB25 lobster bib, 500 per box, $54.49 a box - $0.11 each at foodservice bulk.',
+  },
+  'bibs-consumer-2026': {
+    org: "Cameron's Seafood consumer crab-bib listing (fetched)",
+    url: 'https://www.cameronsseafood.com/products/crab-bibs-pack-of-5',
+    fetched: '2026-08-18',
+    claim: 'Adult poly crab bibs, pack of 5, $6.99 - about $1.40 each. A small consumer pack costs roughly 13x the 500-count foodservice rate per bib.',
+  },
+  'mallets-foodservice-2026': {
+    org: 'WebstaurantStore plain wooden crab mallet listing (fetched)',
+    url: 'https://www.webstaurantstore.com/choice-8-wooden-lobster-crab-mallet/176960093M.html',
+    fetched: '2026-08-18',
+    claim: 'Choice 8in plain wooden lobster/crab mallet: $2.39 each at single quantity, $1.78 each at 24 or 96 (24 minimum). Natural wood, uncustomised - screen-printed mallets are a separate higher tier.',
+  },
+  'mallets-seafood-2026': {
+    org: 'J.O. Spices (Maryland crab-seasoning house) wooden mallet listing (fetched)',
+    url: 'https://store.jospices.com/wooden-crab-mallet.aspx',
+    fetched: '2026-08-18',
+    claim: 'Plain wooden crab mallet $1.75 each; the same retailer sells engraved mallets as a separate category.',
+  },
+  'unitycup-indigo-2026': {
+    org: 'Indigo Kulture, specialist African-goods retailer (fetched)',
+    url: 'https://indigohq.org/products/unity-cup-kikombe-cha-umoja',
+    fetched: '2026-08-18',
+    claim: 'Kikombe cha umoja unity cup $25.00, Kenyan rosewood, about 5in tall and 2.5in diameter, handcrafted in Mali.',
+  },
+  'unitycup-kwanzaa-2026': {
+    org: '7 Principles 365, specialist Kwanzaa retailer (fetched)',
+    url: 'https://www.7principles365.com/product-page/kikombe-cha-umoja-the-unity-cup',
+    fetched: '2026-08-18',
+    claim: 'Kikombe cha umoja hand-carved wood unity cup $17.99, in Kwanzaa (5in x 3in), Kenyan (6in x 2.75in) and undecorated (5in x 2.5in) forms. The Black Art Depot separately listed a Kwanzaa unity cup at $18.95.',
+  },
+  'masa-retail-2026': {
+    org: 'Target and Kroger Maseca corn masa flour listings (Target fetched; Kroger from search results)',
+    url: 'https://www.target.com/p/maseca-corn-flour-4lbs/-/A-88744415',
+    fetched: '2026-08-18',
+    claim: 'Maseca gluten-free corn masa flour, 4lb bag, $4.29 at Target (stated $0.07 an ounce, about $1.07/lb); Kroger lists the same 4lb white corn masa and the 4lb tamal masa at $4.29. A Walmart figure was excluded because the site returned a CAPTCHA rather than a page.',
+  },
+  'injera-ethiopian-2026': {
+    org: 'EthiopianSpices.com, Ethiopian specialist grocer (fetched)',
+    url: 'https://ethiopianspices.com/products/injera',
+    fetched: '2026-08-18',
+    claim: 'Injera by the order of 10 rounds, about 14in each: teff-and-wheat $9.95 (about $1.00 a round); gluten-free 100% teff $14.95 (about $1.50 a round).',
+  },
+  'injera-market-2026': {
+    org: 'Zala Market, Ethiopian and East African grocer (fetched)',
+    url: 'https://zala-market.com/products/ethiopian-white-teff-injera-flatbread',
+    fetched: '2026-08-18',
+    claim: 'Ethiopian white pure-teff injera, five pieces, 40.74oz, $10.00 - about $2.00 a round. 100% teff carries a clear premium over the teff-and-wheat blend.',
+  },
+  'mumbo-capital-2026': {
+    org: 'Capital City (DC Black-owned mambo sauce brand) via Target (fetched)',
+    url: 'https://www.target.com/p/capital-city-mild-mambo-sauce-12oz/-/A-78613383',
+    fetched: '2026-08-18',
+    claim: 'Capital City mild mambo sauce, 12 fl oz, $8.49 - about $0.71 a fluid ounce. The brand direct price appeared at $6.99 plus shipping in search results.',
+  },
+  'mumbo-bradshaw-2026': {
+    org: 'Bradshaw Sauce Co., DC-area sauce maker (fetched)',
+    url: 'https://www.bradshawsauceco.com/shop/p/mumbo-sauce',
+    fetched: '2026-08-18',
+    claim: 'Mumbo sauce $8.00 a bottle. The page does not state the bottle size, so no per-ounce figure can be derived from it.',
+  },
+  'loroco-mexgrocer-2026': {
+    org: 'MexGrocer.com, Latin specialty grocer (fetched)',
+    url: 'https://www.mexgrocer.com/products/goya-loroco-flower',
+    fetched: '2026-08-18',
+    claim: 'Goya loroco flower, 32oz jar, $13.95 (loroco, onion or carrot, water, citric acid, salt).',
+  },
+  'loroco-importer-2026': {
+    org: 'Amazonas Foods, Central American importer (fetched)',
+    url: 'https://amazonasfoods.com/products/loroco-flower-in-brine',
+    fetched: '2026-08-18',
+    claim: 'Amazonas loroco in brine, 32oz jar, $6.39. The same 32oz format at $6.39 against Goya at $13.95 is a real importer-versus-retail spread, not a figure to average.',
+  },
+  'frankincense-liturgical-2026': {
+    org: 'Ancient Faith Store, Orthodox church supply - the liturgical channel for etan (fetched)',
+    url: 'https://store.ancientfaith.com/ethiopian-frankincense-pure-resin-incense-1-ounce/',
+    fetched: '2026-08-18',
+    claim: 'Ethiopian frankincense pure resin, 1 ounce, $6.50.',
+  },
+  'frankincense-spice-2026': {
+    org: 'Sullivan Street Tea & Spice Company (fetched)',
+    url: 'https://onsullivan.com/products/ethiopian-frankincense-resin',
+    fetched: '2026-08-18',
+    claim: 'Ethiopian frankincense resin $7.50 for a 3-ounce bag (about $2.50 an ounce), or $10.50 bundled with charcoal discs - so the discs are about $3.00. The 1-ounce liturgical package is $6.50/oz, so package SIZE moves the per-ounce price far more than brand does. An Ethiopian-community vendor (kibeb.com) returned 403 and could not be quoted.',
+  },
+  'extinguisher-retail-2026': {
+    org: 'Walmart and Do it Best household fire-extinguisher listings, 2026 (listing - figures read from search results; homedepot.com and lowes.com both returned 403 on fetch, so their prices are unknown rather than absent)',
+    url: 'https://www.walmart.com/ip/Kidde-FA110-Multi-Purpose-Fire-Extinguisher-1A10BC-1-Pack-red/13359469161',
+    fetched: '2026-08-18',
+    claim: 'Household fire extinguishers 2026, all 1-A:10-B:C rated: Kidde FA110 $41.49 single and $52.47 for a 2-pack; First Alert 1-A:10-B:C rechargeable $27.49. No price was found for a Class K wet-chemical extinguisher, which is a separate commercial-kitchen product.',
+  },
+  'grillgloves-retail-2026': {
+    org: 'Walmart heat-resistant BBQ glove listings, with a second figure reported editorially for a Home Depot product (listing - figures read from search results)',
+    url: 'https://www.walmart.com/c/kp/heat-resistant-bbq-gloves',
+    fetched: '2026-08-18',
+    claim: 'Heat-resistant grill gloves 2026, per pair: Expert Grill silicone-dotted $12.97; OZERO $14.99-28.48; Nexgrill (500F, at Home Depot) $19.98; Prepmen $24.49; Solo Stove high-heat (450F) $39.99. PROVENANCE NOTE: only Walmart is a first-party retailer here - the Nexgrill figure comes from an editorial article citing Home Depot, because homedepot.com returned 403 on fetch.',
+  },
+  'powerbank-retail-2026': {
+    org: 'Best Buy and Walmart power-bank listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.bestbuy.com/product/anker-power-bank-compact-travel-ready-10000mah-battery-pack-with-poweriq-charging-technology-usb-c-input-and-output/JJ858R2Z2H/sku/10858110',
+    fetched: '2026-08-18',
+    claim: 'Portable chargers 2026 in the 10,000mAh class: Anker PowerCore 10K $22.99 (from $25.99); INIU 10000mAh 15W $22.99 (from $32.99), INIU slimmest $19.99, INIU 22.5W $22.29 (from $39.99). The lower figures are promotional prices as displayed, with list prices struck through alongside.',
+  },
   'firstaid-retail-2026': {
     org: 'Walmart first-aid kit listings, 2026 (listing - figures read from search results)',
     url: 'https://www.walmart.com/browse/health-medicine/first-aid-kits/976760_2571007_9065854',

@@ -6,7 +6,7 @@
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **sixteen** whose band the
+`unitCostRange`. Doing that across ~40 rows turned up **twenty-one** whose band the
 evidence does not support. They are listed here rather than papered over with a
 citation, because a source that does not support the number is worse than no
 source: it makes an unverified figure look checked.
@@ -31,6 +31,10 @@ source: it makes an unverified figure look checked.
 | `gameNight:65` dips + salsa | $1–2 /small serving | queso 8oz $0.97, hummus 16oz $3.97 → $0.12–0.83 a 2oz serving |
 | `watchParty:64` chips + dips | $1.50–3 /serving | chips ~$0.23–0.41 a serving plus dip ~$0.25–0.50 |
 
+| `lowCountryBoil:80` heat gloves + Class B extinguisher + first-aid | $25–55 /kit | cheapest of each is $12.97 + $27.49 + $13.99 = **$54.45** — only the very top of the band buys all three |
+
+| `lowCountryBoil:83` newspaper / kraft paper for the table | $0.10–0.50 /ft | 40# white butcher paper is **$0.054–0.073/ft** (30" rolls, $37.49–72.95) — the band's floor is ~2× the evidence |
+
 ### Bands BELOW their components
 
 | row | band | what the sources say |
@@ -38,6 +42,9 @@ source: it makes an unverified figure look checked.
 | `bachelorParty:72` chips, pretzels & jerky | $1–3 /lb | chips $3.64–6.56/lb (BLS $6.559/16oz), pretzels $3.98/lb |
 | `birthday:67` chips, veggie tray & salad | $1–3 /lb | same chips figures |
 | `crabFeast:205` Old Bay (or J.O.) seasoning | $4–9 /lb | Old Bay 6oz is $5.19–5.99, i.e. **$13.84–15.97/lb** — the whole band is below it |
+| `kwanzaaGathering:84` kinara (candle holder) | $15–50 /holder | specialist retailers price a **bare kinara at $64.99–72.61** and celebration sets $79.99–104 — the cheapest kinara found exceeds the band's ceiling |
+| `ethiopianCoffeeCeremony:79` berbere + niter kibbeh | $10–22 /kit | berbere $8.29–14.99 **plus** niter kibbeh $15.99–16.00 = $24–31 for the pair |
+| `bachelorParty:79` cups, koozies, napkins, plates, opener | $0.30–1 /set | a blank neoprene koozie alone is **$0.83–0.96** at 100-count, before cups, plates or the opener |
 | `crawfishBoil:75` crab/crawfish boil seasoning | $1.50–4 /lb | Zatarain's 3oz $1.97 (~$10.50/lb), 4oz 4-pack $8.84 (~$8.80/lb); even a 50lb bulk case at $335 is **$6.70/lb** |
 | `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity |
 
