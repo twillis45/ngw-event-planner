@@ -1849,6 +1849,13 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'Niter kibbeh, 8oz, sale $12.79 (list $15.99). A second listing (HabeshaMarketOnline) prices 8oz at $16.99 — both corroborate niterkibbeh-brundo-2026 within a $13-17/8oz range.',
   },
+  'butter-retail-2026': {
+    org: 'Walmart.com (Land O\'Lakes Salted Butter, 1lb) and Kroger.com/KrogerKrazy (Land O\'Lakes Butter)',
+    url: 'https://www.walmart.com/ip/Land-O-Lakes-Salted-Butter-1-Pound-36-per-case/187901912',
+    corroboratingUrl: 'https://www.kroger.com/p/land-o-lakes-salted-butter-stick-butter-made-with-sweet-cream-and-salt/0003450015136',
+    fetched: '2026-08-18',
+    claim: 'Land O\'Lakes salted butter, 1lb box: Walmart ~$4.46/lb; Kroger regular shelf price ~$5.49/lb (promo pricing runs $2.99-3.49/lb but is not the everyday price). A second independent retailer confirming butter-bls-2026 ($4.314/lb national average) in the same $3.50-5.50/lb range.',
+  },
   'cranberry-mixer-2026': {
     org: 'Target and Walmart listings — Ocean Spray Cranberry Juice Cocktail, 64 fl oz',
     url: 'https://www.target.com/p/ocean-spray-cranberry-juice-cocktail-64-fl-oz-bottle/-/A-12935714',

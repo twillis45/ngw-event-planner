@@ -1,27 +1,20 @@
 # Bands that their own commodity evidence does not support
 
 **Date:** 2026-08-18 · Found while sourcing, not while looking for it
-**Status:** measured and recorded. NOT fixed — changing a band is a product call.
+**Status:** all 26 findings resolved as of 2026-08-18 (10 retired as false positives, 16 fixed
+via per-item host review — see git history for the resolution commits). Kept as a record of
+the pattern (assumed cheaper channel/format than what a host actually buys) for future
+grounding passes.
 
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **twenty-six**, of which **ten have since been retired**, whose band the
-evidence does not support. They are listed here rather than papered over with a
-citation, because a source that does not support the number is worse than no
-source: it makes an unverified figure look checked.
+`unitCostRange`. Doing that across ~40 rows turned up twenty-six whose band the evidence
+did not support. They were listed here rather than papered over with a citation, because a
+source that does not support the number is worse than no source: it makes an unverified
+figure look checked.
 
-## The rows
-
-### Bands ABOVE their components
-
-| row | band | what the sources say |
-|---|---|---|
-### Bands BELOW their components
-
-| row | band | what the sources say |
-|---|---|---|
-| `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity. Wave-6 corroboration (Walmart + Kroger, 2026-08-18): $3.50–5.50/lb, same shape, confirms the mismatch |
+## The rows — ALL RESOLVED (see git history for the 16 fix commits, 2026-08-18)
 
 ## RETIRED — ten findings were mine, not the corpus's
 
