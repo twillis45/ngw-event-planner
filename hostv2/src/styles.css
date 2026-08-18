@@ -2440,7 +2440,15 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* OptionList — the calm open-picker radio-list (replaces .chip/.pill-grid clusters).
    Dot fills on the selected row; hairline dividers; no bordered pills. */
 .optlist{display:flex; flex-direction:column}
-.optrow{display:flex; align-items:center; gap:11px; width:100%; text-align:left;
+/* 44px FLOOR (2026-08-17). Measured at 40-41px, under the tap floor UX_03 rule 8
+   sets and `mobileTapFloor.spec.mjs` enforces. It went unmeasured for as long as
+   OptionList only appeared on surfaces that sweep does not visit; putting one in
+   the account panel — a surface the sweep DOES measure — turned it red at once
+   ("the account panel clears it": .optrow h=41 and h=40).
+   Fixed on the class, not the new usage: a 40px control row was under the floor
+   on every one of its 11 call sites, and scoping the fix to my own would have
+   left the same defect everywhere else while making the gate green. */
+.optrow{display:flex; align-items:center; gap:11px; width:100%; text-align:left; min-height:44px;
   background:none; border:none; padding:11px 2px; font:inherit; cursor:pointer; color:var(--ink)}
 .optrow + .optrow{border-top:1px solid var(--line)}
 .optdot{width:10px; height:10px; border-radius:50%; border:1.5px solid var(--muted); flex:0 0 auto}
