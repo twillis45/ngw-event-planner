@@ -21,7 +21,6 @@ source: it makes an unverified figure look checked.
 
 | row | band | what the sources say |
 |---|---|---|
-| `ethiopianCoffeeCeremony:79` berbere + niter kibbeh | $10–22 /kit | berbere $8.29–14.99 **plus** niter kibbeh $15.99–16.00 = $24–31 for the pair. Wave-6 corroboration (2026-08-18): Spice &amp; Tea Exchange + Zamouri/Amazon put berbere at ~$15/2oz; Brundo + Slofoodgroup/Etsy + HabeshaMarketOnline converge on niter kibbeh $13–17/8oz. Both individually corroborated now — still a "kit" band with no source pricing the pair together, and still above the ceiling |
 | `bachelorParty:79` cups, koozies, napkins, plates, opener | $0.30–1 /set | a blank neoprene koozie alone is **$0.83–0.96** at 100-count, before cups, plates or the opener |
 | `crawfishBoil:75` crab/crawfish boil seasoning | $1.50–4 /lb | Zatarain's 3oz $1.97 (~$10.50/lb), 4oz 4-pack $8.84 (~$8.80/lb); even a 50lb bulk case at $335 is **$6.70/lb**. Wave-6 (2026-08-18) found only single-source pricing for both the small box and bulk bag — could not fully re-corroborate, but figures track the same order of magnitude |
 | `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity. Wave-6 corroboration (Walmart + Kroger, 2026-08-18): $3.50–5.50/lb, same shape, confirms the mismatch |

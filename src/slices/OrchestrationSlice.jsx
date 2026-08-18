@@ -196,7 +196,9 @@ function VendorRow({ vendor }) {
         transition: 'opacity 2000ms ease',
       }}>
         <span style={{ width: 5, height: 5, borderRadius: '50%', background: dotColor, flexShrink: 0, transition: 'background 800ms ease' }} />
-        <Text variant="caption" as="span" color={color.text.disabled} style={{ fontSize: type.size.xs || 10 }}>
+        {/* UX_10 5c: was color.text.disabled -- semantically "inactive" applied
+            to an active vendor's name. A category error, not a contrast tweak. */}
+        <Text variant="caption" as="span" color={color.text.secondary} style={{ fontSize: type.size.xs || 10 }}>
           {vendor.name.split(' ')[0]}
         </Text>
       </div>

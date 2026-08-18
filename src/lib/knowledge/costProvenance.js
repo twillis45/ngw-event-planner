@@ -1824,6 +1824,31 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'Small 5-B:C rated fire extinguisher, $22.47. A second independent org confirming the existing extinguisher-retail-2026 Walmart/Do it Best figures ($27.49-52.47) — this smaller-rated unit sits below that range, so a 5-B:C unit is cheaper than a 10-B:C one.',
   },
+  'berbere-spiceandtea-2026': {
+    org: 'The Spice & Tea Exchange — Berbere Spice Blend',
+    url: 'https://www.spiceandtea.com/products/berbere-spice-blend',
+    fetched: '2026-08-18',
+    claim: 'Berbere spice blend, base price $14.99 (sold in 1oz, 2oz flip-top, and 4oz sizes).',
+  },
+  'berbere-zamouri-2026': {
+    org: 'Amazon — Zamouri Spices Berbere, 2.0oz',
+    url: 'https://www.amazon.com/Berbere-Spice-2-0-Zamouri-Spices/dp/B000FVMT3K',
+    fetched: '2026-08-18',
+    claim: 'Zamouri Spices Berbere, 2.0oz, $15.21 — a second independent brand/org confirming berbere-spiceandtea-2026 at roughly $15/2oz.',
+  },
+  'niterkibbeh-brundo-2026': {
+    org: 'Brundo Spice Company — Traditional Niter Kibbeh',
+    url: 'https://www.brundo.com/products/traditional-niter-kibbeh',
+    fetched: '2026-08-18',
+    claim: 'Niter kibbeh (Ethiopian spiced clarified butter), $16.00 (8oz jar, size confirmed via the same brand\'s Amazon listing).',
+  },
+  'niterkibbeh-slofoodgroup-2026': {
+    org: 'Etsy / Slofoodgroup — Niter Kibbeh Ethiopian Spice Clarified Butter, 8oz',
+    url: 'https://www.etsy.com/listing/973230645/niter-kibbeh-ethiopian-spice-clarified',
+    corroboratingUrl: 'https://www.etsy.com (HabeshaMarketOnline, 0.5lb $16.99, 1lb $32.99)',
+    fetched: '2026-08-18',
+    claim: 'Niter kibbeh, 8oz, sale $12.79 (list $15.99). A second listing (HabeshaMarketOnline) prices 8oz at $16.99 — both corroborate niterkibbeh-brundo-2026 within a $13-17/8oz range.',
+  },
   'cranberry-mixer-2026': {
     org: 'Target and Walmart listings — Ocean Spray Cranberry Juice Cocktail, 64 fl oz',
     url: 'https://www.target.com/p/ocean-spray-cranberry-juice-cocktail-64-fl-oz-bottle/-/A-12935714',

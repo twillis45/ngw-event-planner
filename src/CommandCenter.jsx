@@ -3467,7 +3467,8 @@ function NeedsSubLabel({ label, count, action, onAction }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
       <span style={{ fontSize: type.size.xs, fontWeight: 700, color: P.textSecondary, fontFamily: FF, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
-      {count > 0 && <span style={{ fontSize: type.size.xs, fontWeight: 600, color: P.textTertiary, fontFamily: FF }}>{count}</span>}
+      {/* UX_10 5a: was P.textTertiary -- a count is data, not chrome. */}
+      {count > 0 && <span style={{ fontSize: type.size.xs, fontWeight: 600, color: P.textSecondary, fontFamily: FF }}>{count}</span>}
       <div style={{ flex: 1 }} />
       {action && <button onClick={onAction} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: type.size.xs, fontWeight: 500, color: P.green, fontFamily: FF, padding: 0 }}>{action}</button>}
     </div>
@@ -3565,7 +3566,8 @@ function RequestRow({ r, onOpen, isFirst }) {
             letterSpacing: '0.14em', textTransform: 'uppercase',
           }}>{r.source}</span>
           <div style={{ flex: 1 }} />
-          <span style={{ fontSize: type.size.xs, color: P.textTertiary }}>{r.when}</span>
+          {/* UX_10 5a: was P.textTertiary -- a timestamp is data. */}
+          <span style={{ fontSize: type.size.xs, color: P.textSecondary }}>{r.when}</span>
         </div>
         <div style={{ fontSize: type.size.base, fontWeight: 500, color: P.textPrimary, lineHeight: 1.3 }}>
           {r.title}
@@ -3587,7 +3589,8 @@ function QuestionRow({ q, onOpen, isFirst }) {
         <div style={{ width: 5, height: 5, borderRadius: '50%', background: q.sourceColor, flexShrink: 0 }} />
         <span style={{ fontSize: type.size.sm, fontWeight: 600, color: P.textPrimary }}>{q.source}</span>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: type.size.xs, color: P.textTertiary }}>{q.when}</span>
+        {/* UX_10 5a: was P.textTertiary -- a timestamp is data. */}
+        <span style={{ fontSize: type.size.xs, color: P.textSecondary }}>{q.when}</span>
       </div>
       <div style={{ fontSize: type.size.caption, color: P.textSecondary, lineHeight: 1.45 }}>"{q.snippet}"</div>
     </button>
@@ -3669,7 +3672,8 @@ function VendorRow({ v, onOpen, isFirst, event = null }) {
       <div style={{ width: 6, height: 6, borderRadius: '50%', background: v.statusColor, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <div style={{ fontSize: type.size.caption, fontWeight: 600, color: P.textPrimary }}>{v.category}</div>
-        {v.name && <div style={{ fontSize: type.size.xs, color: P.textTertiary }}>{v.name}</div>}
+        {/* UX_10 5a: was P.textTertiary -- a name is data. */}
+        {v.name && <div style={{ fontSize: type.size.xs, color: P.textSecondary }}>{v.name}</div>}
         {/* Sprint 51 Path B: caterer drift detail — surfaces the actual
             headcount delta inline so the planner sees the work before the
             click instead of having to drill in. */}
@@ -3701,7 +3705,9 @@ function DocPill({ label, status, color, onClick }) {
   const inner = (
     <>
       <div style={{ fontSize: type.size.sm, fontWeight: 600, color: P.textPrimary }}>{label}</div>
-      <div style={{ fontSize: type.size.xs, color: color || P.textTertiary }}>{status}</div>
+      {/* UX_10 5a: fallback was P.textTertiary -- a status value is data;
+          an explicit status color still wins when provided. */}
+      <div style={{ fontSize: type.size.xs, color: color || P.textSecondary }}>{status}</div>
     </>
   );
   if (!onClick) return <div style={baseStyle}>{inner}</div>;
