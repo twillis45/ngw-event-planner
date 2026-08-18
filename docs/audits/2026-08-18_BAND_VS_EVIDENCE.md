@@ -17,7 +17,7 @@ source: it makes an unverified figure look checked.
 
 | row | band | what the sources say |
 |---|---|---|
-| `crawfishBoil:78` corn, HALVED ears | $0.30–0.70 /half-ear | an ear is $0.37–1.25, so a half is $0.19–0.63 |
+| `crawfishBoil:78` corn, HALVED ears | $0.30–0.70 /half-ear | an ear is $0.37–1.25, so a half is $0.19–0.63. Wave-6 corroboration (Kroger + Walmart, 2026-08-18): ears $0.38–$1.00 individually, so half-ear ~$0.20–0.50 — same shape, band's floor still runs low |
 | `juneteenthCookout:97` strawberries | $1–3 /lb | $2.60–3.00/lb; the floor is 2.6x below anything sourced |
 
 | `dayParty:83` mixers (club soda, tonic, ginger beer, citrus) | $0.50–1.50 /serving | tonic 1L $1.99 and ginger ale 2L $2.99 are ~$0.25–0.36 per 4oz pour |
@@ -41,10 +41,10 @@ source: it makes an unverified figure look checked.
 | `bridalShower:73` juice for mimosas | $3–6 /gal | 100% OJ is **$10.99–14.09 a gallon**; only a juice *drink* (SunnyD, $3.68–4.79) fits the band, and mimosas take real juice |
 | `fishFry:72` cornmeal / breading + flour | $0.50–1.50 /lb | cornmeal is **$2.06–2.99/lb** (same SKU at three retailers); only the flour half ($0.543/lb BLS) fits |
 | `kwanzaaGathering:84` kinara (candle holder) | $15–50 /holder | specialist retailers price a **bare kinara at $64.99–72.61** and celebration sets $79.99–104 — the cheapest kinara found exceeds the band's ceiling |
-| `ethiopianCoffeeCeremony:79` berbere + niter kibbeh | $10–22 /kit | berbere $8.29–14.99 **plus** niter kibbeh $15.99–16.00 = $24–31 for the pair |
+| `ethiopianCoffeeCeremony:79` berbere + niter kibbeh | $10–22 /kit | berbere $8.29–14.99 **plus** niter kibbeh $15.99–16.00 = $24–31 for the pair. Wave-6 corroboration (2026-08-18): Spice &amp; Tea Exchange + Zamouri/Amazon put berbere at ~$15/2oz; Brundo + Slofoodgroup/Etsy + HabeshaMarketOnline converge on niter kibbeh $13–17/8oz. Both individually corroborated now — still a "kit" band with no source pricing the pair together, and still above the ceiling |
 | `bachelorParty:79` cups, koozies, napkins, plates, opener | $0.30–1 /set | a blank neoprene koozie alone is **$0.83–0.96** at 100-count, before cups, plates or the opener |
-| `crawfishBoil:75` crab/crawfish boil seasoning | $1.50–4 /lb | Zatarain's 3oz $1.97 (~$10.50/lb), 4oz 4-pack $8.84 (~$8.80/lb); even a 50lb bulk case at $335 is **$6.70/lb** |
-| `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity |
+| `crawfishBoil:75` crab/crawfish boil seasoning | $1.50–4 /lb | Zatarain's 3oz $1.97 (~$10.50/lb), 4oz 4-pack $8.84 (~$8.80/lb); even a 50lb bulk case at $335 is **$6.70/lb**. Wave-6 (2026-08-18) found only single-source pricing for both the small box and bulk bag — could not fully re-corroborate, but figures track the same order of magnitude |
+| `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity. Wave-6 corroboration (Walmart + Kroger, 2026-08-18): $3.50–5.50/lb, same shape, confirms the mismatch |
 
 ## RETIRED — ten findings were mine, not the corpus's
 

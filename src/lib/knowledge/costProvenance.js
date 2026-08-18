@@ -1797,6 +1797,21 @@ export const COST_SOURCES = {
     fetched: '2026-07-03',
     claim: 'Four DMV blue-crab retail sources, July 2026: Large Male $72–98/dz baseline; Mediums $32–75; Large Females $52–75; XL Males $109–150; Jumbo $149–188 — establishing the size→price ratios used by crab_size.',
   },
+
+  // ── WAVE 6 (registered 2026-08-18) ──────────────────────────────────────
+  'corn-kroger-2026': {
+    org: 'Kroger.com — Fresh Sweet Corn on the Cob',
+    url: 'https://www.kroger.com/p/fresh-sweet-corn-on-the-cob-each/0000000004590',
+    corroboratingUrl: 'https://www.kroger.com/p/fresh-sweet-corn-on-the-cob-4-count/0003338370133',
+    fetched: '2026-08-18',
+    claim: 'Fresh sweet corn on the cob priced per ear: promotional "2 for $1.00" (~$0.50/ear) for singles, and a 4-count tray at $3.99 (~$1.00/ear) off a $4.99 regular price.',
+  },
+  'corn-walmart-2026': {
+    org: 'Walmart.com — fresh sweet corn on the cob',
+    url: 'https://www.walmart.com/c/kp/corn-ear',
+    fetched: '2026-08-18',
+    claim: 'Fresh sweet corn on the cob runs ~$0.38–$0.77 per ear individually, with a 4-count tray at $3.64 (~$0.91/ear). Fresh produce, so seasonal/regional — August is peak season and likely near the low end of this range.',
+  },
 };
 
 // A costFactorProvenance is GROUNDED only when it is tier:'researched' AND cites >=1 real
