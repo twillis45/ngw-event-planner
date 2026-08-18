@@ -1,35 +1,20 @@
-// NGW Operational Design Tokens — the CANONICAL Studio Matte token source.
+// NGW Operational Design Tokens — production convergence with the Figma
+// "NGW Events — Operational Design System" (file CYlmJqDCXEaacCuz9wW3bd).
 //
-// THIS FILE IS THE VALUES. Figma holds the MAP.
+// This is the CANONICAL Studio Matte token source for new operational
+// primitives. It mirrors the Figma NGW Color / Spacing / Typography
+// variables 1:1 (Sprints 5–8). It does NOT replace the legacy DARK/LIGHT
+// theme in App.js — convergence is incremental; new primitives consume
+// these tokens, the monolith migrates later. No screen rebuilds here.
 //
-// Corrected 2026-08-18. This header used to read "It mirrors the Figma NGW
-// Color / Spacing / Typography variables 1:1 (Sprints 5–8)." That is not true
-// and may never have been: Figma file CYlmJqDCXEaacCuz9wW3bd ("NGW Events —
-// Operational Design System") is a single page, 00_FIGMA_SYSTEM_MAP, holding a
-// status/tracking map — canonical page index, locked doctrine, runtime parity,
-// bottlenecks, deprecations — rendered as tables. It contains no variable
-// collection to mirror. Anyone chasing a value-level diff against it is
-// chasing something that isn't there; that claim cost real time before it was
-// checked.
-//
-// The division of labour, stated plainly so it stops drifting:
-//   • THIS FILE          — the values. Colour, space, radius, type, motion,
-//                          elevation. Changes land here first.
-//   • dist-design/       — the built library + generated tokens.css. Never
-//                          hand-edit; `npm run design:build` regenerates it.
-//   • Claude Design      — records the SYSTEM (components, tokens, conventions
-//                          the design agent reads). Project "Studio Matte".
-//   • Figma (…9wW3bd)    — records STATUS: what is PROVEN vs CONCEPT vs
-//                          FIGMA-ONLY vs LOCKED. A genuinely useful gap
-//                          tracker; not a source of values.
-//
-// Code is upstream of Figma for colour and surface — palette.js says so
-// outright ("NOT yet written back to Figma"). See
-// docs/audits/2026-08-18_FIGMA_CODE_RECONCILIATION.md.
-//
-// This does NOT replace the legacy DARK/LIGHT theme in App.js — convergence is
-// incremental; new primitives consume these tokens, the monolith migrates
-// later. No screen rebuilds here.
+// Figma side, confirmed 2026-08-18: the file holds 129 pages and 136 local
+// variables across 7 collections — NGW Primitives (40), NGW Color (47, modes
+// "Studio Matte" + "Light"), NGW Spacing (17), NGW Typography (12), Studio
+// Matte (11), Identity Accent (7), Event Theme (2, per-event modes) — plus 35
+// text styles. The collection names above are real. What has NOT been verified
+// is whether the VALUES still match this file; palette.js records surface
+// colour as "NOT yet written back to Figma", so at least that part has drifted.
+// See docs/audits/2026-08-18_FIGMA_CODE_RECONCILIATION.md.
 //
 // Dark ("Studio Matte") is the canonical mode. Light is a deferred parity
 // target (Sprint 8 finding) and intentionally omitted to avoid faking it.
