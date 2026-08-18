@@ -1824,6 +1824,13 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'Small 5-B:C rated fire extinguisher, $22.47. A second independent org confirming the existing extinguisher-retail-2026 Walmart/Do it Best figures ($27.49-52.47) — this smaller-rated unit sits below that range, so a 5-B:C unit is cheaper than a 10-B:C one.',
   },
+  'cranberry-mixer-2026': {
+    org: 'Target and Walmart listings — Ocean Spray Cranberry Juice Cocktail, 64 fl oz',
+    url: 'https://www.target.com/p/ocean-spray-cranberry-juice-cocktail-64-fl-oz-bottle/-/A-12935714',
+    corroboratingUrl: 'https://www.walmart.com/browse/food/cranberry-juice/ocean-spray/976759_976782_1001321_9114860',
+    fetched: '2026-08-18',
+    claim: 'Ocean Spray cranberry juice cocktail, 64oz bottle, $3.67 at Walmart (~$0.46/8oz serving, ~$7.34/gal-equivalent) — a second flavor/brand corroborating juice-rtd-2026 that real fruit-juice-cocktail pricing runs well above a juice-drink price point.',
+  },
   'ledcandles-walmart-2026': {
     org: 'Walmart.com — flameless LED tea-light and pillar-style candle multipacks',
     url: 'https://www.walmart.com/ip/12-Pack-Flameless-LED-Tea-Lights-Candles-Flickering-Warm-Yellow-100-Hours-Battery-Powered-Light-Ideal-Party-Wedding-Birthday-Gifts-Home-Decoration/1249292601',
