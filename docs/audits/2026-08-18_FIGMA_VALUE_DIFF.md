@@ -79,7 +79,37 @@ promoted from hostv2 2026-08-18), `text.onTint` (`#8AA3B0`), and the
 
 ---
 
-## 2. Spacing — the dangerous one
+## 2. Spacing — the dangerous one — **RESOLVED 2026-08-18**
+
+> **Fixed.** Figma's spacing keys were renamed to match the code scale, and the
+> two values code had that Figma lacked (`0` and `2px`) were added. The scales
+> are now identical key-for-key, verified 12/12 with 0 mismatches.
+>
+> **Direction chosen: Figma → code alignment.** Code had 418 call sites (396
+> `space[N]` + 22 `pad={N}`); Figma needed 10 renames. Figma binds by variable
+> ID, not name, so no design broke — the same IDs (`VariableID:7:2`…`7:11`)
+> carry through the rename. That is verification by ID-preservation, not an
+> exhaustive binding scan across all 129 pages.
+>
+> Renames ran in two phases through temporary names, because renaming
+> `spacing/1`→`spacing/2` while `spacing/2` still existed would have collided.
+>
+> | Was | Now | px |
+> |---|---|---|
+> | — | `spacing/0` | 0 *(new)* |
+> | — | `spacing/1` | 2 *(new)* |
+> | `spacing/1` | `spacing/2` | 4 |
+> | `spacing/2` | `spacing/3` | 8 |
+> | `spacing/3` | `spacing/4` | 12 |
+> | `spacing/4` | `spacing/5` | 16 |
+> | `spacing/5` | `spacing/6` | 20 |
+> | `spacing/6` | `spacing/7` | 24 |
+> | `spacing/8` | `spacing/8` | 32 *(unchanged)* |
+> | `spacing/10` | `spacing/9` | 40 |
+> | `spacing/12` | `spacing/10` | 48 |
+> | `spacing/16` | `spacing/12` | 64 |
+
+The original finding, for the record:
 
 Both scales contain **exactly the same ten values**. Every key is shifted by
 one position:
@@ -162,10 +192,8 @@ code missed.
 
 ## 6. Recommendations
 
-1. **Fix spacing first.** It is the only drift that fails silently and the only
-   one with a documented consumer (`Surface.pad`). Either renumber the code
-   scale to match Figma, or rename Figma's to match code. Do not leave two
-   scales sharing values under different keys.
+1. ~~**Fix spacing first.**~~ **DONE 2026-08-18** — Figma renamed to match code,
+   two missing values added, 12/12 verified. See §2.
 2. **Push colour code → Figma.** 18 primitive values, all deliberate code
    decisions. `figma:figma-generate-library` can write variables; the direction
    is code → Figma, never the reverse, or Sprint 49 and 60 get undone.
