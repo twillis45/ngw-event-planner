@@ -599,6 +599,33 @@ export const COST_SOURCES = {
   // -- LAWN GAME RENTAL (registered 2026-08-18) -------------------------------
   // Two providers, because a single rental company's rate card is a local price
   // and the delivery minimums differ enough to matter for a small backyard order.
+  // -- BADGES, LANYARDS AND PA RENTAL (registered 2026-08-18) -----------------
+  // The conference and retreat rows band per BADGE and per SYSTEM, so these are
+  // per-unit and per-day figures rather than per-person event pricing.
+  'badges-print-2026': {
+    org: 'US event badge printers - per-badge pricing (listing - figures read from search results)',
+    url: 'https://www.conferencebadge.com/cardboard-badges',
+    fetched: '2026-08-18',
+    claim: 'Event badges 2026: printed cardboard badges from $2.19 each; plastic ID name badges $4.37 each at 25-74 quantity; badge packages from $10.25 per pack of 25, i.e. about $0.41 a badge at the bulk end.',
+  },
+  'lanyards-retail-2026': {
+    org: 'Event lanyard suppliers - per-unit pricing (listing - figures read from search results)',
+    url: 'https://www.pcnametag.com/lanyards.html',
+    fetched: '2026-08-18',
+    claim: 'Lanyards 2026: blank lanyards from $0.21 each in bulk; a plain black lanyard added to a badge order is about $0.99 each.',
+  },
+  'pa-rental-2026': {
+    org: 'US sound-system rental price guides, 2026 (listing - figures read from search results)',
+    url: 'https://www.primal-sounds.com/blog/sound-system-rental-guide',
+    fetched: '2026-08-18',
+    claim: 'Sound system rental 2026: a basic two-speaker system with one mixer is about $200-500 for a half day; larger event configurations $800-2,000 a day with delivery and setup; hourly rental $40-120 an hour plus a one-time delivery and setup fee. Full-service event sound runs $500-5,000+ depending on size and crew.',
+  },
+  'pa-rental-local-2026': {
+    org: 'Regional PA and speaker rental listings - per-day rates (listing - figures read from search results)',
+    url: 'https://miamisoundrental.com/speaker-rental',
+    fetched: '2026-08-18',
+    claim: 'Local speaker rental 2026: from $60 per 24 hours at the budget end; a pair of JBL PRX715 powered speakers about $220 a day. Self-collected local rental undercuts full-service event sound substantially because there is no crew or setup fee.',
+  },
   'lawngames-rental-2026': {
     org: 'US yard and lawn game rental providers - per-game day rates (listing - figures read from search results)',
     url: 'https://northsportrentals.com/product/cornhole-board-game-rentals/',
