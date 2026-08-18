@@ -181,8 +181,15 @@ describe('the shape of the real backlog', () => {
     // Dinner) against the disposables and cleaning registries, so they left the
     // backlog. When only p_tableware and p_napkins remain and both are small, the
     // disposables seam is close to worked out.
-    expect(byId).toEqual({ p_tableware: 1, p_napkins: 4 });
-    expect(reached.length).toBe(5);
+    // Fifth move, 2026-08-18, same direction. The napkin rows in Anniversary and
+    // Dinner Party left the backlog when `linen-rental-2026` and
+    // `linen-rental-sizes-2026` were registered. Those two sources exist because
+    // the disposables claim deliberately EXCLUDES linens as a different product,
+    // which is correct and is what had left every cloth-napkin row unsourceable.
+    // Checked before re-pinning, as the comment above asks: the citations are new
+    // and real, the classifier did not change.
+    expect(byId).toEqual({ p_tableware: 1, p_napkins: 2 });
+    expect(reached.length).toBe(3);
   });
 
   test('effort is estimated for reachable work and REFUSED for research', () => {

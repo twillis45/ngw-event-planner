@@ -491,6 +491,30 @@ export const COST_SOURCES = {
   // glass. Quoting the headline number as a per-glass price would overstate it
   // roughly fourfold, which is exactly the kind of unit slip a citation is
   // supposed to prevent.
+  // -- TABLE LINENS AND CLOTH NAPKINS (registered 2026-08-18) -----------------
+  // The disposables sources stop at plates, cups and cutlery and say so: their
+  // claim excludes "sets that bundle flutes, koozies, linens or table covers"
+  // as a different product. That boundary is correct and it left every napkin
+  // and linen row unsourceable. These two close it, and they are independent of
+  // each other - a linen retailer's styling guide and an event-rental company's
+  // published size-banded rate card.
+  //
+  // The rental rate is the honest basis for a HOST row even though a host may
+  // own their napkins: an owned napkin still carries a laundering cost (the
+  // second source puts professional cleaning at $11.50 a tablecloth), so the
+  // per-use figure is what a per-event band is actually pricing.
+  'linen-rental-2026': {
+    org: 'CV Linens, "How Much Does It Cost To Rent Tablecloths" (fetched)',
+    url: 'https://www.cvlinens.com/blogs/styling-tips/how-much-does-it-cost-to-rent-tablecloths',
+    fetched: '2026-08-18',
+    claim: 'Tablecloth rental 2026: polyester approximately $5-15 per unit; satin or sequin $15-30 a piece; larger tablecloths $20-40 a piece depending on material and style. Buying instead: a basic tablecloth is about $10 and specialty items run $20-100 or more.',
+  },
+  'linen-rental-sizes-2026': {
+    org: 'Reventals Event Rentals, "How Much Does It Cost to Rent Linens? Buying vs Renting" - published size-banded day rates (fetched)',
+    url: 'https://www.reventals.com/blog/rent-buy-linens-event/',
+    fetched: '2026-08-18',
+    claim: 'Linen day rates 2026 by size. Round: 84-96in $8-17, 108-120in $13-22, 132in $20-23. Rectangular: 60x96-60x120in $7.50-12, 72x120-90x108in $11-13, 90x132-90x156in $19-25. NAPKINS $0.60-1.25 a day each. Buying comparison: satin tablecloths $16.78 each online against $50-100+ for silk or high-end satin, with professional cleaning at $11.50 per tablecloth - so an owned linen still carries a per-use cost.',
+  },
   'bls-oj-2026': {
     org: 'Basket Report, republishing US Bureau of Labor Statistics CPI Average Price Data (series APU0000713111, orange juice frozen concentrate, cost per 16 ounces) (fetched)',
     url: 'https://basketreport.com/prices/oj/',
