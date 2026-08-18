@@ -150,3 +150,27 @@ Lever 2 stays open. Next attempt: fix ownership resolution for items containing
 nested range objects, verify against juneteenthCookout specifically, and keep the
 post-write duplicate assertion as the gate — it is the only thing that has ever
 caught this class.
+
+## Lever 2, second look — the ownership case identified (2026-08-17 20:2x)
+
+The failing item, read in full:
+
+    { id: 'p_chicken', ..., unitCostRange: [2, 5],
+      sourcingPrices: { butcher: [2, 4], costco: [1, 2.5], grocery: [3, 5] },
+      alternatives: [{ name: 'Chicken drumsticks', ..., unitCostRange: [1.5, 3] }, ...] }
+
+The forward scanner itself is sound — it attributes every `unitCostRange` and every
+`provenance` to `stack[stack.length - 1]`, the brace open at that moment, with no
+lookback. What it does not handle is an item that owns a range AND contains
+`alternatives[]` whose entries own their own ranges: several hits arise inside one
+item, and the write step emits per HIT rather than per OWNING OBJECT, so one
+literal can receive two `provenance` keys.
+
+**The fix is in the write step, not the scanner:** group hits by `open` and emit at
+most one `provenance` per owning object. The scanner already returns exactly the
+grouping key needed (`hits[].open`).
+
+Not attempted — this codemod has destroyed authored provenance twice, and its own
+post-write assertion is the only instrument that has ever caught it. It deserves a
+session with budget to fix, re-run, and put jest behind it, not the tail of a long
+one.
