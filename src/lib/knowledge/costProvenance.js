@@ -529,6 +529,51 @@ export const COST_SOURCES = {
   // mass-brand (below Costco's $3.29/lb bulk ground beef), and the ceiling is a
   // butcher ring. The two ends are different products at the same counter, which
   // is what the spread in these rows is actually made of.
+  // -- WINGS, SALMON AND HAM (registered 2026-08-18) --------------------------
+  // These three were the components blocking the rest of the protein family:
+  // the chicken sources price thighs, drumsticks and boneless but NOT wings;
+  // "beef, chicken or salmon" had no salmon; "chicken and baked ham" had no ham.
+  //
+  // HAM IS SEASONAL AND THE CLAIM SAYS SO. The retailer figures below are Easter
+  // promotional pricing, when ham is a loss-leader. The USDA weekly retail report
+  // is the honest anchor at $2.25/lb; quoting Kroger's $0.85 as the going rate
+  // would price a holiday promotion as if it were a Tuesday.
+  'wings-extension-2026': {
+    org: 'Alabama Cooperative Extension System, "Chicken Wings Market Starts Strong in 2026" - land-grant extension market report (fetched)',
+    url: 'https://www.aces.edu/blog/topics/farm-management/chicken-wings-market-starts-strong-in-2026/',
+    fetched: '2026-08-18',
+    claim: 'Chicken wings 2026: wholesale started the year below $1.00/lb and has risen to slightly above $1.10/lb as of early February. Southeast retail average for conventional fresh party wings is $2.49/lb, with IQF (frozen) slightly higher at $2.67/lb.',
+  },
+  'wings-retail-2026': {
+    org: 'US chicken-wing retail pricing guide, 2026 (listing - figures read from search results)',
+    url: 'https://latestcost.com/average-cost-chicken-wings-what-determines-pricing-how-much/',
+    fetched: '2026-08-18',
+    claim: 'Retail chicken wings 2026 run $2.50-5.00/lb. Frozen average $2.50-3.50/lb; fresh and organic reach $4.50/lb and above. Walmart frozen bulk is $2.67/lb for an 8lb bag against $3.21/lb for a 4lb bag - the bulk discount is real but small.',
+  },
+  'salmon-market-2026': {
+    org: 'Selina Wamucii US salmon market prices, updated monthly (fetched)',
+    url: 'https://www.selinawamucii.com/insights/prices/united-states-of-america/salmon/',
+    fetched: '2026-08-18',
+    claim: 'US salmon June 2026: retail estimated US$10.78/kg (US$4.89/lb), wholesale estimated US$10.91/kg (US$4.95/lb). ATLANTIC salmon specifically is far higher at US$29.21/kg (US$13.25/lb). Tracking began June 2026 so no month-over-month or year-over-year comparison exists yet.',
+  },
+  'salmon-retail-2026': {
+    org: 'US salmon retail price guides, 2026 (listing - figures read from search results)',
+    url: 'https://latestcost.com/salmon-cost-per-pound-price-u-s-shoppers/',
+    fetched: '2026-08-18',
+    claim: 'Farmed Atlantic salmon at grocery 2026: fresh fillet $8-12/lb (an alternative guide says $9-13); frozen store-brand fillet $5.50-7.50/lb. Regional discounts or surcharges move the per-pound price 5-15%, and price varies by cut - fillet against portion against whole.',
+  },
+  'ham-usda-2026': {
+    org: 'USDA weekly retail report, quoted in 2026 Easter ham price coverage (listing - figures read from search results)',
+    url: 'https://www.aol.com/articles/much-more-paying-ham-easter-185621001.html',
+    fetched: '2026-08-18',
+    claim: 'USDA retail report: the average price of a conventional bone-in spiral-sliced half ham across 30,425 US stores was $2.25/lb for the week of March 30, 2026. This is an Easter-week average, when ham is promoted heavily.',
+  },
+  'ham-retailer-2026': {
+    org: 'US grocery ham price roundups, Easter 2026 (listing - figures read from search results)',
+    url: 'https://thecouponproject.com/best-ham-prices-at-grocery-stores/',
+    fetched: '2026-08-18',
+    claim: 'Bone-in spiral ham by retailer, Easter 2026 PROMOTIONAL pricing: Kroger and Meijer store brand $0.85/lb; Albertsons Cooks and Wegmans (rewards) $1.19/lb; Aldi Appleton Farms $1.49/lb; Walmart Sugardale whole ham about $2.00/lb; Whole Foods bone-in half ham about $5.60/lb with a Prime discount. The $0.85 floor is a holiday loss-leader, not a year-round shelf price.',
+  },
   'sausage-butcher-2026': {
     org: 'Wilson Beef Farms smoked kielbasa - fetched product page with an explicit per-pound price',
     url: 'https://www.wilsonbeeffarms.com/product/smoked-kielbasa/',
