@@ -58,6 +58,34 @@ Avoid:
 - random accent colors,
 - over-saturated urgency.
 
+### Gradients — the rule is the ANGLE, not the idea
+
+*Amended 2026-08-18. Evidence: `docs/audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md`,
+a read of 27 leader screens. Supersedes the bare "fake gradients" line above,
+which was too blunt to apply.*
+
+**Banned — a vertical light-to-dark ramp on a fill.** `linear-gradient(180deg,
+#4E6877, #3F5B6A)` is not color, it is a *simulated bevel*: light falling from
+above onto a raised object. That is what dates a button, and no leader screen in
+the read runs one.
+
+**Allowed — a lateral sweep within one brand color.** Airbnb's `Confirm and pay`
+is a gradient, and it reads as brand rather than plastic, because the sweep is
+horizontal hue movement inside a single color rather than a fake light source.
+
+**Also allowed, and unrelated:** the 1px top `--sheen` hairline. That is a
+material response to the canvas glow, not a fill treatment — the same 1px the
+card family already carries.
+
+So: kill the 180°, keep the color, keep the sheen. A lateral steel sweep is a
+legitimate option here, not a banned one.
+
+**Process note.** This amendment previously existed only as a comment in
+`hostv2/src/theme.js`. Doctrine is amended here, in the standard, citing its
+evidence — never in a code comment, where it is invisible to everyone not
+reading that file. The comment now points at this section instead of declaring
+the rule itself.
+
 Use:
 - matte surfaces,
 - steel-blue structure,
