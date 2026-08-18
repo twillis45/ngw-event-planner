@@ -315,17 +315,56 @@ the cultural-basis rule should ever yield to a *sufficiently well-cited* dual-ax
 claim. Recommend the latter conversation before spending more research budget
 chasing citations that cannot move the score under the current rule.
 
-### What is left, honestly, for the other three dimensions
+### Prioritization was already fixed and never re-measured (2026-08-18, same pass)
 
-Not touched this pass — these need authoring/architecture work, not research:
-- **Coverage 7→10**: thin playbooks (sweet16 7 decisions, quinceañera 6,
-  sundayDinner 4, vs. a corpus average of 5.3) plus an unevenly-authored
-  decision-window gradient across 39 playbooks.
-- **Prioritization 7→10**: vendor-surface consequence declarations — boarded in
-  `2026-08-17_VENDOR_CONSEQUENCE_BOARD.md`, never built.
-- **Adaptivity 8→10**: longitudinal momentum/velocity across sessions needs
-  session-history infrastructure that does not exist yet — a real architecture
-  decision (storage, schema, retention), not an engine tweak.
+Told the user this was "boarded, never built." Wrong — checked the actual code
+before writing that and found `2026-08-17_VENDOR_CONSEQUENCE_RULING.md` (dated
+21:5x, an hour after the 07-17 rescore's Prioritization measurement) was fully
+implemented: `vendor-unbooked` in `surfaceRegistry.js` declares `gateHolder: true,
+unlocks: 0` on a required, past-window, unmatched vendor category, exactly per
+the ruling. 16 passing tests (`unbookedVendorIsAGate.test.js`,
+`vendorUnbookedRaise.test.js`) confirm it is live, not dead code.
 
-None of these are citation-shaped problems. Padding them with shallow content
-just to move a number would be exactly the failure mode Honesty penalizes.
+Re-measured consequence coverage with a fresh synthetic-event pass across all 39
+playbooks: `vendor-unbooked` raises now declare `gateHolder` on every qualifying
+case (0/67 at the 08-17 measurement → verified working today). Two of four
+producing surfaces now declare consequence correctly (`decisions`, `vendor-unbooked`);
+`risks` correctly declares none; `vendor-coi` is the one surface still genuinely
+open — and per the same ruling's discipline, was NOT given an invented
+`gateHolder` today, since no board has ruled on what a missing COI blocks.
+
+**Prioritization: 8/10** (from 7). The named lever for 7→8 in this doc's own
+"what actually moves it" section — "author what a required vendor category
+blocks" — turned out to already be done; scoring it required re-measuring, not
+building. `vendor-coi` is the honest remainder before 9.
+
+### Coverage — 3 thinnest playbooks widened (2026-08-18, same pass)
+
+Added real decisions, matching the existing schema and each playbook's own
+established texture (heartMoments, summary), to the three thinnest boards named
+in this doc: sweet16 (entrance style, phone/social moment) 7→9 decisions;
+quinceañera (padrino sponsorship) 6→7; sundayDinner (to-go plates, grace) 4→6.
+Corpus average is 5.3 — all three now sit at or above it. `playbookSchema.test.js`,
+`playbookContract.test.js`, and `culturalContext.test.js` all still pass (one
+new decision's `culturalContext` block was dropped rather than shipped
+uncited, after the grounding gate correctly rejected it).
+
+**Coverage: 8/10** (from 7). The remaining lever — an unevenly-authored
+decision-window gradient across all 39 playbooks — is a larger, corpus-wide
+authoring pass, not touched this session.
+
+### Adaptivity — genuinely not touched
+
+**Adaptivity: 8/10 (unchanged).** Longitudinal momentum/velocity across sessions
+needs session-history infrastructure that does not exist yet — a real
+architecture decision (storage, schema, retention policy) that was not designed
+or built this pass. Flagging rather than inventing one.
+
+### Running total: 42/50 (9 Grounding / 8 Coverage / 8 Prioritization / 8
+Adaptivity / 9 Honesty)
+
+Two dimensions moved on real, tested, re-measured work; one (Grounding) hit a
+documented design ceiling; one (Adaptivity) was correctly left alone rather than
+padded. None of the movement above is citation-shaped or content-padding —
+Coverage added genuine planning forks, Prioritization re-measured code that was
+already live.
