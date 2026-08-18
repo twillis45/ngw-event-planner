@@ -4,7 +4,19 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-16 (latest) - COST GROUNDING 63 -> 226 blocks, all grounded; host-visible sourced 22.5% -> 49.7%; 65 registered cost sources (was 43). Geography named and bounded (`geoCostIndex`). Engine 5785 passed / 395 suites, e2e 331 passed / 0 failed. Audit: `docs/audits/2026-08-16_COST_GROUNDING_AUDIT.md`.
+**Last updated:** 2026-08-18 (latest) - COST GROUNDING closed out: 226 -> 501/505 priced rows cost-cited (99.2%); host-visible sourced 49.7% -> 88.9% (487/548, measured via `classifyClaim`, not eyeballed). 357 registered cost sources (was 65). All 16 open band-vs-evidence findings from `docs/audits/2026-08-18_BAND_VS_EVIDENCE.md` resolved via per-item host review (3 direct raises, 5 combined-kit rows split into honestly-priced components, 1 reframed rather than repriced, 1 widened for a genuine format spread, 1 left deliberately uncited pending real corroboration, 5 straightforward evidence matches). Admin console's provenance/cost picker fixed — `costProvenance` was missing from `RUNTIME_CONSUMED_FIELDS` and `GOVERNED_PURCHASE_FIELDS`, so cost citations were unauthorable from the UI (`costAxisIsAuthorable.test.js`, 8 tests, red-proofed). Engine 5282 passed / 381 suites (playbooks+knowledge+__tests__ scope). Commits: `782e3119`..`75ddbe55`.
+
+> ### THE SAME MISTAKE, SEVEN TIMES (2026-08-18)
+>
+> Every wave this session that added a NEW multi-org citation made the same error at
+> least once: one registry id whose `org` field lists two retailers, which
+> `researchPolicyCompliance.test.js` correctly still counts as ONE source. The fix is
+> always the same — split into two distinct ids, one per org, cross-referencing each
+> other via `corroboratingUrl`. Caught 7 separate times by the same test in one
+> session; the lesson never generalized ahead of the gate catching it. A source-count
+> ratchet that only checks totals would have missed every one of these.
+
+**Previously:** 2026-08-16 - COST GROUNDING 63 -> 226 blocks, all grounded; host-visible sourced 22.5% -> 49.7%; 65 registered cost sources (was 43). Geography named and bounded (`geoCostIndex`). Engine 5785 passed / 395 suites, e2e 331 passed / 0 failed. Audit: `docs/audits/2026-08-16_COST_GROUNDING_AUDIT.md`.
 
 > ### PRICES ARE NATIONAL, AND NOW THEY SAY SO (2026-08-16)
 >
