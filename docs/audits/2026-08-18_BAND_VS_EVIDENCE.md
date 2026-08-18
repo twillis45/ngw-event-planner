@@ -6,7 +6,7 @@
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **nine** whose band the
+`unitCostRange`. Doing that across ~40 rows turned up **eleven** whose band the
 evidence does not support. They are listed here rather than papered over with a
 citation, because a source that does not support the number is worse than no
 source: it makes an unverified figure look checked.
@@ -24,6 +24,9 @@ source: it makes an unverified figure look checked.
 | `juneteenthCookout:88` smoked brisket, whole packer | $5–10 /lb | USDA brisket ~$4.50/lb, range $2.50–8 |
 | `crawfishBoil:78` corn, HALVED ears | $0.30–0.70 /half-ear | an ear is $0.37–1.25, so a half is $0.19–0.63 |
 | `juneteenthCookout:97` strawberries | $1–3 /lb | $2.60–3.00/lb; the floor is 2.6x below anything sourced |
+
+| `teamRetreat:82` session snacks + coffee/tea + water | $1–4 /serving | coffee $0.10–0.30/cup, water $0.13–0.25, chips well under $1 a serving |
+| `dayParty:83` mixers (club soda, tonic, ginger beer, citrus) | $0.50–1.50 /serving | tonic 1L $1.99 and ginger ale 2L $2.99 are ~$0.25–0.36 per 4oz pour |
 
 ### Bands BELOW their components
 
