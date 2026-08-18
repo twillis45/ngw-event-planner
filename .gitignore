@@ -65,3 +65,9 @@ hostv2/review-shots/drift/
 # A private key is never committed, even a disposable one.
 hostv2/.certs/
 hostv2/test-results/
+dist-design/
+ds-bundle/
+.ds-sync/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

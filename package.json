@@ -36,7 +36,8 @@
     "knowledge:impact": "node scripts/knowledgeImpactIndex.mjs",
     "bake:knowledge": "node scripts/bake-published-knowledge.mjs",
     "gate:knowledge": "node scripts/bake-published-knowledge.mjs --check",
-    "grounding:census": "node scripts/groundingCensus.mjs src/lib/playbooks/data"
+    "grounding:census": "node scripts/groundingCensus.mjs src/lib/playbooks/data",
+    "design:build": "node scripts/build-design-lib.mjs"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -53,5 +54,7 @@
       "last 1 safari version"
     ]
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
 }
