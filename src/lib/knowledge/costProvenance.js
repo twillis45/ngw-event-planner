@@ -577,6 +577,28 @@ export const COST_SOURCES = {
   // $15/lb for SPECIALTY cheese. That is the right figure for a cheese board and
   // the wrong one for a melting or sandwich cheese, and using it for the latter
   // would roughly treble the number. These two price the everyday tier.
+  // -- SALAD VEG AND CONDIMENTS (registered 2026-08-18) -----------------------
+  // These two unblocked a family that had been stuck across three batches: the
+  // burger-topping kits and the garden-salad rows. Condiments alone were not
+  // enough - the produce is roughly a third of a topping kit, not a rounding
+  // error, so grounding on condiments and cheese alone would have put a citation
+  // on a number a third of which was still a guess.
+  //
+  // BOTH SALAD ITEMS ARE RISING FAST and the claim records it: lettuce +32.1%
+  // and tomatoes +19.5% year on year to June 2026. A band sourced against these
+  // figures is more perishable than one sourced against, say, foil.
+  'bls-saladveg-2026': {
+    org: 'US Bureau of Labor Statistics CPI Average Price Data (romaine lettuce series APU0000FL2101) with USDA ERS food price outlook, via FRED and press coverage (listing - figures read from search results)',
+    url: 'https://fred.stlouisfed.org/series/APU0000FL2101',
+    fetched: '2026-08-18',
+    claim: 'BLS US city average: romaine lettuce $3.560 per pound (February 2026); field-grown tomatoes $2.154 per pound. Lettuce was 32.1% higher over the year to June 2026 and tomatoes 19.5% higher; retail fresh vegetables overall were 9.9% higher year on year.',
+  },
+  'condiments-retail-2026': {
+    org: 'Joe Vs Smart Shop / H-E-B condiment shelf listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.joevsmartshop.com/product-category/pantry/sauces-marinades-and-condiments/ketchup-mayonnaise-and-mustard/1224380.1226616.1238629',
+    fetched: '2026-08-18',
+    claim: 'Condiments at retail 2026: Hill Country Fare tomato ketchup 24oz $1.13; H-E-B tomato ketchup 32oz $2.48; H-E-B yellow mustard 14oz $0.77; Kraft real mayo 30oz $2.34 and H-E-B real mayonnaise 30oz $3.64. A full set of the three runs roughly $4-7. Single-serve packets price far higher per ounce and are excluded.',
+  },
   'cheese-sliced-2026': {
     org: 'Walmart sliced and block cheese listings with unit pricing, 2026 (listing - figures read from search results)',
     url: 'https://www.walmart.com/ip/Kraft-Singles-American-Cheese-Slices-24-Ct-Pk/10452905',
