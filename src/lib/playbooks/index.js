@@ -3225,6 +3225,47 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
   };
 }
 
+// ─── MOMENTUM — the longitudinal Adaptivity axis (2026-08-18) ────────────────
+//
+// Everything above reads ONE snapshot: this session's openCount, this session's
+// runway. Nothing anywhere reads whether the host is actually making progress
+// across sessions or has stalled — the 2026-08-17 rescore named this gap
+// directly: "longitudinal momentum/velocity across sessions, needs session
+// history." No infrastructure existed to answer it.
+//
+// `profile.sessionHistory` (a capped array the shell appends to, at most once
+// per calendar day per event — see HostShellV2 wiring) is the ONLY new state.
+// It rides the same `patchProfile` -> localStorage + cloud-synced `studio_settings`
+// path every other profile field already uses — no new table, no new API.
+//
+// Absent or short history returns 'unknown' on both axes — every existing call
+// site (none of which pass a fifth argument) is byte-identical to before this
+// function existed. Genuinely additive, the same discipline as `overwhelm`.
+export function computeMomentum(sessionHistory, openCount, nowTs) {
+  const now = typeof nowTs === 'number' && nowTs > 0 ? nowTs : Date.now();
+  const hist = Array.isArray(sessionHistory) ? sessionHistory.filter((s) => s && typeof s.ts === 'number' && typeof s.openCount === 'number') : [];
+  if (!hist.length) {
+    return { trend: 'unknown', daysSinceLastSession: null, sessionCount: 0 };
+  }
+  const sorted = [...hist].sort((a, b) => a.ts - b.ts);
+  const last = sorted[sorted.length - 1];
+  const daysSinceLastSession = Math.max(0, Math.floor((now - last.ts) / 86400000));
+  // Trend needs at least 2 points to say anything; one entry is a baseline, not a direction.
+  if (sorted.length < 2) {
+    return { trend: 'unknown', daysSinceLastSession, sessionCount: sorted.length };
+  }
+  // Compare the CURRENT openCount against the earliest point in the capped window, not just
+  // the immediately-prior session — a single noisy session (one thing settled, one thing
+  // raised) shouldn't flip the read; the window's overall direction should.
+  const first = sorted[0];
+  const delta = (typeof openCount === 'number' ? openCount : last.openCount) - first.openCount;
+  // A real stall reads as "not moving," not "moving slightly" — small deltas over a short
+  // window are noise, so the threshold scales with how many points are actually in hand.
+  const threshold = Math.max(1, Math.floor(sorted.length / 2));
+  const trend = delta <= -threshold ? 'improving' : delta >= threshold ? 'declining' : 'stalled';
+  return { trend, daysSinceLastSession, sessionCount: sorted.length };
+}
+
 // Options accessor for a single menu/sourcing decision, so the Decisions board can
 // settle it INLINE (radio divider-rows) without routing the host to the FoodPlan
 // "Your choices" mirror. Returns null unless `id` is a genuine menu decision with
