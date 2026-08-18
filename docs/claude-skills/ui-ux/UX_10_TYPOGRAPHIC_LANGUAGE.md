@@ -168,12 +168,46 @@ site matching that pattern.
 | Edit/Delete message-action buttons | 2 | **Fail — different failure mode.** `CommunicationHub.jsx:1166,1170`. Not a legibility problem (short, familiar words) but a **touch-target problem outside this document's scope**: 10px text with no stated minimum hit-area is an interaction-design finding, not a typography one. Flagged for `UX_05_COMPONENT_PATTERNS`, not fixed here.
 | Everything else in the 177 (dense, mixed contexts across `VendorPlanningWorkspace.jsx` (69 uses — the single largest concentration), `ChecklistGenerator.jsx`, `DecisionApprovalCenter.jsx`) | ~113 | **Not yet categorized.** The two largest files by use-count were not read line-by-line in this pass. This audit is a first sweep establishing the categories and confirming real violations exist in the pattern §3 predicted — it is not exhaustive, and `VendorPlanningWorkspace.jsx` specifically needs its own pass before this section can be called complete. |
 
+## 5b. `VendorPlanningWorkspace.jsx` — full pass, 2026-08-18
+
+The single largest concentration: 69 uses (1 at `2xs`, 68 at `xs`), all read
+in context. This file contains the **most severe violations found in the
+audit** — not metadata, but contract terms and decision rationale:
+
+| Finding | Where | Severity |
+|---|---|---|
+| **Decision rationale, truncated.** "Rationale: {why}" — the system's captured answer to *why this vendor was chosen* — renders at `xs`/`textTertiary`/italic with `text-overflow: ellipsis`. The one piece of content specifically designed to prevent a planner re-litigating a decision is small, dim, and can be cut off mid-sentence. | line 830 | 🔴 |
+| **Vendor track record, truncated.** "Memory: {line}" — past-event history for this vendor — same treatment, same ellipsis risk. | line 841 | 🔴 |
+| **Cancellation policy rendered as the dimmest, smallest text on the card.** `extracted.cancellation_policy` — real contractual terms — at `xs`/`textTertiary`, no truncation but no emphasis either. This is exactly the sentence that matters when a planner needs to cancel and is scanning under time pressure. | line 2505 | 🔴 |
+| **Disclaimers, twice.** `extracted.disclaimer` and `result.disclaimer` — both `xs`/`textTertiary`/italic. Whatever a disclaimer is protecting against, dimming it works against that purpose. | lines 2508, 3876 | 🔴 |
+| **Verification evidence and its absence-warning share one treatment.** A quoted supporting message (`"{row.evidence}"`) and the warning when *no* quote exists ("No supporting quote — check the original before applying") render identically at `xs`/`textTertiary`. The warning is arguably the more important of the two and gets no more visual weight. | lines 3853, 3857 | 🟡 |
+| Transient hints and confirmations (`step.editHint`, "Logged to activity feed.") | lines 1271, 1276 | 🟢 Borderline pass — genuinely transient, italic-hint convention is reasonable |
+| "Not attached · track outside the app" — an honest fallback explaining a missing control | line 2570 | 🟡 Arguably under-weighted for an explanation the user needs to not go looking for a button that isn't there |
+| "Max 10 MB" file constraint | line 1815 | 🟢 Pass — low-stakes, conventional placement |
+
+**Confirmed working correctly, extend this:** "KEY DATES" (label, `xs`/dim) is
+followed by `{d.label}: {d.date}` rendered at `type.size.sm` (11px) in
+`textSecondary` — one step up, same split pattern as the `CommunicationHub`
+contact rows in §5a. Section labels ("Attributes", "ACTION ITEMS", form
+field labels like "Pay via") are correctly chrome — tracked, uppercase,
+small, and never carrying the data themselves.
+
+**Tally for this file:** ~8 confirmed violations, all clustered around
+**vendor decision and contract content** rather than metadata — a sharper
+finding than §5a's timestamps, because the cost of missing a cancellation
+policy or a truncated rationale is materially higher than missing a
+"2h ago." The label/data split pattern is present and correct elsewhere in
+the same file, which means the fix is consistency, not invention — the
+violations should be promoted to the pattern the file already uses correctly
+for dates and contacts.
+
 **What this confirms:** §3's finding wasn't hypothetical. The size+color
 recession pattern the board flagged in the token *design* is present in real
 call sites — timestamps, statuses, and a name were all found dimmed and
-shrunk together. **What this doesn't yet do:** clear the majority of the 177
-uses, or touch `VendorPlanningWorkspace.jsx`, the largest single concentration
-of small type in the product. That's the next pass.
+shrunk together. **What this doesn't yet do:** clear the remaining ~90 uses in
+`ChecklistGenerator.jsx` and `DecisionApprovalCenter.jsx`. `VendorPlanningWorkspace.jsx`
+is now fully audited — see §5b — and produced the most consequential findings
+in this document: contract terms and decision rationale, not just metadata.
 
 ## 6. Platform is part of the specification, not an assumption
 
@@ -237,12 +271,13 @@ that number the first time. This document does not ship as doctrine without:
    Figma (structural).
 2. §4 — measure real leading/measure pairings from rendered screens; fill the
    `*pending §4*` cells.
-3. §5/§5a — **decided + first pass run.** Category-level audit found real §3
-   violations (timestamps, status, a name — all dimmed and shrunk together) in
-   ~15-20 of 177 uses. **Not exhaustive** — `VendorPlanningWorkspace.jsx` (69
-   uses, the largest concentration) and `ChecklistGenerator.jsx` /
-   `DecisionApprovalCenter.jsx`'s remaining ~90 uses need a dedicated pass.
-   Also surfaced: 429 hardcoded literals with no token (404 in
+3. §5/§5a/§5b — **decided, two files fully audited.** `CommandCenter.jsx` +
+   others: ~15-20 §3 violations (timestamps, status, a name). **`VendorPlanningWorkspace.jsx`
+   (69 uses, the largest concentration): ~8 violations, and the most severe in
+   the document — cancellation policy, disclaimers, and truncated decision
+   rationale, all rendered dim and small.** Still open:
+   `ChecklistGenerator.jsx` / `DecisionApprovalCenter.jsx`'s remaining ~90
+   uses. Also surfaced: 429 hardcoded literals with no token (404 in
    `AdminConsole.jsx` alone) — an §8 enforcement gap, tracked not fixed.
 4. §6 — automated dual-platform render verification.
 5. §7 — actual 200%-zoom + text-spacing-override render test.
