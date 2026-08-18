@@ -1824,6 +1824,12 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'Small 5-B:C rated fire extinguisher, $22.47. A second independent org confirming the existing extinguisher-retail-2026 Walmart/Do it Best figures ($27.49-52.47) — this smaller-rated unit sits below that range, so a 5-B:C unit is cheaper than a 10-B:C one.',
   },
+  'ledcandles-walmart-2026': {
+    org: 'Walmart.com — flameless LED tea-light and pillar-style candle multipacks',
+    url: 'https://www.walmart.com/ip/12-Pack-Flameless-LED-Tea-Lights-Candles-Flickering-Warm-Yellow-100-Hours-Battery-Powered-Light-Ideal-Party-Wedding-Birthday-Gifts-Home-Decoration/1249292601',
+    fetched: '2026-08-18',
+    claim: 'Flameless LED candles, 12-pack: tea-light style $14.99 (~$1.25/unit); larger pillar-style with remote $23.99 (~$2/unit). A second independent org confirming ledcandles-thermometer-2026 — commodity multipack candles range roughly $1.25-8.66/unit depending on format (tea light vs pillar vs single-unit multipack).',
+  },
   'firstaid-amazon-2026': {
     org: 'Amazon — Johnson & Johnson All-Purpose Portable Compact First Aid Kit, 140 pieces',
     url: 'https://www.amazon.com/Johnson-All-Purpose-Portable-Compact-Emergency/dp/B01M09COIF',

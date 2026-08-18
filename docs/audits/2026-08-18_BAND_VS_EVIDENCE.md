@@ -17,10 +17,6 @@ source: it makes an unverified figure look checked.
 
 | row | band | what the sources say |
 |---|---|---|
-| `surpriseProposal:80` LED / battery candles + lanterns | $1–3 /candle | the cheapest LED multipack is **$3.75 a candle** (8-pack at $30); 3-packs are $7.66–8.66 each |
-
-| `watchParty:71` serving setup (warming trays, slow cooker) | $10–30 /kit | a 6qt slow cooker is **$54.99–74.99** and an electric warming tray **$64.99–79.99** — either one alone exceeds the band |
-
 ### Bands BELOW their components
 
 | row | band | what the sources say |
