@@ -603,6 +603,23 @@ export const COST_SOURCES = {
   // The conference and retreat rows band per BADGE and per SYSTEM, so these are
   // per-unit and per-day figures rather than per-person event pricing.
   // -- FRAMES AND KEEPSAKE BOOKS (registered 2026-08-18) ----------------------
+  // -- SHRIMP AND LIVE CRAWFISH (registered 2026-08-18) -----------------------
+  // Crawfish is the most SEASONAL commodity in this corpus - Louisiana prices
+  // move week to week through the season and there are public trackers for
+  // exactly that reason. A band cited against it dates faster than almost
+  // anything else here, and the claim says so.
+  'shrimp-market-2026': {
+    org: 'Selina Wamucii US shrimp and prawn market prices, updated monthly (listing - figures read from search results)',
+    url: 'https://www.selinawamucii.com/insights/prices/united-states-of-america/shrimps-prawns/',
+    fetched: '2026-08-18',
+    claim: 'US shrimp and prawns $8.46 per pound as of June 2026.',
+  },
+  'crawfish-sack-2026': {
+    org: 'US live-crawfish retailers and price trackers, 2026 (listing - figures read from search results)',
+    url: 'https://latestcost.com/crawfish-cost-per-pound/',
+    fetched: '2026-08-18',
+    claim: 'Live crawfish 2026, sold by the sack at 30-35lb: $3.00/lb field run (about $90 a sack), $3.25/lb sack-only, and $3.99/lb at 30+lb rising to $4.99/lb for smaller quantities. The Crawfish App average is $3.75/lb live and $6.19/lb BOILED - boiled is a prepared product and costs roughly two thirds more. Louisiana prices move week to week through the season, which is why public price trackers exist for this commodity.',
+  },
   'frames-retail-2026': {
     org: 'US retail shadow-box and photo-frame listings, 2026 (listing - figures read from search results)',
     url: 'https://www.walmart.com/c/kp/memories-frame-box',
