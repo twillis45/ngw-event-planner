@@ -136,6 +136,24 @@ const quinceanera = {
       culturalContext: { tradition: 'The vals is the choreographed waltz the quinceañera performs with her court and often her father — a central, emotional moment of the reception marking her step into adulthood; many families add a high-energy surprise dance (baile sorpresa) right after.', constraint: 'The vals is the tradition-bearing heart of the reception the court rehearses for months, so the song is the quinceañera\'s and family\'s own choice — not a default the app should pick.', tier: 'established-consensus', sources: ['britannica-quinceanera'], verificationStatus: 'researched' },
       why: 'The vals song sets the choreography the court rehearses for months, and many quinces add a high-energy surprise dance (baile sorpresa) right after. Choosing the song early gives the choreographer and the court time to learn it. It also shapes the music plan — a DJ spinning cumbia, banda, and reggaetón, a live banda or mariachi for key moments, or both.',
     },
+    {
+      id: 'padrinos',
+      label: 'Are padrinos (sponsors) covering pieces of the celebration?',
+      options: [
+        'Yes, padrinos sponsor specific items (cake, dress, music, etc.)',
+        'No, the family covers everything directly',
+        'A mix — some traditional padrino roles, family covers the rest',
+      ],
+      default: 'A mix — some traditional padrino roles, family covers the rest',
+      when: 'T-120d',
+      blocks: ['florals', 'cake', 'beverages'],
+      weight: 'high',
+      reversibility: 'reversible',
+      emotionalWeight: 'high',
+      difmCapable: 'needs-host',
+      priorityBasis: { rationale: 'Padrino sponsorship is a genuine tradition that changes who is buying what and by when, but only the family knows which padrinos are participating and for which items, so the app cannot default this.', tier: 'reasoned' },
+      why: 'Padrinos and madrinas (godparents/sponsors) traditionally sponsor specific elements of a quinceañera — the cake, the dress, the music, the recuerdos — as an honor and a way the wider family participates. Knowing which padrinos are covering which pieces early changes the shopping and budget plan directly: a padrino covering the cake means the family is not the one placing that order or carrying that cost.',
+    },
   ],
 
   milestones: [
