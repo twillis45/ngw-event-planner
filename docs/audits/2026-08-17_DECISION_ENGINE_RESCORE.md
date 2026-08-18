@@ -270,3 +270,62 @@ census when the corpus carries two parallel claim slots (quantity and cost) that
 `classifyClaim()` directly rather than re-deriving a proxy from raw
 `provenance`/`costProvenance` fields — the proxy is exactly where both
 under-counts happened.
+
+---
+
+## Grounding has a real ceiling below 100%, found while chasing 10/10 (2026-08-18, later)
+
+Directed to push every dimension toward 10. Found the 61 remaining uncited
+purchases, researched all of them across 6 parallel agents, and applied
+citations to the 7 that both cleared the >=2-source policy AND were free to
+move: crab-feast crabs (existing prose citations wired into the registry-based
+`costProvenance` slot — the data was already there, just not machine-readable),
+retirement-party favorite drink, quinceañera florals + recuerdos, sweet16
+pizza-mains + cake, sunday-dinner greens.
+
+**23 of the 61 gaps turned out to be exempt by design, not by omission.**
+`claimBasis.js` has a standing board ruling: `directCitationEligible && !(culturalBasis
+&& !qtyCited)` — an item whose `provenance.tier` is in the cultural family
+(`cultural-tradition`, `culture-bearer`, `matriarch`, `community`) reads as
+"Cultural tradition" to a host **even when its cost is fully cited**, unless its
+*quantity* claim is *also* independently researched. The code comment states the
+reasoning directly: "Attaching a per-pound grocery price to [half-smokes, the red
+drink, watermelon] and letting it become the headline would trade cultural
+scholarship for a coverage percentage. The price is not lost — it just does not
+get to speak first."
+
+Confirmed this against four Kwanzaa items already carrying real `costProvenance`
+(candles, mkeka, unity cup, oxtail-mains) that still surfaced in the 61-gap scan.
+The citation was never missing — the label is intentionally durable against it.
+
+**Practical effect on Grounding: capped, not stuck.** Host-visible sourced moved
+88.9% → **90.1% (494/548)** from the 7 fixable rows. The other 54 gaps split
+into two different kinds of remaining work: single-source-only items that need
+more/better research (genuinely open), and 23 cultural items that need a
+*harder* second citation — the quantity axis, not just cost — before they can
+ever read as sourced under this design. Overriding the cultural-basis rule
+itself was not attempted; it is a values decision this project already made
+deliberately, not a bug to route around to hit a number.
+
+**Grounding: holds at 9/10 this pass.** The +1.2 points of host-visible movement
+were real but modest; scoring a 10th point on a metric with a known ~4% durable
+floor (23/548 = 4.2%) below full coverage would need either researching the
+quantity axis for every cultural item, or a product conversation about whether
+the cultural-basis rule should ever yield to a *sufficiently well-cited* dual-axis
+claim. Recommend the latter conversation before spending more research budget
+chasing citations that cannot move the score under the current rule.
+
+### What is left, honestly, for the other three dimensions
+
+Not touched this pass — these need authoring/architecture work, not research:
+- **Coverage 7→10**: thin playbooks (sweet16 7 decisions, quinceañera 6,
+  sundayDinner 4, vs. a corpus average of 5.3) plus an unevenly-authored
+  decision-window gradient across 39 playbooks.
+- **Prioritization 7→10**: vendor-surface consequence declarations — boarded in
+  `2026-08-17_VENDOR_CONSEQUENCE_BOARD.md`, never built.
+- **Adaptivity 8→10**: longitudinal momentum/velocity across sessions needs
+  session-history infrastructure that does not exist yet — a real architecture
+  decision (storage, schema, retention), not an engine tweak.
+
+None of these are citation-shaped problems. Padding them with shallow content
+just to move a number would be exactly the failure mode Honesty penalizes.
