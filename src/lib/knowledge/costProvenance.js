@@ -538,6 +538,39 @@ export const COST_SOURCES = {
   // promotional pricing, when ham is a loss-leader. The USDA weekly retail report
   // is the honest anchor at $2.25/lb; quoting Kroger's $0.85 as the going rate
   // would price a holiday promotion as if it were a Tuesday.
+  // -- CORN AND COLLARDS (registered 2026-08-18) ------------------------------
+  // The two produce commodities that repeat most across the corpus: corn on the
+  // cob in four rows, collard greens in three. bls-produce-2026 covers potatoes
+  // and bananas only, and usda-produce-outlook-2026 is priced per CUP EQUIVALENT
+  // rather than per ear or per pound, so neither could ground these.
+  //
+  // SEASON IS THE WHOLE STORY FOR CORN and the claims say so. A summer ear is
+  // $0.37-0.77; the national range only reaches $1.25 off-peak. A December row
+  // (Kwanzaa muhindi) is legitimately at the top of its band for that reason.
+  'corn-farm-2026': {
+    org: 'The Business Journal, "Fresno State Sweet Corn Returns at 37 Cents Per Ear" - reported farm-market price (listing - figures read from search results)',
+    url: 'https://thebusinessjournal.com/fresno-state-sweet-corn-prices-2026/',
+    fetched: '2026-08-18',
+    claim: 'Fresno State Gibson Farm Market sold yellow sweet corn at 37 cents per ear in May 2026, down from 49 cents in 2025. A university farm market at harvest is the floor of the market, not the grocery shelf.',
+  },
+  'corn-retail-2026': {
+    org: 'US sweet-corn retail pricing guides and Walmart per-ear listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.thepricer.org/how-much-does-one-cob-of-corn-cost/',
+    fetched: '2026-08-18',
+    claim: 'Corn on the cob at US retail 2026: Walmart lists single ears at about $0.50, with recent listings $0.68-0.77 an ear. The national average runs $0.50-1.25 per cob depending on type, season, region and source, and peak harvest from late July through August is the cheapest window.',
+  },
+  'collards-wholesale-2026': {
+    org: 'Tridge global fresh collard greens price index (listing - figures read from search results)',
+    url: 'https://dir.tridge.com/prices/fresh-collard-greens',
+    fetched: '2026-08-18',
+    claim: 'Global wholesale fresh collard greens ranged from $0.31 to $1.26 per pound over the four weeks to mid-August 2026.',
+  },
+  'collards-retail-2026': {
+    org: 'US collard greens retail and wholesale listings, July 2026 (listing - figures read from search results)',
+    url: 'https://www.foodomarket.com/en-us/products/fresh-fruits-and-vegetables/green-collard',
+    fetched: '2026-08-18',
+    claim: 'Collard greens 2026: NYC wholesale $2.16 per count as of 2026-07-07, with a 12-month case range of $19.95-26.95 and a typical week near $24.95. At retail, $2.28/lb at Giant Eagle and $4.00 a bunch at a university farm stand; frozen is dearer at $5.00 a pound.',
+  },
   'wings-extension-2026': {
     org: 'Alabama Cooperative Extension System, "Chicken Wings Market Starts Strong in 2026" - land-grant extension market report (fetched)',
     url: 'https://www.aces.edu/blog/topics/farm-management/chicken-wings-market-starts-strong-in-2026/',
