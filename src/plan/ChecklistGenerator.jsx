@@ -198,7 +198,7 @@ export default function ChecklistGenerator({
   onOpenTask,   // #13: (task) => void — open the task's steps in a modal
   isHost = false, // Reality-Fix 2 P1: host sees host-language only (no CLIENT lane, no jargon)
 }) {
-  const timeline  = event?.timeline || [];
+  const timeline  = useMemo(() => event?.timeline || [], [event?.timeline]);
   // Sprint 57f.2: live urgency derivation for the checklist rows. Skippable
   // is intentionally silent on this surface to keep scanning quiet — we
   // surface only do_now / risk_lost (the meaningful actions).
