@@ -97,9 +97,29 @@ amber — code comment: "honey tungsten — was #f3a449/#ef962e/#df8116"
 `atmosphere/*` (6), `accent/steel-*` (4), `border/accent`, `text/on-status`,
 `text/accent`, `status/confirmed-bright`, `status/*-muted`.
 
-**In code but not in Figma:** `status.inProgress` (`#B3A0CC` lavender,
-promoted from hostv2 2026-08-18), `text.onTint` (`#8AA3B0`), and the
-`dangerRed` / `dangerSolid` split that the WCAG pass introduced.
+**In code but not in Figma:** ~~`status.inProgress`, `text.onTint`~~ **added
+2026-08-18** as `status/in-progress` and `text/on-tint`, both with descriptions
+explaining why they exist.
+
+The `dangerRed` / `dangerSolid` split listed here originally was imprecise:
+those are `palette.js` (legacy theme) concepts. The *tokens* layer already
+expresses the same split as `status/risk` (fill) + `status/risk-text` (text),
+and both now match code. Nothing was missing.
+
+**Alias-target drift — found on a second pass.** The first semantic diff only
+compared Figma's *direct-hex* values, assuming aliased ones would follow their
+primitives automatically. 23 did; **5 did not**, because Figma's alias pointed
+at a different primitive than code uses:
+
+| Token | Was | Now | Why |
+|---|---|---|---|
+| `text/tertiary` | → `steel/600` | → `steel/500` | Code lifted it 2026-06-24 — tertiary "was reading as DISABLED". Alias repointed, structure kept. |
+| `surface/base` | → `matte/100` | `#141518` | Code uses `carbonNeutral.bg`, which has no primitive counterpart |
+| `surface/interactive` | → `matte/250` | `#313338` | Code uses `carbonNeutral.border` |
+| `border/subtle` | → `matte/250` | `#313338` | " |
+| `status/risk-text` | → `red/200` | `#f0897e` | Code sets a direct value, not a ramp stop |
+
+Final state: **34/34 primitives and 30/30 semantics match**, aliases resolved.
 
 ---
 
@@ -277,7 +297,15 @@ code missed.
    34/34 primitives verified matching. See §1.
 3. **Decide the type vocabulary.** Semantic (Figma) and t-shirt (code) are both
    defensible; running both is not. This is a naming decision, not a drift fix.
-4. **Update `family/sans` in Figma** to the real stack, or accept that Figma
-   renders in a font the product never serves.
-5. **Add the missing code tokens to Figma**: `status/in-progress`,
-   `text/on-tint`, and the `dangerRed` / `dangerSolid` split.
+4. **`family/sans` — OPEN, needs a decision.** Figma still says `"Inter"`; the
+   app never loads it and renders `system-ui`. This cannot be fixed
+   mechanically: Figma needs a real font name and cannot hold a CSS stack, so
+   the options are (a) set it to **SF Pro**, which is what `system-ui`
+   resolves to on macOS but not on Windows, (b) leave it wrong, or (c) actually
+   load Inter in the app, which is a product change. Also unverified: whether
+   any of the other 128 pages bind text to this variable.
+5. ~~**Add the missing code tokens.**~~ **DONE 2026-08-18** — see §1.
+6. **Typography style is a separate design exercise**, not a drift fix. The
+   crosswalk in §4 records what exists; deciding the intended type *language*
+   (roles, pairings, rhythm) is future work to be folded into the design
+   language proper.
