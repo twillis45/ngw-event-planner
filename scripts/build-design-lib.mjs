@@ -60,7 +60,8 @@ export interface ButtonProps {
 export declare function Button(props: ButtonProps): JSX.Element;
 
 export interface TextProps {
-  variant?: 'display' | 'title' | 'section' | 'body' | 'caption' | 'label' | 'mono';
+  /** Maps to the NGW type scale + locked text-color roles. From Text.jsx VARIANTS. */
+  variant?: 'title' | 'heading' | 'body' | 'bodyStrong' | 'secondary' | 'caption' | 'label';
   /** Rendered element. Pick for semantics; variant carries the look. */
   as?: ElementType;
   color?: string;
@@ -83,7 +84,9 @@ export interface SurfaceProps {
 export declare function Surface(props: SurfaceProps): JSX.Element;
 
 export interface AlertBannerProps {
-  severity?: 'nominal' | 'caution' | 'escalated' | 'emergency';
+  /** From AlertBanner.jsx SEV. Each carries its own chip label (INFO, DELAYED,
+   *  OVERDUE, ESCALATED, EMERGENCY, RESOLVED). escalated/emergency add mass. */
+  severity?: 'nominal' | 'delayed' | 'overdue' | 'escalated' | 'emergency' | 'resolved';
   title?: ReactNode;
   body?: ReactNode;
   /** Trailing action slot — usually a <Button priority="p2">. */
@@ -93,7 +96,9 @@ export interface AlertBannerProps {
 export declare function AlertBanner(props: AlertBannerProps): JSX.Element;
 
 export interface EscalationBadgeProps {
-  status?: 'neutral' | 'nominal' | 'caution' | 'escalated' | 'emergency';
+  /** From EscalationBadge.jsx STATUS. NOT the same vocabulary as AlertBanner
+   *  severity or EscalationProvider level — these are the status-token names. */
+  status?: 'confirmed' | 'warning' | 'risk' | 'emergency' | 'neutral';
   dot?: boolean;
   style?: CSSProperties;
   children?: ReactNode;

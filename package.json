@@ -37,7 +37,7 @@
     "bake:knowledge": "node scripts/bake-published-knowledge.mjs",
     "gate:knowledge": "node scripts/bake-published-knowledge.mjs --check",
     "grounding:census": "node scripts/groundingCensus.mjs src/lib/playbooks/data",
-    "design:build": "node scripts/build-design-lib.mjs"
+    "design:build": "node scripts/build-design-lib.mjs && node scripts/check-design-dts.mjs"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -55,6 +55,17 @@
     ]
   },
   "devDependencies": {
+    "@types/react": "^19.2.18",
     "esbuild": "^0.25.0"
+  },
+  "module": "./dist-design/index.mjs",
+  "main": "./dist-design/index.cjs",
+  "types": "./dist-design/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-design/index.d.ts",
+      "import": "./dist-design/index.mjs",
+      "require": "./dist-design/index.cjs"
+    }
   }
 }
