@@ -608,6 +608,21 @@ export const COST_SOURCES = {
   // move week to week through the season and there are public trackers for
   // exactly that reason. A band cited against it dates faster than almost
   // anything else here, and the claim says so.
+  // -- FRY FISH (registered 2026-08-18) ---------------------------------------
+  // The fish-fry row names whiting, catfish and porgies together, and the first
+  // two differ by nearly 2x at retail - which is the whole width of its band.
+  'fish-retail-2026': {
+    org: 'Walmart frozen fish fillet listings with unit pricing, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/c/kp/fish-fillet',
+    fetched: '2026-08-18',
+    claim: 'Frozen fillets at retail 2026: Great Value wild-caught Pacific whiting 2lb $8.72 (27.3 cents an ounce, about $4.36/lb); Great Value skinless catfish 2lb $14.72 (46.0 cents an ounce, about $7.36/lb). Foodservice cases price far higher per pound than a consumer bag.',
+  },
+  'catfish-market-2026': {
+    org: 'Selina Wamucii US catfish market prices, updated monthly (listing - figures read from search results)',
+    url: 'https://www.selinawamucii.com/insights/prices/united-states-of-america/catfish/',
+    fetched: '2026-08-18',
+    claim: 'US catfish $2.47/kg ($1.12/lb) as of June 2026. That is the FARM-GATE or market figure, not a retail fillet price - the same fish is about $7.36/lb as a frozen consumer fillet, and the gap is processing and packaging rather than a bargain.',
+  },
   'shrimp-market-2026': {
     org: 'Selina Wamucii US shrimp and prawn market prices, updated monthly (listing - figures read from search results)',
     url: 'https://www.selinawamucii.com/insights/prices/united-states-of-america/shrimps-prawns/',
