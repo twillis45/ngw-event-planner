@@ -33,7 +33,12 @@ describe('the picker offers exactly what runtime consumes', () => {
         const offered = new Set(governableFieldsFor(pb.type, p));
         for (const f of RUNTIME_CONSUMED_FIELDS) {
           const drives = fieldOwnership(pb.type, `${p.id}.${f}`, p).drivesRuntime;
-          const carried = p[f] !== undefined || f === 'provenance';
+          // BOTH PROVENANCE SLOTS are governable when ABSENT — the absence is
+          // exactly the gap an operator opens the console to close. Extended to
+          // costProvenance 2026-08-18 alongside the implementation; this mirror
+          // is what keeps the picker and the runtime contract from drifting, so
+          // it has to state the rule rather than defer to the code it checks.
+          const carried = p[f] !== undefined || f === 'provenance' || f === 'costProvenance';
           const expected = drives && carried;
           if (expected !== offered.has(f)) {
             mismatches.push(`${pb.type}|${p.id}.${f} expected=${expected} offered=${offered.has(f)}`);

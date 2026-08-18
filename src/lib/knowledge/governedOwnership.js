@@ -57,6 +57,11 @@ const CRAB_DELEGATED_FIELDS = ['qtyPerGuest', 'qtyFlat', 'unitCostRange'];
 // nothing. Kept in sync with GOVERNED_PURCHASE_FIELDS by a test, not by memory.
 export const RUNTIME_CONSUMED_FIELDS = Object.freeze([
   'unitCostRange', 'qtyPerGuest', 'qtyFlat', 'provenance', 'priceLadder', 'servingGuide',
+  // costProvenance (2026-08-18). The cost registry grew from 27 sources to ~325 in one
+  // session and NONE of them were reachable from the console, because this list is what
+  // the picker derives its field menu from and cost was missing. It is genuinely
+  // runtime-consumed — governedPurchase resolves it and purchaseCostProvenance reads it.
+  'costProvenance',
 ]);
 
 /**
@@ -105,7 +110,7 @@ export function fieldOwnership(assetId, fieldPath, purchase) {
 
   // Provenance is metadata: it drives the host's "Sourced -" line directly and is
   // never computed by an engine, so it is always correctable.
-  if (field === 'provenance') return { ...base, correctionType: 'provenance' };
+  if (field === 'provenance' || field === 'costProvenance') return { ...base, correctionType: 'provenance' };
 
   // A channel-priced protein. Same shape as the crab delegation and for the same
   // reason: another model already owns this number, so a governed value here would be

@@ -1101,8 +1101,15 @@ export function purchaseCostProvenance(playbook, purchase) {
 // This is the honest lever for threshold economics. `p_crabs.qtyPerGuest` is refused
 // because a per-guest rate cannot move a bushel; the LADDER can, because it is what
 // the bushel maths reads. Governing the rule instead of the output.
+// costProvenance added 2026-08-18. It was ALREADY governed at runtime, but through a
+// second seam (`purchaseCostProvenance` below, which resolves the same path), so the
+// "single seam" claim in governedOwnership was not quite true and the admin picker —
+// which derives its field list from that contract — never offered it. Resolving it
+// here makes the one-seam statement true again and lets an operator author a cost
+// citation instead of only a quantity one. Same value either way: both readers call
+// effectiveValue on `<id>.costProvenance`.
 const GOVERNED_PURCHASE_FIELDS = ['unitCostRange', 'qtyPerGuest', 'qtyFlat', 'provenance',
-  'priceLadder', 'servingGuide'];
+  'priceLadder', 'servingGuide', 'costProvenance'];
 
 export function governedPurchase(playbook, purchase) {
   if (!playbook || !purchase || !purchase.id) return purchase;

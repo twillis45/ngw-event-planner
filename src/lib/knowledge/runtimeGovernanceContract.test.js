@@ -150,7 +150,8 @@ describe('every governed field moves host output', () => {
     expect(pairs.length).toBeGreaterThan(1000);
     expect(new Set(pairs.map((x) => x.type)).size).toBeGreaterThan(30);
     expect(new Set(pairs.map((x) => x.field))).toEqual(
-      new Set(['unitCostRange', 'qtyPerGuest', 'qtyFlat', 'provenance', 'priceLadder', 'servingGuide']),
+      new Set(['unitCostRange', 'qtyPerGuest', 'qtyFlat', 'provenance', 'priceLadder', 'servingGuide',
+        'costProvenance']),
     );
   });
 

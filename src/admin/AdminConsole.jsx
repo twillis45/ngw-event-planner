@@ -3493,8 +3493,14 @@ function KcrStudioPanel() {
             // programme has already shipped one thing that was labelled safe and
             // wasn't. The picker cannot offer a wrong-axis source, but the draft is
             // still plain state, so the gate belongs where the record is created.
-            if (correctField === 'provenance' && Array.isArray(parsed.value && parsed.value.sources)) {
-              const srcCheck = validateSourcesFor(`${pid}.provenance`, parsed.value.sources);
+            // BOTH SLOTS (2026-08-18). This gate read `provenance` only, so once the
+            // editor could author a cost citation the axis check would have been
+            // skipped for exactly the corrections that need it most — a quantity id
+            // pasted into a cost claim would have published clean and never grounded.
+            // The path is derived from correctField so the gate follows the editor.
+            if ((correctField === 'provenance' || correctField === 'costProvenance')
+                && Array.isArray(parsed.value && parsed.value.sources)) {
+              const srcCheck = validateSourcesFor(`${pid}.${correctField}`, parsed.value.sources);
               if (!srcCheck.ok) { setCorrectNote(`Blocked: ${srcCheck.errors.join(' ')}`); return; }
             }
             newValue = parsed.value;
@@ -3948,12 +3954,21 @@ function KcrStudioPanel() {
                           could not author a new source attribution at all; every provenance
                           block in the corpus got there by a developer editing a file.
                           That is the acquisition bottleneck this phase exists to remove. */}
-                      {correctField === 'provenance' && (() => {
-                        const T = fieldTypeFor('x.provenance');
+                      {(correctField === 'provenance' || correctField === 'costProvenance') && (() => {
+                        // BOTH SLOTS, ONE EDITOR (2026-08-18). This was hardcoded to
+                        // `provenance`. The cost registry grew to ~325 sources and an
+                        // operator could not cite ANY of them, because the only editor
+                        // authored the quantity slot and `axisForField` therefore always
+                        // resolved the quantity axis. The paths below are now derived from
+                        // `correctField`, so the picker offers COST_SOURCES for a cost
+                        // correction and QTY_SOURCES for a quantity one — which is the
+                        // "what an admin can cite and what can ground are the same list"
+                        // invariant this block already claimed, finally true on both axes.
+                        const T = fieldTypeFor(`x.${correctField}`);
                         const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
                         const pid = correctPurchase || String(r.fieldPath).split('.')[0];
                         const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
-                        const live = pu ? pu.provenance : undefined;
+                        const live = pu ? pu[correctField] : undefined;
                         const d = (correctDraft && typeof correctDraft === 'object' && 'sources' in correctDraft)
                           ? correctDraft : T.format(live);
                         const set = (k, v) => setCorrectDraft({ ...d, [k]: v });
@@ -3979,7 +3994,7 @@ function KcrStudioPanel() {
                                 what an admin can cite and what can actually ground are the
                                 same list by construction. Free text is gone. */}
                             {(() => {
-                              const fp = `${pid}.provenance`;
+                              const fp = `${pid}.${correctField}`;
                               const approved = approvedSourcesFor(fp);
                               const chosen = String(d.sources || '').split(',').map((x) => x.trim()).filter(Boolean);
                               const check = validateSourcesFor(fp, chosen);
