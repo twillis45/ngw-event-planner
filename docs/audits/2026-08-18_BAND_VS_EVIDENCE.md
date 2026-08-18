@@ -6,7 +6,7 @@
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **twenty-five**, of which **six have since been retired**, whose band the
+`unitCostRange`. Doing that across ~40 rows turned up **twenty-six**, of which **six have since been retired**, whose band the
 evidence does not support. They are listed here rather than papered over with a
 citation, because a source that does not support the number is worse than no
 source: it makes an unverified figure look checked.
@@ -31,6 +31,8 @@ source: it makes an unverified figure look checked.
 | `lowCountryBoil:83` newspaper / kraft paper for the table | $0.10–0.50 /ft | 40# white butcher paper is **$0.054–0.073/ft** (30" rolls, $37.49–72.95) — the band's floor is ~2× the evidence |
 
 | `surpriseProposal:80` LED / battery candles + lanterns | $1–3 /candle | the cheapest LED multipack is **$3.75 a candle** (8-pack at $30); 3-packs are $7.66–8.66 each |
+
+| `watchParty:71` serving setup (warming trays, slow cooker) | $10–30 /kit | a 6qt slow cooker is **$54.99–74.99** and an electric warming tray **$64.99–79.99** — either one alone exceeds the band |
 
 ### Bands BELOW their components
 

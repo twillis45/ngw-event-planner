@@ -788,6 +788,46 @@ export const COST_SOURCES = {
   // premium over bulk for the identical commodity. And CASE PRICING IS NOT
   // RELIABLY CHEAPER - one supplier's per-bottle case rate exceeded another's
   // single-unit rate for Old Bay, garlic powder and black pepper alike.
+  // -- SNACK FORMATS AND CHAIN PIZZA (2026-08-18) ----------------------------
+  // A PRIOR FINDING OF THIS SESSION WAS WRONG AND IS CORRECTED HERE. An earlier
+  // agent concluded that no chain publishes a national pizza price and that
+  // every figure available was a third-party aggregator's self-described
+  // average. A second agent, told to accept only a primary source, found that
+  // Domino's and Papa John's BOTH publish national promotional prices in their
+  // own press releases, and Papa Murphy's publishes take-and-bake prices on its
+  // own site. What survives is narrower and still true: no chain publishes an
+  // A-LA-CARTE national menu price - a large pepperoni's everyday price is
+  // store-set.
+  'snacks-format-2026': {
+    org: 'Target, FoodMaxx, WebstaurantStore and FoodServiceDirect snack listings (all fetched)',
+    url: 'https://www.target.com/p/lay-39-s-classic-potato-chips-13oz/-/A-13335441',
+    fetched: '2026-08-18',
+    claim: 'Snack FORMAT changes the per-ounce cost several-fold. CHIPS: a 13oz party bag $4.99-5.19 ($0.38-0.40/oz, about $6.14-6.39/lb, close to the BLS all-chips average of $6.56/lb); a single 2.5oz impulse bag $2.79 ($1.12/oz, $17.86/lb) - 2.8x the party bag; a 10-count 1oz multipack $6.19 ($0.62/oz); foodservice cases $0.65-0.68/oz. PRETZELS cheapest at $0.25-0.27/oz. PARTY MIX $0.29-0.31/oz party size, $0.37-0.43 single-serve. POPCORN dearest per ounce at $0.51-0.75 because the bag is light for its volume - plan it by volume, not weight. NUTS $0.59-0.78/oz. JERKY $1.44-2.25/oz, and the SAME 8oz SKU differed 57% between two publishers.',
+  },
+  'pizza-chain-primary-2026': {
+    org: "Domino's Pizza Inc. and Papa John's International official press releases, with Papa Murphy's own site (all fetched)",
+    url: 'https://ir.papajohns.com/news-events/news-releases/detail/644/dont-settle-for-less-papa-johns-delivers-better-for-just-9-99',
+    fetched: '2026-08-18',
+    claim: 'Chain pizza 2026 from PRIMARY sources only. Dominos Mix and Match: any two or more menu items including a two-topping pizza at $6.99 each (company press release 2026-08-11, with an explicit "prices higher for some locations" disclaimer). Papa Johns create-your-own large $9.99 with up to seven toppings (investor-relations release 2025-12-01, participating locations). Papa Murphys take-and-bake large two-topping $10.99 ($14.99 Alaska) and Ultimate Pepperoni large $9.99 on its own site. THESE ARE NATIONALLY ADVERTISED DEAL PRICES, NOT MENU PRICES - no chain publishes an a-la-carte national price. Every aggregator figure was excluded.',
+  },
+  'frozen-pizza-2026': {
+    org: 'Target and FoodMaxx frozen pizza listings (both fetched)',
+    url: 'https://www.target.com/p/digiorno-wood-fired-pepperoni-frozen-pizza-15-7oz/-/A-94415304',
+    fetched: '2026-08-18',
+    claim: 'Frozen pizza 2026: a 15.7oz wood-fired pepperoni $6.49 ($0.41/oz) against a 24.7oz rising crust $7.29 ($0.30/oz) - 57% more food for 12% more money, so a thin frozen pie is the wrong unit for feeding a crowd. Two 24.7oz pies at $14.58 buy about 49oz against a $10.99 large take-and-bake, which wins on cost per fed guest.',
+  },
+  'buffet-equipment-2026': {
+    org: 'Target, Ace Hardware and WebstaurantStore listings for slow cookers and warming trays (all fetched)',
+    url: 'https://www.target.com/p/crock-pot-6qt-programmable-cook-38-carry-slow-cooker-black/-/A-13697382',
+    fetched: '2026-08-18',
+    claim: 'Buffet equipment PURCHASE 2026: a 6-quart programmable slow cooker with a locking transport lid is $54.99-74.99 across two brands ($9.17-12.50 a quart). A consumer electric warming tray is $64.99 (1500W, dry glass surface); a commercial countertop warmer is $79.99 but is a wet-well bain marie needing food pans sold separately, with the manufacturer disclaiming residential warranty - the two are NOT substitutes.',
+  },
+  'picks-toothpicks-2026': {
+    org: 'Target and WebstaurantStore listings for toothpicks and cocktail picks (all fetched)',
+    url: 'https://www.webstaurantstore.com/choice-2-1-2-unwrapped-round-wooden-toothpicks-box/500UWTPICK.html',
+    fetched: '2026-08-18',
+    claim: 'Picks 2026. TOOTHPICKS: a foodservice box of 1,000 is $6.49 ($0.0065 each), $4.49 at 2+ boxes; a decorative retail 250-count $3.79 ($0.0152 each) - 2.3-3.4x dearer and a frill-style pick rather than plain. COCKTAIL PICKS: disposable bamboo $0.09 each in a 100-count and $0.062 in a 1,200-count case; reusable stainless $13.99 for six ($2.33 each) as a one-time buy. Disposable and reusable are different cost structures and should not be blended.',
+  },
   'seasoning-bulk-2026': {
     org: 'WebstaurantStore, Batavia Restaurant Supply and Win Depot listings for Old Bay and J.O. crab seasoning (all fetched)',
     url: 'https://www.webstaurantstore.com/old-bay-24-oz-seasoning/102OB3218.html',
