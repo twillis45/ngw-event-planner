@@ -552,6 +552,23 @@ export const COST_SOURCES = {
   // BBQ rows, lemons in the boil rows. Both are priced per pound or per fruit,
   // which is what those rows band, so neither needed the cup-equivalent
   // conversion that made usda-produce-outlook unusable for them.
+  // -- SNACKS (registered 2026-08-18) -----------------------------------------
+  // Registered even though they ground only one row today, because they are what
+  // establishes that the snack bands run BELOW their commodity - the opposite
+  // direction from the drinks bands. Recording the evidence is the point; a
+  // future pass should not have to re-derive it.
+  'chips-bls-2026': {
+    org: 'US Bureau of Labor Statistics CPI Average Price Data, potato chips per 16 ounces (series APU0000718311), via FRED (listing - figures read from search results)',
+    url: 'https://fred.stlouisfed.org/series/APU0000718311',
+    fetched: '2026-08-18',
+    claim: 'BLS US city average for potato chips was $6.559 per 16 ounces in July 2026, i.e. about $6.56 a pound.',
+  },
+  'chips-retail-2026': {
+    org: 'Walmart, Costco and supermarket snack listings with unit pricing, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/c/kp/potato-chips',
+    fetched: '2026-08-18',
+    claim: 'Snack unit pricing 2026: Great Value wavy potato chips party size 13oz $2.96 (22.8c/oz, about $3.64/lb); Lays Classic party size 13oz $4.77 (36.7c/oz, about $5.87/lb); Rold Gold pretzel sticks and tiny twists 16oz $3.98 each (24.9c/oz). Multipacks: Costco Boulder Canyon 36x1oz $20.49; Snack Factory Pretzel Crisps 24x1.5oz $18.79; a supermarket 18x1oz variety pack $6.99-10.89 depending on chain.',
+  },
   'watermelon-market-2026': {
     org: 'Selina Wamucii US watermelon market prices, updated monthly (listing - figures read from search results)',
     url: 'https://www.selinawamucii.com/insights/prices/united-states-of-america/watermelon/',
