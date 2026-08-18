@@ -547,6 +547,35 @@ export const COST_SOURCES = {
   // SEASON IS THE WHOLE STORY FOR CORN and the claims say so. A summer ear is
   // $0.37-0.77; the national range only reaches $1.25 off-peak. A December row
   // (Kwanzaa muhindi) is legitimately at the top of its band for that reason.
+  // -- WATERMELON AND LEMONS (registered 2026-08-18) --------------------------
+  // Two more single commodities that repeat: watermelon in the Juneteenth and
+  // BBQ rows, lemons in the boil rows. Both are priced per pound or per fruit,
+  // which is what those rows band, so neither needed the cup-equivalent
+  // conversion that made usda-produce-outlook unusable for them.
+  'watermelon-market-2026': {
+    org: 'Selina Wamucii US watermelon market prices, updated monthly (listing - figures read from search results)',
+    url: 'https://www.selinawamucii.com/insights/prices/united-states-of-america/watermelon/',
+    fetched: '2026-08-18',
+    claim: 'US retail watermelon was about $0.53 per pound as of June 2026. Whole melons sold for about $4.75 each in January 2026 and $5.15 in February.',
+  },
+  'watermelon-retail-2026': {
+    org: 'US watermelon retail price guide with per-retailer figures, 2026 (listing - figures read from search results)',
+    url: 'https://latestcost.com/watermelon-cost-price-ranges-whole-watermelon/',
+    fetched: '2026-08-18',
+    claim: 'Watermelon by weight 2026 runs $0.30-0.80/lb with most shoppers paying $0.50-0.60. Albertsons lists seedless or seeded at $0.59/lb and organic seedless at $0.79/lb. Whole melons: an 8lb conventional $4.00, a 12-14lb $9.20, a 15-20lb organic $18.50. PRE-CUT is a different product and costs far more - $1.99 a quarter, $2.49 a slice pack, about $3.50 cubed.',
+  },
+  'lemons-bls-2026': {
+    org: 'US Bureau of Labor Statistics CPI Average Price Data, lemons per pound, West census region urban (series APU0400711412), via FRED (listing - figures read from search results)',
+    url: 'https://fred.stlouisfed.org/series/APU0400711412',
+    fetched: '2026-08-18',
+    claim: 'BLS average retail price for lemons was $2.091 per pound in May 2026.',
+  },
+  'lemons-retail-2026': {
+    org: 'US lemon retail listings and price guide, 2026 (listing - figures read from search results)',
+    url: 'https://selector.kurlon.com/live/lemon-costs-explained-for-us-shoppers-2026-44981.html',
+    fetched: '2026-08-18',
+    claim: 'Lemons at retail 2026: Walmart lists a fresh lemon at $0.64 each, and a 1lb bag of seedless lemons at $2.98/lb. Buying by the fruit is the cheaper unit for a recipe that calls for a count rather than a weight.',
+  },
   'corn-farm-2026': {
     org: 'The Business Journal, "Fresno State Sweet Corn Returns at 37 Cents Per Ear" - reported farm-market price (listing - figures read from search results)',
     url: 'https://thebusinessjournal.com/fresno-state-sweet-corn-prices-2026/',
