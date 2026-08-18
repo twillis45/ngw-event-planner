@@ -146,6 +146,36 @@ for (const r of ID_SELECTORS) {
   }
 }
 
+// ── EVERY MOTION TOKEN READ MUST EXIST (D1, Figma/code reconciliation 2026-08-18) ──
+// theme.js read five durations — micro/fast/base/enter/reveal — that
+// motion.duration never defined. Each fell through to its `|| <literal>`
+// fallback, so the literals WERE the values while the comment above them
+// claimed "Same numbers, one source now." There was no source, and nothing
+// errored: a missing token and a present one are indistinguishable at runtime
+// once a fallback absorbs the difference. That is the whole failure mode —
+// silence, not breakage. A fallback is a safety net, never a source.
+const THEME = read('../theme.js');
+const TOKENS = read('../../../src/design/tokens.js');
+
+const definedIn = (block) => {
+  const m = TOKENS.match(new RegExp(`${block}:\\s*\\{([\\s\\S]*?)\\n\\s*\\},`));
+  return m ? new Set([...m[1].matchAll(/^\s*([A-Za-z][A-Za-z0-9]*)\s*:/gm)].map((x) => x[1])) : null;
+};
+const readsOf = (ns) =>
+  [...new Set([...THEME.matchAll(new RegExp(`\\b${ns}\\.([A-Za-z][A-Za-z0-9]*)`, 'g'))].map((x) => x[1]))];
+
+for (const [ns, block] of [['durations', 'duration'], ['easings', 'ease']]) {
+  const defined = definedIn(block);
+  if (!defined) {
+    violations.push(`tokens.js: motion.${block} block not found — the ${ns} guard cannot verify anything.`);
+    continue;
+  }
+  const missing = readsOf(ns).filter((k) => !defined.has(k));
+  for (const k of missing) {
+    violations.push(`theme.js reads ${ns}.${k}, which motion.${block} does not define — it silently falls back to an inline literal, so the literal is the real value.`);
+  }
+}
+
 if (violations.length) {
   console.error('✗ Parity drift detected:');
   for (const v of violations) console.error('  • ' + v);

@@ -157,6 +157,22 @@ export const motion = {
     sheetRise:  300, // weighted bottom-sheet rise
     sheetDismiss: 360,
     press:      120, // tactile press
+    // ── Interaction scale ────────────────────────────────────────────────
+    // The 2026-07-22 audit named these so styles.css could stop hardcoding
+    // 100/140/200/240/420 across ~40 sites, and hostv2/theme.js was wired to
+    // read them — but they were never added here. Every read fell through to
+    // its `|| <literal>` fallback for a month while the comment there claimed
+    // "one source now." Nothing errored: a fallback makes a missing token and
+    // a present one indistinguishable at runtime.
+    // Values are the fallbacks that have been shipping, so adding them changes
+    // nothing on screen — it just makes the claimed source real. Guarded by
+    // hostv2/src/parity/check-parity.mjs, which fails the build if theme.js
+    // ever reads a duration this block does not define.
+    micro:      100, // fastest micro-feedback
+    fast:       140, // hover / tint / press transitions
+    base:       200, // standard row/state transition
+    enter:      240, // panel / ask enter (askin)
+    reveal:     420, // moderate reveal / receipt
   },
 };
 
