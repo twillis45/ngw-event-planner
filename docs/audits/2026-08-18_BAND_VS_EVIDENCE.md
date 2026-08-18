@@ -18,7 +18,6 @@ source: it makes an unverified figure look checked.
 | row | band | what the sources say |
 |---|---|---|
 | `crawfishBoil:78` corn, HALVED ears | $0.30–0.70 /half-ear | an ear is $0.37–1.25, so a half is $0.19–0.63. Wave-6 corroboration (Kroger + Walmart, 2026-08-18): ears $0.38–$1.00 individually, so half-ear ~$0.20–0.50 — same shape, band's floor still runs low |
-| `juneteenthCookout:97` strawberries | $1–3 /lb | $2.60–3.00/lb; the floor is 2.6x below anything sourced |
 
 | `dayParty:83` mixers (club soda, tonic, ginger beer, citrus) | $0.50–1.50 /serving | tonic 1L $1.99 and ginger ale 2L $2.99 are ~$0.25–0.36 per 4oz pour |
 
