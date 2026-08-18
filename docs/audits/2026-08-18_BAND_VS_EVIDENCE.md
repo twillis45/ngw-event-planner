@@ -17,16 +17,6 @@ source: it makes an unverified figure look checked.
 
 | row | band | what the sources say |
 |---|---|---|
-| `crawfishBoil:78` corn, HALVED ears | $0.30–0.70 /half-ear | an ear is $0.37–1.25, so a half is $0.19–0.63. Wave-6 corroboration (Kroger + Walmart, 2026-08-18): ears $0.38–$1.00 individually, so half-ear ~$0.20–0.50 — same shape, band's floor still runs low |
-
-| `dayParty:83` mixers (club soda, tonic, ginger beer, citrus) | $0.50–1.50 /serving | tonic 1L $1.99 and ginger ale 2L $2.99 are ~$0.25–0.36 per 4oz pour |
-
-| `gameNight:65` dips + salsa | $1–2 /small serving | queso 8oz $0.97, hummus 16oz $3.97 → $0.12–0.83 a 2oz serving |
-| `watchParty:64` chips + dips | $1.50–3 /serving | chips ~$0.23–0.41 a serving plus dip ~$0.25–0.50 |
-
-| `lowCountryBoil:80` heat gloves + Class B extinguisher + first-aid | $25–55 /kit | cheapest of each is $12.97 + $27.49 + $13.99 = **$54.45** — only the very top of the band buys all three |
-
-
 | `surpriseProposal:80` LED / battery candles + lanterns | $1–3 /candle | the cheapest LED multipack is **$3.75 a candle** (8-pack at $30); 3-packs are $7.66–8.66 each |
 
 | `watchParty:71` serving setup (warming trays, slow cooker) | $10–30 /kit | a 6qt slow cooker is **$54.99–74.99** and an electric warming tray **$64.99–79.99** — either one alone exceeds the band |

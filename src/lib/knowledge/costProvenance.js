@@ -1799,6 +1799,37 @@ export const COST_SOURCES = {
   },
 
   // ── WAVE 6 (registered 2026-08-18) ──────────────────────────────────────
+  'mixers-walmart-2026': {
+    org: 'Walmart.com — Schweppes Tonic Water and Club Soda Mini Cans, 8-pack',
+    url: 'https://www.walmart.com/c/kp/schweppes-tonic-water-mini-cans',
+    fetched: '2026-08-18',
+    claim: 'Schweppes tonic/club soda mini-can 8-pack $18.99. At ~7.5oz per mini can, ~$2.37/can, ~$1.27/4oz pour — pricier per-serving than large-format bottles because mini cans carry a convenience premium, corroborating that basic mixers span roughly $0.25-1.30 per 4oz serving depending on format.',
+  },
+  'dips-snackstation-2026': {
+    org: 'Walmart.com — Sabra Roasted Red Pepper Hummus 17oz ($4.48), Tostitos Queso Dip 15oz (~$4.74), Wholly Guacamole Classic 15oz ($3.42-5.37); Costco Business Delivery — Wholly Guacamole Organic 3x15oz club pack ($12.99, ~$4.33/tub)',
+    url: 'https://www.walmart.com/ip/Sabra-Roasted-Red-Pepper-Hummus-Family-Size-17-oz/21881801',
+    corroboratingUrl: 'https://www.costcobusinessdelivery.com/p/-/wholly-guacamole-organic-mild-guacamole-15-oz-3-ct/100426470',
+    fetched: '2026-08-18',
+    claim: 'Party-size tubs of hummus, queso, and guacamole run roughly $0.50-0.65 per 2oz serving across two independent retailers (Walmart single tubs, Costco club-pack guac). Salsa and ranch pricing were NOT corroborated in this pass and are excluded from this figure.',
+  },
+  'grillgloves-mensjournal-2026': {
+    org: "Men's Journal (reporting an Amazon listing) — RAPICCA Heat-Resistant Long-Sleeve Grill Gloves, 932°F rated",
+    url: 'https://www.mensjournal.com/shopping/rapicca-heat-resistant-long-sleeve-grill-gloves-amazon-sale',
+    fetched: '2026-08-18',
+    claim: '932°F-rated neoprene grill gloves, one pair, sale price $18 (list ~$30). A second independent org confirming the existing grillgloves-retail-2026 Walmart figures ($12.97-39.99 per pair depending on brand).',
+  },
+  'extinguisher-homedepot-2026': {
+    org: 'Home Depot — Kidde Home 5-B:C Class BC 2 lb. Fire Extinguisher (KD57-5BC)',
+    url: 'https://www.homedepot.com/p/Kidde-Home-5-B-C-Class-BC-2-35-lb-Fire-Extinguisher-21028347/303196149',
+    fetched: '2026-08-18',
+    claim: 'Small 5-B:C rated fire extinguisher, $22.47. A second independent org confirming the existing extinguisher-retail-2026 Walmart/Do it Best figures ($27.49-52.47) — this smaller-rated unit sits below that range, so a 5-B:C unit is cheaper than a 10-B:C one.',
+  },
+  'firstaid-amazon-2026': {
+    org: 'Amazon — Johnson & Johnson All-Purpose Portable Compact First Aid Kit, 140 pieces',
+    url: 'https://www.amazon.com/Johnson-All-Purpose-Portable-Compact-Emergency/dp/B01M09COIF',
+    fetched: '2026-08-18',
+    claim: '140-piece compact first-aid kit, $11.50 (Subscribe & Save $10.92). A second independent org confirming the existing firstaid-retail-2026 Walmart figures ($13.99+ for a comparable-sized kit).',
+  },
   'corn-kroger-2026': {
     org: 'Kroger.com — Fresh Sweet Corn on the Cob',
     url: 'https://www.kroger.com/p/fresh-sweet-corn-on-the-cob-each/0000000004590',
