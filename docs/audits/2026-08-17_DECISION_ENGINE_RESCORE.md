@@ -174,3 +174,47 @@ Not attempted — this codemod has destroyed authored provenance twice, and its 
 post-write assertion is the only instrument that has ever caught it. It deserves a
 session with budget to fix, re-run, and put jest behind it, not the tail of a long
 one.
+
+---
+
+## Grounding re-measured — 5 was wrong, the instrument was (2026-08-17 21:2x)
+
+The 93 "unlabelled priced items" that set Grounding at 5/10 **do not exist**:
+
+| of the 93 | |
+|---|---|
+| carry `costProvenance` — labelled in the OTHER slot | **89** |
+| `alternatives[]` inheriting a labelled parent | 4 |
+| **genuinely unlabelled** | **0** |
+
+The corpus uses a deliberate two-slot design and migrated cost claims to
+`costProvenance`, VACATING `provenance` on those items —
+`costProvenanceSlot.test.js` asserts the slot "is genuinely vacated". The census
+read only the first slot.
+
+    before   448 / 541 labelled   82.8%    cited 7
+    after    537 / 541 labelled   99.3%    cited 96   (+4 inheriting = 541)
+
+**Grounding: 8/10** (from a mis-measured 5). Sourced — cited + researched +
+established-consensus — is **173 of 541 = 32%**; honestly-labelled synthesis is
+364 = 67%; unlabelled is 0. Capped at 8 rather than 9 because a third sourced is
+still short of a planner who can name a price's origin on demand, and the sourced
+share is concentrated in food.
+
+**What the bad number nearly cost.** Acting on it, the labelling codemod wrote
+`provenance` into 89 slots the migration had emptied on purpose. jest caught it and
+it was reverted. An instrument that under-reports coverage does not fail safe — it
+commissions work that damages a corpus that was already complete.
+
+### Corrected total — 39/50
+
+| dim | now | earlier today | note |
+|---|---|---|---|
+| Grounding | **8** | 5 | instrument fixed, corpus was already complete |
+| Coverage | 7 | 7 | thin tail + window gradient (authoring) |
+| Prioritization | 7 | 7 | consequence coverage (authoring, boarded) |
+| Adaptivity | 8 | 5 | profile wire shipped; click path undriven |
+| Honesty | 9 | 9 | unchanged |
+
+Two of the three remaining gaps are authoring, not engineering. The engineering
+one is the Adaptivity click path.
