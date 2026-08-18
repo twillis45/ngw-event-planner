@@ -757,6 +757,122 @@ export const COST_SOURCES = {
   // Split into its two publishers deliberately. Collapsing them into one entry
   // made a row citing "both" look single-sourced to the >=2 policy, which is
   // exactly the check that caught it — the evidence was always two publishers.
+  // -- SWAG, HYDRATION AND FIRST-AID CONSUMABLES (2026-08-18) -----------------
+  // PACKET IS NOT TABLET. The office channel sells pain relievers and antacids
+  // as PACKETS OF TWO, the foodservice channel sells loose tablets, and the two
+  // look identical in a listing. Every figure below states which unit it is.
+  // -- PREPARED MEAT, BBQ, CATERING AND REGISTRATION KIT (2026-08-18) ---------
+  // PREPARED IS NOT RAW, and this block exists because that distinction retired
+  // a recorded mismatch. A carved-meat row banded at $6-16/lb looked wrong
+  // against raw ham at $2.25/lb; against DELI-COUNTER cooked sliced meat at
+  // $14.99/lb it is correct. The row was pricing a different product all along.
+  // -- SINGLE-SERVE AND RTD BEVERAGE FORMATS (2026-08-18) ---------------------
+  // THIS ENTRY RESOLVED FIVE RECORDED MISMATCHES. Seven "drinks band reads high"
+  // findings rested on multipack arithmetic: soda at $0.25-0.60 a can from a
+  // 12-pack, water at $0.13-0.25 a bottle from a 24-pack. A single 20oz bottle
+  // bought on its own is $2.29-3.39 - two to three times the multipack unit -
+  // and ready-to-drink juice is $0.69-0.88 a serving against $0.60 for
+  // reconstituted concentrate. The bands were pricing a format nothing in the
+  // registry covered. They were right; the comparison was wrong.
+  'beverage-singleserve-2026': {
+    org: 'Instacart storefront listings with Walgreens (Instacart fetched; Walgreens search-results after a 403)',
+    url: 'https://www.instacart.com/products/16706881-coke-classic-soda-soft-drink-20-oza',
+    fetched: '2026-08-18',
+    claim: 'SINGLE-SERVE bought individually 2026: a 20oz Coca-Cola bottle is $2.29-3.39 depending on store ($0.17 a fluid ounce at one), against $2.99 at a pharmacy chain. For contrast a 12-pack of 12oz cans is $12.49, about $1.04 a can. A single bottle therefore costs two to three times the multipack unit and the two must never be interconverted.',
+  },
+  'juice-rtd-2026': {
+    org: 'Instacart and Kroger listings for ready-to-drink juice (Instacart fetched; Kroger search-results after two timeouts)',
+    url: 'https://www.instacart.com/products/16480535-tropicana-pure-premium-original-no-pulp-orange-juice-128-fl-oz',
+    fetched: '2026-08-18',
+    claim: 'READY-TO-DRINK juice 2026, which is NOT frozen concentrate. Tropicana 100% orange juice, 128oz gallon, $10.99-14.09 - about $0.69-0.88 per 8oz serving. A 52oz carton of Simply is $4.99-6.79 ($0.77-1.04 a serving). An orange juice DRINK such as SunnyD is a different product at $3.68-4.79 a gallon ($0.23-0.30 a serving). By comparison, BLS frozen concentrate reconstitutes to about $0.60 a glass, so ready-to-drink carries a real premium.',
+  },
+  'sparkling-na-2026': {
+    org: 'Instacart, Target, Athletic Brewing direct and The Zero Proof (all fetched except Target, search-results after a 404)',
+    url: 'https://athleticbrewing.com/collections/beer',
+    fetched: '2026-08-18',
+    claim: 'Sparkling and non-alcoholic 2026. SPARKLING WATER: LaCroix $4.19 a 6-pack ($0.70 a can) and $4.39 an 8-pack ($0.55); Topo Chico glass $20.79 a 12-pack ($1.73 a bottle). NA BEER: Athletic Brewing 6-packs $10.99 direct and $11.99 in store, i.e. $1.83-2.00 a can, holding at $1.83 in a 24-pack. CANNED MOCKTAILS are far dearer: a Ghia 4-pack is $19.50 ($4.88 an 8oz can) and premium canned cocktails $44-59 a 4-pack ($11.00-14.75 a can).',
+  },
+  'catering-coffee-2026': {
+    org: 'Published menu figures for Dunkin, Panera and Starbucks 96oz coffee travellers, via menu aggregators (all fetched; the chains own catering pages could not be)',
+    url: 'https://panerabreadmenus.us/catering',
+    fetched: '2026-08-18',
+    claim: 'Coffee for a crowd 2026: a 96 fl oz box or traveller is $22.99 at one chain (the only exact single-SKU figure), $22-31 and $20-25 as published ranges at two others. Each serves about 10-12 cups with cups, lids and condiments included, i.e. $1.67-2.08 a cup at 12 - materially above home-brewed coffee at $0.10-0.30 a cup. EVIDENCE CAVEAT: all three publishers are menu aggregators rather than the chains own ordering pages.',
+  },
+  'deli-prepared-meat-2026': {
+    org: 'Schneiders Quality Meats (Waterloo, IL) deli counter and Corti Brothers (Sacramento, CA) catering menu (both fetched)',
+    url: 'https://schneidersqualitymeats.com/store/product/deli-sliced-store-made-roast-beef',
+    fetched: '2026-08-18',
+    claim: 'PREPARED deli meat 2026: store-made cooked roast beef, deli-sliced, $14.99/lb. Meat trays serving 8-25 people run $89.99-119.99, i.e. $4.80-11.25 a head - those publish head counts but no weights, so no per-pound figure derives from them. This is cooked and sliced product, not raw meat: the same animal as a $2.25/lb spiral ham is a different purchase once a deli has cooked and cut it.',
+  },
+  'bbq-perpound-2026': {
+    org: "Q Southern BBQ and Jim 'N Nick's Bar-B-Q published by-the-pound menus (both fetched)",
+    url: 'https://qsouthernbbq.com/bbq-by-the-pound',
+    fetched: '2026-08-18',
+    claim: 'Smoked BBQ by the pound 2026, on COOKED weight: pulled pork $17.99-18.00 (the two publishers agree within a cent); brisket $22.00 against $34.49 - a divergence of more than half, and NOT a figure to average; turkey breast $19.99; sausage $15.99; pulled chicken $18.99. Ribs are sold per rack ($27-29.99), not per pound.',
+  },
+  'tacobar-catering-2026': {
+    org: 'Senor Burrito Company and Tacos and Company published catering menus (both fetched)',
+    url: 'https://senorburritocompany.com/catering',
+    fetched: '2026-08-18',
+    claim: 'Taco-bar catering 2026, per person. DROP-OFF: the two publishers agree tightly at $13.00 and $13.99 a head for two tacos with sides, rising to $16-17.99 for three. STAFFED IS A SEPARATE TIER: $25 a head for a live on-site cook with a server at one publisher, against a $1.00-a-head server upcharge at the other. Both exclude tax; delivery and setup are additional ($20 at one).',
+  },
+  'boxedlunch-restaurant-2026': {
+    org: 'UC Berkeley Cal Dining and Indiana University Catering boxed-meal menus, with Numbeo US restaurant cost data (all fetched)',
+    url: 'https://dining.berkeley.edu/wp-content/uploads/Berkeley-Box-menu_2026.pdf',
+    fetched: '2026-08-18',
+    claim: 'Prepared meals 2026. BOXED LUNCH drop-off: $18.95 a box (sandwich or salad, chips, drink, cookie) with a stated 20% delivery surcharge and $350 delivery minimum; a second caterer starts at $12 a box with a 10-box minimum. RESTAURANT: a three-course mid-range meal for two is $80 nationally (range $50-150), i.e. about $40 a head before drinks and tip. A NYC-only survey put a sit-down date for two at $122 before tax and tip - metro-specific and drinks-inclusive, not a national figure.',
+  },
+  // Split into PURCHASE and RENTAL. Collapsed into one entry, a row citing
+  // "the registration research" looked single-sourced to the >=2 policy — the
+  // second time that gate caught me representing four publishers as one.
+  'registration-purchase-2026': {
+    org: 'BarcodeFactory and Shopify Hardware Store listings for badge printers and scanners (both fetched)',
+    url: 'https://www.barcodefactory.com/zebra/printers/zd621d',
+    fetched: '2026-08-18',
+    claim: 'Registration hardware PURCHASE 2026: a Zebra ZD621d direct-thermal badge printer $711.43 (203dpi) rising to $967.65 (300dpi with cutter); a DS2208 barcode scanner with cable and stand $208.40-209.00, or $178.20 bare without the cable it needs. EVIDENCE CAVEAT: the two printer publishers are both resellers quoting identical figures, which is one price level confirmed twice rather than two independent discoveries.',
+  },
+  'registration-rental-2026': {
+    org: 'Meeting Tomorrow and JustAttend published event-registration rental figures (both fetched)',
+    url: 'https://justattend.com/blog/rent-event-badge-printers-onsite-badge-printing',
+    fetched: '2026-08-18',
+    claim: 'Registration hardware RENTAL 2026: printers $50-200 a day depending on specification; a bundled printer, laptop-or-tablet and scanner about $410 an event, with delivery and collection $250 each per kiosk; equipment packages from $600. CONSUMABLES are separate - badge stock $199 per 500 or $110 per 250, ink about $120. Most event AV companies gate pricing behind a quote form and publish nothing.',
+  },
+  'shredding-service-2026': {
+    org: 'Shred Nations and Viking Shred published pricing guides (both fetched)',
+    url: 'https://www.shrednations.com/resources/cost-to-shred/',
+    fetched: '2026-08-18',
+    claim: 'Secure shredding 2026, on two bases that must not be mixed. PER POUND (drop-off): $0.99-1.50, the two publishers agreeing closely. PER VISIT OR PROJECT: on-site $100-175 and off-site $85-150 for roughly 1-10 boxes - a FLOOR price, so a three-box job and a nine-box job cost about the same and it must not be modelled per box. Ship-and-shred about $30 for a 30lb box. Neither publisher stated a box weight, so pounds do not convert to boxes here.',
+  },
+  'swagbags-blank-2026': {
+    org: 'BagsInBulk and BagzDepot wholesale drawstring bag listings (both fetched)',
+    url: 'https://bagsinbulk.com/collections/wholesale-drawstring-bags',
+    fetched: '2026-08-18',
+    claim: 'Blank drawstring bags 2026: 18in basic non-woven $1.10 a unit, dual-mesh-pocket $1.60, front-zippered $1.65; non-woven medium $1.98 and large $2.18 on sale; cotton canvas $2.18-3.78 depending on size. Non-woven polyester is the $1.10-2.18 band and cotton canvas the $2.18-3.78 band. Neither page published 25/50/100 break points.',
+  },
+  'promo-notebooks-2026': {
+    org: 'Superior Promos and 4imprint promotional notebook listings (both fetched)',
+    url: 'https://www.superiorpromos.com/pad-holders-portfolios-all/notebooks/journal-notebook',
+    fetched: '2026-08-18',
+    claim: 'Custom-printed notebooks 2026, per unit at the quantity: 75 units $5.86, 150 $4.88, 250 $4.24, 500 $3.69, 1,000 $3.21. SETUP IS SEPARATE at $40.00 per colour per location - at the 75-unit minimum that adds $0.53 a unit on top. A second supplier lists notebooks at $1.27-3.89 a unit against minimums of 50-100 with no setup stated. NO SUPPLIER QUOTED BELOW A 50-UNIT MINIMUM, so a 25-unit price cannot be extrapolated. Blank retail notebooks are a different channel at $1.61-4.49 each with no volume break evidenced.',
+  },
+  'waterbottles-blank-2026': {
+    org: 'Bulk Tumblers and CDI International blank water-bottle listings (both fetched)',
+    url: 'https://bulktumblers.com/collections/insulated-water-bottles',
+    fetched: '2026-08-18',
+    claim: 'Blank reusable water bottles 2026. STAINLESS: Polar Camel 20oz $12.00 single or $269.28 a case of 24 ($11.22 each); 32oz $12.50 single or $143.06 a case of 12 ($11.92); 40oz $14.25 or $159.89 a case of 12 ($13.32). A house-brand supplier lists vacuum-insulated 17-20oz at $6.13-7.89 a unit and non-insulated plastic 23-32oz at $2.84-3.61 - roughly half the branded line, and the two should not be blended. Custom-printed plastic bottles run $0.79-3.45 a unit at minimums of 100-300.',
+  },
+  'firstaid-consumables-2026': {
+    org: 'WebstaurantStore and Quill listings for cough drops, pain relievers and antacids (both fetched)',
+    url: 'https://www.webstaurantstore.com/search/cough-drops.html',
+    fetched: '2026-08-18',
+    claim: 'First-aid consumables 2026. COUGH DROPS: 125 a box $8.29-14.99 ($0.066-0.120 a drop), 50 a box $5.19-8.99; a retail 30-count bag $6.49 ($0.216 a drop). PAIN RELIEVER - NOTE THE UNIT: the office channel sells PACKETS OF TWO (50 packets = 100 tablets) at $12.99-28.59 a box, i.e. $0.058-0.202 a tablet, while the foodservice channel sells loose tablets at $8.79-26.49 per 100 ($0.088-0.265 a tablet). ANTACIDS likewise: $6.19 per 100 tablets ($0.06 each) foodservice against $19.99 per 125 two-tablet packets ($0.080 a tablet) in the office channel.',
+  },
+  'electrolytes-2026': {
+    org: 'Quill and Liquid I.V. direct listings for electrolyte sticks, with Quill and Hydration Depot for ready-to-drink (all fetched)',
+    url: 'https://www.liquid-iv.com/products/hydration-multiplier',
+    fetched: '2026-08-18',
+    claim: 'Electrolytes 2026. STICKS: Liquid I.V. direct is $24.99 a 16-stick pouch ($1.56 a stick, or $1.09 on subscription); the office channel lists 15-stick packs at $30.69-40.79 ($2.05-2.72 a stick). NOTE THE COUNT DIFFERS BY CHANNEL - 16 direct against 15 at Quill. Generic electrolyte packets are $46.99 per 50 ($0.94 each). READY-TO-DRINK: Gatorade 20oz is $2.67 a bottle in a 12-carton office pack and $1.86 a bottle in a 24-case that carries a 54-case pallet minimum - a channel gap, not a volume discount.',
+  },
   'meetingsupplies-quill-2026': {
     org: 'Quill listings for easel pads, dry-erase markers, sticky notes and ballpoint pens (fetched)',
     url: 'https://www.quill.com/easel-pads/cbs/9345.html',
