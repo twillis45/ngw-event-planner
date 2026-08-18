@@ -10691,9 +10691,18 @@ export default function HostShellV2() {
                         // landing as everywhere else, exact row, no hunting.
                         <div key={r.id || i} className={sheet.focus && sheet.focus === r.id ? 'rowfocus' : undefined}
                           ref={el => { if (el && sheet.focus && sheet.focus === r.id) el.scrollIntoView({ block: 'center' }); }}>
-                          <div className="line" style={{ alignItems: 'center' }}>
-                            <span>{r.label}</span>
-                            <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
+                          {/* DENSITY DOCTRINE (UX_01): .line's nowrap space-between assumes
+                              both sides are short ("Date — Wed, Sep 30"). A settled DECISION
+                              can carry a full question as its label ("Heavy appetizers or a
+                              buffet / seated dinner") and a multi-word answer plus two buttons
+                              on the other side — forcing that onto one unwrapped row squeezed
+                              both spans so narrow the answer text broke mid-word ("Drop-\noff").
+                              flexWrap here is additive: short rows (Date, Venue) still fit on
+                              one line exactly as before; only rows that don't fit now wrap the
+                              value+buttons onto their own line instead of crushing the text. */}
+                          <div className="line" style={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 4 }}>
+                            <span style={{ flex: '1 1 auto', minWidth: 100 }}>{r.label}</span>
+                            <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-start' }}>
                               <span className="of">{r.because}</span>
                               {(canChange || editorKind) && !changeOpen && (
                                 <button className="mini" onClick={() => setChoiceOpen('dec-' + r.id)}>Change</button>
