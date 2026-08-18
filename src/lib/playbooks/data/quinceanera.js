@@ -328,7 +328,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-1d',
       note: 'Centerpieces on every table plus the entrance, the head table, and ceremony pieces. Booked with the florist at 3 months out to the color story; delivered the day before or the morning of.',
-     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['florals-weddingwire-2026', 'florals-fiftyflowers-2026'], lastVerified: '2026-08-18', claim: 'Per-centerpiece pricing (not a package total): $90-300/elevated centerpiece retail, $100-300+ wholesale bulk, per two sources. This is a GENERIC WEDDING-MARKET PROXY, not quinceañera-specific pricing, and prices per piece rather than the whole-package unit this row uses — a rough multi-table sum is broadly consistent with the existing $600-2500 package band but was not independently verified at the package level.', sufficientWhen: 'A quinceañera-specific florist package quote, at the headcount/table-count this band assumes, would replace this per-piece proxy.' } },
     {
       id: 'p_decor',
       item: 'Decor: backdrop, entrance arch, linens (if not venue-supplied), signage, balloons',
@@ -360,11 +360,11 @@ const quinceanera = {
       qtyPerGuest: 1,
       unit: 'favor',
       where: ['Quinceañera boutique', 'Online', 'Party store'],
-      unitCostRange: [1.5, 6],
+      unitCostRange: [1.5, 10],
       essential: false,
       buyAt: 'T-3d',
       note: 'Recuerdos are a warm quince tradition — a small keepsake per guest, often personalized with the quinceañera\'s name and date.',
-     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['recuerdos-partyfavorsource-2026', 'recuerdos-etsy-2026'], lastVerified: '2026-08-18', claim: 'Personalized favor pieces, two different products bounding the range: pint glass $4.08/piece, LED keychain $9.99/piece at bulk-order pricing. Band ceiling raised to $10 to cover the pricier option.', sufficientWhen: 'A same-product two-retailer match would tighten this from a bounding range to a direct corroboration.' } },
     {
       id: 'p_tableware',
       item: 'Tableware / disposables (if the venue or caterer does not supply place settings)',
