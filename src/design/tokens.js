@@ -161,7 +161,23 @@ export const radius = { none: 0, sm: 8, md: 12, lg: 12, xl: 20, full: 999 };
 
 // ── Typography (NGW Typography) ─────────────────────────────────────────
 export const type = {
-  family: "'Inter', system-ui, -apple-system, sans-serif",
+  // Corrected 2026-08-18: this read "'Inter', system-ui, …" but Inter is never
+  // loaded. The app fetches Playfair Display and Newsreader from Google Fonts
+  // and nothing else — there is no @font-face for Inter and no woff2 in the
+  // repo — so every surface has been rendering in system-ui since the token
+  // was written. Dropping the unfetched family is a ZERO visual change: it
+  // makes the token describe what actually paints.
+  //
+  // Found by [FONT_MISSING] during the 2026-08-18 Claude Design sync: shipping
+  // Inter to the design agent would have made every generated design render in
+  // a font the product does not use.
+  //
+  // The same stack is duplicated as a literal in App.js (FROZEN, donor-only),
+  // admin/AdminConsole.jsx, components/AuthGate.jsx, and
+  // components/MembersModal.jsx. Those still say Inter. Harmless today for the
+  // same reason, but they are hardcoded duplicates of this token and should
+  // read from it.
+  family: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
   // Scale extended (2026-06-24) so CommandCenter's dense data UI tokenizes with no
   // rounding gaps: caption(12) fills the old 11→13 dead zone; 2xs(9) for micro-labels;
   // 4xl/5xl for the event-title + countdown hero numerals. Edit a value here → it
