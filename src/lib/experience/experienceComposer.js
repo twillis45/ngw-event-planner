@@ -3,7 +3,7 @@
 // from canonical playbook data + context. Pure projection — never owns knowledge.
 
 import { ROLES, PHASES, SITUATION_TYPES } from './experienceContext';
-import { resolveDecisions, rankDecisions } from './decisionIntelligence';
+import { resolveDecisions, rankDecisions, nextDecisionsToOpen } from './decisionIntelligence';
 
 // ── Adaptive UI Rules (Bundle J) ─────────────────────────────────────────────
 // Returns the ordered workspace section list for a given role+phase+situation combination.
@@ -213,7 +213,17 @@ function buildActions(playbook, context) {
   }
   if (primary.includes('decisions') || primary.includes('budget')) {
     const decisions = resolveDecisions(playbook, context);
-    if (decisions.length) actions.push({ id: 'resolve-decisions', label: `Resolve ${decisions.length} pending decision${decisions.length > 1 ? 's' : ''}`, section: 'decisions', phase });
+    if (decisions.length) {
+      actions.push({ id: 'resolve-decisions', label: `Resolve ${decisions.length} pending decision${decisions.length > 1 ? 's' : ''}`, section: 'decisions', phase });
+    } else {
+      // Nothing due does not mean nothing to say. The label names the call and
+      // when it opens rather than claiming it is pending — see
+      // nextDecisionsToOpen for why these two states stay apart.
+      const coming = nextDecisionsToOpen(playbook, context, 1);
+      if (coming.length) {
+        actions.push({ id: 'decisions-ahead', label: `Next call: ${coming[0].label} (${coming[0].when})`, section: 'decisions', phase });
+      }
+    }
   }
 
   return actions.slice(0, 3);
@@ -295,6 +305,9 @@ export function composeExperience(playbook, context) {
   if (!playbook || !context) return null;
 
   const decisions = resolveDecisions(playbook, context);
+  // Kept SEPARATE from `decisions` on purpose: a screen must be able to render
+  // "nothing due, here is what opens next" without a due-now count that lies.
+  const upcomingDecisions = decisions.length ? [] : nextDecisionsToOpen(playbook, context);
   const topDecision = rankDecisions(decisions, context.situations);
   const warnings = buildWarnings(playbook, context);
   const risks = filterRisksForContext(playbook.risks || [], context);
@@ -318,6 +331,7 @@ export function composeExperience(playbook, context) {
 
   return {
     decisions,
+    upcomingDecisions,
     topDecision,
     warnings,
     risks,

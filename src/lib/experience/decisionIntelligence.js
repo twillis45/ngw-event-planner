@@ -119,6 +119,45 @@ export function resolveDecisions(playbook, context) {
   return scored.map((s) => s.decision);
 }
 
+// ── WHEN NOTHING IS DUE, SAY WHAT IS COMING ────────────────────────────────────
+// Coverage pass, 2026-08-17. Measured through this resolver, not the raw data:
+// with role 'host', an EMPTY decision board occurs in every single phase —
+// planning 9/39 playbooks, research 7, booking 5, purchasing 6, preparation 9.
+// A host asking "what now?" six weeks out got silence for nine event types.
+//
+// The fix is deliberately NOT to widen `resolveDecisions`. That function means
+// "due now", and padding it with calls whose window has not opened would make
+// the composer's own label — "Resolve N pending decisions" — false, trading a
+// coverage gap for an honesty one. The two states stay separate: this returns
+// what is COMING, and the caller labels it as such.
+//
+// Ordered by proximity (the soonest window first), because "what opens next" is
+// the only useful answer to "nothing yet".
+export function nextDecisionsToOpen(playbook, context, limit = 3) {
+  const decisions = (playbook && playbook.decisions) || [];
+  if (!decisions.length) return [];
+
+  // Only decisions the phase filter is holding back — anything already scoring
+  // belongs to resolveDecisions, and returning it here would double-render it.
+  const { role, phase, situations = [] } = context || {};
+  const held = decisions.filter((d) => scoreDecision(d, role, phase, situations) === 0);
+
+  // AHEAD ONLY. A held decision sits outside the phase window on one of two
+  // sides, and they mean opposite things: below the phase floor it has not
+  // opened yet, above the ceiling its window has already CLOSED. Calling a
+  // missed call "coming" would be the same lie in the other direction, so the
+  // past side is excluded here and left to the overdue path that owns it.
+  const info = PHASES[phase];
+  const floor = info ? info.daysOutMin : null;
+
+  return held
+    .map((d) => ({ d, daysOut: parseDaysOut(d.when) }))
+    .filter((x) => x.daysOut !== null && (floor === null || x.daysOut < floor))
+    .sort((a, b) => b.daysOut - a.daysOut)   // largest days-out = opens soonest
+    .slice(0, limit)
+    .map((x) => x.d);
+}
+
 // Returns the single most blocking decision given active situations.
 // Used for the Adaptive Feed "Most Important Decision" slot.
 export function rankDecisions(decisions, situations = []) {
