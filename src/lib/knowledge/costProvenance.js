@@ -503,6 +503,39 @@ export const COST_SOURCES = {
   // own their napkins: an owned napkin still carries a laundering cost (the
   // second source puts professional cleaning at $11.50 a tablecloth), so the
   // per-use figure is what a per-event band is actually pricing.
+  // -- BALLOONS AND BANNERS (registered 2026-08-18) ---------------------------
+  // The decor family had no source at all. These three price its components so
+  // a kit row can be summed the way the paper-goods rows already are.
+  //
+  // TIER MATTERS HERE AND IS STATED. The two balloon entries are fetched
+  // retailer catalogue pages with per-kit prices. The banner entry is read from
+  // search results because dollartree.com returned 503 and partycity.com 404 on
+  // fetch - recorded as the weaker evidence it is, NOT dropped. The corpus has
+  // this lesson already: beer was written off as ungroundable when two URLs
+  // returned 403, which was a fetch failure recorded as an absence of evidence.
+  //
+  // CUSTOM PRINTED BACKDROPS ARE DELIBERATELY EXCLUDED. The same research turned
+  // up personalised backdrops at $49-98 (Etsy, Zazzle, ubackdrop). That is a
+  // different product from a party-store banner, and folding it in would put the
+  // component above the whole kit band it is supposed to price.
+  'balloon-kits-2026': {
+    org: 'Shimmer & Confetti balloon garland collection - fetched catalogue with per-kit pricing',
+    url: 'https://shimmerandconfetti.com/collections/balloon-garland',
+    fetched: '2026-08-18',
+    claim: 'DIY balloon garland and arch kits 2026: a 10-foot pastel kit is $20.99; a 155-piece premium white/silver/gold/gray arch and garland kit is $36.99 (from $64.99); a custom kit with 5, 11 and 18-inch balloons is $89.99 at the top of the range. Standard 16-foot kits carry roughly 150+ balloons.',
+  },
+  'balloon-bulk-2026': {
+    org: 'TableclothsFactory balloon arch kits and garlands - fetched wholesale catalogue',
+    url: 'https://tableclothsfactory.com/collections/balloon-arch-kits-garlands',
+    fetched: '2026-08-18',
+    claim: 'Wholesale balloon pricing 2026: latex garland kits of 94-120 balloons run about $12.09 each and hold that price across the catalogue; 100-128 balloon assortment kits $5.49-9.59; foil balloon bouquet sets $1.89-4.19 for 5-6 balloons; a 19ft heavy-duty arch STAND holding up to 400 balloons is $51.69. The stand is reusable equipment, not a per-event consumable.',
+  },
+  'banner-retail-2026': {
+    org: 'Dollar Tree happy-birthday banner listings (listing - figures read from search results; dollartree.com returned 503 and partycity.com 404 on direct fetch)',
+    url: 'https://www.dollartree.com/happy-birthday-letter-banner-1-ct/326583',
+    fetched: '2026-08-18',
+    claim: 'A party-store happy-birthday banner is $1.25 at Dollar Tree, including foil letter banners and 2-count banner packs, and shoppers assemble complete birthday decoration sets there for under $10. Generic (non-personalised) party backdrops run about $9.99-25.99. Custom printed backdrops are a separate tier at $49-98 and are excluded from this claim.',
+  },
   'linen-rental-2026': {
     org: 'CV Linens, "How Much Does It Cost To Rent Tablecloths" (fetched)',
     url: 'https://www.cvlinens.com/blogs/styling-tips/how-much-does-it-cost-to-rent-tablecloths',

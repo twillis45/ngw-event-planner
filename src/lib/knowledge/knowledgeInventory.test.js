@@ -147,8 +147,21 @@ describe('against the REAL corpus', () => {
   test('the grounded share is reported honestly against the FULL denominator', () => {
     const share = directlyCitedShare(inv);
     expect(share).toBeGreaterThan(0);
-    // If this ever reads like a healthy number, check the denominator before celebrating.
-    expect(share).toBeLessThan(50);
+
+    // 2026-08-18: this ceiling was 50 and it fired at 50.3, which is exactly what
+    // it is for. Checked before raising it, as its own comment demands:
+    //
+    //   denominator  537 authored priced lines — the FULL corpus, unchanged
+    //   numerator    270 directly-cited, up from 267 in this session
+    //
+    // The share rose because citations were added (drinks, linens, decor), not
+    // because the denominator shrank. So the ceiling moves and the CHECK gets
+    // stronger rather than weaker: the denominator is now pinned alongside it,
+    // so this test can no longer be satisfied by quietly dropping lines out of
+    // the count — the one failure mode the original ceiling was watching for and
+    // could not actually detect.
+    expect(inv.total).toBeGreaterThanOrEqual(537);
+    expect(share).toBeLessThan(60);
   });
 
   test('AMBIGUOUS reads 0 here, and that is a LIMIT of this counter, not a clean corpus', () => {
