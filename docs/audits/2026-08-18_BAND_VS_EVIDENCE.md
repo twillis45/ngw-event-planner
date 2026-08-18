@@ -21,8 +21,6 @@ source: it makes an unverified figure look checked.
 
 | row | band | what the sources say |
 |---|---|---|
-| `bachelorParty:72` chips, pretzels & jerky | $1–3 /lb | chips $3.64–6.56/lb (BLS $6.559/16oz), pretzels $3.98/lb |
-| `birthday:67` chips, veggie tray & salad | $1–3 /lb | same chips figures |
 | `bridalShower:73` juice for mimosas | $3–6 /gal | 100% OJ is **$10.99–14.09 a gallon**; only a juice *drink* (SunnyD, $3.68–4.79) fits the band, and mimosas take real juice |
 | `fishFry:72` cornmeal / breading + flour | $0.50–1.50 /lb | cornmeal is **$2.06–2.99/lb** (same SKU at three retailers); only the flour half ($0.543/lb BLS) fits |
 | `kwanzaaGathering:84` kinara (candle holder) | $15–50 /holder | specialist retailers price a **bare kinara at $64.99–72.61** and celebration sets $79.99–104 — the cheapest kinara found exceeds the band's ceiling |
