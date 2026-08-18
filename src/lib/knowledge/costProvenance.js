@@ -602,6 +602,19 @@ export const COST_SOURCES = {
   // -- BADGES, LANYARDS AND PA RENTAL (registered 2026-08-18) -----------------
   // The conference and retreat rows band per BADGE and per SYSTEM, so these are
   // per-unit and per-day figures rather than per-person event pricing.
+  // -- FRAMES AND KEEPSAKE BOOKS (registered 2026-08-18) ----------------------
+  'frames-retail-2026': {
+    org: 'US retail shadow-box and photo-frame listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/c/kp/memories-frame-box',
+    fetched: '2026-08-18',
+    claim: 'Frames 2026: a 5x7in shadow box with HD plexiglass about $8.92; an 8x8in shadow box about $12.99. A wooden photo-memories keepsake box is a different product at $47.99 (listed against a $59.99 comparable).',
+  },
+  'memorybook-retail-2026': {
+    org: 'US personalised guest-book and memory-book listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.zazzle.com/memory+book+gifts',
+    fetched: '2026-08-18',
+    claim: 'Guest and memory books 2026: personalised notebooks $12.46-19.38; personalised planners about $32.52. Custom handbound memory books with presentation boxes price above this range.',
+  },
   'badges-print-2026': {
     org: 'US event badge printers - per-badge pricing (listing - figures read from search results)',
     url: 'https://www.conferencebadge.com/cardboard-badges',
