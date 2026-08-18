@@ -380,6 +380,31 @@ export const SURFACES = [
           key: `vendor-unbooked:${row.category}`,
           dueInDays,
           leadDays: -lead,
+          // ── THE PLAN CANNOT PROCEED AS WRITTEN (board, 2026-08-17) ────────
+          // docs/audits/2026-08-17_VENDOR_CONSEQUENCE_RULING.md
+          //
+          // `gateHolder` WITHOUT `unlocks`, deliberately. Measured across 827
+          // raises, only `decisions` declared any consequence, so a caterer
+          // unbooked 280 days past its window ranked like a napkin order. The
+          // obvious repair — give it `unlocks` — would be a lie: `unlocks`
+          // counts what settling this FREES, and a missing caterer frees
+          // nothing. It removes the ability to hold the event as planned.
+          //
+          // No dependency map exists to derive one from, either: `blocks` is
+          // authored on DECISIONS and its targets are decision ids
+          // (`catering_style`, `vendor_team`), while vendor rows carry only
+          // `category`/`required`/`when`. `grep vendorCategory|vendorFor|
+          // categoryFor|linkedVendor` returns zero across corpus and engine.
+          // Inventing `Caterer -> catering_style` is the same move that produced
+          // this morning's `blocks:['catering']` phantom.
+          //
+          // So we assert exactly what is evidenced and nothing more: the
+          // playbook said this category is REQUIRED, said when it should be
+          // booked by, and that window has passed unmet. Bounded by the guards
+          // above — `required: true`, past `when`, genuinely unmatched — so an
+          // optional videographer never qualifies.
+          gateHolder: true,
+          unlocks: 0,
         });
       }
       return out;
