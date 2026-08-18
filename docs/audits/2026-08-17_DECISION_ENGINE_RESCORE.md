@@ -218,3 +218,55 @@ commissions work that damages a corpus that was already complete.
 
 Two of the three remaining gaps are authoring, not engineering. The engineering
 one is the Adaptivity click path.
+
+---
+
+## Grounding re-measured again — the "sourced share" was ALSO qty-only (2026-08-18)
+
+The 8/10 above capped Grounding partly on "sourced is 173/541 = 32%, concentrated
+in food." That figure — cited + researched + established-consensus — was read
+from `provenance.verificationStatus` alone, same narrow slot the labelling bug
+lived in three sections up. It never looked at `costProvenance`.
+
+A full day's grounding pass (five research waves plus a targeted band-vs-evidence
+review) moved the COST slot specifically: 233/498 cost-cited at the start of the
+day to **501/505 (99.2%)** by the end, spanning bachelor party, birthday, bridal
+shower, crawfish boil, gender reveal, game night, and the Ethiopian coffee
+ceremony — not concentrated in one category the way the 08-17 measurement was.
+
+**The correct combined figure is what `classifyClaim()` returns**, because that is
+the function the host surface actually calls — not a re-derived proxy:
+
+    for pb of ALL_PLAYBOOKS: pb.purchases.forEach(walk classifyClaim(provenance, costProvenance))
+    SOURCED_LABELS = ['Directly sourced', 'Price directly sourced', 'Amount directly sourced']
+
+    before (qty-slot only, 08-17)   173 / 541   32%
+    after  (both slots, classifyClaim, 08-18)   487 / 548   88.9%
+
+Label distribution: `Price directly sourced` 449, `Directly sourced` 38, `Planning
+baseline` 37, `Cultural tradition` 23, `Practitioner guidance` 1.
+
+**Grounding: 9/10** (from 8). Not 10 — 61 of 548 purchases (11.1%) are still
+`Planning baseline` or a non-sourced tradition/guidance label, and boil-seasoning
+specifically was deliberately left uncited today rather than force a single-source
+claim (see `2026-08-18_BAND_VS_EVIDENCE.md`), which is the correct call but still
+an open gap. The remaining 11% is thin-tail authoring work, the same shape as
+Coverage's remaining gap, not a re-measurement error.
+
+### Corrected total — 40/50
+
+| dim | now | 2026-08-17 corrected | note |
+|---|---|---|---|
+| Grounding | **9** | 8 | cost-axis grounding pass; combined-slot measurement via `classifyClaim` |
+| Coverage | 7 | 7 | unchanged — not touched today |
+| Prioritization | 7 | 7 | unchanged — not touched today |
+| Adaptivity | 8 | 8 | unchanged — not touched today |
+| Honesty | 9 | 9 | unchanged — same 11% gap that caps Grounding also caps this |
+
+**A second instance of the same instrument bug is worth naming as a pattern, not
+a one-off.** Twice now a "sourced share" number was quoted from a single-axis
+census when the corpus carries two parallel claim slots (quantity and cost) that
+`classifyClaim()` already combines. Any future re-score should call
+`classifyClaim()` directly rather than re-deriving a proxy from raw
+`provenance`/`costProvenance` fields — the proxy is exactly where both
+under-counts happened.
