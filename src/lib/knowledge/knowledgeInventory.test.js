@@ -178,8 +178,18 @@ describe('against the REAL corpus', () => {
     // figures with URLs and every citation was verified against its band before
     // being written. The denominator pin below is what makes "the share rose
     // because evidence was added" a checkable statement rather than a claim.
+    // 2026-08-18, fourth and final raise of the day. Checked the same way every
+    // time, which is the point of pinning the denominator alongside the share:
+    //
+    //   denominator  537 authored priced lines — unchanged through all of it
+    //   numerator    435 directly-cited, from 270 this morning
+    //
+    // 165 lines gained a costProvenance across three waves of parallel research.
+    // Every figure came from a named publisher with a URL and was checked
+    // against the row's band before being written; five bands that looked wrong
+    // turned out to be right once the correct purchase FORMAT was priced.
     expect(inv.total).toBeGreaterThanOrEqual(537);
-    expect(share).toBeLessThan(80);
+    expect(share).toBeLessThan(90);
   });
 
   test('AMBIGUOUS reads 0 here, and that is a LIMIT of this counter, not a clean corpus', () => {

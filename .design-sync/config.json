@@ -24,5 +24,6 @@
   "guidelinesGlob": [
     "docs/claude-skills/*.md",
     "docs/claude-skills/ui-ux/*.md"
-  ]
+  ],
+  "readmeHeader": ".design-sync/conventions.md"
 }

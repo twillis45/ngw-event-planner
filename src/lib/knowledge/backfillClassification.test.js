@@ -196,8 +196,13 @@ describe('the shape of the real backlog', () => {
     // per-guest set was grounded against the bulk plate and cleaning sources.
     // What remains reachable through jollychef-disposables-2026 is a single
     // p_napkins line, so the disposables seam is now genuinely worked out.
-    expect(byId).toEqual({ p_napkins: 1 });
-    expect(reached.length).toBe(1);
+    // Seventh and final move. The last p_napkins line left the backlog when the
+    // game-night cocktail-napkin row was grounded. THE DISPOSABLES SEAM IS NOW
+    // EMPTY — nothing reachable through jollychef-disposables-2026 remains
+    // uncited, which is the end state this pin was built to track rather than a
+    // number to keep adjusting.
+    expect(byId).toEqual({});
+    expect(reached.length).toBe(0);
   });
 
   test('effort is estimated for reachable work and REFUSED for research', () => {
