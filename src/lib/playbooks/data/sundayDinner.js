@@ -137,7 +137,7 @@ const sundayDinner = {
         'Whoever is moved to, in the moment',
       ],
       default: 'The elder of the house',
-      when: 'T0',
+      when: 'T-1d',
       blocks: [],
       weight: 'low',
       reversibility: 'reversible',
