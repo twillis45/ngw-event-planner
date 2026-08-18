@@ -587,6 +587,34 @@ export const COST_SOURCES = {
   // BOTH SALAD ITEMS ARE RISING FAST and the claim records it: lettuce +32.1%
   // and tomatoes +19.5% year on year to June 2026. A band sourced against these
   // figures is more perishable than one sourced against, say, foil.
+  // -- DIPS, BUTTER, FIRST AID AND OUTDOOR PROTECTION (2026-08-18) ------------
+  // Four families in one pass. Two of them immediately exposed band mismatches
+  // rather than grounding rows, which is recorded in the band-vs-evidence audit
+  // instead of being smoothed over with a citation.
+  'dips-retail-2026': {
+    org: 'Walmart and H-E-B dip, hummus and salsa listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/browse/food/shop-all-hummus-dips-salsas/976759_976789_7056897_6173058',
+    fetched: '2026-08-18',
+    claim: 'Dips at retail 2026: H-E-B chile con queso 8oz $0.97; H-E-B roasted red pepper hummus 16oz $3.97 and roasted garlic hummus 16oz $6.67; H-E-B chef-prepared spinach dip 16oz $4.97; Freshness Guaranteed guacamole 8oz $3.02 and 15oz $5.27; Wholly homestyle guacamole 16oz $5.97; Sabra classic guacamole 14oz $6.58. Per 2oz serving that is roughly $0.12-0.83 depending on the dip.',
+  },
+  'butter-bls-2026': {
+    org: 'US Bureau of Labor Statistics CPI Average Price Data, butter (stick) per pound (series APU0000FS1101), via FRED, with USDA National Dairy Products Sales wholesale (listing - figures read from search results)',
+    url: 'https://fred.stlouisfed.org/series/APU0000FS1101',
+    fetched: '2026-08-18',
+    claim: 'BLS average retail butter (stick) $4.314 per pound through February 2026, against $4.408 in December 2025. USDA wholesale Grade AA averaged $1.64 per pound for the week ending 2026-07-18 - the retail-to-wholesale gap is large for this commodity.',
+  },
+  'firstaid-retail-2026': {
+    org: 'Walmart first-aid kit listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/browse/health-medicine/first-aid-kits/976760_2571007_9065854',
+    fetched: '2026-08-18',
+    claim: 'First-aid kits at Walmart 2026: a DMI 175-piece kit $13.99; Equate all-purpose 250-piece and Band-Aid 160-piece kits in the same tier; a Be Smart Get Prepared 10-person kit $39.99. A household party kit sits at the low end, a workplace or large-group kit at the high end.',
+  },
+  'outdoor-protect-2026': {
+    org: 'Walmart sunscreen, insect repellent and citronella listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/c/kp/sunscreen-bug-repellent',
+    fetched: '2026-08-18',
+    claim: 'Outdoor protection 2026: Coppertone Complete SPF 50 spray 5.5oz $5.74, with sunscreen ranging to $17.95-44 for multipacks and premium brands; Cutter citronella candles $7.99-9.99; PIC citronella wrist bands 6-pack $4.79; Avon Skin-So-Soft Bug Guard Plus (a combined repellent and sunscreen) $18.99.',
+  },
   'bls-saladveg-2026': {
     org: 'US Bureau of Labor Statistics CPI Average Price Data (romaine lettuce series APU0000FL2101) with USDA ERS food price outlook, via FRED and press coverage (listing - figures read from search results)',
     url: 'https://fred.stlouisfed.org/series/APU0000FL2101',

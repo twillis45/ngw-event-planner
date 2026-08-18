@@ -6,7 +6,7 @@
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **eleven** whose band the
+`unitCostRange`. Doing that across ~40 rows turned up **fourteen** whose band the
 evidence does not support. They are listed here rather than papered over with a
 citation, because a source that does not support the number is worse than no
 source: it makes an unverified figure look checked.
@@ -28,12 +28,16 @@ source: it makes an unverified figure look checked.
 | `teamRetreat:82` session snacks + coffee/tea + water | $1–4 /serving | coffee $0.10–0.30/cup, water $0.13–0.25, chips well under $1 a serving |
 | `dayParty:83` mixers (club soda, tonic, ginger beer, citrus) | $0.50–1.50 /serving | tonic 1L $1.99 and ginger ale 2L $2.99 are ~$0.25–0.36 per 4oz pour |
 
+| `gameNight:65` dips + salsa | $1–2 /small serving | queso 8oz $0.97, hummus 16oz $3.97 → $0.12–0.83 a 2oz serving |
+| `watchParty:64` chips + dips | $1.50–3 /serving | chips ~$0.23–0.41 a serving plus dip ~$0.25–0.50 |
+
 ### Bands BELOW their components
 
 | row | band | what the sources say |
 |---|---|---|
 | `bachelorParty:72` chips, pretzels & jerky | $1–3 /lb | chips $3.64–6.56/lb (BLS $6.559/16oz), pretzels $3.98/lb |
 | `birthday:67` chips, veggie tray & salad | $1–3 /lb | same chips figures |
+| `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity |
 
 ## The pattern
 
