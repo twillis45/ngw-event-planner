@@ -188,8 +188,16 @@ describe('the shape of the real backlog', () => {
     // which is correct and is what had left every cloth-napkin row unsourceable.
     // Checked before re-pinning, as the comment above asks: the citations are new
     // and real, the classifier did not change.
-    expect(byId).toEqual({ p_tableware: 1, p_napkins: 2 });
-    expect(reached.length).toBe(3);
+    // Sixth move, 2026-08-18. Same direction again: one more p_napkins line left
+    // the backlog when the crawfish and low-country cleanup kits were grounded
+    // against the heavy-duty bag and glove sources. Checked before re-pinning —
+    // the citations are new and real, the classifier did not change.
+    // The p_tableware line left too, in the same batch — the low-country boil
+    // per-guest set was grounded against the bulk plate and cleaning sources.
+    // What remains reachable through jollychef-disposables-2026 is a single
+    // p_napkins line, so the disposables seam is now genuinely worked out.
+    expect(byId).toEqual({ p_napkins: 1 });
+    expect(reached.length).toBe(1);
   });
 
   test('effort is estimated for reachable work and REFUSED for research', () => {

@@ -169,8 +169,17 @@ describe('against the REAL corpus', () => {
     // so the share moved because evidence was added. The denominator pin below
     // is what makes that statement checkable rather than asserted — it was added
     // at the first raise precisely so a later one could not be waved through.
+    // 2026-08-18, third raise. Checked the same way each time:
+    //
+    //   denominator  537 authored priced lines — unchanged all day
+    //   numerator    386 directly-cited, from 270 this morning
+    //
+    // The jump came from a parallel research wave: eleven subagents returned
+    // figures with URLs and every citation was verified against its band before
+    // being written. The denominator pin below is what makes "the share rose
+    // because evidence was added" a checkable statement rather than a claim.
     expect(inv.total).toBeGreaterThanOrEqual(537);
-    expect(share).toBeLessThan(70);
+    expect(share).toBeLessThan(80);
   });
 
   test('AMBIGUOUS reads 0 here, and that is a LIMIT of this counter, not a clean corpus', () => {

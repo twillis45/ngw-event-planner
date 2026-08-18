@@ -1,4 +1,28 @@
 {
   "projectId": "adc19911-559a-4743-bc81-00ed065ec8a6",
-  "shape": "package"
+  "shape": "package",
+  "pkg": "ngw-event-boss",
+  "globalName": "NGWDesign",
+  "buildCmd": "npm run design:build",
+  "srcDir": "src/design",
+  "cssEntry": "./dist-design/tokens.css",
+  "provider": {
+    "component": "EscalationProvider",
+    "props": {
+      "initialLevel": "nominal"
+    },
+    "inner": {
+      "component": "DensityProvider"
+    }
+  },
+  "overrides": {
+    "BottomSheet": {
+      "cardMode": "single",
+      "viewport": "420x560"
+    }
+  },
+  "guidelinesGlob": [
+    "docs/claude-skills/*.md",
+    "docs/claude-skills/ui-ux/*.md"
+  ]
 }

@@ -739,6 +739,114 @@ export const COST_SOURCES = {
   //   2. USDA AMS FEATURE PRICES ARE ADVERTISED, NOT SHELF. They are promotional
   //      by construction and sit below everyday shelf; sweet potatoes moved
   //      $0.78 to $1.05 in a single week.
+  // -- PARTY FAVORS, SASHES AND GAME PACKS (2026-08-18, parallel research) ----
+  // BLANK AND CUSTOM-PRINTED ARE KEPT APART throughout. Printing roughly doubles
+  // to triples the per-unit cost at similar volume, and a row that buys blank
+  // favors must not be priced from a personalised listing.
+  // -- AV, LIGHTING AND WAREHOUSE TRAYS (2026-08-18, parallel research) -------
+  // Two channel warnings carried from the research. Warehouse-versus-delivery
+  // markup on the IDENTICAL SKU ran 24% on cookies and 36% on jerky. And a
+  // "serves N" on a party platter is a retailer or journalist ESTIMATE, not a
+  // countable unit - one fetched article documents a platter sold as feeding 20
+  // that fed 12.
+  // -- HOST HOME SETUP (2026-08-18, parallel research) ------------------------
+  // The glove figures carry a 4x CHANNEL gap at the same count, and the
+  // contractor-bag figures separate true 3-mil from consumer "contractor" bags
+  // whose mil is not stated. Both distinctions are in the claims that use them.
+  // -- MEETING SUPPLIES, GAMES AND REVEAL ITEMS (2026-08-18) -----------------
+  // Split into its two publishers deliberately. Collapsing them into one entry
+  // made a row citing "both" look single-sourced to the >=2 policy, which is
+  // exactly the check that caught it — the evidence was always two publishers.
+  'meetingsupplies-quill-2026': {
+    org: 'Quill listings for easel pads, dry-erase markers, sticky notes and ballpoint pens (fetched)',
+    url: 'https://www.quill.com/easel-pads/cbs/9345.html',
+    fetched: '2026-08-18',
+    claim: 'Session supplies at Quill 2026, per unit after dividing the pack: ruled 27x34in easel pad $17.50 (2 a box at $34.99), plain $29.50, grid $30.00, sticky wall pads $19.75-33.50. Dry-erase markers $1.00-1.29 each in 36-packs ($36.09-46.39). Sticky notes $0.56-1.17 a pad (12-packs $9.99-13.99, a 32-pack $17.89). Ballpoint pens $0.15-0.19 each in 60-packs ($8.89-11.19), retractables $0.36-1.14.',
+  },
+  'meetingsupplies-target-2026': {
+    org: 'Target listings for easel pads, dry-erase markers, sticky notes and bulk pens (fetched)',
+    url: 'https://www.target.com/s?searchTerm=dry+erase+markers',
+    fetched: '2026-08-18',
+    claim: 'Session supplies at Target 2026: a single Post-it mini easel pad $18.69, sticky anchor-chart pads $49.99-74.99. Dry-erase markers $0.62-1.12 each (a 21-count $12.99, a 12-count $8.99, a 4-pack $4.49). Sticky notes $0.63-0.97 a pad (a 6-pad pack $5.79, a 4-pad $3.19), a single 90-sheet pad $0.89. Bulk pens $0.10-0.17 each (a 10-pack $0.99, a 240-pack $39.99).',
+  },
+  'games-retail-2026': {
+    org: 'Target and Discount School Supply board-game listings (both fetched)',
+    url: 'https://www.target.com/s?searchTerm=party+board+games',
+    fetched: '2026-08-18',
+    claim: 'Party and board games 2026: mass-retail titles cluster $19.99-24.99 at full price, with travel-size and filler games $7.69-9.99. The education channel runs $19.99-35.99 a title, and its multi-title sets work out to $23.25-29.83 each - a separate channel from a consumer shelf price.',
+  },
+  'reveal-items-2026': {
+    org: 'Party City and Target gender-reveal listings (both fetched)',
+    url: 'https://www.partycity.com/products/gender-reveal-confetti-party-poppers-12ct',
+    fetched: '2026-08-18',
+    claim: 'Gender-reveal items 2026: confetti party poppers $15.00 for 12 ($1.25 each) and $19.28 for 12 ($1.61 each); a single large confetti cannon $4.99-10.00. A balloon box was found at ONE publisher only ($23.69, plus a 4-count baby-box set at $10.00) and colour powder cannons at none that could be fetched, so neither is registered here.',
+  },
+  'homesetup-retail-2026': {
+    org: 'IKEA US and Target listings for entry trays, baskets, hooks, totes and buckets (all fetched)',
+    url: 'https://www.ikea.com/us/en/p/baggmuck-shoe-tray-indoor-outdoor-gray-60329711/',
+    fetched: '2026-08-18',
+    claim: 'Host entry goods 2026. SHOE TRAY: $3.49-4.99 entry tier, $7-10.50 standard, $19-27 heavy rubber. STORAGE BASKET: $4-10 plastic or textile utility, $15-35 woven natural fibre. OVER-DOOR HOOKS: a 2-6 hook rail $9-25, a wall-mounted rack $23-35, a single over-door hook from $1.99. SCENTED CANDLE: an 8-10oz lidded jar (20-40hr) $5-10 at both publishers, premium 22oz $14-20. REUSABLE TOTE: $0.89-0.99 basic large woven poly, $1.99-5.00 heavier or XL. 5-GALLON BUCKET: $5-6 consumer plastic, $12.99 food-grade with lid, $18-33 commercial HDPE or steel.',
+  },
+  'cleanup-heavyduty-2026': {
+    org: 'WebstaurantStore and Target listings for contractor bags and disposable gloves (both fetched)',
+    url: 'https://www.webstaurantstore.com/lavex-industrial-contractor-trash-bag-45-gallon-3-mil-40-x-46-low-density-can-liner-case/5014046XXH.html',
+    fetched: '2026-08-18',
+    claim: 'Heavy-duty cleanup 2026. CONTRACTOR BAGS at a true 3 mil: 45gal 50-count case $35.49 ($0.71 a bag), $30.99 at 2+ cases ($0.62); 42gal 50-count $40.39 ($0.81); 55-60gal 32-count $36.79 ($1.15). Consumer flap-tie bags sold as "contractor" are cheaper per bag but DO NOT STATE THEIR MIL and are not the same product. DISPOSABLE GLOVES, 100 a box: foodservice poly and vinyl $1.19-2.99 a box ($0.012-0.030 a glove) against consumer retail vinyl and nitrile $9.19-12.99 ($0.092-0.130) - roughly 4x for the same count, so the channel must be chosen deliberately.',
+  },
+  'av-cables-2026': {
+    org: 'Reviewed (USA Today Network), Tech Advisor and Harbor Freight listings for HDMI, adapters and cords (all fetched)',
+    url: 'https://www.reviewed.com/televisions/best-right-now/the-best-hdmi-cables',
+    fetched: '2026-08-18',
+    claim: 'AV purchase prices 2026. HDMI cable: single 6ft $9.99-16.99; an AmazonBasics 2-pack $8.98 (about $4.49 a cable). USB-C to HDMI adapter $8.59-17.00 single. OUTDOOR EXTENSION CORD: gauge drives the price at fixed length - 25ft 16-gauge $13.93 against 25ft 12-gauge $24.99-33.99; 50ft 12-gauge $42.78-44.99. Power strips: 6-8 outlet $19.11-25.99, 12-outlet $28.99-44.95.',
+  },
+  'speakers-lights-2026': {
+    org: 'The Gadgeteer, TechGearLab and Enbrighten listings for portable speakers and cafe string lights (all fetched)',
+    url: 'https://www.techgearlab.com/topics/home/best-string-lights',
+    fetched: '2026-08-18',
+    claim: 'Portable Bluetooth speakers 2026: Anker Soundcore 2 $29.99, JBL Go 4 $49.95, JBL Flip 5 $79.95, Marshall Emberton III $129.99 - two publishers agree exactly on three of these. STRING LIGHTS are priced per STRAND, not per foot: consumer 48ft strands $37-70 (15-16 bulbs), a commercial-grade 48ft 24-bulb strand $119.99, a 98ft 30-bulb strand $90. Bulb count varies at the same length and is a separate field.',
+  },
+  'ledcandles-thermometer-2026': {
+    org: 'Reviewed, Home of Strings, AntiFoodie and Smoking Meat Geeks (all fetched)',
+    url: 'https://www.reviewed.com/home-outdoors/best-right-now/best-flameless-candles',
+    fetched: '2026-08-18',
+    claim: 'LED flameless candles 2026 divide sharply by tier: commodity multipacks are $30.00 for 8 ($3.75 each) or $22.99-25.99 for 3 ($7.66-8.66 each), while a premium moving-flame pillar is $33.99 EACH - an order of magnitude apart, and not to be merged. Instant-read thermometers: budget $13-14, mid $35-40 (ThermoPop 2), premium $94-100 (Thermapen ONE), with two publishers converging on all three tiers.',
+  },
+  'warehouse-trays-2026': {
+    org: 'Chowhound and The Takeout on the Costco wing tray, with WarehouseRunner and Instacart on Kirkland pantry items (all fetched except WarehouseRunner, which 403d and is search-results)',
+    url: 'https://www.chowhound.com/2083221/chicken-wings-costco-party-tray-super-bowl/',
+    fetched: '2026-08-18',
+    claim: 'Warehouse party food 2026. WING TRAY: 8 pounds, about 70-72 pieces, about $47 - roughly $5.88/lb and $0.65-0.67 a wing; this is the one tray with a genuine published piece count, and two publishers agree on weight and price while differing on count. Kirkland cookies 24-count $9.99 warehouse ($0.42 each) against $12.43 on a delivery marketplace ($0.52) - a 24% channel markup on the identical SKU. Kirkland mixed nuts 2.5lb $15.99 ($6.40/lb). Kirkland steak strips 12oz $11.89 warehouse ($15.85/lb) against $16.16 delivered ($21.55/lb) - a 36% spread.',
+  },
+  'deli-trays-2026': {
+    org: 'Sporked survey of supermarket deli platters, with a Publix product listing (Sporked fetched; Publix search-results)',
+    url: 'https://sporked.com/article/game-day-snack-platters/',
+    fetched: '2026-08-18',
+    claim: 'Supermarket deli platters 2026, only where the retailer publishes a serving count: Sprouts sandwich tray $59.99 serves 12-16 ($3.75-5.00 a head); Whole Foods brioche slider platter $50 for 24 sandwiches ($2.08 each); Albertsons fruit tray $50 serves 30 ($1.67 a head); Publix dip platter $19.99 serves 8 and $27.99 serves 20. Kroger and Trader Joe listings publish weight or nothing, so no per-person figure is derivable for them. A "serves N" is a retailer ESTIMATE - one fetched article records a platter sold as feeding 20 that fed 12.',
+  },
+  'favors-blank-2026': {
+    org: 'Oriental Trading and Private Island Party bulk favor listings (both fetched)',
+    url: 'https://www.orientaltrading.com/party-supplies/apparel-and-accessories/novelty-jewelry/novelty-sunglasses/party-favors/adults-a1-551148+3594+2586-1.fltr',
+    fetched: '2026-08-18',
+    claim: 'Blank bulk favors 2026, per dozen unless noted. SUNGLASSES: $7.99-19.99 a dozen at Oriental Trading ($0.67-1.67 a pair, most styles under $1.21) and $18.00-30.00 a dozen at Private Island ($1.50-2.50); a 48-piece assortment $39.98. KOOZIES blank: $7.77-18.98 a dozen ($0.65-1.58 each), or $82.95-95.95 per 100 ($0.83-0.96 each). CANVAS TOTES blank: 10x12in medium $16.98-18.68 a dozen ($1.24-1.56 each), a 50-piece assortment $61.99 ($1.24 each). PERSONALISED equivalents run $99.99-119.99 per 48 ($2.08-2.50 each) - roughly double the blank rate.',
+  },
+  'tees-custom-2026': {
+    org: 'Rolled Up Tees screen-printing rate guide and ooShirts published pricing (both fetched)',
+    url: 'https://rolleduptees.com/blog/how-much-does-screen-printing-cost',
+    fetched: '2026-08-18',
+    claim: 'Custom screen-printed t-shirts at party quantities, one colour one location: a shop rate guide quotes $12-18 a shirt at 12-24 pieces and $9-14 at 25-48; a discount online printer quotes about $6.00 a shirt at 12, $5.50 at 24 and $5.00 at 50. THE TWO DISAGREE BY 2-3x AT THE SAME QUANTITY - a house-blank online printer against a shop rate - so this is a RANGE, not a figure to average. Additional ink colours add $0.75-1.50.',
+  },
+  'sash-retail-2026': {
+    org: 'The House of Bachelorette, Party City and Target sash listings (all fetched)',
+    url: 'https://www.thehouseofbachelorette.com/collections/sash-sets',
+    fetched: '2026-08-18',
+    claim: 'Party sashes 2026: a single bride sash $4.00-12.99 across three publishers (Target $4.00-9.99, Party City sash-and-pin 2-piece $12.00); headband-or-veil-plus-sash sets $4.95-16.50 for one wearer; a set of 6 bridesmaid sashes $14.99 ($2.50 each); a groom-to-be satin sash $4.95 (single publisher only).',
+  },
+  'gamepacks-retail-2026': {
+    org: 'The House of Bachelorette and Target party game-card listings (both fetched)',
+    url: 'https://www.thehouseofbachelorette.com/collections/bachelorette-party-games',
+    fetched: '2026-08-18',
+    claim: 'Party game packs 2026, priced PER PACK: scratch-a-dare 12 cards $4.75; a 20-dare checkbook $3.75; full retail game packs $7.75-12.00; a 4-game kit $6.50. Target lists 50 bridal-shower game cards at $12.59, i.e. $0.25 a card. Small PRIZES to go with them could not be established - only one publisher had concrete prize-assortment figures.',
+  },
   'bls-pasta-2026': {
     org: 'US Bureau of Labor Statistics CPI Average Price Data, spaghetti and macaroni per pound (series APU0000701322), read from the FRED CSV endpoint (the HTML pages return 403)',
     url: 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=APU0000701322',

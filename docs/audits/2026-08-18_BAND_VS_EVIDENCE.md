@@ -6,7 +6,7 @@
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **twenty-one** whose band the
+`unitCostRange`. Doing that across ~40 rows turned up **twenty-two** whose band the
 evidence does not support. They are listed here rather than papered over with a
 citation, because a source that does not support the number is worse than no
 source: it makes an unverified figure look checked.
@@ -34,6 +34,8 @@ source: it makes an unverified figure look checked.
 | `lowCountryBoil:80` heat gloves + Class B extinguisher + first-aid | $25–55 /kit | cheapest of each is $12.97 + $27.49 + $13.99 = **$54.45** — only the very top of the band buys all three |
 
 | `lowCountryBoil:83` newspaper / kraft paper for the table | $0.10–0.50 /ft | 40# white butcher paper is **$0.054–0.073/ft** (30" rolls, $37.49–72.95) — the band's floor is ~2× the evidence |
+
+| `surpriseProposal:80` LED / battery candles + lanterns | $1–3 /candle | the cheapest LED multipack is **$3.75 a candle** (8-pack at $30); 3-packs are $7.66–8.66 each |
 
 ### Bands BELOW their components
 
