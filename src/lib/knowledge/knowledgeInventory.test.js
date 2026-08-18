@@ -160,8 +160,17 @@ describe('against the REAL corpus', () => {
     // so this test can no longer be satisfied by quietly dropping lines out of
     // the count — the one failure mode the original ceiling was watching for and
     // could not actually detect.
+    // 2026-08-18, second raise the same day. Checked again, same way:
+    //
+    //   denominator  537 authored priced lines — STILL the full corpus
+    //   numerator    323 directly-cited, up from 270 earlier today
+    //
+    // Fifty-three rows gained a costProvenance in this session's sourcing run,
+    // so the share moved because evidence was added. The denominator pin below
+    // is what makes that statement checkable rather than asserted — it was added
+    // at the first raise precisely so a later one could not be waved through.
     expect(inv.total).toBeGreaterThanOrEqual(537);
-    expect(share).toBeLessThan(60);
+    expect(share).toBeLessThan(70);
   });
 
   test('AMBIGUOUS reads 0 here, and that is a LIMIT of this counter, not a clean corpus', () => {

@@ -596,6 +596,21 @@ export const COST_SOURCES = {
   // PRINTED tier - foam board, vinyl, corrugated yard signs - which is what the
   // conference, graduation and memory-display rows actually buy. Two tiers, two
   // sources, and the claims say which one a row is priced against.
+  // -- LAWN GAME RENTAL (registered 2026-08-18) -------------------------------
+  // Two providers, because a single rental company's rate card is a local price
+  // and the delivery minimums differ enough to matter for a small backyard order.
+  'lawngames-rental-2026': {
+    org: 'US yard and lawn game rental providers - per-game day rates (listing - figures read from search results)',
+    url: 'https://northsportrentals.com/product/cornhole-board-game-rentals/',
+    fetched: '2026-08-18',
+    claim: 'Cornhole rental 2026: $30 for the first day and $5 for each additional day. Additional games beyond a package (ladder toss, giant Jenga, giant Connect 4) are about $25 each.',
+  },
+  'lawngames-package-2026': {
+    org: 'Wonderfly Games lawn-game rental minimums (listing - figures read from search results)',
+    url: 'https://www.wonderflygames.com/lawn-games/',
+    fetched: '2026-08-18',
+    claim: 'Lawn-game rental order minimums 2026: $110 for pickup and $385 for delivery, with most customers meeting the delivery minimum by taking 3-4 individual games or a party-pack bundle. DELIVERY IS THE STEP CHANGE - a backyard host collecting two games pays the pickup tier, not the delivery one.',
+  },
   'signage-print-2026': {
     org: 'Go Big Signs, "Custom Sign Cost Guide: How Much Do Custom Signs Cost in 2026" (listing - figures read from search results)',
     url: 'https://gobigsigns.com/blogs/display-guides/custom-sign-cost-guide',
