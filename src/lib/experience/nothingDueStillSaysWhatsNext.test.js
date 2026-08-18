@@ -93,9 +93,18 @@ describe('when nothing is due, the board still says what is coming', () => {
     });
   });
 
-  test('AND IT REACHES THE SCREEN — the projection and the action both carry it', () => {
-    // A resolver nobody renders is not a fix. Driven through composeExperience,
-    // which is what the surface consumes.
+  test('AND IT REACHES THE PROJECTION — admin experience view, NOT the host board', () => {
+    // SCOPE, corrected 2026-08-18. This test was first written as "AND IT
+    // REACHES THE SCREEN", which overclaimed. `composeExperience` has exactly
+    // one consumer — src/admin/AdminConsole.jsx (the XIP-1 experience view).
+    // The HOST's decision board is `playbookDecisionBoard` in
+    // lib/playbooks/index.js, a different path with its own overdue/deferred
+    // handling, and it was measured healthy: from T-45 inward every playbook
+    // offers >= 3 open decisions and no board is ever empty.
+    //
+    // So the empty board this file closes was real IN THIS MODULE and is worth
+    // keeping — an admin projection that renders silence is still wrong — but
+    // it was never the host-facing gap the audit had recorded.
     const phase = 'planning';
     const pb = ALL_PLAYBOOKS.find((p) => resolveDecisions(p, ctx(phase)).length === 0
       && nextDecisionsToOpen(p, ctx(phase)).length > 0);
