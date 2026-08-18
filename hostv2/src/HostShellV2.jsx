@@ -1594,37 +1594,6 @@ export default function HostShellV2() {
     return Number.isFinite(n) && n > 0 && n < callsOrdered.length ? n : null;
   })();
   const callsFolded = callsFocus != null && !callsOpen;
-  // MOMENTUM (2026-08-18): log ONE session snapshot per calendar day per event, so
-  // computeMomentum (src/lib/playbooks/index.js) can read progress across sessions —
-  // the longitudinal Adaptivity axis named in the 08-17 rescore and, until now,
-  // entirely unwired (engine existed, no shell ever called it — same failure shape
-  // as the 07-16 hostExperience/hostCapacity gap this file already documents).
-  // Read-modify-write through the EXISTING patchProfile path (localStorage + cloud-
-  // synced studio_settings) — no new persistence layer. A ref (not the profile
-  // closure) guards against a same-render double-write when openCount still shifts
-  // after the day's entry is already logged.
-  const momentumLoggedRef = useRef(null); // `${eventId}:${YYYY-MM-DD}` once written this session
-  useEffect(() => {
-    if (!event || !event.id) return;
-    const todayKey = new Date().toISOString().slice(0, 10);
-    const guardKey = `${event.id}:${todayKey}`;
-    if (momentumLoggedRef.current === guardKey) return;
-    try {
-      const hist = Array.isArray(profile && profile.sessionHistory) ? profile.sessionHistory : [];
-      const alreadyLoggedToday = hist.some((h) => h && h.eventId === event.id
-        && typeof h.ts === 'number' && new Date(h.ts).toISOString().slice(0, 10) === todayKey);
-      momentumLoggedRef.current = guardKey; // set BEFORE the write so a re-render can't race it
-      if (alreadyLoggedToday) return;
-      const next = [...hist, { eventId: event.id, ts: Date.now(), openCount: callsOrdered.length }].slice(-8);
-      patchProfile({ sessionHistory: next });
-    } catch { /* best-effort — momentum is an enhancement, never a blocker */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event.id]);
-  const momentum = useMemo(() => {
-    try { return computeMomentum((profile && profile.sessionHistory) || null, callsOrdered.length, Date.now()); }
-    catch { return { trend: 'unknown', daysSinceLastSession: null, sessionCount: 0 }; }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile && profile.sessionHistory, callsOrdered.length]);
   const capacity = useMemo(() => { try { return playbookCapacity(event); } catch { return null; } }, [event]);
   // deriveHelperResponsibilities returns { helpers, responsibilities } — the
   // rows we render are the responsibilities (helperName/label/status); the
@@ -3220,6 +3189,44 @@ export default function HostShellV2() {
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  // MOMENTUM (2026-08-18): log ONE session snapshot per calendar day per event, so
+  // computeMomentum (src/lib/playbooks/index.js) can read progress across sessions —
+  // the longitudinal Adaptivity axis named in the 08-17 rescore and, until now,
+  // entirely unwired (engine existed, no shell ever called it — same failure shape
+  // as the 07-16 hostExperience/hostCapacity gap this file already documents).
+  // Read-modify-write through the EXISTING patchProfile path (localStorage + cloud-
+  // synced studio_settings) — no new persistence layer.
+  //
+  // GATED ON THE DECISIONS SHEET ACTUALLY BEING OPEN (fixed 2026-08-18, red-proofed
+  // by hostSignalsAreCollectable.spec.mjs's PREMISE test: a brand-new profile must
+  // read exactly `{}` after opening an UNRELATED settings panel — the first cut of
+  // this wire fired on every event mount regardless of what the host was looking
+  // at, so opening "You & settings" silently wrote sessionHistory and broke that
+  // invariant. A background auto-tracker the host never asked for and never sees
+  // is the wrong shape for this data; only write when they are genuinely looking
+  // at the calls-to-make list this session logs progress on.
+  const momentumLoggedRef = useRef(null); // `${eventId}:${YYYY-MM-DD}` once written this session
+  useEffect(() => {
+    if (!event || !event.id || !sheet || sheet.kind !== 'decisions') return;
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const guardKey = `${event.id}:${todayKey}`;
+    if (momentumLoggedRef.current === guardKey) return;
+    try {
+      const hist = Array.isArray(profile && profile.sessionHistory) ? profile.sessionHistory : [];
+      const alreadyLoggedToday = hist.some((h) => h && h.eventId === event.id
+        && typeof h.ts === 'number' && new Date(h.ts).toISOString().slice(0, 10) === todayKey);
+      momentumLoggedRef.current = guardKey; // set BEFORE the write so a re-render can't race it
+      if (alreadyLoggedToday) return;
+      const next = [...hist, { eventId: event.id, ts: Date.now(), openCount: callsOrdered.length }].slice(-8);
+      patchProfile({ sessionHistory: next });
+    } catch { /* best-effort — momentum is an enhancement, never a blocker */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id, sheet && sheet.kind]);
+  const momentum = useMemo(() => {
+    try { return computeMomentum((profile && profile.sessionHistory) || null, callsOrdered.length, Date.now()); }
+    catch { return { trend: 'unknown', daysSinceLastSession: null, sessionCount: 0 }; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile && profile.sessionHistory, callsOrdered.length]);
   // ── RESPONSIVE SURFACE MODE (Phase 5G-C1) ─────────────────────────────────
   // Exactly two surfaces opt out of the fixed phone stage at >=1280px: the
   // orientation command surface and the food sheet carrying the ice
