@@ -71,3 +71,8 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+
+# design-sync upload scratch (config.json is durable and tracked)
+.design-sync/b*.json
+.design-sync/batch*.json
+.design-sync/close-*.json
