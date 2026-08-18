@@ -826,10 +826,10 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
             vendor" back where the planner sees the vendor. */}
         {memoryOn() && (() => {
           const why = latestRationaleForSubject(event, vendor.id);
+          // UX_10 5b: was P.textTertiary -- decision rationale is the fact
+          // built to stop re-litigating a choice; it must not be the
+          // dimmest thing on the card.
           return why ? (
-            {/* UX_10 5b: was P.textTertiary -- decision rationale is the fact
-                built to stop re-litigating a choice; it must not be the
-                dimmest thing on the card. */}
             <div style={{ fontSize: type.size['xs'], color: P.textSecondary, marginTop: 2, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <span style={{ fontStyle: 'normal', fontWeight: 700, opacity: 0.7 }}>Rationale:</span> {why}
             </div>
@@ -840,9 +840,9 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
         {memoryOn() && (() => {
           const mem = vendorMemoryFor(allEvents, { bankId: vendor.bankId, name: vendor.name || vendor.vendor_name }, event && event.id);
           const line = summarizeVendorMemory(mem);
+          // UX_10 5b: was P.textTertiary -- past-event vendor memory, same
+          // reasoning as the rationale line above.
           return line ? (
-            {/* UX_10 5b: was P.textTertiary -- past-event vendor memory, same
-                reasoning as the rationale line above. */}
             <div style={{ fontSize: type.size['xs'], color: P.textSecondary, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <span style={{ fontWeight: 700, opacity: 0.7 }}>Memory:</span> {line}
             </div>
@@ -2506,14 +2506,14 @@ function DocumentsSection({ vendor, event, isOpen, onToggle, onAction = null }) 
                 ))}
               </div>
             )}
+            {/* UX_10 5b: was P.textTertiary -- contractual terms, the exact
+                sentence that matters when cancelling under time pressure. */}
             {extracted.cancellation_policy && (
-              {/* UX_10 5b: was P.textTertiary -- contractual terms, the exact
-                  sentence that matters when cancelling under time pressure. */}
               <div style={{ fontSize: type.size['xs'], color: P.textSecondary, lineHeight: 1.4 }}>{extracted.cancellation_policy}</div>
             )}
+            {/* UX_10 5b: was P.textTertiary -- dimming a disclaimer works
+                against whatever it exists to protect. */}
             {extracted.disclaimer && (
-              {/* UX_10 5b: was P.textTertiary -- dimming a disclaimer works
-                  against whatever it exists to protect. */}
               <div style={{ fontSize: type.size['xs'], color: P.textSecondary, fontStyle: 'italic', marginTop: space[3] }}>{extracted.disclaimer}</div>
             )}
           </div>
