@@ -774,6 +774,107 @@ export const COST_SOURCES = {
   // and ready-to-drink juice is $0.69-0.88 a serving against $0.60 for
   // reconstituted concentrate. The bands were pricing a format nothing in the
   // registry covered. They were right; the comparison was wrong.
+  // -- WEDDING AND PROPOSAL ITEMS (2026-08-18) -------------------------------
+  // A PLAIN BAND AND AN ENGAGEMENT RING ARE AN ORDER OF MAGNITUDE APART and are
+  // kept in separate claims. Blending them would put a centre stone into a row
+  // that buys two metal bands.
+  // -- SPICES, SEASONINGS AND CULTURAL DRINKS (2026-08-18) --------------------
+  // THE SPICE BLOCK RETIRED A MISMATCH. The seasoning rows were flagged because
+  // a 6oz Old Bay tin works out to $15.97/lb. At the sizes these rows buy - 24oz
+  // containers and 5-7.5lb bulk - the same product is $4.30-7.33/lb. The bands
+  // were right; the tin was the wrong evidence.
+  //
+  // TWO CAUTIONS ESTABLISHED HERE. Small containers carry a 1.9-3.1x per-pound
+  // premium over bulk for the identical commodity. And CASE PRICING IS NOT
+  // RELIABLY CHEAPER - one supplier's per-bottle case rate exceeded another's
+  // single-unit rate for Old Bay, garlic powder and black pepper alike.
+  'seasoning-bulk-2026': {
+    org: 'WebstaurantStore, Batavia Restaurant Supply and Win Depot listings for Old Bay and J.O. crab seasoning (all fetched)',
+    url: 'https://www.webstaurantstore.com/old-bay-24-oz-seasoning/102OB3218.html',
+    fetched: '2026-08-18',
+    claim: 'Crab seasoning 2026, container size stated. OLD BAY 24oz: $10.99 ($7.33/lb), $13.95 ($9.30/lb) and $10.00 ($6.67/lb) at three suppliers; a 7.5lb jug $39.49 ($5.27/lb); a 6-per-case of 24oz $99.95 ($11.10/lb - DEARER per pound than a single unit). J.O. NO. 2: a 5lb foodservice container $21.49 ($4.30/lb); consumer bottles 16oz $8.10 ($8.10/lb) and 32oz $11.80 ($5.90/lb), an 88% premium for the small bottle. Old Bay spans $5.27-11.10/lb for the identical product.',
+  },
+  'spicerack-bulk-2026': {
+    org: 'WebstaurantStore, FoodServiceDirect, All Bulk Foods and Oasis Supply listings for salt, pepper, garlic, paprika and blends (all fetched)',
+    url: 'https://www.webstaurantstore.com/regal-garlic-powder-5-lb/10200064.html',
+    fetched: '2026-08-18',
+    claim: 'Spice-rack staples 2026, per pound with container size. SALT: Morton iodized 25lb $11.49-22.99 across three publishers ($0.46-0.92/lb, a 2x spread at identical size). BLACK PEPPER is dearest: 18oz $19.99 ($17.77/lb). GARLIC POWDER: 5lb $27.99 ($5.60/lb) against 21oz $14.99 ($11.42/lb) and a case at $17.52/lb - 3.1x for one commodity. PAPRIKA: 5lb $20.99 ($4.20/lb) against a case at $12.59/lb - 3.0x. CAJUN BLEND 5lb $22.99 ($4.60/lb). BBQ RUB 27oz $22.49 ($13.33/lb); marinade 30oz $14.49 ($7.73/lb).',
+  },
+  'vinegar-hotsauce-oil-2026': {
+    org: 'WebstaurantStore and FoodServiceDirect listings for vinegar, hot sauce and oil (all fetched)',
+    url: 'https://www.webstaurantstore.com/heinz-1-gallon-apple-cider-vinegar/999HNZ8270.html',
+    fetched: '2026-08-18',
+    claim: 'Liquids by the gallon 2026. APPLE CIDER VINEGAR: Woebers $5.99 a gallon ($0.047/fl oz) against Heinz $19.11-23.49 ($0.149-0.184) - a 4x BRAND spread at identical size. HOT SAUCE: Franks RedHot 1 gallon $19.49 ($0.152/fl oz), $14.00 in a 4-case ($0.109). COOKING OIL: a 32oz bottle $6.97 ($0.218/fl oz) against bulk 35lb fry oil at $0.08-0.09/oz - a 2.4-2.7x premium for the small bottle.',
+  },
+  'sorrel-caribbean-2026': {
+    org: 'Caribbean Supercenter, Enerem African Foods and Pats Exotic Beverages - Caribbean, West African and Black-owned specialist retailers (all fetched except H-E-B, search-results)',
+    url: 'https://caribbeansupercenter.com/grace-tropical-rhythms-sorrel-ginger-16-fl-oz/',
+    fetched: '2026-08-18',
+    claim: 'Sorrel and hibiscus 2026, and FORM CHANGES THE COST BY AN ORDER OF MAGNITUDE. READY-TO-DRINK: a 16oz bottle $1.89-2.78, about $0.95-1.39 an 8oz serving; a craft Black-owned bottling $5.00. DRIED FLOWER for brewing: 3.5oz $1.79 ($8.18/lb) and 8oz $5.50 ($11.00/lb) - a batch takes roughly 1-2oz a gallon, so one 8oz bag covers several gallons and works out to cents a serving. Never price a dried-flower line from a ready-to-drink bottle.',
+  },
+  'aguasfrescas-2026': {
+    org: 'MexGrocer and MexMax Latin grocery listings, with Price Rite and The Fresh Grocer for powdered mixes (all fetched except two search-results figures)',
+    url: 'https://www.mexgrocer.com/products/klass-horchata-drink-mix-makes-8-6-liters',
+    fetched: '2026-08-18',
+    claim: 'Powdered drink mixes 2026. HORCHATA and TAMARINDO: a 14.1oz Klass packet is $6.95 retail and makes 8.6 litres, about 36 8oz servings - roughly $0.19 a serving; case pricing works out to $5.32-5.83 a unit and is wholesale, not shelf. KOOL-AID: an unsweetened packet is $0.35-0.47 and makes 2 quarts once the host adds a cup of sugar, about $0.04-0.06 a serving BEFORE sugar; a 19oz sugar-sweetened canister is $3.84-4.79 for about 18 servings, $0.21-0.27 each. The packet and the canister are not interchangeable - one needs sugar and the other does not.',
+  },
+  'greencoffee-2026': {
+    org: 'Coffee Bean Corral and Deans Beans green-coffee listings (both fetched)',
+    url: 'https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/African/Ethiopia.aspx',
+    fetched: '2026-08-18',
+    claim: 'GREEN (unroasted) Ethiopian coffee 2026: $8.85-12.75 a pound in 1lb quantities - organic Konga Yirgacheffe $9.25, Limu $8.85, Durato Bombe Sidamo $12.15, Worka Sakaro $12.75, and organic Yirgacheffe $9.85 at a second roaster. Green loses about 15-18% of its weight in roasting, so a pound of green yields about 0.83lb roasted and the per-roasted-pound cost runs above the green price.',
+  },
+  'zawadi-blackowned-2026': {
+    org: 'MahoganyBooks, Umoja Books, The Black Art Depot and Seven Symbols of Kwanzaa - all Black-owned retailers (all fetched)',
+    url: 'https://www.mahoganybooks.com/9780593474235',
+    fetched: '2026-08-18',
+    claim: 'Zawadi gifts 2026 from Black-owned retailers, in TWO distinct classes. PER-GUEST gifts: heritage backlist and children titles $7.00-25.00 (Miseducation of the Negro $7.50, A Black History Reader $22.50, Introduction to Black Studies $31.95 at the top), Kwanzaa card sets $4.99-10.49, a kids activity book $10.99, small textiles $14.75-20.00. A new-release hardcover is $32.00. HOST PURCHASES are a separate class and much dearer: kinara sets $64.99-89.99, a unity cup $18.95, taper candles $24.99 - a symbol of the observance rather than a per-guest gift.',
+  },
+  'sweetpotatopie-benne-2026': {
+    org: 'Sweet Teez Bakery (Black-owned, Boston), Not Just Cookies, Essentially Charleston and Lowcountry Olive Oil (all fetched)',
+    url: 'https://www.sweetteezbakery.com/order/sweet-potato-pie',
+    fetched: '2026-08-18',
+    claim: 'Karamu desserts 2026. SWEET POTATO PIE: a 9in pie $30.00 and a 10in $29.99, cutting about 8 slices (~$3.75 a serving); minis $5.50 each ($66 a dozen) to $11.99 for a 6in. BENNE WAFERS: a 15oz gift tin $19.50-22.00 at two Charleston retailers reselling the same Olde Colony Bakery product, so that spread is retailer markup rather than two products; about $1.30-1.47 an ounce.',
+  },
+  'weddingrings-survey-2026': {
+    org: 'The Knot 2026 Real Weddings Study (10,474 US couples) and Zola published ranges (both fetched)',
+    url: 'https://www.theknot.com/content/average-wedding-cost',
+    fetched: '2026-08-18',
+    claim: 'Wedding jewellery 2026. PLAIN METAL BANDS, no stones: $150-700 per ring, with mens bands $400-1,000 and womens $600-1,800. WEDDING RINGS as a survey line: $3,000 (The Knot; the page does not state whether that is a pair). ENGAGEMENT RINGS WITH A CENTRE STONE are a different category entirely at a $4,600 survey average, or about $5,200 per an uncited industry figure - never to be blended with a band price.',
+  },
+  'proposal-items-2026': {
+    org: 'The Box Sock and Soulmatebox slim ring-box listings (both fetched)',
+    url: 'https://soulmatebox.com/',
+    fetched: '2026-08-18',
+    claim: 'Slim pocket proposal ring boxes 2026: $12.99 for super-slim black, cream, grey and blue models, $15.99 for a discreet slim black, $17.99 for a slim pocket grey. All priced each.',
+  },
+  // Two publishers, kept as two entries. A row citing "the petal research" as one
+  // id reads as single-sourced to the >=2 policy — the third time that gate has
+  // caught me collapsing publishers into a single registry line.
+  'rosepetals-flyboy-2026': {
+    org: 'Flyboy Naturals freeze-dried petal listings (fetched)',
+    url: 'https://flyboynaturals.com/bridal-white-ivory-rose-petals-30-cups-preserved-freeze-dried-rose-petals-wedding-petals-from-flyboy-naturals/',
+    fetched: '2026-08-18',
+    claim: 'Flyboy Naturals 2026: bridal white/ivory freeze-dried petals, 30 cups (about 1,350 petals, ~45 a cup), $86.95; a one-cup sample $8.95; proposal pink $39.75 and blush ivory $42.25 with quantities not stated on the listing.',
+  },
+  'rosepetals-garden-2026': {
+    org: 'Petal Garden real freeze-dried and silk petal listings (fetched)',
+    url: 'https://store.petalgarden.com/products/rose-petals-real-bulk-budget-petals',
+    fetched: '2026-08-18',
+    claim: 'Petals 2026, quantity stated first. REAL freeze-dried: a one-cup sample $8.95; 5 cups $22.95; 30 cups $86.95 (about 1,350 petals, ~45 a cup); 100 cups budget $69.95. The seller guide puts coverage at half to one cup a guest and 2-4 cups a table. FAUX silk: $17.99-24.99 per 1,000-petal value pack, or $30.99 per 1,000 at a craft retailer. Faux is far cheaper per petal than real.',
+  },
+  'marquee-letters-2026': {
+    org: 'TableclothsFactory and BacklitLEDsign for purchase; Lustre Event Rentals and ProLighting for rental (all fetched)',
+    url: 'https://www.lustrerentals.com/marry-me-letter-rentals-in-los-angeles',
+    fetched: '2026-08-18',
+    claim: 'Marquee letters 2026, PRICED PER LETTER. PURCHASE: a 4ft pre-cut foam-board letter with battery LEDs $25.29; a metal industrial 4ft letter from $29.00 plus a separately sold transformer. RENTAL: $59-60 a character including delivery, setup and pickup, with weighted bases $10 each. A seven-character MARRY ME therefore runs about $177 to buy in foam or $413-420 to rent - both well above a single-sign price.',
+  },
+  'weddingstationery-2026': {
+    org: 'Party City, Barnes & Noble and Oriental Trading listings for vow books and guest books (all fetched)',
+    url: 'https://www.partycity.com/wedding-vow-books-2ct-992862.html',
+    fetched: '2026-08-18',
+    claim: 'Wedding keepsake stationery 2026. VOW BOOKS: $5.00 a 2-book set at a party retailer ($2.50 each) and $12.99 a set at a bookseller ($6.50 each). GUEST BOOK WITH PEN: $6.37 on clearance for a book-and-pen set, $16.99 personalised with a wood cover, $21.99-27.99 with a table sign; a book alone $5.57-14.99. A MARRIAGE LICENCE HOLDER could not be established - one fetched retailer at $35.00 and one marketplace listing of a different product form at $14.95 - so it is deliberately not priced here.',
+  },
   'beverage-singleserve-2026': {
     org: 'Instacart storefront listings with Walgreens (Instacart fetched; Walgreens search-results after a 403)',
     url: 'https://www.instacart.com/products/16706881-coke-classic-soda-soft-drink-20-oza',

@@ -6,7 +6,7 @@
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **twenty-five**, of which **five have since been retired**, whose band the
+`unitCostRange`. Doing that across ~40 rows turned up **twenty-five**, of which **six have since been retired**, whose band the
 evidence does not support. They are listed here rather than papered over with a
 citation, because a source that does not support the number is worse than no
 source: it makes an unverified figure look checked.
@@ -41,14 +41,25 @@ source: it makes an unverified figure look checked.
 | `bridalShower:73` juice for mimosas | $3–6 /gal | 100% OJ is **$10.99–14.09 a gallon**; only a juice *drink* (SunnyD, $3.68–4.79) fits the band, and mimosas take real juice |
 | `graduation:66` BBQ or taco bar, buffet trays | $4–10 /lb | smoked BBQ by the pound is **$17.99–34.49/lb** cooked; taco-bar catering is $13–17.99 **per person**, not per pound |
 | `fishFry:72` cornmeal / breading + flour | $0.50–1.50 /lb | cornmeal is **$2.06–2.99/lb** (same SKU at three retailers); only the flour half ($0.543/lb BLS) fits |
-| `crabFeast:205` Old Bay (or J.O.) seasoning | $4–9 /lb | Old Bay 6oz is $5.19–5.99, i.e. **$13.84–15.97/lb** — the whole band is below it |
 | `kwanzaaGathering:84` kinara (candle holder) | $15–50 /holder | specialist retailers price a **bare kinara at $64.99–72.61** and celebration sets $79.99–104 — the cheapest kinara found exceeds the band's ceiling |
 | `ethiopianCoffeeCeremony:79` berbere + niter kibbeh | $10–22 /kit | berbere $8.29–14.99 **plus** niter kibbeh $15.99–16.00 = $24–31 for the pair |
 | `bachelorParty:79` cups, koozies, napkins, plates, opener | $0.30–1 /set | a blank neoprene koozie alone is **$0.83–0.96** at 100-count, before cups, plates or the opener |
 | `crawfishBoil:75` crab/crawfish boil seasoning | $1.50–4 /lb | Zatarain's 3oz $1.97 (~$10.50/lb), 4oz 4-pack $8.84 (~$8.80/lb); even a 50lb bulk case at $335 is **$6.70/lb** |
 | `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity |
 
-## RETIRED — five findings were mine, not the corpus's
+## RETIRED — six findings were mine, not the corpus's
+
+**`crabFeast:205` Old Bay / J.O. seasoning, $4–9/lb — RESOLVED, band is correct.**
+
+Recorded here against a 6oz supermarket tin at $15.97/lb. That is not the size a
+crab feast buys. At the sizes it does: Old Bay 24oz is **$6.67–9.30/lb**, a
+7.5lb jug **$5.27/lb**, and J.O. No. 2 in a 5lb container **$4.30/lb**. The band
+brackets those exactly.
+
+The small-container premium is 1.9–3.1× across every spice measured, which is
+the whole reason a per-pound band written from a tin looks wrong.
+
+
 
 **Four drinks rows and one buffet row have been RESOLVED. Their bands were
 right; my comparison was wrong.**
