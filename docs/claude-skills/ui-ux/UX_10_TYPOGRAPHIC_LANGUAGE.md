@@ -116,23 +116,27 @@ If a size cannot fill in X/Y/Z, its uses are a content problem, not a type
 problem — the fix is removing content, not defending the size. Every use of
 `2xs` and `xs` gets audited against this sentence before either is retained.
 
-**This connects to an unresolved product decision, not a token question:**
+**Decided 2026-08-18: NGW's mobile surface is an operating interface, not a
+reading interface.**
 
-> **Wroblewski's read:** the 9–13px band (89% of all usage) exists because
-> nothing was hidden — progressive disclosure was never actually done on
-> mobile. The fix is to cut and defer content until the small sizes aren't
-> needed.
->
-> **Density archetype's read:** density is not removable here. An on-site
-> planner needs many values visible at once; hiding them behind taps is worse
-> than small type when someone has forty seconds in a ballroom. The fix is a
-> narrower, *defended* small end — not fewer sizes, but every remaining one
-> passing the X/Y/Z sentence.
+The board split on this — Wroblewski read the 9–13px band as evidence that
+progressive disclosure was never done, and would cut content until small
+sizes aren't needed; the density archetype read density as legitimate and
+would defend a narrower, audited floor instead. The product's own
+architecture settles it: `DensityContext` ships a `crisis` mode that actively
+*hides* content to protect the active surface, `EscalationContext`
+restructures the interface under pressure, and the product's own standard
+states the target directly — *"a premium event operations command system, not
+a generic SaaS dashboard, spreadsheet skin, or task manager"* (root
+`CLAUDE.md`). That is not incidental complexity a content cut would remove;
+it is the product's thesis. A command system is scanned, not read.
 
-**This document does not resolve that disagreement — it is a scope decision
-about whether NGW's on-site mobile surface is a reading interface or an
-operating interface, and it needs to be made deliberately before §5's audit
-can run.**
+**This is not a blank check for small type.** Density being legitimate does
+not mean every current use of it is earned — it means the standard is the
+X/Y/Z sentence below, not "cut until you don't need it." Any `2xs`/`xs` use
+that can't fill in X/Y/Z is still wrong; it's simply wrong for being
+unjustified density, not for being density at all. The audit below is now
+unblocked and runs against that standard.
 
 ## 6. Platform is part of the specification, not an assumption
 
@@ -196,8 +200,8 @@ that number the first time. This document does not ship as doctrine without:
    Figma (structural).
 2. §4 — measure real leading/measure pairings from rendered screens; fill the
    `*pending §4*` cells.
-3. §5 — **product decision**: is the mobile on-site surface reading or
-   operating? Then run the X/Y/Z audit on `2xs`/`xs`.
+3. §5 — **decided: operating interface.** Run the X/Y/Z audit on `2xs`/`xs`
+   against that standard — every use justified or cut, no blanket pass.
 4. §6 — automated dual-platform render verification.
 5. §7 — actual 200%-zoom + text-spacing-override render test.
 6. §8 — land the lint rule before migrating literals, so the 806 doesn't
