@@ -202,7 +202,7 @@ function finalPaymentQuestion(vendor) {
 // ── Category templates ──────────────────────────────────────────────────────
 const TEMPLATES = {
   caterer(vendor, event) {
-    const confirmedGuests = event && event.guests ? event.guests.filter(g => g.rsvp === 'Yes').length : 0;
+    const confirmedGuests = Array.isArray(event && event.guests) ? event.guests.filter(g => g && g.rsvp === 'Yes').length : 0;
     const hasCatererCount = event && event.catererCount !== undefined && event.catererCount !== null;
     const countMatches = hasCatererCount && event.catererCount === confirmedGuests;
     return [
@@ -290,7 +290,7 @@ const TEMPLATES = {
   },
 
   bar(vendor, event) {
-    const confirmedGuests = event && event.guests ? event.guests.filter(g => g.rsvp === 'Yes').length : 0;
+    const confirmedGuests = Array.isArray(event && event.guests) ? event.guests.filter(g => g && g.rsvp === 'Yes').length : 0;
     return [
       { key: 'liquorLicense', question: 'Liquor license / permit on file?', status: 'unknown', value: 'Not tracked yet', consequence: 'No permit on file is the fastest way to get the bar shut down on the day.' },
       { key: 'liquorLiability', question: 'Host liquor liability insurance confirmed?', status: vendor.insuranceStatus ? 'answered' : 'unknown', value: vendor.insuranceStatus || 'Not tracked yet', consequence: vendor.insuranceStatus ? undefined : 'A liability gap leaves the client legally exposed for over-service.' },
@@ -395,7 +395,7 @@ const TEMPLATES = {
   },
 
   cake(vendor, event) {
-    const confirmedGuests = event && event.guests ? event.guests.filter(g => g.rsvp === 'Yes').length : 0;
+    const confirmedGuests = Array.isArray(event && event.guests) ? event.guests.filter(g => g && g.rsvp === 'Yes').length : 0;
     return [
       { key: 'design', question: 'Flavor & design finalized?', status: 'unknown', value: 'Not tracked yet' },
       { key: 'servings', question: 'Serving count confirmed?', status: confirmedGuests > 0 ? 'answered' : 'unknown', value: confirmedGuests > 0 ? `${confirmedGuests} guests` : 'Not tracked yet', consequence: 'Servings must track the final guest count or you run short.' },
@@ -524,7 +524,7 @@ const TEMPLATES = {
   },
 
   cart(vendor, event) {
-    const confirmedGuests = event && event.guests ? event.guests.filter(g => g.rsvp === 'Yes').length : 0;
+    const confirmedGuests = Array.isArray(event && event.guests) ? event.guests.filter(g => g && g.rsvp === 'Yes').length : 0;
     return [
       { key: 'menu', question: 'Menu / offerings confirmed?', status: 'unknown', value: 'Not tracked yet' },
       { key: 'utilities', question: 'Power / water needs confirmed?', status: 'unknown', value: 'Not tracked yet', consequence: 'A cart without power or water cannot serve.' },
@@ -536,7 +536,7 @@ const TEMPLATES = {
   },
 
   foodtruck(vendor, event) {
-    const confirmedGuests = event && event.guests ? event.guests.filter(g => g.rsvp === 'Yes').length : 0;
+    const confirmedGuests = Array.isArray(event && event.guests) ? event.guests.filter(g => g && g.rsvp === 'Yes').length : 0;
     return [
       { key: 'menu', question: 'Menu & service style confirmed?', status: 'unknown', value: 'Not tracked yet' },
       { key: 'permits', question: 'Permits / health-dept license on file?', status: 'unknown', value: 'Not tracked yet', consequence: 'No permit means the truck can be turned away on the day.' },

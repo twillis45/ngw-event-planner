@@ -304,7 +304,12 @@ function daysToEvent(eventDate, asOf) {
 export function guestCountResolved(event) {
   const n = Number(event.guestCount) || Number(event.guestEstimate) || (event.guests || []).length || 0;
   if (n <= 0) return { resolved: false, pending: 0, reason: 'no-count' };
-  const list = event.guests || [];
+  // `guests` is polymorphic here — lodgingIntel reads it AS a count
+  // (Number(event.guestCount || event.guests)) — so a stored event can hold a
+  // number. `pending` filters before the length check below, so an unguarded
+  // read throws and takes the whole board with it. Same coercion the rest of
+  // this file already uses (lines 351, 442, 805).
+  const list = Array.isArray(event.guests) ? event.guests : [];
   // Headcount-only events (a cookout/BBQ you BUDGET for, not an RSVP list): an
   // explicit expected count IS the final number — there's no list to be "pending".
   // The host opted out of a roster, so the count decision is satisfied.
@@ -493,7 +498,7 @@ function dietaryResolved(event) {
   // Headcount / locked-count mode: there's no per-guest list to collect from, so the
   // host just NOTES the allergies they know of (free-text) instead of chasing the list.
   if (event.guestMode === 'count') return { resolved: false, reason: 'headcount' };
-  const list = event.guests || [];
+  const list = Array.isArray(event.guests) ? event.guests : [];
   if (list.length === 0) return { resolved: true, reason: 'no-list' }; // nothing to collect from — don't block
   const recorded = list.some((g) => {
     const needs = String((g && g.needs) || '').trim();
