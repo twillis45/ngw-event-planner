@@ -205,8 +205,25 @@ let dupes = 0;
 for (const { f } of edits) {
   const src = await readFile(path.join(DIR, f), 'utf8');
   for (const h of scanFile(src).hits) {
+    // OWNED keys only — depth 0 relative to this literal. Counting every
+    // `provenance:` inside the slice counts the NESTED ones too, and an item
+    // that carries `alternatives: [{...}, {...}]` legitimately has one per
+    // alternative PLUS its own. p_chicken in juneteenthCookout has exactly that
+    // shape — two written into its alternatives and an authored
+    // `verificationStatus: 'cited'` of its own — so the old count returned 3 and
+    // reported a duplicate that was not there. It blocked the whole labelling
+    // pass on a false positive; the write was correct all along.
     const body = src.slice(h.open, h.close + 1);
-    const n = (body.match(/(^|[{,]\s*)provenance:/g) || []).length;
+    let depth = 0, str = null, n = 0;
+    for (let k = 0; k < body.length; k++) {
+      const c = body[k];
+      if (str) { if (c === '\\') { k++; continue; } if (c === str) str = null; continue; }
+      if (c === "'" || c === '"' || c === '`') { str = c; continue; }
+      if (c === '{') { depth++; continue; }
+      if (c === '}') { depth--; continue; }
+      // depth 1 == directly inside THIS literal's own braces
+      if (depth === 1 && body.startsWith('provenance:', k)) n++;
+    }
     if (n > 1) { console.error(`  DUPLICATE provenance in ${f} at ${h.open}`); dupes++; }
   }
 }

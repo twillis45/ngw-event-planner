@@ -55,7 +55,7 @@ for (const f of files) {
   }
 }
 
-let priced = 0, labeled = 0, unlabeled = 0, inAlt = 0;
+let priced = 0, labeled = 0, unlabeled = 0, inAlt = 0, inheritedFromParent = 0;
 const byStatus = {};
 const worst = [];
 for (const f of files) {
@@ -79,10 +79,33 @@ for (const f of files) {
       // only `.verificationStatus` called those unlabelled — a blind spot this
       // file SHARED with the codemod, which is how they agreed and were both
       // wrong. Agreement between two detectors is not correctness.
-      const prov = node.provenance;
+      // TWO SLOTS, NOT ONE (2026-08-17). The corpus migrated cost claims to
+      // `costProvenance` and DELIBERATELY VACATED `provenance` on those items —
+      // `costProvenanceSlot.test.js` asserts the slot "is genuinely vacated".
+      // Reading only `provenance` therefore counted 89 fully-labelled items as
+      // unlabelled and put the headline at 82.8% when it is 99.3%.
+      //
+      // That undercount was not academic: it drove a plan to "label the 93",
+      // and a codemod run against it wrote `provenance` back into 89 vacated
+      // slots. jest caught it; this instrument had reported the corpus needed
+      // exactly that work.
+      const prov = node.provenance || node.costProvenance;
       const st = typeof prov === 'string' ? prov + ' (string form)'
         : (prov && prov.verificationStatus) || (prov ? '(object, no status)' : null);
+      // AN ALTERNATIVE INHERITS ITS PARENT (2026-08-17). `alternatives[]` entries
+      // are swap suggestions on an already-labelled line — "Pork shoulder" under
+      // p_ribs, whose own provenance is `cited` with two sources. Not one of the
+      // 541 priced items in this corpus labels an alternative, and
+      // `costProvenanceSlot.test.js` counts provenance keys PER LINE, so adding
+      // one to a nested alternative reads as the parent declaring it three
+      // times. Labelling them was tried and reverted for exactly that reason.
+      //
+      // They are still counted as priced (the `of those in alternatives` line
+      // above reports them) — they simply do not need a label of their own, and
+      // reporting them as "need labelling" sent a codemod at a corpus that was
+      // already complete.
       if (st) { labeled++; byStatus[st] = (byStatus[st] || 0) + 1; }
+      else if (underAlternatives) { inheritedFromParent++; }
       else { unlabeled++; u++; }
     }
     for (const [k, v] of Object.entries(node)) walk(v, underAlternatives || k === 'alternatives');
@@ -94,6 +117,7 @@ console.log(`\nTRUE CENSUS (objects, not text)`);
 console.log(`  priced items          ${priced}`);
 console.log(`  of those in alternatives ${inAlt}`);
 console.log(`  WITH provenance.verificationStatus ${labeled}  ${JSON.stringify(byStatus)}`);
+console.log(`  alternatives inheriting a labelled parent ${inheritedFromParent}`);
 console.log(`  WITHOUT (need labelling)           ${unlabeled}`);
 console.log(`\nworst files:`);
 worst.sort((a, b) => b.u - a.u).slice(0, 10).forEach((r) => console.log(`  ${String(r.u).padStart(3)} unlabeled / ${String(r.p).padStart(3)} priced   ${r.f}`));
