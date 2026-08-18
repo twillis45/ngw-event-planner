@@ -36,7 +36,31 @@ Primitives: **16 match, 18 drift.**
 
 ---
 
-## 1. Colour — code is ahead, Figma holds the "was" values
+## 1. Colour — code is ahead, Figma holds the "was" values — **RESOLVED 2026-08-18**
+
+> **Fixed.** 25 values written code → Figma: 18 primitives (`matte` 100-400,
+> `green` 200-500, `red` 200-500, `amber` 300-500) and 7 semantic
+> (`border/default`, `border/strong`, `text/primary`, `status/confirmed`,
+> `status/risk`, `status/warning`, `status/risk-bright`).
+>
+> Re-read from Figma and re-diffed independently: **34 primitives match, 0
+> drift** (was 16/18). Aliased semantic variables followed automatically.
+>
+> **Studio Matte mode only.** Light mode was left untouched — `tokens.js`
+> omits light deliberately ("a deferred parity target … intentionally omitted
+> to avoid faking it"), so code has no authoritative light values for this
+> layer and writing them would have been invention.
+>
+> **Not changed, flagged instead:** `border/subtle` is an *alias* in Figma
+> (→ `matte/250`) where code sets a direct value from `carbonNeutral`. Making
+> those agree means restructuring Figma's aliasing, which is a different
+> decision from a value update.
+>
+> Also unmapped: code's `red/bright` (`#ff3525`) has no primitive counterpart
+> in Figma — the bright red lives only as the semantic `status/risk-bright`,
+> which now carries that value.
+
+The original finding, for the record:
 
 `green` and `amber` are the clearest proof of direction. `tokens.js` documents
 its own history, and the value it names as superseded is precisely what Figma
@@ -194,9 +218,8 @@ code missed.
 
 1. ~~**Fix spacing first.**~~ **DONE 2026-08-18** — Figma renamed to match code,
    two missing values added, 12/12 verified. See §2.
-2. **Push colour code → Figma.** 18 primitive values, all deliberate code
-   decisions. `figma:figma-generate-library` can write variables; the direction
-   is code → Figma, never the reverse, or Sprint 49 and 60 get undone.
+2. ~~**Push colour code → Figma.**~~ **DONE 2026-08-18** — 25 values written,
+   34/34 primitives verified matching. See §1.
 3. **Decide the type vocabulary.** Semantic (Figma) and t-shirt (code) are both
    defensible; running both is not. This is a naming decision, not a drift fix.
 4. **Update `family/sans` in Figma** to the real stack, or accept that Figma
