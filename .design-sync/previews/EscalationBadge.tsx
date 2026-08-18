@@ -36,11 +36,13 @@ export const WithoutDot = () => (
         <EscalationBadge status="confirmed">CONFIRMED</EscalationBadge>
         <EscalationBadge status="warning">DUE FRIDAY</EscalationBadge>
         <EscalationBadge status="risk">COI MISSING</EscalationBadge>
+        <EscalationBadge status="emergency">VENUE DOWN</EscalationBadge>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <EscalationBadge status="confirmed" dot={false}>CONFIRMED</EscalationBadge>
         <EscalationBadge status="warning" dot={false}>DUE FRIDAY</EscalationBadge>
         <EscalationBadge status="risk" dot={false}>COI MISSING</EscalationBadge>
+        <EscalationBadge status="emergency" dot={false}>VENUE DOWN</EscalationBadge>
       </div>
     </div>
   </Canvas>

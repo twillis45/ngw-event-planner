@@ -233,7 +233,15 @@ export const motion = {
 // ── Elevation (restrained grounding shadows by depth plane) ─────────────
 export const elevation = {
   none:        'none',
-  base:        '0 1px 3px rgba(0,0,0,0.30)',
+  // A black drop shadow on a carbon canvas is very nearly nothing: measured at
+  // a 4-5/255 peak delta over #141518, which put the density recession below
+  // the visual threshold — `crisis` removed this shadow and the card looked
+  // unchanged. The fix is the one `card` below already uses: a 1px inset top
+  // highlight. Light works on dark where shadow does not. At 0.07 the top edge
+  // lifts ~16/255 — legible, still restrained, and a tier under `card`'s 0.09.
+  // Sole consumer is surfacePriority.js's `card` role, so this moves exactly
+  // the surface whose recession it is meant to express.
+  base:        'inset 0 1px 0 0 rgba(255,255,255,0.07), 0 1px 3px rgba(0,0,0,0.30)',
   elevated:    '0 2px 6px rgba(0,0,0,0.34)',
   active:      '0 3px 10px rgba(0,0,0,0.38)',
   escalation:  '0 3px 12px rgba(0,0,0,0.42)',

@@ -40,7 +40,13 @@ for (const r of RULES) {
   // keys inside multi-line maps (SEV's bar/label/bg). Depth handles both.
   const real = new Set();
   {
-    const body = block[1];
+    // Strip comments first. Prose in a `//` line routinely contains a colon
+    // ("Measured 5.52:1"), which the extractor below would otherwise read as a
+    // key — this guard failed exactly that way when a rationale comment was
+    // added inside the STATUS map.
+    const body = block[1]
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
     let depth = 0, atKey = true, buf = '';
     for (let i = 0; i < body.length; i++) {
       const ch = body[i];
