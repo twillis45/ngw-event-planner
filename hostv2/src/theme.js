@@ -11,6 +11,7 @@
 // and motion only; do not mirror or move the type tokens into JS.
 import { dark, carbonNeutral } from '@app/theme/palette';
 import { durations, easings } from '@app/design/motion';
+import { color as dsColor } from '@app/design/tokens';
 
 // Alpha helper — tints derive from doctrine anchors, never new hues.
 const tint = (hex, a) => {
@@ -92,7 +93,7 @@ export function applyStudioMatte() {
   // lighter steel that clears 4.5 on the tint — set as a literal (not the
   // palette base) on purpose, so the shared --sheen material detail, which also
   // derives from steelBlueMuted, is left untouched (per-screen audit + brand-lock).
-  set('--steel-soft', '#8AA3B0');                 // text-legible steel on carbon
+  set('--steel-soft', dsColor.text.onTint);       // text-legible steel on carbon (promoted 2026-08-18)
   set('--steel-tint', tint(dark.steelBlue, 0.16));
   // Audit S1: steel was doing triple duty — identity, selection, AND the
   // "in progress" status tier (booked / renting / vendor-mid …), so a host
@@ -101,8 +102,11 @@ export function applyStudioMatte() {
   // LAVENDER (not a warm slate — that read too close to the steel blue): clearly
   // violet, distinct from steel/green/amber/red/grey, and matte enough for the
   // palette. Clears 4.5:1 on card (6.9), tint-over-card (5.4), and band (4.9).
-  set('--progress', '#B3A0CC');
-  set('--progress-tint', tint('#B3A0CC', 0.12));
+  // Promoted to the design system 2026-08-18 as color.status.inProgress —
+  // read from there rather than re-declaring the literal here, so the tier has
+  // one source. The reasoning above stays: it is why the token exists.
+  set('--progress', dsColor.status.inProgress);
+  set('--progress-tint', tint(dsColor.status.inProgress, 0.12));
   // Overhead-light material response (brand direction, splash work 2026-07-11):
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the .app background radial.

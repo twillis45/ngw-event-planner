@@ -58,7 +58,10 @@ export const TOKENS = {
   // does not invert. Only carbon surfaces invert for Light mode.
   steelBlue:               { dark: '#4E6877', mid: '#4E6877', light: '#4E6877' },
   steelBlueDark:           { dark: '#3F5B6A', mid: '#3F5B6A', light: '#3F5B6A' },
-  steelBlueMuted:          { dark: '#6F8794', mid: '#6F8794', light: '#6F8794' },
+  // light darkened 2026-08-18: #6F8794 measured 3.77:1 on white as text (fails
+  // AA). Dark/mid keep the identity value — steel is identity, and on carbon it
+  // clears at 4.86:1. Only the light mode's own value moved.
+  steelBlueMuted:          { dark: '#6F8794', mid: '#6F8794', light: '#627884' },
   steelBlueGradientTop:    { dark: '#4E6877', mid: '#4E6877', light: '#4E6877' },
   steelBlueGradientBottom: { dark: '#3F5B6A', mid: '#3F5B6A', light: '#3F5B6A' },
 
@@ -69,8 +72,16 @@ export const TOKENS = {
   // red for the one solid-fill use (the alert banner, white text on it).
   dangerRed:    { dark: '#F27A70', mid: '#F27A70', light: '#c03838' },
   dangerSolid:  { dark: '#E84036', mid: '#E84036', light: '#c03838' },
-  amber:        { dark: '#ECA13F', mid: '#ECA13F', light: '#ef962e' },
-  successGreen: { dark: '#4FAE7A', mid: '#4FAE7A', light: '#298c52' },
+  // Light-mode AA pass 2026-08-18. Light is dormant (ACTIVE_MODE is 'dark' and
+  // no caller requests light), so these values were never rendered and never
+  // measured. Against the light canvas (#ffffff) they failed as text:
+  //   amber        #ef962e  2.31:1  → #ac630d  4.62:1
+  //   successGreen #298c52  4.23:1  → #27854e  4.61:1
+  // Corrected now, while nothing depends on them, so enabling light mode later
+  // is not also a contrast regression. Hue and saturation preserved; only
+  // lightness moved, by the minimum needed to clear 4.5:1.
+  amber:        { dark: '#ECA13F', mid: '#ECA13F', light: '#ac630d' }, // was #ef962e (2.31:1)
+  successGreen: { dark: '#4FAE7A', mid: '#4FAE7A', light: '#27854e' }, // was #298c52 (4.23:1)
 
   // Text ---------------------------------------------------------------
   textPrimary:   { dark: '#eef0f4', mid: '#e8edf2', light: '#0d0f12' },

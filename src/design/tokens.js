@@ -56,6 +56,13 @@ const primitive = {
   red:   { '200': '#F08274', '300': '#E2604F', '400': '#E84036', '500': '#B82F26', 'bright': '#FF3525' },
   // Smoked graphite-teal atmosphere (Sprint 6 — environment only, never CTA)
   teal:  { '400': '#6ea6aa', '500': '#4b878b', '600': '#283639', '700': '#1d282a', '800': '#141d1f', '900': '#0c1213' },
+  // Muted lavender — the IN-PROGRESS status tier. Promoted from hostv2 2026-08-18.
+  // Origin (hostv2 Audit S1): steel was doing triple duty — identity, selection,
+  // AND in-progress status (booked / renting / vendor-mid), so a host could not
+  // tell a status pill from a selected chip. This frees steel to mean identity
+  // and selection only. Violet on purpose: a warm slate read too close to steel.
+  // Measured on carbon — 6.9 card, 5.4 tint-over-card, 4.9 band. All clear AA.
+  lavender: { '400': '#B3A0CC' },
 };
 
 // ── Semantic color (mirrors NGW Color collection, Studio Matte mode) ─────
@@ -91,11 +98,22 @@ export const color = {
     tertiary:  primitive.steel['500'],
     disabled:  primitive.matte['400'],
     inverse:   primitive.matte['050'], // dark ink on bright fills
+    // Text-legible steel for use ON a steel tint — promoted from hostv2's
+    // --steel-soft 2026-08-18. Deliberately its own value rather than a steel
+    // ramp stop: steelBlueMuted (#6F8794) is the material anchor --sheen derives
+    // from, and lifting that to clear 4.5:1 on tint would have changed the sheen
+    // everywhere. Two needs, two values, on purpose.
+    onTint:    '#8AA3B0',
   },
   status: {
     confirmed:     primitive.green['400'],
     confirmedText: primitive.green['200'],
     confirmedBg:   '#0d2818',
+    // The IN-PROGRESS tier — promoted from hostv2 2026-08-18 (see primitive.lavender).
+    // Distinct from `confirmed` (done) and `warning` (needs attention): this is
+    // "underway, nothing required of you." It exists because steel could not
+    // carry it and identity/selection at the same time.
+    inProgress:    primitive.lavender['400'], // #B3A0CC
     warning:       primitive.amber['400'], // #ECA13F — unified with palette.amber (D2, 2026-08-18)
     warningText:   primitive.amber['300'], // #d99a59
     warningBg:     '#1a1004',
