@@ -1616,6 +1616,21 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .frow.got .fcheck{background:var(--ok); border-color:var(--ok)}
 .frow.got .fcheck::after{transform:rotate(-45deg) scale(1)}
 .frow.got .f-name{color:var(--muted)}
+/* DENSITY DOCTRINE (UX_01): .frow's 11px/8px padding + flat 12px gap is the
+   Row-item tier (10-12px vertical, 8px between inline elements) — correct for
+   the compact check-off list it was built for. The "Calls to make" decision
+   card reuses .frow but stacks CARD-tier content instead: a chip row, a "why"
+   paragraph, a rank-reason line, an approach note, and two buttons — several
+   distinct full-width sections, not one line of inline elements. Applying the
+   list-row's tight, undifferentiated spacing to that much stacked text is the
+   wrong density tier, not just tight numbers — doctrine's own table calls for
+   12-16px padding AND 8-12px gap BETWEEN SECTIONS on a card, which a flat 12px
+   applied to both a chip-to-chip gap and a paragraph-to-paragraph gap can't
+   express. Scoped to this one card via an added class — every other .frow
+   usage (guest rows, task rows, food-plan rows) is untouched. */
+.frow-decision{padding:var(--sp-4) var(--sp-3) !important; gap:var(--sp-3) var(--sp-2) !important}
+.frow-decision > *{margin-bottom:0}
+.frow-decision .grounding, .frow-decision .v-meta{margin-top:2px}
 .frow.got .amt{color:var(--ok)}
 /* Skipped stays IN the list (tap to restore) rather than vanishing — see the
    skip/restore audit note in HostShellV2.jsx's food group render. */

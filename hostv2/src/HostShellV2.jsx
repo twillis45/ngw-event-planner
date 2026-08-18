@@ -10537,7 +10537,7 @@ export default function HostShellV2() {
                   ) : null;
                   if (opts && opts.options.length) {
                     return (
-                      <div key={r.id || i} className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default', ...heartStyle }}
+                      <div key={r.id || i} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default', ...heartStyle }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
@@ -10548,16 +10548,24 @@ export default function HostShellV2() {
                           </span>
                           {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
-                        <div style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                        {/* DENSITY DOCTRINE (UX_01): explicit marginTop on each stacked block
+                            below, not just the flex gap — a chip row, a "why" paragraph, a
+                            rank-reason line and a button row are distinct SECTIONS (doctrine's
+                            8-12px between-sections rule), not inline elements of one line. */}
+                        <div style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 4 }}>
                           {opts.options.map(opt => (
                             <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
                               onClick={() => settleDecision(r, opt)}>{opt}</button>
                           ))}
                         </div>
-                        {opts.why && <p className="grounding" style={{ flex: '1 0 100%', margin: 0 }}>{opts.why}</p>}
-                        {meta}
-                        {acceptBtn}
-                        {pinBtn}
+                        {opts.why && <p className="grounding" style={{ flex: '1 0 100%', margin: '10px 0 0' }}>{opts.why}</p>}
+                        {meta && <span style={{ flex: '1 0 100%', display: 'block', marginTop: 8 }}>{meta}</span>}
+                        {(acceptBtn || pinBtn) && (
+                          <span style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                            {acceptBtn}
+                            {pinBtn}
+                          </span>
+                        )}
                       </div>
                     );
                   }
