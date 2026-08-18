@@ -21,7 +21,6 @@ source: it makes an unverified figure look checked.
 
 | row | band | what the sources say |
 |---|---|---|
-| `fishFry:72` cornmeal / breading + flour | $0.50–1.50 /lb | cornmeal is **$2.06–2.99/lb** (same SKU at three retailers); only the flour half ($0.543/lb BLS) fits |
 | `kwanzaaGathering:84` kinara (candle holder) | $15–50 /holder | specialist retailers price a **bare kinara at $64.99–72.61** and celebration sets $79.99–104 — the cheapest kinara found exceeds the band's ceiling |
 | `ethiopianCoffeeCeremony:79` berbere + niter kibbeh | $10–22 /kit | berbere $8.29–14.99 **plus** niter kibbeh $15.99–16.00 = $24–31 for the pair. Wave-6 corroboration (2026-08-18): Spice &amp; Tea Exchange + Zamouri/Amazon put berbere at ~$15/2oz; Brundo + Slofoodgroup/Etsy + HabeshaMarketOnline converge on niter kibbeh $13–17/8oz. Both individually corroborated now — still a "kit" band with no source pricing the pair together, and still above the ceiling |
 | `bachelorParty:79` cups, koozies, napkins, plates, opener | $0.30–1 /set | a blank neoprene koozie alone is **$0.83–0.96** at 100-count, before cups, plates or the opener |
