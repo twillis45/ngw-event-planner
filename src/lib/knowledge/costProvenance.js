@@ -591,6 +591,17 @@ export const COST_SOURCES = {
   // Four families in one pass. Two of them immediately exposed band mismatches
   // rather than grounding rows, which is recorded in the band-vs-evidence audit
   // instead of being smoothed over with a citation.
+  // -- PRINTED SIGNAGE (registered 2026-08-18) --------------------------------
+  // banner-retail-2026 covers the $1.25 party-store banner. This covers the
+  // PRINTED tier - foam board, vinyl, corrugated yard signs - which is what the
+  // conference, graduation and memory-display rows actually buy. Two tiers, two
+  // sources, and the claims say which one a row is priced against.
+  'signage-print-2026': {
+    org: 'Go Big Signs, "Custom Sign Cost Guide: How Much Do Custom Signs Cost in 2026" (listing - figures read from search results)',
+    url: 'https://gobigsigns.com/blogs/display-guides/custom-sign-cost-guide',
+    fetched: '2026-08-18',
+    claim: 'Printed signage 2026. FOAM BOARD $20-50 per square foot: an 18x24in sign $15-30, a 4x8ft trade-show display $150-400 - indoor only, since UV yellows it within 3-6 months. VINYL BANNERS on 13oz or 18oz with hemmed edges and grommets $50-200: a 3x6ft full-colour banner $60-120, an 8x10ft large-format $150-400, lasting 1-2 years outdoors before fading. YARD SIGNS on 4mm UV-resistant corrugated plastic last about a year outdoors.',
+  },
   'dips-retail-2026': {
     org: 'Walmart and H-E-B dip, hummus and salsa listings, 2026 (listing - figures read from search results)',
     url: 'https://www.walmart.com/browse/food/shop-all-hummus-dips-salsas/976759_976789_7056897_6173058',
