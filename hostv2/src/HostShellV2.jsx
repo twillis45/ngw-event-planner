@@ -14228,6 +14228,54 @@ export default function HostShellV2() {
                     <p className="grounding" style={{ margin: 0 }}>Nothing yet — after an event wraps, noting how it really went teaches the plans that follow.</p>
                   )}
 
+                  {/* ── THE TWO THINGS THE ENGINE ASKED FOR AND NOBODY COLLECTED ──
+                      computeHostAdaptation has taken `experience` and `capacity`
+                      since July and genuinely uses them — a first-time solo host
+                      gets a smaller starting focus set, derivable defaults
+                      pre-proposed, reassurance on. It read them off the EVENT and
+                      nothing in this shell ever wrote them: measured 2026-08-17,
+                      `hostExperience`/`hostCapacity` appeared in zero hostv2 files,
+                      so handHolding was permanently 'standard' for every real host
+                      while the scoreboard credited the axis at 9/10.
+
+                      They live on the PROFILE because they describe the host, not
+                      one event, and follow them to everything they plan. Neither is
+                      inferred: guessing "first-timer" from an empty localStorage
+                      would be the app deciding who someone is from evidence that
+                      does not support it. Unanswered stays unanswered, and the
+                      board is byte-identical to before — 'standard' is the neutral
+                      default the engine already had.
+                      docs/audits/2026-08-17_DECISION_ENGINE_RESCORE.md */}
+                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>How you plan</div>
+                  <p className="grounding" style={{ margin: '0 0 8px' }}>Two things that change how much I walk you through. Skip them and nothing changes.</p>
+                  {/* askKit's OptionList API is {options, value, onPick} with
+                      option.value — NOT {id, selected, onSelect}. Written the
+                      wrong way first: the rows rendered (they fall back to
+                      o.label) so it LOOKED built, and every click threw because
+                      onPick was undefined. Caught by clicking it, not by reading
+                      it — the profile stayed {} and that is the only reason I
+                      looked. */}
+                  <OptionList ariaLabel="How much you have done this"
+                    value={(profile && profile.hostExperience) || null}
+                    options={[
+                      { value: 'first_time', label: 'This is my first time hosting something like this' },
+                      { value: 'experienced', label: 'I have done this before' },
+                    ]}
+                    onPick={(v) => patchProfile(
+                      { hostExperience: (profile && profile.hostExperience) === v ? null : v },
+                      (profile && profile.hostExperience) === v ? 'Cleared.' : 'Noted — I will pace it to that.')}
+                  />
+                  <OptionList ariaLabel="Who is helping" style={{ marginTop: 'var(--sp-2)' }}
+                    value={(profile && profile.hostCapacity) || null}
+                    options={[
+                      { value: 'solo', label: 'I am planning this on my own' },
+                      { value: 'has_help', label: 'I have people helping me' },
+                    ]}
+                    onPick={(v) => patchProfile(
+                      { hostCapacity: (profile && profile.hostCapacity) === v ? null : v },
+                      (profile && profile.hostCapacity) === v ? 'Cleared.' : 'Noted.')}
+                  />
+
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Your account</div>
                   {!isSupabaseConfigured() ? (
                     <p className="grounding" style={{ margin: 0 }}>Everything lives on this device. Accounts turn on when the cloud is configured.</p>

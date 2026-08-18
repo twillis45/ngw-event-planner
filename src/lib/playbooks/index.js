@@ -3052,9 +3052,22 @@ export function playbookDecisionBoard(event, asOf, profile) {
   // pre-proposed, and reassurance on; an experienced host on an easy event gets a TERSE
   // board — the full list, nothing pre-proposed, no reassurance. Absent inputs default to
   // the neutral 'standard' (byte-identical to the prior board), so this is additive.
+  // ── THE HOST IS A PERSON, NOT AN EVENT (2026-08-17) ─────────────────────
+  // These two read ONLY off the event, and hostv2 never wrote them — measured:
+  // `hostExperience` and `hostCapacity` appear in ZERO files under hostv2/src.
+  // So handHolding was permanently 'standard' for every real host, and half of
+  // Adaptivity was inert in the shipping shell while the engine and its tests
+  // were finished. The 2026-07-16 record warned about exactly this ("an engine
+  // re-score is NOT evidence the SURFACE does it") and it went unclosed for a
+  // month. See docs/audits/2026-08-17_DECISION_ENGINE_RESCORE.md.
+  //
+  // "First time hosting" and "doing this alone" describe the HOST, not one
+  // event, so they belong on the profile and follow them to every event they
+  // plan. The event still wins when it carries its own value — a host who is
+  // generally seasoned can say THIS one is new territory.
   const hostAdaptation = computeHostAdaptation(
-    event.hostExperience || null,
-    event.hostCapacity || null,
+    event.hostExperience || (profile && profile.hostExperience) || null,
+    event.hostCapacity || (profile && profile.hostCapacity) || null,
     playbookHostDifficulty(event),
     active.length,
     Number(event.guestCount || event.guestEstimate || (gc && gc.count) || 0) || 0,
@@ -3088,8 +3101,8 @@ export function playbookDecisionBoard(event, asOf, profile) {
     open: active, locked, deferred, headcount,
     hostDifficulty: playbookHostDifficulty(event),
     heartAtRisk, leadProvenance, leadGrounded,
-    hostExperience: event.hostExperience || null,
-    hostCapacity: event.hostCapacity || null,
+    hostExperience: event.hostExperience || (profile && profile.hostExperience) || null,
+    hostCapacity: event.hostCapacity || (profile && profile.hostCapacity) || null,
     hostAdaptation, focus,
     // LEARNING-1 (roadmap #2): one top-level accessor for the attendance-memory
     // provenance (null unless applied), so a shell can render it wherever it shows
