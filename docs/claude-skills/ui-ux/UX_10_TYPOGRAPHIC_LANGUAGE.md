@@ -138,6 +138,43 @@ that can't fill in X/Y/Z is still wrong; it's simply wrong for being
 unjustified density, not for being density at all. The audit below is now
 unblocked and runs against that standard.
 
+## 5a. Size-floor audit results — 2026-08-18
+
+Ran against the standard §5 sets, now that §5 is unblocked. **177 real
+design-system uses** of `type.size['2xs']` (9px, 33 uses) and `type.size.xs`
+(10px, 143 uses) — not the 33+77 figure quoted earlier in this document,
+which came from a coarser count; this is the exhaustive one. **19 of the 177
+are in `admin/AdminConsole.jsx`**, an internal tool outside this document's
+`facing: public` scope — audited separately, lighter bar.
+
+Also found and set aside: **429 additional hardcoded `fontSize: 9` /
+`fontSize: 10` literals with no token at all**, of which **404 are in that
+same admin file**. That population is a §8 enforcement problem (raw literals,
+not tokenized), not a §5 size-floor problem — recorded here so it isn't lost,
+not resolved here.
+
+**Method.** Read every hit in context (not the token count alone) and sorted
+into the categories below. This is a category-level audit, not a claim that
+each of the 177 got individual sign-off — a category verdict applies to every
+site matching that pattern.
+
+| Category | Count (approx.) | X/Y/Z verdict |
+|---|---|---|
+| Tracked-uppercase section labels (`EVENT`, `VENDOR`, `TASK`, `DECISION`, `EMAIL`/`CALL`/`WHATSAPP`) | ~40 | **Pass.** Decorative chrome by design, and where a labeled value follows, it correctly renders at a larger size in a sibling node — confirmed in `CommunicationHub.jsx:1409-1419`, where `EMAIL`/`CALL`/`WHATSAPP` sit at `2xs`/tertiary but `{vendorEmail}`/`{vendorPhone}` render at `sm`/accent as siblings. This is the pattern §3 asks for; extend it, don't flag it. |
+| Timestamps / "when" metadata (`r.when`, `q.when`, `fmtTs`, `m.editedAt`) | ~8 | **Fail — §3 violation.** Small size paired with `textTertiary`, and a timestamp is exactly the kind of fact a planner scans for. `CommandCenter.jsx:3568`, `:3590`; `CommunicationHub.jsx:1159`. |
+| Status / count / due-state (`status`, `count`, `type_`, `due`) | ~6 | **Fail — §3 violation.** `CommandCenter.jsx:3470` (a badge count), `:3704` (a status value under its label) — both dim *and* small on content whose entire job is to be read at a glance. |
+| Names and identity (`v.name`) | 1 confirmed, likely more unaudited | **Fail — §3 violation.** A vendor or contact name is data, not chrome; found at `CommandCenter.jsx:3672`. |
+| Secondary detail under a primary line (money range, "set when created", italic note) | ~6 | **Borderline pass.** `ClientIntakeFlow.jsx:551,674`; `CommunicationHub.jsx:854`. Genuinely secondary to an adjacent primary line — closer to `secondary`/`caption` role intent than a violation, but at `xs` (10px) they're one step smaller than the `secondary` role (13px) specifies. Recommend promoting these to `secondary` rather than leaving them at a bespoke `xs`.
+| Edit/Delete message-action buttons | 2 | **Fail — different failure mode.** `CommunicationHub.jsx:1166,1170`. Not a legibility problem (short, familiar words) but a **touch-target problem outside this document's scope**: 10px text with no stated minimum hit-area is an interaction-design finding, not a typography one. Flagged for `UX_05_COMPONENT_PATTERNS`, not fixed here.
+| Everything else in the 177 (dense, mixed contexts across `VendorPlanningWorkspace.jsx` (69 uses — the single largest concentration), `ChecklistGenerator.jsx`, `DecisionApprovalCenter.jsx`) | ~113 | **Not yet categorized.** The two largest files by use-count were not read line-by-line in this pass. This audit is a first sweep establishing the categories and confirming real violations exist in the pattern §3 predicted — it is not exhaustive, and `VendorPlanningWorkspace.jsx` specifically needs its own pass before this section can be called complete. |
+
+**What this confirms:** §3's finding wasn't hypothetical. The size+color
+recession pattern the board flagged in the token *design* is present in real
+call sites — timestamps, statuses, and a name were all found dimmed and
+shrunk together. **What this doesn't yet do:** clear the majority of the 177
+uses, or touch `VendorPlanningWorkspace.jsx`, the largest single concentration
+of small type in the product. That's the next pass.
+
 ## 6. Platform is part of the specification, not an assumption
 
 The font stack is `system-ui` (SF Pro on macOS, Segoe UI on Windows) — no
@@ -200,8 +237,13 @@ that number the first time. This document does not ship as doctrine without:
    Figma (structural).
 2. §4 — measure real leading/measure pairings from rendered screens; fill the
    `*pending §4*` cells.
-3. §5 — **decided: operating interface.** Run the X/Y/Z audit on `2xs`/`xs`
-   against that standard — every use justified or cut, no blanket pass.
+3. §5/§5a — **decided + first pass run.** Category-level audit found real §3
+   violations (timestamps, status, a name — all dimmed and shrunk together) in
+   ~15-20 of 177 uses. **Not exhaustive** — `VendorPlanningWorkspace.jsx` (69
+   uses, the largest concentration) and `ChecklistGenerator.jsx` /
+   `DecisionApprovalCenter.jsx`'s remaining ~90 uses need a dedicated pass.
+   Also surfaced: 429 hardcoded literals with no token (404 in
+   `AdminConsole.jsx` alone) — an §8 enforcement gap, tracked not fixed.
 4. §6 — automated dual-platform render verification.
 5. §7 — actual 200%-zoom + text-spacing-override render test.
 6. §8 — land the lint rule before migrating literals, so the 806 doesn't
