@@ -2,46 +2,36 @@
 
 Read this first. It is written for a session that has none of the context.
 
-**Last verified 2026-08-17 against `main` at `7bff2d43`.** Every number below was
+**Last verified 2026-08-17 against `main` at `f08e0e96`.** Every number below was
 measured on the day, not carried forward. Anything not re-measured says so.
-
-`main` moved to `2512dbc0` while this was being written — a second session was
-working the repo. The sha above is deliberately not updated: it is the commit
-the measurements were actually taken against.
 
 ---
 
-## Stop here first — CI is red
+## Recently resolved — CRA had not compiled since 2026-08-16
 
-`Deploy Pages (from source)` and `Checks` have both failed on the last three
-pushes. **Production is not receiving deploys.** One error, one line:
+For roughly a day, `gate:cra` failed on a single `import/first` error in
+`src/lib/playbooks/index.js`: an `import` sat in the module body beside its
+`export … from`. CRA treats that as a compile error rather than a lint warning,
+so no bundle was produced and **production silently stopped receiving deploys**
+while every push still looked like it had shipped.
 
-```
-src/lib/playbooks/index.js:712
-  Import in body of module; reorder to top   import/first
-```
+Fixed in `f08e0e96` by hoisting the import to the top. Both workflows are green
+and prod moved from `main.8eafea04.js` to `main.ab259536.js`.
 
-`export { DEST_LODGING_OPTIONS } from '../destLodgingOptions';` sits on line 711
-and the matching `import` on 712. CRA treats it as a real compile error, not a
-warning, so `gate:cra` fails and the build never produces a bundle. Move the
-import above the module body and CI goes green.
-
-Not fixed here on purpose: another session was editing this repo while this doc
-was written, and a surprise commit would have collided with it.
-
-Also: **`main` is 3 commits ahead of `origin`.** Pushed commits are failing;
-unpushed ones have not been tested by CI at all.
+Worth keeping: the failure was invisible locally. `npm test` passed the whole
+time — only the production build gate caught it. **Check `gh run list` before
+believing a deploy landed.**
 
 ## State, measured today
 
 | | |
 |---|---|
-| Branch / HEAD | `main` @ `7bff2d43`, clean tree, **3 ahead of origin** |
+| Branch / HEAD | `main` @ `f08e0e96`, clean tree, in sync with origin |
 | CRA test suite | **5,958 passing**, 1 skipped, 416 suites, 35s |
 | Migration governance | ✓ passes |
 | Backend | `https://ngw-events-api.onrender.com/health` → `{"ok":true}` |
-| Prod frontend | `main.8eafea04.js` live at twillis45.github.io/ngw-event-planner/ |
-| CI | ✗ red — see above |
+| Prod frontend | `main.ab259536.js` live at twillis45.github.io/ngw-event-planner/ |
+| CI | ✓ green — `Checks` and `Deploy Pages` both passing |
 | hostv2 e2e matrix | **not re-run** — port 5233 was in use by another session |
 
 ## Where the work happens
@@ -100,26 +90,25 @@ route key, `event.ros`, `draftFullROS`, `EventDayBar`. Users never see "ROS."
 
 ## OPEN THREADS
 
-Re-measured today. Three of the old thirteen were already resolved and have been
-removed rather than carried forward.
+Re-measured today. Of the old thirteen, three were already done and two more
+(CI, unpushed commits) were resolved during this session — all removed rather
+than carried forward.
 
-1. **CI is red** — the one-line `import/first` fix above. Everything else waits.
-2. **`main` is 3 ahead of origin** — push once CI can pass.
-3. **AI rewire, partially done.** The old doc said "7 of 9 sections still call
+1. **AI rewire, partially done.** The old doc said "7 of 9 sections still call
    `askClaude`" and "`AI_FEATURES` has only 4." Measured today: **5** `askClaude`
    call sites remain, `isAiProxyConfigured` is used in 7 places, and
    `AI_FEATURES` has gained `budget` and `proposal` — so the "decision pending"
    on dedicated features was made. Finish the remaining 5.
-4. **`ReadinessSparkline`** still present (2 references in App.js). Board's take
+2. **`ReadinessSparkline`** still present (2 references in App.js). Board's take
    stands: the insight is valuable, the tiny chart is illegible. Replace with a
    worded trend chip. Unapproved, unbuilt.
-5. **`'Run of Show'` internal rename** — 9 references in App.js. Cosmetic, small
+3. **`'Run of Show'` internal rename** — 9 references in App.js. Cosmetic, small
    routing-regression risk. Leave `event.ros` alone to avoid a persistence
    migration.
-6. **Identity Invite / RSVP end-to-end smoke** — still never run with a real
+4. **Identity Invite / RSVP end-to-end smoke** — still never run with a real
    cross-browser guest: create an event, open its `?rsvp=<22-char token>` in
    incognito, submit, confirm the `rsvp_submissions` row in Supabase.
-7. **AppSec fast-follows** (board-flagged, not blockers): backfill non-demo
+5. **AppSec fast-follows** (board-flagged, not blockers): backfill non-demo
    short rsvpCodes to 22-char tokens; confirm `pg_cron` schedules
    `purge_old_rsvp_submissions(90)`; move the rate-limiter to Redis before
    running >1 Render worker; add a TTL to the localStorage outbox, which holds
@@ -129,7 +118,8 @@ removed rather than carried forward.
 
 - The hostv2 e2e matrix (port in use). Last recorded figure was 454/476 passing
   on 2026-08-16 — **carried forward, not measured, treat as unconfirmed.**
-- Which commit produced the live `main.8eafea04.js` bundle.
+- Nothing about the live bundle beyond its hash — `main.ab259536.js` followed
+  the `f08e0e96` deploy, but the mapping was not independently confirmed.
 - Anything in `engine-audit/` — newest file there is 2026-06-27 and the
   directory has not been touched since.
 
