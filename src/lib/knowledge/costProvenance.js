@@ -608,6 +608,22 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'Dips at retail 2026: H-E-B chile con queso 8oz $0.97; H-E-B roasted red pepper hummus 16oz $3.97 and roasted garlic hummus 16oz $6.67; H-E-B chef-prepared spinach dip 16oz $4.97; Freshness Guaranteed guacamole 8oz $3.02 and 15oz $5.27; Wholly homestyle guacamole 16oz $5.97; Sabra classic guacamole 14oz $6.58. Per 2oz serving that is roughly $0.12-0.83 depending on the dip.',
   },
+  // -- PANTRY STAPLES AND FRYING OIL (registered 2026-08-18) ------------------
+  // The staple carbohydrates and legumes that anchor the cookout, boil and
+  // Karamu tables, plus the oil a fish fry actually consumes. Both are BLS or
+  // per-gallon retail, which matches how those rows are banded.
+  'bls-staples-2026': {
+    org: 'US Bureau of Labor Statistics CPI Average Price Data via FRED — white long-grain rice (APU0000701312) and dried beans, any type (APU0000714233), with other June 2026 staples (listing - figures read from search results)',
+    url: 'https://fred.stlouisfed.org/series/APU0000714233',
+    fetched: '2026-08-18',
+    claim: 'BLS US city average: white long-grain uncooked rice $1.09/lb (June 2026); dried beans, any type, all sizes $1.704/lb (February 2026). Other June 2026 staples for context: eggs $2.14 a dozen, ground beef $6.83/lb, chicken breast $4.18/lb, milk $4.32 a gallon. Organic heirloom dried beans are a premium tier at $4.00-6.50/lb and are not this series.',
+  },
+  'frying-oil-2026': {
+    org: 'US cooking-oil price guides with per-gallon and per-ounce figures, 2026 (listing - figures read from search results)',
+    url: 'https://latestcost.com/vegetable-oil-cost-pricing-united-states/',
+    fetched: '2026-08-18',
+    claim: 'Frying oil 2026 by the gallon: standard vegetable oil $6-14 retail and $5-9 in bulk; soybean oil $7-9. PEANUT oil is dearer - a 1-gallon jug of standard refined runs $15-19 (Great Value 1gal about $18.24, roughly $0.14/oz), with small bottles far worse per ounce (LouAna 24oz $14.95, about $0.62/oz) and cold-pressed premium above $0.60/oz. Bulk specialty oils are $25+ a gallon.',
+  },
   'butter-bls-2026': {
     org: 'US Bureau of Labor Statistics CPI Average Price Data, butter (stick) per pound (series APU0000FS1101), via FRED, with USDA National Dairy Products Sales wholesale (listing - figures read from search results)',
     url: 'https://fred.stlouisfed.org/series/APU0000FS1101',
