@@ -316,7 +316,11 @@ that number the first time. This document does not ship as doctrine without:
    Figma (structural).
 2. §4 — measure real leading/measure pairings from rendered screens; fill the
    `*pending §4*` cells.
-3. §5/§5a/§5b/§5c — **DONE. All 177 uses read in context, audit complete.**
+3. §5/§5a/§5b/§5c — **DONE, and all 19 confirmed violations fixed
+   2026-08-18.** Every fix is a color/size change only, marked with a `UX_10`
+   comment at the call site, verified: build compiles, palette tests pass
+   (8/8), hostv2 parity gate green. All 177 uses read in context, audit
+   complete.
    ~19 confirmed §3 violations total, across decision rationale, contract
    terms, timestamps, ownership, and one category error (a vendor's name in
    `color.text.disabled`, `OrchestrationSlice.jsx:199` — the worst single
