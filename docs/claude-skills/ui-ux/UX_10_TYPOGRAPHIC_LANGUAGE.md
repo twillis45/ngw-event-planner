@@ -204,10 +204,55 @@ for dates and contacts.
 **What this confirms:** §3's finding wasn't hypothetical. The size+color
 recession pattern the board flagged in the token *design* is present in real
 call sites — timestamps, statuses, and a name were all found dimmed and
-shrunk together. **What this doesn't yet do:** clear the remaining ~90 uses in
-`ChecklistGenerator.jsx` and `DecisionApprovalCenter.jsx`. `VendorPlanningWorkspace.jsx`
-is now fully audited — see §5b — and produced the most consequential findings
-in this document: contract terms and decision rationale, not just metadata.
+shrunk together. ## 5c. Remaining files — full pass, 2026-08-18
+
+The earlier estimate of "~90 uses remaining" was wrong — the real count
+across the 8 unaudited files is **72**, all now read in context:
+`CommunicationHub.jsx`(33) · `ClientIntakeFlow.jsx`(10) ·
+`DecisionApprovalCenter.jsx`(12) · `ChecklistGenerator.jsx`(6) ·
+`OrchestrationSlice.jsx`(4) · `EventDayMode.jsx`(3) ·
+`DesktopDensitySlice.jsx`(3) · `ImportWizard.jsx`(1).
+
+**The single most severe violation in the entire audit is here:**
+
+| Finding | Where | Severity |
+|---|---|---|
+| **A vendor's actual name rendered in `color.text.disabled`** — not `tertiary`, the tier below it, semantically reserved for inactive/unavailable UI. `{vendor.name.split(' ')[0]}` at 10px, disabled-tier color, on a live, actionable vendor. | `OrchestrationSlice.jsx:199` | 🔴 Worst finding in the document — disabled styling applied to active data is a category error, not a contrast tuning question |
+| A decision item's relative timestamp (`fmtRelative(item.date)`), same pattern as §5a's `r.when`/`q.when` | `DecisionApprovalCenter.jsx:256` | 🔴 |
+| A checklist task's assigned owner, in a tertiary-colored pill — exactly the accountability fact a planner scans for | `ChecklistGenerator.jsx:160` | 🔴 |
+| "DUE {task_due}" and a decision "PENDING" badge, and a linked vendor's status word — all rendered at 9-10px. None are dimmed to tertiary (they carry real signal color: red, amber, green), but urgency and decision-state content this small falls below the floor regardless of color. | `CommunicationHub.jsx:1423,1440,1455` | 🟡 Different failure mode than dimming — undersized despite correct color |
+| "Owner: {item.owner}" — `textSecondary`, not `tertiary` | `DecisionApprovalCenter.jsx:271` | 🟢 Borderline pass — one contrast tier better than the pattern above; same fact, different file, inconsistent treatment |
+
+**Confirmed correct, multiple times over:** table column headers ("Category" /
+"Budgeted" / "Actual" / "Variance" in `ClientIntakeFlow.jsx`), section labels
+("Intake Confidence", "OPEN QUESTIONS", "EVENT"/"VENDOR"/"DECISION"/"TASK" in
+`CommunicationHub.jsx`), and status/urgency pills that carry real signal color
+(amber "missing fields," red "OVERDUE," green/amber vendor status) are all
+correctly small **and** correctly not dimmed to tertiary — color carries the
+meaning, size carries the emphasis-reduction, and the two aren't fighting each
+other. This is the majority pattern across all 72 sites, which is worth
+stating plainly: **most of the codebase gets this right.** The violations are
+real but they're the exception, not the rule — which makes them easier to
+name and fix than if the whole system needed rethinking.
+
+**Also noted, not a §3 finding:** `OrchestrationSlice.jsx`, `EventDayMode.jsx`,
+and `DesktopDensitySlice.jsx` all write `type.size.xs || 10` / `|| 11` rather
+than trusting the import — a defensive fallback that only makes sense if the
+token might be undefined at runtime. That's the same distrust-of-the-system
+signal §1/§8 already flagged at the codebase level, showing up as a code
+smell in three more files. Worth a lint rule of its own once §8's enforcement
+lands.
+
+---
+
+**Total across all 177 design-system uses of `2xs`/`xs`:** every one has now
+been read in context. Confirmed §3 violations: **~19** (CommandCenter/misc
+~6, VendorPlanningWorkspace ~8, this pass ~5), concentrated in exactly the
+content categories the board predicted — decision rationale, contract terms,
+timestamps, ownership, and one outright category error. The remaining ~150+
+sites are either correct chrome/label treatment or correctly color-signaled
+status content, which is the pattern this document asks every violation to be
+promoted to.
 
 ## 6. Platform is part of the specification, not an assumption
 
@@ -271,14 +316,17 @@ that number the first time. This document does not ship as doctrine without:
    Figma (structural).
 2. §4 — measure real leading/measure pairings from rendered screens; fill the
    `*pending §4*` cells.
-3. §5/§5a/§5b — **decided, two files fully audited.** `CommandCenter.jsx` +
-   others: ~15-20 §3 violations (timestamps, status, a name). **`VendorPlanningWorkspace.jsx`
-   (69 uses, the largest concentration): ~8 violations, and the most severe in
-   the document — cancellation policy, disclaimers, and truncated decision
-   rationale, all rendered dim and small.** Still open:
-   `ChecklistGenerator.jsx` / `DecisionApprovalCenter.jsx`'s remaining ~90
-   uses. Also surfaced: 429 hardcoded literals with no token (404 in
-   `AdminConsole.jsx` alone) — an §8 enforcement gap, tracked not fixed.
+3. §5/§5a/§5b/§5c — **DONE. All 177 uses read in context, audit complete.**
+   ~19 confirmed §3 violations total, across decision rationale, contract
+   terms, timestamps, ownership, and one category error (a vendor's name in
+   `color.text.disabled`, `OrchestrationSlice.jsx:199` — the worst single
+   finding). Most of the 177 (~150+) are correct — chrome/labels properly
+   dim, status content properly signal-colored instead of dimmed. The
+   violations are real but are the exception, which bounds the fix. Also
+   surfaced, tracked separately: 429 hardcoded literals with no token (404 in
+   `AdminConsole.jsx`) — an §8 enforcement gap — and a `type.size.xs || 10`
+   defensive-fallback pattern in 3 files, a code smell for the same
+   system-distrust §1 already named.
 4. §6 — automated dual-platform render verification.
 5. §7 — actual 200%-zoom + text-spacing-override render test.
 6. §8 — land the lint rule before migrating literals, so the 806 doesn't
