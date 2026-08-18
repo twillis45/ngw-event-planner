@@ -113,7 +113,7 @@ import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -1594,6 +1594,37 @@ export default function HostShellV2() {
     return Number.isFinite(n) && n > 0 && n < callsOrdered.length ? n : null;
   })();
   const callsFolded = callsFocus != null && !callsOpen;
+  // MOMENTUM (2026-08-18): log ONE session snapshot per calendar day per event, so
+  // computeMomentum (src/lib/playbooks/index.js) can read progress across sessions —
+  // the longitudinal Adaptivity axis named in the 08-17 rescore and, until now,
+  // entirely unwired (engine existed, no shell ever called it — same failure shape
+  // as the 07-16 hostExperience/hostCapacity gap this file already documents).
+  // Read-modify-write through the EXISTING patchProfile path (localStorage + cloud-
+  // synced studio_settings) — no new persistence layer. A ref (not the profile
+  // closure) guards against a same-render double-write when openCount still shifts
+  // after the day's entry is already logged.
+  const momentumLoggedRef = useRef(null); // `${eventId}:${YYYY-MM-DD}` once written this session
+  useEffect(() => {
+    if (!event || !event.id) return;
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const guardKey = `${event.id}:${todayKey}`;
+    if (momentumLoggedRef.current === guardKey) return;
+    try {
+      const hist = Array.isArray(profile && profile.sessionHistory) ? profile.sessionHistory : [];
+      const alreadyLoggedToday = hist.some((h) => h && h.eventId === event.id
+        && typeof h.ts === 'number' && new Date(h.ts).toISOString().slice(0, 10) === todayKey);
+      momentumLoggedRef.current = guardKey; // set BEFORE the write so a re-render can't race it
+      if (alreadyLoggedToday) return;
+      const next = [...hist, { eventId: event.id, ts: Date.now(), openCount: callsOrdered.length }].slice(-8);
+      patchProfile({ sessionHistory: next });
+    } catch { /* best-effort — momentum is an enhancement, never a blocker */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id]);
+  const momentum = useMemo(() => {
+    try { return computeMomentum((profile && profile.sessionHistory) || null, callsOrdered.length, Date.now()); }
+    catch { return { trend: 'unknown', daysSinceLastSession: null, sessionCount: 0 }; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile && profile.sessionHistory, callsOrdered.length]);
   const capacity = useMemo(() => { try { return playbookCapacity(event); } catch { return null; } }, [event]);
   // deriveHelperResponsibilities returns { helpers, responsibilities } — the
   // rows we render are the responsibilities (helperName/label/status); the
@@ -10370,7 +10401,24 @@ export default function HostShellV2() {
                   const line = band === 'hard'
                     ? 'This is a lot to pull off — take the calls one at a time. You don’t have to settle everything today; start at the top and work down.'
                     : band === 'easy' ? 'This is a light one — a few quick calls and you’re set.' : null;
-                  return line ? <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>{line}</p> : null;
+                  if (line) return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>{line}</p>;
+                  // MOMENTUM (2026-08-18): the longitudinal read — only speaks when it has
+                  // something to say (>=2 logged sessions) AND no higher-priority line above
+                  // already claimed this slot (folded / overwhelmed / hard / easy band).
+                  // 'stalled' with a real gap (host hasn't been back in a while) gets a plain,
+                  // judgment-free nudge back in — never blame, matching this sheet's established
+                  // voice (see the heartAtRisk rewrite above). 'improving' gets a brief, honest
+                  // acknowledgment. 'declining' says nothing new here — overwhelm/hard already
+                  // cover a genuinely growing pile; momentum would just repeat it.
+                  if (momentum && momentum.sessionCount >= 2) {
+                    if (momentum.trend === 'stalled' && typeof momentum.daysSinceLastSession === 'number' && momentum.daysSinceLastSession >= 7) {
+                      return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>It’s been a bit since you were last in here — nothing’s wrong, just pick back up whenever you’re ready.</p>;
+                    }
+                    if (momentum.trend === 'improving') {
+                      return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>You’re steadily working through this — keep going at your own pace.</p>;
+                    }
+                  }
+                  return null;
                 })()}
                 {/* heartAtRisk nudge (task 5): protect the moment before it defaults.
                     ── REWRITTEN AT THE BOARD RE-SIT (2026-07-30). Two defects, both real: ──
