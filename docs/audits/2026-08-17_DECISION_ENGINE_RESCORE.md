@@ -110,3 +110,43 @@ impression. No code got worse; the scoreboard got true.
 4. **Coverage 7→8**: the three thin playbooks, then the window gradient.
 
 Items 1 and 2 are the cheap ones and together are worth five points.
+
+---
+
+## Attempt on lever 2 (label the 93) — RUN AND REVERTED, 2026-08-17 20:2x
+
+Attempted, because the two detectors finally agree (both the codemod's walk and
+`grounding:census` report **93**; the script's refusal was a stale hardcoded 372,
+overridable with `EXPECT_UNLABELLED=93`) and because the documented root cause —
+`enclosingObject` walking BACKWARD and mis-parsing the apostrophe in "Captain
+White's" — is gone; the scanner is forward now.
+
+It wrote all 93 across 29 files and the census read **541/541 labelled, 0
+unlabelled**. Then its own post-write assertion refused the result:
+
+    DUPLICATE provenance in juneteenthCookout.js at 19187
+    DUPLICATE provenance in juneteenthCookout.js at 21232
+    2 literals carry two provenance keys — REVERT.
+
+Reverted. Tree clean, census back to 93.
+
+**The remaining bug, located.** Both offsets are items carrying a NESTED object of
+price ranges:
+
+    sourcingPrices: { butcher: [2, 4], costco: [1, 2.5], grocery: [3, 5] }
+
+The forward scanner resolves "which object owns this `unitCostRange`" incorrectly
+when a SIBLING object inside the same item also holds ranges, so it wrote
+`provenance` twice into one literal. The apostrophe bug is fixed; object-ownership
+around nested price maps is not.
+
+**A note on the instruments.** My own duplicate-key check reported "none — clean"
+on the same files — its regex required no nested brace between the two keys, which
+is exactly the shape that fails here. The script's assertion caught what mine
+missed. Two detectors agreeing was never the standard; this file's header says so
+already, and it was right twice.
+
+Lever 2 stays open. Next attempt: fix ownership resolution for items containing
+nested range objects, verify against juneteenthCookout specifically, and keep the
+post-write duplicate assertion as the gate — it is the only thing that has ever
+caught this class.
