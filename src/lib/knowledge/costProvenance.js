@@ -563,6 +563,21 @@ export const COST_SOURCES = {
   // that happen to sit at similar shelf prices, and substituting one for the
   // other is the same unit error as pricing pre-cut watermelon as whole, or
   // reading a cup-equivalent as a pound. Two retailer sources instead.
+  // -- GROCERY BAKERY CAKE (registered 2026-08-18) ----------------------------
+  // Second independent source for the cake rows. retail-sheetcake-2026 already
+  // covers warehouse and supermarket SHEET cakes; this covers the round-cake and
+  // whole-cake formats those rows also name, and corroborates the sheet figures
+  // from a second publisher.
+  //
+  // CUSTOM AND CELEBRATION-BAKERY CAKES ARE EXCLUDED. The same research turns up
+  // custom work at several hundred dollars; a grocery bakery round is a
+  // different product, and the rows here band the grocery one.
+  'bakery-cake-retail-2026': {
+    org: 'US grocery-bakery cake price guides with per-retailer figures, 2026 (listing - figures read from search results)',
+    url: 'https://eathealthy365.com/how-much-does-a-cake-cost-at-walmart-a-full-breakdown/',
+    fetched: '2026-08-18',
+    claim: 'Grocery bakery cakes 2026: an 8-inch double-layer round at Walmart is about $20-30, and popular sizes (quarter sheet or 8-inch round) run $25-45. A supermarket birthday cake for a comparable serving count is $35-55, typically a pre-frozen base with shortening frosting. Costco is cheaper still - a 10-inch round $15.99 and a half sheet $24.99, with no price difference between a plain cake and a fully decorated one.',
+  },
   'buns-kroger-2026': {
     org: 'Kroger hamburger and hot dog bun listings with unit pricing, 2026 (listing - figures read from search results)',
     url: 'https://www.kroger.com/q/hot+dog+bun+8+pack',
