@@ -872,6 +872,111 @@ export const COST_SOURCES = {
   // florist ornamental grass had published prices, and it is reported under its
   // own name below rather than as ketema. Tena adam reached only one US
   // publisher. Each is a gap, not a number.
+  // -- CONSUMER KRAFT, CANDLES, BADGES AND PRINT (2026-08-18) ----------------
+  // THE KRAFT ENTRY RETIRED A MISMATCH. The table-cover rows were flagged
+  // against 40lb BLEACHED WHITE butcher paper in 700-1,000ft foodservice rolls
+  // at $0.054-0.073 a linear foot. A host does not buy those. Consumer
+  // natural-brown kraft is $0.24-0.25 a linear foot - four times the
+  // foodservice grade - which is what the bands were pricing.
+  //
+  // BASIS WEIGHT IS DELIBERATELY NOT CLAIMED: neither consumer page states one,
+  // so these are "natural brown kraft, basis weight unstated" rather than 30lb.
+  // -- RAW PROTEINS AND PRODUCE (2026-08-18) ---------------------------------
+  // THIS RETIRED TWO MISMATCHES. The brisket and BBQ rows were flagged against
+  // SMOKED BBQ BY THE POUND at $17.99-34.49 - restaurant output. A whole packer
+  // is bought RAW at $3.00-5.99/lb and the host smokes it. Same animal, same
+  // word, 3-7x apart, and the bands were pricing the raw cut.
+  //
+  // USDA AMS FIGURES ARE ADVERTISED FEATURE PRICES, not shelf prices, and run
+  // systematically below shelf - onions are $0.87/lb advertised against $1.50/lb
+  // at a shelf. Every AMS figure below is labelled as such.
+  'brisket-raw-2026': {
+    org: 'USDA AMS Weekly Grocery Store Beef Feature Activity (AMS_3228, 2026-08-14) with two BBQ industry price guides (all fetched)',
+    url: 'https://www.ams.usda.gov/mnreports/AMS_3228.pdf',
+    fetched: '2026-08-18',
+    claim: 'RAW whole-packer brisket 2026, per pound of raw weight. USDA AMS advertised feature: $5.99/lb this week across 189 stores (Choice and ungraded alike), against $4.57 last week and $5.06 last year; brisket FLAT is dearer at $7.79-11.08. Warehouse and grocery everyday pricing runs below that: Choice $3.00-4.00 at the clubs, $3.50-5.00 at grocery; Prime $4.00-6.00; local butchers $5.00-7.00; online $9.00-12.00. FINISHED SMOKED BRISKET FROM A RESTAURANT IS A DIFFERENT PRODUCT at $14.50-40/lb, roughly 3-7x the raw packer.',
+  },
+  'produce-ams-shelf-2026': {
+    org: 'USDA AMS FVWRETAIL (2026-08-14) with Target shelf listings (both fetched)',
+    url: 'https://www.ams.usda.gov/mnreports/fvwretail.pdf',
+    fetched: '2026-08-18',
+    claim: 'Produce 2026, ADVERTISED against SHELF. ONIONS yellow: $0.87/lb advertised (365 ads) and a 3lb bag $3.19 ($1.06/lb), against a shelf 3lb bag at $4.49 ($1.50/lb) - the feature price runs well below shelf. GARLIC: $1.37 a sleeve advertised, with a 3-bulb bag at $1.99 shelf ($0.66 a head); the AMS report does not define bulbs per sleeve so no per-head conversion is safe from it. MUSHROOMS: cremini and white 8oz $1.76-1.77 advertised ($3.52-3.54/lb), shelf 8oz $1.89 ($3.78/lb). STRAWBERRIES: a 1lb package $3.10 advertised and 2lb $5.09 ($2.55/lb); BLS prices a 12oz dry pint at $2.404 (July 2026), about $3.21/lb equivalent.',
+  },
+  'pantry-canned-2026': {
+    org: 'BLS CPI Average Price series via FRED CSV with Target shelf listings (both fetched)',
+    url: 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=APU0000714221',
+    fetched: '2026-08-18',
+    claim: 'Pantry staples 2026. CANNED CORN: BLS $1.284/lb of can contents (July 2026, series APU0000714221); a store-brand 15.25oz can $0.89 ($0.934/lb). DRIED BEANS: BLS $1.689/lb (APU0000714233); shelf 1lb packs $1.29-1.99 and a 4lb bag $3.99 ($1.00/lb). CANNED BEANS: store-brand 15.5oz $0.99-1.16 ($1.02-1.20/lb of contents), branded $1.58-1.79 ($1.63-1.85/lb). NOTE the BLS canned-bean series was DISCONTINUED in January 1986, so there is no current government anchor for canned beans.',
+  },
+  'brunch-prepared-2026': {
+    org: 'Target, Instacart and two catering counters for quiche, tea sandwiches and lasagna (all fetched)',
+    url: 'https://kenricks.com/market/assorted-triangle-tea-sandwich-tray/',
+    fetched: '2026-08-18',
+    claim: 'Prepared brunch items 2026. MINI QUICHE: a 12-count 6.25oz pack $5.99 ($0.50 a piece); a 72-count warehouse pack $23.50 on a delivery platform ($0.33 a piece, platform markup included). TEA SANDWICHES: a 40-triangle deli tray $39.99 serving 15-20 ($1.00 a piece) against a specialist tea caterer at $180.00 for 60 ($3.00 a piece) - a 3x spread that is real product differentiation, not noise. VEGETABLE LASAGNA: $5.40-10.59 a pound across brands ($12.99 for 26oz, $10.79 for 32oz, $6.29 for 9.5oz); NO fetched source stated a serving count, so no per-serving figure can be derived without inventing a portion.',
+  },
+  'kraft-consumer-2026': {
+    org: 'Target (Wrapables) and Hobby Lobby (Pacon) consumer kraft roll listings (both fetched)',
+    url: 'https://www.hobbylobby.com/art-supplies/project-supplies/classroom-supplies/natural-kraft-paper-roll/p/80771885',
+    fetched: '2026-08-18',
+    claim: 'CONSUMER natural-brown kraft paper 2026, basis weight unstated on both pages. A 48in x 25ft heavyweight roll $5.99 ($0.24 a linear foot, $0.060 a square foot); a 12in x 100ft roll $24.99 ($0.25 a linear foot, $0.250 a square foot). THE WIDTHS DIFFER 4x so the linear-foot agreement is coincidence - for covering a table the 48in roll is the relevant unit. A 40lb bleached-white foodservice roll at 30in is $0.054-0.073 a linear foot, about a quarter the consumer rate, and is sold in 700-1,000ft lengths.',
+  },
+  'newsprint-2026': {
+    org: 'WebstaurantStore and U-Haul newsprint listings (both fetched)',
+    url: 'https://www.webstaurantstore.com/lavex-18-x-1-440-30-lb-newsprint-packing-paper-roll/442NP1890.html',
+    fetched: '2026-08-18',
+    claim: 'Newsprint 2026. ROLLS: 18in x 1,440ft 30lb $35.49 ($0.0247 a linear foot); 24in x 1,200ft 30lb $30.99 ($0.0258 a foot). SHEETS: a 200-sheet box of 24x30in $19.99 (1,000 sq ft, $0.0200 a sq ft); a 100-sheet box $16.95 ($0.0339 a sq ft). Rolls and pre-cut sheet boxes are different form factors and should not be blended.',
+  },
+  'birthdaycandles-lighters-2026': {
+    org: 'Target, Oasis Supply, Ace Hardware and Zippo listings (all fetched)',
+    url: 'https://www.target.com/p/celebration-candles-24ct-favorite-day-8482/-/A-81917107',
+    fetched: '2026-08-18',
+    claim: 'Birthday candles and lighters 2026. CANDLES - thin striped wax, a distinct product from pillars, votives or LEDs: a 24-count retail pack $1.19 ($0.05 each); a 24-count wholesale pack $0.69 ($0.029 each). LIGHTERS: a disposable butane multi-purpose lighter $4.19-5.59; a refillable flex-neck lighter $26.95 shipped unfilled, a different class needing fuel separately.',
+  },
+  'namebadges-adhesive-2026': {
+    org: 'Quill and Avery direct listings for adhesive name badges (both fetched)',
+    url: 'https://www.avery.com/products/name-badges/5395',
+    fetched: '2026-08-18',
+    claim: 'Adhesive name badges 2026, 2-1/3 x 3-3/8in. A 400-count box is $57.19 at an office e-tailer (its own page states $0.14 each) and $42.99 direct from the manufacturer ($0.107 each). A 160-count box is $29.99 and $24.99 respectively ($0.187 and $0.156), but the smaller direct price is PROMOTIONAL against a $41.25 regular ($0.258 each). The 400-count is the cheaper unit and the more stable figure.',
+  },
+  'reeddiffuser-2026': {
+    org: 'Target, P.F. Candle Co. direct and EarthHero reed diffuser listings (all fetched)',
+    url: 'https://www.target.com/p/6-1fl-oz-reed-diffuser-threshold/-/A-1011935405',
+    fetched: '2026-08-18',
+    claim: 'Reed diffusers 2026 in two tiers about 5.7x apart per ounce: mass retail $10.00 for 6.1 fl oz ($1.64 a fluid ounce); specialty brand $32.99-33.00 for 3.5 fl oz ($9.43 an ounce, lasting 2-3 months with seven rattan reeds). Do not average the tiers.',
+  },
+  'print-booklets-2026': {
+    org: 'Summit Printing published booklet price list, with PrintingCenterUSA as a corroborating band (both fetched)',
+    url: 'https://www.summitprintingpro.com/multi-page/booklet-price-list.html',
+    fetched: '2026-08-18',
+    claim: 'Saddle-stitched booklets and programs 2026, from a PUBLISHED price list (most US printers are calculator-only). Half-page 5.5x8.5in, 8 pages: $227 for 50 ($4.54 each), $252 for 100 ($2.52), $356 for 200 ($1.78), $451 for 250 ($1.80). Full-page 8.5x11in, 8 pages: $241 for 50 ($4.82), $292 for 100 ($2.92), $532 for 250 ($2.13). A second printer states about $5 a booklet for 100 at 60 pages and a $2-25 range for one-offs, hedged with "about" on its own page.',
+  },
+  'print-binding-dividers-2026': {
+    org: 'Gorham Printing published book-price charts, with Quill and Global Industrial for dividers (all fetched)',
+    url: 'https://gorhamprinting.com/prices-book-printing/price-charts.html',
+    fetched: '2026-08-18',
+    claim: 'Bound documents 2026. SPIRAL-BOUND BOOKS, per book at 100 copies: 5.5x8.5in black-and-white $5.70 at 50 pages, $8.59 at 150, $13.32 at 300; 8.5x11in $6.94 at 50 pages and $20.86 at 300; colour interiors $12.09 at 50 pages. Premium coil adds $0.55 a book and wire-o about $0.15. NO PUBLISHER QUOTES BELOW 100 COPIES - every other US printer checked is calculator-only - so a 10-50 book run cannot be priced from published rates. TABBED DIVIDERS: an 8-tab insertable set $3.75-7.79 ($0.47-0.97 a tab).',
+  },
+  'tablenumbers-holders-2026': {
+    org: 'WebstaurantStore, GoFoodService, Quill and Global Industrial (all fetched)',
+    url: 'https://www.webstaurantstore.com/choice-1-to-25-plastic-table-number-set/176NUMC125.html',
+    fetched: '2026-08-18',
+    claim: 'Table numbers and badge holders 2026. PLASTIC TABLE NUMBER SETS: 1-25 $1.99-5.49, 1-50 $3.99-7.98, 1-100 $7.99-14.35 - about $0.08-0.22 a number. STAINLESS tents are an order of magnitude higher at $42.99-89.45 a set ($0.86-2.49 a number). RIGID BADGE HOLDERS: $14.75-37.49 per 50 ($0.295-0.75 each) across a proximity holder and a vinyl sleeve - different constructions, carry as a range. Easels are about $7.50 each in a 12-pack.',
+  },
+  // Split into cards and dominoes. Aggregated as one id, a row citing both read
+  // as single-sourced to the >=2 policy — the fourth time that gate has caught
+  // me collapsing publishers into one registry line.
+  'playingcards-bulk-2026': {
+    org: 'ClassicDecks card-specialist bulk listings and Quill office channel (both fetched)',
+    url: 'https://classicdecks.com/collections/bulk',
+    fetched: '2026-08-18',
+    claim: 'Playing cards 2026. A 12-deck brick: Maverick $16.99 ($1.42 a deck), Bicycle $26.99 ($2.25), Bee $48.00 ($4.00); a 6-deck half-brick of Bicycle Prestige $59.99. The OFFICE CHANNEL is dearer: six 52-card decks $33.89 ($5.65 each), about 2.5x the card-specialist brick rate. Clipboards from the same channels: $3.00 each at a 12-unit minimum and $4.69 at an 8+ tier.',
+  },
+  'dominoes-education-2026': {
+    org: 'Didax and Nasco Education double-six domino listings (both fetched)',
+    url: 'https://www.nascoeducation.com/dominoes-double-six-pk-28-tb15635.html',
+    fetched: '2026-08-18',
+    claim: 'Double-six dominoes 2026: a 28-tile set $2.25 at one education supplier; a 168-tile pack of six sets $15.00 at another ($2.50 a set). The two agree closely at about $2.25-2.50 a standard set.',
+  },
   'kente-specialist-2026': {
     org: 'Africa Imports and Bynelo, African-goods specialist retailers, with Sankofa Edition (Black-owned) for stoles (all fetched)',
     url: 'https://africaimports.com/kente-scarftable-runner-1/',

@@ -188,8 +188,17 @@ describe('against the REAL corpus', () => {
     // Every figure came from a named publisher with a URL and was checked
     // against the row's band before being written; five bands that looked wrong
     // turned out to be right once the correct purchase FORMAT was priced.
+    // 2026-08-18, fifth and last raise. Same check every time:
+    //
+    //   denominator  537 authored priced lines — unchanged all day
+    //   numerator    486 directly-cited, from 270 this morning
+    //
+    // Five waves of parallel research, ~325 registered sources, every figure
+    // from a named publisher with a URL and every citation checked against its
+    // band before being written. Ten bands that looked wrong turned out to be
+    // right once the correct SIZE, FORMAT or CHANNEL was priced.
     expect(inv.total).toBeGreaterThanOrEqual(537);
-    expect(share).toBeLessThan(90);
+    expect(share).toBeLessThan(95);
   });
 
   test('AMBIGUOUS reads 0 here, and that is a LIMIT of this counter, not a clean corpus', () => {

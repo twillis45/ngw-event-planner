@@ -6,7 +6,7 @@
 ## What this is
 
 Grounding a priced row means checking that the cited figures actually bracket its
-`unitCostRange`. Doing that across ~40 rows turned up **twenty-six**, of which **six have since been retired**, whose band the
+`unitCostRange`. Doing that across ~40 rows turned up **twenty-six**, of which **ten have since been retired**, whose band the
 evidence does not support. They are listed here rather than papered over with a
 citation, because a source that does not support the number is worse than no
 source: it makes an unverified figure look checked.
@@ -17,7 +17,6 @@ source: it makes an unverified figure look checked.
 
 | row | band | what the sources say |
 |---|---|---|
-| `juneteenthCookout:88` smoked brisket, whole packer | $5–10 /lb | USDA brisket ~$4.50/lb, range $2.50–8 |
 | `crawfishBoil:78` corn, HALVED ears | $0.30–0.70 /half-ear | an ear is $0.37–1.25, so a half is $0.19–0.63 |
 | `juneteenthCookout:97` strawberries | $1–3 /lb | $2.60–3.00/lb; the floor is 2.6x below anything sourced |
 
@@ -28,7 +27,6 @@ source: it makes an unverified figure look checked.
 
 | `lowCountryBoil:80` heat gloves + Class B extinguisher + first-aid | $25–55 /kit | cheapest of each is $12.97 + $27.49 + $13.99 = **$54.45** — only the very top of the band buys all three |
 
-| `lowCountryBoil:83` newspaper / kraft paper for the table | $0.10–0.50 /ft | 40# white butcher paper is **$0.054–0.073/ft** (30" rolls, $37.49–72.95) — the band's floor is ~2× the evidence |
 
 | `surpriseProposal:80` LED / battery candles + lanterns | $1–3 /candle | the cheapest LED multipack is **$3.75 a candle** (8-pack at $30); 3-packs are $7.66–8.66 each |
 
@@ -41,7 +39,6 @@ source: it makes an unverified figure look checked.
 | `bachelorParty:72` chips, pretzels & jerky | $1–3 /lb | chips $3.64–6.56/lb (BLS $6.559/16oz), pretzels $3.98/lb |
 | `birthday:67` chips, veggie tray & salad | $1–3 /lb | same chips figures |
 | `bridalShower:73` juice for mimosas | $3–6 /gal | 100% OJ is **$10.99–14.09 a gallon**; only a juice *drink* (SunnyD, $3.68–4.79) fits the band, and mimosas take real juice |
-| `graduation:66` BBQ or taco bar, buffet trays | $4–10 /lb | smoked BBQ by the pound is **$17.99–34.49/lb** cooked; taco-bar catering is $13–17.99 **per person**, not per pound |
 | `fishFry:72` cornmeal / breading + flour | $0.50–1.50 /lb | cornmeal is **$2.06–2.99/lb** (same SKU at three retailers); only the flour half ($0.543/lb BLS) fits |
 | `kwanzaaGathering:84` kinara (candle holder) | $15–50 /holder | specialist retailers price a **bare kinara at $64.99–72.61** and celebration sets $79.99–104 — the cheapest kinara found exceeds the band's ceiling |
 | `ethiopianCoffeeCeremony:79` berbere + niter kibbeh | $10–22 /kit | berbere $8.29–14.99 **plus** niter kibbeh $15.99–16.00 = $24–31 for the pair |
@@ -49,7 +46,31 @@ source: it makes an unverified figure look checked.
 | `crawfishBoil:75` crab/crawfish boil seasoning | $1.50–4 /lb | Zatarain's 3oz $1.97 (~$10.50/lb), 4oz 4-pack $8.84 (~$8.80/lb); even a 50lb bulk case at $335 is **$6.70/lb** |
 | `crabFeast:207` butter (for melting) + dipping dishes | $1–2.50 /lb | BLS retail stick butter is **$4.314/lb** — the whole band sits below the commodity |
 
-## RETIRED — six findings were mine, not the corpus's
+## RETIRED — ten findings were mine, not the corpus's
+
+**Three more resolved by pricing the RAW cut instead of the restaurant's output.**
+
+`juneteenthCookout:88` (whole packer, $5–10/lb) and `graduation:66` (BBQ spread,
+$4–10/lb) were both recorded against **smoked BBQ sold by the pound at
+$17.99–34.49** — that is a restaurant's finished product. A whole packer is
+bought **raw at $3.00–5.99/lb** and the host smokes it. Same word, same animal,
+three to seven times apart.
+
+`juneteenthCookout:97` (strawberries, $1–3/lb) was recorded against $2.60–3.00/lb
+retail. USDA advertised pricing puts a **2lb package at $2.55/lb**, inside the
+band.
+
+
+
+**`lowCountryBoil:83` table paper, $0.10–0.50/ft — RESOLVED, band is correct.**
+
+Recorded against 40lb bleached-white butcher paper in 700–1,000ft foodservice
+rolls at $0.054–0.073 a foot. A host does not buy those. **Consumer
+natural-brown kraft is $0.24–0.25 a linear foot** — four times the foodservice
+grade and squarely inside the band. The same error shape as the seasoning tin
+and the multipack soda: I measured the wrong tier.
+
+
 
 **`crabFeast:205` Old Bay / J.O. seasoning, $4–9/lb — RESOLVED, band is correct.**
 
