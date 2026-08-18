@@ -480,6 +480,29 @@ export const COST_SOURCES = {
   // The BLS Average Price series (APU) IS per pound, monthly, and current. This
   // is a government source used on the exact quantity it measures, which is the
   // distinction that matters — not whether the source is authoritative.
+  // -- JUICE AND TEA, the two components that blocked the NA-drink family ------
+  // Registered 2026-08-18. The non-alcoholic rows ("Soda, water, iced tea",
+  // "Soft drinks, juice, water") could not be grounded because soda and bottled
+  // water had sources and juice and tea did not. These close that gap.
+  //
+  // READ THE OJ SERIES CAREFULLY: APU0000713111 prices FROZEN CONCENTRATE per 16
+  // fl oz of concentrate, not ready-to-drink juice. A 12oz can reconstitutes to
+  // about 48oz, so $4.82/16oz is roughly $3.62 a can and about $0.60 per 8oz
+  // glass. Quoting the headline number as a per-glass price would overstate it
+  // roughly fourfold, which is exactly the kind of unit slip a citation is
+  // supposed to prevent.
+  'bls-oj-2026': {
+    org: 'Basket Report, republishing US Bureau of Labor Statistics CPI Average Price Data (series APU0000713111, orange juice frozen concentrate, cost per 16 ounces) (fetched)',
+    url: 'https://basketreport.com/prices/oj/',
+    fetched: '2026-08-18',
+    claim: 'BLS US city average, July 2026 (released 2026-08-12): orange juice frozen concentrate $4.82 per 16 fl oz of concentrate, down 1.2% on the month and up 3.8% on the year. A 12oz can is about $3.62 and reconstitutes to roughly 48oz, i.e. about $0.60 per 8oz glass. This is the concentrate series, not ready-to-drink chilled juice.',
+  },
+  'icedtea-lemonade-2026': {
+    org: 'US grocery gallon listings for ready-to-drink iced tea and lemonade, with a homemade-cost guide (listing - figures read from search results)',
+    url: 'https://www.walmart.com/c/kp/lemonade-gallon',
+    fetched: '2026-08-18',
+    claim: 'Ready-to-drink by the gallon 2026: Turkey Hill lemonade tea $3.28, Milos famous sweet tea $3.94, Milos sweet tea and lemonade half-and-half $4.48. A gallon is sixteen 8oz cups, so that is $0.21-0.28 per cup. A separate homemade-lemonade guide puts a made-at-home gallon at $3.00-5.00, or $0.20-0.35 per cup, which corroborates the ready-to-drink band rather than undercutting it.',
+  },
   'bls-produce-2026': {
     org: 'Basket Report, republishing US Bureau of Labor Statistics CPI Average Price Data (series APU0000712112 white potatoes, APU0000711211 bananas) (fetched)',
     url: 'https://basketreport.com/prices/potatoes/',

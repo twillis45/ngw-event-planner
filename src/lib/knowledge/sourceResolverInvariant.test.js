@@ -153,11 +153,17 @@ describe('1 — the source universe is what we think it is', () => {
   // `7principles-mkeka-2026`. Community and specialist retailers rather than a
   // marketplace search, because a jebena is not "a clay pot" and a mkeka is not
   // "a placemat".)
-  test('20 axes, 183 source identities — verified, not assumed', () => {
+  // (185 since 2026-08-18 registered `bls-oj-2026` and `icedtea-lemonade-2026`
+  // in COST_SOURCES. The non-alcoholic drink rows could not be grounded because
+  // soda and bottled water had sources and juice and tea did not; these two
+  // close that gap. The OJ entry is the BLS frozen-concentrate series and its
+  // claim states the reconstitution math, because quoting $4.82/16oz as a
+  // per-glass price would overstate it roughly fourfold.)
+  test('20 axes, 185 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(183);
-    expect(unionIds().size).toBe(183);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(185);
+    expect(unionIds().size).toBe(185);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
