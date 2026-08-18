@@ -38,7 +38,15 @@ const primitive = {
   // Sprint 49 calibration: status colors dropped to ~40-60% saturation to
   // sit in the same register as the steel/matte chroma rather than shouting
   // against it. Semantic meaning preserved; visual weight matched.
-  amber: { '300': '#d99a59', '400': '#d4904a', '500': '#b87a38' }, // honey tungsten — was #f3a449/#ef962e/#df8116
+  // 400 unified to #ECA13F 2026-08-18 (D2 of the Figma/code reconciliation).
+  // Three ambers were live: #d4904a here, #ECA13F in palette.js (what actually
+  // rendered), and #b45309 on Figma page 66 tagged PROVEN but present in no code
+  // at all — and measuring 3.65:1 as text on carbon, a WCAG AA failure, so its
+  // "proven" tag was never earned. Consolidated on palette's #ECA13F: it was
+  // already shipping, and it measures 8.50:1 against #d4904a's 6.89:1.
+  // This reverses the Sprint 49 desaturation for the 400 stop specifically —
+  // deliberate, chosen over keeping a token that disagreed with what rendered.
+  amber: { '300': '#d99a59', '400': '#ECA13F', '500': '#b87a38' }, // was #d4904a; 300/500 unchanged
   green: { '200': '#8fbf9f', '300': '#5aa478', '400': '#3a8a62', '500': '#28704e' }, // calmer forest — was #7dcca0/#3eab6c/#298c52/#1b7040
   // Sprint 60.U.3 10+ red correction — pull the whole ramp toward fire-red.
   // Old values had B ≈ G (dusty crimson) and the 'bright' tier had B>G which
@@ -88,14 +96,26 @@ export const color = {
     confirmed:     primitive.green['400'],
     confirmedText: primitive.green['200'],
     confirmedBg:   '#0d2818',
-    warning:       primitive.amber['400'], // #d4904a — Sprint 49 calibrated honey tungsten
+    warning:       primitive.amber['400'], // #ECA13F — unified with palette.amber (D2, 2026-08-18)
     warningText:   primitive.amber['300'], // #d99a59
     warningBg:     '#1a1004',
-    // Red parity (board 2026-06-10): unified to the single canonical fire red
-    // (#E84036 = palette.js dangerRed = C.danger). The plan/ layer read
-    // primitive.red['400'] (#b04848 dignified crimson) while the rest of the app
-    // used #E84036 — two different reds on screen. One red now: this token.
-    risk:          '#E84036',              // canonical fire red (was #b04848)
+    // Red parity (board 2026-06-10): unified to the single canonical fire red.
+    // The plan/ layer read primitive.red['400'] (#b04848 dignified crimson) while
+    // the rest of the app used #E84036 — two different reds on screen. One red
+    // for the FILL now: this token.
+    //
+    // CORRECTION 2026-08-18: this comment used to read "#E84036 = palette.js
+    // dangerRed = C.danger", which was true when it was written and is not now.
+    // A later WCAG pass split danger into TWO tokens, deliberately:
+    //   palette.dangerRed   #F27A70 — danger TEXT/accent. #E84036 measured
+    //                                 ≈3.6–4.1:1 as text on the danger tint/card
+    //                                 and FAILED AA; lightened to ≈4.9:1 / ≈6:1.
+    //   palette.dangerSolid #E84036 — solid FILL only (alert banner, white text
+    //                                 on top), where the deep red is legible.
+    // `risk` below is a fill/accent role, so it correctly matches dangerSolid.
+    // Do NOT "reunify" these by setting dangerRed to #E84036 — that reintroduces
+    // the contrast failure the split exists to fix. Two reds is the fix, not drift.
+    risk:          '#E84036',              // canonical fire red — matches palette.dangerSolid
     riskText:      '#f0897e',              // lighter fire tint for text-on-dark
     riskBright:    primitive.red['bright'], // #c93f4a emergency tier (day-of only)
     riskBg:        '#1a0608',

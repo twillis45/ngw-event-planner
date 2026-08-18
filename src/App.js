@@ -14917,7 +14917,7 @@ function ClientPortalPublicView({ token, events }) {
   // Studio Matte calibrated status ramp (board: was raw pre-calibration neon
   // #22c55e/#f59e0b/#ef4444, which didn't match the tokens used everywhere else).
   const green  = '#3a8a62'; // forest
-  const amber  = '#d4904a'; // honey
+  const amber  = '#ECA13F'; // honey
   const red    = '#E84036'; // fire
 
   if (!event) {

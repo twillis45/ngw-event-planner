@@ -823,9 +823,9 @@ export function getCrossEventAttentionItems(events = []) {
         owner: m.channel || 'Client',
         // Sprint 49: Figma H vocabulary — draft = PENDING, sent = AWAITING
         statusLabel: sent ? 'AWAITING' : 'PENDING',
-        statusColor: sent ? '#d4904a' : '#849eb8',
+        statusColor: sent ? '#ECA13F' : '#849eb8',
         dueLabel: sent ? 'Awaiting' : 'Drafted',
-        dueColor: sent ? '#d4904a' : '#849eb8',
+        dueColor: sent ? '#ECA13F' : '#849eb8',
         sortKey: sent ? 500 : 300,
         // Sprint 49: approvals route to the canonical Decisions tab too
         clickTarget: { tab: 'Decisions', decisionId: m.id },
@@ -874,7 +874,7 @@ export function getCrossEventAttentionItems(events = []) {
           meta: `${eventName} · ${v.category || 'vendor'}`,
           owner: v.name || '—',
           statusLabel: 'STALE',
-          statusColor: '#d4904a',
+          statusColor: '#ECA13F',
           dueLabel: `${eventDays}d to event`,
           dueColor: '#849EB8',
           sortKey: 350 + Math.min(lastDays, 200), // staler = higher priority
@@ -896,8 +896,8 @@ export function getCrossEventAttentionItems(events = []) {
         // fire red. "rush" was #E84036; demoted to amber. The headline copy +
         // do-now count carry the severity, not an alarm color.
         const tone =
-            compression.level === 'rush'       ? '#d4904a'
-          : compression.level === 'compressed' ? '#d4904a'
+            compression.level === 'rush'       ? '#ECA13F'
+          : compression.level === 'compressed' ? '#ECA13F'
           :                                      '#3a8a62'; // tight
         items.push({
           id: `compr-${ev.id}`, kind: 'compression', eventId: ev.id, eventName,
@@ -948,11 +948,11 @@ export function getCrossEventAttentionItems(events = []) {
           : (v.status === 'Considering' || v.status === 'Not Started' || !v.status)              ? 'NOT STARTED'
           : (v.status === 'Unconfirmed' || v.status === 'Needs Action')                           ? 'UNCONFIRMED'
           : 'NOT STARTED',
-        statusColor: overdueP ? '#E84036' : '#d4904a',
+        statusColor: overdueP ? '#E84036' : '#ECA13F',
         dueLabel: v.payDueDate
           ? (overdueP ? `Overdue ${-daysFrom(v.payDueDate)}d` : `In ${daysFrom(v.payDueDate)}d`)
           : 'Open',
-        dueColor: overdueP ? '#E84036' : '#d4904a',
+        dueColor: overdueP ? '#E84036' : '#ECA13F',
         sortKey: overdueP ? 900 : 200,
         // Sprint 49: emit `vendorId` to match EventPlanner's initialNav shape
         clickTarget: { tab: 'Vendors', vendorId: v.id },
