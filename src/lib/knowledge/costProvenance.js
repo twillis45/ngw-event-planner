@@ -572,6 +572,23 @@ export const COST_SOURCES = {
   // CUSTOM AND CELEBRATION-BAKERY CAKES ARE EXCLUDED. The same research turns up
   // custom work at several hundred dollars; a grocery bakery round is a
   // different product, and the rows here band the grocery one.
+  // -- SANDWICH AND BLOCK CHEESE (registered 2026-08-18) ----------------------
+  // The registry's only cheese evidence was charcuterie-grocery-2026 at about
+  // $15/lb for SPECIALTY cheese. That is the right figure for a cheese board and
+  // the wrong one for a melting or sandwich cheese, and using it for the latter
+  // would roughly treble the number. These two price the everyday tier.
+  'cheese-sliced-2026': {
+    org: 'Walmart sliced and block cheese listings with unit pricing, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/ip/Kraft-Singles-American-Cheese-Slices-24-Ct-Pk/10452905',
+    fetched: '2026-08-18',
+    claim: 'Everyday cheese at Walmart 2026: Kraft Singles American 24-count 16oz $4.86 (30.4 cents an ounce, so about $4.86/lb); Great Value block cheddar $3.78/lb mild, $3.58 extra sharp 16oz, $3.74/lb sharp in an 8oz block. Block and processed slices sit at $3.58-4.86 a pound.',
+  },
+  'cheese-deli-2026': {
+    org: 'ShopRite deli sliced American cheese listing (listing - figures read from search results; shoprite.com returned 403 on direct fetch)',
+    url: 'https://www.shoprite.com/categories/slicing-cheese/american-cheese-id-519913',
+    fetched: '2026-08-18',
+    claim: 'Deli-counter sliced American cheese: Black Bear American $5.99/lb at ShopRite, cut to order. A deli counter prices above a packaged block or processed slice and below specialty cheese.',
+  },
   'bakery-cake-retail-2026': {
     org: 'US grocery-bakery cake price guides with per-retailer figures, 2026 (listing - figures read from search results)',
     url: 'https://eathealthy365.com/how-much-does-a-cake-cost-at-walmart-a-full-breakdown/',
