@@ -143,6 +143,7 @@ import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createCheckoutSession } from '@app/lib/stripeApi';
+import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure } from '@app/lib/passGate';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
@@ -677,6 +678,24 @@ function CityField({ value, onChange, onPick, onEnter, placeholder, ariaLabel, s
     </div>
   );
 }
+
+// MODEL D — Stripe success return for the One-Event Pass. Captured at MODULE
+// scope (the app strips URL params during boot, so render-time reads lose the
+// race — same lesson as the demo-tools arming). buyPass's feeId is
+// 'one-event-pass-<eventId>'; stripeApi's success_url echoes it back as
+// fee_id. HONEST LIMIT, recorded: this trusts the redirect param. Before
+// billing goes live, the audited-Stripe-path precondition (D-2 gate 3) must
+// add server verification (verify-session with {CHECKOUT_SESSION_ID} in the
+// success_url) — the webhook already logs server-side either way.
+const PASS_PAID_EVENT_ID = (() => {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('stripe_paid') === '1' && String(q.get('fee_id') || '').startsWith('one-event-pass-')) {
+      return String(q.get('fee_id')).slice('one-event-pass-'.length) || null;
+    }
+  } catch { /* no params, no purchase return */ }
+  return null;
+})();
 
 export default function HostShellV2() {
   const [stage, setStage] = useState('plan');
@@ -2517,6 +2536,10 @@ export default function HostShellV2() {
     let copy = null;
     try { copy = duplicateEvent(src, { id: newId, now: new Date().toISOString() }); }
     catch { toast('Couldn’t copy that event.'); return; }
+    // MODEL D stamp — a run-it-again copy is a NEW event and gets its own
+    // creation-time verdict (it does not inherit the source's grandfather).
+    // A fresh brief ledger too: the copy has shared nothing with anyone yet.
+    try { Object.assign(copy, passVerdictAtCreation(copy, customs), { briefSharedVendorIds: [], passPurchased: false }); } catch { /* unstamped = free */ }
     setCustoms(list => [...list, copy]);
     setEventId(newId); setPatch({}); setSheet(null); setStage('plan'); setDayIdx(0);
     didResume.current = true;
@@ -2553,6 +2576,18 @@ export default function HostShellV2() {
   const dstat = eventDateStatus(event.date);            // lib/dates — time intelligence
   const days = dstat.days;
 
+  // MODEL D — apply a Stripe pass-purchase return exactly once per boot. The
+  // paid event's id rode back in the success URL (module-scope capture above);
+  // the pass unlocks that WHOLE event, by ruling. Green confirmation, one
+  // token (confirmations-green rule).
+  const passPaidApplied = useRef(false);
+  useEffect(() => {
+    if (!PASS_PAID_EVENT_ID || passPaidApplied.current) return;
+    passPaidApplied.current = true;
+    setCustoms(list => list.map(c => (c && c.id === PASS_PAID_EVENT_ID) ? { ...c, passPurchased: true } : c));
+    toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // ── T-72h reconfirm window ── named FORMAL vendors only; the sweep exists
   // inside the last three days, and closes itself once every vendor has
   // answered. Informal helpers (a friend bringing the cooler) are excluded —
@@ -2710,6 +2745,21 @@ export default function HostShellV2() {
   const [vendorBrief, setVendorBrief] = useState(null); // { vendorId, url, qrDataUrl, minting, copied }
   useEffect(() => { setVendorBrief(null); }, [eventId]); // never carry a stale link across an event switch
   const shareVendorBrief = async (v) => {
+    // MODEL D — door 1, at the only honest gate point: GENERATING a brief for
+    // a new vendor (board 2026-08-18: "never mid-conversation" — an
+    // already-shared vendor passes unconditionally inside briefAllowed).
+    // Dormant while billing is off; when it fires, the pass sheet opens with
+    // the plain reason rather than a dead wall.
+    try {
+      const gate = briefAllowed(event, v.id);
+      if (!gate.allowed) {
+        toast(gate.reason === 'second-vendor'
+          ? 'Your free brief went to your first vendor — the pass unlocks sharing with every vendor on this event.'
+          : 'Sharing vendor briefs on this event takes the One-Event Pass.');
+        setSheet({ kind: 'pass' });
+        return;
+      }
+    } catch { /* gate engine absent — never block sharing on an internal error */ }
     setVendorBrief({ vendorId: v.id, url: null, qrDataUrl: null, minting: true, copied: false });
     let code = null;
     try {
@@ -2721,6 +2771,14 @@ export default function HostShellV2() {
     let qr = null;
     try { qr = await QRCode.toDataURL(url, { width: 480, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } }); } catch { qr = null; }
     setVendorBrief(b => (b && b.vendorId === v.id) ? { vendorId: v.id, url, qrDataUrl: qr, minting: false, copied: false } : b);
+    // MODEL D ledger — record which vendors have a brief out. This is the fact
+    // briefAllowed's "never mid-conversation" clause reads, and a true record
+    // regardless of billing: a share is a share. Written through the normal
+    // patch path, deduped, silent (no toast — the share UI already speaks).
+    try {
+      const cur = Array.isArray(event.briefSharedVendorIds) ? event.briefSharedVendorIds : [];
+      if (v.id && !cur.includes(v.id)) patchEvent({ briefSharedVendorIds: [...cur, v.id] });
+    } catch { /* ledger write is best-effort; the share itself already happened */ }
   };
   const copyVendorBriefLink = () => {
     if (!vendorBrief || !vendorBrief.url) return;
@@ -5753,6 +5811,14 @@ export default function HostShellV2() {
     // Canonical checklist over the real event object (date-relative offsets,
     // choice/caterer gates). No date yet → honestly empty; drafts later.
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
+    // MODEL D — THE ONE STAMPING MOMENT (grandfather rule, board 2026-08-18):
+    // the pass verdict is computed here, against the events that existed
+    // before this one, and stored on the event forever. lib/passGate.js is
+    // the ruling made executable; nothing downstream ever recomputes this.
+    // Stamped even while billing is dormant, so pre-launch events carry an
+    // honest verdict rather than getting a surprise one later — though note
+    // passGate treats an UNSTAMPED event as grandfathered free regardless.
+    try { Object.assign(ev, passVerdictAtCreation(ev, customs), { briefSharedVendorIds: [] }); } catch { /* engine absent — event stays unstamped, i.e. free */ }
     setCustoms(list => list.some(c => c && c.id === newId) ? list.map(c => (c && c.id === newId) ? ev : c) : [...list, ev]);
     setEventId(newId); setRevealed(true);
     // Build-map #3: a freshly created event is the host's new resume pointer.
@@ -6645,6 +6711,21 @@ export default function HostShellV2() {
                             {expectC ? ` — likely ${expectC.low}–${expectC.high} make it.` : ''}
                             {!effDate ? ' No date yet is fine — the plan will ask.' : ''}
                           </p>
+                          {/* MODEL D creation-time disclosure (Grandmother's rider: this
+                              line INFORMS — blunt boundary, before any work is invested;
+                              the pass sheet is where the selling happens). Predicts the
+                              same verdict `assemble` will stamp, from the same draft
+                              facts. Null while billing is dormant, so nothing renders
+                              today and no invented urgency ever does. */}
+                          {(() => {
+                            let line = null;
+                            try {
+                              line = creationDisclosure(passVerdictAtCreation(
+                                { id: 'cust-draft', isDestination: !!effIsDestination, date: effDate || null, endDate: effEndDate || null, type: effType },
+                                customs));
+                            } catch { line = null; }
+                            return line ? <p className="grounding" style={{ marginTop: 6 }}>{line}</p> : null;
+                          })()}
                         </div>
                       )}
                     </>
@@ -11251,6 +11332,18 @@ export default function HostShellV2() {
               );
             })()}
             {sheet.kind === 'lodging' && (() => {
+              // MODEL D visibility rule: a locked destination surface renders
+              // TEASED with honest copy naming the pass — never hidden, never
+              // fake-functional. Reads only the creation-stamped verdict
+              // (destinationLocked), so grandfathered events sail through.
+              if (destinationLocked(event)) {
+                return (
+                  <div style={{ padding: '2px 0' }}>
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Where everyone stays lives here — the stay, who needs a room, and the lodging plan for a multi-day event. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                  </div>
+                );
+              }
               // ── DESTINATION-2 · slice 1 — Where everyone stays ──
               // HOST surface only (no guest portal). Everything shown comes
               // from lib/travelPlan or the host's own form: headcount mode
@@ -12672,6 +12765,15 @@ export default function HostShellV2() {
               );
             })()}
             {sheet.kind === 'ground' && (() => {
+              // MODEL D visibility rule — see the lodging sheet's note.
+              if (destinationLocked(event)) {
+                return (
+                  <div style={{ padding: '2px 0' }}>
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Getting around lives here — the shuttle call, who’s driving, and the ride board for the day. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                  </div>
+                );
+              }
               // ── DESTINATION-2 · slice 2 — Getting around ──
               // HOST surface only. The shuttle call is the dest_transport
               // DECISION (Phase 1's single source of truth) — shown read-only
@@ -12846,6 +12948,15 @@ export default function HostShellV2() {
               // start time — a recommended time is never invented. Headcount
               // mode keeps the airports card and drops the board — guest rows
               // are never invented.
+              // MODEL D visibility rule — see the lodging sheet's note.
+              if (destinationLocked(event)) {
+                return (
+                  <div style={{ padding: '2px 0' }}>
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Getting here lives here — the airports worth flying into, land-by guidance off your real start time, and the arrivals board. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                  </div>
+                );
+              }
               if (!travel.relevant) {
                 return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — nobody’s flying in. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
@@ -13705,11 +13816,25 @@ export default function HostShellV2() {
                   toast('Couldn’t open checkout just now — please try again.');
                 } catch { toast('Checkout isn’t available right now.'); }
               };
+              // MODEL D pass sheet (fourth sitting, 2026-08-19). Three rulings live
+              // in this copy and none may drift:
+              //  · "Every tab, fully unlocked" is GONE — under Model D the free
+              //    tier already has every tab; the pass sells the three real
+              //    unlocks (Amendment 1: sell the toolkit, not the tripwire —
+              //    Grandmother's sentence leads).
+              //  · The no-vendor-fees line beside the price is a STANDING
+              //    COMMITMENT with grandfather-rule force: vendor-side
+              //    monetization is off the table while it ships. Removing or
+              //    weakening this sentence requires a board sitting FIRST.
+              //  · The destination toolkit is framed as included product, never
+              //    as the reason an event "costs money" — the blunt boundary
+              //    lives in the creation-time disclosure, not here.
               const perks = [
-                ['Every tab, fully unlocked', 'The whole plan for this event — food, guests, budget, the day-of run, the invite — nothing held back.'],
+                ['Every vendor, one brief each', 'Plan your first event free, including sharing one vendor brief. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
+                ['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.'],
+                ['Your next events', 'The first event’s free run is once; the pass covers each event after it. One event, one price.'],
                 ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
                 ['Yours to keep', 'The plan, the invite link, and the recap stay live through the event and after.'],
-                ['Real numbers, no upsell traps', 'Every price is an honest estimate you can change — the pass never gates the truth about your own money.'],
               ];
               return (
                 <>
@@ -13717,6 +13842,7 @@ export default function HostShellV2() {
                     <div className="eyebrow">One event · one price</div>
                     <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 4px', color: 'var(--ink)' }}>$39</div>
                     <p className="grounding" style={{ margin: 0 }}>No subscription. Pay once for this event and everything’s yours.</p>
+                    <p className="grounding" style={{ margin: '6px 0 0' }}>Your vendors pay us nothing — no lead fees, no pay-to-play placement, nothing baked into their quotes. That’s why the pass exists.</p>
                   </div>
                   {perks.map(([t, d], i) => (
                     <div key={i} className="brow" style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-3) 0' }}>
