@@ -479,7 +479,7 @@ function SheetHero({ eyebrow, star, tone, sub, grounding }) {
   // tone still colors the value (ok/warn/danger). See parity/MANIFEST.
   return (
     <div style={{ padding: '2px 0 14px' }}>
-      <Eyebrow>{eyebrow}</Eyebrow>
+      {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
       <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(color !== 'var(--ink)' ? { color } : null) }}>{star}</BigValue>
       {sub ? <GuideLine style={grounding ? { marginBottom: 8 } : null}>{sub}</GuideLine> : null}
       {grounding ? <p className="grounding" style={{ margin: 0 }}>{grounding}</p> : null}
@@ -10405,7 +10405,13 @@ export default function HostShellV2() {
                       : `All ${lockedN} ${lockedN === 1 ? 'call is' : 'calls are'} made — change any of them below.`);
                   return (
                     <SheetHero
-                      eyebrow="Calls to make"
+                      // "Calls to make" already stands 60px above in the sheet
+                      // header (#sheet-title) — repeating it as the eyebrow said
+                      // the same words twice on one screen (host: calm the first
+                      // section, 2026-08-18). One element, one meaning: "Open now"
+                      // when calls wait; no eyebrow at all when quiet (the star
+                      // already says "All settled" — an eyebrow would re-say it).
+                      eyebrow={openN ? 'Open now' : null}
                       star={star}
                       tone={openN ? undefined : 'ok'}
                       sub={sub}
@@ -10774,26 +10780,29 @@ export default function HostShellV2() {
                         // landing as everywhere else, exact row, no hunting.
                         <div key={r.id || i} className={sheet.focus && sheet.focus === r.id ? 'rowfocus' : undefined}
                           ref={el => { if (el && sheet.focus && sheet.focus === r.id) el.scrollIntoView({ block: 'center' }); }}>
-                          {/* DENSITY DOCTRINE (UX_01): .line's nowrap space-between assumes
-                              both sides are short ("Date — Wed, Sep 30"). A settled DECISION
-                              can carry a full question as its label ("Heavy appetizers or a
-                              buffet / seated dinner") and a multi-word answer plus two buttons
-                              on the other side — forcing that onto one unwrapped row squeezed
-                              both spans so narrow the answer text broke mid-word ("Drop-\noff").
-                              flexWrap here is additive: short rows (Date, Venue) still fit on
-                              one line exactly as before; only rows that don't fit now wrap the
-                              value+buttons onto their own line instead of crushing the text. */}
-                          <div className="line" style={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 4 }}>
-                            <span style={{ flex: '1 1 auto', minWidth: 100 }}>{r.label}</span>
-                            <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-start' }}>
-                              <span className="of">{r.because}</span>
-                              {(canChange || editorKind) && !changeOpen && (
-                                <button className="mini" onClick={() => setChoiceOpen('dec-' + r.id)}>Change</button>
-                              )}
-                              {!why && whyOpen !== r.id && (
-                                <button className="mini" onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>Note why</button>
-                              )}
+                          {/* SETTLED ROW RE-LAYOUT (host, 2026-08-18: "re layout the settled
+                              area"). The first repair (flexWrap on the one-line .line) stopped
+                              the mid-word breaking but left a ragged zigzag — value and two
+                              buttons wrapping at arbitrary points per row. Every row now has
+                              ONE shape: a muted question over its brighter answer on the left,
+                              actions in a steady right column that drops below only when the
+                              answer genuinely needs the width. Same stacked label/value grammar
+                              as WHERE YOU STAND on home. */}
+                          <div className="line" style={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 6 }}>
+                            <span style={{ flex: '1 1 180px', minWidth: 0 }}>
+                              <span className="v-meta" style={{ display: 'block' }}>{r.label}</span>
+                              <span style={{ display: 'block', color: 'var(--ink)', fontWeight: 600 }}>{r.because}</span>
                             </span>
+                            {((canChange || editorKind) && !changeOpen) || (!why && whyOpen !== r.id) ? (
+                              <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexShrink: 0 }}>
+                                {(canChange || editorKind) && !changeOpen && (
+                                  <button className="mini" onClick={() => setChoiceOpen('dec-' + r.id)}>Change</button>
+                                )}
+                                {!why && whyOpen !== r.id && (
+                                  <button className="mini" onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>Note why</button>
+                                )}
+                              </span>
+                            ) : null}
                           </div>
                           {changeOpen && canChange && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '2px 0 var(--sp-2)' }}>
