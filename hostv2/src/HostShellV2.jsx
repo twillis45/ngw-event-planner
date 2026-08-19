@@ -2075,6 +2075,15 @@ export default function HostShellV2() {
   // expanded to their picker; collapsed by default to a SettledRow. Keyed 'rain'
   // /'inviteStyle'/'gifts'.
   const [settledOpen, setSettledOpen] = useState({});
+  // PROGRESSIVE DISCLOSURE on the decision cards (host ruling 2026-08-18, after
+  // two spacing passes still read dense): the density was never margins, it was
+  // INFORMATION ARCHITECTURE — every open card front-loaded ~8 lines of pedagogy
+  // (mechanics why + stakes line + ownership note) whether or not the host was
+  // engaging with it; 7 cards ≈ 10+ screens. The explanation stack now collapses
+  // behind one quiet in-place toggle per card; a routed/focused card arrives
+  // expanded so row-level CTAs still land on full context. One id, accordion
+  // style — opening a second card's why closes the first, keeping the sheet short.
+  const [decExplain, setDecExplain] = useState(null);
   const [contractUploading, setContractUploading] = useState({}); // per-vendor contract-file upload state
   // AI DOCUMENT EXTRACTION (2026-08-18): wires an already-real, already-tested
   // backend capability (/api/ai/extract-document, GPT-4o vision) that existed
@@ -10584,14 +10593,30 @@ export default function HostShellV2() {
                               onClick={() => settleDecision(r, opt)}>{opt}</button>
                           ))}
                         </div>
-                        {opts.why && <p className="grounding" style={{ flex: '1 0 100%', margin: '10px 0 0' }}>{opts.why}</p>}
-                        {meta && <span style={{ flex: '1 0 100%', display: 'block', marginTop: 8 }}>{meta}</span>}
-                        {(acceptBtn || pinBtn) && (
-                          <span style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                            {acceptBtn}
-                            {pinBtn}
-                          </span>
-                        )}
+                        {/* The explanation stack collapses by default (see decExplain above).
+                            A focused card (row-level CTA landing) arrives expanded. The toggle
+                            names what it reveals (CTA rule: name the act) and carries no glyph
+                            (glyph-only-when-it-navigates rule: this settles in place). */}
+                        {(() => {
+                          const hasExplain = !!(opts.why || meta);
+                          const explained = focused || decExplain === r.id;
+                          return (<>
+                            {explained && opts.why && <p className="grounding" style={{ flex: '1 0 100%', margin: '10px 0 0' }}>{opts.why}</p>}
+                            {explained && meta && <span style={{ flex: '1 0 100%', display: 'block', marginTop: 8 }}>{meta}</span>}
+                            {(acceptBtn || pinBtn || (hasExplain && !focused)) && (
+                              <span style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                                {acceptBtn}
+                                {pinBtn}
+                                {hasExplain && !focused && (
+                                  <button className="mini" aria-expanded={explained}
+                                    onClick={() => setDecExplain(o => (o === r.id ? null : r.id))}>
+                                    {explained ? 'Hide the why' : 'Why this call matters'}
+                                  </button>
+                                )}
+                              </span>
+                            )}
+                          </>);
+                        })()}
                       </div>
                     );
                   }
