@@ -327,13 +327,16 @@ describe('re-sit — the sheet rows use the hero’s theory', () => {
     expect(src).toMatch(/const lateLine = \(r\.status === 'overdue' && r\.assurance\) \? r\.assurance : r\.because;/);
   });
 
-  it('no row hard-codes the danger chip any more — all three sites read lateChip', () => {
+  it('no row hard-codes the danger chip any more — all four sites read lateChip', () => {
     // Three render branches (settle / editor / routed) each stamped their own
     // --danger "overdue". A per-site literal is how the theory diverged in the first place.
+    // 2026-08-18: a FOURTH site joined — the accordion's collapsed decision row
+    // (one call expanded at a time) — and it reads the same lateChip/lateLine
+    // pair, which is precisely the contract this test exists to hold.
     const hardCoded = (src.match(/background: 'var\(--danger-tint\)' \}\}>overdue<\/span>/g) || []).length;
     expect(hardCoded).toBe(1); // the single definition inside lateChip, nowhere else
-    expect((src.match(/\{lateChip\}/g) || []).length).toBe(3);
-    expect((src.match(/\{lateLine && <span className="v-meta">/g) || []).length).toBe(3);
+    expect((src.match(/\{lateChip\}/g) || []).length).toBe(4);
+    expect((src.match(/\{lateLine && <span className="v-meta">/g) || []).length).toBe(4);
   });
 
   it('danger is reserved for a call nothing is holding', () => {
