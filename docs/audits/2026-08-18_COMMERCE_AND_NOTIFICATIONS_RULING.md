@@ -403,3 +403,120 @@ This ruling still requires D-2's precondition five — at least 3 real,
 non-founder hosts run the loop and are asked for money in conversation —
 before anyone charges anything. A board cannot substitute for that, and
 this one does not claim to.
+
+---
+
+## FOURTH SITTING (2026-08-19, 14:1x) — the research amendments
+
+**Occasion.** A five-fleet competitive read
+(`docs/audits/2026-08-19_MODEL_D_VS_LEADERS.md`, all facts web-verified
+2026-08-19) tested Model D against the market and proposed three
+copy-level amendments — no mechanics changes. The host directed them back
+through the board. Same 10 seats as the third sitting.
+
+**Evidence before the bench, in one paragraph:** the $39 one-time price
+has three shipping neighbors within $10 (WedSites $39, Joy premium $39,
+Appy Couple $49); Evite Premium proves per-event one-time at mainstream
+scale; DocuSign/Figma/Calendly prove sharing gates, and Model D's four
+trust conditions match the research's accepted-practice list 4-for-4;
+nobody in the market gates on destination/multi-day (hotel blocks are
+universally free-with-hotel-commission) but Appy Couple proves hosts pay
+$49 one-time for destination-oriented planning software when it is framed
+as the product; Punchbowl (gating the send itself) carries the category's
+worst backlash, which Model D's free-loop already avoids.
+
+### Amendment 1 — pass-sheet framing: sell what the pass IS, never "destination events cost money"
+
+**The Planner Educator:** "This is my first sitting's sentence discipline
+applied one level up. 'The pass includes the full destination toolkit'
+and 'destination events take the pass' describe the same gate; only one
+of them reads as a penalty. Adopt."
+
+**Grandmother:** "My sentence survives the reframe — check it: 'Plan your
+first event free, including sharing one vendor brief. The pass unlocks
+sharing with every vendor, the full destination toolkit, and your next
+events.' Still one sentence. Adopt — but the CREATION-TIME disclosure
+must stay blunt about the boundary even when the pass sheet leads with
+the product. The sheet sells; the disclosure informs. Do not let the
+seller's framing soften the informer's."
+
+**The Marketplace Seller:** "Adopt, and note the conversion mechanics:
+Appy Couple's $49 converts because the buyer lands on a product page, not
+a fee schedule. A tripwire named as a tripwire trains the buyer to route
+around it; a toolkit named as a toolkit trains them to want it."
+
+**RULED — ADOPTED, with Grandmother's rider:** the pass sheet leads with
+what the pass is (unlimited vendor sharing + the destination/multi-day
+toolkit + future events). The creation-time disclosure keeps naming the
+concrete boundary ("this event is free; a destination or second event
+takes the pass") — the reframe applies to the SELLING surface, never the
+INFORMING one.
+
+### Amendment 2 — say the flywheel flip out loud (vendors pay nothing here)
+
+**The Wedding-SaaS Strategist:** "Strongest amendment of the three. The
+Knot and WeddingWire monetize vendor anxiety — placement fees, lead
+fees — and every working vendor knows it and prices it in. 'Your vendors
+pay us nothing — no pay-to-play, no lead fees baked into their quotes' is
+simultaneously true, differentiating, and the honest answer to 'why does
+the host pay here when The Knot is free?' Adopt, and put it ON the pass
+sheet, not buried in an about page."
+
+**The Anxious Milestone Host:** "It answers the exact question I would
+ask at the wall: 'Zola never charged my niece — why $39?' If the answer
+is one sentence away from the price, the price reads as a choice I
+understand. If I have to find it myself, it reads as a catch."
+
+**The Solopreneur (caution, not dissent):** "One rider: the claim is a
+COMMITMENT, not copy. The moment any vendor-side revenue exists —
+placement, referral, commission on vendor services — the sentence becomes
+a lie in every screenshot ever taken of it. Adopt only with the same
+standing force as the grandfather rule: written down, binding on future
+revenue conversations."
+
+**RULED — ADOPTED, with the Solopreneur's rider:** the no-vendor-fees
+sentence goes on the pass sheet adjacent to the price, phrased as the
+reason the pass exists. It is recorded here as a standing commitment with
+the same force as the grandfather rule: vendor-side monetization (lead
+fees, placement, pay-to-play) is off the table while this sentence ships.
+Revisiting it requires a board sitting AND removing the sentence first —
+never the reverse order. (Hotel-side commission is Amendment 3's separate
+question and is not vendor-side: hotels are not the host's hired vendors.)
+
+### Amendment 3 — pre-commit: any future hotel-block/booking layer ships free-with-commission, outside the pass
+
+**The Destination Host:** "The market trained me: Joy headlines free room
+blocks; The Knot's are free; Kleinfeld's are free. If booking rooms ever
+costs me a fee here, I will read the whole product as a toll booth.
+Adopt."
+
+**The Template Economist:** "Adopt — and see the shape it creates: the
+pass sells the PLANNING of a destination event; a future booking layer
+earns hotel commission on the STAY. Two revenue lines, no conflict,
+matching how Joy actually makes money. The pre-commitment is not revenue
+foregone; it is the market's proven second line, claimed early."
+
+**The Solopreneur:** "Consistent with my Amendment-2 rider and I hold it
+to the same standard: this is a pre-commitment a future revenue
+conversation must not quietly unwind. Board sitting required to touch it."
+
+**RULED — ADOPTED as a standing commitment:** if a hotel-block or booking
+layer ships, it is free to hosts, funded by hotel commission, outside the
+pass. Recorded with the same standing force as the grandfather rule.
+
+### Disposition
+
+All three amendments ADOPTED — none touched the ruled mechanics (three
+doors, $39 one SKU, grandfather, visibility, disclosure-at-creation), so
+Model D stands as ruled in the third sitting, with:
+1. A selling-vs-informing split: pass sheet sells the product; the
+   creation-time disclosure names the boundary bluntly. (Amendment 1.)
+2. A standing commitment: no vendor-side fees while the no-vendor-fees
+   sentence ships — sentence and commitment are one unit. (Amendment 2.)
+3. A standing commitment: any booking layer is free-with-commission,
+   outside the pass. (Amendment 3.)
+
+**Dissents: none.** Riders recorded from Grandmother (disclosure stays
+blunt) and the Solopreneur (both commitments bind future revenue
+conversations; a board sitting is required to unwind either, and the
+public copy comes down before the model changes, never after).
