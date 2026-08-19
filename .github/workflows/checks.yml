@@ -83,6 +83,12 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    # The matrix itself is ~14 min end to end. Three times on 2026-08-19 the
+    # `playwright install` step hung indefinitely (60-90+ min, runner-side),
+    # squatting the concurrency slot until someone noticed. A hang is not a
+    # verdict — kill it and let the next dispatch (or a manual re-run) try a
+    # fresh runner.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
