@@ -65,8 +65,12 @@ describe('deleting an event', () => {
     // above the customs effect discusses `allowRemovingUserEvents` by name, and
     // the first version of this assertion counted those mentions and failed on
     // correct code. Only `allowRemovingUserEvents:` is a real lift.
+    // Three deliberate lifts as of the demo-tools port (2026-08-19):
+    // deleteThisEvent, plus demoSeed and demoRemove — the ?demo=1 QA bar's
+    // delete-and-reseed cycle, which by design removes demoqa-* rows. Any
+    // FOURTH lift is a new delete-capable write path and must be argued here.
     const lifts = SHELL.match(/allowRemovingUserEvents\s*:/g) || [];
-    expect(lifts.length).toBe(1);
+    expect(lifts.length).toBe(3);
   });
 
   test('a refused write does not lie about having deleted anything', () => {

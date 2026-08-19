@@ -144,6 +144,7 @@ import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createCheckoutSession, verifySession } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure } from '@app/lib/passGate';
+import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
@@ -700,6 +701,24 @@ const PASS_PAID_RETURN = (() => {
     }
   } catch { /* no params, no purchase return */ }
   return null;
+})();
+
+// ── DEMO TOOLS arming (D-2 precondition 2: a seedable, resettable demo
+// account). Same protocol and localStorage key as the CRA bar (?demo=1 arms,
+// ?demo=0 disarms) so one runbook covers both shells. Module scope, because
+// query params get stripped during boot — the demo-tools lesson from App.js
+// and PASS_PAID_RETURN above. '?demo=lodging' never reaches this file:
+// main.jsx routes it to the LodgingCockpit chunk before HostShellV2 loads.
+// The seeded event's id is 'demoqa-*' — neither 'cust-' nor 'ev-copy-', so
+// passGate treats it as a sample: it never consumes the free tier and never
+// gets gated, which is exactly right for a demo walkthrough.
+const DEMO_TOOLS_ARMED = (() => {
+  try {
+    const p = new URLSearchParams(window.location.search).get('demo');
+    if (p === '1') localStorage.setItem('ngw-demo-tools', '1');
+    if (p === '0') localStorage.removeItem('ngw-demo-tools');
+    return localStorage.getItem('ngw-demo-tools') === '1';
+  } catch { return false; }
 })();
 
 export default function HostShellV2() {
@@ -2524,6 +2543,56 @@ export default function HostShellV2() {
         .catch(() => { /* queued by events.js; the tombstone holds until it flushes */ });
     }
     toast(`“${ev.name || 'That event'}” is gone.`);
+  };
+
+  // ── DEMO TOOLS actions (armed via ?demo=1 — see DEMO_TOOLS_ARMED above) ─────
+  // Seed/reset is DELETE + RESEED with fresh ids (shared demoSeed.js owns the
+  // event shape): fresh ids mean fresh vendor-brief codes, so back-to-back
+  // demos never collide on a stale shared link. Removal of the old demoqa-*
+  // rows rides the SAME tombstone + cloudDeleteEvent path deleteThisEvent
+  // uses — a queued cloud delete that silently resurrects on hydrate would be
+  // exactly as bad here as there.
+  const tombstoneAndCloudDelete = (id) => {
+    try {
+      const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]');
+      if (!t.includes(id)) localStorage.setItem(LS_DELETED, JSON.stringify([...t, id]));
+    } catch { /* private mode — the cloud delete below is still attempted */ }
+    if (isSupabaseConfigured() && session) {
+      cloudDeleteEvent(id)
+        .then(() => {
+          try {
+            const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]');
+            localStorage.setItem(LS_DELETED, JSON.stringify(t.filter(x => x !== id)));
+          } catch { /* tombstone persists — one id, never a wrong row */ }
+        })
+        .catch(() => { /* queued by events.js; the tombstone holds until it flushes */ });
+    }
+  };
+  const demoSeed = () => {
+    const { events: next, removed } = withDemoSeeded(customs || []);
+    const res = saveCustomEvents(next, { reason: 'hostshell:demo-seed', allowRemovingUserEvents: true });
+    if (!res || res.ok === false) { toast('Couldn’t seed the demo event.'); return; }
+    removed.forEach(tombstoneAndCloudDelete);
+    setCustoms(next);
+    const seeded = next.find(isDemoEvent);
+    if (seeded) {
+      if (isSupabaseConfigured() && session) { cloudSaveEvent(seeded).then(r => recordSaveResult(seeded, r)).catch(() => {}); }
+      switchEvent(seeded.id);
+    }
+    toast('Demo event is set — fresh ids, fresh brief codes.', null, 'ok');
+  };
+  const demoRemove = () => {
+    const { events: next, removed } = withDemoRemoved(customs || []);
+    if (!removed.length) { toast('No demo data to remove.'); return; }
+    const res = saveCustomEvents(next, { reason: 'hostshell:demo-remove', allowRemovingUserEvents: true });
+    if (!res || res.ok === false) { toast('Couldn’t remove the demo event.'); return; }
+    removed.forEach(tombstoneAndCloudDelete);
+    setCustoms(next);
+    if (removed.includes(eventId)) {
+      const to = (next[0] && next[0].id) || (REAL_EVENTS[0] && REAL_EVENTS[0].id) || (ROSTER[0] && ROSTER[0].id) || BOOT_EVENT_ID;
+      switchEvent(to);
+    }
+    toast('Demo data removed.', null, 'ok');
   };
 
   // ── RUN IT AGAIN (competitive read, 2026-07-30) ──────────────────────────────
@@ -18394,6 +18463,17 @@ export default function HostShellV2() {
           </div>
         );
       })()}
+      {/* Demo tools — QA/demo chrome, never product UI. Renders only when the
+          operator armed it with ?demo=1 (disarm: ?demo=0). Plain inline style
+          on purpose: this bar must never be mistaken for, or drift into, the
+          Studio Matte system. */}
+      {DEMO_TOOLS_ARMED && (
+        <div style={{ position: 'fixed', bottom: 8, left: 8, zIndex: 90, display: 'flex', gap: 6, alignItems: 'center', background: 'rgba(20,20,20,0.85)', color: '#eee', borderRadius: 8, padding: '6px 8px', fontSize: 12 }}>
+          <span style={{ opacity: 0.7 }}>Demo</span>
+          <button onClick={demoSeed} style={{ background: '#333', color: '#eee', border: '1px solid #555', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>Seed / reset</button>
+          <button onClick={demoRemove} style={{ background: 'none', color: '#aaa', border: '1px solid #444', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>Remove</button>
+        </div>
+      )}
       {toastMsg && (
         <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '')} role="status" aria-live="polite">
           {toastMsg}
