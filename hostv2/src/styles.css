@@ -873,10 +873,15 @@ button{font-family:inherit}
    untouched (UX_02: one accent per section, and .decopt.pick already spends it):
    a hairline and full width bind this control to the option stack above it, so it
    reads as the tail of THIS decision. The bundle's control keeps floating free. */
-.app-elegant .decopt-disc{ align-self:stretch; width:100%; text-align:left;
+/* `.sheet` joined 2026-08-19: the Calls-to-make card now renders through the same
+   unified renderDecision, and the sheet is a SIBLING of .app — outside the
+   .app-elegant scope — so the disclosure was falling back to a raw native gray
+   button there (host: "does the other ways cta match the rest of the app?" — it
+   did not). Same rule, both homes. */
+.app-elegant .decopt-disc, .sheet .decopt-disc{ align-self:stretch; width:100%; text-align:left;
   border-top:1px solid var(--line-soft); margin-top:2px; background:none; border-left:none;
   border-right:none; border-bottom:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:8px 0 2px; }
-.app-elegant .decopt-disc:hover{ color:var(--ink); }
+.app-elegant .decopt-disc:hover, .sheet .decopt-disc:hover{ color:var(--ink); }
 /* WATCH zone (Figma parity 2026-07-18): worries as steel-dot rows — distinct from the
    action rows above, muted, no arrows (a heads-up, not a thing to go do). */
 .hero.elegant .ef-watch{ margin-top:24px; }
@@ -3528,7 +3533,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 /* The lead-in that names the act above a decision's options (board re-sit: "the
    question has no visible answer"). Quiet by design — it orients, it does not
    compete with the options themselves or with the ask above them. */
-.app-elegant .decopts-lead{
+.app-elegant .decopts-lead, .sheet .decopts-lead{
   font-size:var(--t-note); font-weight:500; color:var(--faint);
   margin:0 0 var(--sp-2); letter-spacing:0;
 }
@@ -4029,6 +4034,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    reflows, the text stays on its own baseline, and the row simply becomes as
    tall as a thumb. align-items keeps the label optically where it already sat. */
 .app-elegant .decopt-disc,
+.sheet .decopt-disc,
 .hero.elegant .watch-row,
 .later-row{
   min-height:44px;
