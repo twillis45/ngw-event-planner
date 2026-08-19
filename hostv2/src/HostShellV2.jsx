@@ -3,7 +3,7 @@
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
-import { Fragment, useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { Fragment, useMemo, useState, useEffect, useRef, useCallback, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
@@ -10628,15 +10628,17 @@ export default function HostShellV2() {
                           </span>
                           {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
-                        {/* DENSITY DOCTRINE (UX_01): explicit marginTop on each stacked block
-                            below, not just the flex gap — a chip row, a "why" paragraph, a
-                            rank-reason line and a button row are distinct SECTIONS (doctrine's
-                            8-12px between-sections rule), not inline elements of one line. */}
-                        <div style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 4 }}>
-                          {opts.options.map(opt => (
-                            <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
-                              onClick={() => settleDecision(r, opt)}>{opt}</button>
-                          ))}
+                        {/* TOO MANY PILLS (host, 2026-08-19): five option chips plus two
+                            pill-styled buttons put seven same-weight capsules on one card.
+                            The options now use the parity kit's OptionList — the locked
+                            ask-atom for "pick one of N" (quiet radio rows, selected dot,
+                            44px floor via .optrow) — so ONE selected state carries the
+                            weight instead of five filled capsules competing. */}
+                        <div style={{ flex: '1 0 100%', marginTop: 6 }}>
+                          <OptionList ariaLabel={r.label}
+                            options={opts.options.map(opt => ({ label: opt }))}
+                            value={opts.chosen}
+                            onPick={(val) => settleDecision(r, val)} />
                         </div>
                         {/* The explanation stack collapses by default (see decExplain above).
                             A focused card (row-level CTA landing) arrives expanded. The toggle
@@ -10645,15 +10647,19 @@ export default function HostShellV2() {
                         {(() => {
                           const hasExplain = !!(opts.why || meta);
                           const explained = focused || decExplain === r.id;
+                          // Pin and the why-toggle are SECONDARY to the options — they read
+                          // as quiet text actions, not a third and fourth capsule. The accept
+                          // ("Sounds good") keeps its filled weight: it is the one primary act.
+                          const quiet = { background: 'none', color: 'var(--muted)', padding: '11px 2px', fontWeight: 600 };
                           return (<>
                             {explained && opts.why && <p className="grounding" style={{ flex: '1 0 100%', margin: '10px 0 0' }}>{opts.why}</p>}
                             {explained && meta && <span style={{ flex: '1 0 100%', display: 'block', marginTop: 8 }}>{meta}</span>}
                             {(acceptBtn || pinBtn || (hasExplain && !focused)) && (
-                              <span style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                              <span style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 2, alignItems: 'center' }}>
                                 {acceptBtn}
-                                {pinBtn}
+                                {pinBtn ? cloneElement(pinBtn, { style: { ...pinBtn.props.style, ...quiet } }) : null}
                                 {hasExplain && !focused && (
-                                  <button className="mini" aria-expanded={explained}
+                                  <button className="mini" aria-expanded={explained} style={quiet}
                                     onClick={() => setDecExplain(o => (o === r.id ? null : r.id))}>
                                     {explained ? 'Hide the why' : 'Why this call matters'}
                                   </button>
