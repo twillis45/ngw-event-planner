@@ -10598,6 +10598,9 @@ export default function HostShellV2() {
                       style={{ flex: '0 0 auto', alignSelf: 'flex-start', color: 'var(--ink)', fontWeight: 700 }}>Sounds good</button>
                   ) : null;
                   if (opts && opts.options.length) {
+                    // The unified renderer's propose-mode pick row IS the accept — a
+                    // separate "Sounds good" beside it would be the same act twice.
+                    const ndForCard = (() => { try { return playbookDecisionND(r); } catch { return null; } })();
                     // Every optioned call except THE one expands to a single tappable
                     // row — label, status tags, the honest one-liner — that opens on
                     // tap. The chips, buttons and why-stack live only on the open card.
@@ -10628,17 +10631,23 @@ export default function HostShellV2() {
                           </span>
                           {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
-                        {/* TOO MANY PILLS (host, 2026-08-19): five option chips plus two
-                            pill-styled buttons put seven same-weight capsules on one card.
-                            The options now use the parity kit's OptionList — the locked
-                            ask-atom for "pick one of N" (quiet radio rows, selected dot,
-                            44px floor via .optrow) — so ONE selected state carries the
-                            weight instead of five filled capsules competing. */}
+                        {/* UNIFIED DECISION SURFACE (host, 2026-08-19: "treat it the same
+                            way as the hero command section"). The expanded card now renders
+                            through renderDecision(playbookDecisionND(r)) — the ONE renderer
+                            every multiple-choice decision already uses on the command hero:
+                            propose-mode shows "our pick" with alternatives behind "Other
+                            ways", ask-mode shows equal rows, and the pick row itself is the
+                            accept (so no separate "Sounds good" pill). A brief OptionList
+                            detour (same day) was a third render path — exactly what the
+                            unified surface exists to prevent. Fallback only if the adapter
+                            declines the row. */}
                         <div style={{ flex: '1 0 100%', marginTop: 6 }}>
-                          <OptionList ariaLabel={r.label}
-                            options={opts.options.map(opt => ({ label: opt }))}
-                            value={opts.chosen}
-                            onPick={(val) => settleDecision(r, val)} />
+                          {ndForCard ? renderDecision(ndForCard) : (
+                            <OptionList ariaLabel={r.label}
+                              options={opts.options.map(opt => ({ label: opt }))}
+                              value={opts.chosen}
+                              onPick={(val) => settleDecision(r, val)} />
+                          )}
                         </div>
                         {/* The explanation stack collapses by default (see decExplain above).
                             A focused card (row-level CTA landing) arrives expanded. The toggle
@@ -10654,9 +10663,9 @@ export default function HostShellV2() {
                           return (<>
                             {explained && opts.why && <p className="grounding" style={{ flex: '1 0 100%', margin: '10px 0 0' }}>{opts.why}</p>}
                             {explained && meta && <span style={{ flex: '1 0 100%', display: 'block', marginTop: 8 }}>{meta}</span>}
-                            {(acceptBtn || pinBtn || (hasExplain && !focused)) && (
+                            {((!ndForCard && acceptBtn) || pinBtn || (hasExplain && !focused)) && (
                               <span style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 2, alignItems: 'center' }}>
-                                {acceptBtn}
+                                {!ndForCard && acceptBtn}
                                 {pinBtn ? cloneElement(pinBtn, { style: { ...pinBtn.props.style, ...quiet } }) : null}
                                 {hasExplain && !focused && (
                                   <button className="mini" aria-expanded={explained} style={quiet}
