@@ -45,7 +45,12 @@ export const createCheckoutSession = async ({ amountCents, label, feeId, eventId
       fee_id:      feeId,
       event_id:    eventId    || '',
       client_name: clientName || '',
-      success_url: `${origin}${pathname}?stripe_paid=1&fee_id=${encodeURIComponent(feeId)}`,
+      // {CHECKOUT_SESSION_ID} is Stripe's own substitution token — it lands in
+      // the redirect as the real session id, which lets the return handler
+      // VERIFY payment server-side (verifySession) instead of trusting the
+      // redirect params. Additive for the planner fee flow, load-bearing for
+      // the One-Event Pass unlock (Model D, D-2 gate 3: audited Stripe path).
+      success_url: `${origin}${pathname}?stripe_paid=1&fee_id=${encodeURIComponent(feeId)}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${origin}${pathname}?stripe_cancel=1`,
     }),
   });

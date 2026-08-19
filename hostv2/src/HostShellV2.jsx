@@ -142,7 +142,7 @@ import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
-import { isStripeApiConfigured, createCheckoutSession } from '@app/lib/stripeApi';
+import { isStripeApiConfigured, createCheckoutSession, verifySession } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure } from '@app/lib/passGate';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
@@ -683,15 +683,20 @@ function CityField({ value, onChange, onPick, onEnter, placeholder, ariaLabel, s
 // scope (the app strips URL params during boot, so render-time reads lose the
 // race — same lesson as the demo-tools arming). buyPass's feeId is
 // 'one-event-pass-<eventId>'; stripeApi's success_url echoes it back as
-// fee_id. HONEST LIMIT, recorded: this trusts the redirect param. Before
-// billing goes live, the audited-Stripe-path precondition (D-2 gate 3) must
-// add server verification (verify-session with {CHECKOUT_SESSION_ID} in the
-// success_url) — the webhook already logs server-side either way.
-const PASS_PAID_EVENT_ID = (() => {
+// fee_id PLUS the real Stripe session id ({CHECKOUT_SESSION_ID} substitution).
+// VERIFIED, NOT TRUSTED (D-2 gate 3): the unlock effect below calls
+// verifySession and requires payment_status === 'paid' AND the session's own
+// metadata fee_id to match — the redirect params only tell us WHAT to verify.
+// No session id, no unlock.
+const PASS_PAID_RETURN = (() => {
   try {
     const q = new URLSearchParams(window.location.search);
     if (q.get('stripe_paid') === '1' && String(q.get('fee_id') || '').startsWith('one-event-pass-')) {
-      return String(q.get('fee_id')).slice('one-event-pass-'.length) || null;
+      return {
+        eventId: String(q.get('fee_id')).slice('one-event-pass-'.length) || null,
+        feeId: String(q.get('fee_id')),
+        sessionId: q.get('session_id') || null,
+      };
     }
   } catch { /* no params, no purchase return */ }
   return null;
@@ -2576,16 +2581,33 @@ export default function HostShellV2() {
   const dstat = eventDateStatus(event.date);            // lib/dates — time intelligence
   const days = dstat.days;
 
-  // MODEL D — apply a Stripe pass-purchase return exactly once per boot. The
-  // paid event's id rode back in the success URL (module-scope capture above);
-  // the pass unlocks that WHOLE event, by ruling. Green confirmation, one
-  // token (confirmations-green rule).
+  // MODEL D — apply a Stripe pass-purchase return exactly once per boot,
+  // VERIFY-FIRST (D-2 gate 3, audited Stripe path): the redirect params only
+  // say what to check. The unlock requires the backend's verify-session to
+  // report payment_status 'paid' AND the session's own metadata fee_id to
+  // match the pass this return claims — a hand-typed ?stripe_paid=1 URL
+  // unlocks nothing. Verification failing on a REAL payment self-heals on a
+  // later boot: Stripe keeps the session, the host keeps the receipt, and
+  // support can re-run the same link. Green confirmation only after verify.
   const passPaidApplied = useRef(false);
   useEffect(() => {
-    if (!PASS_PAID_EVENT_ID || passPaidApplied.current) return;
+    if (!PASS_PAID_RETURN || !PASS_PAID_RETURN.eventId || passPaidApplied.current) return;
     passPaidApplied.current = true;
-    setCustoms(list => list.map(c => (c && c.id === PASS_PAID_EVENT_ID) ? { ...c, passPurchased: true } : c));
-    toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
+    (async () => {
+      if (!PASS_PAID_RETURN.sessionId) {
+        toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.');
+        return;
+      }
+      let v = null;
+      try { v = await verifySession(PASS_PAID_RETURN.sessionId); } catch { v = null; }
+      const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === PASS_PAID_RETURN.feeId);
+      if (!paid) {
+        toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.');
+        return;
+      }
+      setCustoms(list => list.map(c => (c && c.id === PASS_PAID_RETURN.eventId) ? { ...c, passPurchased: true } : c));
+      toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // ── T-72h reconfirm window ── named FORMAL vendors only; the sweep exists
