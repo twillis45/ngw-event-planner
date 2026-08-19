@@ -10808,15 +10808,22 @@ export default function HostShellV2() {
                           {!changeOpen ? (
                             <SettledCard title={r.because} sub={r.label} onOpen={() => setChoiceOpen('dec-' + r.id)} />
                           ) : (
-                            <>
-                              <div className="line" style={{ alignItems: 'center' }}>
-                                <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-                                  <span className="v-meta" style={{ display: 'block' }}>{r.label}</span>
-                                  <span style={{ display: 'block', color: 'var(--ink)', fontWeight: 600 }}>{r.because}</span>
+                            // The fold opens INSIDE the same card chrome (host, 2026-08-19:
+                            // "the settled collapses are messy" — the expanded item was losing
+                            // its frame and reading as loose text between bordered neighbors).
+                            // Same border/radius/padding as .settled-card; the header keeps the
+                            // card grammar (value over question) and taps closed again.
+                            <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--card)', padding: '14px 16px', margin: '0 0 var(--sp-2)' }}>
+                              <button type="button" onClick={() => setChoiceOpen(null)} aria-expanded="true"
+                                style={{ display: 'flex', width: '100%', textAlign: 'left', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--ink)' }}>
+                                <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                                  <span style={{ fontSize: 'var(--t-row)', fontWeight: 650 }}>{r.because}</span>
+                                  <span style={{ fontSize: 'var(--t-row-sub)', color: 'var(--muted)', lineHeight: 1.36 }}>{r.label}</span>
                                 </span>
-                              </div>
+                                <span className="fstat-chev" aria-hidden="true" style={{ transform: 'rotate(90deg)' }}>›</span>
+                              </button>
                               {canChange && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '2px 0 var(--sp-2)' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '10px 0 0' }}>
                                   {opts.options.map(opt => (
                                     <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
                                       onClick={() => settleDecision(r, opt)}>{opt}</button>
@@ -10824,21 +10831,21 @@ export default function HostShellV2() {
                                 </div>
                               )}
                               {!canChange && editorKind && (
-                                <div style={{ margin: '2px 0 var(--sp-2)' }}>{renderEditor(r)}</div>
+                                <div style={{ margin: '10px 0 0' }}>{renderEditor(r)}</div>
                               )}
+                              {why && <p className="grounding" style={{ margin: '10px 0 0' }}>Your call: “{why}”</p>}
                               {!why && whyOpen !== r.id && (
-                                <button className="mini" style={{ background: 'none', color: 'var(--muted)', padding: '11px 2px', fontWeight: 600 }}
+                                <button className="mini" style={{ background: 'none', color: 'var(--muted)', padding: '11px 2px 0', fontWeight: 600, display: 'block' }}
                                   onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>Note why</button>
                               )}
-                            </>
-                          )}
-                          {why && <p className="grounding" style={{ margin: '0 0 6px' }}>Your call: “{why}”</p>}
-                          {whyOpen === r.id && (
-                            <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                              <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 'var(--t-input)', padding: 'var(--sp-2) var(--sp-3)' }}
-                                placeholder="Why this call? — in your own words" value={whyText}
-                                onChange={e => setWhyText(e.target.value)} aria-label={'Why ' + r.label} />
-                              <button className="mini" onClick={() => saveWhy(r)}>Save</button>
+                              {whyOpen === r.id && (
+                                <div className="actions-row" style={{ margin: '10px 0 0', alignItems: 'center' }}>
+                                  <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 'var(--t-input)', padding: 'var(--sp-2) var(--sp-3)' }}
+                                    placeholder="Why this call? — in your own words" value={whyText}
+                                    onChange={e => setWhyText(e.target.value)} aria-label={'Why ' + r.label} />
+                                  <button className="mini" onClick={() => saveWhy(r)}>Save</button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
