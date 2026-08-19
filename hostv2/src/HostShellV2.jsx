@@ -10788,47 +10788,49 @@ export default function HostShellV2() {
                       // as a dead line (audit R1) — the same inline editor now sits
                       // behind their "change".
                       const editorKind = !canChange ? (() => { try { return wiredKind(r); } catch { return null; } })() : null;
-                      const changeOpen = (canChange || editorKind) && (choiceOpen === 'dec-' + r.id || (sheet.focus && sheet.focus === r.id));
+                      const changeOpen = choiceOpen === 'dec-' + r.id || (sheet.focus && sheet.focus === r.id);
                       return (
                         // A routed focus can point at a SETTLED call too (the
                         // ground sheet's "Change the call") — same rowfocus
                         // landing as everywhere else, exact row, no hunting.
                         <div key={r.id || i} className={sheet.focus && sheet.focus === r.id ? 'rowfocus' : undefined}
                           ref={el => { if (el && sheet.focus && sheet.focus === r.id) el.scrollIntoView({ block: 'center' }); }}>
-                          {/* SETTLED ROW RE-LAYOUT (host, 2026-08-18: "re layout the settled
-                              area"). The first repair (flexWrap on the one-line .line) stopped
-                              the mid-word breaking but left a ragged zigzag — value and two
-                              buttons wrapping at arbitrary points per row. Every row now has
-                              ONE shape: a muted question over its brighter answer on the left,
-                              actions in a steady right column that drops below only when the
-                              answer genuinely needs the width. Same stacked label/value grammar
-                              as WHERE YOU STAND on home. */}
-                          <div className="line" style={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 6 }}>
-                            <span style={{ flex: '1 1 180px', minWidth: 0 }}>
-                              <span className="v-meta" style={{ display: 'block' }}>{r.label}</span>
-                              <span style={{ display: 'block', color: 'var(--ink)', fontWeight: 600 }}>{r.because}</span>
-                            </span>
-                            {((canChange || editorKind) && !changeOpen) || (!why && whyOpen !== r.id) ? (
-                              <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexShrink: 0 }}>
-                                {(canChange || editorKind) && !changeOpen && (
-                                  <button className="mini" onClick={() => setChoiceOpen('dec-' + r.id)}>Change</button>
-                                )}
-                                {!why && whyOpen !== r.id && (
-                                  <button className="mini" onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>Note why</button>
-                                )}
-                              </span>
-                            ) : null}
-                          </div>
-                          {changeOpen && canChange && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '2px 0 var(--sp-2)' }}>
-                              {opts.options.map(opt => (
-                                <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
-                                  onClick={() => settleDecision(r, opt)}>{opt}</button>
-                              ))}
-                            </div>
-                          )}
-                          {changeOpen && !canChange && editorKind && (
-                            <div style={{ margin: '2px 0 var(--sp-2)' }}>{renderEditor(r)}</div>
+                          {/* FOLD-BEHIND-CHANGE (host, 2026-08-19: "ctas have random
+                              horizontal placement — best placement vs leaders"). Two
+                              hand-drawn attempts at this layout both left Change/Note-why
+                              floating at arbitrary x per row. The parity kit already ran
+                              the leaders comparison and locked the answer: SettledCard —
+                              the chosen thing over its muted question, ONE trailing
+                              chevron at a fixed right edge, the whole card the tap target
+                              (the budget/vendors/food/travel disclosure idiom). Both
+                              actions now live behind the fold: tap reveals the picker (or
+                              inline editor) and the note-why affordance together. */}
+                          {!changeOpen ? (
+                            <SettledCard title={r.because} sub={r.label} onOpen={() => setChoiceOpen('dec-' + r.id)} />
+                          ) : (
+                            <>
+                              <div className="line" style={{ alignItems: 'center' }}>
+                                <span style={{ flex: '1 1 auto', minWidth: 0 }}>
+                                  <span className="v-meta" style={{ display: 'block' }}>{r.label}</span>
+                                  <span style={{ display: 'block', color: 'var(--ink)', fontWeight: 600 }}>{r.because}</span>
+                                </span>
+                              </div>
+                              {canChange && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '2px 0 var(--sp-2)' }}>
+                                  {opts.options.map(opt => (
+                                    <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
+                                      onClick={() => settleDecision(r, opt)}>{opt}</button>
+                                  ))}
+                                </div>
+                              )}
+                              {!canChange && editorKind && (
+                                <div style={{ margin: '2px 0 var(--sp-2)' }}>{renderEditor(r)}</div>
+                              )}
+                              {!why && whyOpen !== r.id && (
+                                <button className="mini" style={{ background: 'none', color: 'var(--muted)', padding: '11px 2px', fontWeight: 600 }}
+                                  onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>Note why</button>
+                              )}
+                            </>
                           )}
                           {why && <p className="grounding" style={{ margin: '0 0 6px' }}>Your call: “{why}”</p>}
                           {whyOpen === r.id && (
