@@ -10516,10 +10516,20 @@ export default function HostShellV2() {
                   const approach = r.difmCapable ? decisionApproach(r, opts) : null;
                   const pinned = Array.isArray(event.decisionPins) && event.decisionPins.includes(r.id);
                   const heartStyle = r.deliversHeartMoment ? { background: 'color-mix(in srgb, var(--steel-soft) 10%, transparent)', borderRadius: '8px', paddingLeft: 11 } : null;
+                  // THE COPY STACK WORE ONE UNIFORM (host, 2026-08-18: "jumbled").
+                  // A decision card stacks three different VOICES — the mechanics
+                  // paragraph (opts.why), the stakes line (rankWhy), and the
+                  // ownership/propose note (approach) — and all three rendered as
+                  // identical gray .v-meta blocks 2px apart, so they read as one
+                  // run-on wall. The house voice split (styles.css:8, amended
+                  // 2026-07-17) already settles this: sans = the boss/instruction
+                  // voice, Newsreader italic = the guide/reassurance voice. The
+                  // stakes line IS the guide sentence, so it now dresses like one,
+                  // and each remaining line gets real separation instead of 2px.
                   const meta = (rankWhy || approach) ? (
                     <span style={{ flex: '1 0 100%' }}>
-                      {rankWhy && <span className="v-meta" style={{ display: 'block' }}>{rankWhy}</span>}
-                      {approach && <span className="v-meta" style={{ display: 'block' }}>{approach.note}</span>}
+                      {rankWhy && <span style={{ display: 'block', fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-input)', lineHeight: 1.4, color: 'var(--ink-soft)' }}>{rankWhy}</span>}
+                      {approach && <span className="v-meta" style={{ display: 'block', marginTop: rankWhy ? 8 : 0 }}>{approach.note}</span>}
                     </span>
                   ) : null;
                   // Label names what the control DOES (host ruling 2026-07-28: no
