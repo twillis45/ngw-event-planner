@@ -10823,7 +10823,7 @@ export default function HostShellV2() {
                                 <span className="fstat-chev" aria-hidden="true" style={{ transform: 'rotate(90deg)' }}>›</span>
                               </button>
                               {canChange && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '10px 0 0' }}>
+                                <div className="chips-compact" style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '10px 0 0' }}>
                                   {opts.options.map(opt => (
                                     <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
                                       onClick={() => settleDecision(r, opt)}>{opt}</button>

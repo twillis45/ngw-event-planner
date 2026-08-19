@@ -4066,6 +4066,27 @@ button.pill::after, .pill[role="button"]::after, a.pill::after{
   button.pill::after, .pill[role="button"]::after, a.pill::after{ content:none; }
 }
 
+/* COMPACT CHIPS in a settled fold (host, 2026-08-19: "smaller pills for options
+   on collected and in this settled section"). A settled card's options are a
+   change-your-mind affordance, not the screen's ask — full-weight chips inside
+   the fold out-shout the open calls above. Visual size drops one step; the TAP
+   AREA does not (same pills-don't-grow overlay as button.pill above, per the
+   44px floor law). */
+/* min-height:0 deliberately overrides the ≤480px .chip{min-height:44px} floor
+   (board 2026-08-06): that floor is a THUMB rule, and the thumb target here is
+   carried by the ::after overlay below (the same pills-don't-grow trade the
+   board itself wrote for .pill) — so the 44px promise holds while the visual
+   drops a step. --t-caption because --t-meta measures identical to --t-chip. */
+.chips-compact .chip{ position:relative; font-size:var(--t-caption); padding:var(--sp-1) var(--sp-3); min-height:0; }
+.chips-compact .chip::after{
+  content:''; position:absolute; left:0; right:0;
+  top:50%; transform:translateY(-50%);
+  height:44px; min-width:44px;
+}
+@media (hover:hover) and (pointer:fine){
+  .chips-compact .chip::after{ content:none; }
+}
+
 /* A save that failed is not a toast (2026-08-06). It stays until a write
    succeeds, because the host is still typing when it fires and a message that
    disappears is how a silent failure stays silent. --warn is the existing
