@@ -2084,6 +2084,15 @@ export default function HostShellV2() {
   // expanded so row-level CTAs still land on full context. One id, accordion
   // style — opening a second card's why closes the first, keeping the sheet short.
   const [decExplain, setDecExplain] = useState(null);
+  // ONE CALL EXPANDED AT A TIME (host, same night: "still too dense" after the
+  // why-stack collapsed). The remaining bulk was the CHIPS — five full-width
+  // options × 7 cards, all expanded at once. Doctrine's "one loud thing per
+  // screen" applied literally: the top-ranked call shows its chips; every other
+  // call is a single row that expands on tap (single-id accordion, same shape
+  // as decExplain). null = the first optioned card is the open one, so settling
+  // the open call auto-advances the expansion to the next — the home hero's
+  // settle-and-the-next-appears rhythm, one surface down.
+  const [decOpenCard, setDecOpenCard] = useState(null);
   const [contractUploading, setContractUploading] = useState({}); // per-vendor contract-file upload state
   // AI DOCUMENT EXTRACTION (2026-08-18): wires an already-real, already-tested
   // backend capability (/api/ai/extract-document, GPT-4o vision) that existed
@@ -10480,6 +10489,18 @@ export default function HostShellV2() {
                   // below carries the honest state — don't also print "Nothing waiting
                   // on you." (that reads as a dead end and buries the horizon).
                   if (!callsOrdered.length) return (decisionBoard.deferred || []).length ? null : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing waiting on you.</div>;
+                  // The one expanded card (see decOpenCard above): explicit tap wins,
+                  // else the routed focus, else the top-ranked optioned call. Computed
+                  // here so every row agrees on which single card is open this render.
+                  const firstOptionedId = (() => {
+                    for (const row of ordered) {
+                      try { const o = playbookDecisionOptions(event, row.id); if (o && o.options.length) return row.id; } catch { /* next */ }
+                    }
+                    return null;
+                  })();
+                  const openCardId = (sheet.focus && ordered.some(row => row.id === sheet.focus)) ? sheet.focus
+                    : (decOpenCard && ordered.some(row => row.id === decOpenCard)) ? decOpenCard
+                      : firstOptionedId;
                   return (<>{ordered.map((r, i) => {
                   // Inline settle — keyed on the DECISION having authored options
                   // (playbookDecisionOptions, same rule as legacy's What-to-settle
@@ -10571,6 +10592,24 @@ export default function HostShellV2() {
                       style={{ flex: '0 0 auto', alignSelf: 'flex-start', color: 'var(--ink)', fontWeight: 700 }}>Sounds good</button>
                   ) : null;
                   if (opts && opts.options.length) {
+                    // Every optioned call except THE one expands to a single tappable
+                    // row — label, status tags, the honest one-liner — that opens on
+                    // tap. The chips, buttons and why-stack live only on the open card.
+                    if (r.id !== openCardId) {
+                      return (
+                        <button key={r.id || i} type="button" className="frow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, ...heartStyle }}
+                          onClick={() => { setDecOpenCard(r.id); setDecExplain(null); }}
+                          aria-expanded={false}>
+                          <span className="f-main">
+                            <span className="f-name">{r.label}
+                              {lateChip}
+                              {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                            </span>
+                            {lateLine && <span className="v-meta">{lateLine}</span>}
+                          </span>
+                        </button>
+                      );
+                    }
                     return (
                       <div key={r.id || i} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default', ...heartStyle }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
