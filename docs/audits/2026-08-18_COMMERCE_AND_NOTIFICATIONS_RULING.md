@@ -277,3 +277,129 @@ the launch cohort shows destination-triggered purchases dwarfing
 second-event purchases, simplify to pure B at the first pricing review
 rather than carrying two triggers forever. Accepted by the board as a
 review-trigger, not a change to this ruling.
+
+---
+
+## THIRD SITTING (same day, 20:2x) — the vendor brief returns; host seats added
+
+**The host's directive.** Bring the vendor brief back into the model space,
+and seat actual users of the application — hosts — alongside the finance
+wing. Board expanded to 10: the 5 Market & Finance seats plus 5 host
+archetype seats. Archetypes, not real people; their authority is the
+population they stand in for, per the roster's own canary tradition.
+
+### The host seats
+
+**The Anxious Milestone Host** — archetype. D-2's named first buyer:
+running a retirement / 50th / memorial / reunion, 4-12 vendors, local,
+full-time job, not an "event person." Expertise: first-contact vendor
+coordination under real stakes. Represents: the modal buyer. Catches: any
+gate that lands mid-vendor-conversation, where a wall reads as sabotage.
+
+**"Grandmother"** — the roster's own permanent canary seat. Non-technical
+first-time user; shuts the laptop when confused. Expertise: first-contact
+comprehension with no prior model of the product. Represents: the
+non-technical majority. Catches: pricing that needs a paragraph — decisive
+on whether the offer is explainable in one sentence.
+
+**The Budget Host** — archetype (Accessible & Budget wing's lens:
+emotional-ROI allocation, dignity over discount). Expertise: making it
+special on little. Represents: hosts for whom $39 is real money that
+competes with centerpieces. Catches: gates that read as "pay to be treated
+decently" rather than "pay for more capability."
+
+**The Destination Host** — archetype. Coordinating a multi-day destination
+event: lodging blocks, group travel, a program spanning days. Represents:
+the buyer Model C charges. Catches: whether the price lands at a moment
+that feels fair, and whether the locked surfaces are visible enough to buy.
+
+**The Family Planner-by-Default** — archetype. The relative who plans
+everything: this year the retirement, next year the reunion. Represents:
+the second-event trigger's actual buyer. Catches: whether repeat purchase
+feels like loyalty rewarded or a subscription in disguise.
+
+### What the sitting established
+
+**The first sitting's "wall on the second phone call" framing was half
+right, and the host seats located the half.** The Anxious Milestone Host:
+"By the time I share a SECOND brief, I have already built the whole plan
+and run one full loop — brief out, vendor confirmed, record updated. That
+loop is the product's own 3-minute demo (D-2 §2). One full loop IS the
+taste. What I cannot forgive is a wall that appears mid-conversation with
+a vendor I'm already talking to, or a gate nobody told me about when I
+started." The objection was never really vendor-count — it was surprise
+and interruption.
+
+**Grandmother's comprehension test, applied to the combined model:** "Plan
+your first event free, including sharing one vendor brief. The pass
+unlocks sharing with every vendor, destination planning, and your next
+events." One sentence, no asterisks. Passes — barely. Anything more
+compound fails her test and gets cut.
+
+**The Budget Host's dignity line:** the free tier must be a complete
+planning experience, not a demo. Planning, budget, guests, day-of — all
+real. Charging for SHARING capability (more briefs) and for MORE product
+(destination surfaces, more events) is capability pricing, which preserves
+dignity. Charging to see your own plan would not. This model stays on the
+right side.
+
+**The Destination Host** confirmed the second sitting's read: at the
+lodging-block moment, $39 reads as obviously fair — "cheaper than one
+night of anyone's hotel." No change.
+
+**The Family Planner-by-Default** on the second-event trigger: "Fine —
+once. If I'm paying $39 per event every year, at event three I want the
+app to acknowledge me, even if only in copy. Never let the third purchase
+feel identical to the first." Recorded as post-launch copy work, not a
+gate change.
+
+**The finance seats, on bringing the brief back:** The Wedding-SaaS
+Strategist: "Each buyer now pays at THEIR point of differentiated value —
+the local multi-vendor host at unlimited briefs, the destination host at
+the travel stack, the repeat host at event two. That is price
+discrimination done correctly: one price, three doors." The Marketplace
+Seller, previously the strongest voice against the brief gate, moved on
+the disclosure condition: "A wall disclosed at event creation is a
+boundary; a wall discovered at vendor #2 is a betrayal. Same gate, ruinous
+difference." The Solopreneur held the one-SKU line. The Template Economist
+withdrew the second sitting's dissent — the brief trigger converts the
+modal (local) buyer, so revenue no longer leans on repeat behavior alone.
+
+### RULING — Model D (final; supersedes both prior sittings)
+
+**Free, forever, for the first local single-day event:** full planning —
+budget, guests, timeline, day-of, every vendor tracked — plus ONE vendor
+brief, shared and confirmable end-to-end. One complete loop is the taste.
+
+**The $39 One-Event Pass (one price, one SKU, three doors):** unlocks the
+whole event, triggered by ANY of:
+1. sharing vendor briefs beyond the first vendor,
+2. a destination (`isDestination === true`) or multi-day (`spanIntel()`,
+   never inferred) event,
+3. any event after the first.
+
+**Conditions, all load-bearing:**
+- **Disclosure at creation:** the free tier's exact boundary is stated when
+  the event is created — before any work is invested. No surprise walls.
+- **Never mid-conversation:** the brief gate fires only at GENERATING a
+  brief for a new vendor — never at viewing, updating, or confirming a
+  brief already shared. An in-flight vendor loop is never interrupted.
+- **Grandfather rule** (from sitting two, unchanged): an event that began
+  free never turns paid retroactively; the gate evaluates at creation plus
+  at new-brief generation — never continuously.
+- **Visibility rule** (unchanged): locked destination surfaces render
+  teased with honest copy; the second-brief gate is labeled on the brief
+  surface itself from day one.
+- **Copy:** the pass sheet must carry Grandmother's sentence, near
+  verbatim. "Every tab, fully unlocked" comes off.
+- **Billing stays off** until D-2's five preconditions are met.
+
+**Dissents: none standing.** The Template Economist's sitting-two dissent
+is withdrawn; the Family Planner's acknowledgment request is recorded as
+post-launch copy work.
+
+**Standing honesty note:** archetype host seats are lenses, not users.
+This ruling still requires D-2's precondition five — at least 3 real,
+non-founder hosts run the loop and are asked for money in conversation —
+before anyone charges anything. A board cannot substitute for that, and
+this one does not claim to.
