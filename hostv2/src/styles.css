@@ -2892,7 +2892,17 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   background-repeat:no-repeat;
   opacity:1; transition:opacity var(--ms-base) var(--ease-out);
 }
-@media(min-width:700px){ .splash{border-radius:48px} } /* matches .app's frame radius */
+@media(min-width:700px){ .splash{border-radius:48px} } /* matches .app's phone-frame radius */
+/* ── ...BUT ONLY WHILE THE APP IS A PHONE (host: "check radius on splash as
+   well", 2026-08-21) ────────────────────────────────────────────────────────
+   48px is the bezel corner of the 393x852 silhouette, and it is right there.
+   With the rail up the silhouette is gone: `.app` drops to radius 0 and the
+   FRAME is .stagewrap at var(--r-xl). The splash is absolute/inset:0 against
+   that stagewrap, so it kept painting a phone bezel over a desktop canvas.
+   MEASURED at 1440 before this rule: stagewrap 20px, splash 48px, app 0px —
+   three different corners stacked on the same rectangle, the same defect the
+   sheet carried until the parity pass. The splash now takes the frame's. */
+.stagewrap[data-rail="1"] > .splash{ border-radius:var(--r-xl); }
 /* KEEP pointer-events during the fade: with `none`, a second impatient tap
    inside the var(--ms-base) fade hit-tests through the still-visible overlay and
    invisibly presses whatever sits beneath — live-verified consuming the
@@ -3826,6 +3836,29 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    tint; no accent colour is spent here. */
 .srail-row.on{ color:var(--ink); font-weight:650; background:var(--steel-tint); }
 .srail-row.on .srail-i{ opacity:1; }
+
+/* ── COLLAPSED: ICONS ONLY (host, 2026-08-21) ────────────────────────────────
+   The whole collapse is ONE variable and two hides, which is the payoff for
+   having built the rail on --rail-w, a per-door mark, and a separate label
+   element rather than a bare text node. Every other rule that positions
+   against the rail — the sheet's left edge, the docked .next-bar, the one
+   rail-aware frame — reads --rail-w and follows for free. Nothing about the
+   content column changes: the measure cap stays 1360px, so narrowing the nav
+   narrows the FRAME rather than stretching the prose past its cap.
+
+   64px = the 44px tap floor plus the row's own 10px padding either side, so a
+   collapsed row is still a real thumb target at tablet-landscape.
+
+   The group headings go with the labels. A one-word heading over unlabelled
+   marks is a caption for something that isn't there; the gap between groups
+   already carries the grouping, which is the same job with no text. */
+.stagewrap[data-railmin="1"]{ --rail-w:64px; }
+.stagewrap[data-railmin="1"] .srail-l,
+.stagewrap[data-railmin="1"] .srail-t{ display:none; }
+.stagewrap[data-railmin="1"] .srail-row{ justify-content:center; padding-left:0; padding-right:0; }
+/* The switch itself reads as chrome, not as a door: it sits above the first
+   group, dimmer than a nav row until touched. */
+.srail-min{ color:var(--faint); margin-bottom:var(--sp-4); }
 
 /* The docked action belongs to the MAIN column. .next-bar is absolute against
    .stagewrap, which is now the full grid — without this it would start under

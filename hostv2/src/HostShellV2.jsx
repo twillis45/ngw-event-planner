@@ -194,6 +194,9 @@ const CALM_CATEGORIES = new Set(['neutral', 'calendar', 'heart']);
 // deleted event straight back onto the host's screen. Entries are released the
 // moment the cloud confirms the delete. See deleteThisEvent.
 const LS_DELETED = 'ngw-hostv2-deleted-events';
+// Section-rail collapse. A layout preference, so it persists per browser like
+// the demo-tools flag rather than riding the URL.
+const LS_RAIL_MIN = 'ngw-hostv2-rail-min';
 const readDeletedIds = () => {
   try { const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]'); return new Set(Array.isArray(t) ? t : []); }
   catch { return new Set(); }
@@ -3417,6 +3420,20 @@ export default function HostShellV2() {
   const stageMode = stagewrapClass({ stage, sheet: sheet && sheet.kind });
   // Same surface identity, one band wider: is the persistent section rail up?
   const railUp = showsRail({ bp, stage, sheet: sheet && sheet.kind });
+  // ── COLLAPSE (host, 2026-08-21: "menus is supposed to be collapsible") ─────
+  // The rail was BUILT for this — sectionIcons.jsx exists because a collapsed
+  // rail needs a mark per door that survives losing its label, and `.srail-l`
+  // is a separate element for exactly this hide. What was missing was the
+  // switch. It persists, because a host who narrows their nav has said
+  // something about how they work, not about this page view.
+  const [railMin, setRailMin] = useState(() => {
+    try { return localStorage.getItem(LS_RAIL_MIN) === '1'; } catch { return false; }
+  });
+  const toggleRailMin = () => setRailMin((v) => {
+    const next = !v;
+    try { localStorage.setItem(LS_RAIL_MIN, next ? '1' : '0'); } catch { /* private mode: collapse still works, just for this session */ }
+    return next;
+  });
   // Row-level landing (audit 2026-07-22): a route resolved to {kind:'space',
   // focus:'parking'|…} opens THAT row's inline note editor — the last leg of the
   // parking/load-in deep links (resolver branch in lib/routeResolver.js).
@@ -6367,7 +6384,8 @@ export default function HostShellV2() {
 
   return (
     <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
-      data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}>
+      data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}
+      data-railmin={railUp && railMin ? '1' : '0'}>
       {/* ── THE PERSISTENT SECTION RAIL (VIEWPORT_PORT_RULING step 3) ─────────
           Six of six leaders (Motion, Height, Wrike, Bonsai, Asana, Plane) put
           global nav in a persistent left rail and never behind a hamburger at
@@ -6386,6 +6404,20 @@ export default function HostShellV2() {
           do, because it is only visible while it is open. */}
       {railUp && (
         <nav className="srail" aria-label="Sections">
+          {/* The collapse switch. Its own row, at the top, because it is about
+              the rail rather than about the plan — and it keeps its label when
+              collapsed only as an aria-label, since the whole point is that
+              nothing in the narrow rail carries text. */}
+          <button className="srail-row srail-min" onClick={toggleRailMin}
+            aria-expanded={!railMin} aria-label={railMin ? 'Widen the menu' : 'Narrow the menu'}
+            title={railMin ? 'Widen the menu' : 'Narrow the menu'}>
+            <svg className="srail-i" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"
+              fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="1.8" y="2.6" width="12.4" height="10.8" rx="1.4" />
+              <path d="M6.2 2.6v10.8" />
+            </svg>
+            <span className="srail-l">{railMin ? 'Widen' : 'Narrow'}</span>
+          </button>
           {sectionGroups({ event, travel, crab, outdoor }).map((g) => (
             <div className="srail-g" key={g.title}>
               <div className="shelf-label srail-t">{g.title}</div>
@@ -6394,6 +6426,11 @@ export default function HostShellV2() {
                 return (
                   <button key={r.k} className={'srail-row' + (here ? ' on' : '')}
                     aria-current={here ? 'page' : undefined}
+                    /* Named on the BUTTON, not only by the label span: collapsed,
+                       that span is display:none and leaves the a11y tree with it,
+                       so a row named only by its text would go nameless exactly
+                       when its icon is all the user has. */
+                    aria-label={r.label} title={r.label}
                     onClick={() => goToSection(r.k)}>
                     {sectionIcon(r.k)}
                     <span className="srail-l">{r.label}</span>
@@ -6412,15 +6449,15 @@ export default function HostShellV2() {
               them below the rail band, where it is the only way in. */}
           <div className="srail-g" key="__rest">
             <div className="shelf-label srail-t">Elsewhere</div>
-            <button className="srail-row" onClick={() => setSheet({ kind: 'events' })}>
+            <button className="srail-row" aria-label="This event" title="This event" onClick={() => setSheet({ kind: 'events' })}>
               {sectionIcon('events')}
               <span className="srail-l">This event</span>
             </button>
-            <button className="srail-row" onClick={() => { setSheet(null); setPaletteOpen(true); }}>
+            <button className="srail-row" aria-label="Search" title="Search" onClick={() => { setSheet(null); setPaletteOpen(true); }}>
               {sectionIcon('search')}
               <span className="srail-l">Search</span>
             </button>
-            <button className="srail-row" onClick={() => setSheet({ kind: 'help' })}>
+            <button className="srail-row" aria-label="Feeling stuck?" title="Feeling stuck?" onClick={() => setSheet({ kind: 'help' })}>
               {sectionIcon('help')}
               <span className="srail-l">Feeling stuck?</span>
             </button>
