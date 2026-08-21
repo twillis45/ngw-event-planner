@@ -8,11 +8,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `d35606e9` — **pushed, tree clean** |
-| Last pushed | `d531362a` — **Checks + Deploy Pages both green** (verified) |
-| Jest | **6059 passed**, 1 skipped, 427 suites — measured this pass |
+| Branch / HEAD | `main` @ `3f0ad471` — **pushed, tree clean** |
+| Last pushed | `3f0ad471` — CI running; `d531362a` was the last verified green |
+| Jest | **6073 passed**, 1 skipped, 427 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
-| e2e (Playwright) | **full matrix: 593 passed / 170 skipped, zero failures** (13.9m, all 8 projects) |
+| e2e (Playwright) | **full matrix: 607 passed / 170 skipped, zero failures** (14.4m, all 8 projects) |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 
@@ -87,6 +87,11 @@ vs 63.8% on 07-13. Decision engine 42/50.
 The frozen checklist — that document's item #1, and the one that mattered
 most — is **DONE** (see "What shipped", item 10). What remains:
 
+**The day-of list now reaches the host** (`3f0ad471`) — `playbookDayOfChecklist`
+had zero hostv2 imports for months. Wired, with the generic floor stating
+that it is a floor. **Client Dinner (26 tasks) and Fundraiser/Gala (41)**
+are authored, so audit item #2 is closed end to end.
+
 **Total silence is closed** (item #2 part one, `d35606e9`). Eight of the
 nine typeless types now borrow a named playbook and produce 11–19 real
 tasks; the borrow is stated on screen and in every row's provenance, and
@@ -149,6 +154,12 @@ T-0 surfaces 18 run-of-show rows from 5h out through teardown.
 - **A new toast is a new obstacle.** The reconcile's announcement broke 12
   specs on click timeouts by sitting over the controls they were reaching for.
   The specs were right: it was a banner nobody had asked for.
+- **`addInitScript` re-runs on EVERY navigation.** An unconditional
+  localStorage seed rewrites the pristine state over the host's own on
+  `reload()` — indistinguishable from app data loss, and I filed it as such
+  before the harness was ruled out. Guard the seed; assert SURVIVAL across a
+  boot, never the write (the write lands even when the value is about to be
+  destroyed). `docs/audits/2026-08-21_CUSTOM_EVENT_PERSISTENCE_DEFECT.md`.
 - `git checkout --` after a red-proof reverts the guarded edit too. Fault
   and restore with a targeted string swap instead.
 - **Reading the CSS is not measuring it.** A reviewer derived "the frame
