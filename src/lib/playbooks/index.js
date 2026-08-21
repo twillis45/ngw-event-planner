@@ -105,16 +105,69 @@ for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 // land correctly ("Birthday Party" → Birthday, "Backyard BBQ"/"cookout" →
 // Get-Together, "Graduation Party" → Graduation). Unknown types → null so the
 // caller's existing fallback path stays intact.
+// ── THE FLOOR FOR TYPES NOBODY AUTHORED (audit 2026-08-21, item 2) ──────────
+// Nine of the taxonomy's 48 types had no playbook, and the consequence was
+// total silence: a bare Town Hall measured ros 0, checklist 0, decisions 0,
+// risks 0, raises 0. The app offered the type at intake and then had nothing
+// whatsoever to say about it. That is the worst failure mode in this product —
+// a mis-ranked row is a bad answer, but silence is no answer at all, and the
+// host cannot tell it apart from "there is nothing to do".
+//
+// AN EXPLICIT MAP, NOT A FAMILY LOOKUP. The taxonomy families would have been
+// one line, and they put Wellness Retreat in `travel_led` whose only authored
+// member is Elopement — a retreat would have inherited a wedding's tasks.
+// Each borrow is named here with the reason it holds, so a wrong one is
+// visible as a wrong sentence rather than hidden in a table join.
+//
+// "Other" is deliberately absent. It stays null, because the honest answer for
+// a type the host invented is that we have no playbook for it — silence WITH a
+// reason is fine, and its surface says so. Silence without one is the defect.
+const BORROWED_PLAYBOOK = {
+  'Town Hall':          ['Board Meeting', 'an all-hands runs like a board meeting scaled up: one room, one agenda, a start that has to be on time'],
+  'Product Launch':     ['Conference', 'a launch is a conference with one session — same AV, run-of-show, press and guest-list work'],
+  'Training / Workshop':['Conference', 'sessions, a room set for them, materials and catering on a clock'],
+  'Award Ceremony':     ['Conference', 'a program with a stage, an AV cue sheet and a seated audience'],
+  'Networking Event':   ['Holiday Party', 'the shape is a room, drinks, food that can be eaten standing, and a soft program'],
+  'Client Dinner':      ['Dinner Party', 'a hosted table with a menu and a seating plan — the scale is the difference, not the shape'],
+  'Fundraiser / Gala':  ['Wedding', 'the most involved thing in the corpus: venue, caterer, AV, seating chart and a program that has to land'],
+  'Wellness Retreat':   ['Team Retreat', 'multi-day, off-site, lodging and a daily programme — a retreat is a retreat'],
+};
+
+/**
+ * Resolve a raw event type to its playbook. Exact match, then the canonical
+ * taxonomy (so aliases and free text land: "Birthday Party" -> Birthday,
+ * "cookout" -> Get-Together). Failing both, a NAMED BORROW.
+ *
+ * A borrowed playbook is returned with `isDefault: true`, the type it came
+ * from, and the sentence justifying it — and its `type` is left as the SOURCE
+ * type on purpose. Every generated row stamps `provenance.source` as
+ * `${playbook.type} playbook`, so leaving it alone makes a borrowed task say
+ * "Board Meeting playbook" on a town hall, which is exactly true. Rewriting it
+ * to the requested type would have made the app claim an authored playbook it
+ * does not have — the one thing the grounding doctrine forbids.
+ */
 export function getPlaybook(eventType) {
   if (!eventType) return null;
   const direct = REGISTRY[norm(eventType)];
   if (direct) return direct;
+  let canon = null;
   try {
-    const canon = resolveCanonicalType(eventType);
+    canon = resolveCanonicalType(eventType);
     if (canon && REGISTRY[norm(canon)]) return REGISTRY[norm(canon)];
   } catch (_e) { /* taxonomy resolve is best-effort */ }
+  const borrow = BORROWED_PLAYBOOK[canon || eventType] || BORROWED_PLAYBOOK[eventType];
+  if (borrow) {
+    const base = REGISTRY[norm(borrow[0])];
+    if (base) {
+      return { ...base, isDefault: true, appliedTo: canon || eventType, because: borrow[1] };
+    }
+  }
   return null;
 }
+
+/** The types that reach a borrowed playbook — exported so a test can assert the
+ *  map still covers every unauthored type as the taxonomy grows. */
+export const BORROWED_TYPES = Object.freeze(Object.keys(BORROWED_PLAYBOOK));
 
 // ── Window model ──────────────────────────────────────────────────────────────
 // A purchase's buyAt token ("T-3d" | "T-1d" | "T0") is an offset in days from

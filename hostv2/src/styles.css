@@ -2666,6 +2666,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .sweep-row.answered .sweep-state{ color:var(--ok); background:var(--ok-tint); }/* audit I1a: every other "good" pill pairs ok with ok-tint */
 .sweep-row .sv-meta{ font-size:var(--t-row-sub); color:var(--muted); margin-top:2px; }
 
+/* The borrowed-playbook note. Quiet by design: it is a caveat on otherwise
+   real work, not a warning — no amber, no icon, no border. It reads as the
+   app being straight with you, which is the tone the grounding doctrine asks
+   for. Sits on --faint, the same weight as any other provenance line. */
+.borrowed-note{ color:var(--faint); font-size:var(--t-row-sub); line-height:1.45;
+  margin:0 0 var(--sp-4); max-width:64ch; }
+
 /* Row-level landing ring — the exact field a CTA promised */
 .rowfocus{box-shadow:0 0 0 2px var(--steel), 0 0 0 8px var(--steel-tint); animation:rowfade var(--ms-land) var(--ease-standard) 1 forwards}
 @keyframes rowfade{0%,70%{box-shadow:0 0 0 2px var(--steel), 0 0 0 8px var(--steel-tint)} 100%{box-shadow:0 0 0 0 transparent}}

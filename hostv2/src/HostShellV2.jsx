@@ -15369,6 +15369,29 @@ export default function HostShellV2() {
               );
             })()}
             {sheet.kind === 'tasks' && (<>
+              {/* ── A BORROWED PLAYBOOK SAYS SO (audit item 2, 2026-08-21) ────
+                  Nine of the taxonomy's 48 types had no playbook, and the app
+                  said NOTHING for them — a bare Town Hall produced zero tasks,
+                  zero risks, zero decisions. The floor borrows a near playbook
+                  so those hosts get real work instead of an empty screen.
+
+                  This line is the price of that, and it is not optional. A
+                  borrowed list presented as the type's own would be the app
+                  claiming knowledge it does not have, which is the one thing
+                  the grounding doctrine forbids outright. So the host is told
+                  which playbook these steps came from and why it applies, and
+                  can judge the borrow for themselves. Authored types never see
+                  it — `isDefault` is only set on a borrow. */}
+              {(() => {
+                const pb = (() => { try { return getPlaybook(event.type); } catch { return null; } })();
+                if (!pb || !pb.isDefault) return null;
+                return (
+                  <p className="v-meta borrowed-note">
+                    We have no playbook written for {pb.appliedTo} yet, so these steps come
+                    from the {pb.type} one — {pb.because}. Edit or add anything that does not fit.
+                  </p>
+                );
+              })()}
               {(event.timeline || []).length ? (
                 <>
                   {(() => {
