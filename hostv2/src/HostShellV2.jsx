@@ -2620,8 +2620,10 @@ export default function HostShellV2() {
     if (session) { try { patchProfile({ lastEventId: newId }); } catch { /* local pointer holds it */ } }
     if (session) { cloudSaveEvent(copy).then(res => recordSaveResult(copy, res)).catch(() => {}); }
     // Say what was kept AND what was not — a copy that quietly dropped the RSVPs
-    // without saying so would be its own small dishonesty.
-    toast('Copied the plan — guests, vendors and your picks. Replies, payments and the date start fresh.');
+    // without saying so would be its own small dishonesty. Undo at the moment
+    // of the mistake (Nielsen H3, 2026-08-21): rides the real delete path, so
+    // the copy is tombstoned out of the cloud too, not just filtered locally.
+    toast('Copied the plan — guests, vendors and your picks. Replies, payments and the date start fresh.', { label: 'Undo', fn: () => deleteThisEvent(copy) });
   };
   // Follow the account's resume pointer on a fresh device: once the target event
   // is available (sample, custom, or hydrated real event) AND the host hasn't
@@ -3532,12 +3534,31 @@ export default function HostShellV2() {
       if (overlayPushedRef.current) {
         overlayPushedRef.current = false;
         setPaletteOpen(false);
-        setSheet(null);
+        closeSheet();
       }
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+  // Nielsen H3/H4 (stage-4 gate, 2026-08-21): "close" means BACK ONE LEVEL.
+  // A sheet opened from inside another sheet carries its parent as `sheet.from`;
+  // every close path (X, scrim, Escape, phone Back) funnels here and returns to
+  // the parent instead of dumping the host back on the plan. When the phone
+  // Back gesture consumed the history entry (overlayPushedRef already false)
+  // and we are returning INTO an overlay, re-arm the entry so the next Back
+  // still closes the parent instead of exiting the app.
+  const closeSheet = () => {
+    setSheet(s => {
+      if (s && s.from) {
+        if (!overlayPushedRef.current) {
+          overlayPushedRef.current = true;
+          try { window.history.pushState({ ngwOverlay: true }, ''); } catch { /* history blocked */ }
+        }
+        return s.from;
+      }
+      return null;
+    });
+  };
   // Sheet modal a11y (per-screen audit, cross-cutting fix — all 22 sheets share
   // this one container). Adds what every sheet was missing: Escape-to-close,
   // initial focus into the dialog, and focus restore to whatever opened it.
@@ -3578,7 +3599,7 @@ export default function HostShellV2() {
       // a secondary check for fields that don't unmount on Escape.)
       const isField = (n) => n && (n.tagName === 'INPUT' || n.tagName === 'TEXTAREA' || n.isContentEditable);
       if (isField(e.target) || isField(document.activeElement)) return;
-      setSheet(null);
+      closeSheet();
     };
     window.addEventListener('keydown', onKey, false);
     return () => {
@@ -4307,21 +4328,34 @@ export default function HostShellV2() {
   const [draftTone, setDraftTone] = useState(() => { try { return localStorage.getItem('ngw-hostv2-voice') || 'as-written'; } catch { return 'as-written'; } });
   const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
   useEffect(() => { try { localStorage.setItem('ngw-hostv2-voice', draftTone); } catch {} }, [draftTone]);
+  // Nielsen H3 (stage-4 gate, 2026-08-21): a host's typed words must survive
+  // closing the sheet. Edits are kept per draft title for the session; reopening
+  // the same draft restores them. Picking a voice is the one deliberate discard
+  // (it always meant "regenerate"), so it clears the kept copy too.
+  const draftEditsRef = useRef({});
+  const draftEditKey = (title) => String(title || 'draft');
   const openDraft = (title, d, queue) => {
     const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
     if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
-    setDraftBody(null);
+    const kept = draftEditsRef.current[draftEditKey(title)];
+    setDraftBody(kept != null ? kept : null);
     // Optional queue: remaining {title, body, name} items for "message
     // everyone" flows (one separate draft per person, reviewed/sent one at a
     // time through the SAME real handoffs below — never a silent bulk send).
-    setSheet({ kind: 'draft', title, body, queue: queue || null });
+    // `from`: the sheet this draft was opened over, so Close means back, not
+    // out (a draft opened from a draft inherits the ORIGINAL parent).
+    setSheet(prev => ({
+      kind: 'draft', title, body, queue: queue || null,
+      from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
+    }));
   };
   const openNextInQueue = () => {
     const q = (sheet && sheet.queue) || [];
     if (!q.length) return;
     const [next, ...rest] = q;
-    setDraftBody(null);
-    setSheet({ kind: 'draft', title: next.title, body: next.body, queue: rest.length ? rest : null });
+    const kept = draftEditsRef.current[draftEditKey(next.title)];
+    setDraftBody(kept != null ? kept : null);
+    setSheet({ kind: 'draft', title: next.title, body: next.body, queue: rest.length ? rest : null, from: (sheet && sheet.from) || null });
   };
   // "Message all helpers", one click: builds ONE personalized draft per
   // deduped helper (their own responsibilities only, via draftHelperConfirm),
@@ -4914,6 +4948,21 @@ export default function HostShellV2() {
   // one of those) is never cloud-backed, so a sync-status claim about it would
   // be fiction. Reused verbatim for the settings sheet's per-event status row.
   const eventIsSyncable = !!activeCustom || REAL_EVENTS.some(e => e.id === eventId) || hydratedEvents.some(e => e.id === eventId);
+  // Nielsen H1 (stage-4 gate, 2026-08-21): a cloud save that silently queued
+  // was only discoverable inside the events sheet. This says it ONCE, quietly,
+  // at the moment it first happens — no permanent chrome (one loud thing per
+  // screen holds), and the flag re-arms on the next real cloud success so a
+  // later offline stretch gets its own single cue. The online flush toast
+  // ("N changes synced") already announces the recovery.
+  const syncCueShown = useRef(false);
+  const noteSaveResult = (ev, res) => {
+    try { recordSaveResult(ev, res); } catch { /* stamping is best-effort */ }
+    if (res && res.ok) { syncCueShown.current = false; return; }
+    if (!syncCueShown.current) {
+      syncCueShown.current = true;
+      toast('Saved on this device — it will reach your account when the connection is back.');
+    }
+  };
   const patchEvent = (obj, msg, opts) => {
     // GENERIC UNDO (build-map #8): patchEvent is the ONE write path every edit
     // funnels through, so undo is built here ONCE rather than wired action by
@@ -4933,7 +4982,7 @@ export default function HostShellV2() {
       // SYNC-HONESTY-1: the old catch{} swallowed the result — no way to tell
       // a real cloud success from a queued/failed write. recordSaveResult
       // stamps or records honestly so the settings sheet can tell the truth.
-      if (session) { cloudSaveEvent(next).then(res => recordSaveResult(next, res)).catch(() => {}); }
+      if (session) { cloudSaveEvent(next).then(res => noteSaveResult(next, res)).catch(() => {}); }
       return next;
     }));
     else setPatch(p => {
@@ -4943,7 +4992,7 @@ export default function HostShellV2() {
       const realBase = REAL_EVENTS.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId);
       if (session && realBase) {
         const savedEv = { ...realBase, ...nextPatch };
-        cloudSaveEvent(savedEv).then(res => recordSaveResult(savedEv, res)).catch(() => {});
+        cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
       }
       return nextPatch;
     });
@@ -10484,7 +10533,7 @@ export default function HostShellV2() {
       {/* ── Deep-link landing sheet: routes land on the exact row ── */}
       {sheet && (
         <>
-          <div className="sheet-scrim" onClick={() => setSheet(null)} />
+          <div className="sheet-scrim" onClick={closeSheet} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
@@ -10506,7 +10555,7 @@ export default function HostShellV2() {
                 )}
               <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the Boss' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
               </div>
-              <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
+              <button className="sheet-x" onClick={closeSheet}>{sheet.from ? 'Back' : 'Close'}</button>
             </div>
             {/* Date & time area is a real door now (host report 2026-07-16: it was tappable
                 copy with no editor behind it). Reuses the same date+arrival-time editor the
@@ -14910,11 +14959,11 @@ export default function HostShellV2() {
                   <OptionList ariaLabel="Voice"
                     options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => ({ label, value: k }))}
                     value={draftBody == null ? draftTone : ''}
-                    onPick={(k) => { setDraftTone(k); setDraftBody(null); }} />
+                    onPick={(k) => { setDraftTone(k); setDraftBody(null); try { delete draftEditsRef.current[draftEditKey(sheet.title)]; } catch { /* kept copy is best-effort */ } }} />
                   {draftBody != null && <div className="of" style={{ marginTop: 6, color: 'var(--steel-soft)' }}>Your words — showing your edits</div>}
                 </div>
                 <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"
-                  onChange={e => setDraftBody(e.target.value)}
+                  onChange={e => { setDraftBody(e.target.value); draftEditsRef.current[draftEditKey(sheet.title)] = e.target.value; }}
                   rows={Math.min(14, shownDraft().split('\n').length + 2)} />
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
                     plus direct sms: and wa.me deep links — no fake "sent" states. */}
