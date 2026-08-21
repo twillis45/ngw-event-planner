@@ -132,3 +132,53 @@ test.describe('section rail collapse', () => {
     }
   });
 });
+
+// ─── THE RAIL STAYS PUT ──────────────────────────────────────────────────────
+//
+// Host, 2026-08-21: "the menu on desktop actually is jumping. dizzying."
+//
+// Measured at 1440, walking five sections: the rail's y went 21 -> -80 -> -194
+// -> -299 and never came back, while `window.scrollY` stayed 0 the whole way.
+// The scroll was on `.stagewrap` itself, which carried `overflow:hidden` —
+// and `hidden` does not mean "cannot scroll", it means "no scrollbar". The box
+// was still a scroll container, so every row-level landing's `scrollIntoView`
+// scrolled the FRAME instead of the list inside it, and with no scrollbar the
+// host had no way to put it back. Persistent navigation walked off the top of
+// the app one section at a time.
+//
+// Two rules declared it and only the later one counted; fixing the first
+// changed nothing, which is exactly the kind of half-fix that ships. This
+// asserts the OUTCOME — the rail does not move — rather than the declaration,
+// so it holds no matter which rule a future change touches.
+test.describe('the rail does not drift', () => {
+  test.skip(({ viewport }) => !viewport || viewport.width < 1280, 'desktop-only surface');
+
+  test('walking every section leaves the rail exactly where it started', async ({ page }) => {
+    await boot(page);
+    const railY = () => page.locator('.srail').evaluate((n) => n.getBoundingClientRect().y);
+    const start = await railY();
+
+    // SECTION doors only. The "Elsewhere" group's rows are not sections: Search
+    // opens the command palette, an overlay that swallows the next click, so
+    // walking the whole rail blind hung on a click timeout that looked nothing
+    // like the drift this test is about.
+    const doors = page.locator('.srail-g:not(:last-child) .srail-row:not(.srail-min)');
+    const n = await doors.count();
+    expect(n).toBeGreaterThan(8);
+
+    for (let i = 0; i < n; i++) {
+      const door = doors.nth(i);
+      const label = await door.getAttribute('aria-label');
+      await door.click();
+      await settled(page);
+      expect(Math.abs((await railY()) - start), `the rail drifted after opening "${label}"`)
+        .toBeLessThanOrEqual(1);
+    }
+
+    // And the frame is not a scroll container at all — the property that made
+    // the drift possible, asserted directly so the cause cannot come back
+    // wearing a different rule.
+    const scrolled = await page.locator('.stagewrap').evaluate((n) => n.scrollTop);
+    expect(scrolled).toBe(0);
+  });
+});

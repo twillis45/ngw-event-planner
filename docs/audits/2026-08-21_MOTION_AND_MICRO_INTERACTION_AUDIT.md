@@ -6,6 +6,25 @@ stylesheet, not by grep-counting lines. Doctrine of record: UX_01 "Animation and
 Transition Rules" (`docs/claude-skills/ui-ux/UX_01_STUDIO_MATTE_VISUAL_LANGUAGE.md:151-157`)
 and the motion token table in `docs/DESIGN_SYSTEM_HANDOFF.md:246-266`._
 
+## Status -- updated 2026-08-21 after `76cc7a76`
+
+Six of the eight shortlist items shipped in `76cc7a76` ("Motion: give sheets an
+origin, fills a compositor, and the slow band a name"). Two did not: #5
+(`max-height` -> `height:auto`) and #6 (first-mount gate on the `cardin`
+stagger). Finding 2 (FLIP for list reorder) was never on the list and remains
+the largest continuity gap.
+
+Everything below this block was measured BEFORE that commit and is preserved as
+the baseline it was. Where a section is now out of date, the shortlist entry
+carries a dated **SHIPPED** note with what actually changed and where to read
+it. Line numbers cited in the pre-commit text have drifted -- `styles.css` grew
+by roughly 36 lines -- so re-grep before trusting any `:NNNN` in the body.
+
+Verification for the shipped work: jest 6044 passed; Playwright desktop 117
+passed / 7 skipped, mobile 84 passed, zero failures. New standing gate:
+`hostv2/e2e/motionContinuity.spec.mjs`, three tests, each red-proofed by
+reintroducing the fault it exists to catch.
+
 ## Verdict
 
 **Competent-to-strong on state feedback and reduced motion; behind on continuity;
@@ -274,32 +293,102 @@ mechanism is in the file and five surfaces have not adopted it.
 
 ## Findings table
 
-| # | Finding | Sev | file:line | One-line fix |
-|---|---|---|---|---|
-| 1 | No shared-element / directional origin anywhere; every sheet rises from the same 24px offset regardless of what opened it | P1 | `styles.css:1461,1463` | Pass the tapped row's viewport Y as a CSS var and make `sheetrise` start from it |
-| 2 | No FLIP or view-transition; ranked lists cut to new positions | P1 | (absent; grep `view-transition` = 0 hits) | Add FLIP to the ranked-decision and call-sheet lists only |
-| 3 | `.rowfocus` ring never clears under `prefers-reduced-motion` (base rule sets the shadow, `rowfade` removes it) | P1 | `styles.css:2633` | Move the ring into the keyframe, or add a reduced-motion rule setting `box-shadow:none` |
-| 4 | 300-900ms disclosure/progress band used 20+ times with no ladder rung above `--ms-reveal 420` | P1 | `theme.js:186`; `styles.css:1088,1590,2335,2397,2421,2593` | Add `--ms-slow 550` / `--ms-fill 700` to `theme.js` and consume them |
-| 5 | Five `width` transitions animate layout on progress bars | P2 | `styles.css:1088,1590,1592,2418,3576` | `transform:scaleX()` with `transform-origin:left` |
-| 6 | Five `max-height` disclosures guess a ceiling while `interpolate-size` is already enabled | P2 | `styles.css:2153,2335,2397,2421,2593` | Switch to `height:auto` like `:542` already does |
-| 7 | `.wxpill` transitions `bottom` | P2 | `styles.css:2822` | `translateY` |
-| 8 | `cardin` replays a staggered list entrance on every render, inline, at an off-ladder 280ms | P2 | `HostShellV2.jsx:10925,10993,11015` | Gate on first mount; move 280ms to `--ms-sheet`/`--ms-enter` |
-| 9 | `@keyframes toastin` defined twice with different curves; the second (with a `-4px` overshoot) silently wins | P2 | `styles.css:1335` and `:3331` | Delete `:1335`; note that the overshoot contradicts UX_01:154 "no bounce" and needs a host ruling either way |
-| 10 | Bars glide while the number beside them cuts | P2 | `styles.css:1088,1590` + call sites | Tween the digit with the bar, or stop tweening the bar |
-| 11 | Global reduced-motion nuke kills color/opacity transitions too, so reduced-motion users get hard cuts everywhere | P2 | `styles.css:1507-1509` | Scope `transition:none` to transform/filter; keep `animation:none` global |
-| 12 | Six off-ladder-by-spelling durations (150ms x5, 160ms x3) | P3 | `styles.css:602,683,870,2370` | Replace with `var(--ms-fast)` |
-| 13 | Raw `ease` keyword on a working surface | P3 | `styles.css:2370` | `var(--ease-out)` |
-| 14 | `@keyframes rvrackrow` defined twice, byte-identical | P3 | `styles.css:1822`, `:1896` | Delete one |
-| 15 | `.rv-lastland` rules reference a class no JSX applies | P3 | `styles.css:1819,1821,1849` | Delete, or wire it |
-| 16 | Section rail glyph has hover + active but no `:focus-visible` step-up | P3 | `styles.css:4304-4305` | Add `.sec-row:focus-visible > .srail-i` |
-| 17 | `.mini`, `.path-row`, `.navrow` have press but no focus-visible surface response | P3 | `styles.css:1533`, `:529` | Add to the `:3536` focus-parity list |
+Status column added 2026-08-21 after `76cc7a76`; every entry marked SHIPPED was
+read in the source at HEAD, not taken from the commit message.
+
+| # | Finding | Sev | file:line | One-line fix | Status |
+|---|---|---|---|---|---|
+| 1 | No shared-element / directional origin anywhere; every sheet rises from the same 24px offset regardless of what opened it | P1 | `styles.css:1461,1463` | Pass the tapped row's viewport Y as a CSS var and make `sheetrise` start from it | **SHIPPED** -- `--from-y` at the pointer |
+| 2 | No FLIP or view-transition; ranked lists cut to new positions | P1 | (absent; grep `view-transition` = 0 hits) | Add FLIP to the ranked-decision and call-sheet lists only | OPEN -- still zero `view-transition` hits |
+| 3 | `.rowfocus` ring never clears under `prefers-reduced-motion` (base rule sets the shadow, `rowfade` removes it) | P1 | `styles.css:2633` | Move the ring into the keyframe, or add a reduced-motion rule setting `box-shadow:none` | **SHIPPED** -- static 2px core under reduce |
+| 4 | 300-900ms disclosure/progress band used 20+ times with no ladder rung above `--ms-reveal 420` | P1 | `theme.js:186`; `styles.css:1088,1590,2335,2397,2421,2593` | Add `--ms-slow 550` / `--ms-fill 700` to `theme.js` and consume them | **SHIPPED** -- `--ms-slow/--ms-fill/--ms-land` |
+| 5 | Five `width` transitions animate layout on progress bars | P2 | `styles.css:1088,1590,1592,2418,3576` | `transform:scaleX()` with `transform-origin:left` | PARTIAL -- `.bar i` only; four width fills left |
+| 6 | Five `max-height` disclosures guess a ceiling while `interpolate-size` is already enabled | P2 | `styles.css:2153,2335,2397,2421,2593` | Switch to `height:auto` like `:542` already does | OPEN -- not started |
+| 7 | `.wxpill` transitions `bottom` | P2 | `styles.css:2822` | `translateY` | OPEN -- `.wxpill` still transitions `bottom` |
+| 8 | `cardin` replays a staggered list entrance on every render, inline, at an off-ladder 280ms | P2 | `HostShellV2.jsx:10925,10993,11015` | Gate on first mount; move 280ms to `--ms-sheet`/`--ms-enter` | PARTIAL -- duration tokenized, stagger still replays |
+| 9 | `@keyframes toastin` defined twice with different curves; the second (with a `-4px` overshoot) silently wins | P2 | `styles.css:1335` and `:3331` | Delete `:1335`; note that the overshoot contradicts UX_01:154 "no bounce" and needs a host ruling either way | **SHIPPED** -- dup deleted, conflict ruled |
+| 10 | Bars glide while the number beside them cuts | P2 | `styles.css:1088,1590` + call sites | Tween the digit with the bar, or stop tweening the bar | OPEN -- digit still cuts |
+| 11 | Global reduced-motion nuke kills color/opacity transitions too, so reduced-motion users get hard cuts everywhere | P2 | `styles.css:1507-1509` | Scope `transition:none` to transform/filter; keep `animation:none` global | OPEN -- global nuke unchanged |
+| 12 | Six off-ladder-by-spelling durations (150ms x5, 160ms x3) | P3 | `styles.css:602,683,870,2370` | Replace with `var(--ms-fast)` | OPEN |
+| 13 | Raw `ease` keyword on a working surface | P3 | `styles.css:2370` | `var(--ease-out)` | OPEN |
+| 14 | `@keyframes rvrackrow` defined twice, byte-identical | P3 | `styles.css:1822`, `:1896` | Delete one | OPEN -- `rvrackrow` still duplicated |
+| 15 | `.rv-lastland` rules reference a class no JSX applies | P3 | `styles.css:1819,1821,1849` | Delete, or wire it | OPEN |
+| 16 | Section rail glyph has hover + active but no `:focus-visible` step-up | P3 | `styles.css:4304-4305` | Add `.sec-row:focus-visible > .srail-i` | **SHIPPED** -- `.sec-row:focus-visible` |
+| 17 | `.mini`, `.path-row`, `.navrow` have press but no focus-visible surface response | P3 | `styles.css:1533`, `:529` | Add to the `:3536` focus-parity list | OPEN -- the three atoms added were `.srail-row`, `.palette-row`, `.sec-row`; these three were not |
 
 ## Ranked shortlist -- 8 changes, best quality-per-risk first
 
 1. **Bar fills to `scaleX`** (findings 5, 7) -- detailed below.
+   **SHIPPED (`76cc7a76`), narrower than proposed.** `.bar i` is now
+   `width:100%; transform-origin:left center; transform:scaleX(var(--fill,0));
+   transition:transform var(--ms-fill)` (`styles.css:1104-1106`). The fill's own
+   `border-radius:6px` was **deleted, not moved** -- `.bar` already carried
+   `border-radius:6px` plus `overflow:hidden`, so the track was always doing the
+   clipping and the radius on the fill had never been visible. Three JSX call
+   sites converted from `width: pct + '%'` to `'--fill': pct/100`
+   (`HostShellV2.jsx:8972, 14759, 15019`); the `--fill` default of 0 means a bar
+   that renders before its value arrives shows an empty track rather than
+   flashing full and snapping back.
+   `.bline` was **deliberately not converted**, and the reason is recorded in the
+   CSS at `:1621-1626`: `.bline b` is a child of `.bline i` sized as a percentage
+   *of it*, so scaling the parent would multiply into the child and the inner
+   segment would land at the wrong value. Two segments, one relative to the
+   other, is a real chart -- it stays on `width` on purpose.
+   **Still open from this item:** `.bline i` / `.bline b` (`:1627, :1629`), the
+   invite bar (`:2455`), `.mbar i` (`:3636`) and `.wxpill{transition:bottom}`
+   (`:2877`, finding 7) all still animate layout. One of five fills converted.
 2. **Fix the stuck `.rowfocus` ring under reduced motion** (finding 3) -- detailed below.
+   **SHIPPED (`76cc7a76`).** This was a live defect, not a polish item: the ring
+   lived in the base rule with `rowfade` as its only remover, so under
+   `prefers-reduced-motion: reduce` the global `animation:none !important` left
+   the full transient treatment -- 2px core **plus the 8px halo**, sized to be
+   seen for three seconds -- applied permanently for the life of the sheet, and a
+   second landing lit a second row with the first still on.
+   Of the two fixes this doc offered, the one taken is the **preferred** one:
+   `styles.css:2686-2689` adds `@media(prefers-reduced-motion:reduce){
+   .rowfocus{ box-shadow:0 0 0 2px var(--steel) } }` -- a static 2px core, no
+   halo. The alternative (ring purely in the keyframe, so reduce yields no ring
+   at all) was rejected because it loses the landing cue, and the row-level-CTA
+   law requires the landing to be legible: the host who most needs telling where
+   they landed is the one who turned motion off.
 3. **Sheet rises from the row that opened it** (finding 1) -- detailed below.
-4. **Name the slow band in `theme.js`** (finding 4). Add
+   **SHIPPED (`76cc7a76`), implemented at the pointer rather than at each call
+   site.** A capture-phase `pointerdown` listener records the last tap's
+   `clientY` and timestamp into `lastTapRef` (`HostShellV2.jsx:3490, 3512-3516`).
+   A `useLayoutEffect` keyed on the sheet's identity (`sheet.kind`, `sheet.focus`)
+   measures the sheet rect, computes `--from-y` as `tap.y - rect.top` clamped to
+   0-320px, writes it to the element, and restarts the animation with the
+   `none` / forced-reflow / `''` idiom -- necessary because the element mounts
+   with `animation:sheetrise` already applied, so the engine has resolved its
+   from-frame before any effect runs (`:3529-3546`).
+   `styles.css:1494` now reads
+   `@keyframes sheetrise{from{transform:translateY(var(--from-y,24px)); opacity:.4} to{transform:none; opacity:1}}`.
+   Two design decisions worth carrying forward. **Pointer, not call site:** the
+   row-level-CTA law means sheets open from dozens of places, and threading a
+   rect through each would be forty edits, forty chances to miss one, and a
+   permanent tax on the forty-first. **A 1200ms staleness window:** the tap is
+   only trusted for a moment, so keyboard, deep-link and route-restore paths fall
+   back to the 24px default -- inheriting the Y of something touched minutes ago
+   would be worse than no origin at all.
+4. **Name the slow band in `theme.js`** (finding 4).
+   **SHIPPED (`76cc7a76`), and the source-of-truth detail matters.** `slow: 550`,
+   `fill: 700` and `land: 3200` were added to `src/design/tokens.js:245-255`;
+   `--ms-slow`, `--ms-fill` and `--ms-land` are set in `hostv2/src/theme.js:198,
+   199, 203`. The build's own `check-parity.mjs` gate **failed until the tokens
+   existed at the source** -- `theme.js` alone was not enough, which is the gate
+   working as designed and is the reason this could not be done as a stylesheet
+   edit.
+   Consumed at: the four disclosure sites (`styles.css:2372, 2379, 2434, 2630`,
+   all `--ms-slow`), `.bar i` and both `.bline` fills (`:1106, 1627, 1629`, all
+   `--ms-fill`), and `.rowfocus`/`rowfade` (`:2670`, `--ms-land`). `--ms-land` is
+   named separately on purpose: a landing ring is a **dwell**, not an interaction
+   speed, and folding 3.2s into the same ladder as a 260ms sheet would invite
+   someone to "fix" it.
+   Also in this item: `cardin`'s off-ladder literals moved to `var(--ms-enter)`
+   at **14 sites** (12 x 280ms, 2 x 340ms). Three `cardin` literals survive and
+   are not fixed -- 260ms at `HostShellV2.jsx:14418` and `:14456`, 300ms at
+   `:17613`. The ladder is cleaner, not clean.
+   Original prescription, kept for reference: add
    `set('--ms-slow', (durations.slow || 550) + 'ms')` and
    `set('--ms-fill', (durations.fill || 700) + 'ms')` after `theme.js:186`, then
    replace the `.55s/.5s/.6s` disclosure literals with `--ms-slow` and the
@@ -311,21 +400,81 @@ mechanism is in the file and five surfaces have not adopted it.
    is already on at `:541` and two surfaces already use it. Removes the guessed
    ceiling and its dead time. Low risk; verify each panel still clips during the
    transition (`overflow:clip`).
+   **OPEN. Not started.** All five surfaces still clamp `max-height`
+   (`styles.css:2190, 2372, 2434, 2630` plus the invite disclosure). `76cc7a76`
+   changed their *durations* to `--ms-slow` and nothing else, so the guessed
+   ceiling and its dead time are exactly as this audit measured them.
 6. **First-mount gate on the `cardin` list stagger** (finding 8). A list that
    re-enters from below every time a filter toggles is the last ceremonial cost
    on a working surface. Low risk, immediately noticeable.
+   **OPEN. The ceremonial-cost finding is unresolved.** Only the *duration* was
+   tokenized in `76cc7a76`; no gate was added. The stagger still replays in full
+   every time any of those fourteen lists remounts, so a host who toggles a
+   filter still watches the list re-enter from below with nothing having moved.
+   This is the last ceremonial cost on a working surface and it is still there.
+   (A `rowEnter` helper gating on sheet arrival exists uncommitted in the working
+   tree at the time of writing. It is not in `76cc7a76`, is not gated by a test,
+   and is not credited here.)
 7. **Delete the duplicate `toastin` and surface the bounce question** (finding 9).
    The live curve overshoots to `-4px`; UX_01:154 says "No spring physics. No
    bounce." The later comment at `:3330` calls it "one soft bounce" deliberately.
    Delete the dead first definition regardless; put the doctrine conflict to the
    host rather than silently picking a side.
+   **SHIPPED (`76cc7a76`), and the conflict is resolved rather than deferred.**
+   The first definition is gone; one `@keyframes toastin` remains, at
+   `styles.css:3386`, and `:1353-1357` leaves a comment where the dead one stood
+   saying why (a keyframe you can read but never see is worse than none).
+   The surviving `-4px` overshoot was **KEPT**. Recorded reasoning: UX_01:154
+   says "No spring physics. No bounce", but the host ruling of 2026-07-23 that
+   shipped the Motion System specifies "toast lands with one soft bounce", and
+   that ruling is both later and more specific than the doctrine line.
+   **Consequence to act on: UX_01:154 is now the stale text.** Doctrine and the
+   shipped surface disagree, and the resolution favors the surface -- so the
+   doctrine line needs an exception noted or a re-ruling, not the toast.
 8. **Focus parity for the rail and the remaining atoms** (findings 16, 17).
    Three selectors appended to the existing `:3536` block. Trivial risk.
+   **SHIPPED for finding 16; finding 17 is untouched.** `.srail-row`,
+   `.palette-row` and `.sec-row` were added to the existing `@media (hover:hover)`
+   focus-visible block (`styles.css:3601-3603`), which closes the section rail --
+   the important one, since the rail is the app's primary desktop navigation and
+   desktop is where a keyboard user lives. But finding 17 named `.mini`,
+   `.path-row` and `.navrow`, and those three still have no `:focus-visible`
+   (grepped at HEAD: zero hits). Three atoms gained parity; they were not these
+   three.
 
 Explicitly **not** on this list: FLIP for list reorder (finding 2). It is the
 right idea and the wrong next step -- it is the highest-risk change in the file,
 it touches render paths rather than styles, and it should follow #3 so the
 sheet-origin work establishes the geometry plumbing first.
+**Still open after `76cc7a76`, and now correctly next.** The grep for
+`view-transition|startViewTransition|getBoundingClientRect`-driven reorder still
+returns nothing for lists. This remains **the largest continuity gap in the
+app** -- ranking changing is this product's whole thesis, and rows still cut to
+their new positions. Its sequencing argument is now satisfied rather than
+pending: #3 shipped and established the geometry plumbing.
+
+## The gate, and two measurement traps it cost to find
+
+`hostv2/e2e/motionContinuity.spec.mjs` (new in `76cc7a76`) carries three tests
+-- sheet origin, bar-fill equivalence, reduced-motion ring -- each red-proofed by
+reintroducing the fault it exists to catch. Two traps are worth recording,
+because both produced a green test over a broken feature:
+
+- **A test can assert the input and never the output.** The first version of the
+  origin assertion read `--from-y` off the sheet's inline style. It stayed green
+  when the keyframe was reverted to the old constant `translateY(24px)` -- it was
+  testing that JS wrote a custom property, not that anything consumed it. The
+  test now pins the animation at `currentTime = 0` and reads the **painted
+  matrix**, taking translateY from the matrix's 6th component. Assert the
+  rendered result, not the value you handed the renderer.
+- **An emulation can silently not take.** `test.use({ reducedMotion: 'reduce' })`
+  did not reach the page -- `matchMedia('(prefers-reduced-motion: reduce)').matches`
+  read `false` inside it, so the test was passing against a normal-motion page
+  and would have passed against the original bug. It now calls
+  `page.emulateMedia({ reducedMotion: 'reduce' })` and **asserts the emulation
+  took** (`expect(on, 'reduced-motion emulation did not take').toBe(true)`)
+  before asserting anything else. Any test whose premise is an environment flag
+  should assert the flag first.
 
 ### 1. Bar fills to `transform: scaleX()`
 

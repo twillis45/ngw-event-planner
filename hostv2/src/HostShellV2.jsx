@@ -3488,6 +3488,43 @@ export default function HostShellV2() {
   // adding the forty-first. One capture-phase listener gives every one of them
   // an origin for free, including the ones not written yet.
   const lastTapRef = useRef(null);
+  // ── THE LIST ENTRANCE IS AN ARRIVAL, NOT A REDRAW (motion audit, 2026-08-21)
+  // `cardin` staggers rows in from below. That is right the first time a list
+  // appears and wrong every time after: toggle a filter, check something off,
+  // let a value refresh, and fourteen surfaces re-played a full entrance
+  // ceremony for content that had already arrived. It was the last ceremonial
+  // cost sitting on a working surface, and it read as the app being unsure
+  // whether anything had actually happened.
+  //
+  // Gated on the SHEET's arrival rather than on each list's own mount, because
+  // that is the beat a host actually perceives — "this screen just opened" is
+  // the moment an entrance explains something. Re-renders inside an open sheet
+  // get no animation at all.
+  //
+  // Returns `undefined`, not `'none'`: an undefined style key leaves the
+  // property unset, while `'none'` would still be a value change on every
+  // render and would cancel an entrance mid-flight if one were running.
+  const sheetOpenedAtRef = useRef(0);
+  // STAMPED DURING RENDER, not in an effect, and that is the whole difference
+  // between this working and doing nothing. The first version stamped the clock
+  // in the sheet's layout effect — which runs AFTER its children have already
+  // rendered, so every row read a zero clock, decided it had missed the window,
+  // and the entrance never played once. The gate had silently deleted the
+  // animation it was meant to schedule. Caught by asserting that the entrance
+  // DOES play on arrival, not only that it stops replaying.
+  //
+  // Mutating a ref during render is the documented escape hatch for exactly
+  // this ("adjust state when a prop changes"): it is idempotent, it reads only
+  // the sheet's own identity, and it renders nothing.
+  const sheetKeyRef = useRef(null);
+  {
+    const k = sheet ? `${sheet.kind}:${sheet.focus == null ? '' : sheet.focus}` : null;
+    if (sheetKeyRef.current !== k) { sheetKeyRef.current = k; sheetOpenedAtRef.current = Date.now(); }
+  }
+  const rowEnter = useCallback((i, stride = 35, cap = 8) => {
+    if (Date.now() - sheetOpenedAtRef.current > 900) return undefined;
+    return `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, cap) * stride}ms both`;
+  }, []);
   useEffect(() => {
     const onDown = (e) => { lastTapRef.current = { y: e.clientY, t: Date.now() }; };
     document.addEventListener('pointerdown', onDown, true);
@@ -7899,7 +7936,7 @@ export default function HostShellV2() {
                   }
                   return (
                     <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key}
-                      style={spot === key ? undefined : { animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                      style={spot === key ? undefined : { animation: rowEnter(i, 45, 6) }}>
                       {!(askMode && i === 0) && <span className="idx">{i + 1}</span>}
                       <div className="card-head">
                         <div className="card-top">
@@ -8074,7 +8111,7 @@ export default function HostShellV2() {
                     data-decision-id={(isHero && heroSelection && heroSelection.decisionId) || undefined}
                     data-confidence={(isHero && heroEvidence && heroEvidence.confidence) || undefined}
                     data-why={(isHero && heroWhy.length) ? heroWhy.join(' · ') : undefined}
-                    style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                    style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : rowEnter(i, 45, 6) }}>
                     {!isHero && <span className="idx">{i + 1}</span>}
                     <div className="card-head">
                       <div className="card-top">
@@ -10957,7 +10994,7 @@ export default function HostShellV2() {
                     // tap. The chips, buttons and why-stack live only on the open card.
                     if (r.id !== openCardId) {
                       return (
-                        <button key={r.id || i} type="button" className="frow" style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both`, ...heartStyle }}
+                        <button key={r.id || i} type="button" className="frow" style={{ animation: rowEnter(i), ...heartStyle }}
                           onClick={() => { setDecOpenCard(r.id); setDecExplain(null); }}
                           aria-expanded={false}>
                           <span className="f-main">
@@ -10971,7 +11008,7 @@ export default function HostShellV2() {
                       );
                     }
                     return (
-                      <div key={r.id || i} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default', ...heartStyle }}
+                      <div key={r.id || i} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), cursor: 'default', ...heartStyle }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
@@ -11039,7 +11076,7 @@ export default function HostShellV2() {
                   if (inlineKind) {
                     return (
                       <div key={r.id || i} style={{ ...heartStyle }}>
-                        <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both`, width: '100%' }}
+                        <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
                           ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                           <span className="f-main">
                             <span className="f-name">{r.label}
@@ -11061,7 +11098,7 @@ export default function HostShellV2() {
                   // button, so wrap it and hang meta + pin as siblings.
                   return (
                     <div key={r.id || i} style={{ ...heartStyle }}>
-                      <button className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both`, width: '100%' }}
+                      <button className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                         <span className="f-main">
@@ -12985,7 +13022,7 @@ export default function HostShellV2() {
                             <button
                               className={'frow' + (sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId) ? ' rowfocus' : '')}
                               ref={el => { if (el && sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId)) el.scrollIntoView({ block: 'center' }); }}
-                              style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                              style={{ animation: rowEnter(i) }}
                               onClick={() => setLodgePickFor(lodgePickFor === rk ? null : rk)}
                               aria-expanded={lodgePickFor === rk} aria-haspopup="true"
                               aria-label={r.name + ' — ' + LODGING_STATUS_LABEL[r.status] + '. Tap to change.'}>
@@ -13156,7 +13193,7 @@ export default function HostShellV2() {
                             <div key={r.guestId != null ? r.guestId : 'g' + i}>
                               <button className={'frow' + (isFocus ? ' rowfocus' : '')}
                                 ref={el => { if (el && scrollHere) el.scrollIntoView({ block: 'center' }); }}
-                                style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                                style={{ animation: rowEnter(i) }}
                                 onClick={() => setRidePickFor(ridePickFor === rk ? null : rk)}
                                 aria-expanded={ridePickFor === rk} aria-haspopup="true"
                                 aria-label={r.name + ' — ' + RIDE_STATUS_LABEL[r.status] + '. Tap to change.'}>
@@ -13393,7 +13430,7 @@ export default function HostShellV2() {
                                 <div key={r.guestId != null ? r.guestId : 'g' + (cl.day || 'u') + i}>
                                   <button className={'frow' + (isFocus ? ' rowfocus' : '')}
                                     ref={el => { if (el && isFocus) el.scrollIntoView({ block: 'center' }); }}
-                                    style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                                    style={{ animation: rowEnter(i) }}
                                     onClick={() => (editing ? setFlightEdit(null) : openFlightEdit(r))}
                                     aria-label={r.name + ' — ' + (r.hasFlightInfo ? 'flight info on the board' : 'no flight info yet') + '. Tap to enter flights.'}>
                                     <span className="f-main">
@@ -13838,7 +13875,7 @@ export default function HostShellV2() {
                   return (
                   <div key={'ctx-' + (r.type || i)} className={'brow' + (focused ? ' rowfocus' : '')}
                     ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
-                    style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                    style={{ animation: rowEnter(i) }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
                       {/* Same one table as the playbook rows below — these are
@@ -13874,7 +13911,7 @@ export default function HostShellV2() {
                   return (
                   <div key={r.id || i} className={'brow' + (focused ? ' rowfocus' : '')}
                     ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
-                    style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                    style={{ animation: rowEnter(i) }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
                       {/* ONE table, in lib/riskSeverity.js. This inline lookup was
@@ -15318,7 +15355,7 @@ export default function HostShellV2() {
                     const rowBtn = (
                     <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
                       ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
-                      style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                      style={{ animation: rowEnter(i) }}
                       onClick={() => toggleTask(i)}>
                       <span className="fcheck" aria-hidden="true" />
                       <span className="f-main">
@@ -15490,7 +15527,7 @@ export default function HostShellV2() {
                     </div>
                     {owed.map((o, i) => (
                       <button key={o.id} className="frow"
-                        style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                        style={{ animation: rowEnter(i) }}
                         onClick={() => setSheet({ kind: 'vendors', focus: o.vendorId || null })}>
                         <span className="f-main">
                           <span className="f-name">{o.label}</span>
@@ -16066,7 +16103,7 @@ export default function HostShellV2() {
                         return (
                           <div key={it.id}>
                             <button className={'frow' + (got ? ' got' : '') + (it.skipped ? ' skipped' : '')}
-                              style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                              style={{ animation: rowEnter(i) }}
                               onClick={() => {
                                 // Skipped rows stay visible (see the audit note above);
                                 // tapping one is the undo — the same single-toggle

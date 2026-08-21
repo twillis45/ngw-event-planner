@@ -3820,6 +3820,24 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 
 .stagewrap[data-rail="1"]{
   --rail-w:200px;                       /* leaders run 180-220 */
+  /* ── THE RAIL WAS CREEPING OFF THE TOP OF THE SCREEN ─────────────────────
+     Host, 2026-08-21: "the menu on desktop actually is jumping. dizzying."
+     Measured at 1440, walking the rail: the rail's y went 21 -> -80 -> -194
+     -> -299 and never came back, while window.scrollY stayed 0 the whole way.
+     The stagewrap itself was carrying scrollTop 190.
+
+     `overflow:hidden` does NOT mean "cannot scroll" — it means "no scrollbar".
+     The box is still a scroll container, and `scrollIntoView()` is happy to
+     scroll it. Every row-level landing (the CTA law routes to an exact row, so
+     this fires constantly) scrolled the frame instead of the list inside it,
+     and because there was no scrollbar the host had no way to put it back. The
+     navigation walked off the top of the app one section at a time.
+
+     `overflow:clip` is the declaration that actually says what was meant: clip
+     the overflow AND do not be a scroll container. With it, scrollIntoView
+     walks past the frame to the real scroller — `.app` or the open sheet —
+     which is the element that was always supposed to move. */
+  overflow:clip;
   display:grid;
   grid-template-columns:var(--rail-w) minmax(0, 1fr);
   gap:0 var(--sp-5);
@@ -4301,7 +4319,12 @@ button.vc-pill::after{
   .stagewrap[data-rail="1"]{
     border:1px solid var(--line-soft);
     border-radius:var(--r-xl);
-    overflow:hidden;
+    /* `clip`, not `hidden` — see the note at the :3821 block. `hidden` leaves
+       this a scroll container that simply has no scrollbar, and that is what
+       let every row-level landing scroll the whole frame (rail included) off
+       the top with no way back. This declaration is the one that was winning
+       on source order, so fixing only the earlier one changed nothing. */
+    overflow:clip;
   }
 }
 

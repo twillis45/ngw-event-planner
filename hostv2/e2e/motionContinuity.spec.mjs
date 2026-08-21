@@ -139,6 +139,34 @@ test('a scaled bar fill lands where the width-based one did', async ({ page }) =
   expect(stragglers).toBe(0);
 });
 
+test('a list entrance plays on arrival and not on every redraw', async ({ page }) => {
+  test.skip(!page.viewportSize() || page.viewportSize().width < 1280,
+    'needs the rail, whose collapse toggle is the re-render trigger this uses');
+  await boot(page);
+
+  // Open a sheet that carries a staggered list. Named, not indexed: the first
+  // version reached for rail index 2 and got "Your money", whose rows are
+  // `.brow` — so it measured zero animated `.frow` and read as the gate having
+  // deleted the entrance, when the entrance was fine and the probe was aimed at
+  // the wrong sheet. Five of fifteen doors carry a staggered list; this is one.
+  await page.locator('.srail-row', { hasText: 'Your checklist' }).first().click();
+  await settled(page);
+  const animatedNow = await page.locator('.sheet .frow, .sheet .brow').evaluateAll(
+    (ns) => ns.filter((n) => (n.style.animation || '').includes('cardin')).length);
+  expect(animatedNow, 'the entrance did not play on arrival').toBeGreaterThan(0);
+
+  // Past the arrival window, force a real re-render of the open sheet. The
+  // rail's collapse toggle is the cleanest trigger available: it re-renders the
+  // whole shell without navigating, changing data, or closing anything — so any
+  // animation that comes back did so purely because the component redrew.
+  await page.waitForTimeout(1100);
+  await page.locator('.srail-min').click();
+  await page.waitForFunction(() => document.querySelector('.stagewrap').dataset.railmin === '1');
+  const animatedAfter = await page.locator('.sheet .frow, .sheet .brow').evaluateAll(
+    (ns) => ns.filter((n) => (n.style.animation || '').includes('cardin')).length);
+  expect(animatedAfter, 'the list re-played its entrance on a redraw').toBe(0);
+});
+
 test.describe('reduced motion', () => {
   test('the landing ring is legible and does not stack up', async ({ page }) => {
     // Emulated on the page rather than declared with `test.use({reducedMotion})`,
