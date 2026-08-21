@@ -8,11 +8,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `3f0ad471` — **pushed, tree clean** |
-| Last pushed | `3f0ad471` — CI running; `d531362a` was the last verified green |
-| Jest | **6073 passed**, 1 skipped, 427 suites — measured this pass |
+| Branch / HEAD | `main` @ `3c39884e` — push queued behind CI; tree clean except a PARALLEL session's tween work (`hostv2/src/HostShellV2.jsx`, `src/lib/tweenNumber.js` + test) — do not sweep it |
+| Last pushed | `4da9dfde`; `e006f52d` verified green (Checks + Pages) |
+| Jest | **6,137 passed**, 1 skipped, 430 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
-| e2e (Playwright) | **full matrix: 607 passed / 170 skipped, zero failures** (14.4m, all 8 projects) |
+| e2e (Playwright) | full matrix **617 passed / 195 skipped, zero failures** (last full run); taskOwnership + rankedReorder + multiDayDoor + dayOfChecklist + checklistFollowsDecisions green since |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 
@@ -75,6 +75,32 @@ this file is the short answer to "where is it, is it green, what's next."
     its animation temporarily off (`HostShellV2.jsx:3560-3576`): measuring
     through the entrance transform put every origin exactly 24px short.
 
+## The evening block (compressed — details in the audits + git log)
+
+- **Ownership shipped at the board's scope** (`e006f52d`): row-level assign
+  writing roster-resolved names to `timeline[].owner`; `<Name> — not told
+  yet` copy (Norman's condition); the `helperConfirmed` writer hostv2 never
+  had; retired rows carry no responsibility and reconcile names the person
+  whose job left the list.
+- **FLIP on "Then, in order"** (`547919e2`) — first wired to `.qidx`, which
+  returns null in the shipping mode: ten green unit tests over a surface no
+  host sees. Rewired to `.ef-list`, driven. Animation 8→9.
+- **Vendors ruling clauses 2–4 closed**; day-of copy truth at T-0; multi-day
+  span seeded (`TEST_MULTI_DAY` — in BOTH `ROSTER` and `ALL_SAMPLES`, the
+  second registration being the fix's own near-miss); "280 days past its
+  window" capped at the 60-day countability line.
+- **Template line program**: `products/2026-08-21_TEMPLATE_LINE_PROGRAM_SPEC.md`
+  (5 workstreams, seasonality-sequenced launch calendar) on the evidence of
+  `docs/audits/2026-08-21_SEASONAL_DEMAND_AND_NICHE_RESEARCH.md` (US-scoped,
+  amended after the owner caught the missing Oct–Dec hosting arc).
+- **Three playbooks authored + grounded** (`4da9dfde`, `3c39884e`):
+  Thanksgiving Hosting (24 tasks), Halloween Party (22), New Year's Eve (14,
+  midnight-anchored ROS as its stated distinctness). Corpus now 44. Eleven
+  new source ids (AFBF, FSIS thaw/temps, CDC/NHTSA Halloween pedestrian,
+  NRF, champagne-pour standard…); gap counts dropped 7→6 / 8→7 / 6→4; the
+  corroboration ratchet reverted four single-source upgrades — the reason
+  is in their notes, the gate was not touched.
+
 ## Scores
 
 `docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md` — **75/90 (83%)**
@@ -125,23 +151,23 @@ T-0 surfaces 18 run-of-show rows from 5h out through teardown.
 
 ## Next, in order
 
-1. Commit the working-tree follow-ups, then push through `46909fa8` once the
-   prior batch's CI is green (concurrency: never push over an in-flight run).
-2. Drive the crab swap through the decision board control in a browser — the
-   one part of the reconcile still unproven at the surface.
-3. Audit item #2 (the 9 typeless types) then #3 (wire
-   `playbookDayOfChecklist` into hostv2's day stage — one import, one render).
-4. Vendors board items 2–6: `.frow` metrics, flip `.vc-chip` off `--warn`
-   (red-proof it), settled fold, sheet toolbar, on-demand detail panel.
-5. Motion, what is still open after `76cc7a76` — FLIP or a shared element on
-   list reorder (ranked rows still CUT to new positions, and that is this
-   product's whole thesis), the four remaining layout-animating fills, and
-   focus response on `.mini` / `.path-row` / `.navrow`. Both motion cells sit
-   at 8; the audit doc names the exact levers.
-6. Comms: prove the Resend webhook live before any `delivered` renders.
-7. **User-side only:** D-2's five preconditions (domain + policies, demo
-   account sign-in, stranger-proof onboarding test, live-keys Stripe run
-   then flip billing, 3 non-founder hosts), pentest, device AT passes.
+1. Push `3c39884e` once CI drains (watcher running; never push over an
+   in-flight run). Then verify Checks green on it.
+2. The tween session's readiness-digit work is in the tree uncommitted —
+   ITS session should land it; do not sweep or commit it from here.
+3. Template line W2 (**Todd only**): import
+   `template-products/dist/NGW_Milestone_Event_Planner_MVP.xlsx` into real
+   Google Sheets + desktop Excel + a phone. Gates all styling/mockup work.
+4. W1.3 reunion enrichment (multi-day/travel/committee/cost-share into the
+   Reunion playbook — turns five inert toggles real), then W1.4 PTA/booster.
+5. Vendors ruling items 5–6: sheet toolbar; on-demand detail panel ≥1200px
+   (also Modern UI/UX's named gap, with the 1920 dead band).
+6. Comms: prove the Resend webhook live; extend send beyond the vendor case
+   (Less friction's whole remaining gap — 25 of 26 generators still exit to
+   the clipboard).
+7. **Todd only:** brand name, pricing rails, free-funnel scope, Etsy AI
+   disclosure; D-2's five preconditions, pentest, device AT passes,
+   stranger-proof onboarding test.
 
 ## Traps that cost time here
 
