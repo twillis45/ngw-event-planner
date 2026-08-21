@@ -1,130 +1,65 @@
-# NGW Event Boss — Session Handoff
+# HANDOFF — NGW Event Planner
 
-Read this first. It is written for a session that has none of the context.
+**Measured reality, not intentions.** Updated 2026-08-21 (dawn session).
+The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
+this file is the short answer to "where is it, is it green, what's next."
 
-**Last verified 2026-08-17 against `main` at `f08e0e96`.** Every number below was
-measured on the day, not carried forward. Anything not re-measured says so.
+## State
 
----
-
-## Recently resolved — CRA had not compiled since 2026-08-16
-
-For roughly a day, `gate:cra` failed on a single `import/first` error in
-`src/lib/playbooks/index.js`: an `import` sat in the module body beside its
-`export … from`. CRA treats that as a compile error rather than a lint warning,
-so no bundle was produced and **production silently stopped receiving deploys**
-while every push still looked like it had shipped.
-
-Fixed in `f08e0e96` by hoisting the import to the top. Both workflows are green
-and prod moved from `main.8eafea04.js` to `main.ab259536.js`.
-
-Worth keeping: the failure was invisible locally. `npm test` passed the whole
-time — only the production build gate caught it. **Check `gh run list` before
-believing a deploy landed.**
-
-## State, measured today
-
-| | |
+| Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `f08e0e96`, clean tree, in sync with origin |
-| CRA test suite | **5,958 passing**, 1 skipped, 416 suites, 35s |
-| Migration governance | ✓ passes |
-| Backend | `https://ngw-events-api.onrender.com/health` → `{"ok":true}` |
-| Prod frontend | `main.ab259536.js` live at twillis45.github.io/ngw-event-planner/ |
-| CI | ✓ green — `Checks` and `Deploy Pages` both passing |
-| hostv2 e2e matrix | **not re-run** — port 5233 was in use by another session |
+| Branch / HEAD | `main` @ `63e812da` (local; push after CI on the prior batch) |
+| Last pushed | `9cce835d` — CI green |
+| Jest | **6044 passed**, 1 skipped, 424 suites |
+| Backend pytest | **353 passed** |
+| e2e (Playwright) | vendorCardFace 3/3, a11yFloor 8/8 desktop, rosterToolbar + wideCanvas green |
+| Deploy | GitHub Pages from source; backend on Render |
+| Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 
-## Where the work happens
+## What shipped this session
 
-- `demo/src/App.js` — **FROZEN** (A1 freeze, 2026-07-16). 46,977 lines. Donor
-  only. Security and data-loss fixes and shared `lib/` engine work only.
-- `demo/hostv2/` — **this is where host features go.** `HostShellV2.jsx` is
-  18,121 lines. Vite, port 5199 dev / 5233 built.
-- Everything else: `src/lib/*` engine, `src/design/tokens.js`, `src/plan/*.jsx`.
+1. **Path to Production audit** — all 10 stages, `docs/audits/2026-08-21_PATH_TO_PRODUCTION_AUDIT.md`.
+   Stages 1–4/6/8 pass, 5 + 7 worked below, 9 pending (D-2 preconditions).
+2. **Stage 5 hardened** — `backend/tests/test_protected_routes_sweep.py` is a
+   standing per-route gate over 8 sensitive routers (source gate + reasoned
+   PUBLIC allowlist + bare-401 sweep). It caught `verify-session`
+   unauthenticated on its first run. DocuSign token moved out of the URL;
+   all comm reads/writes gated. Checklist: `2026-08-21_SECURITY_TRACK_CHECKLIST.md`.
+3. **Admin console** — 3-seat board, stage 2 + 4 passed after fixes
+   (`2026-08-21_ADMIN_CONSOLE_INTERNAL_REVIEW.md`). Corpus actions now reach
+   `admin_audit_log`; retirement ruled standalone-capable (zero App.js imports).
+4. **Build queue** — "Your days" span-gated door; the **send ledger**
+   (board 6-0, `2026-08-21_COMMS_OUTLET_RULING.md`): handed_off is
+   host-attested, never "Sent"; vendor drafts log contact in the same
+   gesture; email slice (b) records the SERVER's answer only.
+5. **Vendors sheet** — 8-seat ruling (`2026-08-21_VENDORS_SHEET_RULING.md`):
+   collapsed face is one band, one ranked chip, amber demoted from default.
+6. **Desktop/widescreen parity** — one frame + one measure across all 13 rail
+   sections; heroes added to the 3 that lacked them.
 
-Nav is four layers: **L1** Studio Home → **L2** Portfolio → **L3** Event Command
-→ **L4** specialist tabs. Dark "Studio Matte" only.
+## Scores
 
-## How to work here — non-negotiable
+`docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md` — **72/90 (78→80%)**
+vs 63.8% on 07-13. Decision engine 42/50.
 
-- **RENDER-FIRST.** Never judge UI from code. Capture with the puppeteer scripts
-  in `scripts/` (`cap*.js`) against a running dev server, save PNGs to
-  `demo/review-artifacts/<date>-<topic>/`, and read the images.
-  - hostv2 needs a **real device profile**, not a resized window: Playwright +
-    WebKit, iPhone 15 Pro. It leans on `100dvh` and safe-area insets that
-    Chromium-at-390px does not reproduce. See `hostv2/scripts/device-preview.mjs`.
-  - Playwright needs **node@20** (`/usr/local/opt/node@20/bin`). System node is 18.
-- Design bar is **bless = 10+**, not 9. Score honestly, use the named review
-  board, be brutal rather than agreeable.
-- Doctrine: **The Attention System** (one hero, 3 contrast tiers, one accent,
-  motion = change only) and **HONESTY** (never fake urgency, data, AI, or
-  integrations). Grandmother test.
-- **The Next-Step Spine**: one persistent next-action ribbon, **outline** CTA,
-  advances on completion, suppressed in day-of mode.
-- Operate autonomously. Act decisively.
+## Next, in order
 
-## Deploy — this changed, the old instructions were wrong
+1. Push `63e812da` once the prior batch's CI is green (concurrency: never
+   push over an in-flight run).
+2. Vendors board items 2–6: `.frow` metrics, flip `.vc-chip` off `--warn`
+   (red-proof it), settled fold, sheet toolbar, on-demand detail panel.
+3. Collapsible left rail (host asked; not started).
+4. Comms: prove the Resend webhook live before any `delivered` renders.
+5. **User-side only:** D-2's five preconditions (domain + policies, demo
+   account sign-in, stranger-proof onboarding test, live-keys Stripe run
+   then flip billing, 3 non-founder hosts), pentest, device AT passes.
 
-The previous version of this file warned *"NEVER `npm run deploy`"* and gave a
-manual `gh-pages` incantation. **Both are obsolete.** There is no `predeploy`
-hook and `gh-pages` is no longer a dependency.
+## Traps that cost time here
 
-```bash
-npm run deploy     # → gh workflow run "Deploy Pages (from source)" --ref main
-```
-
-The workflow (`.github/workflows/pages-from-source.yml`) owns the env strip
-itself: `REACT_APP_PLANNER_TOKEN`, `_AUTH_BYPASS` and `_BYPASS_ROLE` are
-deliberately never set, and it hard-fails if the CRA and hostv2 bundles
-disagree about `REACT_APP_API_BASE_URL`. Do not hand-build for production.
-
-Backend is a Render Blueprint (`render.yaml`, service `ngw-events-api`,
-`autoDeploy: true`) — a push to `main` deploys it. Migrations are run by hand in
-the Supabase SQL editor (project `ewoggzxarpcwesqxsdoz`).
-
-## Naming
-
-The day-of schedule is **"Event Day Schedule"** everywhere a user sees it. The
-strings `'Run of Show'` and `ros` survive only as internal identifiers — the tab
-route key, `event.ros`, `draftFullROS`, `EventDayBar`. Users never see "ROS."
-
-## OPEN THREADS
-
-Re-measured today. Of the old thirteen, three were already done and two more
-(CI, unpushed commits) were resolved during this session — all removed rather
-than carried forward.
-
-1. **AI rewire, partially done.** The old doc said "7 of 9 sections still call
-   `askClaude`" and "`AI_FEATURES` has only 4." Measured today: **5** `askClaude`
-   call sites remain, `isAiProxyConfigured` is used in 7 places, and
-   `AI_FEATURES` has gained `budget` and `proposal` — so the "decision pending"
-   on dedicated features was made. Finish the remaining 5.
-2. **`ReadinessSparkline`** still present (2 references in App.js). Board's take
-   stands: the insight is valuable, the tiny chart is illegible. Replace with a
-   worded trend chip. Unapproved, unbuilt.
-3. **`'Run of Show'` internal rename** — 9 references in App.js. Cosmetic, small
-   routing-regression risk. Leave `event.ros` alone to avoid a persistence
-   migration.
-4. **Identity Invite / RSVP end-to-end smoke** — still never run with a real
-   cross-browser guest: create an event, open its `?rsvp=<22-char token>` in
-   incognito, submit, confirm the `rsvp_submissions` row in Supabase.
-5. **AppSec fast-follows** (board-flagged, not blockers): backfill non-demo
-   short rsvpCodes to 22-char tokens; confirm `pg_cron` schedules
-   `purge_old_rsvp_submissions(90)`; move the rate-limiter to Redis before
-   running >1 Render worker; add a TTL to the localStorage outbox, which holds
-   allergy free-text.
-
-## What was not verified today
-
-- The hostv2 e2e matrix (port in use). Last recorded figure was 454/476 passing
-  on 2026-08-16 — **carried forward, not measured, treat as unconfirmed.**
-- Nothing about the live bundle beyond its hash — `main.ab259536.js` followed
-  the `f08e0e96` deploy, but the mapping was not independently confirmed.
-- Anything in `engine-audit/` — newest file there is 2026-06-27 and the
-  directory has not been touched since.
-
-## Memory
-
-`~/.claude/projects/-Users-toddwillis/memory/` — `MEMORY.md` is the index, read
-it first. `.remember/now.md` in this repo carries the rolling session log and is
-usually fresher than this document.
+- The **browser pane** stops accepting clicks after a few interactions and
+  never clicks at desktop widths. Drive with Playwright instead.
+- **Four false-zero probes** in one session (grep missed a chunk; a class-name
+  counter missed a quote style; `hit.contains(el)` counted ancestors; a raw
+  token compared against computed `rgb()`). Red-proof every gate.
+- `git checkout --` after a red-proof reverts the guarded edit too.
+- Node 20 lives at `/usr/local/opt/node@20/bin`.

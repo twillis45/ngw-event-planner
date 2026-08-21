@@ -1,6 +1,10 @@
 # Where We Are -- live status board
 
 **THIS FILE IS THE ANCHOR. Update it at the end of every working session.**
+**Short version first:** `demo/HANDOFF.md` — measured state (HEAD, test counts,
+CI, what shipped, next in order, live traps). Read that, then come here for the
+long-form history. Both are updated in the same session, never one without the
+other.
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
