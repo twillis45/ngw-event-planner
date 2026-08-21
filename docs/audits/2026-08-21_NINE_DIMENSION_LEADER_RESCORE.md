@@ -26,6 +26,44 @@ audit closed at 63.8%.
 decision surface, tonight's zero-P0/P1 Nielsen pass with same-day P2
 fixes, decision engine 42/50, the escape-hatch architecture.
 
+## Post-build re-score (same session, pre-dawn — verified movement only)
+
+Three dimensions moved on SHIPPED, driven work:
+
+- **Workflow 7 → 8.** The multi-day programme engine was already real
+  (`programmeDays`, per-day clocks) and is now FINDABLE: the span-gated
+  "Your days · The plan, day by day" door in Sections + rail, landing on
+  the programme block, driven live end to end (`00670766`). First-day
+  start-time copy honest on spans. Still short of Wanderlog's day CRUD.
+- **Attention 8 → 9.** The dimension's named top gap — the three
+  not-dones as a designed state model — shipped as the send ledger
+  (board 6-0, `fdfa17fc` + `24cd0101`): not_sent → handed_off
+  (host-attested, channel + age) → confirmed (vendor confirm-back), wired
+  into the silence clock the engines already score. Send Failed joins
+  when the email path ships; that absence is what keeps this off 10.
+- **Less friction 7 → 8.** One gesture now hands off AND records
+  (draft exits write the ledger; vendor drafts also log contact) — the
+  re-log tax and the re-propose tax are gone. The transport itself
+  (board-approved slice (b)) is still unbuilt, so not higher.
+
+**Overall after tonight's builds: 70/90 (78%).** Unmoved dimensions are
+unmoved for real reasons: Design/Modern-UI await the desktop detail
+panel DRIVE (the CSS shipped earlier than recorded — gated data-rail=1 +
+desktop, live attributes confirmed — but the browser pane could not
+deliver clicks at desktop sizes tonight, so it stays unverified and
+unscored); Ease-of-use awaits the stranger test; DIFM awaits sending;
+Micro motion/Animation await the ceremonial→work redistribution.
+
+## The honest line on "10s across the table"
+
+Nine 10s against Linear, Partiful, Paperless Post and Blink is a
+multi-sprint product arc, not an overnight loop: the remaining points
+are majors (email-send slice, day CRUD, detail-panel verification +
+roster toolbar, motion redistribution) plus one observation only real
+strangers can produce. Tonight moved the table 63.8% → 78% with every
+point tied to a driven, gated build. Inflating the remaining cells would
+break the scoreboard's only value, which is that it is true.
+
 ## ✎ Corrections to the auditor's report (checked at HEAD)
 
 1. **"`@media (hover:hover)` guards still 0" is FALSE.** styles.css:3491
