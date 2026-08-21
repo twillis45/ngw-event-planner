@@ -76,6 +76,7 @@ import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeSta
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
+import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcile';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
@@ -1737,6 +1738,13 @@ export default function HostShellV2() {
   // it applies, the same way it already does in the checklist's "tap to confirm" tag.
   const isTimelineStepResolved = (t) => {
     if (!t) return false;
+    // A RETIRED row is off the open list by definition: the gate that authored
+    // it has closed, so it is no longer work this event needs. It is resolved
+    // here rather than filtered at each call site because "open task" is asked
+    // in five places (the Coming-up feed, two open-task counts, the hero's
+    // N-of-M, the done fold) and a retired row leaking into any one of them
+    // would put a task the host can never finish into their count forever.
+    if (t.retired) return true;
     try { if (effectiveDone(event, t)) return true; } catch {}
     // DESTINATION-2 slice 3: "Build the arrivals/departures grid" (dest_t_grid)
     // resolves once the grid actually holds real entries — a roster traveler
@@ -3488,6 +3496,7 @@ export default function HostShellV2() {
   // adding the forty-first. One capture-phase listener gives every one of them
   // an origin for free, including the ones not written yet.
   const lastTapRef = useRef(null);
+  const reconciledRef = useRef(new Set());   // events whose catch-up pass has already run this session
   // ── THE LIST ENTRANCE IS AN ARRIVAL, NOT A REDRAW (motion audit, 2026-08-21)
   // `cardin` staggers rows in from below. That is right the first time a list
   // appears and wrong every time after: toggle a filter, check something off,
@@ -5087,6 +5096,54 @@ export default function HostShellV2() {
       toast('Saved on this device — it will reach your account when the connection is back.');
     }
   };
+  // ── THE CHECKLIST FOLLOWS THE DECISIONS (audit 2026-08-21) ────────────────
+  // `playbookChecklist` gates its tasks on four things the host answers over
+  // time — the whenChoice pick, how guests arrive, whether kids are coming, and
+  // the caterer lever. Every one of those gates worked; none of them ever
+  // reached a host, because `event.timeline` was written once at creation and
+  // never asked again. Measured: flip a crab feast to "Steam them myself" and
+  // the engine swaps in the steamer-rental rows and drops the pickup ones,
+  // while the host's real list still told them to go collect hot crabs.
+  //
+  // Runs on the event, not on opening the checklist sheet: the readiness feed,
+  // the open-task counts and the hero all read `event.timeline` from the home
+  // screen, so reconciling only inside the sheet would leave every other
+  // surface quoting a stale list until the host happened to visit it.
+  //
+  // SAFE TO RUN ON EVERY CHANGE because the merge is idempotent and reports
+  // whether it actually did anything; a no-op pass writes nothing. That is the
+  // property that keeps this out of a patch/render/patch loop, and it is pinned
+  // in checklistReconcile.test.js rather than left to hold by luck.
+  useEffect(() => {
+    if (!event || !event.id) return;
+    if (!Array.isArray(event.timeline) || !event.timeline.length) return;   // nothing seeded yet; draftTimeline owns that
+    let derived = null;
+    try { derived = playbookChecklist(event) || []; } catch { return; }
+    const res = reconcileChecklist(event.timeline, derived);
+    if (!res.changed) return;
+    // ── THE FIRST PASS ON AN EVENT IS A CATCH-UP, AND IT KEEPS QUIET ─────────
+    // Every list authored before this existed is stale by definition, so the
+    // first reconcile after opening any of them has something to say — and
+    // announcing it meant a toast on top of the screen the moment a host
+    // opened ANY event, about work they had not just done anything to cause.
+    // That is an interruption reporting on our own housekeeping.
+    //
+    // Found by running the full suite, not by reasoning about it: 12 specs went
+    // red on click timeouts because the toast was sitting over the controls
+    // they were reaching for. The tests were right — a banner nobody asked for
+    // was covering the app.
+    //
+    // So the catch-up pass patches silently, and only a change that FOLLOWS
+    // something the host did in this session is worth a sentence.
+    const first = !reconciledRef.current.has(event.id);
+    reconciledRef.current.add(event.id);
+    patchEvent({ timeline: res.rows }, first ? '' : reconcileSummary(res), first ? { noUndo: true } : undefined);
+    return;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event && event.id, event && JSON.stringify(event.foodChoices || null),
+      event && event.travelMode, event && event.isDestination, event && event.foodFocus,
+      event && event.caterer, event && event.date]);
+
   const patchEvent = (obj, msg, opts) => {
     // GENERIC UNDO (build-map #8): patchEvent is the ONE write path every edit
     // funnels through, so undo is built here ONCE rather than wired action by
@@ -15315,8 +15372,14 @@ export default function HostShellV2() {
                     // meta line is PROMOTED to the hero. RECON-I3: done counts on
                     // the same effectiveDone-aware basis (isTimelineStepResolved)
                     // as the hero tile, the pill note, and the day-before card.
-                    const total = (event.timeline || []).length;
-                    const openRows = (event.timeline || []).filter(t => t && !t.done);
+                    // Retired rows leave the DENOMINATOR too, not just the open
+                    // count. Counting them as done would quietly inflate "N of M"
+                    // every time a decision closed a gate — the host would watch
+                    // their progress jump for work they never did, which is the
+                    // opposite of what this number is for.
+                    const live = (event.timeline || []).filter(t => t && !t.retired);
+                    const total = live.length;
+                    const openRows = live.filter(t => !t.done);
                     const inferredN = openRows.filter(t => isTimelineStepResolved(t)).length;
                     const openN = openRows.length - inferredN;
                     const doneN = total - openN;
