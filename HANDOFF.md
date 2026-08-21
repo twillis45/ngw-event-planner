@@ -8,11 +8,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `46909fa8` (local, plus uncommitted follow-ups in the tree) |
-| Last pushed | `1bd405de` — CI green (not re-checked this pass) |
-| Jest | **6053 passed**, 1 skipped, 426 suites — measured this pass |
+| Branch / HEAD | `main` @ `d35606e9` — **pushed, tree clean** |
+| Last pushed | `d531362a` — **Checks + Deploy Pages both green** (verified) |
+| Jest | **6059 passed**, 1 skipped, 427 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
-| e2e (Playwright) | last full run: desktop 119 passed / 7 skipped, mobile 82 passed. Since then: `checklistFollowsDecisions.spec.mjs` (+3) and nine specs moved onto the shared section door. Not re-measured as a full suite. |
+| e2e (Playwright) | **full matrix: 593 passed / 170 skipped, zero failures** (13.9m, all 8 projects) |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 
@@ -87,12 +87,13 @@ vs 63.8% on 07-13. Decision engine 42/50.
 The frozen checklist — that document's item #1, and the one that mattered
 most — is **DONE** (see "What shipped", item 10). What remains:
 
-**9 of 48 taxonomy types have no playbook at all.** A bare Town Hall
-yields ros 0 / checklist 0 / decisions 0 / risks 0 / raises 0 — total
-silence, and the seeded samples only look alive because the fixture
-hand-authors `ros` and `timeline`. Item #2 in the audit: a family-level
-fallback that says it is a fallback, then author Client Dinner and
-Fundraiser/Gala for real, and leave "Other" honestly empty.
+**Total silence is closed** (item #2 part one, `d35606e9`). Eight of the
+nine typeless types now borrow a named playbook and produce 11–19 real
+tasks; the borrow is stated on screen and in every row's provenance, and
+"Other" stays honestly empty. Part two is open: **Client Dinner and
+Fundraiser/Gala should be authored, not aliased** — and borrowed content
+keeps its source's vocabulary, so a Town Hall's risks currently say
+"directors".
 
 **Three finished engines have ZERO hostv2 imports.**
 `playbookMilestones` (382 authored milestones, 52 with a non-host owner),
