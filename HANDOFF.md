@@ -103,8 +103,9 @@ this file is the short answer to "where is it, is it green, what's next."
 
 ## Scores
 
-`docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md` — **75/90 (83%)**
-vs 63.8% on 07-13. Decision engine 42/50.
+`docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md` — **77/90 (86%)**
+vs 63.8% on 07-13, via 67→70→72→73→75→76→77. Decision engine 42/50
+(unmoved; its next lever is the ownership ruling now BUILT — re-score it).
 
 ## The open finding that matters most
 
