@@ -185,10 +185,23 @@ async def _assert_event_read_access(conn, event_id: str, principal: dict) -> Non
 
 
 # ── 1. GET /channels (idempotently ensures both exist) ──────────────────────────
+# GATED 2026-08-21 (stage-5 sweep, finding #8 resolved). This read was public
+# on the theory that the client portal needed it — but the portal viewer reads
+# from LOCAL event data and calls only portal-respond; listChannels/listMessages
+# have no anonymous consumer anywhere in either shell. Meanwhile hostv2 event
+# ids are timestamp-derived (guessable), and this route even WRITES
+# (_ensure_channels inserts rows for any event_id it is handed). Every comm
+# read is now signed-in, ownership-checked — same as the writes.
 @router.get("/channels")
-async def list_channels(event_id: str):
+async def list_channels(
+    event_id: str,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
+        await _assert_event_access(conn, event_id, principal)
         await _ensure_channels(conn, event_id)
         rows = await conn.fetch(
             "select * from event_channels where event_id=$1 order by channel_type", event_id)
@@ -235,13 +248,13 @@ async def list_messages(
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
-    principal = None
-    if channel_type == "INTERNAL_TEAM":
-        principal = await require_planner(authorization, x_planner_token)  # internal never exposed to client/public
+    # GATED 2026-08-21 (finding #8): reads were public for non-INTERNAL
+    # channels; no anonymous consumer exists (see list_channels note), so
+    # every read is signed-in + ownership-checked now.
+    principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
-        if principal:
-            await _assert_event_access(conn, event_id, principal)
+        await _assert_event_access(conn, event_id, principal)
         ch = await _channel(conn, event_id, channel_type)
         rows = await conn.fetch(
             """select * from event_messages
@@ -260,10 +273,14 @@ async def create_message(
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
-    # INTERNAL_TEAM is planner-only; any non-client author is a privileged write.
-    principal = None
-    if channel_type == "INTERNAL_TEAM" or payload.author_role != "client":
-        principal = await require_planner(authorization, x_planner_token)
+    # GATED 2026-08-21 (finding #8): the author_role=="client" carve-out let
+    # ANYONE post into any event's client channel with no credential at all —
+    # and no anonymous writer exists (the portal writes only via
+    # portal-respond, which authorizes on the message's portal_token). Every
+    # message write is a signed-in write now; if a client-composed message
+    # path ever ships, it authorizes like portal-respond does, not by naming
+    # an author_role.
+    principal = await require_planner(authorization, x_planner_token)
 
     if payload.message_type not in MESSAGE_TYPES:
         raise HTTPException(400, "invalid message_type")
@@ -586,13 +603,14 @@ async def mark_read(
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
-    principal = None
-    if channel_type == "INTERNAL_TEAM":
-        principal = await require_planner(authorization, x_planner_token)
+    # GATED 2026-08-21 (finding #8): this is a WRITE into channel_read_state
+    # keyed on caller-supplied reader_key; it had the same anonymous
+    # non-INTERNAL carve-out as the reads, with the same zero anonymous
+    # consumers. Signed-in + ownership-checked, like everything else here.
+    principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
-        if principal:
-            await _assert_event_access(conn, event_id, principal)
+        await _assert_event_access(conn, event_id, principal)
         ch = await _channel(conn, event_id, channel_type)
         await conn.execute(
             """insert into channel_read_state (event_id, channel_id, reader_key, last_read_at, unread_count)

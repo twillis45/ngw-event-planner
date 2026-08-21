@@ -31,12 +31,12 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from app.routers import ai, communication, docusign, rsvp, stripe_payments, vendor_brief, webhooks
+from app.routers import admin, ai, communication, docusign, rsvp, stripe_payments, vendor_brief, webhooks
 
-# The security-sensitive routers: money, messages, documents, AI spend, and
-# anything that writes on behalf of a person. Read-only price/weather feeds
-# (kroger, weather, food_prices, …) are deliberately out of scope here.
-ROUTERS = [ai, communication, docusign, rsvp, stripe_payments, vendor_brief, webhooks]
+# The security-sensitive routers: money, messages, documents, AI spend, the
+# admin console, and anything that writes on behalf of a person. Read-only
+# price/weather feeds (kroger, weather, food_prices, …) are out of scope.
+ROUTERS = [admin, ai, communication, docusign, rsvp, stripe_payments, vendor_brief, webhooks]
 
 # Routes that are PUBLIC by design. Every entry carries its reason — an entry
 # without a defensible reason is a finding, not a config.
@@ -60,12 +60,6 @@ PUBLIC = {
     # Guest RSVP: guests never have accounts; the rsvp code is the credential.
     "GET /api/public/invite/{rsvp_code}": "guest-facing; code is the credential",
     "POST /api/public/rsvp/{rsvp_code}": "guest-facing; code is the credential",
-    # Client-portal comm reads (Sprint 58): the portal viewer is not signed
-    # in, so channel listing and non-INTERNAL message reads are open by
-    # DESIGN, keyed on event id. Recorded as checklist finding #8 — the
-    # event-id-as-credential model is pending an authz design pass; these
-    # entries bless the CURRENT design, not the idea.
-    "GET /api/events/{event_id}/communication/channels": "portal read — finding #8, pending authz design",
     # portal-respond: the portal_token in the BODY is the credential, matched
     # against metadata.portal_token stamped on the approval_request message.
     "POST /api/events/{event_id}/communication/messages/{message_id}/portal-respond":
@@ -75,6 +69,7 @@ PUBLIC = {
 # Source markers that count as a caller gate.
 GATES = (
     "require_planner",
+    "require_admin",             # admin console: app_metadata.role, server-side
     "Webhook.construct_event",   # Stripe signature verification (fixed 2026-08-07)
 )
 
@@ -127,7 +122,7 @@ def test_planner_gated_routes_answer_401_bare(bare_client):
     hit = 0
     for mod, method, r in _routes():
         src = inspect.getsource(r.endpoint)
-        if "require_planner" not in src:
+        if "require_planner" not in src and "require_admin" not in src:
             continue
         path = r.path
         for name in r.param_convertors:

@@ -37,7 +37,11 @@ export default class ErrorBoundary extends Component {
         >
           <div style={{ fontSize: 17, fontWeight: 700 }}>Something went wrong.</div>
           <div style={{ fontSize: 14, color: '#9aa7b2', maxWidth: 320 }}>
-            The screen hit an error and couldn’t keep going. Reloading picks up where your data was last saved.
+            {/* Nielsen H9 (2026-08-21): "picks up where your data was last
+                saved" promised more than a crash can know — if the crash rode
+                in on a failed save, that sentence was false at the exact
+                moment it mattered. Say what reload actually does. */}
+            The screen hit an error and couldn’t keep going. Reloading brings back everything that saved — anything mid-edit in the last few seconds may need re-entering.
           </div>
           <button
             type="button"

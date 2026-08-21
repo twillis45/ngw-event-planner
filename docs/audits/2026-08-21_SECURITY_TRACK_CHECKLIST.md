@@ -86,13 +86,16 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   `src/lib/docusign.js` sends header + planner auth. Tokens no longer
   land in access logs.
 - **OPEN — pentest** (external, on the D-2 list).
-- **OPEN — finding #8 (sweep, 2026-08-21): client-portal comm reads are
-  keyed on event id alone.** `GET .../communication/channels` and
-  non-INTERNAL message reads are public BY DESIGN (Sprint 58's portal has
-  no sign-in), but hostv2 event ids (`cust-<timestamp36>`) are guessable,
-  so message content is enumerable in principle. A `portal_token`
-  mechanism already exists on approval messages and could extend to reads.
-  This is an authz DESIGN decision — take it to the board, not a patch.
+- **RESOLVED (2026-08-21, third pass) — finding #8: comm reads/writes are
+  fully gated.** The "portal needs public reads" premise was FALSE: the
+  portal viewer (`ClientPortalPublicView`, App.js:14834) renders from
+  LOCAL event data and calls only portal-respond (token-authorized).
+  `listChannels`/`listMessages`/`markRead` had zero anonymous consumers,
+  and `create_message`'s `author_role=="client"` carve-out let anyone
+  post into any event's client channel bare. All four now require a
+  signed-in caller + `_assert_event_access`, same as the other writes.
+  The sweep's allowlist entry was removed (its stale-entry test enforces
+  that removal). Enforced by `test_protected_routes_sweep.py`.
 - **NOTE — DocuSign Connect webhook is unverified but inert.** It only
   logs; the sweep's allowlist entry states the rule: the moment it
   mutates state it must verify Connect's HMAC first.
