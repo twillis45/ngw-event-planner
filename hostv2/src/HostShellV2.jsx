@@ -5333,6 +5333,7 @@ export default function HostShellV2() {
   // temporal-dead-zone throw at render. The error names the minified symbol,
   // which is why this is worth a comment rather than a re-discovery.
   const [settledVendorsOpen, setSettledVendorsOpen] = useState(false);
+  const [assignFor, setAssignFor] = useState(null);   // the timeline row whose owner is being set
   // ONE definition of "settled", read by both the fold and the chip selector.
   // They were the same expression written twice, which is how a card ends up
   // folded away while still showing an amber chip nobody can see.
@@ -5347,6 +5348,58 @@ export default function HostShellV2() {
     const vConfirm = confirmationByVendor[String(v.id)] || null;
     return !!good && !worry && !coiAct && !(vConfirm && vConfirm.state !== 'confirmed');
   }, [event, confirmationByVendor]);
+
+  // ── WHO CAN BE GIVEN A JOB (ownership ruling clause 4, 2026-08-21) ─────────
+  // Priority order, all resolved through the roster so one person is one
+  // identity: guests first, then people already holding something (so someone
+  // who has a food item is not re-typed), then INFORMAL vendors -- friends
+  // entered on the vendor list. Paid vendors are excluded on purpose: they have
+  // their own accountability lifecycle and helperResponsibility forbids mixing
+  // them in. Free text is allowed at the point of entry and resolved on write.
+  const assignablePeople = useMemo(() => {
+    const out = [];
+    const seen = new Set();
+    const push = (name, why) => {
+      const n = String(name || '').trim();
+      if (!n || seen.has(n.toLowerCase())) return;
+      seen.add(n.toLowerCase());
+      out.push({ name: n, why });
+    };
+    for (const g of (event.guests || [])) push(g && g.name, 'on your guest list');
+    try {
+      const { helpers } = deriveHelperResponsibilities(event) || {};
+      for (const h of (helpers || [])) push(h && h.name, h && h.role ? `already has ${h.role}` : 'already helping');
+    } catch { /* no helper model — the roster alone is a fine list */ }
+    for (const v of (event.vendors || [])) if (v && v.isInformal) push(v.name, 'helping, not hired');
+    return out;
+  }, [event]);
+
+  // Clause 3: assigning performs NO outward act. It writes local event state and
+  // nothing else -- no sendLedger, no send state, no message. The toast says so
+  // in as many words, because the whole risk this control carries is a host
+  // believing the ask has been made.
+  const assignTask = (taskId, name) => {
+    const who = String(name || '').trim();
+    const tl = (event.timeline || []).map(t => (t && t.id === taskId ? { ...t, owner: who } : t));
+    const row = (event.timeline || []).find(t => t && t.id === taskId);
+    const job = String((row && row.task) || 'that').slice(0, 40);
+    setAssignFor(null);
+    if (!who) { patchEvent({ timeline: tl }, `Took that off ${(row && row.owner) || 'them'} — it is back on your list.`); return; }
+    patchEvent({ timeline: tl },
+      `Noted — ${who} has "${job}". They haven't been told yet; you still owe them the ask.`);
+  };
+
+  // Clause 1(b): the hostv2 writer for `helperConfirmed`, which existed only in
+  // the frozen CRA and only for food. Without it the Helpers panel showed a
+  // permanent "not confirmed" chip that no control in the shipping app could
+  // ever clear -- the assigned -> confirmed step had no way to happen.
+  const confirmHelper = (itemId, name) => {
+    const cur = (event.helperConfirmed && typeof event.helperConfirmed === 'object') ? event.helperConfirmed : {};
+    const next = { ...cur };
+    if (next[itemId]) delete next[itemId]; else next[itemId] = true;
+    patchEvent({ helperConfirmed: next },
+      next[itemId] ? `${name || 'They'} confirmed — that one is spoken for.` : `Reopened — ${name || 'they'} have not confirmed.`);
+  };
 
   // Which engine actions have a real in-place edit here. Everything else stays an
   // honest route toast — never a button that pretends.
@@ -15644,7 +15697,68 @@ export default function HostShellV2() {
                       </span>
                     </button>
                     );
-                    if (!isCvbRow) return rowBtn;
+                    // ── ASSIGN (ownership ruling clauses 1a, 3, 7) ───────────────
+                    // A SIBLING of the row button, never a child: nested
+                    // interactive content is invalid, and this row already
+                    // carries one such compromise.
+                    //
+                    // It does not render at all when there is nobody to assign
+                    // to (clause 7's disclosure rule) -- an empty picker is
+                    // worse than no button.
+                    //
+                    // The accessible name carries the RELATIONSHIP and the
+                    // STATE, because the chip beside it is aria-hidden: a
+                    // screen reader hears one sentence rather than a name
+                    // fragment appended to a due date.
+                    const owner = String((t && t.owner) || '').trim();
+                    const lead2 = String(t.task || 'this').slice(0, 40);
+                    const rStatus = owner
+                      ? (t.done ? 'done' : ((event.helperConfirmed || {})[t.id] ? 'confirmed' : 'not told yet'))
+                      : null;
+                    const assignEl = assignablePeople.length ? (
+                      <div className="row-assign" key={(t.id || i) + '-assign'}>
+                        <button className="mini rowlink assign-btn"
+                          aria-label={owner
+                            ? `${owner} has ${lead2}, ${rStatus}. Change who has this.`
+                            : `Assign ${lead2} to someone`}
+                          onClick={(e) => { e.stopPropagation(); setAssignFor(assignFor === t.id ? null : t.id); }}>
+                          {owner
+                            ? <span aria-hidden="true">{owner} — {rStatus}</span>
+                            : <span aria-hidden="true">Give this to someone</span>}
+                        </button>
+                        {owner && !t.done && (
+                          // The engine's own sentence, routed into the EXISTING
+                          // draft path. This is where a send state can be
+                          // written -- by the message flow, never by assigning.
+                          <button className="mini rowlink"
+                            aria-label={(event.helperConfirmed || {})[t.id] ? `Reopen ${owner}'s confirmation for ${lead2}` : `Confirm with ${owner} about ${lead2}`}
+                            onClick={(e) => { e.stopPropagation(); confirmHelper(t.id, owner); }}>
+                            <span aria-hidden="true">{(event.helperConfirmed || {})[t.id] ? 'Not confirmed after all' : `Confirm with ${owner}`}</span>
+                          </button>
+                        )}
+                        {assignFor === t.id && (
+                          <div className="assign-pick" role="group" aria-label={`Who has ${lead2}`}>
+                            {assignablePeople.map(p => (
+                              <button key={p.name} className={'assign-opt' + (p.name === owner ? ' on' : '')}
+                                onClick={(e) => { e.stopPropagation(); assignTask(t.id, p.name); }}>
+                                <span className="assign-who">{p.name}</span>
+                                <span className="assign-why">{p.why}</span>
+                              </button>
+                            ))}
+                            {owner && (
+                              <button className="assign-opt" onClick={(e) => { e.stopPropagation(); assignTask(t.id, ''); }}>
+                                <span className="assign-who">Nobody — I'll do it</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : null;
+                    if (!isCvbRow) {
+                      return assignEl
+                        ? <Fragment key={(t.id || i) + '-w'}>{rowBtn}{assignEl}</Fragment>
+                        : rowBtn;
+                    }
                     // ── The bureau brief — sibling of the row (inputs can't live
                     // inside a <button>). Contact is host-entered; every ask link
                     // is an honestly-labeled find link scoped to the destination;

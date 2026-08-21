@@ -70,12 +70,13 @@ export function reconcileChecklist(stored, derived, opts) {
   // the stored list is returned untouched. The 9 typeless event types in the
   // audit produce exactly this, which is why the guard is not hypothetical.
   if (!next.length) {
-    return { rows: prior, added: 0, retired: 0, revived: 0, relabeled: 0, changed: false };
+    return { rows: prior, added: 0, retired: 0, revived: 0, relabeled: 0, retiredOwners: [], changed: false };
   }
 
   const byId = new Map(next.map((r) => [r.id, r]));
   const seen = new Set();
   let added = 0; let retired = 0; let revived = 0; let relabeled = 0; let changed = false;
+  const retiredOwners = [];
 
   const rows = prior.map((row) => {
     if (!isEngineRow(row)) return row;             // the host's own row: untouched
@@ -85,6 +86,11 @@ export function reconcileChecklist(stored, derived, opts) {
       // The gate that was keeping this row open has closed.
       if (row.retired) return row;                 // already retired, nothing to say
       retired += 1; changed = true;
+      // Whose job it WAS. Grandmother's condition on the ownership ruling: a
+      // row that someone had been given cannot leave the list in silence. The
+      // app knows it stood the job down; the person who agreed to do it does
+      // not, and only the host can close that gap.
+      if (row.owner && String(row.owner).trim()) retiredOwners.push(String(row.owner).trim());
       return { ...row, retired: true, retiredReason: reason };
     }
 
@@ -128,7 +134,7 @@ export function reconcileChecklist(stored, derived, opts) {
     added += 1; changed = true;
   }
 
-  return { rows, added, retired, revived, relabeled, changed };
+  return { rows, added, retired, revived, relabeled, retiredOwners, changed };
 }
 
 /** The one-line summary a toast can carry. Returns '' when nothing moved, so
@@ -140,7 +146,15 @@ export function reconcileSummary(res) {
   if (res.retired) parts.push(`${res.retired} no longer needed`);
   if (res.revived) parts.push(`${res.revived} back on the list`);
   if (!parts.length) return '';                    // relabels alone are silent
-  return `Your checklist followed that decision — ${parts.join(', ')}.`;
+  let line = `Your checklist followed that decision — ${parts.join(', ')}.`;
+  // NAME THE PERSON. A row someone had been given cannot disappear quietly:
+  // the engine stood the job down, they were never told, and the host is the
+  // only one who can close that. Named rather than counted, because "1 person
+  // affected" is not something anybody can act on.
+  const owners = [...new Set((res.retiredOwners || []).filter(Boolean))];
+  if (owners.length === 1) line += ` ${owners[0]} had one of those — you may want to say so.`;
+  else if (owners.length > 1) line += ` ${owners.slice(0, -1).join(', ')} and ${owners[owners.length - 1]} had some of those — you may want to say so.`;
+  return line;
 }
 
 export const __test__ = { isEngineRow, DERIVED_FIELDS, KEPT_FIELDS };

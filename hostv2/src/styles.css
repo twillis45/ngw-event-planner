@@ -2702,6 +2702,34 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    the checklist's own rows; the class exists so the card can be found and
    measured, and so the note above it has somewhere to sit. */
 .dayof-card{ margin:0 0 var(--sp-5); }
+/* ── THE ASSIGN CONTROL (ownership ruling, UX_07 Level 4 RECORD-ONLY) ────────
+   Never primary styling: assigning records who has a job and performs no
+   outward act, so it must not look like the button that sends something. It
+   sits under its row as a quiet link, at the app's existing `.mini rowlink`
+   weight. */
+.row-assign{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-3);
+  /* 32px, on the ratified ladder -- it was 34, eyeballed to line up under the
+     row's checkbox. The ladder gate caught it, which is what the ladder gate is
+     for: a one-off indent nobody would ever notice is exactly how a spacing
+     system erodes. */
+  padding:0 2px var(--sp-2) 32px; margin-top:calc(var(--sp-2) * -1); }
+/* 44px floor on a link-weight control: the box is small, so the target is
+   grown with a centred ::after rather than by padding the text away from its
+   row. Proven by elementFromPoint at 390px, not by reading this rule. */
+.assign-btn, .row-assign .rowlink{ position:relative; }
+.assign-btn::after, .row-assign .rowlink::after{ content:""; position:absolute;
+  left:0; right:0; top:50%; height:44px; transform:translateY(-50%); }
+.assign-pick{ flex:0 0 100%; display:flex; flex-direction:column; gap:2px;
+  margin-top:var(--sp-2); padding:var(--sp-2); background:var(--bg-band);
+  border:1px solid var(--line-soft); border-radius:var(--r-md); }
+.assign-opt{ display:flex; align-items:baseline; gap:var(--sp-3); width:100%;
+  min-height:44px; padding:var(--sp-2) var(--sp-3); background:none; border:none;
+  border-radius:var(--r-sm); cursor:pointer; text-align:left; font:inherit;
+  color:var(--ink); transition:background-color var(--ms-fast) var(--ease-out); }
+.assign-opt:hover, .assign-opt:focus-visible{ background:var(--steel-tint); }
+.assign-opt.on{ background:var(--steel-tint); font-weight:650; }
+.assign-who{ font-size:var(--t-row); font-weight:600; }
+.assign-why{ font-size:var(--t-row-sub); color:var(--faint); }
 /* A retired row is a record, not a control — no checkbox, no press state, no
    cursor. It is there so the host can see what their answer removed and be
    sure nothing was lost, which is the whole reason retiring beats deleting. */

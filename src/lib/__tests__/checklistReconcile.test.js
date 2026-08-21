@@ -201,3 +201,52 @@ describe('a retired row carries no responsibility', () => {
     expect(responsibilities.some((r) => /pickup slot/i.test(r.label))).toBe(false);
   });
 });
+
+describe('a job that leaves the list does not leave quietly', () => {
+  // Grandmother's condition on the ownership ruling (2026-08-21). The engine
+  // knows it stood the job down; the person who agreed to do it does not, and
+  // the host is the only one who can close that gap. Counting them ("1 person
+  // affected") is not something anyone can act on — the sentence has to carry
+  // the name.
+  const evOf = (v) => ({ id: 'x', type: 'crab feast', date: '2026-09-20', guestCount: 20, foodChoices: { steam_vs_order: v } });
+  const seedRows = (v) => (playbookChecklist(evOf(v)) || []).map((r) => ({
+    id: r.id, task: r.task || '', week: r.week || '', leadDays: r.leadDays ?? null,
+    done: false, owner: '', category: r.category || '',
+  }));
+
+  const retireWithOwner = (owner) => {
+    const stored = seedRows('Order steamed for pickup');
+    const i = stored.findIndex((r) => /Lock a hot pickup slot/i.test(r.task));
+    expect(i).toBeGreaterThanOrEqual(0);
+    stored[i] = { ...stored[i], owner };
+    return reconcileChecklist(stored, playbookChecklist(evOf('Steam them myself')));
+  };
+
+  test('the retired row reports whose it was', () => {
+    const res = retireWithOwner('Wanda');
+    expect(res.retiredOwners).toContain('Wanda');
+    expect(reconcileSummary(res)).toMatch(/Wanda had one of those/);
+  });
+
+  test('an UNOWNED retirement says nothing about people', () => {
+    // Red-proofs the clause: appending it unconditionally would pass the test
+    // above and put a dangling sentence on every ordinary reconcile.
+    const res = retireWithOwner('');
+    expect(res.retiredOwners).toEqual([]);
+    expect(reconcileSummary(res)).not.toMatch(/had one of those|you may want to say so/);
+  });
+
+  test('two people are named, not counted', () => {
+    const stored = seedRows('Order steamed for pickup');
+    let n = 0;
+    for (let i = 0; i < stored.length; i++) {
+      if (/pickup slot|hot steamed crabs/i.test(stored[i].task)) { stored[i] = { ...stored[i], owner: n === 0 ? 'Wanda' : 'Marcus' }; n += 1; }
+    }
+    expect(n).toBe(2);
+    const res = reconcileChecklist(stored, playbookChecklist(evOf('Steam them myself')));
+    const line = reconcileSummary(res);
+    expect(line).toMatch(/Wanda/);
+    expect(line).toMatch(/Marcus/);
+    expect(line).not.toMatch(/2 people/);
+  });
+});
