@@ -72,6 +72,38 @@ async def whoami(
     return {"ok": True, "principal": actor}
 
 
+class AuditIn(BaseModel):
+    action: str
+    target_type: Optional[str] = None
+    target_id: Optional[str] = None
+    metadata: Optional[dict] = None
+
+
+@router.post("/audit")
+async def record_audit(
+    body: AuditIn,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Record a console-side privileged action into the immutable log.
+
+    Board finding P1 (2026-08-21 internal review): the knowledge-factory half
+    of the console mutates the corpus CLIENT-SIDE (publish / rollback /
+    archive / campaign runs), so those actions never passed through a
+    backend route and never reached admin_audit_log — the operator's trail
+    was split, and the browser-local half wiped with localStorage. The
+    console now reports each corpus action here. Client actions are
+    namespaced `corpus.*` so a forged entry can never impersonate a
+    server-verified action like `invitation.revoke`.
+    """
+    actor = await require_admin(authorization, x_planner_token)
+    action = str(body.action or "").strip()
+    if not action.startswith("corpus."):
+        raise HTTPException(status_code=422, detail="Console-reported actions must be namespaced 'corpus.*'")
+    await audit(actor, action, target_type=body.target_type, target_id=body.target_id, metadata=body.metadata)
+    return {"ok": True}
+
+
 @router.get("/audit")
 async def list_audit(
     limit: int = 100,

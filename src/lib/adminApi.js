@@ -60,6 +60,12 @@ export const adminApi = {
   // S3 — Invitation ops
   invitations:      (scope = 'pending') => req('GET', `/api/admin/invitations?scope=${encodeURIComponent(scope)}`),
   revokeInvitation: (id)  => req('POST', `/api/admin/invitations/${encodeURIComponent(id)}/revoke`),
+  // AUDIT-2 (board P1, 2026-08-21) — console-side corpus actions report into
+  // admin_audit_log. Server enforces the 'corpus.*' namespace. Fire-and-forget
+  // at call sites: an audit hiccup must never block the operator's action
+  // (same best-effort contract the server-side audit() helper has).
+  recordAudit: (action, targetType, targetId, metadata) =>
+    req('POST', '/api/admin/audit', { action, target_type: targetType || null, target_id: targetId || null, metadata: metadata || {} }),
   // A3-err — Error feed
   errors: (sinceHours = 168, source = '') =>
     req('GET', `/api/admin/errors?since_hours=${sinceHours}${source ? `&source=${encodeURIComponent(source)}` : ''}`),

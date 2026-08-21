@@ -1097,11 +1097,18 @@ function ErrorsPanel() {
   }, []);
   useEffect(() => { load(hours); }, [load, hours]);
 
-  const rows = data?.errors;
+  // Board P2 (Tufte seat, 2026-08-21): the feed was an unsummarized scroll —
+  // the backend's ?source= filter had no UI and no counts existed. Counts are
+  // computed from the fetched window (client-side filter keeps one fetch),
+  // each source chip filters, and the total anchors the header.
+  const [srcFilter, setSrcFilter] = useState('');
+  const allRows = data?.errors;
+  const counts = (allRows || []).reduce((m, e) => { const s = e.source || '?'; m[s] = (m[s] || 0) + 1; return m; }, {});
+  const rows = srcFilter ? (allRows || []).filter(e => (e.source || '?') === srcFilter) : allRows;
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         {[[24, '24h'], [168, '7d'], [720, '30d']].map(([h, lbl]) => (
           <button key={h} onClick={() => setHours(h)} style={btnStyle(hours === h)}>{lbl}</button>
         ))}
@@ -1110,6 +1117,17 @@ function ErrorsPanel() {
           cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline',
         }}>{busy ? 'loading…' : 'refresh'}</button>
       </div>
+      {allRows && allRows.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: type.size.xs, color: D.muted, fontFamily: D.mono }}>{allRows.length} total</span>
+          <button onClick={() => setSrcFilter('')} style={btnStyle(srcFilter === '')}>all</button>
+          {Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([s, n]) => (
+            <button key={s} onClick={() => setSrcFilter(srcFilter === s ? '' : s)} style={btnStyle(srcFilter === s)}>
+              {s} · {n}
+            </button>
+          ))}
+        </div>
+      )}
 
       {data?.sentry_note && <Banner tone="muted">{data.sentry_note}</Banner>}
       {data?.note && <Banner tone="warn">{data.note}</Banner>}
@@ -2128,6 +2146,19 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
       const next = mutator(kcr);
       const res = await upsertKCR(next);
       setNote(res && res.conflict ? '⚠ Another admin changed this — refreshed to their version.' : `${label} ✓`);
+      // AUDIT-2 (board P1, 2026-08-21): every pipeline action funnels through
+      // this one helper, so this one call closes the split-trail finding —
+      // corpus mutations now land in admin_audit_log beside the server-side
+      // support actions. Fire-and-forget: audit trouble never blocks the act
+      // (the same contract admin.py's own audit() keeps). Skipped on conflict:
+      // a rejected stale write mutated nothing worth recording.
+      if (!(res && res.conflict) && isAdminApiConfigured()) {
+        adminApi.recordAudit(
+          'corpus.' + String(label || 'action').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          'kcr', kcr.id,
+          { label, status_from: kcr.status, status_to: next && next.status, field: kcr.field || null },
+        ).catch(() => {});
+      }
       await onChanged();
     } catch (e) { setNote(`Blocked: ${e.message}`); }
     finally { setBusy(false); }
@@ -2226,8 +2257,16 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
               new version to its grandparent and left the parent unsuperseded. Since
               publishedSnapshotBuild selects by lineage, that produced TWO LIVE HEADS on one
               field. The parent is `publishedVersion`. */}
+          {/* Board P2 (2026-08-21): publish was one unconfirmed click. The
+              confirm names exactly what goes live — same bar the revoke
+              confirm sets. Native dialog on purpose: it matches revoke, and
+              this is operator chrome, not product UI. */}
           <B label="Publish" primary cap="publish" enabled={!gate.blocked}
-            on={() => run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.correctionOf || k.publishedVersion || null, by: role, asOf }).kcr, 'Published')} />
+            on={() => {
+              const what = `Publish "${kcr.title || kcr.field || kcr.id}" to the live corpus?\n\nThis becomes the value every host's plan reads. Rollback exists, deletion does not.`;
+              if (!window.confirm(what)) return;
+              run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.correctionOf || k.publishedVersion || null, by: role, asOf }).kcr, 'Published');
+            }} />
           <B label="Send back" cap="reject" on={() => run((k) => advanceKCR(k, 'archived', { by: role, note: 'withdrawn', asOf }), 'Withdrawn')} />
         </div>
       )}
@@ -2531,6 +2570,9 @@ function KcrStudioPanel() {
         if (campToastTimerRef.current) clearTimeout(campToastTimerRef.current);
         setCampToast({ type: toastType, msg: toastMsg });
         campToastTimerRef.current = setTimeout(() => setCampToast(null), 4500);
+        // AUDIT-2 (board P1): a finished campaign run mutated the corpus
+        // client-side with no admin_audit_log entry. Fire-and-forget.
+        if (isAdminApiConfigured()) adminApi.recordAudit('corpus.campaign-run', 'campaign', String(campServerRunId || ''), { state: run.state }).catch(() => {});
       } else {
         setCampRunStageIdx(idx);
       }
@@ -2598,6 +2640,9 @@ function KcrStudioPanel() {
     for (const s of stats) updatedIntel = recordProviderRun(updatedIntel, s.providerId, s);
     saveProviderIntel(updatedIntel);
     setBatchRunResult({ label: 'Auto: HIGH priority', summary, corroborationsCreated: corrCamps.length, auto: true, ranAt: asOfNow });
+    // AUDIT-2 (board P1): batch runs write campaigns + provider intel with no
+    // server trail. One summary entry per batch, fire-and-forget.
+    if (isAdminApiConfigured()) adminApi.recordAudit('corpus.campaign-batch-run', 'campaign-batch', asOfNow, { ...summary, corroborations: corrCamps.length }).catch(() => {});
     setBatchRunning(false);
     refresh();
     refreshEvidence();
@@ -4882,7 +4927,16 @@ function KcrStudioPanel() {
                     <span style={{ fontSize: type.size.caption, color: D.text, fontWeight: 600 }}>{c.goal}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontFamily: D.mono, fontSize: 10, color: c.state === 'kcr' ? D.good : D.faint }}>{c.state}</span>
-                      <button onClick={(e) => { e.stopPropagation(); saveCampaigns(loadCampaigns().filter((x) => x.id !== c.id)); setCampList(loadCampaigns()); if (campRunResult?.id === c.id) setCampRunResult(null); }}
+                      {/* Board P2 (2026-08-21): this ✕ deleted a campaign in one
+                          silent click — the only unconfirmed hard delete in the
+                          console. Confirm names the campaign; the delete is
+                          audited like every other corpus action. */}
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        if (!window.confirm(`Delete the campaign "${c.goal}"?\n\nIts run history goes with it. This cannot be undone.`)) return;
+                        saveCampaigns(loadCampaigns().filter((x) => x.id !== c.id)); setCampList(loadCampaigns()); if (campRunResult?.id === c.id) setCampRunResult(null);
+                        if (isAdminApiConfigured()) adminApi.recordAudit('corpus.campaign-deleted', 'campaign', c.id, { goal: c.goal, state: c.state }).catch(() => {});
+                      }}
                         style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3, border: `1px solid ${D.border}`, background: 'transparent', color: D.faint, cursor: 'pointer', lineHeight: 1.4 }}>
                         ✕
                       </button>
@@ -7896,10 +7950,28 @@ export default function AdminConsole() {
   const role = user?.app_metadata?.role;
   const isAdmin = role === 'admin' || role === 'support';
 
-  const [tab, setTab] = useState('Overview');
-  const [pendingUserId, setPendingUserId] = useState(null);  // Triage → Users deep-link
+  // Board P2 (Saarinen seat, 2026-08-21): every reload landed on Overview with
+  // the operator's place lost — the repeat operator's single biggest speed
+  // tax, and "user X in the console" was unshareable. Tab + focused user now
+  // live in the URL (?atab=…&auser=…): restored on mount, replaceState on
+  // change (no history spam), bookmarkable. The admin=1 arming param is
+  // preserved because we only touch our own keys.
+  const urlState = (() => {
+    try { const p = new URLSearchParams(window.location.search); return { tab: p.get('atab'), user: p.get('auser') }; }
+    catch { return { tab: null, user: null }; }
+  })();
+  const [tab, setTab] = useState(urlState.tab || 'Overview');
+  const [pendingUserId, setPendingUserId] = useState(urlState.user);  // Triage → Users deep-link
   const [audit, setAudit] = useState(null);
   const [err, setErr] = useState(null);
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (tab === 'Overview') p.delete('atab'); else p.set('atab', tab);
+      if (pendingUserId) p.set('auser', pendingUserId); else p.delete('auser');
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}?${p.toString()}`);
+    } catch { /* history blocked — state simply stays session-local */ }
+  }, [tab, pendingUserId]);
 
   const goToUser = useCallback((id) => { setPendingUserId(id); setTab('Users'); }, []);
 
