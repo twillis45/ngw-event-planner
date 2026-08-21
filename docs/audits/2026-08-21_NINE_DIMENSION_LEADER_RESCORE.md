@@ -10,7 +10,7 @@ closed at 63.8%. The table at the top is the CURRENT score; the re-score
 sections below record how each cell got there, and no cell moves without
 a check in the code first.
 
-## Score table — CURRENT (as of `547919e2` / `a1cf8929`)
+## Score table — CURRENT (as of `fd2526c6` / `e006f52d`)
 
 Each row is the score as it stands now; the "remaining gap" column is the
 one specific thing between that dimension and a 10, and is what the next
@@ -19,12 +19,12 @@ in the re-score sections below.
 
 | Dimension | Bar-setter | Us /10 | Remaining gap to 10 |
 |---|---|---:|---|
-| Workflow | Wanderlog (Partiful on creation) | 9 | Day CRUD: add / move / delete a day inside the programme span (the per-day schema, build-queue item 1) |
-| Design | Paperless Post / Vercel craft | 9 | Vendors ruling items 2, 3, 5: `.frow` metrics, `.vc-chip` base off `--warn` (red-proofed), settled fold |
+| Workflow | Wanderlog (Partiful on creation) | 9 | Day CRUD: add / move / delete a day inside the programme span (the per-day schema, build-queue item 1). This line previously read "the whole of the distance to 10" and that was wrong — host-assignable ownership was a second absence, unnamed here and now closed (`e006f52d`); see the seventh re-score |
+| Design | Paperless Post / Vercel craft | 9 | The vendors sheet still has no roster toolbar (the second re-score's third named blocker, still untouched). Ruling clauses 2, 3 and 4/5 shipped `fd2526c6` — but clause 2's money column does NOT yet line up: `.vc-amt .amt` matches no rule, because both `.amt` declarations are descendant-scoped to `.line` and `.frow` (`styles.css:1454`, `:1653`). The class is inert where it was placed |
 | Modern UI/UX | Linear | 8 | The on-demand detail panel at >=1200px (vendors ruling item 6) — the desktop dead third is still dead. Second, newly observed: at 1920 roughly a fifth of the viewport below the app frame is dead band (marketing capture, 08-21) |
 | Micro motion | Linear / Family | 8 | The readiness digit still cuts beside a gliding bar — the one remaining visible motion defect, and it sits on the surface a host looks at most. Behind it: `.bline i` / `.bline b` still animate layout (`styles.css:1627`, `:1629`) and `.wxpill{transition:bottom}` (`:2906`). Atom-input parity is now complete; `.mbar i` stays on `width` by a recorded decision and is not a gap |
 | Animation | Family / Partiful | 9 | FLIP covers ONE list — "Then, in order". The call-sheet, vendor and checklist lists still cut. No shared element and no view transition anywhere (`startViewTransition` grepped at HEAD: zero), so cross-SURFACE continuity remains unbuilt while within-surface continuity now exists |
-| Attention systems | Blink | 9 | `Send Failed` exists only on the email path, so the three-not-dones model is not complete across channels. Two more, newly observed: the send ledger answers "did the asks go out" one vendor at a time where Blink answers it for the whole list, and the checklist can read "280 days past its window" on a wedding 85 days out (a playbook-runway artifact — a false urgency signal is an attention defect) |
+| Attention systems | Blink | 9 | `Send Failed` exists only on the email path (the assigned → `not told yet` → confirmed ladder now extends the not-done model to a PERSON as well as a message — `e006f52d` — but it too has no failure state), so the three-not-dones model is not complete across channels. Two more, newly observed: the send ledger answers "did the asks go out" one vendor at a time where Blink answers it for the whole list, and the checklist can read "280 days past its window" on a wedding 85 days out (a playbook-runway artifact — a false urgency signal is an attention defect) |
 | Ease of use | Evite / Apple HIG | 8 | Run the stranger-proof onboarding test — the score is asserted, not observed |
 | Less friction | Partiful | 8 | Send covers the vendor case only; the other 25 draft generators still exit to the clipboard |
 | DIFM | Joy (breadth) — the set's bar is ours | 9 | Resend webhook proven live so `delivered` can exist, and send beyond the vendor case. Secondary: the milestone-to-task join lands on 123/408 (30.1%) and `playbookMilestones` / `playbookTasks` still have zero hostv2 imports (grepped at HEAD) |

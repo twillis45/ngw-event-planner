@@ -94,6 +94,12 @@ const EVENT_TAXONOMY = {
   'Repast':             { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Juneteenth Cookout': { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Kwanzaa Gathering':  { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  // Seasonal hosted holidays (authored 2026-08-21 off the seasonal-demand study:
+  // Thanksgiving is the most-hosted US occasion, Halloween the largest fall event
+  // by spending, NYE the midnight-anchored night — all home_hosted).
+  'Thanksgiving Hosting':   { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Halloween Party':        { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  "New Year's Eve Party":   { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
 };
 
 // recordKind is a pure function of family.
@@ -130,6 +136,13 @@ const TYPE_ALIASES = {
   // variants resolve to the Watch Party playbook.
   'Super Bowl Party': 'Watch Party',
   'Game Day Party': 'Watch Party',
+  // Seasonal hosted holidays (2026-08-21): common short forms of the new canonical types.
+  'Thanksgiving': 'Thanksgiving Hosting',
+  'Thanksgiving Dinner': 'Thanksgiving Hosting',
+  'Friendsgiving': 'Thanksgiving Hosting',
+  'Halloween': 'Halloween Party',
+  "New Year's Eve": "New Year's Eve Party",
+  'NYE Party': "New Year's Eve Party",
 };
 
 // The SINGLE ordered keyword resolver — replaces the four independent regex blocks
@@ -175,8 +188,14 @@ const KEYWORDS = [
   [/networking|mixer/, 'Networking Event'],
   [/gala|fundrais|benefit\b|auction|charity\b|donor\b/, 'Fundraiser / Gala'],
   // ── Casual / at-home gatherings ──
+  // Seasonal hosted holidays (2026-08-21) resolve BEFORE the generic dinner-party
+  // rule — "friendsgiving" used to land on Dinner Party and now belongs to the
+  // authored Thanksgiving Hosting playbook (potluck model inside it).
+  [/thanksgiving|friendsgiving|turkey\s*day/, 'Thanksgiving Hosting'],
+  [/halloween|trunk.?or.?treat/, 'Halloween Party'],
+  [/new\s*year'?s?\s*(eve|party)|\bnye\b/, "New Year's Eve Party"],
   [/house\s*warming|housewarming/, 'Housewarming'],
-  [/dinner\s*party|friendsgiving|supper\s*club|welcome\s*dinner|rehearsal\s*dinner|tasting\s*menu/, 'Dinner Party'],
+  [/dinner\s*party|supper\s*club|welcome\s*dinner|rehearsal\s*dinner|tasting\s*menu/, 'Dinner Party'],
   // Named food-event playbooks resolve BEFORE the generic catch-all (CANON-TYPE-1):
   // "crab feast … in the backyard" is a Crab Feast — and `backyard` is a VENUE
   // word, not a type signal, so it no longer appears in any type regex (it let

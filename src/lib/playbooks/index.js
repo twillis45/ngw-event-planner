@@ -54,6 +54,9 @@ import conference from './data/conference';
 import teamRetreat from './data/teamRetreat';
 import clientDinner from './data/clientDinner';
 import fundraiserGala from './data/fundraiserGala';
+import thanksgivingHosting from './data/thanksgivingHosting';
+import halloweenParty from './data/halloweenParty';
+import newYearsEveParty from './data/newYearsEveParty';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 import { audiencePersona } from '../nextActionRenderer';
 import { quantityBasis } from '../quantities/quantityBasis';
@@ -98,7 +101,7 @@ import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
 // playbooks. backyardBbq is registered under the canonical 'Get-Together' type
 // (BBQ / cookout / backyard all resolve there via the taxonomy).
 const norm = (s) => String(s || '').trim().toLowerCase();
-export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat, clientDinner, fundraiserGala];
+export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat, clientDinner, fundraiserGala, thanksgivingHosting, halloweenParty, newYearsEveParty];
 const REGISTRY = {};
 for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 
@@ -695,6 +698,9 @@ export const FOOD_APPROACH_DECISIONS = [
   // food buys the caterer covers (audit F9 — a live-money bug, not board copy).
   'sourcing', 'food_style', 'menu',
   'food_source', 'food_menu', 'food_format', 'food', 'food-model', 'food_model',
+  // 'hosting_model' — Thanksgiving Hosting's whole-meal lever (2026-08-21): its
+  // "Ordered — a market or restaurant cooks" option is the caterer path.
+  'hosting_model',
   'help', 'grill_master', 'cook', 'format', 'venue',
 ];
 // "Order in" here means the MEAL arrives made (ordered-in trays, takeout) — a
