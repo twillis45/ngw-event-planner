@@ -143,3 +143,26 @@ describe('the honesty rails the ruling froze', () => {
     expect(SHELL).toMatch(/isVerifiedState\(vSend\)/);
   });
 });
+
+describe('the money column is actually styled, not just placed', () => {
+  // A verification pass falsified the claim that shipping `<span className="amt">`
+  // gave the vendor cost the app's tabular-nums treatment. Every `.amt` rule in
+  // the stylesheet is descendant-scoped (`.line .amt`, `.frow .amt`), and a
+  // vendor card is neither — so the markup was right, the comment asserted a
+  // column that lines up, and no styling applied at all.
+  //
+  // Placement is visible in a screenshot; a missing font-variant is not, which
+  // is exactly why it needs a test rather than an eye.
+  const CSS = require('fs').readFileSync(
+    require('path').join(__dirname, '../../../hostv2/src/styles.css'), 'utf8');
+
+  test('a rule targets .amt INSIDE the vendor money column', () => {
+    expect(CSS).toMatch(/\.vc-amt\s+\.amt\s*\{/);
+  });
+
+  test('and that rule carries the tabular-nums that makes a column line up', () => {
+    const rule = (CSS.match(/\.vc-amt\s+\.amt\s*\{[^}]*\}/) || [''])[0];
+    expect(rule).toMatch(/tabular-nums/);
+    expect(rule).toMatch(/font-weight/);
+  });
+});

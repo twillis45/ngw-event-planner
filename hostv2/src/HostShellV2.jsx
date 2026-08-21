@@ -81,6 +81,7 @@ import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
 import { playbookDayOfChecklist } from '@app/lib/playbooks';
 import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcile';
 import { measureRows, playReorder } from '@app/lib/flipReorder';
+import { tweenNumber } from '@app/lib/tweenNumber';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
@@ -198,6 +199,35 @@ const CALM_CATEGORIES = new Set(['neutral', 'calendar', 'heart']);
 // means the row is still up there — so without this, the next hydrate() pulls a
 // deleted event straight back onto the host's screen. Entries are released the
 // moment the cloud confirms the delete. See deleteThisEvent.
+// ─── A NUMBER THAT MOVES WITH ITS BAR ───────────────────────────────────────
+// Motion audit finding 10. `.bar i` interpolates its fill over `--ms-fill`
+// while the figure printed above it swapped instantly, so two drawings of the
+// SAME value disagreed for most of a second every time it changed. The audit's
+// word for how that reads is "a bug".
+//
+// A component rather than a hook because the values it renders are computed
+// inside render IIFEs (`essDone` at :9147), where a hook cannot go. The tween
+// itself is pure and tested in lib/tweenNumber.
+//
+// It does not animate on FIRST render: counting up from zero on arrival is an
+// entrance, and entrances belong to the stagger, not here.
+function TweenNum({ value, ms = 700 }) {
+  const [shown, setShown] = useState(value);
+  const prev = useRef(value);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; prev.current = value; setShown(value); return undefined; }
+    if (prev.current === value) return undefined;
+    const from = prev.current;
+    prev.current = value;
+    // The cancel is returned as the cleanup: a value changing twice in quick
+    // succession must not leave two tweens racing on one element, which is how
+    // a number settles on a stale figure — worse than the cut this replaces.
+    return tweenNumber(from, value, ms, setShown);
+  }, [value, ms]);
+  return <>{shown}</>;
+}
+
 const LS_DELETED = 'ngw-hostv2-deleted-events';
 // Section-rail collapse. A layout preference, so it persists per browser like
 // the demo-tools flag rather than riding the URL.
@@ -9177,7 +9207,9 @@ export default function HostShellV2() {
                       return (
                         <>
                           <div className="t-num" style={{ fontSize: 'clamp(26px,8cqw,34px)' }}>
-                            {essTotal ? `${essDone} of ${essTotal}` : '—'}
+                            {/* The digit travels with the bar directly below it,
+                                over the same duration the fill uses. */}
+                            {essTotal ? <><TweenNum value={essDone} /> of {essTotal}</> : '—'}
                           </div>
                           <div className="bar"><i style={{ '--fill': essTotal ? Math.round((essDone / essTotal) * 100) / 100 : 0 }} /></div>
                           <div className="t-sub">{sub}</div>

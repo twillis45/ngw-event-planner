@@ -27,7 +27,7 @@ in the re-score sections below.
 | Attention systems | Blink | 9 | `Send Failed` exists only on the email path (the assigned → `not told yet` → confirmed ladder now extends the not-done model to a PERSON as well as a message — `e006f52d` — but it too has no failure state), so the three-not-dones model is not complete across channels. Two more, newly observed: the send ledger answers "did the asks go out" one vendor at a time where Blink answers it for the whole list, and the checklist can read "280 days past its window" on a wedding 85 days out (a playbook-runway artifact — a false urgency signal is an attention defect) |
 | Ease of use | Evite / Apple HIG | 8 | Run the stranger-proof onboarding test — the score is asserted, not observed |
 | Less friction | Partiful | 8 | Send covers the vendor case only; the other 25 draft generators still exit to the clipboard |
-| DIFM | Joy (breadth) — the set's bar is ours | 9 | Resend webhook proven live so `delivered` can exist, and send beyond the vendor case. Secondary: the milestone-to-task join lands on 123/408 (30.1%) and `playbookMilestones` / `playbookTasks` still have zero hostv2 imports (grepped at HEAD) |
+| DIFM | Joy (breadth) — the set's bar is ours | 9 | Resend webhook proven live so `delivered` can exist, and send beyond the vendor case. The milestone-to-task join is no longer a secondary gap: 123/408 (30.1%) with role-word owners, REJECTED on measurement 2026-08-21 and replaced by roster-sourced host-assignable ownership, which is built (`e006f52d`). `playbookMilestones` / `playbookTasks` still have zero hostv2 imports and that is now the settled answer, not an outstanding item |
 
 **Overall: 77/90 (86%)** — up from 63.8% (07-13 audit) via 67, 70, 72, 73,
 75, 76.
@@ -617,6 +617,173 @@ layout-animating fills goes from four to two, not three.
 
 **Overall now: 77/90 (86%)** — 76 -> 77, the single point on Animation.
 
+## Seventh re-score: three vendors clauses, and a row that can name a person
+
+Two commits — `fd2526c6` (vendors ruling clauses 2, 3 and 4/5) and
+`e006f52d` (host-assignable task ownership, the board's 6-2 ruling built at
+its exact scope). Six claims were put to the source at HEAD before any of
+them was allowed near a cell. Five verified. One did not, and it is
+recorded as a falsification rather than quietly dropped.
+
+VERIFIED AS SHIPPED:
+
+1. **Amber is demoted at the token, not per call site** (clause 3).
+   `.vc-chip`'s base was `color:var(--warn)`, so every chip on the sheet was
+   the palette's loudest state for free and green had to be patched on
+   inline. The base is now `color:var(--muted); background:var(--steel-tint)`
+   and each tone states itself in a class — `.warn`, `.ok`, `.quiet`
+   (`styles.css:2649-2653`), with the reasoning recorded in place above the
+   rule. Red-proofed: deleting `.vc-chip.warn` takes the sheet's amber count
+   to zero and `vendorCardFace` goes red.
+2. **The collapsed face is one row, and the monogram stopped shouting**
+   (clause 2). `.vc-avatar` is 24px, down from 40 (`styles.css:2613`, the
+   ruling's "20px or gone" with the reason for keeping it recorded). Money
+   left the joined sub-line — the `.vc-cat` run-on no longer carries
+   `· $1,200 · paid` — and moved into its own right-hand column,
+   `.vc-amt{margin-left:auto}` (`:2619`, `HostShellV2.jsx:17218-17223`).
+3. **Settled vendors fold** (clauses 4/5). `vendorSettled`
+   (`HostShellV2.jsx:5340-5351`) is ONE `useCallback` — confirmed, nothing
+   owed, nothing flagged, no paperwork, no vendor-side flag — and both the
+   partition (`:17164-17165`) and the chip selector (`:17256`) read it. The
+   fold-button reads "N settled — nothing owed, nothing outstanding". The
+   single-source point is the whole of why this is worth recording: two
+   copies of the same predicate is how a card ends up folded away while
+   still showing a chip nobody can see, and the code says so in place.
+4. **A task can be given to a person** (`e006f52d`). `assignablePeople`
+   (`:5359-5374`) resolves guests, then existing helpers via
+   `deriveHelperResponsibilities`, then INFORMAL vendors — paid vendors
+   excluded on purpose, one identity per person through the roster.
+   `assignTask` (`:5380-5389`) writes `timeline[].owner` and nothing else:
+   no ledger, no send state, no message. The toast says so in as many
+   words — "Noted — <Name> has '<job>'. They haven't been told yet; you
+   still owe them the ask." The row chip is never a bare name
+   (`:15715-15727`): it reads `<Name> — not told yet` / `confirmed` /
+   `done`. The control is a SIBLING of the row button, returned in a
+   Fragment beside it (`:15762-15764`), and does not render at all when
+   `assignablePeople` is empty. `isTimelineStepResolved` (`:1773-1800`) has
+   no owner clause, so an assigned row closes nothing and moves no count —
+   which is correct, since an assigned unconfirmed row is MORE open work,
+   not less. Gated by `hostv2/e2e/taskOwnership.spec.mjs`, five tests
+   across all viewports, including the 44px band probed with
+   `elementFromPoint` at both vertical extremes rather than read off
+   `getBoundingClientRect`.
+5. **`helperConfirmed` finally has a hostv2 writer** and **a retired row
+   names its person.** `confirmHelper` (`:5395-5402`) toggles
+   `event.helperConfirmed[t.id]`; the only prior writer was the frozen CRA
+   (`src/App.js:11261`) and only for food, so the Helpers panel's "not
+   confirmed" chip was permanent — `helperResponsibility.js:66` reads that
+   exact map keyed on `itemId: t.id` (`:126`), so the assigned → confirmed
+   step now has somewhere to happen. Separately `reconcileSummary` gains
+   the clause "<Name> had one of those — you may want to say so"
+   (`checklistReconcile.js:154-156`, fed by `retiredOwners` collected at
+   `:93`), red-proofed by a test asserting an unowned retirement stays
+   silent (`checklistReconcile.test.js:235-236`).
+
+FALSIFIED — checked, and it does not hold:
+
+- **"Money moved into the app's existing `.amt` tabular-nums, so a column
+  of vendor costs lines up."** The markup is right and the column is right,
+  but the class is inert where it was put. Every `.amt` declaration in the
+  sheet is descendant-scoped: `.line .amt` (`styles.css:1454`) and
+  `.frow .amt` (`:1653`), plus two `.frow.got` / `.frow.skipped` overrides.
+  A vendor card is neither, and there is one stylesheet
+  (`hostv2/src/main.jsx:6`), so `<span className="amt">` inside `.vc-amt`
+  receives no `tabular-nums`, no `font-weight:700` and no `--ink`. The
+  comment above `.vc-amt` at `:2617` asserts the alignment as though it
+  were in force. The number is now in a column, which is most of the win;
+  the digits in that column still do not line up. One rule closes it.
+
+NOT CREDITED, checked and confirmed still open:
+
+- Vendors ruling clause 6 — the desktop on-demand detail panel — and the
+  sheet roster toolbar. The ruling sequenced clause 6 as its own session.
+- `playbookMilestones` / `playbookTasks` still have zero hostv2 imports
+  (grepped at HEAD: zero hits in `hostv2/src/`). This is now REJECTED on
+  measurement rather than deferred — the join lands on 123/408 and the
+  authored owners are role words — so it should stop appearing on queues.
+- Send still covers 1 of 26 draft generators; the Resend webhook is
+  unproven, so `delivered` cannot exist.
+- `startViewTransition` at HEAD: still zero hits in `hostv2/src/`.
+- The stranger-proof onboarding test has not been run.
+- The readiness digit still cuts beside a gliding bar.
+- Every 1920 frame leaves roughly a fifth of the viewport dead below the
+  app frame.
+
+Verification run: jest 6099 passed / 1 skipped across 429 suites; the full
+Playwright matrix 652 passed, zero failures, zero flaky, all eight
+projects.
+
+What moved: **nothing.** That is the finding, and it is worth stating
+plainly rather than hunting for a cell to reward.
+
+What did not move, and why:
+
+- **Design holds at 9.** This is the closest call in the document and the
+  argument for 10 is real: the gap column named clauses 2, 3 and 5, and all
+  three shipped, measured and gated. It still does not earn the point, for
+  two reasons. First and decisive: all three are REPAIRS of faults inside a
+  capability the 9 already claimed. A token whose base was the loudest
+  state in the palette is a defect, not a missing feature; a sheet that
+  still carried a multi-band face while every restyled surface showed one
+  line is parity debt, not new craft; and the settled fold is the decision
+  fold's own grammar applied to a second list — the code comment says so
+  itself. The animation cell earned its point in the sixth re-score
+  because FLIP was a capability the app did not have and the 8 was awarded
+  with that absence priced in. Nothing here is that. Second: the second
+  re-score named THREE blockers, and the third — the roster toolbar — is
+  untouched, so the gap column was never fully closed in the first place.
+  And the money column, the one clause-2 change that would have been a
+  visible craft gain rather than a subtraction, does not currently do what
+  it says (see the falsification above). Nine, and the shortest gap line in
+  the table.
+- **Workflow holds at 9, and the gap line was wrong.** Host-assignable
+  ownership is a genuinely missing loop, not a defect repair: before
+  `e006f52d` the only writer of a real owner anywhere in the shell was the
+  Add-a-helper form, so a plan could not say who does what, and the
+  assigned → confirmed step had no way to complete. On the sixth re-score's
+  own reasoning that should be worth a point. It is not, and the reason is
+  this document's own record: the Workflow cell said day CRUD was "the
+  whole of the distance to 10". That sentence claimed there was nothing
+  else missing. There was — this. Awarding a point now would pay twice for
+  one honest accounting: once when the 9 was granted on an incomplete gap
+  line, and again for closing the item that line failed to name. The
+  correction is to the gap line, not to the score, exactly as with the
+  span-gated door that three re-scores credited as driven while it had
+  never rendered.
+- **Less friction holds at 8.** Assignment is a new act for the host to
+  perform, and the app is explicit that it discharges nothing — "you still
+  owe them the ask". That honesty is right and it is also the reason this
+  cell cannot move: the dimension's gap is the OUTLET, and 25 of 26 draft
+  generators still exit to the clipboard. A control that adds a step a host
+  must follow up by hand is not less friction, however well it is labeled.
+- **DIFM holds at 9.** Ownership runs the opposite direction from this
+  dimension: the app hands work back to the host to distribute rather than
+  doing it. The stated gap is sending, and neither the webhook nor the 25
+  clipboard exits moved. The milestone-to-task join, listed here as a
+  secondary gap, is now formally REJECTED on measurement — which removes it
+  from the queue without closing anything, since the corpus supplies no
+  usable ownership either way.
+- **Attention holds at 9.** Two real pieces of attention craft landed. The
+  row chip refuses to render a bare name, so an assignment always carries
+  its own not-done state, and `reconcileSummary` names the person a retired
+  row was owed to instead of counting them — "1 person affected" is not
+  something anybody can act on. Both are the send ledger's three-not-dones
+  model extended onto a new channel, which is coverage of a capability this
+  cell was already scored for, not a new one. The named gap is a failure
+  state across channels, and the human channel arrived without one either.
+- **Modern UI/UX holds at 8, micro motion holds at 8, animation holds at
+  9, ease of use holds at 8.** Clause 6 was not built so the desktop dead
+  third is still dead and the 1920 dead band is untouched; no motion work
+  was done, so the readiness digit still cuts; the stranger test has not
+  been run.
+
+**Recompute: 9 + 9 + 8 + 8 + 9 + 9 + 8 + 8 + 9 = 77.**
+
+**Overall now: 77/90 (86%)** — unchanged. Six shipped items, five of which
+verified, and not one of them a capability the table had priced as absent.
+A session can be entirely worth shipping and move no cell; recording that
+is the only thing that keeps the ones that DO move meaningful.
+
 ## The honest line on "10s across the table"
 
 Nine 10s against Linear, Partiful, Paperless Post and Blink is a
@@ -666,10 +833,15 @@ had never rendered on a single event a host could open.
    Less friction, Attention, and DIFM together. (Comms freeze is an Event
    Boss redesign/audit-scoped decision — reopening comms for BUILD is a
    board question first.)
-3. **Vendors ruling items 2, 3 and 5** — `.frow` metrics, `.vc-chip` base
-   off `--warn` (red-proof it by reintroducing a two-amber card), settled
-   fold. The three named blockers between Design and a 10, and the
-   cheapest points left on the table.
+3. **Vendors ruling items 2, 3 and 5 — SHIPPED `fd2526c6`**, all three
+   red-proofed and gated, and Design did not move (seventh re-score: they
+   are repairs inside a capability the 9 already claimed). Two things
+   remain under this heading and they are both small. **One CSS rule:**
+   `.vc-amt .amt` matches nothing, because every `.amt` declaration is
+   descendant-scoped to `.line` or `.frow` — so the vendor money column is
+   positioned but not tabular, and the comment at `styles.css:2617` asserts
+   an alignment that is not in force. **The roster toolbar**, named by the
+   second re-score and never worked. Still the cheapest points left.
 4. **The desktop detail panel** — the dead third at 1920 (vendors ruling
    item 6), permitted by the standing ruling; also answers the spacing
    read's right-panel pattern (5/5 leaders), and is the one thing between

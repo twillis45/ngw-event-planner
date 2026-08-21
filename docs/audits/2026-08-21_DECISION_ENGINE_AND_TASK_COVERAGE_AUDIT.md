@@ -36,6 +36,15 @@ dimension at all: **`playbookMilestones` and `playbookTasks` are finished
 engines that hostv2 never imports**, so the ownership axis ("who does what") and
 the dated buy-task ladder exist in the corpus and reach no host.
 
+> **AMENDED 2026-08-21 (later).** That last sentence is half retracted. The
+> zero-imports measurement stands and still stands at HEAD. What does not stand
+> is the implied fix: the ownership half was measured, REJECTED, taken to the
+> review board, and rebuilt from a different source — see ranked fix 4, which is
+> now closed by rejection rather than open. The dated buy-task ladder
+> (`playbookTasks`) is the only part of this paragraph still live. The engine
+> still stands at 42/50 after that work; the argument is in the re-score at the
+> foot of Part A.
+
 **Task coverage.** Coverage of *the day itself* is the strong part of this
 product and should be left alone: every one of the 39 playbooks authors a
 five-bucket day (`purchasing | preparation | setup | program | cleanup`, 783
@@ -76,6 +85,57 @@ paragraph above is left as measured, because it is the reason the fix exists.)*
 **Total: 42/50 — unchanged since 2026-08-18.** No dimension moved. That is an
 accurate report of where the work went, not a regression.
 
+### Re-score after the ownership build (`e006f52d`, `fd2526c6`)
+
+Three things landed that have a claim on this scorecard, and all three were read
+in the source before being argued: host-assignable task ownership, the hostv2
+writer for `helperConfirmed`, and `reconcileSummary` naming the person a retired
+row was owed to. **Total after: 42/50. No dimension moved.** The arguments
+matter more than the outcome, so each is made rather than asserted.
+
+- **Coverage 8 → 8.** The best case for a move is Test 4's own table, which
+  names "Who does what … there is no owner editor on a checklist row and no
+  assignment step anywhere in the day-of flow" as a `(corpus + gating gap)`. The
+  GATING half is now closed: `assignablePeople` + `assignTask`
+  (`hostv2/src/HostShellV2.jsx:5359-5389`) put a row-level assign control on the
+  checklist, resolved through the roster. It still does not move this cell, for
+  two reasons. The dimension is measured on `playbookDecisionBoard` — floor of 3
+  open, average 5.3 — and ownership authors no decision and no task. And the
+  CORPUS half is not merely open, it is refused: ROS rows are still generated
+  `owner: 'Host'` and checklist rows `owner: ''`
+  (`src/lib/playbooks/index.js:1002`), and the 408 authored milestone owners are
+  role words. The app now has ownership because the HOST supplies it, not
+  because the corpus does. The stated lever is unchanged: authored early-window
+  calls on the small-event playbooks.
+- **Adaptivity 8 → 8**, and the reasoning runs the other way from what one would
+  expect. Assigning a row deliberately changes nothing the engine computes:
+  `isTimelineStepResolved` (`HostShellV2.jsx:1773-1800`) has no owner clause, so
+  an owned row closes nothing, moves no count and shifts no ranking. That was
+  the board's ruling and it is the right answer — an assigned, unconfirmed row
+  is MORE open work than an unassigned one — but a control the engine
+  deliberately does not respond to cannot be evidence of the engine adapting.
+  The named lever stands untouched: longitudinal momentum needs a session-history
+  store to feed `computeMomentum`, which is a storage and retention decision.
+- **Honesty 9 → 9**, and this is the closest of the three. Four honest acts
+  landed together: the toast refuses to imply an act it did not perform ("They
+  haven't been told yet; you still owe them the ask"), the row chip never renders
+  a bare name but always a name plus its not-done state, assignment earns no
+  readiness credit so an owned row cannot fake progress, and `reconcileSummary`
+  NAMES the person whose row was stood down (`src/lib/checklistReconcile.js:154-156`)
+  rather than counting them. Every one of those is this scorecard's honesty
+  doctrine applied correctly. None of them is a new engine capability. The ladder
+  they express — assigned is not confirmed, confirmed is not done — already
+  existed in `src/lib/helperResponsibility.js` ("Assigned to X, but not
+  confirmed", `:253`) and was already scored; what `e006f52d` supplied is the
+  WRITER that lets it run, since the only prior writer of `helperConfirmed` was
+  the frozen CRA and only for food (`src/App.js:11261`). Wiring a built engine to
+  runtime is what this project calls reaching the surface, and it is the
+  precondition for a score, not an increment above one. The named cap is
+  unchanged and untouched: the same label class that caps Grounding caps this.
+- **Grounding 9 → 9, Prioritization 8 → 8.** Nothing in this work touches
+  provenance or consequence declaration. `vendor-coi` still declares no
+  consequence, correctly, pending the board.
+
 ### Built and wired vs. built and dormant
 
 Checked against the shell rather than the engine index, because this project has
@@ -103,7 +163,10 @@ credited engine work that never reached runtime before.
   hostv2.** Its single consumer is `playbookAreaNextStep` at `:2218`. This is
   where the corpus's ownership data lives: 382 authored milestones, **52 of them
   owned by someone other than the host** ("grill master", "planner", "couple").
-  None of that reaches a host-facing surface.
+  None of that reaches a host-facing surface. **Still true at HEAD, and now
+  settled rather than outstanding** — see ranked fix 4, closed by rejection: the
+  ownership axis reaches the host from the ROSTER instead, and the corpus path
+  stays refused because role words name nobody.
 - `playbookTasks` (`:1135`) — the dated buy ladder. **Not imported by hostv2**;
   zero call sites in the shell.
 - `taskSatisfied` (`src/lib/taskEngine.js:35`) — hostv2 imports only
@@ -297,7 +360,7 @@ than expected:
 |---|---|
 | Authored `dayOfChecklist` — **only 7 of 39 playbooks have one** (Dinner Party, Get-Together, The Cookout, Fish Fry, Day Party, Juneteenth Cookout, Low Country Boil). The other 32 fall back to `DEFAULT_DAYOF_CHECKLIST` (`src/lib/playbooks/index.js:2137`): three items, "Food safety / Trash + cleanup ready / Emergency basics". A wedding for 120 gets the same three lines as a game night. | (corpus gap) |
 | Cleanup rows are never labeled as cleanup. `ROS_SCHEDULE_KINDS` tags them `segType: 'prep'` and hostv2 prints no kind, so teardown reads as another cue in the list. | (gating gap) |
-| Who does what. Every ROS row is generated with `owner: 'Host'` and every checklist row with `owner: ''` (`src/lib/playbooks/index.js:1002`, comment: "a solo host owns everything — no owner chip clutter"). The only writer of a real owner is the Add-a-helper form (`HostShellV2.jsx:4002-4010`). There is no owner editor on a checklist row and no assignment step anywhere in the day-of flow. | (corpus + gating gap) |
+| Who does what. Every ROS row is generated with `owner: 'Host'` and every checklist row with `owner: ''` (`src/lib/playbooks/index.js:1002`, comment: "a solo host owns everything — no owner chip clutter"). The only writer of a real owner is the Add-a-helper form (`HostShellV2.jsx:4002-4010`). There is no owner editor on a checklist row and no assignment step anywhere in the day-of flow. **GATING HALF CLOSED 2026-08-21 (`e006f52d`)** — a row-level assign control now writes a roster-resolved name to `timeline[].owner`, and `helperConfirmed` has a hostv2 writer at last (`HostShellV2.jsx:5395-5402`), so assigned → confirmed can complete in the shipping shell. The corpus half is unchanged and deliberately so: the generator still writes `owner: 'Host'` / `owner: ''`, because the authored owners are role words. | (corpus gap; gating half closed) |
 | `playbookDayOfChecklist` is imported by `src/App.js:39` and **not by hostv2** — so even the 7 authored day-of safety lists reach only the frozen CRA. | (gating gap) |
 
 ### Test 5 — the silent types
@@ -521,6 +584,39 @@ its authored risks).
 floor and it currently reaches nobody in the shipping shell.
 
 ### 4. Surface ownership: import `playbookMilestones` and add an owner control
+
+> **CLOSED BY REJECTION 2026-08-21. Not open, not deferred, not a queue item.**
+> This item as written was measured, found false at the premise, replaced by a
+> review-board ruling, and the ruling is BUILT. The sequence, so nobody reopens
+> it from the heading alone:
+>
+> 1. Measured (below) — the milestone-to-task join lands on 123 of 408, and 350
+>    of 408 authored owners are the word "host". The item's own mechanism does
+>    not exist.
+> 2. Ruled — the board sat 6-2 on a narrow, roster-sourced replacement:
+>    `docs/audits/2026-08-21_TASK_OWNERSHIP_RULING.md`.
+> 3. Built at exactly that scope — `e006f52d`. `assignablePeople` resolves
+>    guests, then existing helpers, then INFORMAL vendors, all through the
+>    roster so one person is one identity; paid vendors are excluded because
+>    they have their own accountability lifecycle
+>    (`hostv2/src/HostShellV2.jsx:5359-5374`). `assignTask` (`:5380-5389`)
+>    writes `timeline[].owner` and performs no outward act, and the toast says
+>    so. The row chip reads `<Name> — not told yet`, never a bare name
+>    (`:15715-15727`). Assignment earns no readiness credit —
+>    `isTimelineStepResolved` has no owner clause. The control is a sibling of
+>    the row button, does not render when there is nobody to assign to, and its
+>    44px band is proven by `elementFromPoint` rather than by geometry. Gated by
+>    `hostv2/e2e/taskOwnership.spec.mjs`, five tests, all viewports.
+> 4. The corpus path stays REFUSED. `playbookMilestones` and `playbookTasks`
+>    still have zero hostv2 imports at HEAD and should stay that way for
+>    ownership purposes — the three answers the board needed (who can be
+>    assigned, whether they are told, what an owned-but-not-done row does to
+>    readiness) all came from the roster and the ruling, none from the corpus.
+>    `playbookTasks`'s dated buy ladder is a separate question and is still
+>    genuinely dormant.
+>
+> The measurement that produced the rejection follows, unchanged, because it is
+> the reason the ruling exists.
 
 > **MEASURED 2026-08-21, AND THE PREMISE OF THIS ITEM DOES NOT HOLD.** Before
 > building it, three numbers were taken:

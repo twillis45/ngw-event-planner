@@ -2617,6 +2617,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* The money column. `.amt` is the app's existing tabular-nums treatment, so a
    stack of vendor costs lines up on the decimal the way the budget rows do. */
 .vc-amt{margin-left:auto; display:flex; align-items:baseline; gap:var(--sp-2); flex-shrink:0}
+/* `.amt` HAS TO BE SCOPED IN, and this was caught by a verification pass rather
+   than by looking: every `.amt` declaration in this stylesheet is a descendant
+   rule -- `.line .amt` (:1454) and `.frow .amt` (:1653). A vendor card is
+   neither, so the span rendered with NO tabular-nums, no weight and no --ink,
+   while the comment above it claimed a column that lines up. The markup was
+   right and the styling simply never applied. */
+.vc-amt .amt{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; color:var(--ink)}
 .vc-paid{font-size:var(--t-tag); font-weight:650; color:var(--ok)}
 .vc-id{min-width:0; flex:1}
 /* A VENDOR'S NAME IS ITS IDENTITY (click-through audit 2026-07-28). This was
