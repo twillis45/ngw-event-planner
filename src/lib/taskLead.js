@@ -179,11 +179,36 @@ export function taskIsDueSoon(task, event, within = 3, now) {
  * said the window had closed. A closed window is not a deadline; it is a different problem,
  * and the host deserves to be told which one they have.
  */
+/** Past this many days late, the exact count stops informing and starts
+ *  reading as a rendering error. Two months: long enough that a real 6-week
+ *  slip keeps its number, short enough that a playbook-runway artifact loses
+ *  the spurious digits. */
+const LATE_BEYOND_COUNTING = 60;
+
 export function taskDueLabel(task, event, now) {
   const due = taskDueInDays(task, event, now);
   if (due == null) return '';
   if (due < 0) {
     const late = Math.abs(due);
+    // ── FALSE PRECISION READS AS A BUG (2026-08-21) ──────────────────────────
+    // Caught in a marketing frame: a wedding 85 days out showed "280 days past
+    // its window" on its budget task. Arithmetically exact -- the wedding
+    // playbook authors that task at T-365 -- and useless. Nobody plans a
+    // wedding 280 days late; the host started inside a runway shorter than the
+    // playbook assumes, which is the ordinary case and not a failure. A number
+    // that large stops being information and starts looking like a defect.
+    //
+    // THE FIRST RULE HERE WAS `late > daysToEvent` AND IT WAS WRONG, caught by
+    // an existing test rather than by reasoning: as the event approaches,
+    // daysToEvent goes to zero and every late task collapses to "long past".
+    // A crab pre-order 13 days past its window on an event TOMORROW is exactly
+    // the case that matters most, and it was being stripped of its number.
+    //
+    // So the instrument is absolute, because the thing being fixed is how a
+    // number READS, not what it equals. Past about two months, "N days late"
+    // is not a figure anyone acts on -- it is a figure people assume is broken.
+    // Under it, the count is real and stays.
+    if (late > LATE_BEYOND_COUNTING) return 'long past its window';
     return `${late} ${late === 1 ? 'day' : 'days'} past its window`;
   }
   if (due === 0) return 'today';

@@ -10,7 +10,7 @@ closed at 63.8%. The table at the top is the CURRENT score; the re-score
 sections below record how each cell got there, and no cell moves without
 a check in the code first.
 
-## Score table — CURRENT (as of the coverage-and-reconcile session)
+## Score table — CURRENT (as of `547919e2` / `a1cf8929`)
 
 Each row is the score as it stands now; the "remaining gap" column is the
 one specific thing between that dimension and a 10, and is what the next
@@ -21,22 +21,23 @@ in the re-score sections below.
 |---|---|---:|---|
 | Workflow | Wanderlog (Partiful on creation) | 9 | Day CRUD: add / move / delete a day inside the programme span (the per-day schema, build-queue item 1) |
 | Design | Paperless Post / Vercel craft | 9 | Vendors ruling items 2, 3, 5: `.frow` metrics, `.vc-chip` base off `--warn` (red-proofed), settled fold |
-| Modern UI/UX | Linear | 8 | The on-demand detail panel at >=1200px (vendors ruling item 6) — the desktop dead third is still dead |
-| Micro motion | Linear / Family | 8 | The digit still cuts beside a gliding bar; four of five fills still animate layout (`.bline i`/`.bline b`, the invite bar, `.mbar i`) plus `.wxpill{transition:bottom}` (styles.css:2896); `.mini` / `.path-row` / `.navrow` still have press but no focus response |
-| Animation | Family / Partiful | 8 | No FLIP, shared element or view transition anywhere — ranked rows still cut to new positions. The stagger half of this gap is closed; three literal `cardin` call sites (HostShellV2.jsx:14557, :14595, :17781) remain outside the arrival gate |
-| Attention systems | Blink | 9 | `Send Failed` exists only on the email path, so the three-not-dones model is not complete across channels |
+| Modern UI/UX | Linear | 8 | The on-demand detail panel at >=1200px (vendors ruling item 6) — the desktop dead third is still dead. Second, newly observed: at 1920 roughly a fifth of the viewport below the app frame is dead band (marketing capture, 08-21) |
+| Micro motion | Linear / Family | 8 | The readiness digit still cuts beside a gliding bar — the one remaining visible motion defect, and it sits on the surface a host looks at most. Behind it: `.bline i` / `.bline b` still animate layout (`styles.css:1627`, `:1629`) and `.wxpill{transition:bottom}` (`:2906`). Atom-input parity is now complete; `.mbar i` stays on `width` by a recorded decision and is not a gap |
+| Animation | Family / Partiful | 9 | FLIP covers ONE list — "Then, in order". The call-sheet, vendor and checklist lists still cut. No shared element and no view transition anywhere (`startViewTransition` grepped at HEAD: zero), so cross-SURFACE continuity remains unbuilt while within-surface continuity now exists |
+| Attention systems | Blink | 9 | `Send Failed` exists only on the email path, so the three-not-dones model is not complete across channels. Two more, newly observed: the send ledger answers "did the asks go out" one vendor at a time where Blink answers it for the whole list, and the checklist can read "280 days past its window" on a wedding 85 days out (a playbook-runway artifact — a false urgency signal is an attention defect) |
 | Ease of use | Evite / Apple HIG | 8 | Run the stranger-proof onboarding test — the score is asserted, not observed |
 | Less friction | Partiful | 8 | Send covers the vendor case only; the other 25 draft generators still exit to the clipboard |
 | DIFM | Joy (breadth) — the set's bar is ours | 9 | Resend webhook proven live so `delivered` can exist, and send beyond the vendor case. Secondary: the milestone-to-task join lands on 123/408 (30.1%) and `playbookMilestones` / `playbookTasks` still have zero hostv2 imports (grepped at HEAD) |
 
-**Overall: 76/90 (84%)** — up from 63.8% (07-13 audit) via 67, 70, 72, 73, 75.
+**Overall: 77/90 (86%)** — up from 63.8% (07-13 audit) via 67, 70, 72, 73,
+75, 76.
 
-Micro motion and animation are no longer pending. Both were held at 7
-awaiting the motion audit; that audit landed
-(`2026-08-21_MOTION_AND_MICRO_INTERACTION_AUDIT.md`), six of its eight
-shortlist items shipped in `76cc7a76`, and both cells move to 8 on the
-evidence. The reasoning is in the fourth re-score section below. Every
-cell in this table is now scored from a current code check.
+Micro motion and animation are no longer the table's pending cells. Both
+were held at 7 awaiting the motion audit
+(`2026-08-21_MOTION_AND_MICRO_INTERACTION_AUDIT.md`); both reached 8 on
+`76cc7a76`, and animation reaches 9 in the sixth re-score below on
+`547919e2`, which built the capability the audit named as the category
+gap. Every cell in this table is scored from a code check at HEAD.
 
 ## Post-build re-score (same session, pre-dawn — verified movement only)
 
@@ -183,7 +184,7 @@ What did not move, and why:
 | Design | 8 | 9 |
 | Modern UI/UX | 7 | 8 |
 | Micro motion | 6 (7 ✎) | 8 |
-| Animation | 7 | 8 |
+| Animation | 7 | 9 |
 | Attention | 8 | 9 |
 | Ease of use | 8 | 8 |
 | Less friction | 7 | 8 |
@@ -276,6 +277,12 @@ ranked-decision and call-sheet lists; the first-mount gate on `cardin`;
 the digit tweened with its bar; the four remaining layout-animating
 fills; `.mini` / `.path-row` / `.navrow` focus parity. That is what the
 next session works from.
+
+(SUPERSEDED by the sixth re-score below. Every item on that list except
+the digit and two `.bline` fills has since shipped: the arrival gate in
+`ae2c99da`, FLIP on the ranked list plus the last three `cardin`
+literals and the finding-17 focus atoms in `547919e2`. Animation moves
+to 9 there; micro motion holds at 8 on the digit.)
 
 What the check corrected: two things the commit narrative would have
 over-credited. `cardin` tokenization covered 14 sites but **three
@@ -433,19 +440,200 @@ What did not move, and why:
 
 **Overall now: 76/90 (84%)** — 75 -> 76, the single point on Workflow.
 
+## Sixth re-score: FLIP, and an engine that had no event to run on
+
+Two commits — `547919e2` (motion) and `a1cf8929` (day-of copy + the
+multi-day span) — plus the work between them. Everything below was read
+in the source at HEAD before it was allowed near a cell; line numbers are
+current, and three the previous sections carried had drifted (see the
+foot of this section).
+
+VERIFIED AS SHIPPED:
+
+1. **The ranking moves, it does not cut** (`547919e2`). A new pure module,
+   `src/lib/flipReorder.js` — `measureRows(container, attr)` returns a
+   Map of id -> rect top, `playReorder(container, before, opts)` inverts
+   with `translateY`, forces layout (`void container.offsetHeight`, the
+   step whose absence makes FLIP "sometimes work"), then releases the
+   transform onto the compositor. Ten unit tests in
+   `src/lib/__tests__/flipReorder.test.js`. Wired to the `.ef-list`
+   "Then, in order" list (`HostShellV2.jsx:8604`, rows carry
+   `data-flip={String(a.id || i)}` at `:8629`) through a
+   `useLayoutEffect` at `:3521-3527` that measures INTO the ref before it
+   plays from the previous measurement — the order is the correctness
+   argument, since measuring after playing captures rows mid-flight and
+   poisons the next reorder. Rows that ARRIVE are skipped by
+   construction: no entry in the `before` map, no travel, because an
+   entering row has no direction the data actually carries. A 4px
+   `MIN_TRAVEL` floor keeps subpixel layout noise off an idle screen, a
+   40-row ceiling keeps the per-commit measure cheap, and reduced motion
+   returns 0 and gets the new order instantly — correct here, unlike the
+   landing ring, because the cue carries no information the final
+   position does not. Gated in both directions by
+   `hostv2/e2e/rankedReorder.spec.mjs`: if the order changed a row must
+   have travelled, and if nothing was reranked nothing may animate.
+
+   **The near-miss is the point of the standing rule.** It was first
+   wired to `.qidx`, the legacy ranked index, which returns null in
+   elegant mode — the shipping mode. Ten green unit tests over a FLIP no
+   host could ever see. The correction is recorded in place at
+   `HostShellV2.jsx:8594-8598` so the next person does not repeat it.
+2. **The last named micro-motion items** (`547919e2`). Focus parity now
+   reaches `.mini`, `.path-row` and `.navrow` (`styles.css:3641`, inside
+   the hover-capable block, with finding 17 cited above it) — `.mini` is
+   the app's most-used button and was the worst one to have missed.
+   `.fg-track i` moved onto the compositor (`:2458-2460`:
+   `width:100%; transform-origin:left center;
+   transform:scaleX(var(--fill,0))`), radius deleted rather than moved
+   because the track already clips. And the final three off-ladder
+   `cardin` literals folded into the arrival gate: grepping `cardin`
+   across `HostShellV2.jsx` at HEAD returns exactly one animation-shorthand
+   site (`:3563`, `var(--ms-enter)`) inside `rowEnter`, used at 18 call
+   sites. **Zero literals left.** `.mbar i` deliberately stays on `width`
+   and now says why in place (`:3676-3682`): it is a `display:flex`
+   multi-segment chart, so scaling one segment overlaps rather than
+   stacks, and the hairline guard directly above keys on the inline style
+   string containing `"width: 0%"`, which a custom property would
+   silently break. That is a recorded decision, not an outstanding item.
+3. **Day-of copy is day-aware at the source** (`a1cf8929`). At T-0 the
+   surface read "TODAY · YOUR DAY-BEFORE PLAN" over a module headed "How
+   tomorrow starts" — the window runs T-2 through T-0 and only the
+   headline was ever day-aware. Fixed where it is generated: the `cues`
+   section's `label` in `src/lib/dayBefore.js:172-175` is now
+   `daysOut === 0 ? 'How today starts' : daysOut === 1 ? 'How tomorrow
+   starts' : 'How the day starts'`, and the shell's `case 'cues'`
+   (`HostShellV2.jsx:8716`) returns `sec.label` instead of restating it.
+   The eyebrow above it is day-aware too (`:8671`, "Today · your final
+   run-through"). Four tests in `src/lib/__tests__/dayBefore.test.js`
+   under a PREMISE-first block — the premise test asserts the section
+   exists across the window before the three day-cases assert what it
+   says — and red-proofed.
+4. **The span-gated door finally has an event to open on** (`a1cf8929`).
+   `sectionDirectory.js:62` gates "Your days · The plan, day by day" on
+   `spanNights(ev) >= 1`, and NOT ONE of the 26 seeded events carried a
+   span, so the predicate was false everywhere and the door had never
+   rendered on any event in the app. The multi-day programme engine had
+   been built, wired and shipped for weeks with nothing to run on.
+   `TEST_MULTI_DAY` (`hostv2/src/eventPool.js:179`, "Test — Team Retreat
+   (3 days)") now seeds one, registered in BOTH `ROSTER` (`:294`) and
+   `ALL_SAMPLES` (`:292`) — the note at `:288` records that adding it to
+   `ROSTER` alone was the first attempt and left it out of the resolver's
+   lookup set. Gated by `hostv2/e2e/multiDayDoor.spec.mjs`, three tests,
+   including the red-proof that a single-day event still does NOT get the
+   door and one that the door lands on the programme rather than a dead
+   tap. Driven live: eight day-parts, Friday arrivals through Sunday
+   departures, with authored content, venue readiness rows and
+   what-to-bring.
+
+Verification run: jest 6090 passed / 1 skipped across 428 suites; the
+full Playwright matrix 617 passed / 195 skipped, zero failures, all eight
+projects.
+
+NOT CREDITED, checked and confirmed still open:
+
+- Send covers ONE of 26 draft generators (the vendor case); the other 25
+  exit to the clipboard, and the Resend webhook is unproven, so
+  `delivered` cannot exist.
+- `playbookMilestones` and `playbookTasks` still have zero hostv2
+  imports.
+- Ownership shipped no code. The board ruled 6-2 to ship a narrow
+  version and it is not built — `2026-08-21_TASK_OWNERSHIP_RULING.md`.
+- Vendors ruling items 2, 3, 5 and 6 — `.frow` metrics, the `.vc-chip`
+  base off `--warn`, the settled fold, the desktop on-demand detail panel
+  — all untouched, so the desktop dead third remains dead.
+- The stranger-proof onboarding test has not been run.
+
+What moved:
+
+- **Animation 8 -> 9.** This is the one cell where the standing principle
+  cuts the other way, and it is worth being explicit about why. FLIP's
+  absence was not a defect the 8 was awarded without noticing — the
+  motion audit named it as finding 2, this document's own table named it
+  as the whole of the gap in three consecutive re-scores, and the audit
+  sequenced it LAST as the highest-risk change precisely because it was a
+  capability the app did not have rather than a fault in one it did. The
+  8 was awarded with the absence fully in view and priced in. Building it
+  is therefore a capability gain, and the fact that it landed on the list
+  that IS the product's claim — the app says it knows what to do next and
+  says it by order — is what makes it worth a point rather than a
+  footnote. Both absences named against this cell are now closed: the
+  reorder is legible as movement, and with the last three literals inside
+  `rowEnter` the entrance fires when something actually arrives rather
+  than on every remount. Not 10, and specifically: FLIP covers one list.
+  The call-sheet, vendor and checklist lists still cut, and there is no
+  shared element and no view transition anywhere, so an app that now
+  answers "what just moved" within a surface still cannot answer it
+  ACROSS one. The `.qidx` misfire is the evidence that coverage is a real
+  question and not a formality.
+
+What did not move, and why:
+
+- **Micro motion holds at 8.** Genuinely close, and the argument for 9 is
+  real: the dock this document stated was distribution of press/settle
+  feedback, its closing sentence was "every interactive atom answers
+  every input the same way; three atoms still do not", and those three
+  now do. A fill also came off the main thread and the duration ladder is
+  clean rather than cleaner. But the third item the 8 named is still
+  live: the readiness digit cuts while the bar beside it glides, which
+  this document already described as reading like a bug on the surface a
+  host looks at most. A dimension carrying a visible motion defect on its
+  most-looked-at surface is not a 9 against Linear and Family, however
+  complete the parity behind it. The gap line is now materially shorter —
+  the digit, `.bline i` / `.bline b`, `.wxpill` — and that is the whole
+  of it.
+- **Workflow holds at 9.** The seed is the cleanest example in this
+  document of the principle it keeps applying. A span-gated door that had
+  never rendered on any event in the app is a defect the 9 was awarded
+  without noticing — worse, the third re-score credited that door as
+  "driven live end to end", which was true of the code path and false of
+  every event a host could actually open. What changed is that the credit
+  is now observable rather than asserted; the capability was already
+  counted. Day CRUD across the span is still the whole distance to 10.
+- **DIFM holds at 9.** Eight day-parts of authored programme content
+  becoming reachable is real breadth, but it is breadth this cell was
+  already credited for on the engine's existence. The stated gap is
+  sending, and neither the webhook nor the 25 clipboard exits moved.
+- **Attention holds at 9.** Day-aware copy stops the app contradicting
+  itself at T-0, which is honesty craft inside a 9, not the named gap.
+  The gap line gains two newly observed items from the marketing capture
+  — the per-vendor send ledger against Blink's whole-list answer, and the
+  checklist reading "280 days past its window" on a wedding 85 days out —
+  but observing a gap does not lower a score any more than repairing an
+  unnoticed one raises it.
+- **Modern UI/UX holds at 8, design holds at 9, less friction holds at 8,
+  ease of use holds at 8.** No vendors-ruling item moved, send is
+  unchanged, the stranger test has not been run. Modern UI/UX's gap line
+  gains the 1920 dead band below the app frame, from the same capture.
+
+Line references corrected against HEAD: the three `cardin` literals
+previously cited at `HostShellV2.jsx:14557` / `:14595` / `:17781` no
+longer exist; `.wxpill{transition:bottom}` is at `styles.css:2906`, not
+:2877 or :2896; `.mbar i` is at `:3682`, not :3636. And one item this
+document listed as an open gap was misattributed: "the invite bar
+(`:2455`)" was `.fg-track`, which is now on `scaleX` — so the count of
+layout-animating fills goes from four to two, not three.
+
+**Recompute: 9 + 9 + 8 + 8 + 9 + 9 + 8 + 8 + 9 = 77.**
+
+**Overall now: 77/90 (86%)** — 76 -> 77, the single point on Animation.
+
 ## The honest line on "10s across the table"
 
 Nine 10s against Linear, Partiful, Paperless Post and Blink is a
 multi-sprint product arc, not an overnight loop: the remaining points
 are majors (send beyond the vendor case, day CRUD, the on-demand detail
-panel, the vendors ruling's remaining four items, FLIP for list reorder)
-plus one observation only real strangers can produce. The day moved the
-table 63.8% → 84% with every point tied to a driven, gated build.
-Inflating the remaining cells would break the scoreboard's only value,
-which is that it is true — which is why the two motion cells moved one
-point each and not two, and why the coverage-and-reconcile session moved
-exactly one cell out of nine: five shipped items, four of which repaired
-defects that the scores already implicitly claimed we did not have.
+panel, the vendors ruling's remaining four items, FLIP across the other
+ranked lists) plus one observation only real strangers can produce. The
+day moved the table 63.8% → 86% with every point tied to a driven, gated
+build. Inflating the remaining cells would break the scoreboard's only
+value, which is that it is true — which is why the two motion cells
+moved one point each and not two when the motion audit landed, why the
+coverage-and-reconcile session moved exactly one cell out of nine, and
+why this session moved one as well: four shipped items, of which exactly
+one built a capability the table had priced as absent. The other three
+repaired defects the scores already implicitly claimed we did not have,
+including a door that three re-scores had credited as driven while it
+had never rendered on a single event a host could open.
 
 ## ✎ Corrections to the auditor's report (checked at HEAD)
 
@@ -488,21 +676,37 @@ defects that the scores already implicitly claimed we did not have.
    Modern UI/UX and a 10.
 5. **Stranger-proof onboarding test** — not a build, the observation that
    grounds Ease-of-use's 8 (also stage-9 precondition 3).
-6. **The motion continuity remainder** — RESOLVED as a queue item in its
-   original form: the audit landed, `76cc7a76` worked six of its eight
-   shortlist items, and both cells are now scored from a current code
-   check at 8. What replaces it is specific: FLIP on the ranked-decision
-   and call-sheet lists (the largest continuity gap, and correctly
-   sequenced after sheet-origin, which has now shipped); the readiness
-   digit tweened with its bar; the four remaining layout-animating fills
-   plus `.wxpill` (styles.css:2896); and focus parity for `.mini` /
-   `.path-row` / `.navrow`. The `cardin` first-mount gate is DONE
-   (`ae2c99da`, `rowEnter` at 15 call sites) except for three literal
-   sites — `HostShellV2.jsx:14557`, `:14595`, `:17781` — which should be
-   converted to `rowEnter` so the ceremony is eliminated, not merely
-   gated. Also carry
-   forward: UX_01:154's "no bounce" line is now contradicted by a later
-   host ruling and needs an exception noted or a re-ruling.
+6. **The motion continuity remainder** — nearly closed. The audit landed,
+   `76cc7a76` worked six of eight shortlist items, `ae2c99da` gated the
+   `cardin` stagger to arrival, and `547919e2` built FLIP, closed
+   finding 17's focus parity and folded the last three literals into
+   `rowEnter` (zero left, 18 call sites). Animation is at 9. What
+   remains is short: the readiness digit tweened with its bar — the one
+   visible motion defect left, and the whole of what holds micro motion
+   at 8; `.bline i` / `.bline b` (`styles.css:1627`, `:1629`) off
+   layout; and `.wxpill{transition:bottom}` (`:2906`). `.mbar i` is
+   settled — it stays on `width` by a decision recorded in place, and
+   should not be re-opened. Beyond that, FLIP's coverage: it is wired to
+   `.ef-list` only, and the call-sheet, vendor and checklist lists still
+   cut. Carry forward unchanged: UX_01:154's "no bounce" line is
+   contradicted by a later host ruling and needs an exception noted or a
+   re-ruling.
+7. **A multi-day event now exists to test against** — `TEST_MULTI_DAY`
+   is seeded and gated, which means the per-day schema work in item 1 can
+   be driven rather than reasoned about. Worth knowing before starting
+   it: the span-gated door had been dead across all 26 events since it
+   shipped, so any surface downstream of `spanNights(ev) >= 1` should be
+   treated as unproven until driven on this seed.
+8. **Three findings from the marketing capture**, recorded so they are
+   not lost: the 1920 frame leaves roughly a fifth of the viewport dead
+   below it; the checklist can read "280 days past its window" on a
+   wedding 85 days out, which is a playbook-runway artifact producing
+   false urgency; and the send ledger answers "did the asks go out" one
+   vendor at a time where Blink answers it for the whole list. The first
+   sits under Modern UI/UX, the other two under Attention. A companion
+   `2026-08-21_MARKETING_SHOT_SET.md` was cited for these; it is NOT in
+   `docs/audits/` at HEAD, so the three lines above are the only record
+   of them and should be treated as the source until that file lands.
 
 ## Where we genuinely lead (the moat, per the recorded reads)
 
