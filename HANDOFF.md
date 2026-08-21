@@ -61,6 +61,30 @@ this file is the short answer to "where is it, is it green, what's next."
 `docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md` — **75/90 (83%)**
 vs 63.8% on 07-13. Decision engine 42/50.
 
+## The open finding that matters most
+
+`docs/audits/2026-08-21_DECISION_ENGINE_AND_TASK_COVERAGE_AUDIT.md`.
+
+**The checklist is frozen at creation.** `event.timeline` is seeded once
+from `playbookChecklist()` (HostShellV2.jsx:6077) and never reconciled —
+`draftTimeline()` at :4633 runs only when there is NO timeline yet. Every
+choice gate inside that function (caterer lever, `whenChoice`, `whenKids`,
+`isDestination`) therefore does its work exactly once and is dead
+afterwards. Verified independently, not taken on the audit's word: flip a
+crab feast's `steam_vs_order` and the engine swaps two tasks each way
+(rent a rack steamer + steam your own, in place of lock a pickup slot +
+collect the hot crabs). A host who changes that decision after creation
+keeps both pickup tasks and never sees either steaming task.
+
+Two more, same document: 9 of 48 taxonomy types have no playbook at all
+(a bare Town Hall yields ros 0 / checklist 0 / decisions 0 / risks 0 —
+total silence), and `playbookMilestones` / `playbookTasks` /
+`playbookDayOfChecklist` are finished engines with ZERO imports in
+hostv2, so 382 milestones and 32 of 39 day-of lists reach no host.
+
+Day-of coverage itself is strong and should be left alone: a Cookout at
+T-0 surfaces 18 run-of-show rows from 5h out through teardown.
+
 ## Next, in order
 
 1. Push `a259ecd7` once the prior batch's CI is green (concurrency: never

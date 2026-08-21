@@ -1,7 +1,9 @@
 # Decision Engine + Task Coverage — audit
 
 Date: August 21, 2026. Report only; no source file was modified.
-HEAD at time of measurement: `76cc7a76` (`main`, local).
+HEAD at time of measurement: `76cc7a76` (`main`, local; a parallel session
+advanced it to `ae2c99da` mid-audit — the two commits between are motion and a
+`.stagewrap` overflow fix, neither of which touches the engine or the corpus).
 
 Host's question, verbatim: *"do an audit of where we are with decision engine
 work and plan task. I want to make sure that all the tasks needed for the day
