@@ -100,12 +100,19 @@ Fundraiser/Gala should be authored, not aliased** — and borrowed content
 keeps its source's vocabulary, so a Town Hall's risks currently say
 "directors".
 
-**Three finished engines have ZERO hostv2 imports.**
-`playbookMilestones` (382 authored milestones, 52 with a non-host owner),
-`playbookTasks` (the dated buy ladder), and `playbookDayOfChecklist`
-(imported only by the frozen CRA), so 32 of 39 day-of lists reach no
-host. Audit items #3 and #4; the day-of wire is one import and one
-render.
+**Ownership (audit item #4) needs a ruling, not a wire — measured
+2026-08-21.** The milestone-to-task id join lands on 123 of 408 (30.1%),
+and 350 of 408 milestone owners are "host" while the other 58 are generic
+role words (coordinator, couple, organizer…). Seeding a row's owner from
+a milestone would paint a label naming nobody. The real gap is
+host-assignable ownership sourced from the ROSTER — a feature with
+questions attached (who is assignable, are they told, what does an
+owned-but-open row do to readiness), so it wants a board sitting.
+
+**Two finished engines still have ZERO hostv2 imports.**
+`playbookMilestones` (382 authored milestones) and `playbookTasks` (the
+dated buy ladder). `playbookDayOfChecklist` was the third and **is now
+wired** (`3f0ad471`).
 
 **Still open on the reconcile itself:** it has not been driven through
 the decision board's own control in a browser. The crab swap is pinned at

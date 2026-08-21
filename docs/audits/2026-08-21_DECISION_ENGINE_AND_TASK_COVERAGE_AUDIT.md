@@ -522,6 +522,34 @@ floor and it currently reaches nobody in the shipping shell.
 
 ### 4. Surface ownership: import `playbookMilestones` and add an owner control
 
+> **MEASURED 2026-08-21, AND THE PREMISE OF THIS ITEM DOES NOT HOLD.** Before
+> building it, three numbers were taken:
+>
+> - **Milestones do not join to tasks.** The ids look parallel on a wedding
+>   (`w_budget` / `t_budget`) and that is a coincidence of one playbook. Across
+>   the corpus the stem join lands on **123 of 408 milestones, 30.1%**. Dinner
+>   Party's tasks carry no id prefix at all (`invite`, `rsvp_chase`) while its
+>   milestones do (`dp_setdate`), and the names are not parallel either.
+>   Milestones are a SEPARATE authored track, not a second labeling of the same
+>   tasks, so "seed the row's owner from the milestone owner" has no reliable
+>   key to seed through.
+> - **The owners are ROLES, not people.** Full census: host 350, coordinator
+>   16, couple 15, organizer 11, producer 6, planner 5, committee 3, grill
+>   master 1, facilitator 1. So 350 of 408 are the host themselves, and the 58
+>   that are not are generic role words. Seeding a checklist row with
+>   `owner: "coordinator"` would paint a label that names nobody — the
+>   appearance of an assignment without one, which is worse than the blank.
+> - **The real gap is the one this item's own example names** and it is a
+>   different feature: Wanda's roster holds a named day-of point person and
+>   nothing in the app can assign her a task. That is host-assignable ownership
+>   sourced from the ROSTER, not from the playbook, and it wants a board sitting
+>   rather than a wiring — who can be assigned, whether they are told, and what
+>   an owned-but-not-done row does to readiness.
+>
+> The 382-milestone figure and the zero-imports finding both stand. What does
+> not stand is that importing them is one import and one render.
+
+
 382 authored milestones, 52 with a non-host owner ("grill master", "planner",
 "couple"), reachable by no hostv2 surface. Wanda's roster names a day-of point
 person and nothing in the app can assign her anything. Add an owner affordance
