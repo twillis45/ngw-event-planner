@@ -115,10 +115,18 @@ VERIFIED AS SHIPPED:
    Every door keeps an accessible name (`aria-label` on each `.srail-row`),
    64px is the 44px tap floor plus the row's own padding, and the choice
    survives a reload. Gated by `hostv2/e2e/railCollapse.spec.mjs`.
-   One correction to the session's own description: the freed width does
-   NOT go to the content column. The measure cap stays 1360px, so narrowing
-   the nav narrows the FRAME. That is the correct behavior and the CSS says
-   so; the claim that the outer frame does not move is wrong.
+   Where the freed width goes DEPENDS ON THE VIEWPORT, and both readings of
+   it circulated in this session before anyone measured. Reading the CSS
+   alone says the frame narrows, because the width formula is
+   `min(100% - 48px, 1360px + rail + gap)` and the second term shrinks with
+   the rail. Measuring at 1440 says the opposite: the first term binds
+   there, the frame is already as wide as the window allows and cannot
+   narrow, so all 136px lands in the content column. At 1920 the formula
+   binds and the frame does narrow. Neither description is the correction
+   to the other; the invariant that holds at every width is CONSERVATION —
+   whatever the rail gives up is taken by the frame, the content, or both,
+   and the content never gets narrower for collapsing the nav. That is what
+   the gate asserts, at 1440 and 1920 rather than at one flattering width.
 5. **One corner on one rectangle.** At 1440 the frame was 20px, the splash
    48px and the app 0px: the splash was painting the 393x852 phone bezel
    over a desktop canvas, and the sheet carried a phone bottom-sheet corner
