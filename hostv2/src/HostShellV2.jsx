@@ -76,6 +76,9 @@ import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeSta
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
+// playbookDayOfChecklist was a finished engine with ZERO hostv2 imports — the
+// frozen CRA rendered it and the shipping shell never did (audit 2026-08-21).
+import { playbookDayOfChecklist } from '@app/lib/playbooks';
 import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcile';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
@@ -10108,6 +10111,63 @@ export default function HostShellV2() {
           )}
           {stage === 'day' && !liveDay && (
             <section className="day-sec" role="main">
+              {/* ── BEFORE THE BIG DAY (audit item 3, 2026-08-21) ─────────────
+                  `playbookDayOfChecklist` has existed and worked for months and
+                  had ZERO imports in hostv2 — the frozen CRA rendered it and
+                  the shipping shell never did. So the one list that answers
+                  "what has to be true before the doors open" reached nobody.
+                  An engine that is correct and unwired is, from the host's
+                  chair, identical to one that was never written.
+
+                  Confirm state persists to `event.safetyChecked` keyed on the
+                  authored item id — the SAME shape the CRA used, so an event
+                  that was ticked off there keeps its ticks here.
+
+                  The default list says it is a default, for the same reason
+                  the borrowed playbook does: 32 of 39 playbooks author no
+                  day-of list, and a generic safety floor presented as this
+                  event's own would be a claim we have not earned. */}
+              {(() => {
+                const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
+                if (!rc || !rc.items || !rc.items.length) return null;
+                const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
+                const done = rc.items.filter((p) => checked[p.key]).length;
+                const toggle = (key) => {
+                  const next = { ...checked };
+                  if (next[key]) delete next[key]; else next[key] = true;
+                  patchEvent({ safetyChecked: next },
+                    (next[key] ? 'Confirmed: ' : 'Reopened: ') + String(rc.items.find((p) => p.key === key)?.label || '').slice(0, 48));
+                };
+                return (
+                  <div className="card dayof-card">
+                    <SheetHero
+                      eyebrow="Before the big day"
+                      star={`${done} of ${rc.items.length}`}
+                      tone={done === rc.items.length ? 'ok' : undefined}
+                      sub={done === rc.items.length
+                        ? 'All confirmed.'
+                        : `${rc.items.length - done} still to confirm — ${rc.because}.`}
+                    />
+                    {rc.isDefault && (
+                      <p className="v-meta borrowed-note">
+                        We have no day-of list written for {String(event.type || 'this type').toLowerCase()} yet,
+                        so these are the safety basics every event shares. Add anything this one needs.
+                      </p>
+                    )}
+                    {rc.items.map((p, i) => (
+                      <button key={p.key} className={'frow' + (checked[p.key] ? ' got' : '')}
+                        style={{ animation: rowEnter(i) }}
+                        onClick={() => toggle(p.key)}>
+                        <span className="fcheck" aria-hidden="true" />
+                        <span className="f-main">
+                          <span className="f-name">{p.label}</span>
+                          {p.detail ? <span className="f-sub">{p.detail}</span> : null}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>
               {days === 0 && rosState === 'untimed' && (
                 <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', color: 'var(--carbon-muted)' }}>

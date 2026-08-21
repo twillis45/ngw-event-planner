@@ -2673,6 +2673,18 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .borrowed-note{ color:var(--faint); font-size:var(--t-row-sub); line-height:1.45;
   margin:0 0 var(--sp-4); max-width:64ch; }
 
+/* The day-of confirm card. Nothing new visually — it is the app's own card with
+   the checklist's own rows; the class exists so the card can be found and
+   measured, and so the note above it has somewhere to sit. */
+.dayof-card{ margin:0 0 var(--sp-5); }
+/* The sub-line under a checklist row's name. `.f-name` already existed;
+   day-of items carry a real explanation ("shade and a rain fallback set before
+   guests arrive"), which is the difference between a reminder and an
+   instruction, so it needs its own quiet line rather than being crammed in. */
+.f-sub{ display:block; margin-top:var(--sp-1); font-size:var(--t-row-sub);
+  font-weight:500; color:var(--muted); line-height:1.45; }
+.frow.got .f-sub{ color:var(--faint); }
+
 /* Row-level landing ring — the exact field a CTA promised */
 .rowfocus{box-shadow:0 0 0 2px var(--steel), 0 0 0 8px var(--steel-tint); animation:rowfade var(--ms-land) var(--ease-standard) 1 forwards}
 @keyframes rowfade{0%,70%{box-shadow:0 0 0 2px var(--steel), 0 0 0 8px var(--steel-tint)} 100%{box-shadow:0 0 0 0 transparent}}

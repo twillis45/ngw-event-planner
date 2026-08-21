@@ -52,6 +52,8 @@ import kwanzaaGathering from './data/kwanzaaGathering';
 import boardMeeting from './data/boardMeeting';
 import conference from './data/conference';
 import teamRetreat from './data/teamRetreat';
+import clientDinner from './data/clientDinner';
+import fundraiserGala from './data/fundraiserGala';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 import { audiencePersona } from '../nextActionRenderer';
 import { quantityBasis } from '../quantities/quantityBasis';
@@ -96,7 +98,7 @@ import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
 // playbooks. backyardBbq is registered under the canonical 'Get-Together' type
 // (BBQ / cookout / backyard all resolve there via the taxonomy).
 const norm = (s) => String(s || '').trim().toLowerCase();
-export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat];
+export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat, clientDinner, fundraiserGala];
 const REGISTRY = {};
 for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 
@@ -128,8 +130,14 @@ const BORROWED_PLAYBOOK = {
   'Training / Workshop':['Conference', 'sessions, a room set for them, materials and catering on a clock'],
   'Award Ceremony':     ['Conference', 'a program with a stage, an AV cue sheet and a seated audience'],
   'Networking Event':   ['Holiday Party', 'the shape is a room, drinks, food that can be eaten standing, and a soft program'],
-  'Client Dinner':      ['Dinner Party', 'a hosted table with a menu and a seating plan — the scale is the difference, not the shape'],
-  'Fundraiser / Gala':  ['Wedding', 'the most involved thing in the corpus: venue, caterer, AV, seating chart and a program that has to land'],
+  // Client Dinner and Fundraiser / Gala were borrowed here until 2026-08-21 and
+  // are now AUTHORED (./data/clientDinner.js, ./data/fundraiserGala.js). The
+  // audit called both out as too distinct to alias, and it was right on both:
+  // the Dinner Party borrow matched a client dinner's shape and none of its
+  // work (an accountable outcome, an expense policy, a strategic seating plan,
+  // the follow-up that is the point), and the Wedding borrow carried the venue,
+  // caterer, AV and run of show correctly while having no model whatsoever for
+  // the revenue side that is the entire reason a gala exists.
   'Wellness Retreat':   ['Team Retreat', 'multi-day, off-site, lodging and a daily programme — a retreat is a retreat'],
 };
 
