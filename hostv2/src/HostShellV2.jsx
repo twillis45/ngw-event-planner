@@ -5364,6 +5364,8 @@ export default function HostShellV2() {
   // which is why this is worth a comment rather than a re-discovery.
   const [settledVendorsOpen, setSettledVendorsOpen] = useState(false);
   const [assignFor, setAssignFor] = useState(null);   // the timeline row whose owner is being set
+  const [vendorQ, setVendorQ] = useState('');
+  const [vendorLens, setVendorLens] = useState('all');
   // ONE definition of "settled", read by both the fold and the chip selector.
   // They were the same expression written twice, which is how a card ends up
   // folded away while still showing an amber chip nobody can see.
@@ -17178,6 +17180,46 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ margin: '2px 0 0' }}>{c.explanation}{c.recommendedAction ? ' ' + c.recommendedAction : ''}</p>
                     </div>
                   ))}
+                  {/* ── THE VENDOR TOOLBAR (vendors ruling, sequence item 5) ─────
+                      "Matters at 12+". Below that a host reads the list; past it
+                      they are hunting, and hunting through nine identical cards
+                      is what made the sheet feel like a wall in the first place.
+
+                      Deliberately the SAME grammar as the roster toolbar
+                      (`.rtoolbar` at :18608) rather than a second search idiom:
+                      one field, then lenses that state their own counts. A lens
+                      showing "Waiting on 3" is answering the question before it
+                      is clicked, which is the point of the count being on the
+                      chip. It renders only when the list is long enough to need
+                      it -- a filter over four cards is furniture. */}
+                  {(event.vendors || []).length >= 6 && (() => {
+                    const all = (event.vendors || []);
+                    const nSettled = all.filter(v => vendorSettled(v)).length;
+                    const nInformal = all.filter(v => v && v.isInformal).length;
+                    const LENS = [
+                      ['all', 'Everyone', all.length],
+                      ['open', 'Needs you', all.length - nSettled],
+                      ['settled', 'Settled', nSettled],
+                      ...(nInformal ? [['informal', 'Helping, not hired', nInformal]] : []),
+                    ];
+                    return (
+                      <div className="rtoolbar">
+                        <input className="field rtool-q" type="search" value={vendorQ}
+                          onChange={(e) => setVendorQ(e.target.value)}
+                          placeholder="Find someone you're hiring"
+                          aria-label="Find someone on this list by name or what they do" />
+                        <span className="rtool-lens" role="group" aria-label="Show only">
+                          {LENS.map(([k, lbl, c]) => (
+                            <button key={k} className="chip" aria-pressed={vendorLens === k}
+                              onClick={() => setVendorLens(k)}
+                              style={vendorLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
+                              {lbl} {c}
+                            </button>
+                          ))}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   {/* ── SETTLED VENDORS FOLD (vendors ruling clause 5) ────────────
                       A confirmed vendor with nothing owed, nothing flagged and no
                       paperwork outstanding is not news, and nine of them are a wall
@@ -17192,7 +17234,18 @@ export default function HostShellV2() {
                       means — a card that folds must be a card that shows no chip.
                       `vendorSettled` is the single source both now read. */}
                   {(() => {
-                    const all = (event.vendors || []);
+                    // The toolbar narrows the SAME array the partition reads, so
+                    // a lens and the settled fold can never disagree about what is
+                    // on screen.
+                    const q = vendorQ.trim().toLowerCase();
+                    const all = (event.vendors || []).filter(v => {
+                      if (!v) return false;
+                      if (q && !((String(v.name || '') + ' ' + String(v.category || '')).toLowerCase().includes(q))) return false;
+                      if (vendorLens === 'open') return !vendorSettled(v);
+                      if (vendorLens === 'settled') return vendorSettled(v);
+                      if (vendorLens === 'informal') return !!v.isInformal;
+                      return true;
+                    });
                     const live = all.filter(v => !vendorSettled(v));
                     const rest = all.filter(v => vendorSettled(v));
                     return [live, rest];

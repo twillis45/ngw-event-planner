@@ -2667,6 +2667,40 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    on a vendor with several open promises + COI + a minted brief). Bumped
    with headroom rather than re-measuring every future addition. */
 .vcard.open .vc-more{max-height:1500px; opacity:1}
+
+/* ── THE DETAIL USES THE DEAD THIRD (vendors ruling clause 6) ────────────────
+   At desktop the sheet had a third of its width doing nothing while an opened
+   vendor pushed every card below it down the page. The ruling asked for an
+   on-demand detail panel and was explicit that it must never be a permanent
+   third pane -- so this only exists while a card is OPEN, and the moment it
+   closes the list is a single column again.
+
+   Attached to its own card rather than floated beside the list, which is the
+   better answer and also the honest one: a panel pinned to the sheet has to
+   invent a relationship to whichever row you last touched, while this one is
+   physically part of the thing it describes. Reading order is unchanged --
+   face first, then detail -- so nothing moves for a screen reader or a
+   keyboard, and below 1280 the accordion is still the right pattern and still
+   the one that renders.
+
+   The face keeps its own column at a readable measure; the detail takes the
+   space that was empty. `align-self:start` stops the short column stretching
+   to match the tall one. */
+@media (min-width:1280px){
+  .stagewrap[data-rail="1"] .vcard.open{
+    display:grid; grid-template-columns:minmax(0,1fr) minmax(300px, 360px);
+    column-gap:var(--sp-5); align-items:start;
+  }
+  .stagewrap[data-rail="1"] .vcard.open > .vc-head,
+  .stagewrap[data-rail="1"] .vcard.open > .vc-chips{ grid-column:1; }
+  .stagewrap[data-rail="1"] .vcard.open > .vc-more{
+    grid-column:2; grid-row:1 / span 9999; align-self:start;
+    padding-left:var(--sp-4); border-left:1px solid var(--line-soft);
+    /* The card's own open animation is a height reveal, which is wrong for a
+       column that is beside rather than below. It fades in place instead. */
+    max-height:none; transition:opacity var(--ms-base) var(--ease-out);
+  }
+}
 .vc-detail{font-size:var(--t-meta); color:var(--muted); line-height:var(--lh-body); margin:10px 0 0}
 .vc-actions{display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-3)}
 
