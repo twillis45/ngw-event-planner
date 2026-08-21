@@ -125,10 +125,11 @@ as of tonight. Gate (all): pass.
 1. **Sentry is code-wired but has no DSN in the prod build** (probed the
    deployed bundle: no ingest host present; `REACT_APP_SENTRY_DSN` unset
    in Actions vars). Zero error visibility on a public surface.
-2. **PostHog is absent from the hostv2 prod entry** — the analytics
-   module (with its fallback key) isn't in the deployed hostv2 bundle, so
-   host-shell usage is uninstrumented. Decide: import it in hostv2 or
-   record analytics as CRA-only deliberately.
+2. ~~PostHog absent from hostv2 prod~~ — **RETRACTED 2026-08-21 (same
+   session)**: the fallback key ships in the shared
+   `eventIdentityEngine-*` chunk and hostv2 calls `track()` from
+   HostShellV2.jsx:88 and InviteV2.jsx:15. PostHog is live. The original
+   finding grepped two of three chunks — a false absence.
 3. **Notion Path to Production tracker sync** — per the standing Notion
    law, the tracker entry should be updated to match this audit
    (stages 1–4 passed, 5 and 7 open, 9 pending).
@@ -162,7 +163,8 @@ exactly D-2's five preconditions plus the board:
 1. **Stage 5:** write the consolidated security checklist; verify RLS in
    writing; schedule Sprint C+D and the pentest.
 2. **Stage 7:** set `REACT_APP_SENTRY_DSN` in Actions vars (one variable —
-   prod error tracking lights up); decide the PostHog-in-hostv2 question.
+   prod error tracking lights up). DONE same session; PostHog item
+   retracted (was already live).
 3. **Stage 4:** Nielsen P2 cluster — draft-text preservation (#2) and the
    sheet back-stack (#3) first; then ambient sync cue (#1) and
    run-it-again undo (#4).
