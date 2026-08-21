@@ -8,11 +8,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `a259ecd7` (local; push after CI on the prior batch) |
+| Branch / HEAD | `main` @ `ae2c99da` (local; push after CI on the prior batch) |
 | Last pushed | `1bd405de` — CI green |
 | Jest | **6044 passed**, 1 skipped, 424 suites |
 | Backend pytest | **353 passed** |
-| e2e (Playwright) | vendorCardFace 3/3, a11yFloor 8/8 desktop, railCollapse 2/2, frameCorners 2/2, rosterToolbar + wideCanvas green |
+| e2e (Playwright) | **desktop 119 passed / 7 skipped, mobile 82 passed** — full suites, zero failures |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 
@@ -45,9 +45,20 @@ this file is the short answer to "where is it, is it green, what's next."
    Two new gates, both red-proofed: `railCollapse.spec.mjs`,
    `frameCorners.spec.mjs`.
 
+8. **Motion shortlist worked** (`76cc7a76`) — sheets now rise from the point
+   that opened them (the audit's one real gap: continuity); a live
+   reduced-motion defect closed (`.rowfocus` ring was stuck on permanently);
+   `.bar i` moved to `scaleX`; the 300-900ms band named at the token source;
+   `cardin`'s list stagger gated to arrival instead of every redraw. Gate:
+   `motionContinuity.spec.mjs`, all four red-proofed.
+9. **The rail stopped drifting** (`ae2c99da`) — host reported the desktop menu
+   "jumping, dizzying". `.stagewrap` had `overflow:hidden`, which still permits
+   programmatic scrolling, so every row landing scrolled the frame and the rail
+   walked off the top with no scrollbar to bring it back. `overflow:clip`.
+
 ## Scores
 
-`docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md` — **73/90 (81%)**
+`docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md` — **75/90 (83%)**
 vs 63.8% on 07-13. Decision engine 42/50.
 
 ## Next, in order
@@ -56,10 +67,11 @@ vs 63.8% on 07-13. Decision engine 42/50.
    push over an in-flight run).
 2. Vendors board items 2–6: `.frow` metrics, flip `.vc-chip` off `--warn`
    (red-proof it), settled fold, sheet toolbar, on-demand detail panel.
-3. Work the motion audit's shortlist —
-   `docs/audits/2026-08-21_MOTION_AND_MICRO_INTERACTION_AUDIT.md`. The
-   re-score's micro-motion and animation cells are held pending it; move
-   them from that document's findings, not from an impression.
+3. Motion, what is still open after `76cc7a76` — FLIP or a shared element on
+   list reorder (ranked rows still CUT to new positions, and that is this
+   product's whole thesis), the four remaining layout-animating fills, and
+   focus response on `.mini` / `.path-row` / `.navrow`. Both motion cells sit
+   at 8; the audit doc names the exact levers.
 4. Comms: prove the Resend webhook live before any `delivered` renders.
 5. **User-side only:** D-2's five preconditions (domain + policies, demo
    account sign-in, stranger-proof onboarding test, live-keys Stripe run
