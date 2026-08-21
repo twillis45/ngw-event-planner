@@ -104,8 +104,27 @@ describe('clause 3 — one chip, ranked by time-to-consequence', () => {
   });
 
   test('a settled vendor shows no chip at all (clause 5 fold)', () => {
-    expect(CHIP).toMatch(/const settled = good && !worry && !coiAct/);
     expect(CHIP).toMatch(/if \(settled\) return null/);
+  });
+
+  test('the fold and the chip selector read the SAME definition of settled', () => {
+    // This replaced an assertion on the literal expression
+    // `const settled = good && !worry && !coiAct && ...`, which pinned a
+    // COPY of the rule. Clause 5 then needed the same rule to decide which
+    // cards fold, and two copies of a predicate is how a card ends up folded
+    // away while still holding an amber chip nobody can see.
+    //
+    // Pinning the shared helper instead is the stronger guarantee: it is the
+    // thing that must stay true, where the literal was only how it happened
+    // to be written.
+    expect(CHIP).toMatch(/const settled = vendorSettled\(v\)/);
+    // Against SHELL, not FACE: FACE is a slice of one card, and both the
+    // helper and the partition live outside it. Scoping a source assertion to
+    // the wrong window is how a test reports absence for something present.
+    expect(SHELL).toMatch(/const vendorSettled = useCallback/);
+    // ...and the fold partitions on that same helper, not on its own copy.
+    expect(SHELL).toMatch(/filter\(v => !vendorSettled\(v\)\)/);
+    expect(SHELL).toMatch(/filter\(v => vendorSettled\(v\)\)/);
   });
 });
 

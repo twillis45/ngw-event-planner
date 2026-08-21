@@ -2604,10 +2604,20 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   transition:border-color var(--ms-ambient) var(--ease-standard), box-shadow var(--ms-ambient) var(--ease-standard)}
 .vcard.open{border-color:var(--steel-tint); box-shadow:inset 0 1px 0 var(--sheen), 0 10px 30px -18px rgba(0,0,0,.3)}
 .vc-head{display:flex; align-items:center; gap:var(--sp-3)}
-.vc-avatar{width:40px; height:40px; border-radius:var(--r-md); flex-shrink:0;
+/* 24px, down from 40 (ruling clause 2: "monogram to 20px or gone"). At 40 the
+   monogram was the largest thing on a one-row face and the loudest mark on a
+   list of nine, while carrying the least information of anything on the card --
+   it is the vendor's first letter, which the name says better one gap to its
+   right. Kept rather than deleted because it holds the left edge and gives the
+   row a scan anchor; 24 is the size at which it does that without competing. */
+.vc-avatar{width:24px; height:24px; border-radius:var(--r-sm); flex-shrink:0;
   background:var(--steel-tint); color:var(--steel-soft);
   display:flex; align-items:center; justify-content:center;
-  font-size:16px/*monogram glyph*/; font-weight:800; letter-spacing:-.02em}
+  font-size:11px/*monogram glyph*/; font-weight:800; letter-spacing:-.02em}
+/* The money column. `.amt` is the app's existing tabular-nums treatment, so a
+   stack of vendor costs lines up on the decimal the way the budget rows do. */
+.vc-amt{margin-left:auto; display:flex; align-items:baseline; gap:var(--sp-2); flex-shrink:0}
+.vc-paid{font-size:var(--t-tag); font-weight:650; color:var(--ok)}
 .vc-id{min-width:0; flex:1}
 /* A VENDOR'S NAME IS ITS IDENTITY (click-through audit 2026-07-28). This was
    white-space:nowrap + ellipsis, so on a phone — where the status pill and the

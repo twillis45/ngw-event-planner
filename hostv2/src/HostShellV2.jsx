@@ -5325,6 +5325,29 @@ export default function HostShellV2() {
     return m;
   }, [vendorConfirmations]);
 
+  // DEFINED HERE, AFTER `confirmationByVendor`, AND THAT PLACEMENT IS THE FIX.
+  // It first sat with the other refs near the top and the app would not boot:
+  // "Cannot access 'confirmationByVendor' before initialization". A
+  // useCallback's BODY is deferred, but its DEPENDENCY ARRAY is evaluated at
+  // the point of the call, so naming a `const` declared further down is a
+  // temporal-dead-zone throw at render. The error names the minified symbol,
+  // which is why this is worth a comment rather than a re-discovery.
+  const [settledVendorsOpen, setSettledVendorsOpen] = useState(false);
+  // ONE definition of "settled", read by both the fold and the chip selector.
+  // They were the same expression written twice, which is how a card ends up
+  // folded away while still showing an amber chip nobody can see.
+  const vendorSettled = useCallback((v) => {
+    if (!v) return false;
+    let acct = null;
+    try { acct = quickAccountabilityForVendor(v, event); } catch { acct = null; }
+    const worry = acct && acct.tier && acct.tier !== 'on_track' && (acct.reasons || []).length ? acct.reasons[0] : null;
+    let coiAct = null;
+    try { coiAct = coiNextAction(v, event, v.name || 'this vendor'); } catch { coiAct = null; }
+    const good = (() => { try { return isVendorConfirmed(v); } catch { return false; } })();
+    const vConfirm = confirmationByVendor[String(v.id)] || null;
+    return !!good && !worry && !coiAct && !(vConfirm && vConfirm.state !== 'confirmed');
+  }, [event, confirmationByVendor]);
+
   // Which engine actions have a real in-place edit here. Everything else stays an
   // honest route toast — never a button that pretends.
   const wiredKind = (a) => {
@@ -17009,7 +17032,34 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ margin: '2px 0 0' }}>{c.explanation}{c.recommendedAction ? ' ' + c.recommendedAction : ''}</p>
                     </div>
                   ))}
-                  {(event.vendors || []).map(v => {
+                  {/* ── SETTLED VENDORS FOLD (vendors ruling clause 5) ────────────
+                      A confirmed vendor with nothing owed, nothing flagged and no
+                      paperwork outstanding is not news, and nine of them are a wall
+                      of cards a host has to read past to reach the one that needs
+                      them. Settled DECISIONS already fold this way; this is the
+                      same grammar, not a new one.
+
+                      The predicate is recomputed here rather than lifted out of the
+                      card, and deliberately: it is the exact expression the chip
+                      selector uses (`good && !worry && !coiAct && confirmed`), so
+                      the two cannot drift into disagreeing about what "settled"
+                      means — a card that folds must be a card that shows no chip.
+                      `vendorSettled` is the single source both now read. */}
+                  {(() => {
+                    const all = (event.vendors || []);
+                    const live = all.filter(v => !vendorSettled(v));
+                    const rest = all.filter(v => vendorSettled(v));
+                    return [live, rest];
+                  })().map((group, gi) => (
+                    <Fragment key={gi === 0 ? 'live' : 'settled'}>
+                    {gi === 1 && group.length > 0 && (
+                      <button className="fold-btn" style={{ color: 'var(--ok)' }}
+                        onClick={(e) => { e.stopPropagation(); setSettledVendorsOpen(o => !o); }}>
+                        {group.length} settled — nothing owed, nothing outstanding
+                        <span className="chev" aria-hidden="true">{settledVendorsOpen ? '▾' : '›'}</span>
+                      </button>
+                    )}
+                    {(gi === 1 && !settledVendorsOpen ? [] : group).map(v => {
                     let acct = null;
                     try { acct = quickAccountabilityForVendor(v, event); } catch { acct = null; }
                     const worry = acct && acct.tier && acct.tier !== 'on_track' && (acct.reasons || []).length ? acct.reasons[0] : null;
@@ -17038,11 +17088,24 @@ export default function HostShellV2() {
                                 the expanded editor, so a host couldn't compare vendor
                                 costs at a glance. Surface them on the collapsed card
                                 face (with status + arrival) so the list scans side-by-side. */}
-                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + v.arrivalTime : null, Number(v.cost) > 0 ? '$' + Number(v.cost).toLocaleString() + (v.balancePaid ? ' · paid' : '') : null,
+                            {/* MONEY LEFT THIS LINE (ruling clause 2). It used to be
+                                joined into the sub as "· $1,200 · paid", so the one
+                                figure a host compares across vendors was mid-sentence
+                                in a grey run-on, at a different x on every card and in
+                                a proportional face where 1 is narrower than 8. The
+                                sub keeps what describes the vendor; the number goes
+                                right, in `.amt`, where a column of them lines up. */}
+                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + v.arrivalTime : null,
                               // How this vendor prices (host report): a per-head figure for a caterer/bar
                               // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
                               Number(v.cost) > 0 ? vendorPricingHint(v, Number(event.guestCount) || Number(event.guestEstimate) || 0) : null].filter(Boolean).join(' · ')}</div>
                           </div>
+                          {Number(v.cost) > 0 && (
+                            <div className="vc-amt">
+                              <span className="amt">${Number(v.cost).toLocaleString()}</span>
+                              {v.balancePaid ? <span className="vc-paid">paid</span> : null}
+                            </div>
+                          )}
                           {/* HOST-APPROPRIATE-VENDOR-UI: an informal helper isn't
                               missing paperwork — there's none to have. "no status"
                               reads like an incomplete paid booking; this reads like
@@ -17076,7 +17139,7 @@ export default function HostShellV2() {
                             nothing open shows none at all (clause 5's fold). */}
                         {(() => {
                           const cs2 = (() => { try { return contactState(v); } catch { return null; } })();
-                          const settled = good && !worry && !coiAct && !(vConfirm && vConfirm.state !== 'confirmed');
+                          const settled = vendorSettled(v);   // the SAME predicate the fold uses
                           if (settled) return null;
                           let chip = null;
                           if (vConfirm && vConfirm.state !== 'confirmed') {
@@ -17651,7 +17714,9 @@ export default function HostShellV2() {
                         </div>
                       </div>
                     );
-                  })}
+                    })}
+                    </Fragment>
+                  ))}
                   {nudgeFor('vendors')}
                   {/* Vendor export — the same shared serializers as the guest
                       list (toCSV + COLUMNS.vendors already define the format);
