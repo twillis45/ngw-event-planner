@@ -150,14 +150,25 @@ async def create_checkout_session(
 
 
 @router.get("/verify-session")
-async def verify_session(session_id: str):
+async def verify_session(
+    session_id: str,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
     """
     Verify payment status for a Checkout Session by ID.
 
     Returns { payment_status, fee_id, amount_total }.
     payment_status values: "paid" | "unpaid" | "no_payment_required"
     Frontend marks the feeSchedule milestone paid when payment_status == "paid".
+
+    SECURITY (2026-08-21, stage-5 sweep): the client has sent signed-in auth
+    here since 2026-08-07 — the backend just never required it, leaving
+    payment_status/fee_id/amount readable by anyone holding a session id.
+    Session ids are unguessable, but the 2026-08-07 ruling said every stripe
+    route is signed-in-only; now the server enforces what the client claimed.
     """
+    await require_planner(authorization, x_planner_token)
     if not _configured():
         raise HTTPException(status_code=503, detail="Stripe is not configured.")
 

@@ -176,8 +176,24 @@ async def send_envelope(
 
 # ── Envelope status ───────────────────────────────────────────────────────────
 @router.get("/envelope/{envelope_id}")
-async def envelope_status(envelope_id: str, access_token: str):
-    """Poll the status of a sent envelope."""
+async def envelope_status(
+    envelope_id: str,
+    x_docusign_token: Optional[str] = Header(default=None),
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Poll the status of a sent envelope.
+
+    SECURITY (2026-08-21, stage-5 residual closed): the DocuSign token used
+    to arrive as a QUERY PARAM, which lands in access logs and proxies —
+    the checklist's accepted-residual list called it out. It now arrives in
+    the X-DocuSign-Token header, and the route requires a planner, same as
+    send-envelope (it was the one docusign route with no caller gate).
+    """
+    await require_planner(authorization, x_planner_token)
+    access_token = x_docusign_token or ""
+    if not access_token:
+        raise HTTPException(status_code=422, detail="Missing X-DocuSign-Token header")
     if not is_docusign_configured():
         raise HTTPException(status_code=503, detail="DocuSign not configured")
     try:

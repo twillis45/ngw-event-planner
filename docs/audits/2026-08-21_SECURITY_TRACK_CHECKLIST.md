@@ -38,9 +38,15 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   `test_docusign_send_envelope_auth`, `test_admin_intelligence`,
   `test_lodging_unfurl` (SSRF), `test_stripe_webhook_signature`. Backend
   suite runs in CI (release-integrity C1, `a1682b74`).
-- **OPEN — no per-route 403 sweep.** Auth tests cover the named routes,
-  not an enumerated assertion over EVERY protected route. Cheap to add as
-  a parametrized test walking the router table.
+- **DONE (2026-08-21, same session) — per-route sweep.**
+  `backend/tests/test_protected_routes_sweep.py` walks every route in the
+  seven security-sensitive routers: each must carry a caller gate in
+  source or sit on a NAMED public allowlist with a reason, and every
+  `require_planner` route is hit bare and must answer 401. The sweep's
+  first run caught a real one: **`GET /api/stripe/verify-session` was
+  unauthenticated server-side** (the client sent auth since 2026-08-07;
+  the backend never demanded it) — now gated. It also surfaced finding
+  #8 below.
 
 ## Stage-5 — the consolidated gate
 
@@ -64,10 +70,32 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   deleting it retires the entire list. Re-audit if the freeze ever lifts.
 - **DONE — secret scan.** No live keys in source or git-visible config
   (scan 2026-08-21).
-- **OPEN — license check.** Never run; `license-checker` over both trees
-  is an hour.
-- **OPEN — Security Sprint C+D** (scoped 2026-07-30, unstarted).
+- **DONE (2026-08-21) — license check.** `license-checker --production`
+  on both trees: all permissive (MIT/ISC/Apache-2.0/BSD family).
+  `node-forge` is dual `(BSD-3-Clause OR GPL-2.0)` — we take BSD-3. The
+  UNLICENSED entries are our own packages.
+- **DONE — Security Sprint C+D, superseded by name.** C (CRA build as a
+  CI gate + env inventory) and D (hostv2 bundle drift) shipped 2026-07-31
+  as the Release Integrity gates — the `cra-build`, `backend`, and
+  `hostv2-build` jobs in `checks.yml` (added 2026-07-31, header comment),
+  all green on every push since. The "unstarted" claim was a stale
+  2026-07-30 memory.
+- **DONE (2026-08-21) — DocuSign token-in-query residual.**
+  `/envelope/{id}` now takes the token in `X-DocuSign-Token` and requires
+  a planner (it was the one docusign route with no caller gate);
+  `src/lib/docusign.js` sends header + planner auth. Tokens no longer
+  land in access logs.
 - **OPEN — pentest** (external, on the D-2 list).
+- **OPEN — finding #8 (sweep, 2026-08-21): client-portal comm reads are
+  keyed on event id alone.** `GET .../communication/channels` and
+  non-INTERNAL message reads are public BY DESIGN (Sprint 58's portal has
+  no sign-in), but hostv2 event ids (`cust-<timestamp36>`) are guessable,
+  so message content is enumerable in principle. A `portal_token`
+  mechanism already exists on approval messages and could extend to reads.
+  This is an authz DESIGN decision — take it to the board, not a patch.
+- **NOTE — DocuSign Connect webhook is unverified but inert.** It only
+  logs; the sweep's allowlist entry states the rule: the moment it
+  mutates state it must verify Connect's HMAC first.
 
 ## Stage-6 touchpoint — prod responses & backup
 
@@ -97,12 +125,16 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
 - **OPEN — login rate limiting.** Delegated to Supabase auth defaults;
   never verified or tuned. One dashboard check.
 
-## Verdict
+## Verdict (updated 2026-08-21, second pass)
 
 The load-bearing items (RLS all-verbs on tenant data, server-side auth on
 money routes, hosted-checkout payment isolation, 0-vuln shipped bundle,
-no secrets in source) are DONE with citations. Seven OPENs remain, five
-of which are attestations/checks under an hour each (applied-RLS look,
-backup check, login rate-limit check, license run, per-route 403 sweep);
-the two real ones are Sprint C+D and the pentest, both already tracked.
-Stage 5 moves from "never written down" to "recorded, seven opens named."
+no secrets in source) are DONE with citations. The second pass closed
+five more: the per-route sweep now exists AND caught a live gap
+(verify-session gated), the license check is clean, Sprint C+D turned
+out to be shipped under the Release Integrity name, and the
+token-in-query residual is closed. Remaining OPENs: the pentest, finding
+#8 (portal authz design — board question), and four user-side
+attestations (RLS applied in the live dashboard, backups on + one
+restore drill, login rate-limit check on Supabase defaults, plus
+Sentry-DSN taking effect on next deploy is worth eyeballing once).

@@ -115,8 +115,12 @@ export async function sendForSignature({
 export async function getEnvelopeStatus(envelopeId, accessToken) {
   if (!BASE || !envelopeId || !accessToken) return { ok: false, error: 'Missing params' };
   try {
+    // Token rides a HEADER, never the URL — query strings land in access
+    // logs and proxies (stage-5 residual closed 2026-08-21). Planner auth
+    // rides along like every other backend call.
     const res = await fetch(
-      `${BASE}/api/docusign/envelope/${envelopeId}?access_token=${encodeURIComponent(accessToken)}`
+      `${BASE}/api/docusign/envelope/${envelopeId}`,
+      { headers: { 'X-DocuSign-Token': accessToken, ...(await authHeaders()) } }
     );
     if (!res.ok) return { ok: false, error: 'Could not fetch envelope status' };
     return { ok: true, ...(await res.json()) };
