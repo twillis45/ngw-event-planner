@@ -163,7 +163,16 @@ export function buildDayBeforePlan(event, now = new Date()) {
       cta: rain.hasPlan ? null : 'Add rain backup',
     },
     ...(cues.length ? [{
-      key: 'cues', label: 'How tomorrow starts', open: 0,
+      // "How TOMORROW starts" was printed on the day itself. The window runs
+      // T-2 through T-0 and only the headline below was ever day-aware, so at
+      // T-0 the app told a host how tomorrow starts while they were standing
+      // in today. The same bug names the module "your day-before plan" today;
+      // both are fixed at their source rather than patched at the render.
+      key: 'cues',
+      label: daysOut === 0 ? 'How today starts'
+        : daysOut === 1 ? 'How tomorrow starts'
+          : 'How the day starts',
+      open: 0,
       detail: cues.map(c => `${c.time ? c.time + ' — ' : ''}${c.segment}`).join(' · '),
       route: { tab: 'Event Day Schedule', focusField: 'ros-now' },
       cta: 'See the whole day',

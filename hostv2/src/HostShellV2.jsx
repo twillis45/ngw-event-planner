@@ -8664,7 +8664,11 @@ export default function HostShellV2() {
               {/* Day-before plan — lib/dayBefore, appears only inside the real 0–2 day window */}
               {dayBefore && dayBefore.applicable && (
                 <div className="day-node" style={{ marginTop: 26 }}>
-                  <div className="eyebrow">{dayBefore.daysOut === 0 ? 'Today · your day-before plan' : dayBefore.daysOut === 1 ? 'Tomorrow · your day-before plan' : 'Two days out · your day-before plan'}</div>
+                  {/* A "day-BEFORE plan" dated TODAY is a contradiction the
+                      host reads on the most important day of the event. The
+                      module is the last run-through either way; only its name
+                      was wrong at T-0. */}
+                  <div className="eyebrow">{dayBefore.daysOut === 0 ? 'Today · your final run-through' : dayBefore.daysOut === 1 ? 'Tomorrow · your day-before plan' : 'Two days out · your day-before plan'}</div>
                   <h3>{(() => {
                     // RECON MODEL (2026-07-11): the engine's "7 things still
                     // matter" summed unlike units. Composed HERE (V2-side; the
@@ -8704,7 +8708,12 @@ export default function HostShellV2() {
                         case 'vendors': return n ? `${n} ${n === 1 ? 'person' : 'people'} to lock in` : 'Everyone you hired is locked in';
                         case 'rain': return n ? 'No rain backup yet' : 'Rain backup saved';
                         case 'helpers': return n ? `${n} ${n === 1 ? 'helper' : 'helpers'} to confirm` : 'Helpers all confirmed';
-                        case 'cues': return 'How tomorrow starts';
+                        // The SECTION's own label, not a second copy of it.
+                        // This literal was the reason fixing the lib alone did
+                        // nothing: the shell re-stated the string it was meant
+                        // to be reading, so "How tomorrow starts" survived on
+                        // the day even after the source became day-aware.
+                        case 'cues': return sec.label;
                         case 'guests': return 'Tell your guests';
                         default: return sec.label + (n ? ` — ${n} open` : '');
                       }

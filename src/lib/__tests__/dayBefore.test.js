@@ -129,3 +129,50 @@ test('never marks anything done; headline reflects real open count', () => {
   expect(busy.headline).toMatch(/still matter/);
   expect(JSON.stringify(busy)).not.toMatch(/all done|completed|✓/i);
 });
+
+describe('the copy tells the truth about WHICH day it is', () => {
+  // Found by looking at a marketing screenshot of the day-of surface, which is
+  // the most important screen in the product: it read "TODAY · YOUR DAY-BEFORE
+  // PLAN" over a module headed "How tomorrow starts". The window runs T-2
+  // through T-0 and only the headline was ever day-aware, so at T-0 the app
+  // told a host how tomorrow starts while they were standing in today.
+  const at = (daysOut) => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() + daysOut);
+    return d.toISOString().slice(0, 10);
+  };
+  const cuesLabelFor = (daysOut) => {
+    const plan = buildDayBeforePlan({
+      id: 'ev-copy', type: 'Cookout', date: at(daysOut), guestCount: 20,
+      startTime: '16:00',
+      ros: [{ time: '15:00', segment: 'Light the grill' }, { time: '16:00', segment: 'Doors' }],
+    });
+    if (!plan || !plan.applicable) return null;
+    const cues = (plan.sections || []).find((s) => s.key === 'cues');
+    return cues ? cues.label : null;
+  };
+
+  test('PREMISE — the cues section exists across the window', () => {
+    // Without this the assertions below pass on a section that never renders,
+    // which is the same green for a completely different reason.
+    for (const d of [0, 1, 2]) expect(cuesLabelFor(d)).toBeTruthy();
+  });
+
+  test('on the day it says TODAY, not tomorrow', () => {
+    expect(cuesLabelFor(0)).toMatch(/today/i);
+    expect(cuesLabelFor(0)).not.toMatch(/tomorrow/i);
+  });
+
+  test('the day before, it still says tomorrow', () => {
+    // Red-proofs the fix: hardcoding "today" would pass the test above and be
+    // wrong on the day that copy was actually written for.
+    expect(cuesLabelFor(1)).toMatch(/tomorrow/i);
+  });
+
+  test('two days out it commits to neither', () => {
+    const l = cuesLabelFor(2);
+    expect(l).not.toMatch(/today/i);
+    expect(l).not.toMatch(/tomorrow/i);
+  });
+});

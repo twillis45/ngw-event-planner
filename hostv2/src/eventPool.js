@@ -158,6 +158,30 @@ export const TEST_DAY_OF = mkTest('test-day-of', 'Test — Cookout (day of)', /^
 });
 export const TEST_TWO_DAYS = mkTest('test-two-days', 'Test — Game Night (in 2 days)', /game night/i, 2, {});
 
+// ── A MULTI-NIGHT EVENT, WHICH THE POOL DID NOT HAVE (2026-08-21) ────────────
+//
+// Found while shooting the marketing set: NOT ONE of the 26 seeded samples
+// carried a span, so `spanNights(ev) >= 1` was false everywhere and the
+// span-gated "Your days" door (sectionDirectory.js:62) never rendered on any
+// sample. The multi-day programme engine has been built, wired and shipped —
+// and there was no event in the app on which a host, a screenshot, or a test
+// could see it. An unreachable capability is indistinguishable from a missing
+// one, and this is the third time that pattern has surfaced today.
+//
+// `test-two-days` is NOT that event despite the name: it means "in two days",
+// a single-day event two days out. The distinction is exactly why nobody
+// noticed.
+//
+// A retreat rather than a wedding weekend: it is the case where the per-day
+// programme genuinely carries the work (arrival day, full day, departure
+// morning), which is what the door is for. `endDate` is the only field that
+// makes a span, and `extras` spreads last so it lands cleanly.
+export const TEST_MULTI_DAY = mkTest('test-multi-day', 'Test — Team Retreat (3 days)', /team retreat/i, 21, {
+  endDate: mkDate(23),          // two nights: arrive, full day, leave
+  venue: 'Lakeside Lodge', venueKind: 'venue',
+  totalBudget: 6200,
+});
+
 // ── QA seeds (2026-07-14) — the two states V2 could NOT reach ────────────────
 //
 // These exist because the claim-truthfulness sweep found that the surfaces where
@@ -261,9 +285,13 @@ export const TEST_ROSTER_FINAL_COUNT = mkTest('test-roster-final-count', 'Test �
 // against the SAME pool + patch layers the host shell reads (one truth).
 // Includes the created-event store (load-time read — fresh on every invite
 // page load) so every created event's invite link resolves, not just one.
-export const ALL_SAMPLES = [WANDA_GOLD_EVENT, REPAST_SAMPLE_EVENT, ...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, TEST_ROSTER_FINAL_COUNT, ...REAL_EVENTS, ...CUSTOM_EVENTS_AT_LOAD];
+// TEST_MULTI_DAY belongs in BOTH lists. Adding it only to ROSTER put it in the
+// switcher and left it unresolvable by id, so `?e=`/last-event fell through to
+// the fallback event and the door still never rendered — the seed fixing an
+// unreachable capability was itself unreachable.
+export const ALL_SAMPLES = [WANDA_GOLD_EVENT, REPAST_SAMPLE_EVENT, ...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_MULTI_DAY, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, TEST_ROSTER_FINAL_COUNT, ...REAL_EVENTS, ...CUSTOM_EVENTS_AT_LOAD];
 
-export const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, TEST_ROSTER_FINAL_COUNT];
+export const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_MULTI_DAY, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, TEST_ROSTER_FINAL_COUNT];
 export const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
 
 // Boot on the last event the host was working when it still exists on this
