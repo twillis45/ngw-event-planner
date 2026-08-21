@@ -3423,6 +3423,17 @@ export default function HostShellV2() {
       setPlaceNoteOpen(sheet.focus);
       setPlaceNoteDraft(String(event[PLACE_NOTE_FIELD[sheet.focus]] || ''));
     }
+    // "Your days" door (2026-08-21): the span-gated Sections row lands on the
+    // programme block, not the top of the furniture sheet — same anchor idiom
+    // as the guests rows below.
+    if (sheet && sheet.kind === 'space' && sheet.focus === 'days') {
+      setTimeout(() => {
+        try {
+          const el = document.getElementById('space-days');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch { /* anchor is best-effort */ }
+      }, 60);
+    }
     // Guests row-level landing (Up-Next #4): 'entry' scrolls to the count
     // stepper (count mode) or the counting chips (roster mode) and focuses the
     // number input; 'invites' scrolls to the share-and-invite block. Anchors
@@ -3820,6 +3831,9 @@ export default function HostShellV2() {
   const goToSection = (kind) => {
     if (kind === 'lodging') { goToLodgingCockpit(); return; }
     if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); }
+    // 'days' is the span-gated "Your days" door (sectionDirectory) — a second
+    // honest door onto the space sheet's programme block, not a new surface.
+    if (kind === 'days') { setSheet({ kind: 'space', focus: 'days' }); return; }
     setSheet({ kind });
   };
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
@@ -11153,7 +11167,7 @@ export default function HostShellV2() {
               const SLOT_OPTS = ['', 'morning', 'midday', 'afternoon', 'evening', 'night'];
               return (
                 <>
-                  <div className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
+                  <div id="space-days" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
                   {it.source !== 'host' ? (
                     <>
                       {it.rows.map((r, i) => (

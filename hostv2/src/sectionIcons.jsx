@@ -38,6 +38,9 @@ const P = {
   budget:    <><path d="M8 1.6v12.8" /><path d="M10.9 4H6.6a2.1 2.1 0 0 0 0 4.2h2.8a2.1 2.1 0 0 1 0 4.2H4.8" /></>,
   vendors:   <><rect x="1.8" y="4.8" width="12.4" height="8.6" rx="1.4" /><path d="M5.6 4.8V3.4A1.4 1.4 0 0 1 7 2h2a1.4 1.4 0 0 1 1.4 1.4v1.4" /><path d="M1.8 8.6h12.4" /></>,
   space:     <><rect x="1.8" y="2.4" width="12.4" height="11.2" rx="1.3" /><path d="M1.8 6.4h12.4" /><path d="M6.2 6.4v7.2" /></>,
+  // "Your days" (span-gated door, 2026-08-21): calendar with day ticks —
+  // distinct from `space`'s floor-plan grid at 16px.
+  days:      <><rect x="1.8" y="3" width="12.4" height="10.6" rx="1.3" /><path d="M1.8 6.2h12.4" /><path d="M4.6 1.6v2.6" /><path d="M11.4 1.6v2.6" /><path d="M4.4 9h2" /><path d="M9.6 9h2" /><path d="M4.4 11.4h2" /></>,
   seating:   <><path d="M3.4 6.6V3.9a1.5 1.5 0 0 1 1.5-1.5h6.2a1.5 1.5 0 0 1 1.5 1.5v2.7" /><path d="M2.2 6.6h11.6v3.9H2.2z" /><path d="M3.6 10.5v3.1" /><path d="M12.4 10.5v3.1" /></>,
   tasks:     <><path d="M2 4.4l1.6 1.6L6.4 3" /><path d="M2 11.1l1.6 1.6 2.8-3" /><path d="M8.6 4.6h5.4" /><path d="M8.6 11.4h5.4" /></>,
   decisions: <><path d="M8 1.8v3.1" /><circle cx="8" cy="6.6" r="1.7" /><path d="M6.5 7.9L3.2 13.9" /><path d="M9.5 7.9l3.3 6" /></>,

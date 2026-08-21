@@ -24,6 +24,7 @@
 // be pinned by a test, and the failure mode is silent.
 
 import { moneyDatesFor } from './moneyDates';
+import { spanNights } from './dates';
 
 /**
  * sectionGroups({ event, travel, crab, outdoor }) -> [{ title, rows: [{k, label, sub}] }]
@@ -52,6 +53,13 @@ export function sectionGroups(state) {
       { k: 'budget', label: 'Your money', sub: 'Planned, spoken for, and spent' },
       { k: 'vendors', label: 'People you’re hiring', sub: 'Bookings, deposits, day-of arrival' },
       { k: 'space', label: 'Space, seats & helpers', sub: 'Tables, chairs, rentals, who’s helping' },
+      // THE FURNITURE-LABEL DEFECT (2026-08-08 drive, fixed 2026-08-21): a
+      // five-day trip's day-by-day programme rendered inside "Space, seats &
+      // helpers / Tables, chairs, rentals" — a full drive missed it entirely.
+      // Span-gated door with a name that says what it opens. 'days' is a
+      // VIRTUAL kind: goToSection routes it to the space sheet focused on the
+      // programme block — one surface, two honest doors, no duplicate render.
+      ...(spanNights(ev) >= 1 ? [{ k: 'days', label: 'Your days', sub: 'The plan, day by day' }] : []),
       { k: 'seating', label: 'Who sits where', sub: 'The floor plan' },
       { k: 'tasks', label: 'Your checklist', sub: 'Every step, in the order it matters' },
       { k: 'decisions', label: 'Calls to make', sub: 'Open choices the plan is waiting on' },

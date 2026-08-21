@@ -22,6 +22,7 @@
 
 import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard } from './playbooks';
 import { rainPlanStatus, isLikelyOutdoor } from './weather';
+import { spanNights } from './dates';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
@@ -80,9 +81,17 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
   // counts back from it, priority 1); a merely-unconfirmed start time is a real but low-stakes
   // gap (priority 9, same as when it was its own area — it surfaces without crowding the venue,
   // the food or the guest count).
+  // MULTI-DAY HONESTY (2026-08-21 spine audit): on a five-day event the cue
+  // read "Set the start time", singular — one clock claimed for the whole
+  // span. The architecture is actually right (startTime anchors DAY 1;
+  // programmeDays derives later days from their own first beat), so the fix
+  // is the COPY saying what the clock really governs.
+  const _multiDay = (() => { try { return spanNights(ev) >= 1; } catch (_e) { return false; } })();
   add('datetime', true, _hasDate && _timeOk,
     !_hasDate ? 'Add the event date to time the plan'
-      : String(ev.startTime || '').trim() ? 'Confirm the start time' : 'Set the start time',
+      : String(ev.startTime || '').trim()
+        ? (_multiDay ? 'Confirm the first day’s start time' : 'Confirm the start time')
+        : (_multiDay ? 'Set the first day’s start time' : 'Set the start time'),
     !_hasDate ? { tab: 'Event Details', focusField: 'event-date' } : { tab: 'Event Details', focusField: 'event-start' },
     !_hasDate ? 1 : 9);
   // Location essential uses the ONE shared reader (eventLocationStatus) — an
