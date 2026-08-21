@@ -16696,6 +16696,15 @@ export default function HostShellV2() {
                             staleness against since it was built with nothing writing it. */}
                         {String(v.name || '').trim() && (() => {
                           const cs = contactState(v);
+                          // The ops question, on the wall (Weiss/Venue-Ops
+                          // seats): "did the ask go out, when, and did they
+                          // answer". The contact line answers when+answer; the
+                          // send ledger answers HOW it went out. Rendered only
+                          // when the ledger holds this vendor's draft, and in
+                          // the same visual grammar as the draft sheet:
+                          // outline = the host's word, filled = server-verified.
+                          const vSend = sendStateFor(event.sendLedger, 'Note to ' + (v.name || 'your vendor'));
+                          const vSendLine = sendStateLine(vSend, Date.now());
                           return (
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline',
                               gap: 8, margin: '2px 0 10px' }}>
@@ -16716,6 +16725,16 @@ export default function HostShellV2() {
                                       ? `You reached out ${cs.daysSince} days ago and haven’t heard back.`
                                       : `You reached out ${cs.daysSince === 0 ? 'today' : cs.daysSince + ' days ago'}.`}
                               </span>
+                              {vSendLine && (
+                                <span className="of" style={{
+                                  borderRadius: 'var(--r-pill)', padding: '2px 8px', whiteSpace: 'nowrap',
+                                  ...(isVerifiedState(vSend)
+                                    ? (vSend.status === 'failed'
+                                      ? { color: 'var(--danger)', background: 'var(--danger-tint)' }
+                                      : { color: 'var(--ok)', background: 'var(--ok-tint)' })
+                                    : { color: 'var(--steel-soft)', border: '1px solid var(--line)' }),
+                                }}>{vSendLine}</span>
+                              )}
                             </div>
                           );
                         })()}

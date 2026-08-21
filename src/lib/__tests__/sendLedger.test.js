@@ -147,6 +147,14 @@ describe('the shell wiring (draft sheet)', () => {
   test('verified and attested chips are visually distinct (ruling risk #1)', () => {
     expect(SHELL).toMatch(/isVerifiedState\(/);
   });
+
+  test('the vendor row reads the ledger — the ops question answered on the wall', () => {
+    // "did the ask go out, when, and did they answer": the contact line owns
+    // when+answer, this owns HOW it went out, keyed by the vendor's own draft.
+    expect(SHELL).toMatch(/const vSend = sendStateFor\(event\.sendLedger, 'Note to ' \+ \(v\.name \|\| 'your vendor'\)\)/);
+    expect(SHELL).toMatch(/const vSendLine = sendStateLine\(vSend, Date\.now\(\)\)/);
+    expect(SHELL).toMatch(/isVerifiedState\(vSend\)/);
+  });
 });
 
 describe('the loss gate', () => {
