@@ -155,6 +155,13 @@ describe('the shell wiring (draft sheet)', () => {
     expect(SHELL).toMatch(/const vSendLine = sendStateLine\(vSend, Date\.now\(\)\)/);
     expect(SHELL).toMatch(/isVerifiedState\(vSend\)/);
   });
+
+  test('the row never contradicts itself — "No record" cannot sit beside a handoff', () => {
+    // Host report 2026-08-21: the vendor row rendered "No record of reaching
+    // out yet." AND "Handed off by text · 6d ago" together. A handoff IS a
+    // record; the sentence steps aside and the chip carries the fact.
+    expect(SHELL).toMatch(/\(vSend \? '' : 'No record of reaching out yet\.'\)/);
+  });
 });
 
 describe('the loss gate', () => {

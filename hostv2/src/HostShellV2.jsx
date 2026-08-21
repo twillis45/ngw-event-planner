@@ -16716,9 +16716,15 @@ export default function HostShellV2() {
                               <span className="grounding" style={{ margin: 0,
                                 color: cs.silent ? 'var(--warn)' : 'var(--faint)' }}>
                                 {/* Three different sentences, never merged. "No record" is not
-                                    "they ignored you" — we simply do not know. */}
+                                    "they ignored you" — we simply do not know.
+                                    AND NEVER CONTRADICT THE LEDGER (host report,
+                                    2026-08-21): a row that said "No record of reaching
+                                    out yet." beside "Handed off by text · 6d ago" called
+                                    the host a liar about something they did. A handoff IS
+                                    a record, so when the ledger holds one the sentence
+                                    steps aside and the chip carries the fact. */}
                                 {!cs.known
-                                  ? 'No record of reaching out yet.'
+                                  ? (vSend ? '' : 'No record of reaching out yet.')
                                   : !cs.awaitingReply
                                     ? 'They came back to you.'
                                     : cs.silent
