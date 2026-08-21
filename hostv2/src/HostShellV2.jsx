@@ -4349,7 +4349,7 @@ export default function HostShellV2() {
   // (it always meant "regenerate"), so it clears the kept copy too.
   const draftEditsRef = useRef({});
   const draftEditKey = (title) => String(title || 'draft');
-  const openDraft = (title, d, queue) => {
+  const openDraft = (title, d, queue, opts) => {
     const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
     if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
     const kept = draftEditsRef.current[draftEditKey(title)];
@@ -4359,8 +4359,12 @@ export default function HostShellV2() {
     // time through the SAME real handoffs below — never a silent bulk send).
     // `from`: the sheet this draft was opened over, so Close means back, not
     // out (a draft opened from a draft inherits the ORIGINAL parent).
+    // `vendorId`: a vendor-directed draft carries its vendor, so a recorded
+    // handoff ALSO logs vendor contact — one gesture, and the silence clock
+    // (contactState/derive.js) starts without a second tap.
     setSheet(prev => ({
       kind: 'draft', title, body, queue: queue || null,
+      vendorId: (opts && opts.vendorId) || null,
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
   };
@@ -14975,6 +14979,16 @@ export default function HostShellV2() {
               // nothing more). A DECLINED share sheet records nothing.
               const recordSend = (channel) => {
                 const led = recordHandoff(event.sendLedger, sheet.title, channel, new Date().toISOString());
+                if (sheet.vendorId) {
+                  // Vendor-directed draft: the handoff IS the outreach. The
+                  // ledger write goes quiet (the chip confirms it) and the
+                  // vendor-contact log carries the one toast — its sentence
+                  // ("if they go quiet, this is what tells you") is the one
+                  // that earns the moment. One gesture, both records.
+                  patchEvent({ sendLedger: led }, null, { noUndo: true });
+                  logVendorContact(sheet.vendorId);
+                  return;
+                }
                 patchEvent({ sendLedger: led }, 'Noted — the plan remembers this went out.');
               };
               const sendChip = sendStateLine(sendStateFor(event.sendLedger, sheet.title), Date.now());
@@ -17038,7 +17052,7 @@ export default function HostShellV2() {
                           })()}
                           {memLine && <p className="vc-detail">{memLine}</p>}
                           <div className="pill-grid" style={{ marginTop: 'var(--sp-3)' }}>
-                            <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile))}>Draft note</button>
+                            <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft note</button>
                             {Number(v.cost) > 0 && !v.balancePaid && (
                               <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
                             )}

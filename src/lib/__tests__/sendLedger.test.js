@@ -72,6 +72,16 @@ describe('the shell wiring (draft sheet)', () => {
     expect(SHELL).toMatch(/Mark it sent/);
   });
 
+  test('a vendor-directed handoff also logs vendor contact — one gesture, both ledgers', () => {
+    // The vendor Draft note carries its vendor into the sheet…
+    expect(SHELL).toMatch(/openDraft\('Note to ' \+ \(v\.name \|\| 'your vendor'\), draftVendorOutreach\(event, v, profile\), null, \{ vendorId: v\.id \}\)/);
+    // …and recordSend routes the vendor case through logVendorContact, so the
+    // silence clock (contactState) starts on the same tap.
+    const fn = SHELL.slice(SHELL.indexOf('const recordSend = '), SHELL.indexOf('const recordSend = ') + 1200);
+    expect(fn).toMatch(/sheet\.vendorId/);
+    expect(fn).toMatch(/logVendorContact\(sheet\.vendorId\)/);
+  });
+
   test('the state chip renders the attested line, never the word Sent alone', () => {
     expect(SHELL).toMatch(/sendStateLine\(/);
   });
