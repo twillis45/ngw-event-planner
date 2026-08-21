@@ -14,7 +14,7 @@
 // `!(foodSect.diet || … || foodSect.list)`, so it vanished the moment the host
 // opened the list itself. The one person who could not reach it was the one
 // looking at their shopping list.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page) => {
   await page.addInitScript(() => {
@@ -34,9 +34,7 @@ const boot = async (page) => {
 
 /** Open the food sheet, then drill into the list itself. */
 const openTheList = async (page) => {
-  await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
-  await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
-  await page.locator('.sheet').last().getByText(/spread|shopping/i).first().click({ timeout: 8000 });
+  await openSectionByName(page, 'spread');
   await expect(page.locator('#sheet-title')).toBeVisible({ timeout: 8000 });
   const listRow = page.locator('.sheet').last().getByText(/^The list|Still to get|shopping list/i).first();
   if (await listRow.count()) await listRow.click({ timeout: 8000 }).catch(() => {});
@@ -48,9 +46,7 @@ test.describe('taking the shopping list out of the app', () => {
     // host never reaches, or fail because the sheet never opened at all — two
     // very different problems that look identical from a red assertion.
     await boot(page);
-    await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
-    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
-    await page.locator('.sheet').last().getByText(/spread|shopping/i).first().click({ timeout: 8000 });
+    await openSectionByName(page, 'spread');
     await expect(page.locator('.sheet').last().getByText('Copy the shopping list').first()).toBeVisible({ timeout: 8000 });
   });
 

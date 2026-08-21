@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-08-21 (dawn session).
+**Measured reality, not intentions.** Updated 2026-08-21 (dawn + midday).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -8,11 +8,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `ae2c99da` (local; push after CI on the prior batch) |
-| Last pushed | `1bd405de` — CI green |
-| Jest | **6044 passed**, 1 skipped, 424 suites |
-| Backend pytest | **353 passed** |
-| e2e (Playwright) | **desktop 119 passed / 7 skipped, mobile 82 passed** — full suites, zero failures |
+| Branch / HEAD | `main` @ `46909fa8` (local, plus uncommitted follow-ups in the tree) |
+| Last pushed | `1bd405de` — CI green (not re-checked this pass) |
+| Jest | **6053 passed**, 1 skipped, 426 suites — measured this pass |
+| Backend pytest | **353 passed** (unchanged; not re-run this pass) |
+| e2e (Playwright) | last full run: desktop 119 passed / 7 skipped, mobile 82 passed. Since then: `checklistFollowsDecisions.spec.mjs` (+3) and nine specs moved onto the shared section door. Not re-measured as a full suite. |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 
@@ -55,6 +55,25 @@ this file is the short answer to "where is it, is it green, what's next."
    "jumping, dizzying". `.stagewrap` had `overflow:hidden`, which still permits
    programmatic scrolling, so every row landing scrolled the frame and the rail
    walked off the top with no scrollbar to bring it back. `overflow:clip`.
+10. **The checklist follows the decisions** (`46909fa8`) — the audit's #1 item,
+    shipped. `src/lib/checklistReconcile.js` merges `playbookChecklist(event)`
+    into `event.timeline` instead of freezing it at creation: derived rows
+    append, stored rows keep `done`/`owner`/host edits, gated-out `pbt-` rows
+    are marked `retired` (never deleted) and revive in place carrying `done`,
+    host-written rows are never touched, and an empty derivation is treated as
+    no-information so the 9 typeless types cannot wipe a list. Wired as a
+    `useEffect` on the event and the gate inputs (`HostShellV2.jsx:5125-5152`);
+    retired rows leave the "N of M" DENOMINATOR as well as the numerator
+    (`:15387`). Gates: `checklistReconcile.test.js` (9, against the real
+    generator) and `checklistFollowsDecisions.spec.mjs` (3, red-proofed by
+    unwiring the call). **The catch-up pass is silent** — the first reconcile
+    per event per session patches with no toast; announcing it put a banner
+    over the controls 12 specs were reaching for.
+11. **Sheet-origin motion, finished** — `@keyframes panelrise` is origin-aware
+    too (`styles.css:3367`); wiring only `sheetrise` had left the centered-panel
+    breakpoint on the old constant. And the shell now measures the sheet with
+    its animation temporarily off (`HostShellV2.jsx:3560-3576`): measuring
+    through the entrance transform put every origin exactly 24px short.
 
 ## Scores
 
@@ -65,39 +84,49 @@ vs 63.8% on 07-13. Decision engine 42/50.
 
 `docs/audits/2026-08-21_DECISION_ENGINE_AND_TASK_COVERAGE_AUDIT.md`.
 
-**The checklist is frozen at creation.** `event.timeline` is seeded once
-from `playbookChecklist()` (HostShellV2.jsx:6077) and never reconciled —
-`draftTimeline()` at :4633 runs only when there is NO timeline yet. Every
-choice gate inside that function (caterer lever, `whenChoice`, `whenKids`,
-`isDestination`) therefore does its work exactly once and is dead
-afterwards. Verified independently, not taken on the audit's word: flip a
-crab feast's `steam_vs_order` and the engine swaps two tasks each way
-(rent a rack steamer + steam your own, in place of lock a pickup slot +
-collect the hot crabs). A host who changes that decision after creation
-keeps both pickup tasks and never sees either steaming task.
+The frozen checklist — that document's item #1, and the one that mattered
+most — is **DONE** (see "What shipped", item 10). What remains:
 
-Two more, same document: 9 of 48 taxonomy types have no playbook at all
-(a bare Town Hall yields ros 0 / checklist 0 / decisions 0 / risks 0 —
-total silence), and `playbookMilestones` / `playbookTasks` /
-`playbookDayOfChecklist` are finished engines with ZERO imports in
-hostv2, so 382 milestones and 32 of 39 day-of lists reach no host.
+**9 of 48 taxonomy types have no playbook at all.** A bare Town Hall
+yields ros 0 / checklist 0 / decisions 0 / risks 0 / raises 0 — total
+silence, and the seeded samples only look alive because the fixture
+hand-authors `ros` and `timeline`. Item #2 in the audit: a family-level
+fallback that says it is a fallback, then author Client Dinner and
+Fundraiser/Gala for real, and leave "Other" honestly empty.
+
+**Three finished engines have ZERO hostv2 imports.**
+`playbookMilestones` (382 authored milestones, 52 with a non-host owner),
+`playbookTasks` (the dated buy ladder), and `playbookDayOfChecklist`
+(imported only by the frozen CRA), so 32 of 39 day-of lists reach no
+host. Audit items #3 and #4; the day-of wire is one import and one
+render.
+
+**Still open on the reconcile itself:** it has not been driven through
+the decision board's own control in a browser. The crab swap is pinned at
+unit level against the real generator; two attempts at a browser walk
+produced a flaky test rather than a failing feature, so it is recorded
+open rather than papered over.
 
 Day-of coverage itself is strong and should be left alone: a Cookout at
 T-0 surfaces 18 run-of-show rows from 5h out through teardown.
 
 ## Next, in order
 
-1. Push `a259ecd7` once the prior batch's CI is green (concurrency: never
-   push over an in-flight run).
-2. Vendors board items 2–6: `.frow` metrics, flip `.vc-chip` off `--warn`
+1. Commit the working-tree follow-ups, then push through `46909fa8` once the
+   prior batch's CI is green (concurrency: never push over an in-flight run).
+2. Drive the crab swap through the decision board control in a browser — the
+   one part of the reconcile still unproven at the surface.
+3. Audit item #2 (the 9 typeless types) then #3 (wire
+   `playbookDayOfChecklist` into hostv2's day stage — one import, one render).
+4. Vendors board items 2–6: `.frow` metrics, flip `.vc-chip` off `--warn`
    (red-proof it), settled fold, sheet toolbar, on-demand detail panel.
-3. Motion, what is still open after `76cc7a76` — FLIP or a shared element on
+5. Motion, what is still open after `76cc7a76` — FLIP or a shared element on
    list reorder (ranked rows still CUT to new positions, and that is this
    product's whole thesis), the four remaining layout-animating fills, and
    focus response on `.mini` / `.path-row` / `.navrow`. Both motion cells sit
    at 8; the audit doc names the exact levers.
-4. Comms: prove the Resend webhook live before any `delivered` renders.
-5. **User-side only:** D-2's five preconditions (domain + policies, demo
+6. Comms: prove the Resend webhook live before any `delivered` renders.
+7. **User-side only:** D-2's five preconditions (domain + policies, demo
    account sign-in, stranger-proof onboarding test, live-keys Stripe run
    then flip billing, 3 non-founder hosts), pentest, device AT passes.
 
@@ -108,6 +137,17 @@ T-0 surfaces 18 run-of-show rows from 5h out through teardown.
 - **Four false-zero probes** in one session (grep missed a chunk; a class-name
   counter missed a quote style; `hit.contains(el)` counted ancestors; a raw
   token compared against computed `rgb()`). Red-proof every gate.
+- **A door that moves with the viewport belongs in one helper.** Hiding the
+  duplicate "Jump to a section" row at rail widths turned ten e2e specs red at
+  `desktop` and `wide` while the app itself was fine; I fixed exactly one
+  (`a11yFloor`) because it was the one my local desktop run happened to
+  execute, and left nine carrying the old inline phone path. The door is now
+  `openSectionByName(page, name)` in `hostv2/e2e/fixtures.mjs` — it uses the
+  rail when present and the two-tap menu otherwise. Running one project
+  locally is not running the suite.
+- **A new toast is a new obstacle.** The reconcile's announcement broke 12
+  specs on click timeouts by sitting over the controls they were reaching for.
+  The specs were right: it was a banner nobody had asked for.
 - `git checkout --` after a red-proof reverts the guarded edit too. Fault
   and restore with a targeted string swap instead.
 - **Reading the CSS is not measuring it.** A reviewer derived "the frame

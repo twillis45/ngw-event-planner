@@ -21,7 +21,7 @@
 // ("No tasks yet"), which makes it the right stage on purpose. The derived group
 // renders in the empty-checklist branch as well as the populated one, and this
 // is the only test that covers that branch.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 // TSW owes all four. Ironwood owes nothing — deliberately settled on every axis
 // the module reads, including `coiVerified: true`, so a regression that fires on
@@ -58,9 +58,7 @@ const boot = async (page, patch) => {
 
 /** Open the checklist the way a host does — through the Sections door. */
 const openChecklist = async (page) => {
-  await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
-  await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 5000 });
-  await page.locator('.sheet').last().getByText('Your checklist', { exact: false }).first().click({ timeout: 5000 });
+  await openSectionByName(page, 'Your checklist', { timeout: 5000 });
   await expect(page.locator('#sheet-title')).toHaveText('Your checklist', { timeout: 5000 });
 };
 

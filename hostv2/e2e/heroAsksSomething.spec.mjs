@@ -23,8 +23,21 @@ import { test, expect } from './fixtures.mjs';
 const EV = 'test-day-before-vendors';
 const isoIn = (d) => { const x = new Date(); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
 
+// The wedding's expectation CHANGED on 2026-08-21 and the change is correct.
+// Before the checklist reconcile, the wedding's own budget task was never on
+// the list — `event.timeline` was frozen at creation, so switching this fixture
+// to a Wedding never brought the wedding playbook's tasks with it. With the
+// reconcile live, that task arrives carrying its authored T-365 lead, and 120
+// days out it is 245 days past its window: 120 + 245 = 365, the engine applying
+// its own number exactly.
+//
+// So the hero now leads with the money instead of the ceremony, and that is the
+// better answer — for a wedding four months out with no budget agreed, the
+// budget is the decision every other decision waits on. What this test has
+// always guarded is that the hero asks something REAL and specific rather than
+// a placeholder, and it still does.
 const CASES = [
-  ['a wedding four months out', { type: 'Wedding', date: isoIn(120) }, /what kind of ceremony/i],
+  ['a wedding four months out', { type: 'Wedding', date: isoIn(120) }, /Agree total budget/i],
   ['a retirement party a month out', { type: 'Retirement Party', date: isoIn(30) }, /at home, a restaurant, or the workplace/i],
   ['a birthday two weeks out', { type: 'Birthday Party', date: isoIn(14) }, /is there a theme/i],
 ];

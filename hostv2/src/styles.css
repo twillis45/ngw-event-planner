@@ -3358,7 +3358,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
     box-shadow:inset 0 1px 0 var(--sheen), 0 8px 32px rgba(0,0,0,.5);
     animation:panelrise var(--ms-sheet) var(--ease-standard);
   }
-  @keyframes panelrise{from{transform:translate(-50%,calc(-50% + 24px)); opacity:.4} to{transform:translate(-50%,-50%); opacity:1}}
+  /* Origin-aware, exactly like `sheetrise` — and it had to be said twice
+     because the centered-panel breakpoint swaps the keyframe, not just the
+     geometry. Wiring only `sheetrise` gave the sheet an origin at phone and
+     rail widths and left tablet/landscape on the old constant, which is a gap
+     in the FEATURE that happened to surface as a failing test. Same
+     `--from-y`, same 24px default, so an un-originated open is unchanged. */
+  @keyframes panelrise{from{transform:translate(-50%,calc(-50% + var(--from-y,24px))); opacity:.4} to{transform:translate(-50%,-50%); opacity:1}}
 }
 
 /* DAY-OF IN THE ELEGANT SYSTEM (T2 ruling 2026-07-23, Figma 598:60/602:60): the hero

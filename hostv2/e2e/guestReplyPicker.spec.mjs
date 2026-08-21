@@ -13,7 +13,7 @@
 //      floor here even though UX_05:72 would accept 32 for a chip.
 //
 // Runs on the phone project because that is where the floor bites.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page) => {
   await page.addInitScript(() => {
@@ -26,14 +26,8 @@ const boot = async (page) => {
   await settled(page);
 };
 
-// Deterministic nav to the roster: masthead menu → Jump to a section → Guests.
-const openGuests = async (page) => {
-  await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
-  await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 5000 });
-  const guests = page.locator('.sheet').last().getByText('Guests', { exact: false }).first();
-  await guests.click({ timeout: 5000 });
-  await page.waitForTimeout(400);
-};
+// Deterministic nav to the roster, through whichever door this viewport has.
+const openGuests = (page) => openSectionByName(page, 'Guests', { timeout: 5000 });
 
 test.describe('the guest reply picker', () => {
   test('is absent from the collapsed roster, and opening one guest moves no other row', async ({ page }) => {

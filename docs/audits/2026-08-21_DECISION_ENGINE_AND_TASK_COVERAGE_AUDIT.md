@@ -1,6 +1,9 @@
 # Decision Engine + Task Coverage — audit
 
-Date: August 21, 2026. Report only; no source file was modified.
+Date: August 21, 2026. Report only at the time of writing; no source file was
+modified by the audit itself. Amended later the same day — shortlist item 1 has
+since SHIPPED (`46909fa8`), and finding 9 records what that shipped change did
+to next-best-action ranking. Items 2-8 stand exactly as measured.
 HEAD at time of measurement: `76cc7a76` (`main`, local; a parallel session
 advanced it to `ae2c99da` mid-audit — the two commits between are motion and a
 `.stagewrap` overflow fix, neither of which touches the engine or the corpus).
@@ -52,6 +55,9 @@ inside `playbookChecklist` — the caterer lever, `whenChoice`, `whenKids`,
 the shipping shell none of them can, because the list was written before the
 decision was made. The app is silent about the tasks a host's own choices
 create.
+
+*(That second finding is now closed — see the SHIPPED note on ranked fix 1. The
+paragraph above is left as measured, because it is the reason the fix exists.)*
 
 ---
 
@@ -361,6 +367,68 @@ worried about: needed, cheap to say, and the app never raises them.
 
 ### 1. Reconcile `event.timeline` against `playbookChecklist` instead of freezing it
 
+> **SHIPPED 2026-08-21, `46909fa8` ("The checklist follows the decisions").**
+> Built as `src/lib/checklistReconcile.js` — a pure
+> `reconcileChecklist(stored, derived, opts)` plus `reconcileSummary(res)` —
+> and wired in `hostv2/src/HostShellV2.jsx:5125-5152` as a `useEffect` keyed on
+> the event id and the gate inputs (`foodChoices`, `travelMode`,
+> `isDestination`, `foodFocus`, `caterer`, `date`).
+>
+> **Built as specified**, with the merge rules above intact: derived-only rows
+> append, stored `pbt-` rows keep `done`/`owner`/host edits while `task`,
+> `week`, `leadDays`, `category`, `phase` and `provenance` refresh from the
+> derived row, gated-out `pbt-` rows are marked `retired: true` with a reason
+> rather than deleted, and rows without the `pbt-` prefix are passed through
+> untouched. A retired row that comes back **revives in place carrying its
+> `done`** — it was never destroyed.
+>
+> **Three things the build added that this section did not call for.**
+>
+> - *Reconcile on the event, not on the checklist read.* The section said "on
+>   every read of the checklist sheet". That would have left the readiness
+>   feed, the open-task counts and the home hero quoting a stale list until the
+>   host happened to open the sheet. It runs on the event instead.
+> - *An empty derivation is no-information, not "everything is gone".* Guarded
+>   explicitly, because finding #2 of this very audit is nine event types whose
+>   derivation is empty — without the guard, opening a Town Hall would retire
+>   the host's entire list, and that loss is un-undoable.
+> - *`changed` in the return shape.* The caller patches only when the merge did
+>   something, so a no-op pass writes nothing. `provenance` is a fresh object
+>   every generation, so the field comparison is by value; an identity check
+>   would mark every row dirty on every pass and put the shell in a
+>   patch/render/patch loop. Idempotence is pinned by test, not left to luck.
+>
+> **The catch-up pass is deliberately silent.** Every list authored before this
+> existed is stale by definition, so the first reconcile on any event has
+> something to report — and reporting it meant a toast over the app the moment
+> a host opened anything, about housekeeping they had not caused. Found by
+> running the full suite: 12 specs went red on click timeouts because the
+> announcement was sitting on the controls they were reaching for. The first
+> reconcile per event per session now patches with no toast and no undo entry;
+> only a change following an in-session host action says a sentence.
+>
+> **Downstream, as predicted.** `isTimelineStepResolved` treats a retired row
+> as resolved, and the "N of M" hero excludes retired rows from the
+> **denominator** as well as the numerator (`HostShellV2.jsx:15387`) — counting
+> them as done would jump a host's progress for work they never did.
+>
+> **Gates, both red-proofed.** `src/lib/__tests__/checklistReconcile.test.js`
+> (9 tests against the REAL generator: the crab swap both directions,
+> revive-with-`done`, idempotence, the empty guard, manual rows untouched) and
+> `hostv2/e2e/checklistFollowsDecisions.spec.mjs` (3 tests: the draft premise,
+> the wiring, and no write loop). The wiring test is red-proofed by unwiring
+> the call, and it watches the WRITE rather than the toast — its first version
+> watched for the announcement, which the silence fix then removed.
+>
+> **LEFT OPEN, deliberately.** The crab swap has not been driven through the
+> decision board's own control in a browser. It is pinned at unit level against
+> the real generator; two attempts at a browser walk produced a flaky test
+> rather than a failing feature, so this is recorded open rather than papered
+> over. Per the standing rule, this fix is not "driven live" until that walk
+> exists.
+>
+> **One ranking side effect fell out of it — see finding 9 below.**
+
 **The problem.** `hostv2/src/HostShellV2.jsx:6077` seeds `event.timeline` once at
 creation. `:4642` (`draftTimeline`) is the only other bulk writer and it is an
 empty-state CTA. `:4013`, `:4055` add single manual rows; `:4596`, `:5000` toggle
@@ -487,6 +555,38 @@ the shape of the day legible without adding content.
 The named Coverage 8->9 lever, unchanged: at T-60 a seasoned planner still
 raises the two or three cheap-now calls. The deferred bucket is honest but it is
 a floor, not the ceiling.
+
+---
+
+## FINDING 9 — reconciliation reorders next-best-action (added 2026-08-21)
+
+Not a fix; an effect of fix 1 that the host should see before someone reports
+it as a regression.
+
+`hostv2/e2e/heroAsksSomething.spec.mjs` had guarded that a wedding four months
+out is asked **"what kind of ceremony"**. With the reconcile live it now leads
+with **"Agree total budget + who pays"**.
+
+The mechanism is exactly the freeze this audit described, seen from the other
+side. That fixture is switched to `type: 'Wedding'` after creation, so under
+the frozen checklist the wedding playbook's own tasks never arrived with it.
+Reconciled, the budget task lands carrying its authored **T-365** lead, and at
+120 days out it is **245 days past its window** — 120 + 245 = 365, the engine
+applying its own number exactly, not a tuning accident.
+
+The expectation was updated rather than the ranking, because the new answer is
+better: for a wedding four months out with no budget agreed, the budget is the
+decision every other decision waits on. What that spec has always guarded — the
+hero asks something real and specific rather than a placeholder — still holds.
+
+**The general shape, which is the part worth watching.** Reconciliation puts
+long-lead tasks onto lists that never carried them, and long leads sort early,
+so the hero's first ask can move on events whose type or date changed after
+creation. It is the engine's own authored lead doing the work in every case.
+But "the ask that was right yesterday is not the ask today" is a host-facing
+behavior change on the most prominent surface in the product, and the review
+board should rule on whether a large lead alone ought to outrank a nearer
+decision, or whether overdue-by-lead needs a ceiling. Recorded, not decided.
 
 ---
 

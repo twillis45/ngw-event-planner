@@ -7,7 +7,7 @@
 //
 // It measures rather than screenshots — an amber count and a collapsed height
 // are facts; "looks calmer" is not.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const VENDORS = [
   // One of each state the ranked selector has to choose between, so the
@@ -29,11 +29,9 @@ const boot = async (page) => {
   }, VENDORS);
   await page.goto('?elegant=1');
   await settled(page);
-  // The same door-walk a11yFloor uses: masthead → Jump to a section → the row.
-  // Not a hardcoded route, so this keeps working if the routing changes.
-  await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
-  await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
-  await page.locator('.sheet').last().getByText(/People you.re hiring/i).first().click({ timeout: 8000 });
+  // Through the shared section door, not a hardcoded route — the rail replaces
+  // the menu path above 1280 and only the helper needs to know that.
+  await openSectionByName(page, 'People you');
   await settled(page);
 };
 
@@ -81,6 +79,12 @@ test.describe('the vendors sheet after the ruling', () => {
 
     // Clause 3: at most ONE amber mark per card. Five cards, several carrying
     // COI + status, so the pre-ruling face (which could stack four) blows it.
+    // Bring a card into view first. `amberCount` hit-tests with
+    // `elementFromPoint`, which only sees the VIEWPORT — at landscape
+    // (860x430) every card had scrolled past the fold, so the counter honestly
+    // reported zero painted amber and the assertion read it as a defect. The
+    // instrument was measuring an empty screen, not a fixed sheet.
+    await page.locator('.vcard').first().scrollIntoViewIfNeeded();
     const { n, warn } = await amberCount(page);
     expect(warn).toMatch(/^rgb/);                 // the counter really resolved the token
     expect(n).toBeGreaterThan(0);                 // …and really counts (these vendors ARE overdue)

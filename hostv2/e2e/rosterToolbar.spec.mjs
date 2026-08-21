@@ -10,7 +10,7 @@
 // NOTHING on screen says so. The code indexes first and filters the {g,i}
 // pairs; this proves it, because a unit test cannot see the rendered list and
 // a bug here is invisible until a host has already written the wrong fact.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const ROSTER = Array.from({ length: 12 }, (_, k) => ({
   id: 'g-t' + k,
@@ -31,12 +31,7 @@ const boot = async (page) => {
 };
 
 const openGuests = async (page) => {
-  await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
-  await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
-  const g = page.locator('.sheet').last().getByText('Guests', { exact: false }).first();
-  if (await g.count() === 0) { test.skip(true, 'no guests section'); return false; }
-  await g.click({ timeout: 8000 });
-  await page.waitForTimeout(600);
+  await openSectionByName(page, 'Guests', { settle: 600 });
   return true;
 };
 

@@ -3556,6 +3556,15 @@ export default function HostShellV2() {
     if (!el || !sheet) return;
     const tap = lastTapRef.current;
     let fromY = 24;
+    // MEASURED WITH THE ANIMATION OFF. The element mounts with `sheetrise`
+    // already applied, so its rect at this moment is displaced by the very
+    // offset we are trying to replace — every origin came out exactly 24px
+    // short of the tap (measured: tap 146, sheet top 21, origin 101 where 125
+    // was right). Killing the animation first, reading the resting geometry,
+    // then restoring it gives the true top and doubles as the restart the
+    // custom property needs to be picked up.
+    el.style.animation = 'none';
+    void el.offsetHeight;                      // reflow: commits the reset
     if (tap && Date.now() - tap.t < 1200) {
       const r = el.getBoundingClientRect();
       // Clamped to 320px: a full-viewport travel at a fixed 260ms reads as a
@@ -3564,8 +3573,6 @@ export default function HostShellV2() {
       fromY = Math.max(0, Math.min(320, Math.round(tap.y - r.top)));
     }
     el.style.setProperty('--from-y', fromY + 'px');
-    el.style.animation = 'none';
-    void el.offsetHeight;                      // reflow: commits the reset
     el.style.animation = '';
   }, [sheet && sheet.kind, sheet && sheet.focus]);
   // The meaning sheet can be opened generically (Sections directory) which

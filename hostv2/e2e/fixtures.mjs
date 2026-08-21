@@ -66,3 +66,32 @@ export const settled = (page) =>
     const app = document.querySelector('.app');
     return !!app && (app.innerText || '').trim().length > 120;
   }, null, { timeout: 20_000 });
+
+// ─── THE SECTION DOOR MOVES WITH THE VIEWPORT ───────────────────────────────
+//
+// Below the rail band, the way into a section is two taps: the eyebrow menu,
+// then "Jump to a section". At rail widths that row is deliberately NOT
+// rendered — with the rail up it opened a sheet whose only content was a
+// second copy of the rail (2026-08-21) — and the rail IS the section list.
+//
+// Ten specs had hand-rolled the phone path inline. Hiding that row turned all
+// ten red in CI at `desktop` and `wide` while the app was fine, and I fixed
+// exactly one of them (a11yFloor) because that was the one my local desktop
+// run happened to execute. Nine were still carrying the old assumption.
+//
+// So the door lives here now, once. A spec that wants a section asks for the
+// section; which door this viewport has is not a spec's business.
+export const openSectionByName = async (page, name, opts = {}) => {
+  const timeout = opts.timeout || 8000;
+  const rail = page.locator('.srail-row', { hasText: name });
+  if (await page.locator('.srail-row').count()) {
+    await rail.first().click({ timeout });
+  } else {
+    await page.locator('.ev-eyebrow').first().click({ timeout });
+    await page.locator('.sheet').last()
+      .getByText('Jump to a section', { exact: false }).first().click({ timeout });
+    await page.locator('.sheet').last()
+      .getByText(name, { exact: false }).first().click({ timeout });
+  }
+  await page.waitForTimeout(opts.settle == null ? 400 : opts.settle);
+};

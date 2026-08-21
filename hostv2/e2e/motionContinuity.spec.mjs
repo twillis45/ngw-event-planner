@@ -43,16 +43,20 @@ test('a sheet rises from the row that opened it, not from a constant', async ({ 
   // it is where a sheet covers the whole screen and the origin cue does the
   // most work. So the test finds whichever door list this viewport actually
   // has: the rail above 1280, the Sections sheet below it.
+  // Whichever door this viewport has — the rail above 1280, the two-tap menu
+  // below it. First version hand-rolled the phone path and went red at four
+  // viewports I had not run locally (landscape, tablet, tablet-land,
+  // tablet-tall) while the feature was fine everywhere. That is the same
+  // assumption that had just broken nine other specs, reintroduced in the file
+  // written to replace it.
   const rowsFor = async () => {
     const rail = page.locator('.srail-row:not(.srail-min)');
     if (await rail.count()) return rail;
-    // The phone's door is two taps, and the exact path is the one a11yFloor
-    // already walks (its own header records getting this wrong once).
-    await page.locator('.ev-eyebrow').first().click({ timeout: 6000 });
+    await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
     await page.locator('.sheet').last()
-      .getByText('Jump to a section', { exact: false }).first().click({ timeout: 6000 });
+      .getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
     await settled(page);
-    return page.locator('.sheet .sec-row');
+    return page.locator('.sheet').last().locator('.sec-row');
   };
 
   const openFrom = async (nth) => {
@@ -74,30 +78,61 @@ test('a sheet rises from the row that opened it, not from a constant', async ({ 
     // asks the only question that matters: where does this sheet actually
     // start from. The translateY is the matrix's 6th component.
     const fromY = await page.locator('.sheet').evaluate((n) => {
-      const anim = n.getAnimations().find((a) => a.animationName === 'sheetrise');
+      // EITHER keyframe: the centered-panel breakpoint swaps `sheetrise` for
+      // `panelrise`. Naming only the first is how the feature shipped with a
+      // hole in it at tablet and landscape.
+      const anim = n.getAnimations().find(
+        (a) => a.animationName === 'sheetrise' || a.animationName === 'panelrise');
       if (!anim) return NaN;
       anim.pause();
-      anim.currentTime = 0;
-      const m = new DOMMatrixReadOnly(getComputedStyle(n).transform);
-      return m.m42;
+      const at = (t) => {
+        anim.currentTime = t;
+        return new DOMMatrixReadOnly(getComputedStyle(n).transform).m42;
+      };
+      // The animation's OWN TRAVEL — first frame minus last — rather than the
+      // raw first-frame offset. `panelrise` also carries a -50% centring
+      // translate, and correcting for it with the sheet's height was wrong the
+      // moment two sections had different heights: the correction leaked half
+      // the height difference into the comparison and read as a 201px error.
+      // Measuring one sheet against itself cancels the centring exactly,
+      // whichever composition it is using.
+      const start = at(0);
+      const end = at(anim.effect.getTiming().duration || 260);
+      return start - end;
     });
+    // Read the top BEFORE closing. It was below the Escape at first, which
+    // meant waiting 30 seconds for a locator on a sheet that had just been
+    // dismissed — a timeout that looks like a hang, not like a mistake.
+    const top = await page.locator('.sheet').evaluate((n) => n.getBoundingClientRect().top);
     await page.keyboard.press('Escape');
     await settled(page);
-    return { fromY, tapY: box.y + box.height / 2 };
+    return { fromY, tapY: box.y + box.height / 2, top };
   };
 
-  const first = await openFrom(0);
-  const last = await openFrom(8);
+  const a = await openFrom(0);
+  const b = await openFrom(8);
 
-  // Both recorded something, and it is not the default.
-  expect(Number.isFinite(first.fromY)).toBe(true);
-  expect(Number.isFinite(last.fromY)).toBe(true);
-  // The two origins differ, and they differ in the same direction the taps did.
-  expect(last.tapY).toBeGreaterThan(first.tapY);
-  expect(last.fromY).toBeGreaterThan(first.fromY);
-  expect(last.fromY - first.fromY).toBeGreaterThan(80);
-  // Clamped: a full-viewport travel at a fixed 260ms reads as a lurch.
-  expect(last.fromY).toBeLessThanOrEqual(320);
+  // THE CLAIM, asserted per-open: the sheet starts from the tap, measured
+  // against THAT sheet's own top.
+  //
+  // Two earlier versions compared the two opens against each other and both
+  // were wrong for the same reason. At landscape the door list scrolls, so
+  // "row 8" is not below "row 0"; at tablet-tall the sheet is a CENTERED
+  // panel whose top moves with its own height, so two sections of different
+  // heights legitimately produce origins that do not track the taps at all —
+  // it read as a 201px error while the feature was behaving exactly right.
+  // The relationship only ever held per-open; comparing opens was importing
+  // an assumption about layout that three viewports do not share.
+  const clamp = (v) => Math.max(0, Math.min(320, v));
+  for (const o of [a, b]) {
+    expect(Number.isFinite(o.fromY)).toBe(true);
+    expect(Math.abs(o.fromY - clamp(Math.round(o.tapY - o.top))),
+      `origin ${o.fromY} does not match tap ${o.tapY} - top ${o.top}`).toBeLessThanOrEqual(4);
+  }
+  // And it is not a constant: two taps at different heights give two origins.
+  // Without this the check above would pass on a sheet that always rose 24px
+  // from a top that happened to move with it.
+  expect(Math.abs(a.fromY - b.fromY)).toBeGreaterThan(8);
 });
 
 test('a scaled bar fill lands where the width-based one did', async ({ page }) => {

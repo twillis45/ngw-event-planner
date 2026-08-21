@@ -14,7 +14,7 @@
 //      clears them.
 //   4. FOLD PEEK (W9 class): on future-event ask screens the see-all pull
 //      handle intersects the first viewport.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const COI_PATCH = {
   vendors: [
@@ -251,12 +251,8 @@ for (const state of STATES) {
         test.setTimeout(90_000);
         behaviourOnly(test.info());
         await boot(page, state);
-        // Deterministic nav: masthead menu → Jump to a section → Calls to make.
-        await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
-        await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 5000 });
-        const calls = page.locator('.sheet').last().getByText('Calls to make', { exact: false }).first();
-        if (await calls.count() === 0) { test.skip(true, 'no Calls to make section on this state'); return; }
-        await calls.click({ timeout: 5000 });
+        // Deterministic nav through whichever section door this viewport has.
+        await openSectionByName(page, 'Calls to make', { timeout: 5000 });
         await expect(page.locator('#sheet-title')).toHaveText('Calls to make', { timeout: 5000 });
         const sheet = page.locator('.sheet').last();
         const read = () => sheet.innerText({ timeout: 1000 }).catch(() => '');
@@ -294,11 +290,7 @@ for (const state of STATES) {
         test.setTimeout(60_000);
         behaviourOnly(test.info());
         await boot(page, state);
-        await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
-        await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 5000 });
-        const tasksRow = page.locator('.sheet').last().getByText('Your checklist', { exact: false }).first();
-        if (await tasksRow.count() === 0) { test.skip(true, 'no checklist section on this state'); return; }
-        await tasksRow.click({ timeout: 5000 });
+        await openSectionByName(page, 'Your checklist', { timeout: 5000 });
         await expect(page.locator('#sheet-title')).toHaveText('Your checklist', { timeout: 5000 });
         // First task-row action CTA (checklistActionFor renders it) — tapping it
         // must move the host somewhere real: the sheet title changes to the
