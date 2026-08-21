@@ -145,7 +145,8 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createCheckoutSession, verifySession } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure } from '@app/lib/passGate';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
-import { recordHandoff, sendStateFor, sendStateLine } from '@app/lib/sendLedger';
+import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
+import { commApi, isCommApiConfigured } from '@app/lib/commApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
@@ -4342,6 +4343,7 @@ export default function HostShellV2() {
   // until they change it. Deterministic re-shapes only (no fake AI).
   const [draftTone, setDraftTone] = useState(() => { try { return localStorage.getItem('ngw-hostv2-voice') || 'as-written'; } catch { return 'as-written'; } });
   const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
+  const [sendingEmail, setSendingEmail] = useState(false); // slice (b): one send at a time
   useEffect(() => { try { localStorage.setItem('ngw-hostv2-voice', draftTone); } catch {} }, [draftTone]);
   // Nielsen H3 (stage-4 gate, 2026-08-21): a host's typed words must survive
   // closing the sheet. Edits are kept per draft title for the session; reopening
@@ -14991,14 +14993,79 @@ export default function HostShellV2() {
                 }
                 patchEvent({ sendLedger: led }, 'Noted — the plan remembers this went out.');
               };
-              const sendChip = sendStateLine(sendStateFor(event.sendLedger, sheet.title), Date.now());
+              const sendEntry = sendStateFor(event.sendLedger, sheet.title);
+              const sendChip = sendStateLine(sendEntry, Date.now());
+              // ── SLICE (b): the one send we actually perform ────────────────
+              // Ruling clause 1(b): vendor-directed, KNOWN EMAIL, one at a
+              // time, behind an explicit review-then-send. This sheet IS the
+              // review — the host has the words in front of them — so the
+              // send is one button that names the recipient. No backend, no
+              // vendor, or no address ⇒ no button at all (never a control
+              // that cannot do what it says).
+              const emailTarget = (() => {
+                // SIGNED IN, TOO — found by driving it (2026-08-21): the API
+                // base IS configured in every real build, so gating on that
+                // alone rendered "Send it to …" for a signed-OUT host, and
+                // create_message is require_planner — every tap would have
+                // 401'd into the failure state. A control that cannot do what
+                // it says must not render (UX_07, Norman seat).
+                if (!sheet.vendorId || !isCommApiConfigured() || !session) return null;
+                const v = (event.vendors || []).find(x => x && x.id === sheet.vendorId);
+                const to = String((v && v.email) || '').trim();
+                if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return null;
+                return { to, name: (v && v.name) || 'them' };
+              })();
+              const sendEmailNow = async () => {
+                if (!emailTarget || sendingEmail) return;
+                setSendingEmail(true);
+                const nowIso = new Date().toISOString();
+                patchEvent({ sendLedger: recordEmailSend(event.sendLedger, sheet.title, 'sending', { at: nowIso, to: emailTarget.to }) }, null, { noUndo: true });
+                let ok = false; let err = null;
+                try {
+                  // The backend persists the message, then attempts Resend and
+                  // patches metadata.delivery with the REAL answer. We read
+                  // that answer — a 200 alone proves the message was stored,
+                  // not that any mail was accepted.
+                  const res = await commApi.createMessage(event.id, 'CLIENT', {
+                    message_type: 'standard',
+                    author_role: 'planner',
+                    author_name: (profile && profile.name) || 'Your host',
+                    body: shownDraft(),
+                    deliver_email: true,
+                    recipient_email: emailTarget.to,
+                    recipient_name: emailTarget.name,
+                    subject: sheet.title || 'About your event',
+                  });
+                  const d = res && res.metadata && res.metadata.delivery;
+                  ok = !!(d && d.status === 'accepted');
+                  if (!ok) err = (d && d.error) || 'no delivery confirmation';
+                } catch (e) { ok = false; err = (e && e.message) || 'request failed'; }
+                patchEvent({
+                  sendLedger: recordEmailSend(event.sendLedger, sheet.title, ok ? 'accepted' : 'failed',
+                    { at: new Date().toISOString(), to: emailTarget.to, ...(ok ? {} : { error: err }) }),
+                }, ok ? null : 'The email didn’t go out — nothing was sent. Your other ways still work.', { noUndo: true });
+                if (ok) { logVendorContact(sheet.vendorId); }
+                setSendingEmail(false);
+              };
               return (
               <>
                 {/* Host-attested state chip: RECORD-ONLY treatment (outline,
                     muted) — visually distinct from any system-verified pill,
                     per ruling clause 3. Renders only when an entry exists. */}
                 {sendChip && (
-                  <div className="of" style={{ marginBottom: 'var(--sp-2)', color: 'var(--steel-soft)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', display: 'inline-block', padding: '3px 10px' }}>
+                  /* ATTESTED vs VERIFIED, visibly (ruling risk #1): the host's
+                     word is an OUTLINE chip (record-only, UX_07:97); a
+                     server-verified state is FILLED. A failed send is the one
+                     red state and it is system-owned. */
+                  <div className="of" style={{
+                    marginBottom: 'var(--sp-2)', borderRadius: 'var(--r-pill)',
+                    display: 'inline-block', padding: '3px 10px',
+                    ...(isVerifiedState(sendEntry)
+                      ? (sendEntry.status === 'failed'
+                        ? { color: 'var(--danger)', background: 'var(--danger-tint)', border: '1px solid transparent' }
+                        : { color: 'var(--ok)', background: 'var(--ok-tint)', border: '1px solid transparent' })
+                      : { color: 'var(--steel-soft)', border: '1px solid var(--line)' }),
+                  }}>
                     {sendChip}
                   </div>
                 )}
@@ -15033,6 +15100,18 @@ export default function HostShellV2() {
                     <button className="mini" onClick={() => recordSend('other')}>Mark it sent — I sent it myself</button>
                   )}
                 </div>
+                {/* The ONE thing we send ourselves. Names the recipient so the
+                    act is never ambiguous, disables in flight (one at a time,
+                    never bulk), and re-offers itself after a failure because a
+                    failed send left nothing behind. */}
+                {emailTarget && (
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                    <button className="cta" disabled={sendingEmail || (sendEntry && sendEntry.status === 'accepted')}
+                      onClick={sendEmailNow}>
+                      {sendingEmail ? 'Sending…' : `Send it to ${emailTarget.to}`}
+                    </button>
+                  </div>
+                )}
                 {/* "Message all helpers": each person still gets reviewed and
                     sent individually through the real handoffs above — this
                     just queues the rest so working through everyone is one

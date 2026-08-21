@@ -10,7 +10,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { recordHandoff, sendStateFor, sendStateLine, sendKey } from '../sendLedger';
+import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, sendKey, isVerifiedState } from '../sendLedger';
 
 const SHELL = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'HostShellV2.jsx'), 'utf8');
@@ -45,6 +45,37 @@ describe('the pure model', () => {
     const led2 = recordHandoff(led1, 'B', 'copy', '2026-08-21T13:00:00Z');
     expect(sendStateFor(led2, 'A').channel).toBe('sms');
     expect(sendStateFor(led2, 'B').channel).toBe('copy');
+  });
+});
+
+describe('the email path — slice (b), system-verified states', () => {
+  const at = '2026-08-21T00:00:00Z';
+  const now = Date.parse(at) + 60000;
+
+  test('an email state is NOT attested — the server did it, not the host', () => {
+    const led = recordEmailSend({}, 'T', 'accepted', { at, to: 'v@example.com' });
+    const e = sendStateFor(led, 'T');
+    expect(e).toMatchObject({ status: 'accepted', attested: false, channel: 'email', to: 'v@example.com' });
+    expect(isVerifiedState(e)).toBe(true);
+    expect(isVerifiedState(sendStateFor(recordHandoff({}, 'T', 'sms', at), 'T'))).toBe(false);
+  });
+
+  test('accepted says ACCEPTED — never "delivered", never "Sent"', () => {
+    const line = sendStateLine(sendStateFor(recordEmailSend({}, 'T', 'accepted', { at }), 'T'), now);
+    expect(line).toMatch(/Accepted by the mail service/);
+    expect(line).not.toMatch(/[Dd]elivered/);
+    expect(line).not.toMatch(/\bSent\b/);
+  });
+
+  test('failed is honest about what did NOT happen', () => {
+    const line = sendStateLine(sendStateFor(recordEmailSend({}, 'T', 'failed', { at, error: 'x' }), 'T'), now);
+    expect(line).toMatch(/didn’t go out/);
+    expect(line).toMatch(/nothing was sent/);
+  });
+
+  test('an unknown status degrades to sending — never to a success claim', () => {
+    expect(sendStateFor(recordEmailSend({}, 'T', 'delivered', { at }), 'T').status).toBe('sending');
+    expect(sendStateFor(recordEmailSend({}, 'T', 'whatever', { at }), 'T').status).toBe('sending');
   });
 });
 
@@ -84,6 +115,37 @@ describe('the shell wiring (draft sheet)', () => {
 
   test('the state chip renders the attested line, never the word Sent alone', () => {
     expect(SHELL).toMatch(/sendStateLine\(/);
+  });
+
+  // ── slice (b): the email send, per the ruling's boundary ────────────────
+  test('email send is offered ONLY for a vendor draft with a known email, and only with a backend', () => {
+    const fn = SHELL.slice(SHELL.indexOf('const emailTarget = '), SHELL.indexOf('const emailTarget = ') + 1400);
+    expect(fn).toMatch(/sheet\.vendorId/);        // vendor-directed only
+    expect(fn).toMatch(/isCommApiConfigured\(\)/); // no backend, no button
+    expect(fn).toMatch(/!session/);                // signed out ⇒ no button (it would 401)
+    expect(fn).toMatch(/@/);                       // a real address, validated
+  });
+
+  test('the send is explicit, one at a time, and states what it will do', () => {
+    // Ruling clause 4: never auto-send, never bulk. The control is a single
+    // button that names the recipient, and it disables while in flight.
+    expect(SHELL).toMatch(/Send it to /);
+    expect(SHELL).toMatch(/sendingEmail/);
+  });
+
+  test('the shell records the SERVER answer, never an optimistic success', () => {
+    const fn = SHELL.slice(SHELL.indexOf('const sendEmailNow = '), SHELL.indexOf('const sendEmailNow = ') + 2600);
+    expect(fn).toMatch(/recordEmailSend\([^)]*'sending'/);
+    expect(fn).toMatch(/deliver_email: true/);
+    // The accepted/failed branch reads the delivery metadata the backend
+    // patched — it never assumes ok from a 200.
+    expect(fn).toMatch(/delivery/);
+    expect(fn).toMatch(/'accepted'/);
+    expect(fn).toMatch(/'failed'/);
+  });
+
+  test('verified and attested chips are visually distinct (ruling risk #1)', () => {
+    expect(SHELL).toMatch(/isVerifiedState\(/);
   });
 });
 
