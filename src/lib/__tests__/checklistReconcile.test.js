@@ -154,3 +154,50 @@ describe('what the host is told', () => {
     expect(reconcileSummary(null)).toBe('');
   });
 });
+
+describe('a retired row carries no responsibility', () => {
+  // Found by the ownership review board, not by a test. `retired` was a new
+  // flag and `deriveHelperResponsibilities` had no way to know it existed, so
+  // a helper assigned to a row the host had since decided against stayed in
+  // the Helpers panel — and rode into the next "Message all helpers" draft.
+  //
+  // This is the one class of stale state that leaves the app. A wrong count on
+  // screen is a bad number; a wrong name in a draft asks a real person for
+  // something that is no longer wanted.
+  const { deriveHelperResponsibilities } = require('../helperResponsibility');
+
+  const evWith = (rows) => ({
+    id: 'ev-h', type: 'crab feast', date: '2026-09-20', guestCount: 12,
+    guests: [{ id: 'g1', name: 'Marcus' }],
+    timeline: rows,
+  });
+  const row = (extra) => ({
+    id: 'pbt-ev-h-t_pickup', task: 'Lock a hot pickup slot at the crab house',
+    owner: 'Marcus', done: false, ...extra,
+  });
+
+  test('PREMISE — an owned, live row DOES produce a responsibility', () => {
+    // Without this, the assertion below passes on a reader that returns
+    // nothing at all, which is the same green for a very different reason.
+    // Returns { helpers, responsibilities }, not a bare array — checked in the
+    // source rather than assumed a second time.
+    const { responsibilities } = deriveHelperResponsibilities(evWith([row()]));
+    expect(responsibilities.some((r) => r.itemType === 'task' && /pickup slot/i.test(r.label))).toBe(true);
+  });
+
+  test('the same row, retired, produces none', () => {
+    const { responsibilities, helpers } = deriveHelperResponsibilities(
+      evWith([row({ retired: true, retiredReason: 'your answers changed what this needs' })]));
+    expect(responsibilities.some((r) => /pickup slot/i.test(r.label))).toBe(false);
+    // And the helper leaves the panel with it — a name with nothing to do is
+    // what turns into an unwanted line in "Message all helpers".
+    expect(helpers.some((h) => h.name === 'Marcus')).toBe(false);
+  });
+
+  test('retiring one row does not silence the others', () => {
+    const live = { ...row(), id: 'pbt-ev-h-t_ice', task: 'Get the ice' };
+    const { responsibilities } = deriveHelperResponsibilities(evWith([row({ retired: true }), live]));
+    expect(responsibilities.some((r) => /Get the ice/i.test(r.label))).toBe(true);
+    expect(responsibilities.some((r) => /pickup slot/i.test(r.label))).toBe(false);
+  });
+});

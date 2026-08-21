@@ -1874,7 +1874,8 @@ export default function HostShellV2() {
   const [sweepState, setSweepState] = useState({});
   const sweepTimers = useRef([]);
   useEffect(() => () => sweepTimers.current.forEach(clearTimeout), []);
-  const [doneOpen, setDoneOpen] = useState(false); // completed-work fold in the checklist
+  const [doneOpen, setDoneOpen] = useState(false);
+  const [retiredOpen, setRetiredOpen] = useState(false);  // rows a decision took off the list // completed-work fold in the checklist
   // Decision memory — capture WHY in the host's own words (lib/decisionMemory);
   // the settled row reads it back next time the subject comes up.
   const [whyOpen, setWhyOpen] = useState(null);
@@ -15492,7 +15493,16 @@ export default function HostShellV2() {
                       report line (tap to review) — same green-dot semantics as
                       the handled sections everywhere else. */}
                   {(event.timeline || []).map((t, i) => {
-                    if (!t || t.done) return null;
+                    // A RETIRED row is off the open list. The reconcile marks a
+                    // row retired when the gate that authored it closes — pick
+                    // "steam them myself" and the two crab-house pickup rows
+                    // stop being work. They were still being RENDERED here:
+                    // counted as resolved, kept out of the denominator, and
+                    // then printed anyway, so the host read "Lock a hot pickup
+                    // slot" on a list that no longer believed it. Half a
+                    // feature is worse than none, because the data was right
+                    // and the screen was wrong.
+                    if (!t || t.done || t.retired) return null;
                     const inferred = isTimelineStepResolved(t);
                     // Was 'focus-task' — a class with no matching CSS rule anywhere
                     // (confirmed by two independent audits), so deep-linked task
@@ -15616,13 +15626,36 @@ export default function HostShellV2() {
                       </Fragment>
                     );
                   })}
-                  {(event.timeline || []).some(t => t && t.done) && (
+                  {/* ── WORK YOUR ANSWERS TOOK OFF THE LIST ───────────────────
+                      Retired rows fold rather than vanish. A list that silently
+                      loses items is a list nobody trusts, and the host may have
+                      already half-done one of these before they changed their
+                      mind — so the row keeps its state, keeps its reason, and
+                      stays one tap away. Change the answer back and the same
+                      row returns, still ticked. */}
+                  {(event.timeline || []).some(t => t && t.retired) && (
+                    <>
+                      <button className="fold-btn" onClick={() => setRetiredOpen(o => !o)}>
+                        {(event.timeline || []).filter(t => t && t.retired).length} no longer needed — your answers took them off
+                        <span className="chev" aria-hidden="true">{retiredOpen ? '▾' : '›'}</span>
+                      </button>
+                      {retiredOpen && (event.timeline || []).map((t, i) => (t && t.retired) ? (
+                        <div key={t.id || i} className="frow retired-row">
+                          <span className="f-main">
+                            <span className="f-name">{t.task}</span>
+                            <span className="v-meta">{t.retiredReason || 'no longer needed'}</span>
+                          </span>
+                        </div>
+                      ) : null)}
+                    </>
+                  )}
+                  {(event.timeline || []).some(t => t && t.done && !t.retired) && (
                     <>
                       <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(o => !o)}>
-                        {(event.timeline || []).filter(t => t && t.done).length} done — the plan has them
+                        {(event.timeline || []).filter(t => t && t.done && !t.retired).length} done — the plan has them
                         <span className="chev" aria-hidden="true">{doneOpen ? '▾' : '›'}</span>
                       </button>
-                      {doneOpen && (event.timeline || []).map((t, i) => (t && t.done) ? (
+                      {doneOpen && (event.timeline || []).map((t, i) => (t && t.done && !t.retired) ? (
                         <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
                           <span className="fcheck" aria-hidden="true" />
                           <span className="f-main">

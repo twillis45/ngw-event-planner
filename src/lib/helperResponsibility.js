@@ -106,7 +106,19 @@ export function deriveHelperResponsibilities(event) {
 
   // 2 · Tasks — timeline steps with a non-host owner name.
   for (const t of (Array.isArray(ev.timeline) ? ev.timeline : [])) {
-    if (!t || !t.task || !isHelperName(t.owner)) continue;
+    // RETIRED rows carry no responsibility. The checklist reconcile (2026-08-21)
+    // marks a row retired when the decision that authored it changes — pick
+    // "steam them myself" and the crab-house pickup rows stop being work. This
+    // reader did not know about that flag, so the helper who had been asked to
+    // collect the crabs stayed in the Helpers panel and rode into the next
+    // "Message all helpers" draft. That is the worst kind of stale state: it
+    // leaves the app and reaches a real person, asking them for something the
+    // host has already decided against.
+    //
+    // Found by the ownership review board, not by a test — a consumer that a
+    // new flag silently invalidated. Anything else reading `timeline` owes the
+    // same check.
+    if (!t || !t.task || t.retired || !isHelperName(t.owner)) continue;
     const status = statusFor(ev, t.id, t.done === true);
     const who = resolveHelper(t.owner, guests);
     responsibilities.push({

@@ -10,7 +10,7 @@ closed at 63.8%. The table at the top is the CURRENT score; the re-score
 sections below record how each cell got there, and no cell moves without
 a check in the code first.
 
-## Score table — CURRENT (as of the widescreen-parity session)
+## Score table — CURRENT (as of the coverage-and-reconcile session)
 
 Each row is the score as it stands now; the "remaining gap" column is the
 one specific thing between that dimension and a 10, and is what the next
@@ -19,17 +19,17 @@ in the re-score sections below.
 
 | Dimension | Bar-setter | Us /10 | Remaining gap to 10 |
 |---|---|---:|---|
-| Workflow | Wanderlog (Partiful on creation) | 8 | Day CRUD: add / move / delete a day inside the programme span |
+| Workflow | Wanderlog (Partiful on creation) | 9 | Day CRUD: add / move / delete a day inside the programme span (the per-day schema, build-queue item 1) |
 | Design | Paperless Post / Vercel craft | 9 | Vendors ruling items 2, 3, 5: `.frow` metrics, `.vc-chip` base off `--warn` (red-proofed), settled fold |
 | Modern UI/UX | Linear | 8 | The on-demand detail panel at >=1200px (vendors ruling item 6) — the desktop dead third is still dead |
-| Micro motion | Linear / Family | 8 | The digit still cuts beside a gliding bar; four of five fills still animate layout; `.mini` / `.path-row` / `.navrow` still have press but no focus response |
-| Animation | Family / Partiful | 8 | No FLIP or shared element on list reorder — ranked rows still cut to new positions — and the `cardin` list stagger still replays on every remount |
+| Micro motion | Linear / Family | 8 | The digit still cuts beside a gliding bar; four of five fills still animate layout (`.bline i`/`.bline b`, the invite bar, `.mbar i`) plus `.wxpill{transition:bottom}` (styles.css:2896); `.mini` / `.path-row` / `.navrow` still have press but no focus response |
+| Animation | Family / Partiful | 8 | No FLIP, shared element or view transition anywhere — ranked rows still cut to new positions. The stagger half of this gap is closed; three literal `cardin` call sites (HostShellV2.jsx:14557, :14595, :17781) remain outside the arrival gate |
 | Attention systems | Blink | 9 | `Send Failed` exists only on the email path, so the three-not-dones model is not complete across channels |
 | Ease of use | Evite / Apple HIG | 8 | Run the stranger-proof onboarding test — the score is asserted, not observed |
 | Less friction | Partiful | 8 | Send covers the vendor case only; the other 25 draft generators still exit to the clipboard |
-| DIFM | Joy (breadth) — the set's bar is ours | 9 | Resend webhook proven live so `delivered` can exist, and send beyond the vendor case |
+| DIFM | Joy (breadth) — the set's bar is ours | 9 | Resend webhook proven live so `delivered` can exist, and send beyond the vendor case. Secondary: the milestone-to-task join lands on 123/408 (30.1%) and `playbookMilestones` / `playbookTasks` still have zero hostv2 imports (grepped at HEAD) |
 
-**Overall: 75/90 (83%)** — up from 63.8% (07-13 audit) via 67, 70, 72, 73.
+**Overall: 76/90 (84%)** — up from 63.8% (07-13 audit) via 67, 70, 72, 73, 75.
 
 Micro motion and animation are no longer pending. Both were held at 7
 awaiting the motion audit; that audit landed
@@ -179,7 +179,7 @@ What did not move, and why:
 
 | Dimension | 07-13 | now |
 |---|---|---|
-| Workflow | 7 | 8 |
+| Workflow | 7 | 9 |
 | Design | 8 | 9 |
 | Modern UI/UX | 7 | 8 |
 | Micro motion | 6 (7 ✎) | 8 |
@@ -263,7 +263,9 @@ What moved:
   fourteen surfaces: only its duration was tokenized, no first-mount
   gate was added, so the ceremonial-cost finding is unresolved and a
   host toggling a filter still watches a settled list re-enter from
-  below. An app that answers "where did this come from" but not "what
+  below. (SUPERSEDED by the fifth re-score below: `ae2c99da` added the
+  arrival gate. The cell still holds at 8, on FLIP alone.) An app that
+  answers "where did this come from" but not "what
   just moved" is an 8 against Family and Partiful, not a 10.
 
 Is either a 10? No, and the gap is not subtle. A 10 on animation in this
@@ -287,6 +289,150 @@ parity are not the three finding 17 named.
 **Overall now: 75/90 (83%)** — 73 → 75, two points, one on each motion
 cell.
 
+## Fifth re-score: coverage, reconciliation and the drifting rail
+
+Five things landed after the motion cells were resolved. Each was read in
+the source at HEAD before it was allowed near a cell.
+
+VERIFIED AS SHIPPED:
+
+1. **The checklist follows the decisions** (`46909fa8`).
+   `src/lib/checklistReconcile.js` exists and is imported by the shell
+   (`HostShellV2.jsx:82`), driven by an effect (`:5127`) keyed on the
+   event id plus `foodChoices`, `travelMode`, `isDestination`,
+   `foodFocus`, `caterer` and `date`. `event.timeline` was seeded once at
+   creation and never asked again, so four working gates inside
+   `playbookChecklist` — `choiceShown`, `modeShown`, `whenKids` and the
+   caterer lever — fired exactly once and were dead afterwards. The merge
+   appends new rows, RETIRES gated-out rows with a reason rather than
+   deleting them (`checklistReconcile.js:86-88`) and revives them in
+   place carrying `done` (`:95-96`), never touches host-written rows, and
+   treats an empty derivation as no information. Retired rows are
+   excluded from the live set at `HostShellV2.jsx:1750` and `:15470`, so
+   they leave the "N of M" denominator too. The catch-up pass patches
+   silently (`first ? '' : reconcileSummary(res)`) — announcing it put a
+   toast over the app on every event open and turned 12 specs red.
+   Idempotence is pinned in `src/lib/__tests__/checklistReconcile.test.js`;
+   `hostv2/e2e/checklistFollowsDecisions.spec.mjs` covers the wiring.
+2. **No event type is silent** (`d35606e9` + `3f0ad471`). Nine of the
+   taxonomy's 48 types had NO playbook: a bare Town Hall measured ros 0,
+   checklist 0, decisions 0, risks 0, raises 0. `BORROWED_PLAYBOOK`
+   (`src/lib/playbooks/index.js:127`) is an explicit map, each entry
+   carrying the sentence that justifies it; `getPlaybook` returns the
+   base with `isDefault`, `appliedTo` and `because`, and deliberately
+   leaves `type` as the SOURCE playbook so every row's
+   `provenance.source` names where the work actually came from. The
+   borrow is stated on screen (`.borrowed-note`, `HostShellV2.jsx:10152`
+   and `:15449`). "Other" stays null on purpose. Six types borrow today;
+   the other two now have authored playbooks (below).
+3. **The day-of list reaches the host, and two playbooks authored**
+   (`3f0ad471`). `playbookDayOfChecklist` had worked for months with zero
+   hostv2 imports — the frozen CRA rendered it, the shipping shell never
+   did. It is now imported (`HostShellV2.jsx:81`) and rendered in the Day
+   stage (`:10131`), with confirm state persisting to
+   `event.safetyChecked` (`:10133-10138`); the generic floor states that
+   it is a floor. `data/clientDinner.js` and `data/fundraiserGala.js`
+   exist and replace their borrows — the gala is now the corpus's richest
+   file, and it authors all four of the coverage audit's universal blind
+   spots (licensing/permits `:101`, `:123`; accessibility `:105`, `:134`;
+   load-in; first aid). Client Dinner authors no load-in or permit rows,
+   correctly, because a restaurant booking has neither.
+4. **The rail stopped drifting** (`ae2c99da`). `.stagewrap` carried
+   `overflow:hidden`, which suppresses the scrollbar without ceasing to
+   be a scroll container, so every row-level landing's `scrollIntoView`
+   scrolled the FRAME and the rail walked off the top with nothing to
+   bring it back — measured 21 -> -80 -> -194 -> -299 across five
+   sections while `window.scrollY` stayed 0. Now `overflow:clip`
+   (`styles.css:3865`), with the reasoning recorded in place. The same
+   commit gated the `cardin` list stagger to the SHEET's arrival
+   (`HostShellV2.jsx:3519-3541`): a `rowEnter(i)` helper returns
+   `undefined` outside a 900ms window from the sheet's identity change,
+   used at 15 call sites. The clock is stamped during render, not in a
+   layout effect — the first version stamped it after children had
+   rendered and silently deleted the entrance it was meant to schedule.
+5. **Test-suite integrity** (`d531362a`). Nine e2e specs had each
+   hand-rolled the phone section-door path inline; hiding "Jump to a
+   section" at rail widths broke all nine. One shared
+   `openSectionByName` helper (`hostv2/e2e/fixtures.mjs:84`) now owns it,
+   used across seven spec files. The matrix also surfaced two real bugs,
+   both fixed: `panelrise` is now origin-aware
+   (`styles.css:3386` reads `var(--from-y,24px)`, so tablet and landscape
+   have a sheet origin at all), and sheet origins were 24px short because
+   the shell measured the sheet's top with its entrance transform still
+   applied — the layout effect now kills the animation, reflows, measures
+   the resting rect, then restores (`HostShellV2.jsx:3562-3579`).
+
+NOT CREDITED, checked and confirmed absent:
+
+- **Ownership shipped no code, deliberately.** Grepped at HEAD:
+  `playbookMilestones` and `playbookTasks` still have zero hostv2
+  imports. The measurement (join lands on 123/408, and 350 of 408
+  authored owners are "host") is with the review board; seeding a row's
+  owner from a milestone today would paint a label naming nobody.
+- **No FLIP, shared element or view transition** anywhere in the shell
+  (grepped `startViewTransition` / FLIP at HEAD: zero).
+- **The crab swap has not been driven** through the decision board's own
+  control in a browser.
+- **The stranger-proof onboarding test has not been run.**
+
+What moved:
+
+- **Workflow 8 -> 9.** This is not a defect fix inside a covered
+  capability; it is a missing loop. The product's thesis is that the plan
+  responds to what the host decides, and until `46909fa8` it responded
+  exactly once, at creation — four authored gates that could never fire
+  again, so flipping a crab feast to "Steam them myself" left the host's
+  real list still telling them to go collect hot crabs. The plan now
+  re-derives on every answer that changes it, on the EVENT rather than in
+  the sheet (so the hero, the readiness feed and the open-task counts
+  stop quoting a stale list), and it does so without destroying host
+  state: retire-with-a-reason, revive carrying `done`, never touch a
+  host-written row. Coverage is the other half — nine event types that
+  produced literally nothing now produce 11-19 real tasks, with the
+  borrow named on screen and in provenance. Wanderlog's remaining
+  advantage is the one this document has named all along and nothing this
+  session touched: day CRUD across a programme span. That is the whole of
+  the distance to 10.
+
+What did not move, and why:
+
+- **DIFM holds at 9.** Tempting, and wrong. The coverage work is real
+  DIFM breadth, but nine types producing nothing was a defect the 9 was
+  awarded without noticing — the same reasoning that held Design at 9 in
+  the third re-score applies here unchanged. The stated gap is sending:
+  the Resend webhook is still unproven live and send still covers the
+  vendor case only. Neither was touched. The unwired milestone join is
+  now recorded as a secondary gap so it is not lost.
+- **Attention holds at 9.** The silent catch-up pass is a genuine
+  attention decision — the app declines to interrupt a host about its own
+  housekeeping, and the 12 red specs proved the interruption was real —
+  and retire-with-a-reason keeps the "N of M" denominator honest. Both
+  are craft inside a 9, not the named gap: `Send Failed` still exists
+  only on the email path.
+- **Less friction holds at 8.** The day-of list reaching the host and the
+  rail no longer walking off the top both remove real host cost, but the
+  dimension's gap is the OUTLET, and 25 of 26 draft generators still exit
+  to the clipboard.
+- **Modern UI/UX holds at 8.** `overflow:hidden` -> `overflow:clip` fixed
+  a defect the 8 already implicitly claimed not to have (a desktop frame
+  that does not move as you walk it). The gap is the on-demand detail
+  panel at >=1200px, and the dead third at 1920 is still dead.
+- **Micro motion holds at 8, animation holds at 8.** The stagger gate
+  closes one of the two absences named against animation, and it is the
+  smaller one. The larger stands: ranked rows still cut to their new
+  positions, and ranking changing is this product's entire thesis. Three
+  literal `cardin` sites also sit outside the new gate
+  (`HostShellV2.jsx:14557`, `:14595`, `:17781`), so the ceremony is
+  gated, not eliminated. Nothing this session touched the readiness digit,
+  the four layout-animating fills, or focus parity for `.mini` /
+  `.path-row` / `.navrow`.
+- **Design holds at 9, ease of use holds at 8.** No vendors-ruling item
+  moved; the stranger test has not been run.
+
+**Recompute: 9 + 9 + 8 + 8 + 8 + 9 + 8 + 8 + 9 = 76.**
+
+**Overall now: 76/90 (84%)** — 75 -> 76, the single point on Workflow.
+
 ## The honest line on "10s across the table"
 
 Nine 10s against Linear, Partiful, Paperless Post and Blink is a
@@ -294,11 +440,12 @@ multi-sprint product arc, not an overnight loop: the remaining points
 are majors (send beyond the vendor case, day CRUD, the on-demand detail
 panel, the vendors ruling's remaining four items, FLIP for list reorder)
 plus one observation only real strangers can produce. The day moved the
-table 63.8% → 83% with every point tied to a driven, gated build.
+table 63.8% → 84% with every point tied to a driven, gated build.
 Inflating the remaining cells would break the scoreboard's only value,
 which is that it is true — which is why the two motion cells moved one
-point each and not two, with the specific absences named rather than
-waved at.
+point each and not two, and why the coverage-and-reconcile session moved
+exactly one cell out of nine: five shipped items, four of which repaired
+defects that the scores already implicitly claimed we did not have.
 
 ## ✎ Corrections to the auditor's report (checked at HEAD)
 
@@ -321,7 +468,10 @@ waved at.
 1. **Per-day programme schema** — the recorded keystone ("converts existing
    intelligence from working once to working across a span"); ceiling on
    Workflow, Animation-of-work, and the reunion market. Long-standing
-   "heads the queue" item; still true.
+   "heads the queue" item, and now the ONLY thing between Workflow and a
+   10: `46909fa8` made the plan work across a host's CHANGES, which is
+   the other half of the same sentence; day CRUD across the span is what
+   remains.
 2. **The comms outlet** — send with Blink's three not-dones designed in
    (`Not Sent` / `Pending` / `Send Failed`). The single largest write-off
    of built capability: we draft everything and send nothing. Unblocks
@@ -343,10 +493,14 @@ waved at.
    shortlist items, and both cells are now scored from a current code
    check at 8. What replaces it is specific: FLIP on the ranked-decision
    and call-sheet lists (the largest continuity gap, and correctly
-   sequenced after sheet-origin, which has now shipped); the first-mount
-   gate on the `cardin` stagger; the readiness digit tweened with its
-   bar; the four remaining layout-animating fills plus `.wxpill`; and
-   focus parity for `.mini` / `.path-row` / `.navrow`. Also carry
+   sequenced after sheet-origin, which has now shipped); the readiness
+   digit tweened with its bar; the four remaining layout-animating fills
+   plus `.wxpill` (styles.css:2896); and focus parity for `.mini` /
+   `.path-row` / `.navrow`. The `cardin` first-mount gate is DONE
+   (`ae2c99da`, `rowEnter` at 15 call sites) except for three literal
+   sites — `HostShellV2.jsx:14557`, `:14595`, `:17781` — which should be
+   converted to `rowEnter` so the ceremony is eliminated, not merely
+   gated. Also carry
    forward: UX_01:154's "no bounce" line is now contradicted by a later
    host ruling and needs an exception noted or a re-ruling.
 

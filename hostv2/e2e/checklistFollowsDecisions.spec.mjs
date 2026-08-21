@@ -165,12 +165,45 @@ test.describe('the reconcile reaches the host', () => {
   });
 });
 
-// NOT TESTED HERE, on purpose: the crab swap driven through the decision
-// board's own control. The swap itself is pinned in
-// src/lib/__tests__/checklistReconcile.test.js against the REAL generator, in
-// both directions, including revive-with-done-state. What is missing is a
-// browser walk of the decision control, and two attempts at it produced a
-// flaky test rather than a failing feature — the reload path races the shell's
-// own persistence, and the control did not resolve by role. A brittle test
-// that goes red for its own reasons is worse than an honest gap, so this is
-// recorded as open rather than papered over.
+test('the crab swap, driven through the decision board itself', async ({ page }) => {
+  test.skip(!page.viewportSize() || page.viewportSize().width < 1280, 'uses the rail to reach both sheets');
+
+  // THE ONE THAT WAS OPEN. Two earlier attempts produced a flaky test rather
+  // than a failing feature and it was recorded as a gap rather than papered
+  // over. The missing step was a disclosure: the decision renders its current
+  // pick and hides the alternatives behind "Other ways", so a walk that looked
+  // for the option directly found nothing and timed out.
+  await page.addInitScript(() => {
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.setItem('ngw-hostv2-last-event', 'my-crab-feast');
+  });
+  await page.goto('?elegant=1');
+  await settled(page);
+
+  // 1. Draft the checklist under the default answer (order steamed for pickup).
+  await openChecklist(page);
+  await page.getByRole('button', { name: /Draft my checklist/i }).click();
+  await settled(page);
+  const before = await page.locator('.sheet').last().innerText();
+  expect(before, 'the drafted list was not written under the ordering answer')
+    .toMatch(/Lock a hot pickup slot/i);
+  expect(before).not.toMatch(/rack steamer pot/i);
+
+  // 2. Change the decision the way a host does: open the call, disclose the
+  //    alternatives, pick a different one.
+  await page.locator('.srail-row', { hasText: 'Calls to make' }).first().click();
+  await settled(page);
+  const board = page.locator('.sheet').last();
+  await board.locator('button', { hasText: 'Other ways' }).first().click();
+  await settled(page);
+  await board.locator('button', { hasText: 'Steam them myself' }).first().click();
+  await settled(page);
+
+  // 3. The checklist followed, without a reload.
+  await openChecklist(page);
+  const after = await page.locator('.sheet').last().innerText();
+  expect(after, 'the steamer row never arrived').toMatch(/rack steamer pot/i);
+  expect(after, 'the pickup row is still being asked for').not.toMatch(/Lock a hot pickup slot/i);
+});
