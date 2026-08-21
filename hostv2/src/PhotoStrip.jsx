@@ -78,7 +78,7 @@ export default function PhotoStrip({ photos, alt, size = 132, radius = '0' }) {
               onClick={(e) => { stop(e); step(1); }}>›</button>
             <span aria-hidden="true" style={{
               position: 'absolute', bottom: 2, left: 0, right: 0, textAlign: 'center',
-              fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,.8)',
+              fontSize: 11, fontWeight: 700, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,.8)',
             }}>{idx + 1}/{n}</span>
           </>
         )}
