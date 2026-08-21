@@ -8,7 +8,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `3c39884e` — push queued behind CI; tree clean except a PARALLEL session's tween work (`hostv2/src/HostShellV2.jsx`, `src/lib/tweenNumber.js` + test) — do not sweep it |
+| Branch / HEAD | `main` @ `0f62d4e2` — pushed, tree clean. The parallel session's tween work landed as its own `4d671f75` ("The digit moves with its bar", CI green): the readiness digit — micro motion's last named gap — is DONE |
 | Last pushed | `4da9dfde`; `e006f52d` verified green (Checks + Pages) |
 | Jest | **6,137 passed**, 1 skipped, 430 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
@@ -154,8 +154,6 @@ T-0 surfaces 18 run-of-show rows from 5h out through teardown.
 
 1. Push `3c39884e` once CI drains (watcher running; never push over an
    in-flight run). Then verify Checks green on it.
-2. The tween session's readiness-digit work is in the tree uncommitted —
-   ITS session should land it; do not sweep or commit it from here.
 3. Template line W2 (**Todd only**): import
    `template-products/dist/NGW_Milestone_Event_Planner_MVP.xlsx` into real
    Google Sheets + desktop Excel + a phone. Gates all styling/mockup work.
