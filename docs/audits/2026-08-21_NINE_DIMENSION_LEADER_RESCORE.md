@@ -54,6 +54,37 @@ deliver clicks at desktop sizes tonight, so it stays unverified and
 unscored); Ease-of-use awaits the stranger test; DIFM awaits sending;
 Micro motion/Animation await the ceremonial→work redistribution.
 
+## Second post-build re-score (vendors sheet + comms slice b)
+
+- **Design 8 → 9.** The vendors sheet was the recorded outlier — the
+  08-07 spacing read's "status pills loudest in the set", and the last
+  sheet still carrying a four-band collapsed face while every restyled
+  surface showed one line. After the 8-seat ruling (`c22acec4`): cards
+  measure 98–109px, one ranked chip, amber demoted from default to
+  exception. Measured in real Chrome, not eyeballed. Not 10: the
+  `.vc-chip` token default is still amber (board item 3), rows are not
+  yet at `.frow` metrics (item 2), and there is no roster toolbar.
+- **DIFM 8 → 9.** The dimension's stated top gap was "writes but cannot
+  send". It can now: vendor-directed email with a known address, behind
+  review-then-send, recording the SERVER's answer (`accepted`, never
+  "delivered", never "Sent"). Not 10 until the Resend webhook is proven
+  live so `delivered` can exist, and until the send covers more than the
+  vendor case.
+- **Attention 9 → 9 (held).** The vendor row now answers all three parts
+  of the ops question — did it go out, when, did they answer — but
+  `Send Failed` only exists on the email path, so the three-not-dones
+  model is not yet complete across channels.
+
+**Overall now: 72/90 (80%).**
+
+| Moved this session | 07-13 | now |
+|---|---|---|
+| Workflow | 7 | 8 |
+| Design | 8 | 9 |
+| Attention | 8 | 9 |
+| Less friction | 7 | 8 |
+| DIFM | 8 | 9 |
+
 ## The honest line on "10s across the table"
 
 Nine 10s against Linear, Partiful, Paperless Post and Blink is a
