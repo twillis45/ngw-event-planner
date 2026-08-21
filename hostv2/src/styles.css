@@ -3902,6 +3902,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .stagewrap--responsive-data > .sheet{
     display:block;
   }
+  /* ONE CORNER (host, 2026-08-21). The sheet carried a PHONE bottom-sheet
+     radius on the desktop canvas — measured 26px top / 46px bottom sitting
+     inside a 20px stage frame, so the panel's corners matched neither the
+     frame nor each other. On a phone that asymmetry is right (it rises from
+     the bottom edge); with a rail up it is a panel, and a panel's corners are
+     even and agree with the frame that holds it. */
+  .stagewrap[data-rail="1"] > .sheet{ border-radius:var(--r-xl); }
   /* Reading measure for anything that is prose or a summary — the row lists
      below opt back out. Without this the guide line and the grounding
      paragraph run to 1358px, which is the "stretched single column" the whole
@@ -4155,15 +4162,18 @@ button.vc-pill::after{
    Measured dead space before (responsiveBaseline, 2026-08-07): 4% at 1280,
    15% at 1512, 33% at 1920 — a third of a large monitor was gutter. */
 @media (min-width:1280px) and (min-height:700px){
-  .stagewrap--responsive-command[data-rail="1"]{
-    width:min(100% - 48px, calc(1280px + var(--rail-w) + var(--sp-5)));
-    max-width:calc(1280px + var(--rail-w) + var(--sp-5));
-  }
+  /* THE HOME SURFACE IS THE SAME APP (host, 2026-08-21, measured at 1920):
+     command sat at 1500 while every section sat at 1580, so opening ANY menu
+     item snapped the whole app 80px wider. Whatever the argument for a
+     narrower command measure, the host meets it as "the app changes size when
+     I click the menu" — which is the same defect the section jump was. One
+     frame, everywhere the rail is up. */
   /* ONE FRAME FOR EVERY SECTION (host, 2026-08-21). This rail-aware pair was
      the last source of the 80px sideways jump: food took 1280+rail while data
      took 1360+rail, so "The spread & shopping" was visibly narrower than every
      other door on the same rail. The COMMAND surface keeps its own measure —
      it is the plan, not a section, and it is never reached from the rail. */
+  .stagewrap--responsive-command[data-rail="1"],
   .stagewrap--responsive-data[data-rail="1"],
   .stagewrap--responsive-food[data-rail="1"]{
     width:min(100% - 48px, calc(1360px + var(--rail-w) + var(--sp-5)));

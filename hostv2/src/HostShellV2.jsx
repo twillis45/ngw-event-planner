@@ -6402,6 +6402,29 @@ export default function HostShellV2() {
               })}
             </div>
           ))}
+          {/* ── THE REST OF THE MENU, FOLDED IN (host, 2026-08-21) ───────────
+              With the rail up, the top menu had become a sheet of duplicates:
+              its section list was a second copy of this rail, and Ask the Boss
+              / You & settings already sit above. What was NOT here were the
+              three non-section doors — the event switcher, search, and help —
+              so they lived alone behind a hamburger next to a full menu. They
+              belong in the menu that is already on screen. The hamburger keeps
+              them below the rail band, where it is the only way in. */}
+          <div className="srail-g" key="__rest">
+            <div className="shelf-label srail-t">Elsewhere</div>
+            <button className="srail-row" onClick={() => setSheet({ kind: 'events' })}>
+              {sectionIcon('events')}
+              <span className="srail-l">This event</span>
+            </button>
+            <button className="srail-row" onClick={() => { setSheet(null); setPaletteOpen(true); }}>
+              {sectionIcon('search')}
+              <span className="srail-l">Search</span>
+            </button>
+            <button className="srail-row" onClick={() => setSheet({ kind: 'help' })}>
+              {sectionIcon('help')}
+              <span className="srail-l">Feeling stuck?</span>
+            </button>
+          </div>
         </nav>
       )}
       {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
