@@ -88,6 +88,16 @@ export const INCIDENT_SOURCES = {
     fetched: '2026-07-28',
     claim: 'A Water Watcher is an adult who watches children in or around water with NO other activity — no phone — rotating roughly every 15 minutes. Toddlers and non-swimmers need an adult within arm’s reach. Drowning is the leading cause of death for ages 1–4. If a child goes missing at a gathering, check the water first.',
   },
+  // Registered 2026-08-21 (Halloween Party grounding pass). The CDC MMWR analysis
+  // is the canonical federal figure; the 42-year JAMA Pediatrics replication and
+  // NHTSA's deadliest-days ranking corroborate it from independent windows.
+  'cdc-halloween-peds': {
+    org: 'CDC MMWR — Childhood Pedestrian Deaths During Halloween, United States 1975-1996 (NHTSA FARS analysis; corroborated by the 42-year JAMA Pediatrics FARS study, 1975-2016, and NHTSA\'s deadliest-days pedestrian analysis)',
+    url: 'https://www.cdc.gov/mmwr/preview/mmwrhtml/00049687.htm',
+    fetched: '2026-08-21',
+    sourceClass: 'government',
+    claim: 'CDC/FARS: among children aged 5-14, pedestrian deaths between 4 p.m. and 10 p.m. on October 31 ran FOURFOLD the rate of the same hours on every other evening (an average of four deaths each Halloween versus one on other days, 1975-1996). The 42-year JAMA Pediatrics replication (1975-2016) found a 43% higher risk of a fatal pedestrian crash on Halloween evening overall, with the largest relative increase among children aged 4-8. NHTSA\'s 10-year deadliest-days analysis ranks October 31 with January 1 as the two deadliest calendar days of the year for US pedestrians.',
+  },
   'wsusa-water-watcher': {
     org: 'Water Safety USA (Red Cross, CDC, AAP, USCG + 10 more) — Watch Your Kids',
     url: 'https://www.watersafetyusa.org/watch-your-kids.html',

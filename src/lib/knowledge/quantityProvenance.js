@@ -96,6 +96,17 @@ export const QTY_SOURCES = {
     limitations: ['commercial_interest_disclosed'],
     claim: 'Per-guest disposable place settings for a standard 3-4h event: dinner plates/bowls guests x1.3 (buffet 1.3-1.5, plated 1.1, appetizer-only small plates 2.5-3.0); cups and cutlery guests x1.5, rising with bar service (non-alcoholic 1.5, beer/wine 2.0, full cocktail bar 2.5-3.0, hot beverages 0.75); napkins guests x3. Worked example, 100 guests / 3h: 130 dinner plates, 150 cups, 150 cutlery sets, 300 napkins. Vendor-published and commercially interested in a higher multiplier; other disposables retailers publish materially the same figures, which is trade consensus among interested parties rather than independent corroboration.',
   },
+  // Registered 2026-08-21 (New Year's Eve grounding pass) — the champagne-house
+  // statement of pours per bottle, corroborating bar-provision-2026's ~5 servings
+  // from the producer side.
+  'champagne-pours-2026': {
+    org: 'Laurent-Perrier — champagne bottle calculator and serving guide (fetched 2026 edition), corroborated by the Millesima USA serving guide',
+    url: 'https://www.laurent-perrier.com/en/guide-and-tips/explore-the-savoir-faire-of-champagne/tasting/champagne-bottle-calculator/',
+    fetched: '2026-08-21',
+    sourceClass: 'commercial_practitioner',
+    claimType: 'planning_guidance',
+    claim: 'A standard 750ml bottle of champagne or sparkling wine serves five to six flutes at the ~125ml (4.2oz) pour both guides recommend; toast planning runs about one glass per guest, with a bottle per 3-5 people depending on how festive the service is. Producer-published planning guidance, consistent with the US bar-provisioning consensus of ~5 servings a bottle and ~1 sparkling bottle per 4-5 guests.',
+  },
 };
 
 // A quantity provenance is GROUNDED only when it is tier:'researched' AND cites >=1 real

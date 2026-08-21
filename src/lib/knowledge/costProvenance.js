@@ -2206,6 +2206,66 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'Personalized LED crystal keychain favor, best bulk-tier price $9.99/piece at 12-unit order — a second independent product bounding the recuerdos price range alongside recuerdos-partyfavorsource-2026.',
   },
+  // -- SEASONAL HOLIDAY TABLES (registered 2026-08-21, grounding pass for the --
+  // -- Thanksgiving / Halloween / NYE playbooks authored the same day) --------
+  // The AFBF survey is a TRADE ASSOCIATION (farm advocacy) publishing a measured
+  // volunteer-shopper survey; its standing is disclosed and its figures are used
+  // as observed retail prices, never as a universal claim. It prices the FROZEN
+  // bird only — fresh and heritage birds are unpriced by the survey, which is why
+  // the turkey claim names the floor and leaves the ceiling as retail judgment.
+  'afbf-thanksgiving-2025': {
+    org: 'American Farm Bureau Federation — 40th annual Thanksgiving dinner survey, November 2025 (news release fetched; volunteer shoppers in all 50 states, first week of November, best shelf prices without promotional coupons)',
+    url: 'https://www.fb.org/news-release/cost-of-thanksgiving-dinner-declines',
+    fetched: '2026-08-21',
+    sourceClass: 'trade_association',
+    claim: 'AFBF 2025 survey, national averages: a 16-lb frozen turkey $21.50 — $1.34/lb, down 16.3% from 2024 (fresh turkey is unpriced by the survey and its wholesale price is RISING on avian influenza). Sides: 14oz cubed stuffing mix $3.71; a dozen dinner rolls $3.56 (about $0.30 a roll); 3 lb sweet potatoes $4.00 ($1.33/lb); 1 lb frozen peas $2.03; 1-lb veggie tray $1.36; two frozen pie crusts $3.37; 30oz pumpkin pie mix $4.16; half-pint whipping cream $1.87; gallon of whole milk $3.73. The classic dinner for 10 totals $55.18.',
+  },
+  // Candy and cider are split by PUBLISHER on purpose (the meeting-supplies
+  // precedent above): the evidence is multiple retailers, and one collapsed
+  // entry would make a row citing all of them look single-sourced to the >=2
+  // corroboration policy.
+  'candy-funsize-2026': {
+    org: 'Walmart fun-size variety-pack best-seller listings plus an Amazon 150-count minis listing (Walmart listing figures read from search results; Amazon price via a dated deal listing), 2026',
+    url: 'https://www.walmart.com/c/best-sellers/fun-size-candy-bars-variety-pack',
+    fetched: '2026-08-21',
+    sourceClass: 'commercial_practitioner',
+    claim: 'Fun-size and minis candy 2026, bulk channel: a 150-count Snickers/Twix/Milky Way minis bulk bag $13.99 on Amazon (about $0.09 a piece); Walmart 150-piece variety mixes about $19.97 (about $0.13 a piece, roughly $0.46-0.48/oz); Walmart party-size 35-count bags $9.96 ($0.28 a piece, $0.44-0.51/oz). The channel moves the per-piece price about 3x.',
+  },
+  'candy-partysize-target-2026': {
+    org: 'Target Mars fun-size variety-pack listings (fetched), 2026',
+    url: 'https://www.target.com/p/mars-mixed-chocolate-variety-fun-size-candy-22-66oz/-/A-90603439',
+    fetched: '2026-08-21',
+    sourceClass: 'commercial_practitioner',
+    claim: 'Target fun-size candy 2026: 35-count party-size Mars variety bags $10.29 ($0.29 a piece, $0.43-0.54/oz across pack styles); the 30.18oz jumbo M&M\'S/Snickers/Milky Way bag $15.89 ($0.53/oz). A small grocery party bag sits ABOVE a $0.25-per-piece ceiling — the second retailer confirming the grocery end of the candy band.',
+  },
+  'sparkling-cider-2026': {
+    org: 'Martinelli\'s Gold Medal sparkling cider 25.4oz — Target listing (fetched), 2026',
+    url: 'https://www.target.com/p/martinelli-s-gold-medal-sparkling-cider-25-4-fl-oz-glass-bottles/-/A-14753150',
+    fetched: '2026-08-21',
+    sourceClass: 'commercial_practitioner',
+    claim: 'Martinelli\'s Gold Medal sparkling cider, 25.4oz (750ml-class) glass bottle, $4.29 at Target ($0.17/fl oz) — the mass-retail floor of the zero-proof toast bottle, roughly a third the price of drinkable sparkling wine at $10-25.',
+  },
+  'sparkling-cider-indie-2026': {
+    org: 'Martinelli\'s sparkling cider 25.4oz — East Side Grocery listing (fetched) and Good Eggs organic listing (fetched), 2026',
+    url: 'https://shopesg.com/products/martinellis-sparkling-apple-cider-25-4oz',
+    fetched: '2026-08-21',
+    sourceClass: 'commercial_practitioner',
+    claim: 'Martinelli\'s 25.4oz sparkling cider at an independent grocer $5.99, and the organic bottling $8.49 at a premium delivery grocer — the independent/premium half of the $4.29-8.49 cider band, confirming the ceiling the mass-retail listing cannot.',
+  },
+  'turkey-shelf-2025': {
+    org: 'PennLive and WRAL Smart Shopper roundups of November 2025 grocery turkey pricing — Aldi, Walmart, Giant and Lidl shelf and promotional prices (both fetched)',
+    url: 'https://www.pennlive.com/food/2025/11/thanksgiving-2025-where-to-find-the-cheapest-turkeys-including-aldi-walmart-and-giant.html',
+    fetched: '2026-08-21',
+    sourceClass: 'independent',
+    claim: 'Thanksgiving-season 2025 frozen whole turkey at grocery: Aldi Jennie-O $0.77/lb, Shady Brook Farms / Honeysuckle White $0.84/lb at Walmart, Butterball frozen whole $0.97-0.99/lb; smoked whole Butterball $2.29/lb. These are seasonal promotional shelf prices BELOW the AFBF survey average of $1.34/lb — the holiday-deal floor of the frozen band, not the everyday price.',
+  },
+  'nrf-halloween-2025': {
+    org: 'National Retail Federation / Prosper Insights & Analytics — annual Halloween consumer survey, September 2025 (news release fetched)',
+    url: 'https://nrf.com/media-center/press-releases/nrf-consumer-survey-finds-halloween-spending-to-reach-record-13-1-billion',
+    fetched: '2026-08-21',
+    sourceClass: 'trade_association',
+    claim: 'NRF 2025 Halloween survey: total spending a record $13.1 billion (up from $11.6B in 2024); per-person spending a record $114.45, of which $34.24 is candy; category totals — costumes $4.3B, decorations $4.2B, candy $3.9B, greeting cards $0.7B. 73% of consumers plan to celebrate; top activities are handing out candy (66%), dressing in costume (51%), decorating (51%); 32% plan to throw or attend a party.',
+  },
 };
 
 // A costFactorProvenance is GROUNDED only when it is tier:'researched' AND cites >=1 real

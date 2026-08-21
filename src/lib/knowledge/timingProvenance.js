@@ -71,6 +71,14 @@ export const TIMING_SOURCES = {
     fetched: '2026-07-16',
     claim: 'Finalize/confirm the menu ~2–4 weeks before a small/casual gathering (birthday, get-together) and ~4–8 weeks before a larger event (40+ guests, wedding, holiday party); the date can be booked first and the menu locked later.',
   },
+  // Registered 2026-08-21 (Halloween Party grounding pass) — the planning-START
+  // lead for a date-competitive party, cited by authored timingProvenance rather
+  // than the category resolver (no category pattern claims it).
+  'partychecklist-timeline-2026': {
+    url: 'https://www.partychecklist.app/creating-a-party-planning-timeline/',
+    fetched: '2026-08-21',
+    claim: 'Party-planning timeline guide (2026): start the planning timeline at least 8 weeks out for best availability; "4 to 8 weeks is the sweet spot" for a standard party, and popular dates — holidays and in-demand weekends — book earliest, so the conservative end of the window wins for a date-competitive holiday weekend.',
+  },
 };
 
 // Category → grounding. `pattern` matches the decision's id + label; `antiPattern`

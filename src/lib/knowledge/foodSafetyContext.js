@@ -68,4 +68,15 @@ export const FOOD_SAFETY_SOURCES = {
     sourceClass: 'government',   // federal agency - no stake in the answer (5F.9)
     claim: 'Clean (hands 20 seconds with soap, before/during/after handling food; surfaces often) · Separate · Cook · Chill — the four-step frame both CDC and USDA publish.',
   },
+  // Registered 2026-08-21 (Thanksgiving Hosting grounding pass). fsis.usda.gov
+  // blocks direct automated fetch; the page text was read in full via the FSIS
+  // pages surfaced verbatim in search results plus the agency's own
+  // "Let's Talk Turkey" PDF as republished by a county health department.
+  'fsis-turkey-thaw': {
+    org: 'USDA FSIS — Turkey Basics: Safe Thawing / "Let\'s Talk Turkey" consumer guide',
+    url: 'https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/poultry/turkey-basics-safe-thawing',
+    fetched: '2026-08-21',
+    sourceClass: 'government',   // federal agency - no stake in the answer (5F.9)
+    claim: 'Refrigerator thawing (40°F or below): allow approximately 24 hours for every 4 to 5 pounds — 4-12 lb takes 1-3 days, 12-16 lb takes 3-4 days, 16-20 lb takes 4-5 days, 20-24 lb takes 5-6 days; a thawed bird keeps 1-2 more days refrigerated and may be refrozen. Cold-water thawing: about 30 minutes per pound, bird in a leak-proof wrapper fully submerged, water changed every 30 minutes, cooked IMMEDIATELY after thawing (16 lb ≈ 8 hours). Counter thawing is never safe — the outer layer enters the 40-140°F danger zone while the center is still frozen. Cooked turkey must reach a minimum internal 165°F, measured in the thickest breast, innermost wing, and innermost thigh without touching bone.',
+  },
 };

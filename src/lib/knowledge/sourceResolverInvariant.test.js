@@ -159,11 +159,19 @@ describe('1 — the source universe is what we think it is', () => {
   // close that gap. The OJ entry is the BLS frozen-concentrate series and its
   // claim states the reconstitution math, because quoting $4.82/16oz as a
   // per-glass price would overstate it roughly fourfold.)
-  test('20 axes, 393 source identities — verified, not assumed', () => {
+  // (404 since 2026-08-21: the Thanksgiving / Halloween / NYE grounding pass
+  // registered 11 sources — 7 in COST_SOURCES (`afbf-thanksgiving-2025`,
+  // `turkey-shelf-2025`, `candy-funsize-2026`, `candy-partysize-target-2026`,
+  // `sparkling-cider-2026`, `sparkling-cider-indie-2026`, `nrf-halloween-2025`),
+  // `champagne-pours-2026` in QTY_SOURCES, `partychecklist-timeline-2026` in
+  // TIMING_SOURCES, `fsis-turkey-thaw` in FOOD_SAFETY_SOURCES and
+  // `cdc-halloween-peds` in INCIDENT_SOURCES. Candy and cider are split by
+  // publisher so the >=2 corroboration policy sees the real evidence.)
+  test('20 axes, 404 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(393);
-    expect(unionIds().size).toBe(393);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(404);
+    expect(unionIds().size).toBe(404);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
