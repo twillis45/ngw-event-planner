@@ -83,6 +83,9 @@ export const adminApi = {
   // ANALYTICS-1 — PostHog HogQL read proxy. Returns {configured:false} (200) until the
   // backend has POSTHOG_QUERY_API_KEY/PROJECT_ID set + deployed; callers fall back to
   // the PostHog link-out in that case.
+  // Board P3 (2026-08-21): /metrics/posthog/status existed backend-only. The
+  // fallback panel uses it to say WHY it fell back (proxy unconfigured vs down).
+  posthogStatus:    ()                 => req('GET', '/api/admin/metrics/posthog/status'),
   posthogFunnel:    (days = 30)        => req('GET', `/api/admin/metrics/posthog/funnel?days=${days}`),
   posthogBreakdown: (prop, days = 30)  => req('GET', `/api/admin/metrics/posthog/breakdown?prop=${encodeURIComponent(prop)}&days=${days}`),
 };

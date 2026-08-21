@@ -543,6 +543,20 @@ function UsersPanel({ initialUserId }) {
   const [noteBody, setNoteBody] = useState('');
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Board P3 (Saarinen seat, 2026-08-21): '/' focuses search from anywhere in
+  // the panel — the one keyboard accelerator the operator loop actually earns.
+  const searchRef = useRef(null);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const n = e.target;
+      if (n && (n.tagName === 'INPUT' || n.tagName === 'TEXTAREA' || n.isContentEditable)) return;
+      e.preventDefault();
+      try { searchRef.current && searchRef.current.focus(); } catch { /* unmounted */ }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const search = useCallback(async (term) => {
     setBusy(true); setErr(null);
@@ -584,7 +598,8 @@ function UsersPanel({ initialUserId }) {
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <input
-          style={inputStyle} placeholder="Search email, name, or user id…"
+          ref={searchRef}
+          style={inputStyle} placeholder="Search email, name, or user id…  ( / )"
           value={q} onChange={e => setQ(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') search(); }}
         />
@@ -1488,12 +1503,21 @@ function PostHogPanel({ mode }) {  // mode: 'funnel' | 'friction'
   const [data, setData] = useState(null);
   const [breakdowns, setBreakdowns] = useState(null);
   const [state, setState] = useState('loading');  // loading | native | fallback
+  const [why, setWhy] = useState(null);            // board P3: fallback names its cause
 
   const load = useCallback(async () => {
     setState('loading');
     try {
       const f = await adminApi.posthogFunnel(30);
-      if (!f || f.configured === false || !Array.isArray(f.funnel)) { setState('fallback'); return; }
+      if (!f || f.configured === false || !Array.isArray(f.funnel)) {
+        // Board P3 (2026-08-21): the fallback used to be mute about WHY. The
+        // status route (previously API-only) distinguishes "proxy never
+        // configured" from "configured but not answering".
+        adminApi.posthogStatus()
+          .then(s => setWhy(s && s.configured ? 'Proxy configured but returned no funnel — check the server logs.' : 'Read proxy not configured (POSTHOG_QUERY_API_KEY/PROJECT_ID unset) — link-out is the designed path.'))
+          .catch(() => setWhy(null));
+        setState('fallback'); return;
+      }
       setData(f);
       if (mode === 'funnel') {
         const [voice, market, host] = await Promise.all([
@@ -1510,9 +1534,14 @@ function PostHogPanel({ mode }) {  // mode: 'funnel' | 'friction'
 
   if (state === 'loading') return <div style={{ fontSize: type.size.base, color: D.faint }}>Loading from PostHog…</div>;
   if (state === 'fallback') {
-    return mode === 'friction'
-      ? <PostHogLinkPanel title="Friction" body="Where users stall, drop off, or rage-click. Session and event-stream analysis lives in PostHog — open it to inspect paths and retention." />
-      : <PostHogLinkPanel title="Funnel" body="Sign-up → first event → qualified → completed → second event. Each step is a server-side PostHog event; the conversion funnel is built and filtered in PostHog." />;
+    return (
+      <div>
+        {mode === 'friction'
+          ? <PostHogLinkPanel title="Friction" body="Where users stall, drop off, or rage-click. Session and event-stream analysis lives in PostHog — open it to inspect paths and retention." />
+          : <PostHogLinkPanel title="Funnel" body="Sign-up → first event → qualified → completed → second event. Each step is a server-side PostHog event; the conversion funnel is built and filtered in PostHog." />}
+        {why && <div style={{ marginTop: 10, fontSize: type.size.xs, color: D.faint, fontFamily: D.mono }}>{why}</div>}
+      </div>
+    );
   }
 
   const funnel = data.funnel || [];
