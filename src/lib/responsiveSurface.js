@@ -64,6 +64,15 @@ export const SURFACE_CLASS = Object.freeze({
  * nothing and costs them measure. */
 export const DATA_SHEETS = Object.freeze([
   'budget', 'guests', 'vendors', 'tasks', 'risks', 'decisions', 'seating', 'supplies',
+  // EVERY SECTION ON THE RAIL, NOT EIGHT OF THEM (host, 2026-08-21, driven at
+  // 1920 section by section). This list decided the FRAME width: the eight
+  // above took the data measure (1580 at wide) and everything else fell to
+  // `legacy` (1500), so walking the rail moved the whole app 80px sideways —
+  // "it shifts as we go down the list of sections". The sheets added here are
+  // the rest of the rail's doors; they are sections like any other and there
+  // was never a reason for them to be narrower, only an omission.
+  'space', 'meaning', 'ask', 'pass', 'settings', 'lodging', 'air', 'ground',
+  'costshare', 'rain', 'crabs', 'thanks', 'sweep',
 ]);
 
 /**

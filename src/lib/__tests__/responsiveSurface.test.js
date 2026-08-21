@@ -26,15 +26,26 @@ describe('the responsive surface set is pinned by explicit identity', () => {
   // that should USE width"), and desktop was measured at 2 responsive surfaces
   // out of 45. Everything below them stays legacy — the invariant is unchanged in
   // kind, only its membership moved, and it moved by explicit identity.
-  test('every dense-data sheet widens', () => {
+  test('every SECTION on the rail widens — one frame for the whole list', () => {
     for (const sheet of ['budget', 'guests', 'vendors', 'tasks', 'risks',
-      'decisions', 'seating', 'supplies']) {
+      'decisions', 'seating', 'supplies',
+      'space', 'meaning', 'ask', 'pass', 'settings', 'lodging', 'air',
+      'ground', 'costshare', 'rain', 'crabs', 'thanks', 'sweep']) {
       expect(responsiveSurfaceMode({ stage: 'plan', sheet })).toBe('data');
     }
   });
 
-  test('a form or single-decision sheet never widens — width costs it measure', () => {
-    for (const sheet of ['ask', 'date', 'settings', 'qr', 'pass', 'help']) {
+  // WIDTH NO LONGER COSTS MEASURE (host, 2026-08-21, driven at 1920 section by
+  // section). The original ruling was right that a form must keep its reading
+  // measure — but it enforced that by keeping the whole FRAME narrow, so
+  // walking the rail moved the entire app 80px sideways and the host read it as
+  // the app resizing itself. Measure is now enforced where it belongs, INSIDE
+  // the sheet (`> .sheet > * { max-width:820px }` in every mode), so a section
+  // can share one frame and still hold its measure. Sheets that are NOT rail
+  // sections (date, qr, invite, help — reached from a flow, never from the
+  // section list) keep legacy: the ruling still governs them.
+  test('a sheet reached from a FLOW, not the rail, stays legacy', () => {
+    for (const sheet of ['date', 'qr', 'help', 'invite', 'unknown-future-sheet']) {
       expect(responsiveSurfaceMode({ stage: 'plan', sheet })).toBe('legacy');
     }
   });
@@ -56,8 +67,8 @@ describe('the responsive surface set is pinned by explicit identity', () => {
   test('EVERY other plan sheet stays legacy — no silent widening', () => {
     // The whole point of the ruling: Vendors and the rest are documented debt,
     // not surfaces that get stretched because they happen to share a stage.
-    for (const sheet of ['timeline', 'travel', 'ask', 'settings', 'invite',
-      'date', 'qr', 'pass', 'help', 'meaning', 'thanks', 'unknown-future-sheet']) {
+    for (const sheet of ['timeline', 'travel', 'invite',
+      'date', 'qr', 'help', 'unknown-future-sheet']) {
       expect(responsiveSurfaceMode({ stage: 'plan', sheet })).toBe('legacy');
       expect(stagewrapClass({ stage: 'plan', sheet })).toBe('');
     }
@@ -106,7 +117,9 @@ describe('the --fit opt-out follows the mode, nothing else', () => {
     // transform is kept. (vendors was the exemplar here until it became a data
     // sheet itself; an exemplar has to be chosen from the side it demonstrates.)
     expect(optsOutOfFit({ stage: 'plan', sheet: 'guests' })).toBe(true);
-    expect(optsOutOfFit({ stage: 'plan', sheet: 'ask' })).toBe(false);
+    // 'ask' became a rail section (one frame, 2026-08-21). 'date' is the
+    // flow-reached sheet that still keeps the phone transform.
+    expect(optsOutOfFit({ stage: 'plan', sheet: 'date' })).toBe(false);
     expect(optsOutOfFit({ stage: 'day', sheet: null })).toBe(false);
   });
 
@@ -225,7 +238,10 @@ describe('showsRail', () => {
   // width does this content have", and that is genuinely per-surface.
   test('optsOutOfFit stays per-surface at desktop, independent of the rail', () => {
     expect(optsOutOfFit({ stage: 'plan', sheet: 'budget' })).toBe(true);
-    expect(optsOutOfFit({ stage: 'plan', sheet: 'settings' })).toBe(false);
+    // 'settings' is now a rail SECTION and shares the one frame (2026-08-21),
+    // so it opts out of --fit like every other section. A flow-reached sheet
+    // is the honest example of the per-surface rule this test guards.
+    expect(optsOutOfFit({ stage: 'plan', sheet: 'date' })).toBe(false);
   });
 
   test('a null or unknown state never throws and never raises a rail', () => {

@@ -13802,13 +13802,17 @@ export default function HostShellV2() {
                     paragraph so the emotional core reads with real hierarchy instead
                     of a monotone form. Sans, not serif (serif is doctrine-locked to
                     welcome/invite/reveal). */}
-                <div className="eyebrow" style={{ color: 'var(--steel-soft)', marginBottom: 8 }}>The heart of it</div>
-                <p style={{ fontSize: 'var(--t-card-title)', fontWeight: 750, letterSpacing: '-.02em', lineHeight: 1.25, margin: '0 0 8px', color: 'var(--ink)' }}>
-                  What are we really protecting?
-                </p>
-                <p className="grounding" style={{ margin: '0 0 var(--sp-5)' }}>
-                  The day-before brief, the run of show, and the toast all draw from your own words — nothing here is required.
-                </p>
+                {/* HERO PARITY (host, 2026-08-21; measured at desktop): 10 of 13
+                    sections opened with SheetHero and three opened with something
+                    else — this one hand-rolled an eyebrow + bold paragraph that
+                    APPROXIMATED the hero instead of being one, so the type scale
+                    and rhythm drifted from every other sheet. Same words, the
+                    real component. */}
+                <SheetHero
+                  eyebrow="The heart of it"
+                  star="What are we really protecting?"
+                  sub="The day-before brief, the run of show, and the toast all draw from your own words — nothing here is required."
+                />
                 {/* MILITARY RETIREMENT intelligence (knowledge/militaryRetirement.js): when the
                     event is a military retirement, surface the real ceremony protocol — the
                     sequence + the elements that carry a decision or lead time — grounded to Army
@@ -14128,7 +14132,15 @@ export default function HostShellV2() {
               const examples = ['Will $2,000 cover it?', 'How much food do I need?', 'Am I ready?', 'Will it rain?'];
               return (
                 <>
-                  <p className="grounding" style={{ margin: '0 0 12px' }}>Ask about your money, food, guests, weather, or what’s next — answered straight from your plan, with the assumptions shown. Nothing made up.</p>
+                  {/* HERO PARITY (host, 2026-08-21): this sheet opened on a bare
+                      grounding paragraph — the only door on the rail with no
+                      hero at all. The star is the honest promise of the surface,
+                      not a metric, because there is no number here to state. */}
+                  <SheetHero
+                    eyebrow="Answered from your plan"
+                    star="Ask me anything"
+                    sub="Money, food, guests, weather, or what’s next — with the assumptions shown, and nothing made up."
+                  />
                   <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
                     <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 'var(--t-input)' }} placeholder="e.g. will $2,000 cover it?"
                       value={askQ} onChange={e => setAskQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(askQ); }} aria-label="Ask a question about your plan" autoFocus />
@@ -14223,10 +14235,17 @@ export default function HostShellV2() {
                     <span className="nr-l">This event</span>
                     <span className="nr-r">{event.name}<span className="chev" aria-hidden="true">›</span></span>
                   </button>
-                  <button className="navrow" onClick={() => setSheet({ kind: 'sections' })}>
-                    <span className="nr-l">Jump to a section</span>
-                    <span className="nr-r">vendors · food · guests…<span className="chev" aria-hidden="true">›</span></span>
-                  </button>
+                  {/* NOT WHEN THE RAIL IS UP (host, 2026-08-21). At desktop and
+                      widescreen the left rail already lists every section, so
+                      this row opened a sheet whose only content was a second
+                      copy of the rail — a door to the thing already on screen.
+                      Below the rail band it is the ONLY way in, so it stays. */}
+                  {!railUp && (
+                    <button className="navrow" onClick={() => setSheet({ kind: 'sections' })}>
+                      <span className="nr-l">Jump to a section</span>
+                      <span className="nr-r">vendors · food · guests…<span className="chev" aria-hidden="true">›</span></span>
+                    </button>
+                  )}
                   <button className="navrow" onClick={() => { setSheet(null); setPaletteOpen(true); }}>
                     <span className="nr-l">Search</span>
                     <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
@@ -14656,6 +14675,18 @@ export default function HostShellV2() {
               const mem = (() => { try { return summarizeHostIntel(profile); } catch { return { present: false, groups: [] }; } })();
               return (
                 <>
+                  {/* HERO PARITY (host, 2026-08-21): settings opened straight on
+                      the Sound row. The star is what this surface actually holds
+                      — how much of you the app remembers — read from the same
+                      summarizeHostIntel the panel below renders, never a
+                      decorative count. */}
+                  <SheetHero
+                    eyebrow="You & settings"
+                    star={mem && mem.present ? `${(mem.groups || []).length} remembered` : 'Nothing remembered yet'}
+                    sub={mem && mem.present
+                      ? 'What Event Boss knows about how you host — yours to change or clear.'
+                      : 'Tell it how you host and it stops asking twice. Nothing is inferred.'}
+                  />
                   {/* Sound lives here now (host request 2026-07-11) — the header
                       carries only the account icon. Same toggle, same prime. */}
                   <div className="later-row" style={{ borderTop: 'none', padding: 'var(--sp-1) 2px 14px' }}>

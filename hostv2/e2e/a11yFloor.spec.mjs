@@ -125,6 +125,19 @@ const NAME_PROBE = () => {
 
 /** The Sections door, read at runtime — never a hardcoded list of sheets. */
 const sectionRows = async (page) => {
+  // THE DOOR MOVES WITH THE VIEWPORT (2026-08-21). When the persistent rail is
+  // up (desktop/widescreen) it IS the section list, and the top menu's "Jump to
+  // a section" row is deliberately not rendered — it would open a sheet whose
+  // only content is a second copy of the rail. Read whichever door is real
+  // rather than assuming the phone's; hardcoding the menu path made this sweep
+  // fail at desktop while the app was fine.
+  const rail = page.locator('.srail button');
+  if (await rail.count()) {
+    const railLabels = await rail.allInnerTexts();
+    return railLabels.map((t) => (t || '').split('\n')[0].trim())
+      .filter(Boolean)
+      .filter((t) => !/^(New event|Ask the Boss|Close)$/.test(t));
+  }
   await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
   await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
   const labels = await page.locator('.sheet').last().locator('button').allInnerTexts();
@@ -151,9 +164,15 @@ const sectionRows = async (page) => {
 const openSection = async (page, label) => {
   try {
     await boot(page);
-    await page.locator('.ev-eyebrow').first().click({ timeout: 6000 });
-    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 6000 });
-    await page.locator('.sheet').last().getByText(label, { exact: false }).first().click({ timeout: 6000 });
+    // Same rule as sectionRows: use the door this viewport actually has.
+    const railBtn = page.locator('.srail button', { hasText: label }).first();
+    if (await page.locator('.srail button').count()) {
+      await railBtn.click({ timeout: 6000 });
+    } else {
+      await page.locator('.ev-eyebrow').first().click({ timeout: 6000 });
+      await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 6000 });
+      await page.locator('.sheet').last().getByText(label, { exact: false }).first().click({ timeout: 6000 });
+    }
     await page.waitForTimeout(300);
     return await page.locator('.sheet').count() > 0;
   } catch { return false; }

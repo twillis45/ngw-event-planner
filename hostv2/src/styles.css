@@ -163,9 +163,16 @@ button{font-family:inherit}
   .stagewrap--responsive-command,
   .stagewrap--responsive-food{
     /* Replace the fixed silhouette with real width. transform-origin is reset
-       because the scaled stage anchored top-center. */
+       because the scaled stage anchored top-center.
+       ONE FRAME WIDTH (host, 2026-08-21, driven section-to-section at 1920):
+       food sat at 1280 while data sat at 1360/1480, so walking the rail moved
+       the WHOLE APP 80px sideways — "it shifts as we go down the list". The
+       per-mode measure table was ratified before anyone walked it; its own
+       comment claims the tiers keep it reading "as one app", and driving it
+       shows the opposite. Host instruction supersedes: one frame, and the
+       per-mode difference lives INSIDE it (the dense-row exemptions). */
     transform:none; transform-origin:initial;
-    width:min(100% - 48px, 1280px); max-width:1280px;
+    width:min(100% - 48px, 1360px); max-width:1360px;
     height:auto; margin:var(--sp-5) auto 40px;
   }
   /* The phone bezel is a silhouette affordance — it has no meaning once the
@@ -3900,6 +3907,26 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      paragraph run to 1358px, which is the "stretched single column" the whole
      viewport port exists to remove. */
   .stagewrap--responsive-data > .sheet > *{ max-width:820px; }
+  /* ── ONE MEASURE ACROSS MODES (host, 2026-08-21) ────────────────────────
+     Toggling Guests → The spread & shopping made "the app change width":
+     measured at 1440, data-mode content sat at 820px and food-mode content at
+     1130px, in an identically-sized 1170px sheet. Same sheet frame, two
+     reading measures, so the eye reads it as the whole app resizing.
+     Food now takes the same prose cap, and its own dense rows opt back out
+     below exactly the way data mode's do — the cap is the parity, the
+     exemptions are what keep the work full-width. */
+  .stagewrap--responsive-food > .sheet > *{ max-width:820px; }
+  .stagewrap--responsive-food > .sheet > .sheet-head,
+  .stagewrap--responsive-food > .sheet > .fstat-list,
+  .stagewrap--responsive-food > .sheet > .food-act,
+  .stagewrap--responsive-food > .sheet > .shelf,
+  .stagewrap--responsive-food > .sheet > .later-row,
+  .stagewrap--responsive-food > .sheet > .brow,
+  .stagewrap--responsive-food > .sheet > .frow,
+  .stagewrap--responsive-food > .sheet > div:has(> .later-row),
+  .stagewrap--responsive-food > .sheet > div:has(> .brow),
+  .stagewrap--responsive-food > .sheet > div:has(> .frow),
+  .stagewrap--responsive-food > .sheet > div:has(> .food-act){ max-width:none; }
   /* The work itself takes the width. These are the same selectors the retired
      grid used to move into column 2, so the list of "what is a dense row" is
      unchanged and verified — only what happens to it is different. */
@@ -3978,7 +4005,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      board-ratified table. The tiers deliberately sit ~80-200px apart so the
      app reads as one app rather than five widths. */
   @media (min-width:1536px){
-    .stagewrap--responsive-data{ width:min(100% - 48px, 1480px); max-width:1480px; }
+    /* Both modes take the wide measure — see the one-frame-width note on
+       .stagewrap--responsive-food. Leaving food out here was the other half
+       of the 80px jump the host drove into. */
+    .stagewrap--responsive-data,
+    .stagewrap--responsive-food{ width:min(100% - 48px, 1480px); max-width:1480px; }
   }
 }
 
@@ -4124,12 +4155,17 @@ button.vc-pill::after{
    Measured dead space before (responsiveBaseline, 2026-08-07): 4% at 1280,
    15% at 1512, 33% at 1920 — a third of a large monitor was gutter. */
 @media (min-width:1280px) and (min-height:700px){
-  .stagewrap--responsive-command[data-rail="1"],
-  .stagewrap--responsive-food[data-rail="1"]{
+  .stagewrap--responsive-command[data-rail="1"]{
     width:min(100% - 48px, calc(1280px + var(--rail-w) + var(--sp-5)));
     max-width:calc(1280px + var(--rail-w) + var(--sp-5));
   }
-  .stagewrap--responsive-data[data-rail="1"]{
+  /* ONE FRAME FOR EVERY SECTION (host, 2026-08-21). This rail-aware pair was
+     the last source of the 80px sideways jump: food took 1280+rail while data
+     took 1360+rail, so "The spread & shopping" was visibly narrower than every
+     other door on the same rail. The COMMAND surface keeps its own measure —
+     it is the plan, not a section, and it is never reached from the rail. */
+  .stagewrap--responsive-data[data-rail="1"],
+  .stagewrap--responsive-food[data-rail="1"]{
     width:min(100% - 48px, calc(1360px + var(--rail-w) + var(--sp-5)));
     max-width:calc(1360px + var(--rail-w) + var(--sp-5));
   }
@@ -4281,7 +4317,12 @@ button.vc-pill::after{
      JSX. A rule that matches nothing is indistinguishable from a rule that
      works until you measure the box. */
   .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > *{
-    max-width:720px;
+    /* 720 → 820 (host, 2026-08-21): measured at 1440, the three sheet modes
+       opened their heroes at 820 / 1130 / 720 inside an identical 1170 frame,
+       so moving between sections read as the app resizing itself. One measure
+       now; the dense-row exemptions in each mode are what still take the
+       width. */
+    max-width:820px;
   }
   /* The head spans — it carries the sheet's name and its close. */
   .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > .sheet-head{
