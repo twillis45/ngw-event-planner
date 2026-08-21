@@ -242,6 +242,17 @@ export const motion = {
     base:       200, // standard row/state transition
     enter:      240, // panel / ask enter (askin)
     reveal:     420, // moderate reveal / receipt
+    // ── The slow band (motion audit 2026-08-21) ──────────────────────────
+    // Everything above 420ms was literal until now: .38/.5/.55/.6s on
+    // disclosure and .7/.9s on progress fills, twenty-odd sites, six
+    // spellings of two speeds. Unnamed values drift because nothing tells
+    // the next author which spelling is the house one.
+    slow:       550, // a fold or disclosure opening
+    fill:       700, // a bar travelling its track
+    // A landing ring is a DWELL, not an interaction speed — long enough to
+    // find with the eye after a scroll lands. Named separately so nobody
+    // "corrects" it down to transition range.
+    land:      3200,
   },
 };
 

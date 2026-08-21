@@ -3,7 +3,7 @@
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
-import { Fragment, useMemo, useState, useEffect, useRef, useCallback, cloneElement } from 'react';
+import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
@@ -3473,6 +3473,55 @@ export default function HostShellV2() {
     }
   }, [sheet]); // eslint-disable-line react-hooks/exhaustive-deps
   const sheetRef = useRef(null);              // the .sheet dialog container (a11y focus mgmt)
+
+  // ── A SHEET RISES FROM WHERE YOU TOUCHED IT (motion audit, 2026-08-21) ─────
+  // The audit's one real finding: nothing in this app connected a before-state
+  // to an after-state. A sheet opened from the last row of a list rose from the
+  // same 24px offset as one opened from the first, so the gesture told the host
+  // nothing about where the thing they tapped went. That is the axis the
+  // category is genuinely ahead on.
+  //
+  // Done at the POINTER rather than at the call site on purpose. The row-level
+  // CTA law means sheets open from dozens of places — rows, chips, hero asks,
+  // the rail, the palette — and threading a rect through every one of them
+  // would be forty edits, forty chances to miss one, and a permanent tax on
+  // adding the forty-first. One capture-phase listener gives every one of them
+  // an origin for free, including the ones not written yet.
+  const lastTapRef = useRef(null);
+  useEffect(() => {
+    const onDown = (e) => { lastTapRef.current = { y: e.clientY, t: Date.now() }; };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, []);
+
+  // Measured in a LAYOUT effect, before paint, and the animation is restarted
+  // explicitly afterwards. Setting the property alone was not enough: the
+  // element mounts with `animation:sheetrise` already applied, so the engine
+  // has resolved its from-frame by the time any effect runs. The
+  // none/reflow/'' idiom is the reliable way to make it read the new value.
+  //
+  // The staleness window matters. `lastTap` is only trusted for a moment,
+  // because a sheet can also arrive from a keyboard shortcut, a deep link, or
+  // a route restore — and inheriting the Y of whatever the host last touched,
+  // minutes ago, would be worse than no origin at all. Past the window it
+  // falls back to the 24px default, which is exactly today's behavior.
+  useLayoutEffect(() => {
+    const el = sheetRef.current;
+    if (!el || !sheet) return;
+    const tap = lastTapRef.current;
+    let fromY = 24;
+    if (tap && Date.now() - tap.t < 1200) {
+      const r = el.getBoundingClientRect();
+      // Clamped to 320px: a full-viewport travel at a fixed 260ms reads as a
+      // lurch, not a rise. The direction is the cue; the distance only has to
+      // be enough to feel intentional.
+      fromY = Math.max(0, Math.min(320, Math.round(tap.y - r.top)));
+    }
+    el.style.setProperty('--from-y', fromY + 'px');
+    el.style.animation = 'none';
+    void el.offsetHeight;                      // reflow: commits the reset
+    el.style.animation = '';
+  }, [sheet && sheet.kind, sheet && sheet.focus]);
   // The meaning sheet can be opened generically (Sections directory) which
   // doesn't call openMeaning — seed the draft here so the sheet is never blank
   // (audit: title over empty body). Only seeds when null, so it never clobbers edits.
@@ -7850,7 +7899,7 @@ export default function HostShellV2() {
                   }
                   return (
                     <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key}
-                      style={spot === key ? undefined : { animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                      style={spot === key ? undefined : { animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
                       {!(askMode && i === 0) && <span className="idx">{i + 1}</span>}
                       <div className="card-head">
                         <div className="card-top">
@@ -8025,7 +8074,7 @@ export default function HostShellV2() {
                     data-decision-id={(isHero && heroSelection && heroSelection.decisionId) || undefined}
                     data-confidence={(isHero && heroEvidence && heroEvidence.confidence) || undefined}
                     data-why={(isHero && heroWhy.length) ? heroWhy.join(' · ') : undefined}
-                    style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                    style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
                     {!isHero && <span className="idx">{i + 1}</span>}
                     <div className="card-head">
                       <div className="card-top">
@@ -8898,7 +8947,7 @@ export default function HostShellV2() {
                           <div className="t-num" style={{ fontSize: 'clamp(26px,8cqw,34px)' }}>
                             {essTotal ? `${essDone} of ${essTotal}` : '—'}
                           </div>
-                          <div className="bar"><i style={{ width: (essTotal ? Math.round((essDone / essTotal) * 100) : 0) + '%' }} /></div>
+                          <div className="bar"><i style={{ '--fill': essTotal ? Math.round((essDone / essTotal) * 100) / 100 : 0 }} /></div>
                           <div className="t-sub">{sub}</div>
                           {/* Audit #9: the area NAMES were hidden behind the "what's
                               counted" caret, so "N of M" was an abstract number — a
@@ -10908,7 +10957,7 @@ export default function HostShellV2() {
                     // tap. The chips, buttons and why-stack live only on the open card.
                     if (r.id !== openCardId) {
                       return (
-                        <button key={r.id || i} type="button" className="frow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, ...heartStyle }}
+                        <button key={r.id || i} type="button" className="frow" style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both`, ...heartStyle }}
                           onClick={() => { setDecOpenCard(r.id); setDecExplain(null); }}
                           aria-expanded={false}>
                           <span className="f-main">
@@ -10922,7 +10971,7 @@ export default function HostShellV2() {
                       );
                     }
                     return (
-                      <div key={r.id || i} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default', ...heartStyle }}
+                      <div key={r.id || i} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default', ...heartStyle }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
@@ -10990,7 +11039,7 @@ export default function HostShellV2() {
                   if (inlineKind) {
                     return (
                       <div key={r.id || i} style={{ ...heartStyle }}>
-                        <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, width: '100%' }}
+                        <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both`, width: '100%' }}
                           ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                           <span className="f-main">
                             <span className="f-name">{r.label}
@@ -11012,7 +11061,7 @@ export default function HostShellV2() {
                   // button, so wrap it and hang meta + pin as siblings.
                   return (
                     <div key={r.id || i} style={{ ...heartStyle }}>
-                      <button className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, width: '100%' }}
+                      <button className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both`, width: '100%' }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                         <span className="f-main">
@@ -12936,7 +12985,7 @@ export default function HostShellV2() {
                             <button
                               className={'frow' + (sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId) ? ' rowfocus' : '')}
                               ref={el => { if (el && sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId)) el.scrollIntoView({ block: 'center' }); }}
-                              style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                              style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                               onClick={() => setLodgePickFor(lodgePickFor === rk ? null : rk)}
                               aria-expanded={lodgePickFor === rk} aria-haspopup="true"
                               aria-label={r.name + ' — ' + LODGING_STATUS_LABEL[r.status] + '. Tap to change.'}>
@@ -13107,7 +13156,7 @@ export default function HostShellV2() {
                             <div key={r.guestId != null ? r.guestId : 'g' + i}>
                               <button className={'frow' + (isFocus ? ' rowfocus' : '')}
                                 ref={el => { if (el && scrollHere) el.scrollIntoView({ block: 'center' }); }}
-                                style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                                style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                                 onClick={() => setRidePickFor(ridePickFor === rk ? null : rk)}
                                 aria-expanded={ridePickFor === rk} aria-haspopup="true"
                                 aria-label={r.name + ' — ' + RIDE_STATUS_LABEL[r.status] + '. Tap to change.'}>
@@ -13344,7 +13393,7 @@ export default function HostShellV2() {
                                 <div key={r.guestId != null ? r.guestId : 'g' + (cl.day || 'u') + i}>
                                   <button className={'frow' + (isFocus ? ' rowfocus' : '')}
                                     ref={el => { if (el && isFocus) el.scrollIntoView({ block: 'center' }); }}
-                                    style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                                    style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                                     onClick={() => (editing ? setFlightEdit(null) : openFlightEdit(r))}
                                     aria-label={r.name + ' — ' + (r.hasFlightInfo ? 'flight info on the board' : 'no flight info yet') + '. Tap to enter flights.'}>
                                     <span className="f-main">
@@ -13789,7 +13838,7 @@ export default function HostShellV2() {
                   return (
                   <div key={'ctx-' + (r.type || i)} className={'brow' + (focused ? ' rowfocus' : '')}
                     ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
-                    style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                    style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
                       {/* Same one table as the playbook rows below — these are
@@ -13825,7 +13874,7 @@ export default function HostShellV2() {
                   return (
                   <div key={r.id || i} className={'brow' + (focused ? ' rowfocus' : '')}
                     ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
-                    style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                    style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
                       {/* ONE table, in lib/riskSeverity.js. This inline lookup was
@@ -14685,7 +14734,7 @@ export default function HostShellV2() {
                       ? 'That’s everyone — the day is set.'
                       : 'Each note already knows their arrival time and your address. Send from your own thread — nothing goes out by itself.'}
                   />
-                  <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
+                  <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ '--fill': pct / 100, background: 'var(--ok)' }} /></div>
                   {reconfirmables.map(v => {
                     const st = v.reconfirmed72 ? 'answered' : (sweepState[v.id] || 'waiting');
                     const d = draftVendorReconfirm(event, v, profile);
@@ -14945,7 +14994,7 @@ export default function HostShellV2() {
                         : 'One at a time — each note already knows who came and what they brought.'}
                     />
                   )}
-                  <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
+                  <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ '--fill': pct / 100, background: 'var(--ok)' }} /></div>
                   {!yes.length && <p className="grounding">No confirmed guests on this one yet.</p>}
                   {cur && (() => {
                     const { g, i } = cur;
@@ -15269,7 +15318,7 @@ export default function HostShellV2() {
                     const rowBtn = (
                     <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
                       ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
-                      style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                      style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                       onClick={() => toggleTask(i)}>
                       <span className="fcheck" aria-hidden="true" />
                       <span className="f-main">
@@ -15441,7 +15490,7 @@ export default function HostShellV2() {
                     </div>
                     {owed.map((o, i) => (
                       <button key={o.id} className="frow"
-                        style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                        style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                         onClick={() => setSheet({ kind: 'vendors', focus: o.vendorId || null })}>
                         <span className="f-main">
                           <span className="f-name">{o.label}</span>
@@ -16017,7 +16066,7 @@ export default function HostShellV2() {
                         return (
                           <div key={it.id}>
                             <button className={'frow' + (got ? ' got' : '') + (it.skipped ? ' skipped' : '')}
-                              style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                              style={{ animation: `cardin var(--ms-enter) var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                               onClick={() => {
                                 // Skipped rows stay visible (see the audit note above);
                                 // tapping one is the undo — the same single-toggle

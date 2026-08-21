@@ -1085,7 +1085,25 @@ button{font-family:inherit}
 .tile-a{grid-area:a; background:var(--card); border:1px solid var(--line-soft)}
 .tile-a .t-num{font-size:48px/*one-off jumbo countdown numeral*/}
 .bar{height:10px; border-radius:6px; background:var(--bg-band); overflow:hidden; margin:var(--sp-3) 0 var(--sp-2)}
-.bar i{display:block; height:100%; border-radius:6px; background:var(--steel); transition:width .9s var(--ease-standard)}
+/* ── THE FILL TRAVELS ON transform, NOT width (motion audit, 2026-08-21) ─────
+   Animating `width` relayouts the bar on every frame of a 700ms travel. On the
+   390px flagship that is the difference between a fill that glides and one that
+   steps, and it is invisible on a desktop where there is headroom to waste.
+   `scaleX` runs on the compositor.
+
+   THE RADIUS MOVED TO THE TRACK, which is the part that makes this safe rather
+   than clever: scaleX distorts a corner as it stretches, so a 6px radius on the
+   fill would have squashed to an oval at 4 percent and rounded out as it grew.
+   `.bar` already carries `border-radius:6px` AND `overflow:hidden`, so the
+   track was always doing the clipping — the radius on the fill was never
+   visible in the first place. It is deleted, not relocated.
+
+   Driven by `--fill` (0..1) instead of an inline width percentage. The default
+   of 0 matters: a `.bar i` that renders before its value arrives shows an empty
+   track and then fills, rather than flashing full-width and snapping back. */
+.bar i{display:block; height:100%; width:100%; background:var(--steel);
+  transform-origin:left center; transform:scaleX(var(--fill,0));
+  transition:transform var(--ms-fill) var(--ease-standard)}
 /* Paired stat tiles top-align their content (label + number + sub as one block)
    instead of inheriting .tile's space-between. The grid stretches b/c to equal
    height, so on the shorter tile (Budget's sub is short vs Guests') space-between
@@ -1332,7 +1350,15 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
    the same --ok / --on-ok pair the "all set" tile uses. Driven by toastTone==='ok'
    (every patchEvent write); error/neutral toasts keep the default carbon pill. */
 .toast.ok{ background:var(--ok); color:var(--on-ok); border-color:var(--ok); box-shadow:0 12px 40px rgba(47,107,70,.34); }
-@keyframes toastin{from{opacity:0; transform:translate(-50%,10px)} to{opacity:1; transform:translate(-50%,0)}}
+/* `@keyframes toastin` USED TO BE DEFINED HERE and was dead: an identical name
+   at :3373 wins on source order, so this one had never run since the Motion
+   System block landed. Deleted rather than left as a decoy (motion audit,
+   2026-08-21) — a keyframe you can read but never see is worse than none.
+
+   The live curve overshoots to -4px. UX_01:154 says "No spring physics. No
+   bounce."; the host ruling of 2026-07-23 that shipped the Motion System says
+   "#3 toast lands with one soft bounce". The ruling is later and specific, so
+   the bounce stands and the doctrine line is the one that is out of date. */
 /* Money-move undo: the one inline action a toast can carry. Inherits the
    toast's inverted palette — .mini's steel tint vanishes on var(--ink). */
 .toast-undo{
@@ -1460,7 +1486,12 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   background:var(--card); border-radius:0; padding:18px var(--sp-5) calc(28px + env(safe-area-inset-bottom, 0px));
   animation:sheetrise var(--ms-sheet) var(--ease-standard);
 }
-@keyframes sheetrise{from{transform:translateY(24px); opacity:.4} to{transform:none; opacity:1}}
+/* `--from-y` is written by the shell from the pointer that opened this sheet.
+   The default keeps every un-originated path — keyboard, deep link, route
+   restore — on exactly the 24px rise it had before. Reduced motion kills the
+   whole animation, which is safe: the resting state IS `transform:none;
+   opacity:1`, so there is nothing to restore. */
+@keyframes sheetrise{from{transform:translateY(var(--from-y,24px)); opacity:.4} to{transform:none; opacity:1}}
 /* Quick-switcher / command palette (build-map #9) — jump across events and
    destinations from one search box (Cmd/Ctrl-K or the header button). */
 .palette-scrim{ position:fixed; inset:0; z-index:130; background:rgba(6,9,12,.55);
@@ -1587,9 +1618,15 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .bline i{
   display:block; height:100%; border-radius:5px; background:var(--steel);
   position:relative;
-  transition:width .7s var(--ease-standard);
+  /* NOT converted to scaleX, unlike `.bar i` above, and the reason is the
+     nesting: `.bline b` is a child of `.bline i` sized as a percentage OF it,
+     so scaling the parent would multiply into the child and the inner segment
+     would land at the wrong value. Both also carry their own 5px radius with
+     no clipping track to inherit from. Two segments, one of them relative to
+     the other, is a real chart — it stays on `width`, on purpose. */
+  transition:width var(--ms-fill) var(--ease-standard);
 }
-.bline b{display:block; height:100%; border-radius:5px; background:var(--steel-soft); transition:width .7s var(--ease-standard)}
+.bline b{display:block; height:100%; border-radius:5px; background:var(--steel-soft); transition:width var(--ms-fill) var(--ease-standard)}
 
 /* ── The spread & shopping: check-off rows (real foodGot flags) ── */
 .frow{
@@ -2332,14 +2369,14 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .inv2-when-time{ font-weight:500; color:var(--stock-sub); }
 /* countdown — condenses (never vanishes) once the guest answers */
 .inv2-countwrap{ max-height:240px; overflow:hidden; text-align:center;
-  transition:max-height .55s var(--ease-standard), margin .55s var(--ease-standard); }
+  transition:max-height var(--ms-slow) var(--ease-standard), margin var(--ms-slow) var(--ease-standard); }
 /* The countdown stays a full typographic MOMENT — host's call (2026-07-14), and it is
    the emotional beat of the page: the serif lining numeral is the thing people screenshot.
    The audit's F2 flagged it as outranking the event name (3.3x); the answer taken here is
    to raise the NAME rather than shrink the number, so the hero reads first and the
    countdown still lands. Kept at its original scale deliberately — not an oversight. */
 .inv2-count{ font-family:var(--serif); font-variant-numeric:lining-nums tabular-nums; font-feature-settings:"lnum" 1,"tnum" 1; font-size:clamp(88px,30cqw,124px); font-weight:700; text-align:center;
-  line-height:1; margin:8px 0 0; transition:font-size .5s var(--ease-standard), margin .5s var(--ease-standard); }
+  line-height:1; margin:8px 0 0; transition:font-size var(--ms-slow) var(--ease-standard), margin var(--ms-slow) var(--ease-standard); }
 .inv2.answered .inv2-countwrap{ max-height:24px; margin:6px 0 0; }
 .inv2.answered .inv2-count{ display:inline; font-size:11px; font-family:inherit; font-weight:800; letter-spacing:.16em; margin:0; }
 .inv2.answered .inv2-countlab{ display:inline; margin-left:5px; }
@@ -2394,7 +2431,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .inv2-sheet .grounding{ color:var(--stock-sub); }
 /* the disclosure that the answer earns */
 .inv2-more{ opacity:0; max-height:0; overflow:hidden;
-  transition:opacity .6s var(--ease-standard), max-height .6s var(--ease-standard); }
+  transition:opacity var(--ms-slow) var(--ease-standard), max-height var(--ms-slow) var(--ease-standard); }
 .inv2-more.open{ opacity:1; max-height:1400px; }
 @media (prefers-reduced-motion: reduce){ .inv2-more{ transition:none; } }
 
@@ -2590,7 +2627,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   color:var(--warn); background:var(--warn-tint)}
 .vc-chip.quiet{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
 .vc-more{max-height:0; opacity:0; overflow:hidden;
-  transition:max-height .38s var(--ease-standard), opacity .3s var(--ease-standard)}
+  transition:max-height var(--ms-slow) var(--ease-standard), opacity var(--ms-slow) var(--ease-standard)}
 /* WAVE-B: headroom for the new arrival/money row + COI expiry field —
    340px clipped the expanded card once the write affordances landed.
    VENDOR-BRIEF-AUTHORING: 640px clipped it again once the on-site-contact/
@@ -2630,8 +2667,26 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .sweep-row .sv-meta{ font-size:var(--t-row-sub); color:var(--muted); margin-top:2px; }
 
 /* Row-level landing ring — the exact field a CTA promised */
-.rowfocus{box-shadow:0 0 0 2px var(--steel), 0 0 0 8px var(--steel-tint); animation:rowfade 3.2s var(--ease-standard) 1 forwards}
+.rowfocus{box-shadow:0 0 0 2px var(--steel), 0 0 0 8px var(--steel-tint); animation:rowfade var(--ms-land) var(--ease-standard) 1 forwards}
 @keyframes rowfade{0%,70%{box-shadow:0 0 0 2px var(--steel), 0 0 0 8px var(--steel-tint)} 100%{box-shadow:0 0 0 0 transparent}}
+/* ── THE RING WAS STUCK ON UNDER REDUCED MOTION (motion audit, 2026-08-21) ──
+   The ring lives in the BASE rule and `rowfade` is the only thing that removes
+   it. The global reduced-motion kill sets `animation:none !important`, so a
+   host with the preference on got the full transient treatment — 2px core plus
+   an 8px halo, sized to be seen for three seconds — applied permanently, for
+   the life of the sheet. `.rowfocus` is driven by `sheet.focus` at nine sites
+   and that value is cleared at exactly one of them, so nothing else took it
+   down either.
+
+   Not fixed by removing the ring: this is the landing cue the row-level-CTA
+   law exists to deliver ("no CTA lands on a tab top; route to the exact row"),
+   and the host who most needs to be told where they landed is the one who
+   turned motion off. So the accommodation is a ring that is STATIC and states
+   it: the 2px core only, no halo. It persists, which is correct for a marker
+   that is no longer allowed to announce itself and leave. */
+@media(prefers-reduced-motion:reduce){
+  .rowfocus{ box-shadow:0 0 0 2px var(--steel); }
+}
 
 /* ── Event masthead: kicker / title / venue (replaces the caps eyebrow) ──
    Reimagined (host request, mobile legibility): the kicker was 10.5px plain
@@ -3538,7 +3593,12 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .lens:focus-visible, .grow:focus-visible, .frow:focus-visible,
   .fold-btn:focus-visible, .wchip:focus-visible, .food-act:focus-visible,
   .decopt:focus-visible, .app-elegant .decopt:focus-visible,
-  .hero.elegant .ef-row:focus-visible, .hero.elegant .confrow:focus-visible{
+  .hero.elegant .ef-row:focus-visible, .hero.elegant .confrow:focus-visible,
+  /* Added 2026-08-21 (motion audit, finding 16/17): three atoms that grew a
+     hover state after this block was written and never got the matching focus
+     one. The rail is the important one — it is the app's primary navigation at
+     desktop, which is exactly where a keyboard user lives. */
+  .srail-row:focus-visible, .palette-row:focus-visible, .sec-row:focus-visible{
     background:var(--steel-tint);
   }
   .db-row:focus-visible .db-lead{ color:var(--carbon-text); }

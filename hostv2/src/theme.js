@@ -184,4 +184,21 @@ export function applyStudioMatte() {
   set('--ms-base', (durations.base || 200) + 'ms');     // standard row/state transition
   set('--ms-enter', (durations.enter || 240) + 'ms');   // panel / ask enter (askin)
   set('--ms-reveal', (durations.reveal || 420) + 'ms'); // moderate reveal / receipt
+  // ── THE SLOW BAND, NAMED (motion audit 2026-08-21) ────────────────────────
+  // The 2026-07-22 pass tokenized everything up to 420ms and stopped there, so
+  // a whole speed band above it stayed literal: .38s/.5s/.55s/.6s on
+  // disclosure, .7s/.9s on progress fills, at 20-plus sites. Unnamed values
+  // drift by definition — nothing tells the next author which of six spellings
+  // is the house one, so they add a seventh. Two rungs cover the band.
+  //
+  // These are NOT value-preserving everywhere, deliberately: the 900ms fill
+  // comes down to 700 and the 380ms disclosure goes up to 550. They move
+  // TOWARD each other, which is the whole point of a ladder — two rungs that
+  // read as one speed beat six literals that read as noise.
+  set('--ms-slow', (durations.slow || 550) + 'ms');     // disclosure / fold open
+  set('--ms-fill', (durations.fill || 700) + 'ms');     // a bar travelling its track
+  // A landing ring is not an interaction speed — it is a dwell, long enough to
+  // find with the eye after a scroll lands. It gets its own name so nobody
+  // "corrects" it down to a transition duration.
+  set('--ms-land', (durations.land || 3200) + 'ms');
 }
