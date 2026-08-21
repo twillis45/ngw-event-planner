@@ -1,0 +1,115 @@
+// ─── THE VENDOR CARD'S COLLAPSED FACE ───────────────────────────────────────
+//
+// Board ruling 2026-08-21 (8 seats, docs/audits/2026-08-21_VENDORS_SHEET_RULING.md).
+// The host's report — "I thought we redesigned people you're hiring to match
+// the other sections?" — was NOT a request to rebuild the accordion (the sheet
+// already is one). It was that the COLLAPSED FACE carried four stacked bands
+// where every restyled sheet shows one line, and that amber was the chip
+// DEFAULT rather than the exception: one card could show four amber marks,
+// nine vendors ~20, spending the whole colour budget on resting state.
+//
+// This gates the three clauses that fixed it. Each assertion is written so the
+// regression it guards FAILS here rather than being noticed months later on a
+// host's screen.
+import fs from 'fs';
+import path from 'path';
+
+const SHELL = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'HostShellV2.jsx'), 'utf8');
+
+// The card's collapsed face is everything between the card open and the
+// `.vc-more` fold. Controls below the fold are fine; controls ON the face are
+// exactly what the ruling moved.
+const FACE = (() => {
+  const start = SHELL.indexOf("className={'vcard'");
+  const end = SHELL.indexOf('<div className="vc-more"', start);
+  return SHELL.slice(start, end);
+})();
+
+describe('clause 2 — the collapsed face is a row, not a stack of bands', () => {
+  test('the face exists and is bounded by the fold', () => {
+    expect(FACE.length).toBeGreaterThan(200);
+    expect(SHELL.indexOf('<div className="vc-more"')).toBeGreaterThan(SHELL.indexOf("className={'vcard'"));
+  });
+
+  test('the STATUS PICKER is below the fold, not on the face', () => {
+    expect(FACE).not.toMatch(/vc-statuspick/);
+    expect(SHELL).toMatch(/vc-statuspick/);          // it still exists…
+    const more = SHELL.slice(SHELL.indexOf('<div className="vc-more"'));
+    expect(more).toMatch(/vc-statuspick/);            // …below the fold
+  });
+
+  test('the CONTACT BAND (log button + sentence + ledger chip) is below the fold', () => {
+    expect(FACE).not.toMatch(/logVendorContact/);
+    expect(FACE).not.toMatch(/No record of reaching out yet/);
+    const more = SHELL.slice(SHELL.indexOf('<div className="vc-more"'));
+    expect(more).toMatch(/logVendorContact/);
+    expect(more).toMatch(/No record of reaching out yet/);
+  });
+
+  test('the status DISCLOSURE control stays on the face — it is the one affordance', () => {
+    // Norman seat: the pill is honest (aria-haspopup + caret) and is how the
+    // picker is discoverable at all. Moving it would strand the picker.
+    expect(FACE).toMatch(/vc-pill/);
+    expect(FACE).toMatch(/aria-haspopup/);
+  });
+});
+
+describe('clause 3 — one chip, ranked by time-to-consequence', () => {
+  const CHIP = (() => {
+    const i = FACE.indexOf('ONE CHIP, RANKED');
+    return i < 0 ? '' : FACE.slice(i, i + 2400);
+  })();
+
+  test('the ranked selector exists on the face', () => {
+    expect(CHIP).not.toBe('');
+  });
+
+  test('it renders AT MOST ONE chip — the old stack is gone', () => {
+    // The defect shape: four sibling <span className="vc-chip"> in one row.
+    // COUNT BOTH QUOTE STYLES. The first cut of this matched only
+    // `className={'vc-chip` / `className='vc-chip`, so the red-proof (which
+    // reintroduced the ORIGINAL double-quoted markup) stayed green — a gate
+    // that could not fail on the very defect it was written for.
+    // …and exclude the `vc-chips` WRAPPER, which the widened pattern also
+    // matched (prefix collision). Boundary: vc-chip not followed by `s`.
+    const spans = (CHIP.match(/className=(\{?['"])vc-chip(?!s)/g) || []).length;
+    expect(spans).toBe(1);
+  });
+
+  test('the rank is what they told us → silence → worry → paperwork', () => {
+    const order = ['They flagged something', 'Silent ', 'chipify(worry)', 'Insurance still needed'];
+    let at = -1;
+    for (const token of order) {
+      const i = CHIP.indexOf(token);
+      expect(i).toBeGreaterThan(at);
+      at = i;
+    }
+  });
+
+  test('the insurance chip STATES ITS REASON (UX_02: a colour names its cause)', () => {
+    // Was a bare noun, "Insurance", amber with no consequence attached.
+    expect(CHIP).toMatch(/Insurance still needed/);
+  });
+
+  test('a settled vendor shows no chip at all (clause 5 fold)', () => {
+    expect(CHIP).toMatch(/const settled = good && !worry && !coiAct/);
+    expect(CHIP).toMatch(/if \(settled\) return null/);
+  });
+});
+
+describe('the honesty rails the ruling froze', () => {
+  test("contactState's three distinct sentences survive, unmerged", () => {
+    expect(SHELL).toMatch(/No record of reaching out yet/);
+    expect(SHELL).toMatch(/They came back to you/);
+    expect(SHELL).toMatch(/haven’t heard back/);
+  });
+
+  test('the ledger-beats-sentence rule survives the move', () => {
+    expect(SHELL).toMatch(/\(vSend \? '' : 'No record of reaching out yet\.'\)/);
+  });
+
+  test('attested vs verified is still the render fork', () => {
+    expect(SHELL).toMatch(/isVerifiedState\(vSend\)/);
+  });
+});

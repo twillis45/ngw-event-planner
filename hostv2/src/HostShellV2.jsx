@@ -16652,6 +16652,53 @@ export default function HostShellV2() {
                             </button>
                           )}
                         </div>
+                        {/* ── ONE CHIP, RANKED BY TIME-TO-CONSEQUENCE ──────────────
+                            Board ruling 2026-08-21 clause 3. Four chips could stack
+                            here, and `.vc-chip`'s BASE is amber — so a resting card
+                            showed up to four amber marks and nine vendors spent the
+                            whole colour budget saying nothing. Amber is the exception
+                            now, and only one exception speaks per card: what they told
+                            us, then silence, then paperwork. A confirmed vendor with
+                            nothing open shows none at all (clause 5's fold). */}
+                        {(() => {
+                          const cs2 = (() => { try { return contactState(v); } catch { return null; } })();
+                          const settled = good && !worry && !coiAct && !(vConfirm && vConfirm.state !== 'confirmed');
+                          if (settled) return null;
+                          let chip = null;
+                          if (vConfirm && vConfirm.state !== 'confirmed') {
+                            chip = { text: 'They flagged something', tone: 'warn' };
+                          } else if (cs2 && cs2.silent) {
+                            chip = { text: `Silent ${cs2.daysSince} days`, tone: 'warn' };
+                          } else if (worry) {
+                            chip = { text: chipify(worry), tone: 'warn' };
+                          } else if (coiAct) {
+                            // UX_02: a colour states its reason. "Insurance" alone was
+                            // amber with no consequence named.
+                            chip = { text: 'Insurance still needed', tone: 'warn' };
+                          } else if (vConfirm && vConfirm.state === 'confirmed') {
+                            chip = { text: 'Confirmed by vendor', tone: 'ok' };
+                          } else if (memLine) {
+                            chip = { text: chipify(memLine), tone: 'quiet' };
+                          }
+                          if (!chip) return null;
+                          return (
+                            <div className="vc-chips">
+                              <span className={'vc-chip' + (chip.tone === 'quiet' ? ' quiet' : '')}
+                                style={chip.tone === 'ok' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}>
+                                {chip.text}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        <div className="vc-more" onClick={ev => ev.stopPropagation()}>
+                          {/* ── BELOW THE FOLD (board ruling 2026-08-21, clause 2) ──
+                              The status picker and the whole contact band used to
+                              live on the COLLAPSED face, which is why this sheet read
+                              as four stacked bands per vendor while every other
+                              restyled sheet shows one line. They are controls, and a
+                              resting row states rather than offers. The PROMPT stays
+                              visible up top as the ranked "Silent N days" chip, so
+                              moving the control never hides the need (ruling risk 2). */}
                         {!v.isInformal && statusPickFor === v.id && (
                           <div className="vc-statuspick" role="group" aria-label="Set booking status"
                             style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '2px 0 8px' }}>
@@ -16744,15 +16791,6 @@ export default function HostShellV2() {
                             </div>
                           );
                         })()}
-                        {(worry || coiAct || memLine || vConfirm) && (
-                          <div className="vc-chips">
-                            {vConfirm && <span className="vc-chip" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'Confirmed by vendor' : 'Vendor flagged an issue'}</span>}
-                            {worry && <span className="vc-chip">{chipify(worry)}</span>}
-                            {coiAct && <span className="vc-chip">Insurance</span>}
-                            {!worry && !coiAct && memLine && <span className="vc-chip quiet">{chipify(memLine)}</span>}
-                          </div>
-                        )}
-                        <div className="vc-more" onClick={ev => ev.stopPropagation()}>
                           {/* Build-map #10: the vendor's own confirm-back on the brief
                               link — their words, back in the host's ledger. Read-only. */}
                           {vConfirm && (
