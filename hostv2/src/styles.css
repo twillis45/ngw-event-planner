@@ -2628,8 +2628,18 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 button.vc-pill{border:none; cursor:pointer; font-family:inherit}
 button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .vc-chips{display:flex; flex-wrap:wrap; gap:var(--gap-chip); margin-top:9px}/* audit D1 */
+/* ── AMBER IS NOW THE EXCEPTION, NOT THE DEFAULT ─────────────────────────────
+   Vendors ruling 2026-08-21, clause 3. The BASE was `--warn`, so every chip was
+   amber unless something overrode it: the loudest state in the palette was the
+   thing you got for free, and green had to fight it off with an inline style.
+   That is how nine vendors spent the entire colour budget saying nothing.
+
+   The base is quiet now and each tone states itself. UX_02: one meaning per
+   status colour, and a colour has to earn its appearance. */
 .vc-chip{font-size:var(--t-tag); font-weight:700; padding:4px 10px; border-radius:var(--r-pill);/* audit T6: was 3.5px fractional */
-  color:var(--warn); background:var(--warn-tint)}
+  color:var(--muted); background:var(--steel-tint)}
+.vc-chip.warn{color:var(--warn); background:var(--warn-tint)}
+.vc-chip.ok{color:var(--ok); background:var(--ok-tint)}
 .vc-chip.quiet{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
 .vc-more{max-height:0; opacity:0; overflow:hidden;
   transition:max-height var(--ms-slow) var(--ease-standard), opacity var(--ms-slow) var(--ease-standard)}

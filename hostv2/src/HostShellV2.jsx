@@ -17097,8 +17097,12 @@ export default function HostShellV2() {
                           if (!chip) return null;
                           return (
                             <div className="vc-chips">
-                              <span className={'vc-chip' + (chip.tone === 'quiet' ? ' quiet' : '')}
-                                style={chip.tone === 'ok' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}>
+                              {/* The tone names itself in a class now. It used to
+                                  ride the base (amber for free) with green
+                                  patched on inline — so the palette's loudest
+                                  state was the default and its calmest one was
+                                  the special case. */}
+                              <span className={'vc-chip ' + chip.tone}>
                                 {chip.text}
                               </span>
                             </div>

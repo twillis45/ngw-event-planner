@@ -56,9 +56,20 @@ describe('clause 2 — the collapsed face is a row, not a stack of bands', () =>
 });
 
 describe('clause 3 — one chip, ranked by time-to-consequence', () => {
+  // The window runs from the block's own marker to the END of its render,
+  // not a fixed character count. It was `i + 2400`, and adding four lines of
+  // comment above the span pushed the thing being counted outside the window
+  // -- the test went red reporting zero chips while the markup was correct.
+  // A slice length is a magic number that silently decides what a test can
+  // see; the closing `</div>` of the chip row is a real boundary.
   const CHIP = (() => {
     const i = FACE.indexOf('ONE CHIP, RANKED');
-    return i < 0 ? '' : FACE.slice(i, i + 2400);
+    if (i < 0) return '';
+    const rest = FACE.slice(i);
+    const end = rest.indexOf('vc-chips');
+    // From the marker through a generous tail past the wrapper, so the span
+    // and its className are always inside it however the comments grow.
+    return end < 0 ? rest.slice(0, 4000) : rest.slice(0, end + 1200);
   })();
 
   test('the ranked selector exists on the face', () => {
