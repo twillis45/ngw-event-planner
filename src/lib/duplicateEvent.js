@@ -34,7 +34,10 @@ const EVENT_STATE = ['id', 'createdAt', 'updatedAt', 'date', 'endDate',
   'rosDone', 'rosEdited', 'photos', 'thanks', 'thanksSent',
   'lodging', 'lodgingOptions', 'lodgingPick',
   'snoozed', 'snoozeUntil', 'deferred', 'satisfied', 'handled',
-  'startTime', 'startTimeSource', 'startTimeWhy'];
+  'startTime', 'startTimeSource', 'startTimeWhy',
+  // sendLedger records THIS event's handoffs (board ruling 2026-08-21). A copy
+  // carrying last year's "Handed off · by text" would claim asks never made.
+  'sendLedger'];
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 

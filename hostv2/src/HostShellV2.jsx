@@ -145,6 +145,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createCheckoutSession, verifySession } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure } from '@app/lib/passGate';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
+import { recordHandoff, sendStateFor, sendStateLine } from '@app/lib/sendLedger';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
@@ -14964,8 +14965,29 @@ export default function HostShellV2() {
                 })()}
               </>
             )}
-            {sheet.kind === 'draft' && (
+            {sheet.kind === 'draft' && (() => {
+              // ── THE SEND LEDGER (board ruling 2026-08-21, 6-0) ────────────
+              // The durable half of the outlet: every real handoff exit below
+              // records a host-attested `handed_off` (channel + timestamp) on
+              // event.sendLedger — the same gesture, zero extra taps, undo via
+              // the one write path. Copy stays on the ruling's line: "Handed
+              // off", never "Sent" (an sms: tap proves the composer opened,
+              // nothing more). A DECLINED share sheet records nothing.
+              const recordSend = (channel) => {
+                const led = recordHandoff(event.sendLedger, sheet.title, channel, new Date().toISOString());
+                patchEvent({ sendLedger: led }, 'Noted — the plan remembers this went out.');
+              };
+              const sendChip = sendStateLine(sendStateFor(event.sendLedger, sheet.title), Date.now());
+              return (
               <>
+                {/* Host-attested state chip: RECORD-ONLY treatment (outline,
+                    muted) — visually distinct from any system-verified pill,
+                    per ruling clause 3. Renders only when an entry exists. */}
+                {sendChip && (
+                  <div className="of" style={{ marginBottom: 'var(--sp-2)', color: 'var(--steel-soft)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', display: 'inline-block', padding: '3px 10px' }}>
+                    {sendChip}
+                  </div>
+                )}
                 {/* Voice as a quiet radio-list (was a bordered .chip cluster). When the
                     host edits the text, none is selected and an "your words" note shows. */}
                 <div style={{ marginBottom: 'var(--sp-3)' }}>
@@ -14984,13 +15006,18 @@ export default function HostShellV2() {
                 <div className="actions-row" style={{ marginTop: 14 }}>
                   {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
                     <button className="cta"
-                      onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).catch(() => {}); }}>
+                      onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).then(() => { recordSend('share'); }).catch(() => { /* declined — records NOTHING, by ruling */ }); }}>
                       Share…
                     </button>
                   )}
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(shownDraft())}>Text it</a>
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer">Open WhatsApp</a>
-                  <button className="mini" onClick={() => copyDraft(shownDraft())}>Copy it</button>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(shownDraft())} onClick={() => recordSend('sms')}>Text it</a>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer" onClick={() => recordSend('whatsapp')}>Open WhatsApp</a>
+                  <button className="mini" onClick={() => { copyDraft(shownDraft()); recordSend('copy'); }}>Copy it</button>
+                  {/* "I sent it earlier from my phone" — a RECORD, not an act
+                      (UX_07:46): the label says Mark, the state says attested. */}
+                  {!sendChip && (
+                    <button className="mini" onClick={() => recordSend('other')}>Mark it sent — I sent it myself</button>
+                  )}
                 </div>
                 {/* "Message all helpers": each person still gets reviewed and
                     sent individually through the real handoffs above — this
@@ -15005,7 +15032,8 @@ export default function HostShellV2() {
                 )}
                 <p className="grounding" style={{ marginTop: 10 }}>“Share…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Voices re-shape the same real details mechanically — and you can edit every word above; your voice choice is remembered for every draft.</p>
               </>
-            )}
+              );
+            })()}
             {sheet.kind === 'tasks' && (<>
               {(event.timeline || []).length ? (
                 <>
