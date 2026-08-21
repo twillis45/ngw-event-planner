@@ -80,6 +80,7 @@ import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
 // frozen CRA rendered it and the shipping shell never did (audit 2026-08-21).
 import { playbookDayOfChecklist } from '@app/lib/playbooks';
 import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcile';
+import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
@@ -3501,6 +3502,29 @@ export default function HostShellV2() {
   // an origin for free, including the ones not written yet.
   const lastTapRef = useRef(null);
   const reconciledRef = useRef(new Set());   // events whose catch-up pass has already run this session
+  // The ranked index's FLIP pair. `qidxKeys` is the order as a string, so the
+  // effect fires when the RANKING changes rather than on every render — the
+  // measure is cheap but not free, and re-measuring on unrelated state is how
+  // a continuity cue turns into a frame-rate problem.
+  const efListRef = useRef(null);
+  const efBeforeRef = useRef(null);
+  // MEASURE FIRST, THEN PLAY, and the order is the whole correctness argument.
+  // A layout effect runs after the DOM has been mutated and before paint, so
+  // the rects read here are the TRUE new positions — but only until
+  // `playReorder` starts applying transforms. Measuring after playing would
+  // capture rows mid-flight and store a garbage baseline for the next reorder,
+  // which shows up as one good animation followed by nonsense.
+  //
+  // No dependency array on purpose: the comparison IS the guard. `playReorder`
+  // returns 0 when nothing moved more than a few pixels, so an unrelated
+  // re-render costs one measurement of a six-row list and nothing else.
+  useLayoutEffect(() => {
+    const c = efListRef.current;
+    if (!c) return;
+    const prev = efBeforeRef.current;
+    efBeforeRef.current = measureRows(c);
+    playReorder(c, prev);
+  });
   // ── THE LIST ENTRANCE IS AN ARRIVAL, NOT A REDRAW (motion audit, 2026-08-21)
   // `cardin` staggers rows in from below. That is right the first time a list
   // appears and wrong every time after: toggle a filter, check something off,
@@ -8559,7 +8583,25 @@ export default function HostShellV2() {
                 return (
                   <div className="then-fold ef-do">
                     <div className="ef-sect">Then, in order</div>
-                    <div className="ef-list">
+                    {/* ── THE RANKING MOVES, IT DOES NOT CUT (motion audit) ────
+                        This list IS the product's claim: the app says it knows
+                        what to do next, and it says it by ORDER. When that
+                        order changed the rows cut, and the host had to re-read
+                        the list to find out what happened. Now they travel,
+                        which says it without words — that one dropped, this one
+                        rose, nothing else moved.
+
+                        WIRED HERE, not to `.qidx`, and the first attempt got
+                        that wrong: `.qidx` is the legacy ranked index and
+                        returns null in elegant mode (:9718), which is the
+                        shipping mode. The FLIP was mounted on a surface no host
+                        sees, and the unit tests were perfectly green about it.
+
+                        `data-flip` carries the action's stable id, so a row
+                        that ARRIVES is skipped — it has no previous position,
+                        and any travel would be a direction the data does not
+                        have. */}
+                    <div className="ef-list" ref={efListRef}>
                       {thenItems.map((a, i) => {
                         const cnt = a.kind === 'bundle' ? (a.count != null ? a.count : (Array.isArray(a.items) ? a.items.length : null)) : null;
                         const t = String(a.title || '').replace(/\s+—\s.*$/, '').replace(/\.+$/, '');
@@ -8584,7 +8626,7 @@ export default function HostShellV2() {
                         // does appear. No model, no invented text.
                         const reason = getActionReason(a, { event, moneyRows });
                         return (
-                          <button key={String(a.id || i)} className={'ef-row' + (detail && detail.a && String(detail.a.id) === String(a.id) ? ' is-picked' : '')}
+                          <button key={String(a.id || i)} data-flip={String(a.id || i)} className={'ef-row' + (detail && detail.a && String(detail.a.id) === String(a.id) ? ' is-picked' : '')}
                             onClick={() => {
                               if (reason) trackReason(ANALYTICS.ROW_WITH_REASON_CLICKED, a, reason);
                               // UX_04 Zone 4: on a real canvas a click SELECTS and the
@@ -14555,7 +14597,7 @@ export default function HostShellV2() {
                       const isPast = d !== null && d < 0;
                       return (
                         <Fragment key={e.id}>
-                        <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
+                        <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: rowEnter(i, 30) }}
                           onClick={() => { switchEvent(e.id); setSheet(null); }}>
                           <span className="f-main">
                             <span className="f-name">{e.name}{isActive ? <span className="tag plan">current</span> : null}</span>
@@ -14593,7 +14635,7 @@ export default function HostShellV2() {
                   const canRunAgain = !!e._custom && d !== null && d < 0;
                   return (
                     <Fragment key={e.id}>
-                    <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
+                    <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: rowEnter(i, 30) }}
                       onClick={() => { switchEvent(e.id); setSheet(null); }}>
                       <span className="f-main">
                         <span className="f-name">{label}{isSample ? <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650, color: 'var(--ink-soft)', background: 'var(--bg-band)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', padding: '1px 8px', marginLeft: 6, opacity: 0.7 }}>Sample</span> : null}{isActive ? <span className="tag plan">current</span> : null}</span>
@@ -16270,7 +16312,7 @@ export default function HostShellV2() {
                           <div className="fg-sub" style={{ color: gDone ? 'var(--ok)' : 'var(--muted)' }}>
                             {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + fmt(gLow) + '–' + fmt(gHigh) : '')}
                           </div>
-                          <div className={'fg-track' + (gDone ? ' done' : '')}><i style={{ width: (gActive.length ? gBought / gActive.length * 100 : 100) + '%' }} /></div>
+                          <div className={'fg-track' + (gDone ? ' done' : '')}><i style={{ '--fill': gActive.length ? gBought / gActive.length : 1 }} /></div>
                         </div>
                         <span className="fg-chev" aria-hidden="true">›</span>
                       </button>
@@ -17811,7 +17853,7 @@ export default function HostShellV2() {
                         return (
                           <div key={r.label}>
                             <button className="brow"
-                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--line-soft)', font: 'inherit', color: 'inherit', cursor: 'pointer', animation: `cardin 300ms var(--ease-out) ${i * 40}ms both` }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--line-soft)', font: 'inherit', color: 'inherit', cursor: 'pointer', animation: rowEnter(i, 40) }}
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>

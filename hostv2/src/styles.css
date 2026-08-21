@@ -2451,8 +2451,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .fg-sub{font-size:var(--t-row-sub); color:var(--muted); margin-top:1px}
 .fg-chev{color:var(--faint); flex-shrink:0; transition:transform var(--ms-base) var(--ease-out)}
 .fg-track{height:4px; border-radius:var(--r-pill); background:var(--line-soft); margin-top:10px; overflow:hidden}
-.fg-track i{display:block; height:100%; background:var(--steel-soft); border-radius:var(--r-pill);
-  transition:width var(--ms-ambient) var(--ease-standard)}
+/* On the compositor, like `.bar i`. The radius is DELETED rather than moved:
+   `.fg-track` already carries `border-radius` + `overflow:hidden`, so the
+   fill's own corner was never visible, and scaleX would have squashed it to an
+   oval at low percentages if it had been. */
+.fg-track i{display:block; height:100%; width:100%; background:var(--steel-soft);
+  transform-origin:left center; transform:scaleX(var(--fill,0));
+  transition:transform var(--ms-ambient) var(--ease-standard)}
 .fg-track.done i{background:var(--ok)}
 .fg-items{max-height:0; opacity:0; overflow:hidden;
   transition:max-height .4s var(--ease-standard), opacity .3s var(--ease-standard)}
@@ -3628,7 +3633,12 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      hover state after this block was written and never got the matching focus
      one. The rail is the important one — it is the app's primary navigation at
      desktop, which is exactly where a keyboard user lives. */
-  .srail-row:focus-visible, .palette-row:focus-visible, .sec-row:focus-visible{
+  .srail-row:focus-visible, .palette-row:focus-visible, .sec-row:focus-visible,
+  /* The last three from the motion audit's finding 17 (2026-08-21). All three
+     had a hover state and no focus response, so a keyboard or switch user got
+     nothing where a mouse user got a surface change. `.mini` is the app's
+     most-used button, which makes it the worst one to have missed. */
+  .mini:focus-visible, .path-row:focus-visible, .navrow:focus-visible{
     background:var(--steel-tint);
   }
   .db-row:focus-visible .db-lead{ color:var(--carbon-text); }
@@ -3663,6 +3673,12 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 /* A segment that exists but rounds to a hairline still has to be findable — a $12
    spend against a $6,000 ceiling is real information, not a rendering error. */
 .mbar i:not([style*="width: 0%"]){ min-width:3px; }
+/* STAYS ON `width`, deliberately, for two reasons that `.bar i` does not have.
+   `.mbar` is `display:flex` with two segments sitting side by side, so scaling
+   one does not move the other -- they would overlap instead of stacking. And
+   the hairline guard directly above keys on the inline style STRING containing
+   "width: 0%", which a custom property would silently break. A multi-segment
+   chart is not a progress fill. Same call as `.bline` at :1620. */
 .mbar i{ display:block; height:100%; transition:width var(--ms-reveal) var(--ease-out); }
 @media(prefers-reduced-motion:reduce){ .mbar i{ transition:none } }
 /* The budget line marks the ceiling in BOTH states — at the right edge while there
