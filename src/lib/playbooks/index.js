@@ -57,6 +57,7 @@ import fundraiserGala from './data/fundraiserGala';
 import thanksgivingHosting from './data/thanksgivingHosting';
 import halloweenParty from './data/halloweenParty';
 import newYearsEveParty from './data/newYearsEveParty';
+import ptaBoosterFundraiser from './data/ptaBoosterFundraiser';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 import { audiencePersona } from '../nextActionRenderer';
 import { quantityBasis } from '../quantities/quantityBasis';
@@ -101,7 +102,7 @@ import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
 // playbooks. backyardBbq is registered under the canonical 'Get-Together' type
 // (BBQ / cookout / backyard all resolve there via the taxonomy).
 const norm = (s) => String(s || '').trim().toLowerCase();
-export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat, clientDinner, fundraiserGala, thanksgivingHosting, halloweenParty, newYearsEveParty];
+export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat, clientDinner, fundraiserGala, thanksgivingHosting, halloweenParty, newYearsEveParty, ptaBoosterFundraiser];
 const REGISTRY = {};
 for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 

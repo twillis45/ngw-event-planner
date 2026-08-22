@@ -15,6 +15,21 @@ import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, sendKey, i
 const SHELL = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'HostShellV2.jsx'), 'utf8');
 
+
+// ── SLICE TO A REAL BOUNDARY, NOT A CHARACTER COUNT ─────────────────────────
+// These reads were `indexOf(x) + 900 / 1200 / 1400 / 2600`. A slice length
+// silently decides what a test can SEE: adding a comment inside `sendEmailNow`
+// pushed `'failed'` outside the window and the test reported the handling
+// missing while it sat five lines below the cut. Anchored to the next
+// declaration instead, so the window grows with the function it is reading.
+const fnAfter = (marker, stopAt) => {
+  const i = SHELL.indexOf(marker);
+  if (i < 0) return '';
+  const rest = SHELL.slice(i);
+  const end = stopAt ? rest.indexOf(stopAt, marker.length) : -1;
+  return end > 0 ? rest.slice(0, end) : rest.slice(0, 4000);
+};
+
 describe('the pure model', () => {
   test('a handoff is attested, channeled, stamped, and keyed like draft edits', () => {
     const led = recordHandoff({}, 'Note to the caterer', 'sms', '2026-08-21T12:00:00Z');
@@ -84,7 +99,7 @@ describe('the shell wiring (draft sheet)', () => {
   // must-not-ship list has one door to guard.
   test('the draft sheet has a recordSend helper writing through patchEvent', () => {
     expect(SHELL).toMatch(/const recordSend = /);
-    const fn = SHELL.slice(SHELL.indexOf('const recordSend = '), SHELL.indexOf('const recordSend = ') + 900);
+    const fn = fnAfter('const recordSend = ', 'const sendEntry');
     expect(fn).toMatch(/recordHandoff\(/);
     expect(fn).toMatch(/sendLedger/);
     expect(fn).toMatch(/patchEvent\(/);   // undo rides the one write path
@@ -108,7 +123,7 @@ describe('the shell wiring (draft sheet)', () => {
     expect(SHELL).toMatch(/openDraft\('Note to ' \+ \(v\.name \|\| 'your vendor'\), draftVendorOutreach\(event, v, profile\), null, \{ vendorId: v\.id \}\)/);
     // …and recordSend routes the vendor case through logVendorContact, so the
     // silence clock (contactState) starts on the same tap.
-    const fn = SHELL.slice(SHELL.indexOf('const recordSend = '), SHELL.indexOf('const recordSend = ') + 1200);
+    const fn = fnAfter('const recordSend = ', 'const sendEntry');
     expect(fn).toMatch(/sheet\.vendorId/);
     expect(fn).toMatch(/logVendorContact\(sheet\.vendorId\)/);
   });
@@ -119,7 +134,7 @@ describe('the shell wiring (draft sheet)', () => {
 
   // ── slice (b): the email send, per the ruling's boundary ────────────────
   test('email send is offered ONLY for a vendor draft with a known email, and only with a backend', () => {
-    const fn = SHELL.slice(SHELL.indexOf('const emailTarget = '), SHELL.indexOf('const emailTarget = ') + 1400);
+    const fn = fnAfter('const emailTarget = ', 'const sendEmailNow');
     expect(fn).toMatch(/sheet\.vendorId/);        // vendor-directed only
     expect(fn).toMatch(/isCommApiConfigured\(\)/); // no backend, no button
     expect(fn).toMatch(/!session/);                // signed out ⇒ no button (it would 401)
@@ -134,7 +149,7 @@ describe('the shell wiring (draft sheet)', () => {
   });
 
   test('the shell records the SERVER answer, never an optimistic success', () => {
-    const fn = SHELL.slice(SHELL.indexOf('const sendEmailNow = '), SHELL.indexOf('const sendEmailNow = ') + 2600);
+    const fn = fnAfter('const sendEmailNow = ', 'const sendChip');
     expect(fn).toMatch(/recordEmailSend\([^)]*'sending'/);
     expect(fn).toMatch(/deliver_email: true/);
     // The accepted/failed branch reads the delivery metadata the backend
@@ -175,5 +190,39 @@ describe('the loss gate', () => {
       { id: 'ev-copy-x', now: '2026-08-21T13:00:00Z' },
     );
     expect(copy.sendLedger).toBeUndefined();
+  });
+});
+
+describe('replies reach the host, not a void', () => {
+  // Found by the transport review board (2026-08-21), not by a test: the
+  // backend has accepted `reply_to` since it was written, and the shell never
+  // sent one — so every message the app has put out invited replies to an
+  // unmonitored shared address. A vendor answering "yes, 3pm works" was
+  // replying into nothing, and neither side could tell.
+  //
+  // Pinned in the SOURCE because the failure is invisible from inside the app:
+  // the send succeeds, the ledger records `accepted`, and the reply simply
+  // never arrives anywhere a human looks.
+  const SHELL = require('fs').readFileSync(
+    require('path').join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
+
+  test('the send passes reply_to', () => {
+    expect(SHELL).toMatch(/reply_to:\s*String\(session\.user\.email\)/);
+  });
+
+  test('it comes from the SESSION, never the host-typed profile', () => {
+    // `profile.name` is already used for `author_name` and is host-typed —
+    // blank or wrong on plenty of events. An address is not a display name;
+    // getting it wrong routes a real reply to a real stranger.
+    const call = fnAfter('commApi.createMessage(', 'const d =');
+    expect(call).toMatch(/reply_to/);
+    expect(call).not.toMatch(/reply_to:\s*[^,]*profile/);
+  });
+
+  test('and is OMITTED rather than guessed when there is no session address', () => {
+    // A wrong reply-to is worse than the default: it fails silently, in
+    // somebody else's inbox.
+    const call = fnAfter('commApi.createMessage(', 'const d =');
+    expect(call).toMatch(/\?\s*\{ reply_to[\s\S]{0,40}\}\s*:\s*\{\}/);
   });
 });

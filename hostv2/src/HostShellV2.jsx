@@ -3538,6 +3538,11 @@ export default function HostShellV2() {
   // a continuity cue turns into a frame-rate problem.
   const efListRef = useRef(null);
   const efBeforeRef = useRef(null);
+  // The decisions queue gets its own pair. Two lists, two baselines: sharing one
+  // would make each list's reorder look like motion in the other, and both can
+  // be mounted at once (the sheet sits over the home surface).
+  const decListRef = useRef(null);
+  const decBeforeRef = useRef(null);
   // MEASURE FIRST, THEN PLAY, and the order is the whole correctness argument.
   // A layout effect runs after the DOM has been mutated and before paint, so
   // the rects read here are the TRUE new positions — but only until
@@ -3553,6 +3558,13 @@ export default function HostShellV2() {
     if (!c) return;
     const prev = efBeforeRef.current;
     efBeforeRef.current = measureRows(c);
+    playReorder(c, prev);
+  });
+  useLayoutEffect(() => {
+    const c = decListRef.current;
+    if (!c) return;
+    const prev = decBeforeRef.current;
+    decBeforeRef.current = measureRows(c);
     playReorder(c, prev);
   });
   // ── THE LIST ENTRANCE IS AN ARRIVAL, NOT A REDRAW (motion audit, 2026-08-21)
@@ -11181,7 +11193,18 @@ export default function HostShellV2() {
                   const openCardId = (sheet.focus && ordered.some(row => row.id === sheet.focus)) ? sheet.focus
                     : (decOpenCard && ordered.some(row => row.id === decOpenCard)) ? decOpenCard
                       : firstOptionedId;
-                  return (<>{ordered.map((r, i) => {
+                  return (<>
+                  {/* ── FLIP HERE TOO (motion audit finding 2) ────────────────
+                      "Calls to make" is the app's other genuinely ranked list,
+                      and the one where reorder means the most: settling a
+                      decision moves the rest UP, which is the app showing the
+                      host their own progress. It was cutting.
+
+                      The wrapper exists because `.map` returns siblings with no
+                      shared parent, and FLIP needs something to measure inside.
+                      It wraps the ROWS only -- the "+N more" toggle below is not
+                      a ranked row and must not travel with them. */}
+                  <div className="dec-list" ref={decListRef}>{ordered.map((r, i) => {
                   // Inline settle — keyed on the DECISION having authored options
                   // (playbookDecisionOptions, same rule as legacy's What-to-settle
                   // board), not on any route. Destination calls (group transport,
@@ -11280,7 +11303,7 @@ export default function HostShellV2() {
                     // tap. The chips, buttons and why-stack live only on the open card.
                     if (r.id !== openCardId) {
                       return (
-                        <button key={r.id || i} type="button" className="frow" style={{ animation: rowEnter(i), ...heartStyle }}
+                        <button key={r.id || i} data-flip={String(r.id || i)} type="button" className="frow" style={{ animation: rowEnter(i), ...heartStyle }}
                           onClick={() => { setDecOpenCard(r.id); setDecExplain(null); }}
                           aria-expanded={false}>
                           <span className="f-main">
@@ -11294,7 +11317,7 @@ export default function HostShellV2() {
                       );
                     }
                     return (
-                      <div key={r.id || i} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), cursor: 'default', ...heartStyle }}
+                      <div key={r.id || i} data-flip={String(r.id || i)} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), cursor: 'default', ...heartStyle }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
@@ -11361,7 +11384,7 @@ export default function HostShellV2() {
                   const inlineKind = (() => { try { return wiredKind(r); } catch { return null; } })();
                   if (inlineKind) {
                     return (
-                      <div key={r.id || i} style={{ ...heartStyle }}>
+                      <div key={r.id || i} data-flip={String(r.id || i)} style={{ ...heartStyle }}>
                         <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
                           ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                           <span className="f-main">
@@ -11383,7 +11406,7 @@ export default function HostShellV2() {
                   // Routed / prompt row: the interactive element can't nest the pin
                   // button, so wrap it and hang meta + pin as siblings.
                   return (
-                    <div key={r.id || i} style={{ ...heartStyle }}>
+                    <div key={r.id || i} data-flip={String(r.id || i)} style={{ ...heartStyle }}>
                       <button className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
@@ -11405,7 +11428,7 @@ export default function HostShellV2() {
                       )}
                     </div>
                   );
-                })}
+                })}</div>
                 {/* The rest of a paced board — one tap away, never withheld. Mirrors the
                     home queue's "+N more" vocabulary. */}
                 {callsFolded && (
@@ -15498,6 +15521,22 @@ export default function HostShellV2() {
                     recipient_email: emailTarget.to,
                     recipient_name: emailTarget.name,
                     subject: sheet.title || 'About your event',
+                    // ── REPLIES GO TO THE HOST (transport board, 2026-08-21) ──
+                    // The backend has accepted `reply_to` since it was written
+                    // (communication.py:54, :348) and this call never sent one,
+                    // so every message the app has put out invited replies to
+                    // an unmonitored shared address. A vendor answering "yes,
+                    // 3pm works" was replying into a void, and neither side
+                    // could tell.
+                    //
+                    // The host's own address, from their session -- not the
+                    // profile, which is host-typed and may be blank or wrong.
+                    // Omitted rather than guessed when there is no session
+                    // address: a wrong reply-to is worse than the default,
+                    // because it fails silently in someone else's inbox.
+                    ...(((session && session.user && session.user.email) || '').trim()
+                      ? { reply_to: String(session.user.email).trim() }
+                      : {}),
                   });
                   const d = res && res.metadata && res.metadata.delivery;
                   ok = !!(d && d.status === 'accepted');

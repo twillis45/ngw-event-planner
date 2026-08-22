@@ -2743,6 +2743,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    the checklist's own rows; the class exists so the card can be found and
    measured, and so the note above it has somewhere to sit. */
 .dayof-card{ margin:0 0 var(--sp-5); }
+/* The decisions queue's FLIP container. It exists to give `playReorder`
+   something to measure inside -- `.map` returns siblings with no shared parent
+   -- so it deliberately adds no box of its own: `display:contents` would remove
+   it from layout entirely and take its children's measurable positions with it,
+   which is precisely what must not happen here. A plain block that changes
+   nothing visually is the whole requirement. */
+.dec-list{ display:block; }
 /* ── THE ASSIGN CONTROL (ownership ruling, UX_07 Level 4 RECORD-ONLY) ────────
    Never primary styling: assigning records who has a job and performs no
    outward act, so it must not look like the button that sends something. It

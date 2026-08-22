@@ -66,6 +66,11 @@ const EVENT_TAXONOMY = {
 
   // ── Social & Fundraising ──────────────────────────────────────────────────
   'Fundraiser / Gala':  { parent: 'Social & Fundraising', solveFamily: 'gala',             family: 'full_service', shareFamily: 'corporate' },
+  // School-year fundraiser run by parent volunteers (authored 2026-08-21, W1.4).
+  // solveFamily 'gala' on purpose: it is the same backward-solve shape (goal →
+  // venue → sales → the night), at school scale. family host_driven, NOT
+  // full_service — an all-volunteer committee, nothing contracted at gala scale.
+  'PTA / Booster Fundraiser': { parent: 'Social & Fundraising', solveFamily: 'gala',       family: 'host_driven',  shareFamily: 'fallback' },
   'Networking Event':   { parent: 'Social & Fundraising', solveFamily: 'networking_event', family: 'corporate',    shareFamily: 'corporate' },
   'Wellness Retreat':   { parent: 'Social & Fundraising', solveFamily: 'wellness_retreat', family: 'travel_led',   shareFamily: 'fallback', travel: true, multiDay: true },
   'Other':              { parent: 'Social & Fundraising', solveFamily: null,               family: 'host_driven',  shareFamily: 'fallback' },
@@ -141,6 +146,18 @@ const TYPE_ALIASES = {
   'Thanksgiving Dinner': 'Thanksgiving Hosting',
   'Friendsgiving': 'Thanksgiving Hosting',
   'Halloween': 'Halloween Party',
+  // PTA / Booster (2026-08-21, W1.4): common host phrasings for the school
+  // fundraiser. None collide with the gala aliases above ('Gala', 'Fundraiser',
+  // 'Gala / Fundraiser'), which keep resolving to Fundraiser / Gala.
+  'PTA Fundraiser': 'PTA / Booster Fundraiser',
+  'PTA Event': 'PTA / Booster Fundraiser',
+  'PTA Night': 'PTA / Booster Fundraiser',
+  'School Fundraiser': 'PTA / Booster Fundraiser',
+  'Booster Fundraiser': 'PTA / Booster Fundraiser',
+  'Booster Event': 'PTA / Booster Fundraiser',
+  'Spirit Night': 'PTA / Booster Fundraiser',
+  'School Carnival': 'PTA / Booster Fundraiser',
+  'Fall Festival': 'PTA / Booster Fundraiser',
   "New Year's Eve": "New Year's Eve Party",
   'NYE Party': "New Year's Eve Party",
 };
@@ -186,6 +203,10 @@ const KEYWORDS = [
   [/holiday\s*party|company\s*party|staff\s*party|office\s*party/, 'Holiday Party'],
   [/conference|summit|kickoff|kick-off|\bsko\b|expo\b|trade\s*show|convention|symposium|\bforum\b/, 'Conference'],
   [/networking|mixer/, 'Networking Event'],
+  // School fundraisers resolve BEFORE the generic gala rule — "school
+  // fundraiser" and "booster club auction" belong to the parent-volunteer
+  // playbook, not the ballroom one. (2026-08-21, W1.4)
+  [/\bpta\b|\bptsa\b|\bpto\b|booster|spirit\s*night|school\s*(fundraiser|carnival|festival|fun\s*fair|auction)|fall\s*festival|fun\s*run\b|walk-?a-?thon|concession\s*(stand|season)/, 'PTA / Booster Fundraiser'],
   [/gala|fundrais|benefit\b|auction|charity\b|donor\b/, 'Fundraiser / Gala'],
   // ── Casual / at-home gatherings ──
   // Seasonal hosted holidays (2026-08-21) resolve BEFORE the generic dinner-party
