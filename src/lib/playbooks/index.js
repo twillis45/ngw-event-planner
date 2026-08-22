@@ -1227,6 +1227,11 @@ export function playbookTasks(event, asOf) {
 
   for (const p of playbook.purchases) {
     if (got[p.id] || skip[p.id]) continue; // done / swapped out → advance past it
+    // W1.3 (2026-08-21): the SAME choice gate the spread uses — a purchase tagged
+    // whenChoice (Reunion's p_shirts) must not become a buy-task for a host whose
+    // pick keeps it off the plan. Untagged purchases are untouched (choiceShown
+    // is true for an absent gate).
+    if (!choiceShown(event, p.whenChoice)) continue;
     if (_tFoodOffPlate && p.category === 'food') continue; // the community/caterer carries it
     const offset = buyOffsetDays(p.buyAt);
     if (offset === null) continue;
@@ -1735,6 +1740,12 @@ export function playbookRunOfShow(event) {
   // the same anchor vocabulary the single-day rows use, never printed as time.
   const agenda = Array.isArray(playbook.schedules.agenda) ? playbook.schedules.agenda : [];
   for (const entry of agenda) {
+    // W1.3 (Reunion enrichment, 2026-08-21): a CONDITIONALLY multi-day type
+    // authors its weekend agenda behind a span decision using the same
+    // whenChoice vocabulary tasks and purchases already use. Always-multi-day
+    // types (Team Retreat) author no gate and are untouched — choiceShown
+    // returns true for an absent gate.
+    if (!choiceShown(event, entry.whenChoice)) continue;
     const dt = rosDayToken(entry.when);
     if (!dt) continue;
     const hour = dt.bucket && ROS_DAY_BUCKET_HOUR[dt.bucket] != null ? ROS_DAY_BUCKET_HOUR[dt.bucket] : ROS_DAY_BUCKET_HOUR.afternoon;

@@ -32,6 +32,19 @@ const reunion = () => ({
   guestMode: 'count', guestCount: playbookTypicalGuests('Reunion') || 20,
   guests: [], vendors: [], timeline: [], budget: [],
   venueCity: 'Atlanta', venueState: 'GA',
+  // W1.3 (2026-08-21): the Reunion enrichment added three more early-window
+  // decisions (planning-team, reunion-span, cost-share). Unanswered, they push
+  // this 45-days-out fixture past the ≥3-raise threshold and eventPlan folds
+  // the decisions surface into ONE bundle:decisions action — correct product
+  // behavior, but it removes the individual decision:* actions this suite's
+  // envelope-chain gates are pointed at. Settling them here restores the
+  // fixture's stated premise ("two decisions genuinely past their easy
+  // window") without weakening any gate.
+  foodChoices: {
+    'planning-team': 'Just me',
+    'reunion-span': 'One day',
+    'cost-share': 'I cover it as the host',
+  },
 });
 
 const planFor = (ev) => eventPlan(ev, (() => {

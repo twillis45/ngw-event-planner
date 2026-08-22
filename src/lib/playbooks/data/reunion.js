@@ -1,6 +1,23 @@
 // NGW Event Boss — Host Playbook: Reunion
 // Big casual, outdoor-leaning gathering (family or class reunion).
 // Synthesized from US norms; no fabricated citations (sources: [], verificationStatus: 'synthesized').
+//
+// ENRICHMENT 2026-08-21 (W1.3, template-line program spec): the original file
+// covered only the LOCAL-PICNIC reunion. The travel-heavy, committee-run,
+// cost-split, multi-day family reunion — the underserved host the audit named —
+// now lives here too, as five GATED families: committee (planning-team),
+// multi-day (reunion-span + the weekend agenda), travel/lodging (weekend tasks;
+// the lodging DECISION itself stays the generic dest_lodging modifier so
+// lodgingIntel keeps its one source of truth — this file deliberately authors
+// no 'lodging'/'room_block' id, which would F10-suppress it), shared payments
+// (cost-share), and photography/shirts (group-photo hired path, reunion-shirts).
+// EVERY new task/purchase/agenda row is whenChoice-gated and every new decision
+// defaults to the local-picnic answer, so a bare local single-day reunion's
+// checklist, purchases, risks, and run-of-show are UNCHANGED (red-proved by
+// before/after probe at authoring). Cost-share vocabulary matches the app's
+// budget language ("chip in", "cost split" — budgetContext.js). Quantities and
+// the shirt price band are synthesized — no fetched sources, no fabricated
+// citations, per the corroboration ratchet.
 
 const reunion = {
   type: 'Reunion',
@@ -109,6 +126,66 @@ const reunion = {
       priorityBasis: { rationale: 'Unoccupied kids become every parent\'s problem at once, but a bin of lawn games and open grass covers most of it cheaply and swaps easily — a low-stakes call with a safe default.', tier: 'reasoned' },
       why:
         'A reunion is all-ages and multi-household, so unoccupied kids become every parent’s problem at once. A bin of lawn games (cornhole, frisbee, bubbles, a few balls) and an open grassy area covers most of it cheaply. A bounce house or hired entertainer is a splurge that buys the adults a calm hour.',
+    },
+    {
+      id: 'planning-team',
+      label: 'Who is planning this — just you, or a committee?',
+      options: ['Just me', 'A cousins committee (3-6 people)'],
+      default: 'Just me',
+      when: 'T-75d',
+      blocks: ['committee-lanes'],
+      weight: 'med',
+      reversibility: 'reversible',
+      emotionalWeight: 'med',
+      difmCapable: 'needs-host',
+      priorityBasis: { rationale: 'A multi-household reunion is too much work and too much family politics for one person past a few households, but only the host knows whether there are relatives willing to own a lane — and a solo host with a small local crowd is a perfectly safe default.', tier: 'reasoned' },
+      why:
+        'Past a few households, a reunion is a committee-sized job: food, where everyone stays, the program, and the money each want an owner, and a shared load is also how the family politics stay manageable — nobody argues with a plan four branches built together. One relative per branch of the family, three to six people total, works well. Solo is fine for a smaller local crowd; the app assumes solo until you say otherwise.',
+    },
+    {
+      id: 'reunion-span',
+      label: 'One day, or a full reunion weekend?',
+      options: ['One day', 'A full weekend (2-3 days)'],
+      default: 'One day',
+      when: 'T-75d',
+      blocks: ['weekend-program', 'stay-plan'],
+      weight: 'high',
+      reversibility: 'costly',
+      emotionalWeight: 'med',
+      difmCapable: 'needs-host',
+      priorityBasis: { rationale: 'The span decides the venue days, whether anyone needs a bed, and how much program there is to plan — everything travel-shaped hangs off it, and once out-of-town family books flights around a weekend it is effectively locked. Only the host knows how far the family is coming.', tier: 'reasoned' },
+      why:
+        'When family flies or drives in from out of town, a single afternoon is not worth the trip — the common shape is a weekend: an easy arrival evening, the big reunion day, and a goodbye breakfast before everyone hits the road. A weekend changes almost everything downstream: the venue is needed across days, people need beds, arrivals need collecting, and each day wants its own simple plan. Set the end date on the event too, so the day-by-day tools know the real span.',
+    },
+    {
+      id: 'cost-share',
+      label: 'How are the costs covered?',
+      options: ['I cover it as the host', 'Each family chips in a set amount', 'Everyone pays their own way'],
+      default: 'I cover it as the host',
+      when: 'T-56d',
+      blocks: ['cost-collection'],
+      weight: 'med',
+      reversibility: 'reversible',
+      emotionalWeight: 'med',
+      difmCapable: 'needs-host',
+      priorityBasis: { rationale: 'Money is the fastest way a reunion turns sour, and the fix is structural, not personal: a stated amount, a real deadline, and one treasurer. But whether the family chips in at all is a family-culture call only the host can make.', tier: 'reasoned' },
+      why:
+        'A potluck covers the food, but the pavilion, the meat, the shirts, and the paper goods still cost real money — and at reunion scale most families split it with a set chip-in per household, announced with the invitation so nobody is surprised. Whatever the model, the rule that keeps the peace is the same: one treasurer touches the money, the amount and what it covers are stated plainly, and the ledger is visible to anyone who asks.',
+    },
+    {
+      id: 'reunion-shirts',
+      label: 'Matching reunion T-shirts this year?',
+      options: ['Yes — matching shirts', 'No shirts this year'],
+      default: 'No shirts this year',
+      when: 'T-45d',
+      blocks: ['shirt-order'],
+      weight: 'low',
+      reversibility: 'costly',
+      emotionalWeight: 'med',
+      difmCapable: 'needs-host',
+      priorityBasis: { rationale: 'Shirts are the reunion signature and the group photo is better for them, but they carry the longest hard deadline on the list — sizes collected by household, then one bulk order weeks ahead that cannot be topped up in time. A no costs nothing; a late yes fails.', tier: 'reasoned' },
+      why:
+        'The matching shirt is a reunion signature — it makes the group photo, doubles as the year\'s keepsake, and marks who belongs to the family at a public park. The catch is lead time: sizes have to come in by household with the RSVPs, and bulk printers need two to three weeks, so the order goes in about a month out and a reorder never arrives in time. Skipping shirts is a fine call; deciding late is the only wrong one.',
     },
   ],
 
@@ -247,6 +324,43 @@ const reunion = {
     { id: 't-trash-stations', milestoneId: 'setup-day', phase: 'setup', label: 'Place trash + recycling bins at multiple points with spare bags', when: 'T0' },
     { id: 't-call-photo', milestoneId: 'setup-day', phase: 'execution', label: 'At the set time, call everyone in for the group photo before anyone leaves', when: 'T0' },
     { id: 't-cleanup-sweep', milestoneId: 'setup-day', phase: 'cleanup', label: 'Bag trash, collect rentals/coolers, walk the site for left items and litter', when: 'T0+5h' },
+
+    // ── W1.3 enrichment — every row below is whenChoice-gated so the bare
+    // local single-day reunion's checklist is byte-identical to before. ──
+
+    // COMMITTEE (planning-team → 'A cousins committee (3-6 people)')
+    { id: 't-committee-recruit', milestoneId: 'set-date-venue', phase: 'planning', label: 'Ask one relative from each branch of the family to join the reunion committee — three to six people is the sweet spot', when: 'T-74d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
+    { id: 't-committee-lanes', milestoneId: 'build-guest-list', phase: 'planning', label: 'Split the committee into lanes — food, where everyone stays, the program, and the money — with one named owner per lane', when: 'T-70d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
+    { id: 't-committee-cadence', milestoneId: 'build-guest-list', phase: 'planning', label: 'Set a short committee check-in call every other week and a group thread for everything in between', when: 'T-68d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
+    { id: 't-committee-money', milestoneId: 'build-guest-list', phase: 'planning', label: 'Agree the money rule up front: one treasurer handles every dollar in and out, keeps the ledger, and shares the running total with the whole committee', when: 'T-66d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
+
+    // MULTI-DAY + TRAVEL/LODGING (reunion-span → 'A full weekend (2-3 days)').
+    // The lodging DECISION is the generic dest_lodging modifier (room block /
+    // guaranteed block / self-book / host-arranged rental) — these tasks are the
+    // reunion-shaped work around it, including the family-hosted spread the
+    // generic options don't cover.
+    { id: 't-weekend-venue', milestoneId: 'set-date-venue', phase: 'planning', label: 'Confirm a gathering spot for every day — the main-day pavilion, plus somewhere easy for the arrival evening and the goodbye morning', when: 'T-70d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-weekend-arc', milestoneId: 'book-vendors', phase: 'planning', label: 'Sketch the weekend arc — an easy arrival evening, the big reunion day, and a goodbye breakfast before everyone hits the road', when: 'T-40d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-family-host-map', milestoneId: 'book-vendors', phase: 'planning', label: 'Map who is hosting whom — guest rooms and air mattresses claimed by name before anyone lands, with the overflow pointed at the group hotel options', when: 'T-30d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-arrival-windows', milestoneId: 'collect-rsvps', phase: 'planning', label: 'Collect each household\'s arrival window — who gets in the night before, who lands the morning of the big day', when: 'T-21d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-airport-runs', milestoneId: 'collect-rsvps', phase: 'planning', label: 'Match every non-driver to a ride — who picks up whom, with phone numbers swapped before travel day', when: 'T-14d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] }, whenMode: { not: ['drive'] } },
+    { id: 't-perday-ros', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write a run-of-show for each day — even the easy arrival evening gets a where-and-when, so nobody is calling around for the plan', when: 'T-13d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-memory-moment', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Plan the main day\'s memory moment — an elder walks the family tree, a word for those lost this year — kept simple and open to everyone', when: 'T-12d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+
+    // SHARED PAYMENTS (cost-share → 'Each family chips in a set amount')
+    { id: 't-costshare-amount', milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Set the per-family amount and say plainly what it covers — the pavilion, the meat, shirts, paper goods — in the invitation itself', when: 'T-56d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
+    { id: 't-costshare-deadline', milestoneId: 'collect-rsvps', phase: 'planning', label: 'Give the chip-in a real deadline about three weeks out, and send one kind reminder to the households that miss it', when: 'T-21d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
+    { id: 't-costshare-ledger', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Keep the treasurer\'s ledger current — every household\'s payment in, every receipt out, visible to anyone who asks', when: 'T-14d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
+    { id: 't-costshare-settle', milestoneId: 'setup-day', phase: 'cleanup', label: 'Settle up within the week — the treasurer reimburses everyone who fronted receipts, then shares the final tally with the family', when: 'T0+1d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
+
+    // PHOTOGRAPHY (group-photo → 'Hire a photographer for 1 hour')
+    { id: 't-book-photographer', milestoneId: 'book-vendors', phase: 'planning', label: 'Book the photographer for a one-hour window that covers the group photo and the start of the meal', when: 'T-21d', whenChoice: { id: 'group-photo', in: ['Hire a photographer for 1 hour'] } },
+    { id: 't-shot-list', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Send the photographer the shot list — the whole group, each family branch, the elders, the four-generations frame', when: 'T-7d', whenChoice: { id: 'group-photo', in: ['Hire a photographer for 1 hour'] } },
+
+    // SHIRTS (reunion-shirts → 'Yes — matching shirts')
+    { id: 't-shirt-sizes', milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Collect shirt sizes by household as RSVPs come in — adult and kid counts per size', when: 'T-42d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
+    { id: 't-shirt-order', milestoneId: 'book-vendors', phase: 'planning', label: 'Place the shirt order — bulk printers need two to three weeks, and a reorder never arrives in time', when: 'T-28d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
+    { id: 't-shirt-handout', milestoneId: 'setup-day', phase: 'setup', label: 'Hand out shirts at the registration table, checked off by household', when: 'T0', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
   ],
 
   purchases: [
@@ -264,6 +378,8 @@ const reunion = {
     { id: 'p_games', item: 'Lawn games + kids supplies (cornhole, bubbles, balls)', category: 'decor', qtyFlat: 1, unit: 'set', where: ['Walmart', 'Target', 'Amazon'], unitCostRange: [30, 90], essential: false, buyAt: 'T-3d', note: 'Keeps all ages occupied; reusable for future reunions.' , provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['lawngames-rental-2026', 'lawngames-package-2026'], lastVerified: '2026-08-18', claim: 'Lawn games for a family reunion, priced as rental. Cornhole is $30 for the first day and $5 each additional day; further games (ladder toss, giant Jenga, giant Connect 4) are about $25 each, so two or three games land inside this band. ORDER MINIMUMS ARE THE TRAP: pickup orders start at $110 and DELIVERY at $385, so a host collecting two games pays the per-game rate while one having them delivered jumps well above this band. Bubbles and balls are bought, not rented, and are the smaller share.', sufficientWhen: 'A per-game pickup rate for the games actually wanted, against the same provider\'s delivery minimum, confirms which side of the band an order lands on.' }, },
     { id: 'p_tablecover', item: 'Disposable tablecloths', category: 'decor', qtyFlat: 1, qtyPer: 'per table', unit: 'count', where: ['dollar store', 'party store'], unitCostRange: [1, 3], essential: false, buyAt: 'T-3d', note: 'Cheap way to make picnic tables look intentional and speed cleanup.' , provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['disposable-kit-2026', 'disposables-partyqty-2026'], lastVerified: '2026-08-16', claim: 'Disposable plastic table covers 2026: $1.00 each for a single 54x108 store-brand cover; multi-packs run $21.99 per 32 (about $0.69 each) to $29.99 per 12; decorative prints $2.50-3.50 each.', sufficientWhen: 'A current shelf price for one store-brand table cover and one multi-pack confirms the per-cover range.' } },
     { id: 'p_firstaid', item: 'Basic first-aid kit', category: 'logistics', qtyFlat: 1, unit: 'count', where: ['pharmacy', 'Amazon'], unitCostRange: [10, 25], essential: false, buyAt: 'T-3d', note: 'All-ages outdoor event — scrapes and bug bites are guaranteed.' , provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['firstaid-retail-2026', 'costco-cleaning-2026'], lastVerified: '2026-08-18', claim: 'A household first-aid kit. Walmart lists a DMI 175-piece kit at $13.99, with Equate 250-piece and Band-Aid 160-piece kits in the same tier; a Be Smart Get Prepared 10-PERSON kit is $39.99 and sits above this band - that is a workplace or large-group product. This row prices the household kit a host keeps on hand.', sufficientWhen: 'One shelf price for a household-sized kit confirms the band.' }, },
+    // W1.3: gated on the shirts decision — a bare reunion buys no shirts.
+    { id: 'p_shirts', item: 'Reunion T-shirts (custom printed, sizes by household)', category: 'logistics', qtyPerGuest: 1, unit: 'count', where: ['online custom printer', 'local print shop'], unitCostRange: [6, 15], essential: false, buyAt: 'T-28d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] }, note: 'Bulk screen printing gets cheaper per shirt as the count rises; collect sizes with the RSVPs and order once, about a month out — reorders never arrive in time.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized', note: 'US bulk custom-tee band stated from general market knowledge; no source was fetched for this row, so it stays synthesized per the corroboration ratchet — one source would not earn a cited price either.' } },
   ],
 
   rentalsGap: [
@@ -341,13 +457,27 @@ const reunion = {
       { when: 'T0+5h', do: 'Walk the entire site for litter and left-behind items; return the space cleaner than found.' },
       { when: 'T0+1d', do: 'Return rentals; share the group photo and updated contact list with all households.' },
     ],
+    // ── W1.3: the weekend agenda — the arc the reunion research documents
+    // (arrival evening / the big day / farewell morning, same shape as
+    // itinerary.js's researched reunionArc). Every row is whenChoice-gated on
+    // the span decision, so a one-day reunion's run-of-show never grows Day
+    // tokens; programmeDays groups these per day once the host answers
+    // "A full weekend". Day 1 here is the arrival day; the T0-anchored beats
+    // above describe the big reunion day itself.
+    agenda: [
+      { when: 'Day 1 evening', what: 'Meet and greet — everyone lands at different hours, so keep it a drop-in supper with no program', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+      { when: 'Day 2 morning', what: 'Setup crew to the pavilion — tables, shade, the registration table — while the late sleepers surface', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+      { when: 'Day 2 afternoon', what: 'The reunion proper — registration, the group photo, the meal, and the program', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+      { when: 'Day 2 evening', what: 'The long visit — games, the spades table, stories running late', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+      { when: 'Day 3 morning', what: 'Farewell breakfast and goodbyes — leftovers sent home and the group photo promised to every household', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    ],
   },
 
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
     note:
-      'This playbook is synthesized from widely-published US reunion and large-cookout planning norms, not from primary measured data, so the figures are planning estimates rather than guarantees. The food and beverage quantities (~0.5 lb protein/guest, ~3-4 drinks/guest over a long afternoon, ~2 lb ice/guest outdoors) reflect common rules of thumb and will swing with weather, crowd, time of day, and how much guests actually drink; the cost ranges are rough US averages that vary a lot by region, season, and whether you buy in bulk. The structure deliberately leans toward the outdoor, multi-household potluck case because that is the most common and most error-prone reunion shape; an indoor or fully-catered reunion will use fewer of the rental and weather provisions. Treat the per-guest ratios as a starting scale-by and adjust to your actual headcount and venue. Food-safety claims were verified against primary USDA FSIS/FDA text on 2026-07-28 (see sources); all other figures remain synthesized rules of thumb — no fabricated citations.',
+      'This playbook is synthesized from widely-published US reunion and large-cookout planning norms, not from primary measured data, so the figures are planning estimates rather than guarantees. The food and beverage quantities (~0.5 lb protein/guest, ~3-4 drinks/guest over a long afternoon, ~2 lb ice/guest outdoors) reflect common rules of thumb and will swing with weather, crowd, time of day, and how much guests actually drink; the cost ranges are rough US averages that vary a lot by region, season, and whether you buy in bulk. The structure deliberately leans toward the outdoor, multi-household potluck case because that is the most common and most error-prone reunion shape; an indoor or fully-catered reunion will use fewer of the rental and weather provisions. Treat the per-guest ratios as a starting scale-by and adjust to your actual headcount and venue. Food-safety claims were verified against primary USDA FSIS/FDA text on 2026-07-28 (see sources); all other figures remain synthesized rules of thumb — no fabricated citations. ENRICHED 2026-08-21 (W1.3): the committee, weekend/multi-day, travel-around-lodging, shared-payments, and shirts/photography families were added as decision-gated content — four new decisions whose defaults are the local-picnic answers, seventeen gated tasks, a gated shirt purchase, and a gated weekend agenda. The weekend arc (arrival evening, the big day, farewell morning) follows the documented reunion-weekend shape already registered by the guest itinerary\'s researched arc; committee sizing (one per family branch, three to six people), the per-family chip-in norm, the one-treasurer rule, and the two-to-three-week bulk shirt lead are US reunion-planning consensus stated as practice and labeled synthesized — no fetched sources were added in this pass.',
     sources: ['fsis-cooking-groups', 'fsis-danger-zone'],
   },
 };

@@ -182,7 +182,23 @@ export function guestItinerary(event, getPlaybook) {
   // 2 · authored playbook agenda ("Day N ..." rows only — T-offset rows are crew)
   const pb = (() => { try { return getPlaybook ? getPlaybook(ev.type) : null; } catch { return null; } })();
   const agenda = pb && pb.schedules && Array.isArray(pb.schedules.agenda) ? pb.schedules.agenda : [];
+  // W1.3 (2026-08-21): a conditionally multi-day type (Reunion) gates its
+  // weekend agenda rows with whenChoice — the same {id, in} vocabulary
+  // playbookChecklist's choiceShown() uses, re-read locally because this
+  // module must stay playbook-corpus-import-free (see the module header /
+  // DEST_LODGING_OPTIONS leaf lesson). Pick falls back to the decision's
+  // authored default; an ungated row always shows, so Team Retreat's
+  // always-on agenda is untouched. Reword choiceShown and this together.
+  const agendaShown = (r) => {
+    const g = r && r.whenChoice;
+    if (!g || !g.id) return true;
+    const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
+    const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === g.id) : null;
+    const v = picks[g.id] || (dec && dec.default) || null;
+    return v == null ? true : (Array.isArray(g.in) ? g.in : []).includes(v);
+  };
   const authored = agenda
+    .filter(agendaShown)
     .map((r) => {
       const at = parseAgendaWhen(r && r.when);
       return at ? normRow({ ...at, title: r.what }) : null;
