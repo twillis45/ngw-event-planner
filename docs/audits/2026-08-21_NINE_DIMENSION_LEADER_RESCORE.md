@@ -20,7 +20,7 @@ in the re-score sections below.
 | Dimension | Bar-setter | Us /10 | Remaining gap to 10 |
 |---|---|---:|---|
 | Workflow | Wanderlog (Partiful on creation) | 9 | Day CRUD: add / move / delete a day inside the programme span (the per-day schema, build-queue item 1). This line previously read "the whole of the distance to 10" and that was wrong — host-assignable ownership was a second absence, unnamed here and now closed (`e006f52d`); see the seventh re-score |
-| Design | Paperless Post / Vercel craft | 9 | Both faults the eighth re-score found are genuinely closed and were re-checked in the source here (`9e0c96d4`) — the `settled` lens short-circuits the partition and returns its matches as the LIVE group (`:17255`), and the counts are taken from a search-filtered array (`q0`, `:17198`). The cell still holds, on a THIRD instance of the same class found in this pass: the `Everyone` chip counts `all.length`, which includes settled vendors, while the default `all` lens partitions those same vendors into the collapsed fold — so `Everyone N` renders fewer than N rows the moment any vendor is settled. This is the fixed fault's own arithmetic surviving in the DEFAULT view rather than behind a lens the host has to select, and it is invisible on `ev-x-wanda` only because that fixture has zero settled vendors. Either count the live group or count the fold into the rows. Seed a settled vendor first — that red-proof was named in the eighth re-score's build queue and still has not been done |
+| Design | Paperless Post / Vercel craft | 9 | **The counting fault named in the eighth and ninth re-scores is CLOSED** (tenth pass, overnight 08-22). The `Everyone` chip counted `all.length` while the default lens folded settled vendors away, so the number sat above fewer cards the moment anything settled. Fixed to the leaders' own shape rather than to taste: Linear, Plane, ClickUp and Asana all put a count on a GROUP and none on an all-lens, because a group's number is a promise about the rows beneath it and "all" has no rows of its own. `Everyone` now carries no number; the settled fold already states its own. THE RED-PROOF THE AUDIT NAMED TWICE AND NOBODY RAN IS ALSO DONE — a settled vendor is now seeded, and finding out how took reading `vendorSettled` into `deriveVendorAccountability`: a confirmed status is NOT sufficient (a formal vendor is still scored against its category playbook's requiredConfirmations and reads criticalUnconfirmed), `isInformal` is what short-circuits accountability to on_track. The spec asserts the fold APPEARS before asserting any count, so a seed that stops settling fails loudly instead of passing over a list where nothing was settled. The same fault was found and fixed one screen over: the guest roster counted the raw array while its rows were search-filtered. Gate: `e2e/lensCountsMatchRows.spec.mjs`, red-proofed WITH A REBUILD (the first attempt passed against a stale bundle). Remaining gap to 10: this pass swept the other count-bearing surfaces for a third instance of the class and found none — so the honest statement is that the named fault is closed and no successor was found, which is not the same as proving none exists |
 | Modern UI/UX | Linear | 9 | At 1920 roughly a fifth of the viewport below the app frame is still dead band (marketing capture, 08-21). This is NOT the vendors dead third, which is now used — the detail panel shipped `2afd0030`; it is the frame's own vertical footprint, and it is the last unanswered desktop-space question |
 | Micro motion | Linear / Family | 9 | Two layout-animating fills remain — `.bline i` / `.bline b` (`styles.css:1618`, `:1629`) — plus `.wxpill{transition:bottom}` (`:2995`). All three are sub-perceptual next to the digit that closed in `4d671f75`, which is why they hold the cell off 10 rather than off 9. Atom-input parity is complete; `.mbar i` stays on `width` by a recorded decision and is not a gap |
 | Animation | Family / Partiful | 9 | FLIP covers ONE list — "Then, in order". The call-sheet, vendor and checklist lists still cut. No shared element and no view transition anywhere (`startViewTransition` grepped at HEAD: zero), so cross-SURFACE continuity remains unbuilt while within-surface continuity now exists |
@@ -1197,3 +1197,40 @@ has no readiness. Event Boss is the only product in the recorded evidence
 that computes whether the event is ready, says why, proposes the fix, and
 drafts the message — it just can't yet send the message or run twice
 across a span. Those two absences are exactly build-queue items 1 and 2.
+
+
+## Tenth re-score — overnight 2026-08-22 (Design's named fault, and a phase nobody had noticed)
+
+**Overall: 79/90 (88%) — held at 79.** Design's long-standing counting
+fault is closed and red-proofed, including the settled-vendor seed the
+eighth and ninth passes both named and neither ran. That closes the cell's
+stated gap. It does NOT move the cell to 10, and the reason is the pattern
+this table keeps recording: every previous pass that fixed this class found
+the same class a layer out. This pass swept the other count-bearing
+surfaces and found no successor — but "swept and found none" is weaker
+evidence than "proved none exists", and the difference is exactly where
+this audit has been wrong before. A pass that verifies its own fix is not
+the pass that should award the point.
+
+**Found in passing, and it belongs to Attention systems, not Design.** The
+T-72h reconfirm sweep can record "they answered — all set" and "still
+waiting" and nothing else. A vendor who answers by CANCELLING has no state:
+they sit as waiting forever, and the green line "All N vendors answered —
+everyone's coming" stays reachable because the count and the copy agree
+only under the assumption that answering means yes. This is the same
+three-not-dones incompleteness already named in that cell, in a second
+channel, and it is a stronger example than the email `Send Failed` one
+because here the missing state is a person changing their mind rather than
+a transport failing.
+
+**A gap outside the nine dimensions entirely, worth recording here because
+nothing else measures it.** The corpus held 91 pre-event tasks, 15 day-of,
+and ZERO post-event across all ten types — the plan walked a host to the
+event and abandoned them there. That is now 37 post-event tasks across all
+ten types (143 rows, up from 106), on a new "After the Event" workstream
+assigned by RULE (any negative offsetDays) rather than by annotation, so a
+future one cannot be filed wrong by forgetting to mark it. No dimension in
+this table would have caught that absence: it is a content-completeness
+question, and every cell here scores craft, behaviour or intelligence. If
+this table is meant to be the product's scoreboard, that is a hole in the
+table, not just in the corpus.

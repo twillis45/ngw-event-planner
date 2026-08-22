@@ -1,5 +1,38 @@
 # Where We Are -- live status board
 
+## Overnight 2026-08-22 — the phase the plan never had
+
+The corpus was measured, not assumed: 91 pre-event tasks, 15 day-of, and
+ZERO post-event across all ten event types. The plan walked a host to the
+event and stopped. Nobody had noticed because no dimension of the
+nine-dimension scorecard measures content completeness -- every cell there
+scores craft, behaviour or intelligence, so an entire missing phase was
+invisible to the instrument we grade ourselves with. That is a hole in the
+table, not just in the corpus, and it is recorded in the tenth re-score.
+
+37 post-event tasks now exist across all ten types (143 rows, up from 106).
+The mechanism was already in the engine and had never been used: a NEGATIVE
+`offsetDays`, since dueDate is computed as eventDate + (-offsetDays). They
+carry a new "After the Event" workstream assigned by RULE rather than by
+annotation -- any negative offset lands there -- because the category
+system actively fights this: "return the borrowed pans" is genuinely
+`cleanup`, which would file it under Day-of Operations and tell a host to
+do it during a dinner it is three days later than.
+
+The repast is the one to read if you want to know what this product is for.
+It has no settle-up milestone (chasing a grieving family for reimbursement
+lands badly), no thank-you-note assignment (that belongs to the family on
+their own timing -- the coordinator instead writes down who brought what
+and puts the list in the keepsake box, available if they ever want it and
+asked of them never), no photo distribution, and no "what would you do
+differently" because there is no next time. What it does say: take the
+plates to the house and put them in the refrigerator yourself, meal-sized
+and labeled, "so a plate is a two-minute decision on a bad evening".
+
+Design's counting fault -- open across three sittings -- is closed, fixed
+to the leaders' own shape rather than to taste, and red-proofed including
+the settled-vendor seed two previous passes had named and neither ran.
+
 **THIS FILE IS THE ANCHOR. Update it at the end of every working session.**
 **Short version first:** `demo/HANDOFF.md` — measured state (HEAD, test counts,
 CI, what shipped, next in order, live traps). Read that, then come here for the

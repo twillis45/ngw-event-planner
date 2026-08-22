@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-08-21 (dawn + midday).
+**Measured reality, not intentions.** Updated 2026-08-22 (overnight).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -16,7 +16,40 @@ this file is the short answer to "where is it, is it green, what's next."
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 
-## What shipped this session
+## What shipped overnight 2026-08-22
+
+**The corpus had no post-event phase, and nobody had noticed.** Measured:
+91 pre-event tasks, 15 day-of, ZERO after, across all ten types. Now 37
+post-event tasks in all ten (143 rows, up from 106; content-library depth
+137 -> 225 steps). Mechanism: NEGATIVE `offsetDays`, which the engine
+already supported (`dueDate = eventDate + (-offsetDays)`) and nothing had
+ever used. They land on a new **"After the Event"** workstream assigned by
+RULE -- any negative offset -- not by category, so a future one cannot be
+filed wrong by forgetting to mark it. `content-mappings.mjs` +
+`extract-content.mjs`. No workbook change needed: the Workstream column has
+no data validation, so the value is written, not picked.
+
+**Design's counting fault is closed and red-proofed.** `Everyone` carried a
+count while the default lens folded settled vendors away. Fixed to the
+leaders' shape (Linear/Plane/ClickUp/Asana put counts on GROUPS, never on
+an all-lens). The settled-vendor seed the eighth and ninth re-scores both
+named and neither ran is now done -- `isInformal` is what short-circuits
+accountability to on_track; a confirmed status alone is not sufficient. The
+same fault was found one screen over in the guest roster, which counted the
+raw array while its rows were search-filtered, and nothing covered it.
+Gate: `hostv2/e2e/lensCountsMatchRows.spec.mjs`.
+
+**TRAP THAT COST TIME TWICE.** A Playwright red-proof runs against the
+BUILT bundle. Editing source and re-running the spec proves nothing -- both
+of my first two red-proofs passed against a stale build and looked like the
+gate was broken. `npm run build` between the edit and the run, every time.
+
+**Also:** `template-products/` is now under git (it was untracked -- the
+whole product line, no undo). Four Notion niches built and verified by diff
+against the generated CSVs. Four Etsy mockup squares. Four FALSE listing
+claims fixed and the numbers now derived at build time from canonical.
+
+## What shipped the previous session
 
 1. **Path to Production audit** — all 10 stages, `docs/audits/2026-08-21_PATH_TO_PRODUCTION_AUDIT.md`.
    Stages 1–4/6/8 pass, 5 + 7 worked below, 9 pending (D-2 preconditions).
