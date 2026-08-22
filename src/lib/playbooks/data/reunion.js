@@ -297,6 +297,53 @@ const reunion = {
       category: 'logistics',
       risk: { ifDelayed: 'Late setup means guests arriving to a half-built site and a stressed host.', severity: 'medium' },
     },
+
+    // ── AFTER THE DAY ────────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the reunion. The engine computes dueDate
+    // as eventDate + (-offsetDays), so no engine change is needed.
+    //
+    // A reunion has more tail than any other gathering in the corpus, because
+    // it is the one event whose whole point was the people. Four things are
+    // real work after everyone drives home: the group photo everyone is already
+    // asking for; the borrowed and rented things; the money between households;
+    // and the roster — addresses, phone numbers, and who is carrying the next
+    // one — all of which are accurate this week and stale by Christmas.
+    {
+      id: 'share-group-photo',
+      name: 'Get the group photo out to every household',
+      offsetDays: -3,
+      owner: 'host',
+      dependsOn: ['setup-day'],
+      category: 'photo',
+      risk: { ifDelayed: 'This is the one thing everyone is waiting for; a photo that lands three months late gets looked at once instead of framed.', severity: 'medium' },
+    },
+    {
+      id: 'return-borrowed',
+      name: 'Return the borrowed and rented things',
+      offsetDays: -2,
+      owner: 'host',
+      dependsOn: ['setup-day'],
+      category: 'logistics',
+      risk: { ifDelayed: 'Rental companies bill late days as full days, and a cousin\'s canopy that lives in your garage until Thanksgiving gets remembered.', severity: 'medium' },
+    },
+    {
+      id: 'settle-shared-cost',
+      name: 'Total the real cost and settle up between households',
+      offsetDays: -7,
+      owner: 'host',
+      dependsOn: ['setup-day'],
+      category: 'budget',
+      risk: { ifDelayed: 'Whoever fronted the pavilion fee and the meat is quietly out several hundred dollars, and family money left unsettled is how a committee loses volunteers.', severity: 'high' },
+    },
+    {
+      id: 'carry-the-next-one',
+      name: 'Update the family contact list and name who carries the next reunion',
+      offsetDays: -14,
+      owner: 'host',
+      dependsOn: ['setup-day'],
+      category: 'planning',
+      risk: { ifDelayed: 'Enthusiasm is highest in the two weeks after; ask in March and the next reunion has no date, no committee, and no one who feels responsible.', severity: 'medium' },
+    },
   ],
 
   tasks: [
@@ -361,6 +408,19 @@ const reunion = {
     { id: 't-shirt-sizes', milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Collect shirt sizes by household as RSVPs come in — adult and kid counts per size', when: 'T-42d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
     { id: 't-shirt-order', milestoneId: 'book-vendors', phase: 'planning', label: 'Place the shirt order — bulk printers need two to three weeks, and a reorder never arrives in time', when: 'T-28d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
     { id: 't-shirt-handout', milestoneId: 'setup-day', phase: 'setup', label: 'Hand out shirts at the registration table, checked off by household', when: 'T0', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
+
+    // ── AFTER THE DAY — negative-offset milestones, see the block above ──
+    { id: 't-photo-send', milestoneId: 'share-group-photo', phase: 'photo', label: 'Send the full-resolution group photo to one contact in every household — the file itself, not a link that expires, because half the family will want it printed', when: 'T0 +3d' },
+    { id: 't-photo-album', milestoneId: 'share-group-photo', phase: 'photo', label: 'Open one shared album and ask everyone to drop their phone photos in this week, while the day is still on the camera roll', when: 'T0 +3d' },
+    { id: 't-photo-mail', milestoneId: 'share-group-photo', phase: 'photo', label: 'Print the group photo for the elders and anyone who does not use a phone for pictures, and mail it', when: 'T0 +3d' },
+    { id: 't-return-rentals', milestoneId: 'return-borrowed', phase: 'cleanup', label: 'Return the tents, tables, chairs, and any bounce house by the time on the rental contract — late days bill as full days', when: 'T0 +2d' },
+    { id: 't-return-family', milestoneId: 'return-borrowed', phase: 'cleanup', label: 'Get every borrowed cooler, canopy, roaster, and folding chair back to the household it came from, matched against the list you made loading in', when: 'T0 +2d' },
+    { id: 't-settle-receipts', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Collect every receipt — pavilion fee, meat, ice, paper goods, shirts, rentals — and total what the day actually cost against what came in', when: 'T0 +7d' },
+    { id: 't-settle-reimburse', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Pay back everyone who fronted money, by name and in full, before anyone has to ask', when: 'T0 +7d' },
+    { id: 't-settle-share', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Send the family the plain final tally — what came in, what went out, and what is left in the pot for next time', when: 'T0 +7d' },
+    { id: 't-update-roster', milestoneId: 'carry-the-next-one', phase: 'guest', label: 'Type the sign-in sheet into the family contact list while the handwriting is fresh — new addresses, new phone numbers, new babies, and who moved', when: 'T0 +14d' },
+    { id: 't-next-date', milestoneId: 'carry-the-next-one', phase: 'planning', label: 'Ask the family for the next reunion year and month now, while everyone is still saying "we should do this more often"', when: 'T0 +14d' },
+    { id: 't-next-committee', milestoneId: 'carry-the-next-one', phase: 'planning', label: 'Name who is carrying the next one — a host or a committee, out loud and in writing — so it is not one person\'s job by default again', when: 'T0 +14d' },
   ],
 
   purchases: [

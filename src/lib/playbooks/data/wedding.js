@@ -75,6 +75,18 @@ const wedding = {
     { id: 'w_runofshow', name: 'Distribute run-of-show; confirm all vendor arrivals + rain plan', offsetDays: 7, owner: 'planner', dependsOn: ['w_finalcount'], category: 'planning', risk: { ifDelayed: 'Vendors uncoordinated; no weather fallback decided', severity: 'high' } },
     { id: 'w_rehearsal', name: 'Rehearsal + welcome bags + emergency kit packed', offsetDays: 1, owner: 'planner', dependsOn: ['w_runofshow'], category: 'setup', risk: { ifDelayed: 'Processional chaos; nothing staged for the morning', severity: 'med' } },
     { id: 'event', name: 'The wedding day', offsetDays: 0, owner: 'planner', dependsOn: ['w_rehearsal'], category: 'event', risk: null },
+
+    // ── AFTER THE DAY ────────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the wedding. Everything below was work
+    // the plan used to drop the moment the send-off ended: the rental linens
+    // still in the trunk, the caterer's last invoice, the card box nobody has
+    // opened, the license that is not filed until the officiant mails it.
+    // Owner stays 'couple' here — this is their name, their money, and their
+    // thank-you list, and the coordinator's contract usually ends at load-out.
+    { id: 'w_after_returns', name: 'Return the rentals, the attire, and everything that was only borrowed', offsetDays: -2, owner: 'couple', dependsOn: ['event'], category: 'vendor', risk: { ifDelayed: 'Late-return fees on rentals, and a lost-item charge for anything that never comes back', severity: 'med' } },
+    { id: 'w_after_balances', name: 'Settle the last vendor money — final balances, gratuities, and the deposits owed back to you', offsetDays: -5, owner: 'couple', dependsOn: ['event'], category: 'vendor', risk: { ifDelayed: 'Damage deposits quietly kept, and a vendor you loved chasing you for a balance', severity: 'high' } },
+    { id: 'w_after_gifts', name: 'Log every gift and card against the guest list before the pile is unpacked', offsetDays: -7, owner: 'couple', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'Cards separate from boxes and nobody can say who gave what — the thank-you notes go out wrong or not at all', severity: 'high' } },
+    { id: 'w_after_records', name: 'File the marriage license, chase the gallery, and start the name change', offsetDays: -30, owner: 'couple', dependsOn: ['event'], category: 'planning', risk: { ifDelayed: 'An unfiled license means no marriage certificate, and every name change and benefits update waits on that certificate', severity: 'high' } },
   ],
 
   tasks: [
@@ -89,6 +101,19 @@ const wedding = {
     { id: 't_runofshow', milestoneId: 'w_runofshow', phase: 'planning', label: 'Send run-of-show to every vendor; confirm arrival times; DECIDE the rain plan', when: 'T-7d' },
     { id: 't_rehearsal', milestoneId: 'w_rehearsal', phase: 'setup', label: 'Rehearsal + dinner; pack emergency kit; stage welcome bags, favors, signage, seating cards', when: 'T-1d' },
     { id: 't_dayof', milestoneId: 'event', phase: 'event', label: 'Hair/makeup → first look → ceremony → cocktail → reception → toasts → first dance → cake → send-off', when: 'T0' },
+    { id: 't_after_rentals', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Return the rentals on the contract\'s clock — linens, glassware, chairs, arch — and count them against the rental sheet before they leave, because a missing dozen forks is billed at replacement price', when: 'T0 +2d' },
+    { id: 't_after_dress', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Get the dress and the rented suits out of the car: suits back by their return date, and the dress to the cleaner for preservation while the champagne and grass stains are still fresh', when: 'T0 +2d' },
+    { id: 't_after_borrowed', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Give back what family lent you — the cake stand, the veil, the frames from the memory table, the coolers — with a note of whose is whose', when: 'T0 +2d' },
+    { id: 't_after_balances', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Pay any final balance that came due after the day: overtime hours, the extra bar consumption, the vendor meals nobody counted', when: 'T0 +5d' },
+    { id: 't_after_tips', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Send gratuities to anyone the tip envelopes missed — the setup crew, the second shooter, the person who parked cars all night', when: 'T0 +5d' },
+    { id: 't_after_deposits', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Chase the money coming back to you: the venue damage deposit and any rental security hold, both of which are refunded only if you ask', when: 'T0 +5d' },
+    { id: 't_after_giftlog', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Open the card box with the guest list open beside it: write down the giver and the gift as each envelope is opened, and never separate a card from its box first', when: 'T0 +7d' },
+    { id: 't_after_shipped', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Add the gifts that came by mail from the registry and from guests who could not travel — they are the easiest ones to leave off the thank-you list', when: 'T0 +7d' },
+    { id: 't_after_thanks', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Write the thank-you notes off that log, naming the actual gift, and start with the people who traveled to be there', when: 'T0 +7d' },
+    { id: 't_after_license', milestoneId: 'w_after_records', phase: 'planning', label: 'Confirm the officiant filed the signed license with the county, then order two or three certified copies of the marriage certificate — every name change asks for an original, not a photocopy', when: 'T0 +30d' },
+    { id: 't_after_namechange', milestoneId: 'w_after_records', phase: 'planning', label: 'If anyone is changing their name, do it in order: Social Security first, then the driver\'s license, then passport, banks, and payroll', when: 'T0 +30d' },
+    { id: 't_after_gallery', milestoneId: 'w_after_records', phase: 'planning', label: 'Hold the photographer and videographer to the delivery date in their contract, and send them the shortlist of shots you want first for family who are waiting', when: 'T0 +30d' },
+    { id: 't_after_preserve', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Deal with the things that spoil: the top tier of the cake wrapped and frozen, and the bouquet to a preserver — drying and pressing both want the flowers within days, not weeks', when: 'T0 +2d' },
   ],
 
   purchases: [

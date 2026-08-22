@@ -55,6 +55,20 @@ const holidayParty = {
     { id: 'hp_shop_fresh', name: 'Buy/pick up fresh food, garnish, flowers; pick up rentals', offsetDays: 1, owner: 'host', dependsOn: ['hp_catering', 'hp_rsvp_close'], category: 'shopping', risk: { ifDelayed: 'Wilted garnish / unready food', severity: 'med' } },
     { id: 'hp_setup', name: 'Set up: stations, bar, decor, coat check, name tags, music', offsetDays: 0, owner: 'host', dependsOn: ['hp_rentals', 'hp_decor_music', 'hp_shop_fresh'], category: 'setup', risk: null },
     { id: 'event', name: 'The holiday party (incl. host toast)', offsetDays: 0, owner: 'host', dependsOn: ['hp_setup'], category: 'event', risk: null },
+
+    // ── AFTER THE DAY ────────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the event.
+    //
+    // The December party has the longest post-event tail of any home event in
+    // the corpus, and every item here is money or goodwill: rental contracts
+    // that charge late fees by the day, a bartender and a caterer still owed,
+    // an expense report with a filing window, a guest's car in the driveway,
+    // and decor that becomes next December's head start only if it is stored
+    // labeled instead of thrown in a bin.
+    { id: 'hp_morning_after', name: 'Cars, coats, and the things guests left behind', offsetDays: -1, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'A guest is stranded from their own car, and left coats and dishes go unclaimed', severity: 'med' } },
+    { id: 'hp_rental_return', name: 'Return the rentals inside the contract window', offsetDays: -1, owner: 'host', dependsOn: ['event'], category: 'rental', risk: { ifDelayed: 'December rental windows are short and late fees run by the day', severity: 'high' } },
+    { id: 'hp_settle', name: 'Settle the final invoices, gratuities, and the expense filing', offsetDays: -3, owner: 'host', dependsOn: ['event'], category: 'payment', risk: { ifDelayed: 'Vendors chase you, staff go untipped, and reimbursement windows close at year end', severity: 'high' } },
+    { id: 'hp_decor_down', name: 'Take the decor down and store it so next year starts easier', offsetDays: -7, owner: 'host', dependsOn: ['event'], category: 'decor', risk: { ifDelayed: 'Lights and greenery get boxed unlabeled, and next December starts from zero again', severity: 'low' } },
   ],
 
   tasks: [
@@ -77,6 +91,15 @@ const holidayParty = {
     { id: 't_make_toast', milestoneId: 'event', phase: 'event', label: 'Lower music, make the host/leadership toast, raise a glass', when: 'T0 +1:15' },
     { id: 't_wind_down', milestoneId: 'event', phase: 'event', label: 'Wind-down: coffee/dessert out, slow the music, surface rideshare/DD plan to anyone impaired', when: 'T0 +3:30' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Post-party reset: bottles to recycling, rentals stacked for return, leftovers + trash out', when: 'T0 +4:30' },
+    { id: 't_left_car', milestoneId: 'hp_morning_after', phase: 'guest', label: 'Text whoever left a car overnight before you need the driveway — tell them the car is fine, and agree on a pickup time', when: 'T0 +1d' },
+    { id: 't_lost_found', milestoneId: 'hp_morning_after', phase: 'guest', label: 'Photograph the coats, scarves, and dishes left behind and post them once to the group — one message now beats six one-off texts in January', when: 'T0 +1d' },
+    { id: 't_rentals_back', milestoneId: 'hp_rental_return', phase: 'cleanup', label: 'Return the glassware, linens, and cocktail tables by the hour on the contract — read the return time before you sleep in, because December windows are short and the late fee is per day', when: 'T0 +1d' },
+    { id: 't_rental_count', milestoneId: 'hp_rental_return', phase: 'cleanup', label: 'Count the rentals back against the packing slip and note anything broken yourself — a chipped glass you report costs less than one they find', when: 'T0 +1d' },
+    { id: 't_final_invoices', milestoneId: 'hp_settle', phase: 'payment', label: 'Pay the caterer and bartender their final balance and settle the gratuity you promised — staff worked a December night for you', when: 'T0 +3d' },
+    { id: 't_thanks_bar', milestoneId: 'hp_settle', phase: 'guest', label: 'Thank the bartender and anyone who stayed to help by name — the same people are who you want back next December', when: 'T0 +3d' },
+    { id: 't_expense', milestoneId: 'hp_settle', phase: 'payment', label: 'File the expense report while the receipts are still in one pile: venue, catering, bar, rentals, decor — company reimbursement windows close hard at year end', when: 'T0 +3d', whenChoice: { id: 'corporate_layer', in: ['Yes — corporate / mixed teams'] } },
+    { id: 't_decor_down', milestoneId: 'hp_decor_down', phase: 'decor', label: 'Take the lights, greenery, and table accents down and box them by room, labeled — the hour you spend now is the hour you save next December', when: 'T0 +7d' },
+    { id: 't_decor_notes', milestoneId: 'hp_decor_down', phase: 'planning', label: 'Write down what ran out, what nobody touched, and what you would move — three lines now is next year\'s plan', when: 'T0 +7d' },
   ],
 
   purchases: [

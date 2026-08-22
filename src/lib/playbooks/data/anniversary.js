@@ -61,6 +61,16 @@ const anniversary = {
     { id: 'an_prep', name: 'Make-ahead food prep + stage the slideshow/AV', offsetDays: 1, owner: 'host', dependsOn: ['an_shop_fresh', 'an_slideshow'], category: 'food', risk: null },
     { id: 'an_setup', name: 'Set the space, chill drinks, set up screen + cake table', offsetDays: 0, owner: 'host', dependsOn: ['an_rentals', 'an_prep'], category: 'setup', risk: null },
     { id: 'event', name: 'The anniversary celebration', offsetDays: 0, owner: 'host', dependsOn: ['an_setup'], category: 'event', risk: null },
+
+    // ── AFTER THE DAY ────────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the party. An anniversary's afterward is
+    // mostly about the MEMORY: the slideshow that took weeks to build is worth
+    // more to the people who could not travel than to the room that already saw
+    // it, and the photos guests took that night are on their phones, not yours.
+    // The borrowed serveware and the people who flew in are the rest of it.
+    { id: 'an_after_return', name: 'Return the borrowed and rented things', offsetDays: -2, owner: 'host', dependsOn: ['event'], category: 'rental', risk: { ifDelayed: 'Late-return fees, and the neighbor\'s platters live in your cupboard until next year', severity: 'med' } },
+    { id: 'an_after_memory', name: 'Send the slideshow out, and collect the night\'s photos before they scatter', offsetDays: -5, owner: 'host', dependsOn: ['event'], category: 'memory', risk: { ifDelayed: 'The slideshow is never seen again and the guests\' photos stay on their phones', severity: 'med' } },
+    { id: 'an_after_thanks', name: 'Thank the people who traveled and the ones who helped', offsetDays: -7, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'The people who flew across the country hear nothing about it', severity: 'med' } },
   ],
 
   tasks: [
@@ -84,6 +94,14 @@ const anniversary = {
     { id: 't_cake', milestoneId: 'event', phase: 'food', label: 'Cut + serve the anniversary cake right after the toast', when: 'T0 +2:15' },
     { id: 't_clear', milestoneId: 'event', phase: 'cleanup', label: "Clear into the staged bus tub (don't wash mid-party); keep trash/recycling moving", when: 'ongoing' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Post-party reset: leftovers into containers, run dishwasher, return rentals box, bottles to recycling', when: 'T0 +4:00' },
+    { id: 't_after_rentals', milestoneId: 'an_after_return', phase: 'cleanup', label: 'Get the rentals back on their return date — chairs, linens, glassware, the coffee urn — counted against the rental sheet before they go', when: 'T0 +2d' },
+    { id: 't_after_borrowed', milestoneId: 'an_after_return', phase: 'cleanup', label: 'Return what family lent for the memory table: the framed photos, the wedding album, the cake stand — the irreplaceable things go back first', when: 'T0 +2d' },
+    { id: 't_after_projector', milestoneId: 'an_after_return', phase: 'cleanup', label: 'Return the borrowed projector, screen, and speakers with every cable and adapter they arrived with', when: 'T0 +2d' },
+    { id: 't_after_share_show', milestoneId: 'an_after_memory', phase: 'memory', label: 'Send the slideshow as a link to everyone who could not make the trip — the grandchildren overseas, the friends too frail to travel — with a line about how the night went', when: 'T0 +5d' },
+    { id: 't_after_collect_photos', milestoneId: 'an_after_memory', phase: 'memory', label: 'Ask guests to drop their photos and videos from the night into the shared album while it is still on their minds — after a week they stop looking', when: 'T0 +5d' },
+    { id: 't_after_originals', milestoneId: 'an_after_memory', phase: 'memory', label: 'Give back every original photo family lent for scanning, and send them the digital copies you made — they are usually the only copy that exists', when: 'T0 +5d' },
+    { id: 't_after_thanks_travel', milestoneId: 'an_after_thanks', phase: 'guest', label: 'Call or write the people who flew in or drove hours — by name, not in the group thread — and tell them what their being there meant to the couple', when: 'T0 +7d' },
+    { id: 't_after_thanks_help', milestoneId: 'an_after_thanks', phase: 'guest', label: 'Thank the ones who cooked, drove the couple, ran the AV, or stayed to wash up', when: 'T0 +7d' },
   ],
 
   purchases: [

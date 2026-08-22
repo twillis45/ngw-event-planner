@@ -89,6 +89,21 @@ const retirementParty = {
           'Soft surprise (honoree knows, not the details)': 'Guests arrive before the honoree\'s arrival is timed; mic untested when speeches start',
         } } } },
     { id: 'event', name: 'The retirement party', offsetDays: 0, owner: 'host', dependsOn: ['rp_setup'], category: 'event', risk: null },
+
+    // ── AFTER THE DAY ────────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the event. The engine computes dueDate as
+    // eventDate + (-offsetDays), so no engine change is needed.
+    //
+    // A retirement party has a longer tail than most parties, because the whole
+    // point of it was the memory collection. The slideshow and the photos exist
+    // and are worth something to the people who could not fly in; the memory
+    // book is half-finished the moment the party ends; the mentor who flew in
+    // and the four people who spoke each gave the night something real. And a
+    // booked room or a rental order does not close itself.
+    { id: 'rp_photos_out', name: 'Send the photos and the slideshow to everyone, including the people who could not come', offsetDays: -3, owner: 'host', dependsOn: ['event'], category: 'photo', risk: { ifDelayed: 'Guests\' phone photos scatter and are never collected; the far-away coworkers and family who missed the night never see any of it', severity: 'med' } },
+    { id: 'rp_book_out', name: 'Finish the memory book and put it in the honoree\'s hands', offsetDays: -7, owner: 'host', dependsOn: ['event'], category: 'memory', risk: { ifDelayed: 'A half-filled book stays in a bag in the host\'s closet — the one thing the honoree was actually going to keep', severity: 'med' } },
+    { id: 'rp_thanks', name: 'Thank the speakers, the surprise guest, and anyone who travelled', offsetDays: -4, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'The people who wrote a speech or bought a plane ticket hear nothing back', severity: 'med' } },
+    { id: 'rp_settle', name: 'Settle up with the venue, the caterer, and the rental company', offsetDays: -5, owner: 'host', dependsOn: ['event'], category: 'payment', risk: { ifDelayed: 'Late-return fees on rentals, a damage deposit held, and a caterer balance that grows a chasing fee', severity: 'high' } },
   ],
 
   tasks: [
@@ -121,6 +136,18 @@ const retirementParty = {
     { id: 't_card', milestoneId: 'event', phase: 'program', label: 'Make sure everyone signs the card / leaves a note before they drift off; hand it to the honoree at the end', when: 'ongoing' },
     { id: 't_clear', milestoneId: 'event', phase: 'cleanup', label: 'Bus empties/plates into the staged tub continuously; do NOT wash mid-party', when: 'ongoing' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Post-party reset: leftovers boxed, bottles to recycling, send the honoree home with the card, photos, and gifts', when: 'T0 +3:30' },
+
+    // ── AFTER THE DAY ───────────────────────────────────────────────────────
+    { id: 't_photo_collect', milestoneId: 'rp_photos_out', phase: 'photo', label: 'Ask the room for their phone photos into the same shared album you used to collect the slideshow pictures — people will upload while it is still fresh and not a week later', when: 'T0 +3d' },
+    { id: 't_slideshow_send', milestoneId: 'rp_photos_out', phase: 'photo', label: 'Send the slideshow file or link to every guest, and to the coworkers and family who could not travel — for them it is the whole party', when: 'T0 +3d' },
+    { id: 't_photo_honoree', milestoneId: 'rp_photos_out', phase: 'photo', label: 'Send the honoree their own copy separately: the slideshow, the tribute video if someone recorded it, and the printed photos off the memory wall', when: 'T0 +3d' },
+    { id: 't_book_chase', milestoneId: 'rp_book_out', phase: 'memory', label: 'Chase the notes that never got written — the guests who left early, and everyone who could not attend — and give them one week and a mailing address', when: 'T0 +7d' },
+    { id: 't_book_deliver', milestoneId: 'rp_book_out', phase: 'memory', label: 'Bind the signed card, the memory-wall photos, and the mailed-in notes into the book and hand it over in person', when: 'T0 +7d' },
+    { id: 't_thanks_speakers', milestoneId: 'rp_thanks', phase: 'guest', label: 'Thank each speaker by name and tell them which line of theirs the room reacted to — they wrote it and then never got to hear how it landed', when: 'T0 +4d' },
+    { id: 't_thanks_travel', milestoneId: 'rp_thanks', phase: 'guest', label: 'Thank the surprise guest and anyone who flew or drove in for one evening, and the helpers who set up and cleaned up', when: 'T0 +4d' },
+    { id: 't_settle_venue', milestoneId: 'rp_settle', phase: 'payment', label: 'Pay the venue and caterer balances and get the damage deposit released — ask the room manager to confirm in writing that the room came back clean', when: 'T0 +5d', whenChoice: { id: 'venue', in: ['Restaurant private room', 'Banquet hall / event venue'] } },
+    { id: 't_settle_rentals', milestoneId: 'rp_settle', phase: 'payment', label: 'Return the rented chairs, tables, linens, and AV by the pickup date on the contract — late days bill as full days', when: 'T0 +5d' },
+    { id: 't_settle_borrowed', milestoneId: 'rp_settle', phase: 'payment', label: 'Return every borrowed platter, urn, and folding chair, and write down what you owe whom before you forget whose is whose', when: 'T0 +5d' },
   ],
 
   purchases: [

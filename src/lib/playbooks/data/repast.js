@@ -53,6 +53,23 @@ const repast = {
     { id: 'rp_supplies', name: 'Pick up serving supplies, drinks, and to-go containers', offsetDays: 1, owner: 'coordinator', dependsOn: ['rp_food'], category: 'shopping', risk: { ifDelayed: 'Nothing to serve or send plates home with', severity: 'med' } },
     { id: 'rp_setup', name: 'Set the hall before everyone arrives from the service', offsetDays: 0, owner: 'coordinator', dependsOn: ['rp_supplies'], category: 'setup', risk: { ifDelayed: 'Family arrives to an unready room', severity: 'med' } },
     { id: 'event', name: 'The repast', offsetDays: 0, owner: 'coordinator', dependsOn: ['rp_setup'], category: 'event', risk: null },
+
+    // ── THE DAYS AFTER ───────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days after the day. The engine computes dueDate as
+    // eventDate + (-offsetDays), so no engine change is needed.
+    //
+    // Everything below belongs to the COORDINATOR, not the family — the same
+    // rule that governs the rest of this playbook. Nothing here asks the
+    // bereaved to do a task. There is no settle-up, no thank-you assignment,
+    // and no review; a grieving family owes nobody a chore. What is here is
+    // the quiet work someone has to carry so the family does not: dishes back
+    // to the hands that cooked, food in their refrigerator, the keepsakes
+    // gathered, and a check-in in the weeks after, when the house has gone
+    // quiet and the casseroles have stopped arriving.
+    { id: 'rp_dishes_back', name: 'Return every dish to the hands that brought it', offsetDays: -2, owner: 'coordinator', dependsOn: ['event'], category: 'cleanup', risk: { ifDelayed: 'A stack of unnamed pans and platters ends up at the family\'s door — exactly the burden this whole day was built to spare them', severity: 'med' } },
+    { id: 'rp_family_food', name: 'Get the food into the family\'s kitchen so no one cooks this week', offsetDays: -1, owner: 'coordinator', dependsOn: ['event'], category: 'food', risk: { ifDelayed: 'Good food spoils in a hall refrigerator while the family eats nothing at all', severity: 'med' } },
+    { id: 'rp_keepsakes', name: 'Gather the guest book, the photographs, and the cards for the family', offsetDays: -3, owner: 'coordinator', dependsOn: ['event'], category: 'memory', risk: { ifDelayed: 'Photographs and cards get separated in the cleanup and are gone for good', severity: 'med' } },
+    { id: 'rp_check_in', name: 'Check in once the visitors have stopped coming', offsetDays: -21, owner: 'coordinator', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'Three weeks out is when the house goes quiet and the calls stop — and when being remembered matters most', severity: 'med' } },
   ],
 
   tasks: [
@@ -64,6 +81,16 @@ const repast = {
     { id: 't_setup', milestoneId: 'rp_setup', phase: 'setup', label: 'Arrive early; set tables, warming, drinks, and seating so the room is ready and calm', when: 'T0 -1:30' },
     { id: 't_plates', milestoneId: 'event', phase: 'food', label: 'Make up to-go plates for the immediate family and the elders before the food goes', when: 'T0 +1:30' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Quietly pack leftovers for the family, wash and return dishes, leave the hall as you found it', when: 'T0 +3:00' },
+
+    // ── THE DAYS AFTER — carried by the coordinator, never by the family ──
+    { id: 't_dishes_wash', milestoneId: 'rp_dishes_back', phase: 'cleanup', label: 'Wash the brought pans and platters and take each one back yourself — a dish taped with a name is easy to return, an unnamed one becomes the family\'s problem', when: 'T0 +2d' },
+    { id: 't_dishes_word', milestoneId: 'rp_dishes_back', phase: 'cleanup', label: 'When you hand a dish back, tell them their greens went first, or that people asked who made the pound cake — that is the thanks that matters, and it costs the family nothing', when: 'T0 +2d' },
+    { id: 't_food_home', milestoneId: 'rp_family_food', phase: 'food', label: 'Take the packed plates to the family\'s house and put them in the refrigerator and freezer yourself — meal-sized, labeled, so a plate is a two-minute decision on a bad evening', when: 'T0 +1d' },
+    { id: 't_food_travelers', milestoneId: 'rp_family_food', phase: 'food', label: 'Send a plate with anyone staying at the house or driving a long way home, so the family is not feeding houseguests this week either', when: 'T0 +1d' },
+    { id: 't_keepsakes_deliver', milestoneId: 'rp_keepsakes', phase: 'memory', label: 'Bring the guest book, the photographs from the memory table, and any cards or envelopes to the family together, in one box, and set it down without asking anything of them', when: 'T0 +3d' },
+    { id: 't_keepsakes_list', milestoneId: 'rp_keepsakes', phase: 'memory', label: 'Write down who brought food and who travelled, and put the list in the box — if the family wants to write to anyone one day, it will be there; nobody is being asked to write notes', when: 'T0 +3d' },
+    { id: 't_check_in', milestoneId: 'rp_check_in', phase: 'guest', label: 'Call or stop by around three weeks out, when the visitors have stopped coming and the house has gone quiet', when: 'T0 +21d' },
+    { id: 't_check_in_offer', milestoneId: 'rp_check_in', phase: 'guest', label: 'Offer one specific thing rather than "let me know if you need anything" — a grocery run Thursday, the lawn, a ride to the bank', when: 'T0 +21d' },
   ],
 
   purchases: [

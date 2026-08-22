@@ -121,6 +121,19 @@ const halloweenParty = {
     { id: 'hw_shop_food', name: 'Buy candy, food, and drinks', offsetDays: 3, owner: 'host', dependsOn: ['hw_headcount'], category: 'shopping', risk: null },
     { id: 'hw_build', name: 'Decorate and build the party', offsetDays: 1, owner: 'host', dependsOn: ['hw_shop_decor'], category: 'setup', risk: null },
     { id: 'event', name: 'The Halloween party', offsetDays: 0, owner: 'host', dependsOn: ['hw_build', 'hw_shop_food'], category: 'event', risk: null },
+
+    // ── AFTER THE NIGHT ──────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the event.
+    //
+    // Halloween is the one event whose decor has a hard expiration date: the
+    // same yard that read as a decorated house on October 31 reads as a
+    // neglected one by mid-November, and the pumpkins on the porch collapse
+    // into a mess if they sit. Add the promises made during the party --
+    // prizes announced, photos taken -- which only count if they are actually
+    // delivered while people still care.
+    { id: 'hw_pumpkins', name: 'Deal with the pumpkins and the leftover candy', offsetDays: -2, owner: 'host', dependsOn: ['event'], category: 'cleanup', risk: { ifDelayed: 'Carved pumpkins soften and collapse on the porch within days of being cut', severity: 'med' } },
+    { id: 'hw_payoff', name: 'Deliver the prizes and share the photos', offsetDays: -3, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'A promised prize never arrives, and the costume photos land after nobody cares', severity: 'med' } },
+    { id: 'hw_teardown', name: 'Take the yard decor and lights down', offsetDays: -7, owner: 'host', dependsOn: ['event'], category: 'decor', risk: { ifDelayed: 'Decor left up past its season is what separates a decorated house from a neglected one', severity: 'med' } },
   ],
 
   tasks: [
@@ -146,6 +159,12 @@ const halloweenParty = {
     { id: 't_contest_run', milestoneId: 'event', phase: 'event', label: 'Run the costume contest mid-party — gather everyone, keep it under fifteen minutes, spread the categories', when: 'T0 +1:30', whenChoice: { id: 'costume_contest', in: ['Judged — categories and prizes', 'Applause vote — one winner'] } },
     { id: 't_car_watch', milestoneId: 'event', phase: 'event', label: 'Keep one adult on the driveway and street edge whenever kids are outside — the visibility watch is a named job, not a vibe', when: 'ongoing', whenChoice: { id: 'audience', in: ['Kids party', 'Family party — all ages', 'Trunk-or-treat — driveway and street'] } },
     { id: 't_rides', milestoneId: 'event', phase: 'event', label: 'Check rides before the wind-down: anyone who drank has a driver or a rideshare, on the one night the streets are full of kids on foot', when: 'T0 +3:30', whenChoice: { id: 'audience', in: ['Adults-only costume party', 'Family party — all ages'] } },
+    { id: 't_pumpkins_out', milestoneId: 'hw_pumpkins', phase: 'cleanup', label: 'Get the carved pumpkins off the porch and into the compost or yard waste — a cut pumpkin softens fast, and the ones you leave will be a puddle and a wasp problem by the weekend', when: 'T0 +2d' },
+    { id: 't_candy', milestoneId: 'hw_pumpkins', phase: 'food', label: 'Decide the leftover candy now: a bowl kept out, the rest sent home with guests, boxed for the office, or dropped at a candy buy-back — anything still in the kitchen in a week gets eaten by you', when: 'T0 +2d' },
+    { id: 't_prizes', milestoneId: 'hw_payoff', phase: 'guest', label: 'Get the costume prizes into the winners\' hands — anyone who was not there to take theirs gets it delivered or mailed, because an announced prize that never shows up is worse than no contest', when: 'T0 +3d', whenChoice: { id: 'costume_contest', in: ['Judged — categories and prizes', 'Applause vote — one winner'] } },
+    { id: 't_photos', milestoneId: 'hw_payoff', phase: 'guest', label: 'Share the photo corner pictures in one album link while the costumes are still the thing people are talking about — a week later it is last year\'s party', when: 'T0 +3d' },
+    { id: 't_yard_down', milestoneId: 'hw_teardown', phase: 'decor', label: 'Take the yard decor, gravestones, and cobwebs down within the week — cobwebs in particular shred in the weather and catch on everything', when: 'T0 +7d' },
+    { id: 't_lights_down', milestoneId: 'hw_teardown', phase: 'decor', label: 'Pull the orange and purple lights and the extension cords, coil them, and box them labeled — anything staying up through November should be the ordinary porch light, not a party leftover', when: 'T0 +7d' },
   ],
 
   purchases: [

@@ -49,6 +49,16 @@ const birthday = {
     { id: 'bd_shop_fresh', name: 'Buy/pick up food + cake', offsetDays: 1, owner: 'host', dependsOn: ['bd_rsvp_close', 'bd_cake'], category: 'shopping', risk: { ifDelayed: 'Sold-out items / no cake', severity: 'med' } },
     { id: 'bd_setup', name: 'Decorate, set up food + drinks station', offsetDays: 0, owner: 'host', dependsOn: ['bd_shop_nonperish', 'bd_shop_fresh'], category: 'setup', risk: null },
     { id: 'event', name: 'The party', offsetDays: 0, owner: 'host', dependsOn: ['bd_setup'], category: 'event', risk: null },
+
+    // ── AFTER THE DAY ────────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the party. What a birthday actually owes
+    // afterward: knowing who gave what before the wrapping paper goes in the
+    // trash, thanking them for it, the photos everyone took and nobody shared,
+    // and the deposits that only come back if the host asks.
+    { id: 'bd_after_gifts', name: 'Write down who gave what, before the paper is thrown out', offsetDays: -1, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'Cards and gifts get separated overnight and nobody can say who gave what', severity: 'high' } },
+    { id: 'bd_after_photos', name: 'Pull the night\'s photos into one album everyone can see', offsetDays: -3, owner: 'host', dependsOn: ['event'], category: 'photo', risk: { ifDelayed: 'The photos stay on twenty phones and the guest of honor never sees most of them', severity: 'low' } },
+    { id: 'bd_after_money', name: 'Close out the money — deposits back, final invoices paid', offsetDays: -5, owner: 'host', dependsOn: ['event'], category: 'budget', risk: { ifDelayed: 'A refundable deposit quietly kept, and a vendor still owed', severity: 'med' } },
+    { id: 'bd_after_thanks', name: 'Send the thank-yous', offsetDays: -7, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'The longer it sits the harder it gets to write, and most never go out at all', severity: 'med' } },
   ],
 
   tasks: [
@@ -60,6 +70,15 @@ const birthday = {
     { id: 't_chill', milestoneId: 'bd_setup', phase: 'beverage', label: 'Chill drinks; set up the drinks station + ice', when: 'T0 -2h' },
     { id: 't_cake', milestoneId: 'event', phase: 'food', label: 'Cake + candles moment; cut + serve', when: 'T0 +1:30' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, hand out favors, bag trash + recycling, deflate/clear decor', when: 'T0 +3:00' },
+    { id: 't_after_giftlog', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Go through the gifts with the guest list beside you and write down the giver next to each one — the cards come off in the unwrapping and this is the last hour anyone remembers', when: 'T0 +1d' },
+    { id: 't_after_cashgifts', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Record the cash and gift cards separately, with the amount, then put them somewhere that is not the card box on the counter', when: 'T0 +1d' },
+    { id: 't_after_absent', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Add the gifts that arrived by mail or came from people who could not make it — those are the ones that get thanked last, if at all', when: 'T0 +1d' },
+    { id: 't_after_album', milestoneId: 'bd_after_photos', phase: 'photo', label: 'Start a shared album and send the link to everyone who was there, asking them to drop in what they shot — you will get more in the first two days than in the next two months', when: 'T0 +3d' },
+    { id: 't_after_bestshots', milestoneId: 'bd_after_photos', phase: 'photo', label: 'Pull out the handful of photos worth printing — the candles, the whole room together — and send those to the guest of honor on their own', when: 'T0 +3d' },
+    { id: 't_after_deposits', milestoneId: 'bd_after_money', phase: 'budget', label: 'Ask for the refundable deposits back: the venue or clubhouse hold, the rental damage deposit, the bounce-house or equipment security — none of them return on their own', when: 'T0 +5d' },
+    { id: 't_after_invoices', milestoneId: 'bd_after_money', phase: 'budget', label: 'Pay the last invoices while the numbers are fresh — the caterer\'s final headcount charge, the bartender\'s hours, anything that ran over', when: 'T0 +5d' },
+    { id: 't_after_thanks', milestoneId: 'bd_after_thanks', phase: 'guest', label: 'Write the thank-yous off the gift log, naming the actual gift so it does not read as a form note', when: 'T0 +7d' },
+    { id: 't_after_thanks_help', milestoneId: 'bd_after_thanks', phase: 'guest', label: 'Thank the people who did the work rather than brought a box — whoever picked up the cake, ran the grill, or stayed to clean up', when: 'T0 +7d' },
   ],
 
   purchases: [

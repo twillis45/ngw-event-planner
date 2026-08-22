@@ -122,6 +122,20 @@ const newYearsEveParty = {
     { id: 'ny_shop', name: 'Buy the bubbles, both food waves, and the midnight kit', offsetDays: 3, owner: 'host', dependsOn: ['ny_headcount'], category: 'shopping', risk: { ifDelayed: 'Sparkling wine shelves thin out in the final days of the year', severity: 'med' } },
     { id: 'ny_prep', name: 'Prep both food waves and stage the midnight station', offsetDays: 1, owner: 'host', dependsOn: ['ny_shop'], category: 'food', risk: null },
     { id: 'event', name: "New Year's Eve", offsetDays: 0, owner: 'host', dependsOn: ['ny_prep', 'ny_countdown'], category: 'event', risk: null },
+
+    // ── AFTER MIDNIGHT ───────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the event.
+    //
+    // These land on January 1, on a host who was awake at 1am, and they are
+    // written for that host: short, concrete, and only the things that
+    // actually cannot wait. The cars left in the driveway are the whole point
+    // of having offered rides; the bottle volume after a toast party is a real
+    // problem on a week when collection is often skipped for the holiday; and
+    // the midnight photos are worth more on January 1 than on January 8.
+    { id: 'ny_morning', name: 'Feed the couch guests and get the cars home', offsetDays: -1, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'Guests wake with no coffee and no plan for a car parked at your house', severity: 'med' } },
+    { id: 'ny_bottles', name: 'Get the bottles, glass, and trash out', offsetDays: -1, owner: 'host', dependsOn: ['event'], category: 'cleanup', risk: { ifDelayed: 'A toast party makes more glass than any other night, and holiday collection often skips a day', severity: 'med' } },
+    { id: 'ny_photos', name: 'Share the midnight photos', offsetDays: -2, owner: 'host', dependsOn: ['event'], category: 'guest', risk: null },
+    { id: 'ny_return', name: 'Return everything borrowed for the toast', offsetDays: -3, owner: 'host', dependsOn: ['event'], category: 'cleanup', risk: { ifDelayed: 'Borrowed flutes and coolers quietly become yours, and the lender remembers', severity: 'med' } },
   ],
 
   tasks: [
@@ -139,6 +153,15 @@ const newYearsEveParty = {
     { id: 't_pour_crew', milestoneId: 'event', phase: 'event', label: 'Recruit two pourers for 11:40 — every glass full and in a hand before the count starts is a two-person job at twenty guests', when: 'T0 +2h' },
     { id: 't_gather', milestoneId: 'event', phase: 'event', label: 'Call the gather at 11:45: music down a notch, everyone to the countdown room, glasses distributed — the moment fails only if the room is scattered', when: 'T0 +2:45' },
     { id: 't_rides_check', milestoneId: 'event', phase: 'event', label: 'Run the rides check after the toast settles: drivers confirmed sober, rideshares ordered ahead of the surge, couch guests claimed', when: 'T0 +3:20' },
+    { id: 't_morning_coffee', milestoneId: 'ny_morning', phase: 'food', label: 'Put out coffee and something plain — eggs, bagels, fruit, the leftover midnight sliders reheated — for whoever slept over; nobody wants a project on January 1', when: 'T0 +1d', whenChoice: { id: 'staying_late', in: ['The overnight option — couches and floors offered up front'] } },
+    { id: 't_cars_home', milestoneId: 'ny_morning', phase: 'guest', label: 'Text everyone who left a car: the car is fine, here is when you need the driveway back, and offer the ride over if you are the one who is up', when: 'T0 +1d' },
+    { id: 't_bottles_out', milestoneId: 'ny_bottles', phase: 'cleanup', label: 'Get the bottles and glass into recycling today — a toast party makes more glass than any other night you host, and it will not fit in one bin', when: 'T0 +1d' },
+    { id: 't_collection_check', milestoneId: 'ny_bottles', phase: 'cleanup', label: 'Check whether collection actually runs this week — the holiday often pushes it a day, and knowing now beats a full bin sitting until the next pickup', when: 'T0 +1d' },
+    { id: 't_confetti', milestoneId: 'ny_bottles', phase: 'cleanup', label: 'Sweep the popper confetti and streamers before they get walked through the whole house — the countdown room first, then the path to the door', when: 'T0 +1d' },
+    { id: 't_photos_out', milestoneId: 'ny_photos', phase: 'guest', label: 'Share the midnight photos and the countdown video in one album link — this is the picture people want on January 1, and it is ordinary by January 8', when: 'T0 +2d' },
+    { id: 't_thanks_pourers', milestoneId: 'ny_photos', phase: 'guest', label: 'Thank the two who poured at 11:40 and whoever called the count — they gave up their own midnight to run yours', when: 'T0 +2d' },
+    { id: 't_return_toast', milestoneId: 'ny_return', phase: 'cleanup', label: 'Wash and return the borrowed flutes, coolers, and folding chairs — with whose is whose written down while you still remember', when: 'T0 +3d' },
+    { id: 't_return_bedding', milestoneId: 'ny_return', phase: 'cleanup', label: 'Strip and wash the couch bedding and put the spare pillows back — the overnight setup should be gone before the weekend, not living in the front room', when: 'T0 +3d', whenChoice: { id: 'staying_late', in: ['The overnight option — couches and floors offered up front'] } },
   ],
 
   purchases: [

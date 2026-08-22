@@ -145,8 +145,15 @@ test.describe('lens chips state the truth about their rows', () => {
     name: 'Vendor ' + String(k).padStart(2, '0'),
     category: k % 2 ? 'Catering' : 'Photography',
     // The first three are settled; the rest stay open.
+    // WHAT ACTUALLY SETTLES A VENDOR, found by reading vendorSettled and then
+    // deriveVendorAccountability rather than guessing: a confirmed status is
+    // necessary but nowhere near sufficient. A formal vendor is also scored
+    // against its category playbook's requiredConfirmations, so a bare
+    // Confirmed still reads criticalUnconfirmed. `isInformal` short-circuits
+    // accountability to on_track by design (nothing to hold a friend to), and
+    // with a confirmed status and no COI owed, that clears every clause.
     ...(k < 3
-      ? { status: 'Confirmed', coiStatus: 'not_required' }
+      ? { status: 'Confirmed', coiStatus: 'not_required', isInformal: true }
       : { status: 'Researching' }),
   }));
 
