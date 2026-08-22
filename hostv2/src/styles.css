@@ -2750,6 +2750,14 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    which is precisely what must not happen here. A plain block that changes
    nothing visually is the whole requirement. */
 .dec-list{ display:block; }
+/* The told rollup sits above the roster toolbar as a quiet fact, not a banner:
+   it is a count the host drives to zero, and a loud one would nag every time
+   they opened the list. Same weight as any other `.v-meta` line. */
+.told-rollup{ margin:0 0 var(--sp-2); }
+/* The per-guest record. UX_07 Level 4 RECORD-ONLY -- it writes down what the
+   host says they did and performs no outward act, so it must never carry the
+   weight of the composer links beside it. */
+.guest-told{ white-space:nowrap; }
 /* ── THE ASSIGN CONTROL (ownership ruling, UX_07 Level 4 RECORD-ONLY) ────────
    Never primary styling: assigning records who has a job and performs no
    outward act, so it must not look like the button that sends something. It

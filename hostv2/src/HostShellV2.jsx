@@ -82,6 +82,7 @@ import { playbookDayOfChecklist } from '@app/lib/playbooks';
 import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcile';
 import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { tweenNumber } from '@app/lib/tweenNumber';
+import { recordTold, clearTold, isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
@@ -5437,6 +5438,26 @@ export default function HostShellV2() {
   // the frozen CRA and only for food. Without it the Helpers panel showed a
   // permanent "not confirmed" chip that no control in the shipping app could
   // ever clear -- the assigned -> confirmed step had no way to happen.
+  // ── WHO HAVE YOU TOLD (transport board, clause 1a) ────────────────────────
+  // The guest rails are `sms:`/`mailto:`/`tel:` -- the phone's own apps send
+  // and this product never claims otherwise. The cost of that honesty was that
+  // the app watched a host open forty composers and remembered nothing, so
+  // "who still doesn't know?" was a question only memory could answer, on the
+  // one list where forgetting a person is the failure that ruins the event.
+  //
+  // Host-attested, exactly like `handed_off`. The app writes down what the host
+  // says and never upgrades it into a claim of its own.
+  const markTold = (guestId, name, channel) => {
+    const cur = guestToldMap(event);
+    const first = String(name || 'them').split(/\s+/)[0];
+    if (isTold(cur, guestId)) {
+      patchEvent({ guestTold: clearTold(cur, guestId) }, `Cleared — ${first} is back on the still-to-tell list.`);
+      return;
+    }
+    patchEvent({ guestTold: recordTold(cur, guestId, channel, new Date().toISOString()) },
+      `Noted — you told ${first}. The app takes your word for it; nothing was sent from here.`);
+  };
+
   const confirmHelper = (itemId, name) => {
     const cur = (event.helperConfirmed && typeof event.helperConfirmed === 'object') ? event.helperConfirmed : {};
     const next = { ...cur };
@@ -18788,6 +18809,16 @@ export default function HostShellV2() {
                     // (Linear, Plane, ClickUp, Asana) put counts only on groups.
                     const LENS = [['all', 'Everyone', null], ['yes', 'Coming', n('Yes')], ['none', 'No reply', n('')], ['maybe', 'Maybe', n('Maybe')], ['no', 'Can’t make it', n('No')]];
                     return (
+                      <>{toldRollup(event).line ? <div className="told-rollup v-meta">
+                        {/* WHO STILL DOES NOT KNOW -- the question the rails could
+                            not answer. Counted against guests who can actually BE
+                            told: someone with no phone and no email is unreachable,
+                            not outstanding, and putting them in a number the host is
+                            meant to drive to zero makes it a nag they can never
+                            satisfy. Attested by the host throughout; the app takes
+                            their word and never upgrades it. */}
+                        {toldRollup(event).line}
+                      </div> : null}
                       <div className="rtoolbar">
                         <input className="field rtool-q" type="search" value={rosterQ}
                           onChange={(e) => setRosterQ(e.target.value)}
@@ -18801,7 +18832,7 @@ export default function HostShellV2() {
                             </button>
                           ))}
                         </span>
-                      </div>
+                      </div></>
                     );
                   })()}
                   {(() => {
@@ -19095,6 +19126,22 @@ export default function HostShellV2() {
                                   {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
                                   {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
                                   {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
+                                  {/* The record, beside the composers rather than
+                                      after them: the app cannot know whether the
+                                      OS composer was actually sent from, so the
+                                      host says. Separate tap on purpose -- opening
+                                      a composer is not telling someone, and a
+                                      control that assumed it would be claiming
+                                      something it cannot see. */}
+                                  <button className="mini rowlink guest-told"
+                                    aria-label={isTold(guestToldMap(event), g.id)
+                                      ? `You marked ${g.name || 'this guest'} told. Undo that.`
+                                      : `Mark that you told ${g.name || 'this guest'} yourself`}
+                                    onClick={() => markTold(g.id, g.name, digits ? 'text' : 'email')}>
+                                    {isTold(guestToldMap(event), g.id)
+                                      ? <span aria-hidden="true">✓ told</span>
+                                      : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
+                                  </button>
                                 </div>
                               );
                             })()}
@@ -19111,6 +19158,21 @@ export default function HostShellV2() {
                                   {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
                                   {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + digits}>Text {first}</a>}
                                   {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim())}>Email {first}</a>}
+                                  {/* The record lives on BOTH contact rows. They are
+                                      mutually exclusive by design -- a silent guest in
+                                      chase mode gets the nudge row, everyone else gets
+                                      this one -- so putting it on only one made the
+                                      rollup count people the host had no way to mark.
+                                      A number you cannot drive to zero is a nag. */}
+                                  <button className="mini rowlink guest-told"
+                                    aria-label={isTold(guestToldMap(event), g.id)
+                                      ? `You marked ${g.name || 'this guest'} told. Undo that.`
+                                      : `Mark that you told ${g.name || 'this guest'} yourself`}
+                                    onClick={() => markTold(g.id, g.name, digits ? 'text' : 'email')}>
+                                    {isTold(guestToldMap(event), g.id)
+                                      ? <span aria-hidden="true">✓ told</span>
+                                      : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
+                                  </button>
                                 </div>
                               );
                             })()}
