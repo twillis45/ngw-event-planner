@@ -74,6 +74,12 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   if (/safe[- ]rides?|designated[- ]driver|rideshare code/.test(t))
     return { label: 'Open rides', route: { focusField: 'ground' } };
   // A per-person share is a MONEY agreement, not a vendor booking.
+  // POST-EVENT THANK-YOUS route to the roster, because that is where the
+  // thank-you state actually lives -- per-guest flags on the same rows (the
+  // After stage reads "N of M sent" off them). Not a courtesy destination: the
+  // host marks the thank-you there, so the CTA does what it says.
+  if (/thank (the|them|everyone|people|your)|thank[- ]?you|write the notes\b/i.test(t))
+    return { label: 'Open your guest list', route: { tab: 'Guests' } };
   if (/per[- ]person\b.{0,40}(number|cost|amount|budget)|who pays|we cover the\b/.test(t))
     return { label: 'Open your money', route: { tab: 'Budget', focusField: 'hsp-budget' } };
   // Watchers, chaperones and house rules are the helper/place assignments.

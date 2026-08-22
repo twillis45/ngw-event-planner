@@ -46,6 +46,10 @@ import { effectiveDone } from './taskEngine';
 const LABEL_TO_LEAD = {
   'day of': 0,
   'event day': 0,
+  // AFTER the event -- a POSITIVE lead, which this table had never held because
+  // nothing in the corpus was ever due after the day. The generic pattern below
+  // catches "N days after"; this entry catches the singular prose form.
+  'the day after': 1,
   'day before': -1,
   '2 days out': -2,
   '3 days out': -3,
@@ -99,6 +103,10 @@ export function taskLeadDays(task) {
   if (mw) return -(Number(mw[1]) * 7);
   const md = /^(\d+)\s*days? out$/.exec(label);
   if (md) return -Number(md[1]);
+  // Post-event prose, the mirror of "N days out". Positive because it is owed
+  // AFTER the day, and the sign is the whole meaning.
+  const ma = /^(\d+)\s*days? after$/.exec(label);
+  if (ma) return Number(ma[1]);
   return null;
 }
 

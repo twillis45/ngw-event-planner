@@ -7698,6 +7698,22 @@ export default function HostShellV2() {
                   })();
                   const agoN = Math.abs(days);
                   const typeWord = String(eventTypeLabel(event) || 'day').toLowerCase();
+                  // "Nothing needs you now" was asserted unconditionally, and the
+                  // corpus now carries post-event work -- return the borrowed pans,
+                  // thank the people who cooked. Claiming nothing is owed while
+                  // three tasks are due is the plainest kind of untruth this app
+                  // can tell, and it is the one a host would catch. Read the same
+                  // checklist every other surface reads; a positive leadDays is
+                  // days AFTER the event.
+                  const afterRows = (() => {
+                    try {
+                      return (playbookChecklist(event) || [])
+                        .filter(r => r && typeof r.leadDays === 'number' && r.leadDays > 0)
+                        .filter(r => !effectiveDone(event, r))
+                        .sort((a, b) => a.leadDays - b.leadDays);
+                    } catch { return []; }
+                  })();
+                  const afterDue = afterRows.filter(r => r.leadDays <= agoN);
                   const yesN = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
                   const invitedN = (event.guests || []).length;
                   // DATA HONESTY (host challenge, 2026-07-22): the Figma comp said
@@ -7711,7 +7727,11 @@ export default function HostShellV2() {
                   return (<>
                     <Eyebrow tone="ok" style={{ display: 'block', letterSpacing: '.1em' }}>BEHIND YOU</Eyebrow>
                     <h2 className="ask">{first ? first + '’s day, done.' : 'The day, done.'}</h2>
-                    <GuideLine gap={ASK_RHYTHM.eyebrowToValue}>The {typeWord} happened — {agoN === 1 ? 'yesterday' : agoN + ' days ago'}. Nothing needs you now; here’s how it landed.</GuideLine>
+                    <GuideLine gap={ASK_RHYTHM.eyebrowToValue}>The {typeWord} happened — {agoN === 1 ? 'yesterday' : agoN + ' days ago'}. {afterRows.length === 0
+                      ? 'Nothing needs you now; here’s how it landed.'
+                      : afterDue.length > 0
+                        ? `${afterDue.length === 1 ? 'One thing is' : afterDue.length + ' things are'} still owed — ${String(afterRows[0].task).replace(/\.$/, '')}.`
+                        : `${afterRows.length === 1 ? 'One thing comes' : afterRows.length + ' things come'} after — the first is ${String(afterRows[0].task).replace(/\.$/, '').toLowerCase()}.`}</GuideLine>
                     <div style={{ marginTop: 26, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
                         <span style={rowL}>Guests</span>

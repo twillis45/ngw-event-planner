@@ -752,7 +752,15 @@ export const hostUsesCaterer = (event) => foodApproach(event).usesCaterer === tr
 // Day offset from a task's `when` token: 'T-10d' → -10, 'T0' → 0, 'T0 -0:30' → 0
 // (the intra-day hours are ignored — only the day phase matters here). null if absent.
 function taskOffsetDays(when) {
-  const m = /^T(-?\d+)/.exec(String(when || '').trim());
+  const raw = String(when || '').trim();
+  // POST-EVENT: 'T0 +1d' means the day AFTER. The old pattern matched only the
+  // leading `T0` and returned 0, so every post-event task the corpus gained was
+  // silently dated to the event DAY and labelled "Day of" -- not dropped, which
+  // would have been visible, but mis-dated, which was not. Checked first because
+  // the leading-number pattern below also matches this string.
+  const after = /^T0\s*\+\s*(\d+)\s*d$/i.exec(raw);
+  if (after) return parseInt(after[1], 10);
+  const m = /^T(-?\d+)/.exec(raw);
   return m ? parseInt(m[1], 10) : null;
 }
 // A calm, honest phase label for a task's relative date — no fake calendar dates.
@@ -763,7 +771,10 @@ function taskOffsetDays(when) {
 // and ChecklistGenerator's dead table is gone.)
 function taskPhaseLabel(offset) {
   if (offset == null) return '';
-  if (offset >= 0) return 'Day of';
+  // A positive offset is days AFTER the event, and calling that "Day of" told a
+  // host to return the borrowed pans during the dinner.
+  if (offset > 0) return offset === 1 ? 'The day after' : `${offset} days after`;
+  if (offset === 0) return 'Day of';
   const d = -offset;
   if (d <= 1) return 'Day before';
   if (d <= 7) return 'Week of';
@@ -1050,7 +1061,9 @@ export function playbookChecklist(event, asOf) {
     if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy)\b/i.test(t.label)) continue;
     const offset = taskOffsetDays(t.when); // days relative to event (≤ 0 = before)
     const dueInDays = offset == null ? null : dte + offset;
-    const eventDay = offset != null && offset >= 0;
+    // Day-of is offset ZERO exactly. A post-event task bucketed here would sit
+    // under THE DAY tab, which is the same lie in a different place.
+    const eventDay = offset === 0;
     rows.push({
       id: `pbt-${event.id}-${t.id}`,
       // kidsLine — a sub-line that only exists when kids are coming (the crib/
