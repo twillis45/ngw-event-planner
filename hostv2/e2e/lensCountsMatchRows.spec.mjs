@@ -10,7 +10,7 @@
 // The leaders settle the shape: Linear, Plane, ClickUp and Asana all put a
 // count on a GROUP and none on "all". So "Everyone" now carries no number, and
 // every remaining chip must equal the rows its lens actually renders.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page) => {
   await page.addInitScript(() => {
@@ -81,30 +81,43 @@ test.describe('lens chips state the truth about their rows', () => {
   // after the search; the guest roster counted the raw array while its rows
   // were search-filtered, so typing a name left "Coming 24" above two people.
   // Reintroducing that fault and running the existing roster spec passed --
-  // nothing covered it -- which is why this lives here.
+  // nothing covered it.
+  //
+  // My first attempt at this test hunted for a rail row and SKIPPED, which is
+  // exactly as vacuous as 0 === 0. It uses the repo's own idiom now: seed a
+  // roster big enough to render the toolbar (>= 8), open the section by name.
+  const ROSTER = Array.from({ length: 12 }, (_, k) => ({
+    id: 'g-lens' + k,
+    name: (k < 3 ? 'Marisol' : 'Person') + ' ' + String(k).padStart(2, '0'),
+    rsvp: k % 4 === 0 ? 'Yes' : k % 4 === 1 ? 'No' : k % 4 === 2 ? 'Maybe' : '',
+  }));
+
   test('guest chips count what the search left, not the whole list', async ({ page }) => {
-    await boot(page);
-    const rail = page.locator('.srail-row', { hasText: /Guest|People coming/i });
-    if (await rail.count()) { await rail.first().click(); await settled(page); }
-    const bar = page.locator('.rtoolbar').last();
-    if (!(await bar.count())) test.skip(true, 'roster toolbar renders only past eight guests');
-
-    const q = bar.locator('.rtool-q');
-    if (!(await q.count())) test.skip(true, 'no search field on this roster');
-    // COUNT FIRST -- `.innerText()` on a locator matching nothing waits out the
-    // whole timeout rather than throwing, so a `.catch()` never runs and the
-    // test dies at 30s. This spec hit that on its first run; the vendor spec
-    // already carries the same warning.
-    const nameLoc = page.locator('.rrow-name, .vc-name');
-    if (!(await nameLoc.count())) test.skip(true, 'no guest row to read a name from');
-    const firstName = ((await nameLoc.first().innerText()) || '').trim().split(/\s+/)[0];
-    if (!firstName) test.skip(true, 'guest row has no readable name');
-
-    await q.fill(firstName);
+    await page.addInitScript((guests) => {
+      localStorage.setItem('ngw-hostv2-last-event', 'test-two-days');
+      localStorage.setItem('ngw-hostv2-patch-test-two-days', JSON.stringify({ guests }));
+      localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+      localStorage.setItem('ngw-welcomed', '1');
+      localStorage.setItem('ngw-v2-welcomed', '1');
+    }, ROSTER);
+    await page.goto('?elegant=1');
     await settled(page);
-    await page.waitForTimeout(200);
+    await openSectionByName(page, 'Guests', { settle: 600 });
 
-    const rows = await page.locator('.rrow, .vcard').count();
+    const bar = page.locator('.rtoolbar').last();
+    expect(await bar.count(), 'the roster toolbar did not render on 12 guests').toBeGreaterThan(0);
+
+    const rowsNow = () => page.locator('.grow > button:first-of-type').count();
+    const before = await rowsNow();
+    expect(before, 'no guest rows rendered').toBeGreaterThan(8);
+
+    // Search for the 3 seeded "Marisol" rows.
+    await bar.locator('.rtool-q').fill('Marisol');
+    await settled(page);
+    await page.waitForTimeout(250);
+    const after = await rowsNow();
+    expect(after, 'the search did not narrow the list').toBeLessThan(before);
+
     const nums = [];
     for (const t of await bar.locator('.chip').allTextContents()) {
       const m = /(\d+)\s*$/.exec(t.trim());
@@ -113,7 +126,7 @@ test.describe('lens chips state the truth about their rows', () => {
     expect(nums.length, 'no counted chip on the roster — nothing was proved').toBeGreaterThan(0);
     const total = nums.reduce((a, b) => a + b, 0);
     expect(total,
-      `roster chips total ${total} while the search left ${rows} row(s) — the chips are quoting the unfiltered list`)
-      .toBe(rows);
+      `roster chips total ${total} while the search left ${after} row(s) — the chips are quoting the unfiltered list`)
+      .toBe(after);
   });
 });
