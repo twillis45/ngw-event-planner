@@ -8,11 +8,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `4d10920a` — pushed; CI running on it |
-| Last pushed | `4da9dfde`; `e006f52d` verified green (Checks + Pages) |
-| Jest | **6,137 passed**, 1 skipped, 430 suites — measured this pass |
+| Branch / HEAD | `main` @ `e2ed1e9f` — pushed; CI running on it |
+| Last pushed | `e2ed1e9f`; `9080658b` was the last verified-green run (Checks + Pages) |
+| Jest | **6,151 passed**, 1 skipped, 430 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
-| e2e (Playwright) | full matrix **617 passed / 195 skipped, zero failures** (last full run); taskOwnership + rankedReorder + multiDayDoor + dayOfChecklist + checklistFollowsDecisions green since |
+| e2e (Playwright) | full matrix **692 passed / 1 flaky, zero failures** (all 8 projects, 17.5m) |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 
@@ -118,66 +118,78 @@ this file is the short answer to "where is it, is it green, what's next."
 vs 63.8% on 07-13, via 67→70→72→73→75→76→77. Decision engine 42/50
 (unmoved; its next lever is the ownership ruling now BUILT — re-score it).
 
-## The open finding that matters most
+## The rulings that now govern this work
 
-`docs/audits/2026-08-21_DECISION_ENGINE_AND_TASK_COVERAGE_AUDIT.md`.
+Three boards sat on 2026-08-21. Read the ruling before touching its area —
+each one rejected something, and the rejections are the load-bearing part.
 
-The frozen checklist — that document's item #1, and the one that mattered
-most — is **DONE** (see "What shipped", item 10). What remains:
+- **`2026-08-21_TASK_OWNERSHIP_RULING.md`** (6-2 ship, narrow). BUILT. Assign
+  writes a roster name to `timeline[].owner`, notifies NOBODY, and says so:
+  `<Name> — not told yet`. Rejected outright: importing `playbookMilestones`
+  (the join is 123/408 and the owners are role words) — dead, not deferred.
+- **`2026-08-21_GUEST_TRANSPORT_RULING.md`** (6-2 DEFER guest sending).
+  Dissent from BOTH directions: one seat wanted a capped guest batch, another
+  wanted the vendor path deleted entirely. Its measurements are the reason
+  this session changed course — see below.
+- **`2026-08-21_VENDORS_SHEET_RULING.md`** — all six clauses now shipped.
 
-**The day-of list now reaches the host** (`3f0ad471`) — `playbookDayOfChecklist`
-had zero hostv2 imports for months. Wired, with the generic floor stating
-that it is a floor. **Client Dinner (26 tasks) and Fundraiser/Gala (41)**
-are authored, so audit item #2 is closed end to end.
+## The pattern that cost the most today
 
-**Total silence is closed** (item #2 part one, `d35606e9`). Eight of the
-nine typeless types now borrow a named playbook and produce 11–19 real
-tasks; the borrow is stated on screen and in every row's provenance, and
-"Other" stays honestly empty. Part two is open: **Client Dinner and
-Fundraiser/Gala should be authored, not aliased** — and borrowed content
-keeps its source's vocabulary, so a Town Hall's risks currently say
-"directors".
+Not a bug — a class. Seven times something was **built, correct, and
+unreachable**, and each was found by looking rather than by any gate:
 
-**Ownership (audit item #4) needs a ruling, not a wire — measured
-2026-08-21.** The milestone-to-task id join lands on 123 of 408 (30.1%),
-and 350 of 408 milestone owners are "host" while the other 58 are generic
-role words (coordinator, couple, organizer…). Seeding a row's owner from
-a milestone would paint a label naming nobody. The real gap is
-host-assignable ownership sourced from the ROSTER — a feature with
-questions attached (who is assignable, are they told, what does an
-owned-but-open row do to readiness), so it wants a board sitting.
+- `playbookDayOfChecklist`, `playbookMilestones`, `playbookTasks` — finished
+  engines with zero hostv2 imports.
+- FLIP mounted on `.qidx`, which returns null in elegant mode (the shipping
+  mode). Ten green unit tests over a surface no host sees.
+- The span-gated "Your days" door, with no seeded event carrying a span.
+- The seed that fixed it, registered in `ROSTER` but not `ALL_SAMPLES`.
+- **The vendor send button, which renders on zero events** — one of 24
+  `openDraft` sites passed a `vendorId` and `emailTarget` requires one. The
+  transport this repo describes as working had never fired.
 
-**Two finished engines still have ZERO hostv2 imports.**
-`playbookMilestones` (382 authored milestones) and `playbookTasks` (the
-dated buy ladder). `playbookDayOfChecklist` was the third and **is now
-wired** (`3f0ad471`).
+Its mirror: five times a **probe was wrong, not the product** — a source slice
+scoped to one card, `settled()` between a click and a toast, an assertion on
+`.app` for a toast that renders outside it, zero-WIDTH asserted on a
+`max-height:0` panel, a `> 4` row count taken from a desktop run.
 
-**Still open on the reconcile itself:** it has not been driven through
-the decision board's own control in a browser. The crab swap is pinned at
-unit level against the real generator; two attempts at a browser walk
-produced a flaky test rather than a failing feature, so it is recorded
-open rather than papered over.
+And once a test **ran, passed, and proved nothing**: the lens gate asserted
+`chip === rows` on a chip reading 0, so `0 === 0` was the whole evidence while
+the control was visibly broken. That one shipped the same arithmetic fault
+three times.
 
-Day-of coverage itself is strong and should be left alone: a Cookout at
-T-0 surfaces 18 run-of-show rows from 5h out through teardown.
+**The question none of these were asking: is this check actually looking at
+the thing it claims to check?** Red-proofing and independent verification
+caught every one. Three claims of mine were falsified by a verify pass this
+session — the vendor money that had no tabular-nums, and both lens faults.
 
 ## Next, in order
 
-1. Push `3c39884e` once CI drains (watcher running; never push over an
-   in-flight run). Then verify Checks green on it.
-3. Template line W2 (**Todd only**): import
-   `template-products/dist/NGW_Milestone_Event_Planner_MVP.xlsx` into real
-   Google Sheets + desktop Excel + a phone. Gates all styling/mockup work.
-4. W1.3 reunion enrichment (multi-day/travel/committee/cost-share into the
-   Reunion playbook — turns five inert toggles real), then W1.4 PTA/booster.
-5. Vendors ruling items 5–6: sheet toolbar; on-demand detail panel ≥1200px
-   (also Modern UI/UX's named gap, with the 1920 dead band).
-6. Comms: prove the Resend webhook live; extend send beyond the vendor case
-   (Less friction's whole remaining gap — 25 of 26 generators still exit to
-   the clipboard).
-7. **Todd only:** brand name, pricing rails, free-funnel scope, Etsy AI
-   disclosure; D-2's five preconditions, pentest, device AT passes,
-   stranger-proof onboarding test.
+1. **The transport board's queue**, non-transport and none of it needs the
+   webhook: per-recipient handoff recording on the guest rails; the roster
+   told/not-told read (`Told 24 of 41 — 17 still to tell`).
+2. **Day CRUD across a span** — Workflow's named gap, and newly TESTABLE
+   because `TEST_MULTI_DAY` now exists. Was unbuildable before: no seeded
+   event had a span.
+3. Author the 16 `synthesized` purchases in clientDinner/fundraiserGala with
+   real citations. Today ADDED to the grounding backlog rather than reducing
+   it — honestly, but it is now owed.
+4. `helperConfirmed` has a writer now, but no surface shows the confirmed
+   state anywhere except the row chip.
+
+## What only you can do
+
+These are not blocked on engineering and will not move without you:
+
+- **Run the stranger-proof onboarding test.** Ease of use is asserted at 8,
+  not observed. Nobody outside this project has used it.
+- **Prove the Resend webhook live.** Until then `delivered` cannot honestly
+  exist, and DIFM/Attention both sit against that.
+- **Send one real vendor email end to end.** Now possible for the first time:
+  put an address on a vendor, sign in, and the send path is reachable. That
+  run is the precondition for everything above it.
+- **Grounding** is authoring, not engineering — capped at 9 by the
+  cultural-basis ruling.
 
 ## Traps that cost time here
 
