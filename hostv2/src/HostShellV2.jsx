@@ -17277,8 +17277,17 @@ export default function HostShellV2() {
                       || (String(v.name || '') + ' ' + String(v.category || '')).toLowerCase().includes(q0)));
                     const nSettled = all.filter(v => vendorSettled(v)).length;
                     const nInformal = all.filter(v => v && v.isInformal).length;
+                    // EVERYONE CARRIES NO COUNT, and that is the leaders' rule,
+                    // not a shortcut. Linear, Plane, ClickUp and Asana all put a
+                    // count on a GROUP and none on "all" — because a group's
+                    // number is a promise about the rows under it, and "all" has
+                    // no rows of its own. Ours broke that promise: the default
+                    // lens partitions settled vendors into a collapsed fold, so
+                    // "Everyone 12" sat above 8 cards the moment anything was
+                    // settled. The fold states its own count directly beneath,
+                    // so the number was never load-bearing — only wrong.
                     const LENS = [
-                      ['all', 'Everyone', all.length],
+                      ['all', 'Everyone', null],
                       ['open', 'Needs you', all.length - nSettled],
                       ['settled', 'Settled', nSettled],
                       ...(nInformal ? [['informal', 'Helping, not hired', nInformal]] : []),
@@ -17294,7 +17303,7 @@ export default function HostShellV2() {
                             <button key={k} className="chip" aria-pressed={vendorLens === k}
                               onClick={() => setVendorLens(k)}
                               style={vendorLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
-                              {lbl} {c}
+                              {lbl}{c === null ? '' : ' ' + c}
                             </button>
                           ))}
                         </span>
@@ -18742,9 +18751,22 @@ export default function HostShellV2() {
                       filter is also the rollup and there is no second number to keep
                       truthful. */}
                   {(event.guests || []).length >= 8 && (() => {
-                    const all = event.guests || [];
+                    // COUNTED AFTER THE SEARCH, like the vendor toolbar — the same
+                    // fix, which had never been carried across. These chips counted
+                    // the raw guest array while the rows below them were search
+                    // filtered, so typing "sam" left "Coming 24" sitting above two
+                    // people. The search predicate is the one the row filter uses,
+                    // read from the same fields, so the chips and the list cannot
+                    // disagree about who is on screen.
+                    const qL = rosterQ.trim().toLowerCase();
+                    const matchesQ = (g) => !qL
+                      || [g && g.name, g && g.plusOne, g && g.group, g && g.email]
+                        .some((v) => String(v || '').toLowerCase().includes(qL));
+                    const all = (event.guests || []).filter(matchesQ);
                     const n = (v) => all.filter((g) => String(g && g.rsvp || '') === v).length;
-                    const LENS = [['all', 'Everyone', all.length], ['yes', 'Coming', n('Yes')], ['none', 'No reply', n('')], ['maybe', 'Maybe', n('Maybe')], ['no', 'Can’t make it', n('No')]];
+                    // No count on "Everyone" — it is not a group, and the leaders
+                    // (Linear, Plane, ClickUp, Asana) put counts only on groups.
+                    const LENS = [['all', 'Everyone', null], ['yes', 'Coming', n('Yes')], ['none', 'No reply', n('')], ['maybe', 'Maybe', n('Maybe')], ['no', 'Can’t make it', n('No')]];
                     return (
                       <div className="rtoolbar">
                         <input className="field rtool-q" type="search" value={rosterQ}
@@ -18755,7 +18777,7 @@ export default function HostShellV2() {
                             <button key={k} className="chip" aria-pressed={rosterLens === k}
                               onClick={() => setRosterLens(k)}
                               style={rosterLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
-                              {lbl} {c}
+                              {lbl}{c === null ? '' : ' ' + c}
                             </button>
                           ))}
                         </span>

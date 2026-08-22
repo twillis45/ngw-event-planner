@@ -149,13 +149,31 @@ test('a lens and a search together keep the chips honest', async ({ page }) => {
   await bar.locator('.rtool-q').fill(firstName);
   await settled(page);
 
+  // "Everyone" no longer carries a number (leaders put counts on GROUPS, never
+  // on an all-lens), so the search-staleness protection this test exists for now
+  // rides on the counted chips. Their sum must still describe the filtered list.
   const shown = await page.locator('.vcard').count();
+  const folded = await (async () => {
+    const f = page.locator('.fold-btn', { hasText: /settled/ });
+    return (await f.count()) ? (parseInt(((await f.first().innerText()).match(/(\d+)/) || [])[1], 10) || 0) : 0;
+  })();
+
   const everyone = bar.locator('.chip', { hasText: /Everyone/ }).first();
-  const claimed = parseInt(((await everyone.innerText()).match(/(\d+)\s*$/) || [])[1], 10);
-  expect(claimed, 'the Everyone chip still quotes the unfiltered list').toBe(shown);
+  expect((await everyone.innerText()).trim(),
+    'the all-lens chip grew a count back').toBe('Everyone');
+
+  const needs = bar.locator('.chip', { hasText: /Needs you/ }).first();
+  const claimed = parseInt(((await needs.innerText()).match(/(\d+)\s*$/) || [])[1], 10);
+  expect(claimed, 'the "Needs you" chip still quotes the unfiltered list').toBe(shown);
+  // And the fold, which states its own number, accounts for the rest.
+  const settledChip = bar.locator('.chip', { hasText: /^Settled/ }).first();
+  if (await settledChip.count()) {
+    const nSettled = parseInt(((await settledChip.innerText()).match(/(\d+)\s*$/) || [])[1], 10);
+    expect(nSettled, 'the Settled chip disagrees with the fold it describes').toBe(folded);
+  }
 });
 
-test('the visible rows and the fold ACCOUNT FOR the Everyone count', async ({ page }) => {
+test('the visible rows and the fold ACCOUNT FOR every counted chip', async ({ page }) => {
   // Three times in two sittings the same arithmetic fault shipped, each time
   // surviving because `ev-x-wanda` has zero settled vendors and every
   // assertion about counting them held by accident.
@@ -176,8 +194,19 @@ test('the visible rows and the fold ACCOUNT FOR the Everyone count', async ({ pa
   const bar = page.locator('.rtoolbar').last();
   if (!(await bar.count())) test.skip(true, 'fewer than 6 vendors');
 
-  const everyone = parseInt(((await bar.locator('.chip', { hasText: /Everyone/ }).first().innerText())
-    .match(/(\d+)\s*$/) || [])[1], 10);
+  // The count moved off "Everyone" and onto the groups, so the invariant is now
+  // stated over those: what the host can reach in the default view is the
+  // "Needs you" rows plus whatever the settled fold is holding, and the two
+  // chips must agree with the two groups. This still goes red the moment a
+  // settled vendor exists and a number stops matching -- without needing the
+  // fixture to reach that state first, which is what the old form bought.
+  const everyone = await (async () => {
+    const needs = bar.locator('.chip', { hasText: /Needs you/ }).first();
+    const n = parseInt(((await needs.innerText()).match(/(\d+)\s*$/) || [])[1], 10);
+    const sc = bar.locator('.chip', { hasText: /^Settled/ }).first();
+    const s2 = (await sc.count()) ? (parseInt(((await sc.innerText()).match(/(\d+)\s*$/) || [])[1], 10) || 0) : 0;
+    return n + s2;
+  })();
   expect(Number.isFinite(everyone)).toBe(true);
 
   const rows = await page.locator('.vcard').count();
@@ -191,6 +220,6 @@ test('the visible rows and the fold ACCOUNT FOR the Everyone count', async ({ pa
     : 0;
 
   expect(rows + folded,
-    `"Everyone ${everyone}" over ${rows} rows + ${folded} folded — ${everyone - rows - folded} unaccounted`)
+    `chips total ${everyone} over ${rows} rows + ${folded} folded — ${everyone - rows - folded} unaccounted`)
     .toBe(everyone);
 });
