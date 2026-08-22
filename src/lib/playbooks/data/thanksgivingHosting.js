@@ -131,9 +131,29 @@ const thanksgivingHosting = {
     { id: 'tg_makeahead', name: 'Cook the make-ahead dishes', offsetDays: 1, owner: 'host', dependsOn: ['tg_shop_main'], category: 'food', risk: { ifDelayed: 'Every dish competes for the day-of oven at once', severity: 'high' } },
     { id: 'tg_house', name: 'Set the table, ready the guest room, stage serving dishes', offsetDays: 1, owner: 'host', dependsOn: ['tg_plan'], category: 'setup', risk: null },
     { id: 'event', name: 'Thanksgiving dinner', offsetDays: 0, owner: 'host', dependsOn: ['tg_makeahead', 'tg_house'], category: 'event', risk: null },
+
+    // ── AFTER THE DAY ────────────────────────────────────────────────────────
+    // NEGATIVE offsetDays = days AFTER the event. The engine already computes
+    // dueDate as eventDate + (-offsetDays), so this needs no engine change --
+    // but nothing in the corpus had ever used it, so this is the first.
+    //
+    // Every one of these is real host work that the plan previously abandoned
+    // the moment the meal ended: the borrowed roasting pan that lives in your
+    // cupboard until March, the aunt who never got told her pie was the hit of
+    // the table, the carcass thrown out on a night when it is worth a gallon
+    // of stock.
+    { id: 'tg_leftovers_out', name: 'Get the leftovers into the right hands and the carcass into stock', offsetDays: -1, owner: 'host', dependsOn: ['event'], category: 'food', risk: { ifDelayed: 'Good food thrown out, and a carcass worth a gallon of stock in the trash', severity: 'low' } },
+    { id: 'tg_return', name: 'Return every borrowed dish, pan, and chair', offsetDays: -3, owner: 'host', dependsOn: ['event'], category: 'cleanup', risk: { ifDelayed: 'Borrowed things become kept things, and the lender remembers', severity: 'med' } },
+    { id: 'tg_thanks', name: 'Thank the people who cooked, drove, and stayed to wash up', offsetDays: -2, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'The people who made it work hear nothing, and help thins out next year', severity: 'med' } },
   ],
 
   tasks: [
+    { id: 't_leftover_send', milestoneId: 'tg_leftovers_out', phase: 'food', label: 'Send the leftovers home in the containers you already bought — dark meat with white, a scoop of every side, and pie', when: 'T0 +1d' },
+    { id: 't_stock', milestoneId: 'tg_leftovers_out', phase: 'food', label: 'Simmer the carcass with the vegetable ends into stock, or freeze it whole for a slower weekend', when: 'T0 +1d' },
+    { id: 't_leftover_safety', milestoneId: 'tg_leftovers_out', phase: 'food', label: 'Anything still out from the meal goes now — cooked food keeps three to four days refrigerated, and the clock started at the table', when: 'T0 +1d' },
+    { id: 't_return_dishes', milestoneId: 'tg_return', phase: 'cleanup', label: 'Wash and return every borrowed pan, platter, and folding chair — with what you owe written down while you still remember whose is whose', when: 'T0 +3d' },
+    { id: 't_thanks_cooks', milestoneId: 'tg_thanks', phase: 'guest', label: 'Tell the people who brought a dish what happened to it — that the stuffing went first, that someone asked for the recipe', when: 'T0 +2d' },
+    { id: 't_thanks_help', milestoneId: 'tg_thanks', phase: 'guest', label: 'Thank the ones who stayed to wash up and the ones who drove far, by name and not in a group text', when: 'T0 +2d' },
     { id: 't_model', milestoneId: 'tg_plan', phase: 'planning', label: 'Decide who cooks: the whole meal, a split with assigned dishes, or a full potluck', when: 'T-21d' },
     { id: 't_invite', milestoneId: 'tg_plan', phase: 'guest', label: 'Invite everyone with the date, the serve time, and the dietary and overnight ask', when: 'T-21d' },
     { id: 't_order_bird', milestoneId: 'tg_turkey_order', phase: 'food', label: 'Order the turkey — about a pound and a half per guest for a whole bird, and a size that actually fits your oven and roasting pan', when: 'T-21d', whenChoice: { id: 'hosting_model', in: ['Host cooks the whole meal', 'Host cooks the turkey and core dishes, guests bring sides and desserts'] } },

@@ -129,4 +129,61 @@ test.describe('lens chips state the truth about their rows', () => {
       `roster chips total ${total} while the search left ${after} row(s) — the chips are quoting the unfiltered list`)
       .toBe(after);
   });
+
+  // THE RED-PROOF THE AUDIT NAMED TWICE AND NOBODY EVER RAN: seed a SETTLED
+  // vendor. ev-x-wanda has zero, which is the only reason the counting fault
+  // stayed invisible through three sittings. Settled means, per vendorSettled:
+  // a confirmed status, no COI action outstanding, no accountability worry, and
+  // no pending confirmation record -- so the seed sets all four deliberately.
+  //
+  // This does not assume the seed works. It asserts the fold APPEARS, which is
+  // the observable proof that a vendor actually reached settled; if the seed is
+  // wrong the fold never renders and this fails loudly rather than passing on a
+  // list where nothing was settled at all.
+  const VENDORS = Array.from({ length: 8 }, (_, k) => ({
+    id: 'v-lens' + k,
+    name: 'Vendor ' + String(k).padStart(2, '0'),
+    category: k % 2 ? 'Catering' : 'Photography',
+    // The first three are settled; the rest stay open.
+    ...(k < 3
+      ? { status: 'Confirmed', coiStatus: 'not_required' }
+      : { status: 'Researching' }),
+  }));
+
+  test('with settled vendors seeded, the fold appears and the counts still hold', async ({ page }) => {
+    await page.addInitScript((vendors) => {
+      localStorage.setItem('ngw-hostv2-last-event', 'test-two-days');
+      localStorage.setItem('ngw-hostv2-patch-test-two-days', JSON.stringify({ vendors }));
+      localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+      localStorage.setItem('ngw-welcomed', '1');
+      localStorage.setItem('ngw-v2-welcomed', '1');
+    }, VENDORS);
+    await page.goto('?elegant=1');
+    await settled(page);
+    await openSectionByName(page, 'People you', { settle: 600 });
+
+    const bar = page.locator('.rtoolbar').last();
+    expect(await bar.count(), 'the vendor toolbar did not render on 8 vendors').toBeGreaterThan(0);
+
+    // THE PROOF THE FIXTURE REACHED THE STATE. No fold means nothing settled,
+    // and every assertion below would be vacuous.
+    const fold = page.locator('.fold-btn', { hasText: /settled/ });
+    expect(await fold.count(),
+      'no settled fold — the seed never produced a settled vendor, so this proves nothing')
+      .toBeGreaterThan(0);
+    const folded = Number((/(\d+)\s+settled/.exec((await fold.first().innerText()) || '') || [])[1] || 0);
+    expect(folded, 'the fold rendered but counts zero').toBeGreaterThan(0);
+
+    // "Everyone" still carries no count, WITH settled vendors present -- the
+    // exact condition under which the old number went wrong.
+    const everyone = bar.locator('.chip', { hasText: /Everyone/ }).first();
+    expect(((await everyone.innerText()) || '').trim()).toBe('Everyone');
+
+    // And the counted chips still describe their own groups.
+    const visible = await page.locator('.vcard').count();
+    const needs = Number((/(\d+)\s*$/.exec((await bar.locator('.chip', { hasText: /Needs you/ }).first().innerText()) || '') || [])[1]);
+    const settledChip = Number((/(\d+)\s*$/.exec((await bar.locator('.chip', { hasText: /^Settled/ }).first().innerText()) || '') || [])[1]);
+    expect(needs, `"Needs you ${needs}" over ${visible} visible card(s)`).toBe(visible);
+    expect(settledChip, `"Settled ${settledChip}" over a fold holding ${folded}`).toBe(folded);
+  });
 });
