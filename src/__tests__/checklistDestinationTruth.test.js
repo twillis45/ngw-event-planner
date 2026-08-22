@@ -101,7 +101,15 @@ describe('coverage floor across every playbook', () => {
     // fails for an unexplained reason teaches nothing; getting pre-event back
     // to 0.87 is real work and it is now visible instead of averaged away.
     expect(preTotal).toBeGreaterThan(400);
-    expect(preCta / preTotal).toBeGreaterThanOrEqual(0.86);
+    // Back over the historical 0.87 as of 2026-08-22 (measured 87.7%, 540/616)
+    // after routing three families that had real destinations all along: attire
+    // ordering -> Vendors (you buy it from someone), photo/memory collection
+    // asks -> Guests (the ask is made of the roster), and vows/readings -> the
+    // Day stage (the run of show holds the order of the day). The rest of the
+    // unrouted pre-event rows are kitchen and real-world prep -- "mise en
+    // place", "season the meat overnight" -- which have nowhere honest to land
+    // and must never be given a courtesy destination to lift this number.
+    expect(preCta / preTotal).toBeGreaterThanOrEqual(0.87);
     // Post-event is younger and thinner on routing by nature -- much of it is
     // work in the world, not in the app. It must not slide below what it is.
     expect(postTotal).toBeGreaterThan(50);

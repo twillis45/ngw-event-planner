@@ -74,6 +74,20 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   if (/safe[- ]rides?|designated[- ]driver|rideshare code/.test(t))
     return { label: 'Open rides', route: { focusField: 'ground' } };
   // A per-person share is a MONEY agreement, not a vendor booking.
+  // ATTIRE is bought from someone, and Vendors is where a host tracks who they
+  // are buying from and what is owed. Ordering a gown with a six-week alteration
+  // runway is vendor work in everything but name.
+  if (/\b(dress|gown|attire|tux(edo)?|suit|ballgown|damas|chambelan)\b.{0,40}\b(order|buy|choose|alterations?|fitting)|\b(order|schedule)\b.{0,30}\b(dress|gown|attire|alterations?)\b/i.test(t))
+    return { label: 'Open your vendors', route: { tab: 'Vendors' } };
+  // COLLECTING PHOTOS OR NOTES FROM PEOPLE is an ask made of the guest list, and
+  // the roster is where those people are. The album itself lives elsewhere; the
+  // asking does not.
+  if (/(ask|invite)\b.{0,50}\b(send|share|submit|drop)\b.{0,30}(photos?|memor|notes?)|shared (photo|album).{0,30}(drop|link)|photo\/notes drop/i.test(t))
+    return { label: 'Open your guest list', route: { tab: 'Guests' } };
+  // VOWS, READINGS AND WHO SPEAKS are the ceremony's own content, and the run of
+  // show is the surface that holds the order of the day.
+  if (/\b(vows?|reading\(s\)|readings?)\b.{0,40}\b(write|writes|practice|choose|assign)|\bwrite (their|your) vows\b/i.test(t))
+    return { label: 'Open the day', route: { tab: 'Event Day Schedule' } };
   // POST-EVENT THANK-YOUS route to the roster, because that is where the
   // thank-you state actually lives -- per-guest flags on the same rows (the
   // After stage reads "N of M sent" off them). Not a courtesy destination: the
