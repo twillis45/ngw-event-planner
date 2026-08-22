@@ -83,6 +83,7 @@ import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcil
 import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { tweenNumber } from '@app/lib/tweenNumber';
 import { recordTold, clearTold, isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
+import { addDay, dropDay, dayCount, rowsOn } from '@app/lib/spanEdit';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
@@ -11659,6 +11660,50 @@ export default function HostShellV2() {
                   }} />
               </div>
             )}
+            {sheet.kind === 'space' && event.date && (() => {
+              // ── DAY CRUD (Workflow's named gap vs Wanderlog) ──────────────
+              // The span was editable only through the date field above, which
+              // is a SPAN control, not a day control: a host thinks "the Sunday
+              // brunch got added", not "recompute the terminal date of the
+              // interval". Making them do that arithmetic is the difference
+              // between a planner and a form.
+              //
+              // Moving an item BETWEEN days is a different feature on different
+              // data and is deliberately not here.
+              const n = dayCount(event);
+              const drop = dropDay(event);
+              const stranded = drop ? rowsOn(event, drop.strandedOn) : [];
+              return (
+                <div className="line day-crud" style={{ padding: '0 0 10px' }}>
+                  <span className="of">{n === 1 ? 'One day' : `${n} days`}</span>
+                  <span className="day-crud-btns">
+                    <button className="mini rowlink" aria-label="Add a day to this event"
+                      onClick={() => {
+                        const next = addDay(event);
+                        if (!next) return;
+                        patchEvent(next, `Added a day — the plan runs ${dayCount({ ...event, ...next })} days now.`);
+                      }}>+ Add a day</button>
+                    {drop && (
+                      <button className="mini rowlink" aria-label={stranded.length
+                        ? `Drop the last day. ${stranded.length} planned ${stranded.length === 1 ? 'item is' : 'items are'} on it.`
+                        : 'Drop the last day'}
+                        onClick={() => {
+                          // NAMES WHAT WOULD BE STRANDED BEFORE IT WRITES.
+                          // Shrinking a span can orphan work the host already
+                          // did; the row itself is never deleted, but it would
+                          // sit on a day that no longer exists, and finding that
+                          // out afterwards is how a host stops trusting the
+                          // plan. `dropDay` reports it precisely so this can ask.
+                          if (stranded.length && !window.confirm(
+                            `${stranded.length} thing${stranded.length === 1 ? '' : 's'} on that day: ${stranded.map(r => r.title || 'an item').slice(0, 3).join(', ')}. Drop the day anyway? Nothing is deleted.`)) return;
+                          patchEvent({ endDate: drop.endDate },
+                            drop.endDate ? `Dropped a day — ${dayCount({ ...event, endDate: drop.endDate })} days now.` : 'Back to a single day.');
+                        }}>Drop the last day</button>
+                    )}
+                  </span>
+                </div>
+              );
+            })()}
             {sheet.kind === 'space' && (() => {
               // ── The weekend plan (Slice A): ONE schedule, guest projection.
               // Proposal renders HERE for the host to accept — guests only ever

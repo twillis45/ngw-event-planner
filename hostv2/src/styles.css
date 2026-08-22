@@ -2758,6 +2758,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    host says they did and performs no outward act, so it must never carry the
    weight of the composer links beside it. */
 .guest-told{ white-space:nowrap; }
+/* Day CRUD sits under the last-day field as a pair of quiet links. Not buttons:
+   adding a day is an edit the host will make several times while the shape of
+   a weekend settles, and a control they use that often should not shout. */
+.day-crud{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); }
+.day-crud-btns{ display:flex; align-items:baseline; gap:var(--sp-4); }
 /* ── THE ASSIGN CONTROL (ownership ruling, UX_07 Level 4 RECORD-ONLY) ────────
    Never primary styling: assigning records who has a job and performs no
    outward act, so it must not look like the button that sends something. It
