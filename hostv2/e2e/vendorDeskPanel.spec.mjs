@@ -154,3 +154,43 @@ test('a lens and a search together keep the chips honest', async ({ page }) => {
   const claimed = parseInt(((await everyone.innerText()).match(/(\d+)\s*$/) || [])[1], 10);
   expect(claimed, 'the Everyone chip still quotes the unfiltered list').toBe(shown);
 });
+
+test('the visible rows and the fold ACCOUNT FOR the Everyone count', async ({ page }) => {
+  // Three times in two sittings the same arithmetic fault shipped, each time
+  // surviving because `ev-x-wanda` has zero settled vendors and every
+  // assertion about counting them held by accident.
+  //
+  // My first attempt at closing that drove the status control to MAKE one
+  // settled, and skipped: the picker's options are not labelled "Confirmed",
+  // and confirming alone does not settle a vendor anyway (worry and COI also
+  // gate it). A skipping test is exactly as vacuous as `0 === 0`.
+  //
+  // So this asserts the invariant that holds at ANY settled count, including
+  // zero: "Everyone N" counts every vendor, the default view folds the settled
+  // ones behind their own labelled number, and those two must account for N
+  // between them with nothing unexplained. It passes today with folded = 0,
+  // and it goes red the moment a settled vendor exists and the chip stops
+  // matching — which is the fault, caught without needing the fixture to
+  // reach the state first.
+  await boot(page);
+  const bar = page.locator('.rtoolbar').last();
+  if (!(await bar.count())) test.skip(true, 'fewer than 6 vendors');
+
+  const everyone = parseInt(((await bar.locator('.chip', { hasText: /Everyone/ }).first().innerText())
+    .match(/(\d+)\s*$/) || [])[1], 10);
+  expect(Number.isFinite(everyone)).toBe(true);
+
+  const rows = await page.locator('.vcard').count();
+  // COUNT FIRST. `.innerText()` on a locator that matches nothing waits out the
+  // whole timeout rather than throwing, so the `.catch(() => '')` never runs and
+  // the test dies at 30s instead of reading zero. A `catch` cannot rescue a call
+  // that never rejects.
+  const fold = page.locator('.fold-btn', { hasText: /settled/ });
+  const folded = (await fold.count())
+    ? (parseInt(((await fold.first().innerText()).match(/(\d+)/) || [])[1], 10) || 0)
+    : 0;
+
+  expect(rows + folded,
+    `"Everyone ${everyone}" over ${rows} rows + ${folded} folded — ${everyone - rows - folded} unaccounted`)
+    .toBe(everyone);
+});

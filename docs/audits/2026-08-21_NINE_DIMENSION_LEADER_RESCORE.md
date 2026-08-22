@@ -10,7 +10,7 @@ closed at 63.8%. The table at the top is the CURRENT score; the re-score
 sections below record how each cell got there, and no cell moves without
 a check in the code first.
 
-## Score table — CURRENT (as of `4d671f75` / `2afd0030`)
+## Score table — CURRENT (as of `9e0c96d4`)
 
 Each row is the score as it stands now; the "remaining gap" column is the
 one specific thing between that dimension and a 10, and is what the next
@@ -20,7 +20,7 @@ in the re-score sections below.
 | Dimension | Bar-setter | Us /10 | Remaining gap to 10 |
 |---|---|---:|---|
 | Workflow | Wanderlog (Partiful on creation) | 9 | Day CRUD: add / move / delete a day inside the programme span (the per-day schema, build-queue item 1). This line previously read "the whole of the distance to 10" and that was wrong — host-assignable ownership was a second absence, unnamed here and now closed (`e006f52d`); see the seventh re-score |
-| Design | Paperless Post / Vercel craft | 9 | The sheet's four named blockers have all now shipped — clauses 2, 3 and 4/5 (`fd2526c6`), the money rule and the roster toolbar (`2afd0030`) — and the cell still holds, on ONE live fault: the `Settled` lens routes every card it selects into the settled fold, which is shut by default, so the chip claims N and the sheet shows nothing (eighth re-score, falsification). A control that contradicts its own count is not a 10 on the dimension Paperless Post sets. Close that and the argument for 10 is hard to refuse |
+| Design | Paperless Post / Vercel craft | 9 | Both faults the eighth re-score found are genuinely closed and were re-checked in the source here (`9e0c96d4`) — the `settled` lens short-circuits the partition and returns its matches as the LIVE group (`:17255`), and the counts are taken from a search-filtered array (`q0`, `:17198`). The cell still holds, on a THIRD instance of the same class found in this pass: the `Everyone` chip counts `all.length`, which includes settled vendors, while the default `all` lens partitions those same vendors into the collapsed fold — so `Everyone N` renders fewer than N rows the moment any vendor is settled. This is the fixed fault's own arithmetic surviving in the DEFAULT view rather than behind a lens the host has to select, and it is invisible on `ev-x-wanda` only because that fixture has zero settled vendors. Either count the live group or count the fold into the rows. Seed a settled vendor first — that red-proof was named in the eighth re-score's build queue and still has not been done |
 | Modern UI/UX | Linear | 9 | At 1920 roughly a fifth of the viewport below the app frame is still dead band (marketing capture, 08-21). This is NOT the vendors dead third, which is now used — the detail panel shipped `2afd0030`; it is the frame's own vertical footprint, and it is the last unanswered desktop-space question |
 | Micro motion | Linear / Family | 9 | Two layout-animating fills remain — `.bline i` / `.bline b` (`styles.css:1618`, `:1629`) — plus `.wxpill{transition:bottom}` (`:2995`). All three are sub-perceptual next to the digit that closed in `4d671f75`, which is why they hold the cell off 10 rather than off 9. Atom-input parity is complete; `.mbar i` stays on `width` by a recorded decision and is not a gap |
 | Animation | Family / Partiful | 9 | FLIP covers ONE list — "Then, in order". The call-sheet, vendor and checklist lists still cut. No shared element and no view transition anywhere (`startViewTransition` grepped at HEAD: zero), so cross-SURFACE continuity remains unbuilt while within-surface continuity now exists |
@@ -37,9 +37,10 @@ shape has changed with them: the open work is no longer a scatter of
 craft defects but four named majors — send beyond the vendor case, day
 CRUD across a span, FLIP beyond one list, and an observation only real
 strangers can produce. Every cell in this table is scored from a code
-check at HEAD, and the two cells that moved this session moved because
-each closed a capability the score had been carrying as priced-in
-absent, not because a fault got repaired.
+check at HEAD, and the last two cells to move moved because each closed a
+capability the score had been carrying as priced-in absent, not because a
+fault got repaired. The ninth re-score moved nothing: it verified two real
+fixes in the source and found the same fault a layer out.
 
 ## Post-build re-score (same session, pre-dawn — verified movement only)
 
@@ -191,6 +192,12 @@ What did not move, and why:
 | Ease of use | 8 | 8 |
 | Less friction | 7 | 8 |
 | DIFM | 8 | 9 |
+
+⚠ DRIFT, noted in the ninth re-score: the "now" column above sums to 79,
+not to the 73 this section recomputes. A later pass updated the numbers in
+place without moving the table out of a historical section. The numbers are
+correct as CURRENT values — read the column as "current", not as "at the
+end of the third re-score". Do not sum it against this section's recompute.
 
 ## Fourth re-score: the two motion cells, resolved
 
@@ -990,6 +997,84 @@ cited line rather than carrying one forward.
 **Overall now: 79/90 (88%)** — 77 -> 79, two points: micro motion and
 modern UI/UX, each on a capability the table had priced as absent.
 
+## Ninth re-score: the lens fix, and the same fault one layer out
+
+The eighth re-score withheld Design's tenth point on two named faults and
+wrote that closing them would make 10 "hard to refuse". Both were then
+fixed in `9e0c96d4`. This pass re-read the source rather than crediting the
+claim, per the standing rule, and found both fixes real — and a third
+instance of the same fault that neither the fix nor its new gate covers.
+
+Verified in `hostv2/src/HostShellV2.jsx`, vendors sheet:
+
+- **The counts are search-filtered.** `:17198` builds `q0` from `vendorQ`
+  and derives `all`, `nSettled` and `nInformal` from the query-filtered
+  array before the lens is applied. The comment in place states the rule
+  correctly — count after the search, before the lens — and the code does
+  what the comment says. Fault 2 is closed.
+- **The partition short-circuits on the explicit lens.** `:17255` reads
+  `if (vendorLens === 'settled') return [all, []]` — the matches go into
+  the LIVE group and the fold group is empty, so no fold button renders
+  above them. Fault 1 is closed.
+- **`hostv2/e2e/vendorDeskPanel.spec.mjs` walks every chip.** The lens test
+  loops all chips, skips only those reading zero, asserts each chip's
+  number against the rendered `.vcard` count, and fails on
+  `tested > 0` if nothing was exercisable — the `0 === 0` pass is
+  structurally impossible now. A second test combines a query with the
+  `Everyone` chip, the pairing the gate had never tried.
+
+What this pass FALSIFIED — the third instance:
+
+The `Everyone` chip counts `all.length` at `:17208`. `all` there is the
+search-filtered but LENS-unfiltered array, so it includes settled vendors.
+Under the default `all` lens the partition at `:17256` splits that same
+array into `live` and `rest`, and `rest` renders only when
+`settledVendorsOpen` is true — which defaults false. So whenever any vendor
+on the event is settled, `Everyone N` sits above fewer than N rows. It is
+the identical fault the session just repaired — a chip whose number the
+sheet contradicts — moved from a lens the host has to select into the view
+every host lands on first.
+
+It survives the new gate for exactly the reason the old fault survived the
+old gate: `ev-x-wanda` has no settled vendors, so `nSettled` is 0, the fold
+group is empty, and `claimed === shown` holds by accident of the fixture.
+The eighth re-score's own build queue said "seed a settled vendor and
+red-proof it before trusting it again." That was not done, and it is why
+the same class shipped twice in two sittings.
+
+- **Design holds at 9.** The two named blockers are closed and this pass
+  confirmed them in the source rather than on report — that is real work
+  and it is credited. But the gap column asked for a toolbar whose counts
+  do not lie, and the toolbar's most-seen chip still can. Awarding the
+  point now would mean scoring the dimension Paperless Post sets on a
+  control that is honest on a fixture rather than honest by construction.
+  Weighed alongside the standing principle: this control has now been
+  fixed twice in one session and the same arithmetic fault is still live a
+  layer out, which argues for holding rather than for a third crediting of
+  the same repair. The gap is a few lines and one seeded fixture; it is
+  still the cheapest point on the table.
+- **Modern UI/UX holds at 9.** Its gap is the 1920 vertical dead band
+  below the app frame. The toolbar work is inside the sheet and does not
+  touch it. The vendors dead third stays answered.
+- **Attention holds at 9.** A dishonest count is an attention defect in
+  principle, but this cell's three named gaps are cross-channel
+  `Send Failed`, the per-vendor shape of the send ledger and the "280 days
+  past its window" runway artifact. None moved. The chip fault is scored
+  under Design, where it was raised, and is not double-counted here.
+- **Everything else holds.** No build this pass; the document is the only
+  thing that changed.
+
+**Recompute: 9 + 9 + 9 + 9 + 9 + 9 + 8 + 8 + 9 = 79.**
+
+**Overall: 79/90 (88%) — unchanged, 79 → 79.** A pass that verified two
+real fixes and moved no cell, because the thing the cell was withheld for
+is not yet true.
+
+Not verified here: the carried jest and Playwright runs (6137 passed /
+1 skipped; 676 passed / 1 flaky). Node 20 is not on this sandbox's path
+and neither suite was run in this pass. Every claim above is a source
+read, not a run.
+
 ## The honest line on "10s across the table"
 
 Nine 10s against Linear, Partiful, Paperless Post and Blink is a
@@ -997,7 +1082,7 @@ multi-sprint product arc, not an overnight loop. The remaining eleven
 points are majors — send beyond the vendor case, day CRUD across a span,
 FLIP across the other ranked lists, cross-channel `Send Failed`, the 1920
 vertical dead band — plus one observation only real strangers can produce
-and one lens that needs to stop contradicting its own count. The day moved
+and one chip that needs to stop contradicting its own count. The day moved
 the table 63.8% → 88% with every point tied to a driven, gated build.
 
 Inflating the remaining cells would break the scoreboard's only value,
@@ -1044,20 +1129,21 @@ yet do what its own label says.
    Less friction, Attention, and DIFM together. (Comms freeze is an Event
    Boss redesign/audit-scoped decision — reopening comms for BUILD is a
    board question first.)
-3. **The `Settled` lens shows nothing — the cheapest point on the table,
-   and the only thing between Design and a 10.** The vendors ruling is now
-   fully shipped (clauses 2, 3, 4/5 in `fd2526c6`; the `.amt` rule, clause
-   6 and the toolbar in `2afd0030`), so this heading has exactly one item
-   left and it is a few lines. Selecting `Settled` puts every card it
-   selects into the settled fold, which defaults shut, so the chip claims N
-   and the sheet shows zero (`HostShellV2.jsx:17245`, `:17261`, `:5365`).
-   Either force `settledVendorsOpen` while that lens is active or drop the
-   fold when a lens is selecting for it. Two further pieces of the same
-   job: the lens counts are computed from the unfiltered array so they go
-   stale the moment a search query is typed, and
-   `hostv2/e2e/vendorDeskPanel.spec.mjs`'s count assertion ran as `0 === 0`
-   on `ev-x-wanda` — seed a settled vendor and red-proof it before trusting
-   it again.
+3. **The `Everyone` chip counts vendors the fold is hiding — the cheapest
+   point on the table, and the only thing between Design and a 10.**
+   Updated by the ninth re-score. The two items this heading previously
+   carried are DONE and were re-checked in the source: the `settled` lens
+   short-circuit (`HostShellV2.jsx:17255`) and the search-filtered counts
+   (`:17198`), both `9e0c96d4`. What is left is the same arithmetic one
+   layer out — `Everyone` counts `all.length` (`:17208`), which includes
+   settled vendors, while the default `all` lens routes those vendors into
+   the collapsed fold (`:17256`), so the chip sits above fewer rows than it
+   claims. Either count the live group, or count the fold's rows in.
+   **Do the seeded fixture FIRST.** `ev-x-wanda` has zero settled vendors,
+   which is why the eighth re-score's `0 === 0` pass and the ninth's
+   `claimed === shown` pass are both accidents of the fixture rather than
+   evidence. This red-proof was named last session, was not done, and is
+   the direct reason the same class shipped twice.
 4. **The 1920 vertical dead band** — the one thing between Modern UI/UX
    and a 10, now that the horizontal dead third is used (clause 6 shipped
    `2afd0030`, measured beside its face and confirmed to reserve nothing
