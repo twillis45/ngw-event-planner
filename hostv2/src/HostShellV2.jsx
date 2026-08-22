@@ -15100,8 +15100,8 @@ export default function HostShellV2() {
                         {st === 'ready' && !v.reconfirmed72 && (
                           <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                             {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(d.body)}>Text them</a>}
-                            <button className="mini" onClick={() => { try { navigator.clipboard.writeText(d.body); toast('Copied — paste it wherever you talk to ' + v.name + '.'); } catch { openDraft('Reconfirm — ' + v.name, d); } }}>Copy the note</button>
-                            <button className="mini" onClick={() => openDraft('Reconfirm — ' + v.name, d)}>Read it first</button>
+                            <button className="mini" onClick={() => { try { navigator.clipboard.writeText(d.body); toast('Copied — paste it wherever you talk to ' + v.name + '.'); } catch { openDraft('Reconfirm — ' + v.name, d, null, { vendorId: v.id }); } }}>Copy the note</button>
+                            <button className="mini" onClick={() => openDraft('Reconfirm — ' + v.name, d, null, { vendorId: v.id })}>Read it first</button>
                           </div>
                         )}
                         {st !== 'answered' && (
@@ -15501,6 +15501,24 @@ export default function HostShellV2() {
                 if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return null;
                 return { to, name: (v && v.name) || 'them' };
               })();
+              // ── WHY THERE IS NO SEND BUTTON (transport board, 2026-08-21) ─
+              // The board measured that 0 of 126 seeded vendors carry an email
+              // -- vendor `contact` holds a person's NAME -- and that only one
+              // draft call site passed a vendorId. So the send this app already
+              // owns rendered on no event at all, and its absence looked like a
+              // missing feature rather than a missing address.
+              //
+              // Silence was the real defect. The control cannot render without
+              // an address (it would 401 or fail), but the host can be told
+              // WHY, and handed the one field that fixes it. The field already
+              // existed on the vendor card; nothing pointed at it.
+              const missingVendorEmail = (() => {
+                if (emailTarget || !sheet.vendorId) return null;
+                if (!isCommApiConfigured() || !session) return null;   // not a send build; say nothing
+                const v = (event.vendors || []).find(x => x && x.id === sheet.vendorId);
+                if (!v) return null;
+                return { id: v.id, name: v.name || 'this vendor', malformed: !!String(v.email || '').trim() };
+              })();
               const sendEmailNow = async () => {
                 if (!emailTarget || sendingEmail) return;
                 setSendingEmail(true);
@@ -15570,6 +15588,23 @@ export default function HostShellV2() {
                   }}>
                     {sendChip}
                   </div>
+                )}
+                {missingVendorEmail && (
+                  /* Says WHY there is no send button, and hands over the field
+                     that fixes it. Not an error and not styled as one -- no
+                     address is the ordinary state of a vendor record, not a
+                     fault. It routes to the vendor's own card, which already
+                     carries the email field with its validation; the gap was
+                     never the intake, it was that nothing pointed at it. */
+                  <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>
+                    {missingVendorEmail.malformed
+                      ? `That address for ${missingVendorEmail.name} doesn't look right, so this can't send yet.`
+                      : `No email for ${missingVendorEmail.name} yet — hand it off below, or add one and you can send it from here.`}
+                    {' '}
+                    <button className="mini rowlink" onClick={() => setSheet({ kind: 'vendors', focus: missingVendorEmail.id, from: { kind: 'draft', title: sheet.title, vendorId: sheet.vendorId } })}>
+                      {missingVendorEmail.malformed ? 'Fix their address' : 'Add their email'}
+                    </button>
+                  </p>
                 )}
                 {/* Voice as a quiet radio-list (was a bordered .chip cluster). When the
                     host edits the text, none is selected and an "your words" note shows. */}
@@ -17669,8 +17704,8 @@ export default function HostShellV2() {
                                   <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0', opacity: .85 }}>
                                     {ask.why}{' '}
                                     <span role="button" tabIndex={0} className="mini rowlink"
-                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile)); }}
-                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile)); } }}>
+                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); }}
+                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); } }}>
                                       Write the ask →
                                     </span>
                                   </p>
@@ -17929,7 +17964,7 @@ export default function HostShellV2() {
                           <div className="pill-grid" style={{ marginTop: 'var(--sp-3)' }}>
                             <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft note</button>
                             {Number(v.cost) > 0 && !v.balancePaid && (
-                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
                             )}
                             {(() => { try {
                               const m = getSuggestedPayMethod(v); if (!m) return null;

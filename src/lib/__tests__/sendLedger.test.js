@@ -226,3 +226,55 @@ describe('replies reach the host, not a void', () => {
     expect(call).toMatch(/\?\s*\{ reply_to[\s\S]{0,40}\}\s*:\s*\{\}/);
   });
 });
+
+describe('the send had no address to send to', () => {
+  // The transport board measured two things that together made the vendor send
+  // unreachable on EVERY event: only 1 of 24 `openDraft` call sites passed a
+  // `vendorId` (and `emailTarget` requires one), and 0 of 126 seeded vendors
+  // carry an email. So the send this product already owns had never rendered
+  // anywhere, and its absence read as a missing feature rather than a missing
+  // address.
+
+  test('every vendor-directed draft tells the sheet WHICH vendor', () => {
+    // A draft that does not know its addressee can never offer a send. These
+    // are the five that did not: reconfirm (x2), arrival-time ask (x2), and
+    // the payment note.
+    const vendorDrafts = [
+      "openDraft('Reconfirm — ' + v.name",
+      "openDraft('Ask ' + v.name + ' for their arrival time'",
+      "openDraft('Payment reminder'",
+      "openDraft('Note to ' + (v.name",
+    ];
+    for (const marker of vendorDrafts) {
+      let from = 0;
+      let seen = 0;
+      for (;;) {
+        const i = SHELL.indexOf(marker, from);
+        if (i < 0) break;
+        seen += 1;
+        // The options object is the 4th argument; look ahead to the call's end.
+        const call = SHELL.slice(i, i + 320);
+        if (!/vendorId:\s*v\.id/.test(call)) {
+          throw new Error(`vendor-directed draft does not pass vendorId: ${marker}`);
+        }
+        from = i + marker.length;
+      }
+      expect(seen).toBeGreaterThan(0);
+    }
+  });
+
+  test('a missing address is EXPLAINED, not silent', () => {
+    // The third state this shipped in for months was nothing at all --
+    // indistinguishable from the feature not existing.
+    expect(SHELL).toMatch(/const missingVendorEmail = \(\(\) => \{/);
+    expect(SHELL).toMatch(/No email for \$\{missingVendorEmail\.name\} yet/);
+    expect(SHELL).toMatch(/Add their email|Fix their address/);
+  });
+
+  test('but stays silent when the host could not send anyway', () => {
+    // Gated on `session`: a signed-out host cannot send, so inviting them to
+    // add an address that still yields no send button would be the worse lie.
+    const fn = fnAfter('const missingVendorEmail = ', 'const sendEmailNow');
+    expect(fn).toMatch(/!isCommApiConfigured\(\)\s*\|\|\s*!session/);
+  });
+});
