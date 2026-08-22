@@ -8,7 +8,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `0f62d4e2` — pushed, tree clean. The parallel session's tween work landed as its own `4d671f75` ("The digit moves with its bar", CI green): the readiness digit — micro motion's last named gap — is DONE |
+| Branch / HEAD | `main` @ `4d10920a` — pushed; CI running on it |
 | Last pushed | `4da9dfde`; `e006f52d` verified green (Checks + Pages) |
 | Jest | **6,137 passed**, 1 skipped, 430 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
@@ -93,6 +93,17 @@ this file is the short answer to "where is it, is it green, what's next."
   (5 workstreams, seasonality-sequenced launch calendar) on the evidence of
   `docs/audits/2026-08-21_SEASONAL_DEMAND_AND_NICHE_RESEARCH.md` (US-scoped,
   amended after the owner caught the missing Oct–Dec hosting arc).
+- **Template line executed to the W2 gate** (evening): seasonal research
+  (US-scoped, Halloween amendment) -> program spec
+  (`products/2026-08-21_TEMPLATE_LINE_PROGRAM_SPEC.md`) -> W3 done (10
+  types, FIVE niche workbooks, QA 75->132, whenChoice gates live in the
+  sheet) -> engine delta audit done (7 stale claims, 5 ranked ports) ->
+  Reunion enriched (`4d10920a`: decisions 5->9, tasks 24->44, all gated,
+  byte-identical local-host invariance) -> template QA re-run 132/132.
+  Two artifacts published (When Hosts Buy; The Template Line). Next in
+  line: W3.5 engine round per the delta audit; PTA/booster playbook;
+  `home_hosted` budget-share family (a home Thanksgiving currently shows
+  Venue/Catering bands). W2 + brand/pricing/funnel/disclosure = Todd.
 - **Three playbooks authored + grounded** (`4da9dfde`, `3c39884e`):
   Thanksgiving Hosting (24 tasks), Halloween Party (22), New Year's Eve (14,
   midnight-anchored ROS as its stated distinctness). Corpus now 44. Eleven
