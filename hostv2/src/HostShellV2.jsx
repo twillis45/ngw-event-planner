@@ -17193,7 +17193,14 @@ export default function HostShellV2() {
                       chip. It renders only when the list is long enough to need
                       it -- a filter over four cards is furniture. */}
                   {(event.vendors || []).length >= 6 && (() => {
-                    const all = (event.vendors || []);
+                    // COUNTED AFTER THE SEARCH, BEFORE THE LENS. Counting the raw
+                    // array made every chip stale the moment the host typed --
+                    // "Settled 4" over a filtered list holding one. Counting
+                    // after the lens too would make each chip show its own
+                    // result as the total, which is just as useless.
+                    const q0 = vendorQ.trim().toLowerCase();
+                    const all = (event.vendors || []).filter(v => v && (!q0
+                      || (String(v.name || '') + ' ' + String(v.category || '')).toLowerCase().includes(q0)));
                     const nSettled = all.filter(v => vendorSettled(v)).length;
                     const nInformal = all.filter(v => v && v.isInformal).length;
                     const LENS = [
@@ -17246,6 +17253,13 @@ export default function HostShellV2() {
                       if (vendorLens === 'informal') return !!v.isInformal;
                       return true;
                     });
+                    // WHEN THE HOST ASKS FOR SETTLED, SHOW THEM. The fold exists
+                    // to keep settled vendors out of the DEFAULT view; running it
+                    // over an explicit "Settled" lens put every matching card
+                    // behind a collapsed fold and rendered a count above an empty
+                    // list. Asking for a thing and being shown nothing is the
+                    // worst answer a filter can give.
+                    if (vendorLens === 'settled') return [all, []];
                     const live = all.filter(v => !vendorSettled(v));
                     const rest = all.filter(v => vendorSettled(v));
                     return [live, rest];

@@ -10,7 +10,7 @@ closed at 63.8%. The table at the top is the CURRENT score; the re-score
 sections below record how each cell got there, and no cell moves without
 a check in the code first.
 
-## Score table — CURRENT (as of `fd2526c6` / `e006f52d`)
+## Score table — CURRENT (as of `4d671f75` / `2afd0030`)
 
 Each row is the score as it stands now; the "remaining gap" column is the
 one specific thing between that dimension and a 10, and is what the next
@@ -20,24 +20,26 @@ in the re-score sections below.
 | Dimension | Bar-setter | Us /10 | Remaining gap to 10 |
 |---|---|---:|---|
 | Workflow | Wanderlog (Partiful on creation) | 9 | Day CRUD: add / move / delete a day inside the programme span (the per-day schema, build-queue item 1). This line previously read "the whole of the distance to 10" and that was wrong — host-assignable ownership was a second absence, unnamed here and now closed (`e006f52d`); see the seventh re-score |
-| Design | Paperless Post / Vercel craft | 9 | The vendors sheet still has no roster toolbar (the second re-score's third named blocker, still untouched). Ruling clauses 2, 3 and 4/5 shipped `fd2526c6` — but clause 2's money column does NOT yet line up: `.vc-amt .amt` matches no rule, because both `.amt` declarations are descendant-scoped to `.line` and `.frow` (`styles.css:1454`, `:1653`). The class is inert where it was placed |
-| Modern UI/UX | Linear | 8 | The on-demand detail panel at >=1200px (vendors ruling item 6) — the desktop dead third is still dead. Second, newly observed: at 1920 roughly a fifth of the viewport below the app frame is dead band (marketing capture, 08-21) |
-| Micro motion | Linear / Family | 8 | The readiness digit still cuts beside a gliding bar — the one remaining visible motion defect, and it sits on the surface a host looks at most. Behind it: `.bline i` / `.bline b` still animate layout (`styles.css:1627`, `:1629`) and `.wxpill{transition:bottom}` (`:2906`). Atom-input parity is now complete; `.mbar i` stays on `width` by a recorded decision and is not a gap |
+| Design | Paperless Post / Vercel craft | 9 | The sheet's four named blockers have all now shipped — clauses 2, 3 and 4/5 (`fd2526c6`), the money rule and the roster toolbar (`2afd0030`) — and the cell still holds, on ONE live fault: the `Settled` lens routes every card it selects into the settled fold, which is shut by default, so the chip claims N and the sheet shows nothing (eighth re-score, falsification). A control that contradicts its own count is not a 10 on the dimension Paperless Post sets. Close that and the argument for 10 is hard to refuse |
+| Modern UI/UX | Linear | 9 | At 1920 roughly a fifth of the viewport below the app frame is still dead band (marketing capture, 08-21). This is NOT the vendors dead third, which is now used — the detail panel shipped `2afd0030`; it is the frame's own vertical footprint, and it is the last unanswered desktop-space question |
+| Micro motion | Linear / Family | 9 | Two layout-animating fills remain — `.bline i` / `.bline b` (`styles.css:1618`, `:1629`) — plus `.wxpill{transition:bottom}` (`:2995`). All three are sub-perceptual next to the digit that closed in `4d671f75`, which is why they hold the cell off 10 rather than off 9. Atom-input parity is complete; `.mbar i` stays on `width` by a recorded decision and is not a gap |
 | Animation | Family / Partiful | 9 | FLIP covers ONE list — "Then, in order". The call-sheet, vendor and checklist lists still cut. No shared element and no view transition anywhere (`startViewTransition` grepped at HEAD: zero), so cross-SURFACE continuity remains unbuilt while within-surface continuity now exists |
 | Attention systems | Blink | 9 | `Send Failed` exists only on the email path (the assigned → `not told yet` → confirmed ladder now extends the not-done model to a PERSON as well as a message — `e006f52d` — but it too has no failure state), so the three-not-dones model is not complete across channels. Two more, newly observed: the send ledger answers "did the asks go out" one vendor at a time where Blink answers it for the whole list, and the checklist can read "280 days past its window" on a wedding 85 days out (a playbook-runway artifact — a false urgency signal is an attention defect) |
 | Ease of use | Evite / Apple HIG | 8 | Run the stranger-proof onboarding test — the score is asserted, not observed |
 | Less friction | Partiful | 8 | Send covers the vendor case only; the other 25 draft generators still exit to the clipboard |
 | DIFM | Joy (breadth) — the set's bar is ours | 9 | Resend webhook proven live so `delivered` can exist, and send beyond the vendor case. The milestone-to-task join is no longer a secondary gap: 123/408 (30.1%) with role-word owners, REJECTED on measurement 2026-08-21 and replaced by roster-sourced host-assignable ownership, which is built (`e006f52d`). `playbookMilestones` / `playbookTasks` still have zero hostv2 imports and that is now the settled answer, not an outstanding item |
 
-**Overall: 77/90 (86%)** — up from 63.8% (07-13 audit) via 67, 70, 72, 73,
-75, 76.
+**Overall: 79/90 (88%)** — up from 63.8% (07-13 audit) via 67, 70, 72, 73,
+75, 76, 77.
 
-Micro motion and animation are no longer the table's pending cells. Both
-were held at 7 awaiting the motion audit
-(`2026-08-21_MOTION_AND_MICRO_INTERACTION_AUDIT.md`); both reached 8 on
-`76cc7a76`, and animation reaches 9 in the sixth re-score below on
-`547919e2`, which built the capability the audit named as the category
-gap. Every cell in this table is scored from a code check at HEAD.
+Seven of the nine cells now sit at 9 and none sits below 8. The table's
+shape has changed with them: the open work is no longer a scatter of
+craft defects but four named majors — send beyond the vendor case, day
+CRUD across a span, FLIP beyond one list, and an observation only real
+strangers can produce. Every cell in this table is scored from a code
+check at HEAD, and the two cells that moved this session moved because
+each closed a capability the score had been carrying as priced-in
+absent, not because a fault got repaired.
 
 ## Post-build re-score (same session, pre-dawn — verified movement only)
 
@@ -182,8 +184,8 @@ What did not move, and why:
 |---|---|---|
 | Workflow | 7 | 9 |
 | Design | 8 | 9 |
-| Modern UI/UX | 7 | 8 |
-| Micro motion | 6 (7 ✎) | 8 |
+| Modern UI/UX | 7 | 9 |
+| Micro motion | 6 (7 ✎) | 9 |
 | Animation | 7 | 9 |
 | Attention | 8 | 9 |
 | Ease of use | 8 | 8 |
@@ -784,23 +786,232 @@ verified, and not one of them a capability the table had priced as absent.
 A session can be entirely worth shipping and move no cell; recording that
 is the only thing that keeps the ones that DO move meaningful.
 
+## Eighth re-score: the digit, the dead third, and a lens that shows nothing
+
+Two commits — `4d671f75` (the readiness digit) and `2afd0030` (vendors
+ruling clause 6 and sequence item 5, plus the `.amt` rule the seventh
+re-score falsified). Four claims were put to the source at HEAD. Three
+verified in full. One verified as built and then FAILED a behavioral read
+of its own code, and that failure is what holds a cell that would
+otherwise have moved.
+
+VERIFIED AS SHIPPED:
+
+1. **The readiness digit travels with its bar** (`4d671f75`). Motion audit
+   finding 10, and the single item this document had named as the whole of
+   what held micro motion at 8. `src/lib/tweenNumber.js` is a pure module —
+   `frameValues(from,to,ms,step)` returns the list a tween would emit so
+   the behavior can be asserted without a clock, and `tweenNumber` plays
+   that list on rAF and returns a cancel. Eleven tests in
+   `src/lib/__tests__/tweenNumber.test.js`. The `TweenNum` component
+   (`HostShellV2.jsx:214-229`) is a component rather than a hook because
+   the value it draws is computed inside a render IIFE where a hook cannot
+   go, and it is wired to `essDone` at `:9214` — the figure sitting
+   directly above the `.bar` whose `--fill` is set on the very next line,
+   which is the point: these are one fact drawn twice and they must not
+   contradict each other on screen. The default `ms` is 700, which is
+   `fill: 700` in `src/design/tokens.js:251` — the bar's own duration, not
+   a second one chosen here. Reduced motion lands on the destination with
+   no frames (`prefersReducedMotion()` short-circuits before the first
+   rAF), correct here for the same reason it was correct for FLIP and
+   wrong for the landing ring: the travel carries no information the final
+   number does not. First render does not tween — counting up from zero on
+   arrival is an entrance, and entrances belong to `rowEnter`. The
+   destination is emitted EXACTLY (`out.push(Math.round(b))`) rather than
+   left to the last eased sample, every frame is `Math.round`ed because
+   "4.3 of 8" is not a state this app may show, and the cancel is returned
+   as the effect's cleanup so two tweens cannot race a stale figure onto
+   one element.
+2. **`.amt` is scoped into the vendor money column** (`2afd0030`) — the
+   seventh re-score's falsification, closed. `.vc-amt .amt` now exists at
+   `styles.css:2626` carrying `tabular-nums`, `font-weight:700`,
+   `white-space:nowrap` and `var(--ink)`, and the reasoning for why the
+   class had to be scoped in is recorded above it at `:2620-2625` rather
+   than left as the confident comment that was wrong. Gated by two tests
+   in `src/lib/__tests__/vendorCardFace.test.js:159-167` — one that the
+   RULE exists, one that it carries tabular-nums. The test earns its place
+   for the reason stated in its own header: placement shows in a
+   screenshot, a missing `font-variant` does not.
+3. **The desktop detail uses the dead third** (clause 6, `2afd0030`). At
+   `min-width:1280` with the rail up, `.vcard.open` becomes
+   `grid-template-columns:minmax(0,1fr) minmax(300px,360px)`
+   (`styles.css:2689-2704`). `.vc-head` and `.vc-chips` take column 1;
+   `.vc-more` takes column 2 with `grid-row:1 / span 9999` and
+   `align-self:start`, a `border-left` and — the detail that matters —
+   `max-height:none; transition:opacity`, because the card's own open
+   animation is a height reveal and a height reveal is the wrong gesture
+   for a column that is beside rather than below. All three are direct
+   children of `.vcard` in the JSX (`HostShellV2.jsx:17282`, `:17361`,
+   `:17373`), so the `>` selectors bind. Attached to its own card rather
+   than floated beside the list, which is both the better answer and the
+   honest one: a pinned panel has to invent a relationship to whichever
+   row you last touched. ON-DEMAND is enforced, not asserted — the rule is
+   scoped to `.vcard.open`, so a shut card is a single column reserving
+   nothing, and `hostv2/e2e/vendorDeskPanel.spec.mjs` measures a closed
+   `.vc-more` at zero HEIGHT and the card's computed
+   `grid-template-columns` as single-track. That second test is the one
+   that stops this becoming the permanent third pane the ruling forbade.
+   Below 1280 the accordion is untouched. Reading order is unchanged, so
+   nothing moves for a screen reader or a keyboard.
+4. **The roster toolbar** (sequence item 5, `2afd0030`). A search field
+   plus lenses — Everyone / Needs you / Settled / Helping, not hired — on
+   the roster's existing `.rtoolbar` grammar rather than a second search
+   idiom (`HostShellV2.jsx:17195-17221`). It renders only at
+   `vendors.length >= 6`, which is right: a filter over four cards is
+   furniture. The structural point is that the lens narrows the SAME array
+   the settled-fold partition reads (`:17240-17250`), so a lens and the
+   fold cannot disagree about which vendors are in play — the class of bug
+   `vendorSettled` was extracted to kill.
+
+FALSIFIED — built, and it does not behave as claimed:
+
+- **"The lens chip's number EQUALS the rows it shows."** Not for the
+  `Settled` lens, and the failure is structural rather than incidental.
+  With `vendorLens === 'settled'` the filter at `:17245` keeps only
+  settled vendors, so the partition immediately below it puts every
+  surviving card in `rest` and leaves `live` empty. `rest` is group index
+  1, and group 1 renders `(gi === 1 && !settledVendorsOpen ? [] : group)`
+  (`:17261`) against a `settledVendorsOpen` that defaults to `false`
+  (`:5365`). Selecting a lens that says "Settled N" therefore shows a fold
+  button and ZERO cards. The lens and the fold do not disagree about the
+  set — that part of the design holds — they disagree about whether the
+  host asked to see it, and the lens is the more recent, more explicit
+  answer.
+
+  The gate does not catch this, and the reason is worth recording because
+  it is this document's own standing lesson in a new costume. The test
+  asserts `after === claimed` after clicking the `Settled` chip. Since the
+  full matrix is reported green, `claimed` must have been 0 on the
+  `ev-x-wanda` seed — so the assertion that carries the whole promise ran
+  as `0 === 0` and proved nothing about a lens with anything in it. A
+  green assertion over an empty set is an absent result, not a passing
+  one. Red-proof it by seeding a settled vendor before trusting it again.
+
+  A second, smaller instance of the same claim: the lens counts are
+  computed from the UNFILTERED `all` (`:17196-17203`) while the rows are
+  filtered by search AND lens (`:17242-17243`). Type a query and every
+  chip's number is stale against the sheet below it. The gate exercises
+  search and lenses in separate tests and never combines them.
+
+NOT CREDITED, checked and confirmed still open:
+
+- Day CRUD across a programme span. Untouched.
+- FLIP still covers `.ef-list` only; `startViewTransition` still zero.
+- `Send Failed` exists only on the email path; send covers 1 of 26 draft
+  generators, and the Resend webhook is unproven, so `delivered` cannot
+  exist.
+- The stranger-proof onboarding test has not been run.
+- Every 1920 frame still leaves roughly a fifth of the viewport dead BELOW
+  the app frame. This is a different finding from the vendors dead third,
+  which is now used, and the two should not be collapsed into one line.
+- `playbookMilestones` / `playbookTasks` still have zero hostv2 imports —
+  rejected on measurement, not pending.
+
+Verification run: jest 6137 passed / 1 skipped across 430 suites; the full
+Playwright matrix 670 passed, zero failures, zero flaky, all eight
+projects.
+
+What moved:
+
+- **Micro motion 8 -> 9.** The hard call, and it turns on whether closing
+  a NAMED gap is capability or repair. It is capability here, on the same
+  reasoning that moved animation in the sixth re-score and by a closer
+  parallel than that precedent needed. The absence was not something the 8
+  failed to notice: the motion audit named it as finding 10, this document
+  named it in the gap column across four consecutive re-scores, and the
+  fifth re-score's closing sentence made it the cell's explicit blocker.
+  The 8 was awarded with the defect fully in view and priced in. And what
+  landed is machinery the app did not possess — there was no number-tween
+  anywhere in the shell, so this is a new pure module plus a new component,
+  not a rule corrected. Every argument the sixth re-score made for FLIP
+  applies unchanged. What keeps it off 10 is genuinely smaller than what
+  it just closed: `.bline i` / `.bline b` animate layout on a
+  two-segment hairline, and `.wxpill` transitions `bottom`. Those were
+  always listed behind the digit, never as blockers, and Linear's bar is
+  not that no property in the sheet animates layout — it is that nothing a
+  host looks at contradicts itself while moving. Nothing now does.
+- **Modern UI/UX 8 -> 9.** The cleanest of the two. The third re-score
+  awarded this 8 and wrote the gap in one sentence: "the dead third at
+  1920 is still dead — the on-demand detail panel (vendors ruling item 6)
+  has not been built." Three subsequent re-scores repeated it verbatim and
+  the ruling sequenced clause 6 as its own session precisely because it
+  was a capability rather than a fault. It is built, it is on-demand in
+  the enforced sense rather than the asserted one, and it answers the
+  spacing read's right-panel pattern that 5 of 5 leaders carry. Not 10:
+  the 1920 vertical dead band below the app frame is untouched, and that
+  is now the whole of the distance.
+
+What did not move, and why:
+
+- **Design holds at 9, and this is the tightest call in the document.**
+  Every blocker the gap column has ever named against this cell is now
+  shipped: clauses 2, 3 and 4/5 in `fd2526c6`, the money rule and the
+  roster toolbar in `2afd0030`. The toolbar is not defect repair either —
+  a search field and counted lenses did not exist on this sheet, the
+  second re-score named the absence, and three re-scores carried it, so
+  the FLIP reasoning would ordinarily award the point. It does not, and
+  the reason is the falsification above rather than a search for one more
+  thing to want. A lens labeled "Settled 3" that shows an empty list is
+  not an unfinished feature, it is a control that contradicts its own
+  number in front of the host — the exact failure the gate's own comment
+  calls out as worse than having no lens, because a host who catches one
+  false count stops trusting the others. A capability that ships broken on
+  one of its four controls cannot buy the last point on the dimension
+  Paperless Post and Vercel set, where the whole claim is that nothing on
+  screen is wrong. Fix the lens/fold interaction and the argument for 10
+  becomes hard to refuse; that is now the shortest gap line in the table
+  and the cheapest point left anywhere on it.
+- **Workflow holds at 9.** Nothing this session touched day CRUD.
+- **Animation holds at 9.** The digit tween is a number agreeing with a
+  bar, which is micro motion's business — continuity between two drawings
+  of one value on one surface, not continuity of an object across a
+  change. FLIP still covers one list, and there is still no shared element
+  and no view transition.
+- **Attention holds at 9.** Nothing touched cross-channel `Send Failed`,
+  the per-vendor shape of the send ledger, or the "280 days past its
+  window" runway artifact.
+- **DIFM holds at 9.** The stated gap is sending. The webhook is still
+  unproven and 25 of 26 generators still exit to the clipboard.
+- **Less friction holds at 8.** The toolbar removes hunting cost inside
+  one sheet, which is real, but the dimension's gap is the OUTLET and it
+  did not move.
+- **Ease of use holds at 8.** The stranger test has not been run. This
+  cell cannot move on a build at all — it is the one score in the table
+  that is asserted rather than observed, and only strangers close it.
+
+Line references corrected against HEAD: `.bline i` is at `styles.css:1618`,
+not `:1627`; `.wxpill{transition:bottom}` is at `:2995`, not `:2906` — the
+`:2906` correction the sixth re-score made was itself already stale by the
+time this section read it, which is the argument for re-grepping every
+cited line rather than carrying one forward.
+
+**Recompute: 9 + 9 + 9 + 9 + 9 + 9 + 8 + 8 + 9 = 79.**
+
+**Overall now: 79/90 (88%)** — 77 -> 79, two points: micro motion and
+modern UI/UX, each on a capability the table had priced as absent.
+
 ## The honest line on "10s across the table"
 
 Nine 10s against Linear, Partiful, Paperless Post and Blink is a
-multi-sprint product arc, not an overnight loop: the remaining points
-are majors (send beyond the vendor case, day CRUD, the on-demand detail
-panel, the vendors ruling's remaining four items, FLIP across the other
-ranked lists) plus one observation only real strangers can produce. The
-day moved the table 63.8% → 86% with every point tied to a driven, gated
-build. Inflating the remaining cells would break the scoreboard's only
-value, which is that it is true — which is why the two motion cells
-moved one point each and not two when the motion audit landed, why the
-coverage-and-reconcile session moved exactly one cell out of nine, and
-why this session moved one as well: four shipped items, of which exactly
-one built a capability the table had priced as absent. The other three
-repaired defects the scores already implicitly claimed we did not have,
-including a door that three re-scores had credited as driven while it
-had never rendered on a single event a host could open.
+multi-sprint product arc, not an overnight loop. The remaining eleven
+points are majors — send beyond the vendor case, day CRUD across a span,
+FLIP across the other ranked lists, cross-channel `Send Failed`, the 1920
+vertical dead band — plus one observation only real strangers can produce
+and one lens that needs to stop contradicting its own count. The day moved
+the table 63.8% → 88% with every point tied to a driven, gated build.
+
+Inflating the remaining cells would break the scoreboard's only value,
+which is that it is true. That is why the two motion cells moved one point
+each and not two when the motion audit landed, why the
+coverage-and-reconcile session moved exactly one cell out of nine, why the
+seventh re-score shipped six items and moved nothing at all, and why this
+one moved two out of nine on four shipped items: two of the four built
+capabilities the table had priced as absent, and two repaired faults the
+scores already implicitly claimed we did not have. The rule has now cut in
+both directions often enough to be load-bearing rather than rhetorical —
+including once against a session that closed every named blocker on a cell
+and still did not earn its point, because the last thing it built does not
+yet do what its own label says.
 
 ## ✎ Corrections to the auditor's report (checked at HEAD)
 
@@ -833,30 +1044,37 @@ had never rendered on a single event a host could open.
    Less friction, Attention, and DIFM together. (Comms freeze is an Event
    Boss redesign/audit-scoped decision — reopening comms for BUILD is a
    board question first.)
-3. **Vendors ruling items 2, 3 and 5 — SHIPPED `fd2526c6`**, all three
-   red-proofed and gated, and Design did not move (seventh re-score: they
-   are repairs inside a capability the 9 already claimed). Two things
-   remain under this heading and they are both small. **One CSS rule:**
-   `.vc-amt .amt` matches nothing, because every `.amt` declaration is
-   descendant-scoped to `.line` or `.frow` — so the vendor money column is
-   positioned but not tabular, and the comment at `styles.css:2617` asserts
-   an alignment that is not in force. **The roster toolbar**, named by the
-   second re-score and never worked. Still the cheapest points left.
-4. **The desktop detail panel** — the dead third at 1920 (vendors ruling
-   item 6), permitted by the standing ruling; also answers the spacing
-   read's right-panel pattern (5/5 leaders), and is the one thing between
-   Modern UI/UX and a 10.
+3. **The `Settled` lens shows nothing — the cheapest point on the table,
+   and the only thing between Design and a 10.** The vendors ruling is now
+   fully shipped (clauses 2, 3, 4/5 in `fd2526c6`; the `.amt` rule, clause
+   6 and the toolbar in `2afd0030`), so this heading has exactly one item
+   left and it is a few lines. Selecting `Settled` puts every card it
+   selects into the settled fold, which defaults shut, so the chip claims N
+   and the sheet shows zero (`HostShellV2.jsx:17245`, `:17261`, `:5365`).
+   Either force `settledVendorsOpen` while that lens is active or drop the
+   fold when a lens is selecting for it. Two further pieces of the same
+   job: the lens counts are computed from the unfiltered array so they go
+   stale the moment a search query is typed, and
+   `hostv2/e2e/vendorDeskPanel.spec.mjs`'s count assertion ran as `0 === 0`
+   on `ev-x-wanda` — seed a settled vendor and red-proof it before trusting
+   it again.
+4. **The 1920 vertical dead band** — the one thing between Modern UI/UX
+   and a 10, now that the horizontal dead third is used (clause 6 shipped
+   `2afd0030`, measured beside its face and confirmed to reserve nothing
+   when shut). Roughly a fifth of the viewport below the app frame does
+   nothing at 1920. Do not conflate the two; they are separate findings
+   with separate answers.
 5. **Stranger-proof onboarding test** — not a build, the observation that
    grounds Ease-of-use's 8 (also stage-9 precondition 3).
 6. **The motion continuity remainder** — nearly closed. The audit landed,
    `76cc7a76` worked six of eight shortlist items, `ae2c99da` gated the
    `cardin` stagger to arrival, and `547919e2` built FLIP, closed
    finding 17's focus parity and folded the last three literals into
-   `rowEnter` (zero left, 18 call sites). Animation is at 9. What
-   remains is short: the readiness digit tweened with its bar — the one
-   visible motion defect left, and the whole of what holds micro motion
-   at 8; `.bline i` / `.bline b` (`styles.css:1627`, `:1629`) off
-   layout; and `.wxpill{transition:bottom}` (`:2906`). `.mbar i` is
+   `rowEnter` (zero left, 18 call sites), and `4d671f75` tweened the
+   readiness digit with its bar. Animation and micro motion are both at 9.
+   What remains under this heading is sub-perceptual: `.bline i` /
+   `.bline b` (`styles.css:1618`, `:1629`) off layout, and
+   `.wxpill{transition:bottom}` (`:2995`). `.mbar i` is
    settled — it stays on `width` by a decision recorded in place, and
    should not be re-opened. Beyond that, FLIP's coverage: it is wired to
    `.ef-list` only, and the call-sheet, vendor and checklist lists still
@@ -871,7 +1089,7 @@ had never rendered on a single event a host could open.
    treated as unproven until driven on this seed.
 8. **Three findings from the marketing capture**, recorded so they are
    not lost: the 1920 frame leaves roughly a fifth of the viewport dead
-   below it; the checklist can read "280 days past its window" on a
+   below it (still open, and now item 4 above); the checklist can read "280 days past its window" on a
    wedding 85 days out, which is a playbook-runway artifact producing
    false urgency; and the send ledger answers "did the asks go out" one
    vendor at a time where Blink answers it for the whole list. The first

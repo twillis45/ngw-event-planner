@@ -87,16 +87,35 @@ test.describe('the vendor toolbar', () => {
     if (!(await bar.count())) test.skip(true, 'fewer than 6 vendors — the toolbar is deliberately absent');
 
     const before = await page.locator('.vcard').count();
-    const chip = bar.locator('.chip', { hasText: /Settled/ }).first();
-    const claimed = parseInt(((await chip.innerText()).match(/(\d+)\s*$/) || [])[1], 10);
-    await chip.click();
-    await settled(page);
-    const after = await page.locator('.vcard').count();
 
-    // THE CHIP'S NUMBER IS A PROMISE. A lens that says 3 and shows 5 is worse
-    // than no lens, because the host stops trusting every other count too.
-    expect(after).toBe(claimed);
-    expect(after).toBeLessThanOrEqual(before);
+    // EVERY lens with a count, not one chosen lens. The first version tested
+    // "Settled" alone and ran vacuously: that chip read 0 on this event, so
+    // `after === claimed` was `0 === 0` and passed green while selecting it
+    // rendered a fold button above an EMPTY list -- the lens filtered to
+    // settled vendors and the partition then hid all of them in the collapsed
+    // group. The host asked for a thing and was shown nothing.
+    //
+    // Walking the lenses means a fixture without settled vendors exercises the
+    // promise through the lenses it does have, and a count of zero can never be
+    // the whole evidence again.
+    const chips = bar.locator('.chip');
+    const n = await chips.count();
+    expect(n).toBeGreaterThan(1);
+    let tested = 0;
+    for (let i = 0; i < n; i++) {
+      const label = await chips.nth(i).innerText();
+      const claimed = parseInt((label.match(/(\d+)\s*$/) || [])[1], 10);
+      if (!Number.isFinite(claimed) || claimed === 0) continue;   // nothing to promise
+      await chips.nth(i).click();
+      await settled(page);
+      const after = await page.locator('.vcard').count();
+      // THE CHIP'S NUMBER IS A PROMISE. A lens that says 3 and shows 5 is worse
+      // than no lens, because the host stops trusting every other count too.
+      expect(after, `"${label.trim()}" showed ${after} rows`).toBe(claimed);
+      expect(after).toBeLessThanOrEqual(before);
+      tested += 1;
+    }
+    expect(tested, 'every lens read zero — nothing was actually tested').toBeGreaterThan(0);
   });
 
   test('search narrows by name, and clearing restores', async ({ page }) => {
@@ -116,4 +135,22 @@ test.describe('the vendor toolbar', () => {
     await settled(page);
     expect(await page.locator('.vcard').count()).toBe(all);
   });
+});
+
+test('a lens and a search together keep the chips honest', async ({ page }) => {
+  // The gate tested search and lenses SEPARATELY and never combined them, which
+  // is how counts drawn from the unfiltered array survived: type a query and
+  // every chip was still quoting the whole list.
+  await boot(page);
+  const bar = page.locator('.rtoolbar').last();
+  if (!(await bar.count())) test.skip(true, 'fewer than 6 vendors');
+
+  const firstName = (await page.locator('.vcard .vc-name').first().innerText()).trim().split(/\s+/)[0];
+  await bar.locator('.rtool-q').fill(firstName);
+  await settled(page);
+
+  const shown = await page.locator('.vcard').count();
+  const everyone = bar.locator('.chip', { hasText: /Everyone/ }).first();
+  const claimed = parseInt(((await everyone.innerText()).match(/(\d+)\s*$/) || [])[1], 10);
+  expect(claimed, 'the Everyone chip still quotes the unfiltered list').toBe(shown);
 });
