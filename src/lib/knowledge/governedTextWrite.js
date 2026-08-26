@@ -14,7 +14,7 @@
 // a non-empty note. `canReachCited` would be true. The suite would be green.
 //
 // THE CLAIM NOTE IS HOST-FACING GOVERNED TEXT. It is the sentence a host reads under
-// "Sourced -". A silent partial write to it is the exact defect class this programme
+// "Sourced -". A silent partial write to it is the exact defect class this program
 // exists to prevent: correct at every machine checkpoint, wrong in the thing a person
 // reads.
 //

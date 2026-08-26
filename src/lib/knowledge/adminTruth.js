@@ -115,7 +115,7 @@ export function recommendationFacts(assetId, purchaseId, event) {
 
   // ROUTE TRUTH — descriptor and resolver output are shown separately on purpose.
   // A descriptor that looks fine can still resolve to a landing with no focus, which
-  // is exactly the dead-CTA defect this programme found live.
+  // is exactly the dead-CTA defect this program found live.
   const na = rec.nextAction;
   if (!na) {
     rows.push(['next action', 'iceRecommendation().nextAction', 'null — state is Recommended', 'suppressed']);

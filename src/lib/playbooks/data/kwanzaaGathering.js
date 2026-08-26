@@ -154,7 +154,7 @@ const kwanzaaGathering = {
       { when: 'T0 +45m', what: 'The meal: blessing, then serve, elders first' },
       { when: 'T0 +1:45', what: 'Sharing — the children speak too' },
       { when: 'T0 +2:35', what: 'Music, and any gifts made by hand' },
-      { when: 'T0 +3:30', what: 'Close: thanks, and the plates for anyone travelling' },
+      { when: 'T0 +3:30', what: 'Close: thanks, and the plates for anyone traveling' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep hot dishes warm and cold sides chilled; bag bottles/cans for recycling as you go' },

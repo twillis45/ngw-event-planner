@@ -86,7 +86,7 @@ describe('route truth is shown as descriptor AND resolver output', () => {
   });
 
   test('a NON-actionable landing is labelled as such, never as a working CTA', () => {
-    // The dead-CTA defect this programme found live: a descriptor that looks fine
+    // The dead-CTA defect this program found live: a descriptor that looks fine
     // resolving to a landing with no focus.
     const { rows } = recommendationFacts('Birthday', 'p_ice', EV('Birthday'));
     expect(val(rows, 'intended route')).toMatch(/null/);

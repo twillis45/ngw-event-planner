@@ -407,7 +407,7 @@ export function parseSmartEventText(text, opts = {}) {
   // location. But the destination flag does not need a state: it needs to know
   // the place is not home. Captured for that comparison only; it never becomes
   // venueCity.
-  const awayM = t.match(/\b(?:trip|getaway|retreat|flying|driving|heading|going|traveling|travelling)\s+(?:up\s+|down\s+|out\s+|back\s+|over\s+)?to\s+([A-Z][\w.'’-]+(?:\s+[A-Z][\w.'’-]+){0,2})\b/);
+  const awayM = t.match(/\b(?:trip|getaway|retreat|flying|driving|heading|going|traveling|traveling)\s+(?:up\s+|down\s+|out\s+|back\s+|over\s+)?to\s+([A-Z][\w.'’-]+(?:\s+[A-Z][\w.'’-]+){0,2})\b/);
   const awayPlace = awayM ? awayM[1].trim() : '';
 
   // WEAK signal — a city was parsed at all. On its own this over-fires: a

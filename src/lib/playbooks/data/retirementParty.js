@@ -102,7 +102,7 @@ const retirementParty = {
     // booked room or a rental order does not close itself.
     { id: 'rp_photos_out', name: 'Send the photos and the slideshow to everyone, including the people who could not come', offsetDays: -3, owner: 'host', dependsOn: ['event'], category: 'photo', risk: { ifDelayed: 'Guests\' phone photos scatter and are never collected; the far-away coworkers and family who missed the night never see any of it', severity: 'med' } },
     { id: 'rp_book_out', name: 'Finish the memory book and put it in the honoree\'s hands', offsetDays: -7, owner: 'host', dependsOn: ['event'], category: 'memory', risk: { ifDelayed: 'A half-filled book stays in a bag in the host\'s closet — the one thing the honoree was actually going to keep', severity: 'med' } },
-    { id: 'rp_thanks', name: 'Thank the speakers, the surprise guest, and anyone who travelled', offsetDays: -4, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'The people who wrote a speech or bought a plane ticket hear nothing back', severity: 'med' } },
+    { id: 'rp_thanks', name: 'Thank the speakers, the surprise guest, and anyone who traveled', offsetDays: -4, owner: 'host', dependsOn: ['event'], category: 'guest', risk: { ifDelayed: 'The people who wrote a speech or bought a plane ticket hear nothing back', severity: 'med' } },
     { id: 'rp_settle', name: 'Settle up with the venue, the caterer, and the rental company', offsetDays: -5, owner: 'host', dependsOn: ['event'], category: 'payment', risk: { ifDelayed: 'Late-return fees on rentals, a damage deposit held, and a caterer balance that grows a chasing fee', severity: 'high' } },
   ],
 

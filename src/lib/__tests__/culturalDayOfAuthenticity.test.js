@@ -1,7 +1,7 @@
 // ─── A DAY-OF PROGRAM CAN BE THE RIGHT LENGTH AND THE WRONG THING ───────────
 //
 // `dayModelAudit.test.js:29` requires every playbook to carry at least six
-// programme beats. That ratchet enforces COUNT. Nothing enforces that the beats
+// program beats. That ratchet enforces COUNT. Nothing enforces that the beats
 // are the ones this tradition actually has, and for culturally-specific
 // playbooks that distinction is the whole risk.
 //
@@ -17,7 +17,7 @@
 //
 // WHY THIS FILE EXISTS AT ALL (2026-08-16). A census counted day-of coverage by
 // reading `tasks[].phase` and reported that 26 of 39 playbooks — the Black and
-// immigrant ones prominent among them — had NO day-of programme and abandoned
+// immigrant ones prominent among them — had NO day-of program and abandoned
 // the host at the door. It was false. Day-of lives in `schedules.program`, every
 // playbook has one, and the gift-opening/toast/elders-first beats it called
 // missing were all authored. The danger was not the wrong number: it was that
@@ -27,7 +27,7 @@
 // So this pins the insider vocabulary already present, verbatim, per playbook.
 // Every marker below was read out of the corpus, not invented for the test.
 //
-// RED-PROOF: replace any listed programme with six generic beats ("Doors open",
+// RED-PROOF: replace any listed program with six generic beats ("Doors open",
 // "Food out", "Dessert", "Wind down"...). `dayModelAudit` stays green; this goes
 // red and names the playbook and the missing marker.
 //
@@ -36,7 +36,7 @@
 // pan-Ethiopian-only coffee ceremony are open questions no test can settle.
 import { ALL_PLAYBOOKS } from '../playbooks';
 
-// Each entry: markers that MUST appear somewhere in the programme text.
+// Each entry: markers that MUST appear somewhere in the program text.
 // A marker is a list of alternatives — any one satisfies it — because the
 // corpus legitimately words things more than one way, and a gate that demands
 // one exact phrasing would block honest editing instead of blocking flattening.
@@ -109,7 +109,7 @@ const REQUIRED = {
 const programText = (pb) => (((pb.schedules && pb.schedules.program) || [])
   .map((b) => String(b.what || '')).join(' • ').toLowerCase());
 
-describe('culturally-specific day-of programmes keep their own vocabulary', () => {
+describe('culturally-specific day-of programs keep their own vocabulary', () => {
   test('every named playbook still exists — the gate cannot pass by absence', () => {
     // If a playbook is renamed or dropped, REQUIRED silently stops guarding it
     // and this file goes quietly green while protecting nothing. That failure
@@ -121,7 +121,7 @@ describe('culturally-specific day-of programmes keep their own vocabulary', () =
   test.each(Object.keys(REQUIRED))('%s keeps its insider markers', (type) => {
     const pb = ALL_PLAYBOOKS.find((p) => p.type === type);
     const text = programText(pb);
-    // Premise: the programme is non-trivial. A one-beat programme could pass a
+    // Premise: the program is non-trivial. A one-beat program could pass a
     // lenient marker check by accident.
     expect(((pb.schedules && pb.schedules.program) || []).length).toBeGreaterThanOrEqual(6);
     const absent = REQUIRED[type]

@@ -142,7 +142,7 @@ const BORROWED_PLAYBOOK = {
   // the follow-up that is the point), and the Wedding borrow carried the venue,
   // caterer, AV and run of show correctly while having no model whatsoever for
   // the revenue side that is the entire reason a gala exists.
-  'Wellness Retreat':   ['Team Retreat', 'multi-day, off-site, lodging and a daily programme — a retreat is a retreat'],
+  'Wellness Retreat':   ['Team Retreat', 'multi-day, off-site, lodging and a daily program — a retreat is a retreat'],
 };
 
 /**
@@ -845,7 +845,7 @@ const DESTINATION_DECISIONS = [
 //   dest_transport   decided by ARRIVAL. The row's own rationale is "the late-night
 //                    ride back from the venue", which needs guests who came from
 //                    somewhere. Not a staycation question.
-//   dest_travelmix   only sensible when someone is travelling in.
+//   dest_travelmix   only sensible when someone is traveling in.
 //   dest_health      altitude and long active days — travel-specific.
 //   dest_childcare   rides with the travel set (kids ALSO gated by whenKids).
 //

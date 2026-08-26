@@ -1,5 +1,5 @@
 // The multi-day arc used to be gated on `ev.type === 'Reunion'`, so 38 of 39
-// playbooks produced no programme at all. The gate is now the SPAN.
+// playbooks produced no program at all. The gate is now the SPAN.
 import { guestItinerary } from '../itinerary';
 
 const noPlaybook = () => null;

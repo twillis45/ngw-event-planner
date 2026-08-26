@@ -62,7 +62,7 @@ export function lineState(assetId, purchase, publishedKeys, governedProvenance =
   // ice records: `grounded` stayed at 38 and `reviewed` went 1 -> 4, so the three lines
   // governance had just fixed were counted as "published here, does not ground".
   //
-  // The inventory was doing the thing this whole programme exists to prevent: reporting
+  // The inventory was doing the thing this whole program exists to prevent: reporting
   // something other than what the runtime serves. `reviewed` is a real state — a value
   // correction with no provenance — but it must not absorb lines that DO ground.
   const prov = governedProvenance || purchase.provenance;
@@ -75,7 +75,7 @@ export function lineState(assetId, purchase, publishedKeys, governedProvenance =
   // alone, so a line whose PRICE is cited to registered cost sources — which a host
   // sees badged as "Price directly sourced" — was reported here as not directly
   // cited, and fell through to `reviewed` or `ambiguous`. The inventory was doing
-  // the exact thing its own comment above says this programme exists to prevent:
+  // the exact thing its own comment above says this program exists to prevent:
   // reporting something other than what the runtime serves.
   //
   // Reads the cost block first and the shared slot second, matching classifyClaim,

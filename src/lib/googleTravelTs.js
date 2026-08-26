@@ -61,7 +61,7 @@
 // anyway would restore the original bug in a form that LOOKS fixed: the URL
 // would carry the host's dates while the page showed someone else's. So a stay
 // that has already started returns null, the door opens without a `ts`, and the
-// caller must not claim the dates travelled.
+// caller must not claim the dates traveled.
 //
 // Returning null is the honest failure here, and every guard below returns it
 // rather than a best-effort string.

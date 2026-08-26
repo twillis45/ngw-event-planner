@@ -3,7 +3,7 @@
 // The spine in Figma 110:60 / 524:60 (Setup · Doors · Dinner · Toast · Send-off)
 // could not be built until 2026-07-28, because three of its five phases had no
 // data behind them: no playbook authored the event itself. Now every type
-// carries 6-9 programme beats, so the phases are a real projection of real rows.
+// carries 6-9 program beats, so the phases are a real projection of real rows.
 //
 // DOCTRINE:
 //   · A phase is DERIVED from the row's kind and its offset from the anchor.
@@ -106,7 +106,7 @@ export function dayPhases(rows, anchorMin, doneMap) {
 }
 
 /**
- * The programme: the spine repeated PER DAY across a multi-day span.
+ * The program: the spine repeated PER DAY across a multi-day span.
  *
  * This is what dayPhases could never express. It groups rows by their own day
  * first, then phases each day on its OWN clock, so Setup/Doors/The event/

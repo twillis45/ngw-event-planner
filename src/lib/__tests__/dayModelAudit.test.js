@@ -26,7 +26,7 @@ const offsetsFor = (pb) => {
 };
 
 describe('every playbook covers a whole day', () => {
-  test('a programme of at least six beats', () => {
+  test('a program of at least six beats', () => {
     const bad = ALL_PLAYBOOKS
       .filter((pb) => (((pb.schedules && pb.schedules.program) || []).length < 6))
       .map((pb) => `${pb.label || pb.id}: ${((pb.schedules && pb.schedules.program) || []).length}`);

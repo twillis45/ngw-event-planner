@@ -7,7 +7,7 @@
 //   predicate     -> wouldGround = false
 //   host output   -> qtyGrounded=false, no Sourced line, sources STILL listed
 //
-// A record that lists sources and cannot ground is the exact failure this programme
+// A record that lists sources and cannot ground is the exact failure this program
 // exists to prevent. `groundingHonesty` now blocks new ones at the publish gate — but
 // a gate only guards the door. This guards the ROOM: it asserts the same property over
 // the corpus that is actually committed, so a record that arrives by any other route

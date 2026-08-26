@@ -90,7 +90,7 @@ function structuralArc(ev, days) {
   const rows = [{
     day: 1, slot: 'evening', anchor: true,
     title: 'Everyone arrives',
-    note: days > 1 ? 'keep the first night easy — people are travelling' : null,
+    note: days > 1 ? 'keep the first night easy — people are traveling' : null,
   }];
 
   let mainDay = null;
@@ -214,7 +214,7 @@ export function guestItinerary(event, getPlaybook) {
   // 3 · a PROPOSED arc for any event that actually spans days.
   //
   // This used to read `ev.type === 'Reunion'` and nothing else, so 38 of 39
-  // playbooks produced no programme at all: a five-day destination birthday came
+  // playbooks produced no program at all: a five-day destination birthday came
   // back `relevant: false` and the host saw nothing. The gate is now the SPAN,
   // not the type — if an event runs multiple days it has an arc, because arriving,
   // gathering and leaving are properties of a span rather than facts about

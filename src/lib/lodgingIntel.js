@@ -1363,7 +1363,7 @@ export function suggestedMustHaves(event) {
   }
   // TRAVELLING IN — cars have to land somewhere.
   if (ev.isDestination || guests >= 8) {
-    add('parking', `${guests >= 8 ? 'A group this size' : 'People travelling in'} arrives in several cars, and a one-car driveway becomes the neighbours' problem.`, 'airbnb-disturbance');
+    add('parking', `${guests >= 8 ? 'A group this size' : 'People traveling in'} arrives in several cars, and a one-car driveway becomes the neighbours' problem.`, 'airbnb-disturbance');
   }
   return out;
 }

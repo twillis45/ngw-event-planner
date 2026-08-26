@@ -58,7 +58,7 @@ export const CORRECTION_TRIGGER = 'validation';
  * gate and NOT ONE STEP FURTHER. It exists because correctPublishedKCR records
  * all three approvals itself and publishes in one call — correct for a scripted
  * correction, but wiring it to a button would auto-approve and bypass the human
- * review this whole programme depends on.
+ * review this whole program depends on.
  *
  * So the button opens a correction; a reviewer approves it; a publisher publishes
  * it. Same gates as any other knowledge change, because a correction that could

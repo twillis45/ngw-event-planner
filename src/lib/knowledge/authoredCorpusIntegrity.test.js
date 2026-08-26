@@ -17,7 +17,7 @@
 //
 // WHY THIS FILE PINS RATHER THAN DEMANDS ZERO. Repairing those lines means editing
 // playbook data by hand — which is exactly what the Acquisition workflow exists to
-// replace, and what this programme forbids. So the gate makes the number a RATCHET:
+// replace, and what this program forbids. So the gate makes the number a RATCHET:
 // the known offenders are named, and any NEW one fails. The list may shrink as
 // corrections are published through governance. It may never grow.
 //

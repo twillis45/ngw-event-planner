@@ -505,7 +505,7 @@ const reunion = {
       { when: 'T0 +5m', what: 'Registration table opens: name tags, sign-in, contact updates' },
       { when: 'T0 +45m', what: 'The group photo — do it early while everyone’s here and clean' },
       { when: 'T0 +1:15', what: 'Blessing, then the meal; elders and small kids first' },
-      { when: 'T0 +2h', what: 'The programme: welcome, oldest and youngest present, anyone we lost this year' },
+      { when: 'T0 +2h', what: 'The program: welcome, oldest and youngest present, anyone we lost this year' },
       { when: 'T0 +2:30', what: 'Games and the spades table; kids’ activities running in parallel' },
       { when: 'T0 +3:30', what: 'Dessert and the last of the visiting' },
       { when: 'T0 +4:05', what: 'Send-off: to-go plates, confirm the next reunion’s host' },

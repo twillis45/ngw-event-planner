@@ -211,7 +211,7 @@ describe('every governed field moves host output', () => {
 describe('CHANNEL_PRICED_PURCHASES matches the data', () => {
   test('the id fallback equals the set of purchases that actually author sourcingPrices', () => {
     // The publish gate resolves a field path, not a playbook, so it falls back to an
-    // id list. An id list is a DECLARATION, and this programme has been burned by
+    // id list. An id list is a DECLARATION, and this program has been burned by
     // declarations agreeing with each other - so it is pinned to the data here and
     // to OUTPUT by the sweep above.
     const actual = new Set();

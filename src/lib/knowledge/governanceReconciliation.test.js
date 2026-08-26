@@ -168,7 +168,7 @@ describe('recommendations are derived from checkable facts only', () => {
 
   test('a CLEAN record is NOT auto-promoted — it needs a human', () => {
     // The most important assertion in this file. Nothing here may conclude that a
-    // source's scope reaches an event; that is the judgement the programme protects.
+    // source's scope reaches an event; that is the judgement the program protects.
     const clean = [rec('Reunion', 'p_ice.provenance', prov('researched', ['reddy-ice-2026']), {
       currentValue: null, evidence: [{ id: 'reddy-ice-2026' }],
     })];

@@ -11,7 +11,7 @@
 // $16.43 a case in Illinois against $33.62 in Alaska (105%), wine averages
 // $10.97 in Massachusetts against $15.51 in Mississippi (41%). So the corpus can
 // be simultaneously well-cited and materially wrong for a given host, which is
-// the exact failure the whole grounding programme exists to prevent.
+// the exact failure the whole grounding program exists to prevent.
 //
 // ── WHY THERE IS NO BLANKET MULTIPLIER HERE ─────────────────────────────────
 //

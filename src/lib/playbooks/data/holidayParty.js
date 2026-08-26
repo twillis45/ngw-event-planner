@@ -185,7 +185,7 @@ const holidayParty = {
     program: [
       { when: 'T0 +5m', what: 'Doors: coats, first drink, music on' },
       { when: 'T0 +45m', what: 'Food out — buffet keeps the room moving better than a seated meal' },
-      { when: 'T0 +1:30', what: 'The programme: the toast, the thanks, any awards' },
+      { when: 'T0 +1:30', what: 'The program: the toast, the thanks, any awards' },
       { when: 'T0 +2h', what: 'Gift exchange if you’re doing one — set the rules before you start' },
       { when: 'T0 +2:45', what: 'Dessert and coffee' },
       { when: 'T0 +3:35', what: 'Music and the floor' },

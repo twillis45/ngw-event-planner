@@ -127,7 +127,7 @@ const graduation = {
       { when: 'T0 +1:45', what: 'The toast: parents, then anyone who wants to say something short' },
       { when: 'T0 +2:15', what: 'Cake, and open the cards where people can see' },
       { when: 'T0 +3h', what: 'The hang; the grad’s friends will separate from the adults, let them' },
-      { when: 'T0 +4:05', what: 'Wind down, to-go plates, thank the people who travelled' },
+      { when: 'T0 +4:05', what: 'Wind down, to-go plates, thank the people who traveled' },
     ],
     cleanup: [
       { when: 'during', what: 'Replenish buffet in waves; collect cards/gifts to the card box' },

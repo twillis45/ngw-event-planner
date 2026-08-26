@@ -4,7 +4,7 @@
 //
 // It sorts the backlog by WHAT KIND OF WORK a line needs — is there a source to cite at
 // all? It never concludes that a value is right, that a source's scope reaches an event,
-// or that a line is ready to publish. Those are the judgements the whole programme
+// or that a line is ready to publish. Those are the judgements the whole program
 // exists to keep human, and there is a test asserting this module cannot express them.
 //
 //   Type A  an approved source exists on this subject      -> safe review workflow

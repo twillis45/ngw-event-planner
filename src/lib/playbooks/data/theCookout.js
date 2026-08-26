@@ -221,13 +221,13 @@ const theCookout = {
       // including the elders", and the beat above only sets SERVICE ORDER.
       // Ordering the line first is not the same act as somebody fixing a plate
       // and walking it over to a person who is already sitting down. The
-      // programme had the order and not the act.
+      // program had the order and not the act.
       { when: 'T0 +55m', what: 'Fix plates for the elders who are already seated and carry them over — the people who should be sitting do not stand in the line' },
       { when: 'T0 +1:30', what: 'Main service: sides out, keep the grill going for second rounds' },
       { when: 'T0 +2:15', what: 'Spades table and the music turns up' },
       // The header names "a section for grown folks" and `dayParty.js` is built
       // entirely on that idea, so the shift is already this corpus's own
-      // vocabulary — the programme just never marked the moment it happens.
+      // vocabulary — the program just never marked the moment it happens.
       { when: 'T0 +2:45', what: 'The music turns over to the grown-folks set as the afternoon goes' },
       { when: 'T0 +3h', what: 'Dessert and the last round off the grill' },
       { when: 'T0 +4h', what: 'Wind down: to-go plates, kill the coals safely' },

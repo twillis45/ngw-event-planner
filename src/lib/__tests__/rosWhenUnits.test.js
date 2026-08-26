@@ -123,13 +123,13 @@ describe('no playbook can author a nameless day-of cue', () => {
 // Setup ran to the anchor, cleanup began at T0+4h, and NOTHING covered the hours
 // between — the event. `program` is now a first-class schedule key and every
 // playbook authors its beats. This is a RATCHET: the allowlist below is empty
-// and must stay empty. A new event type ships with its programme or this fails.
+// and must stay empty. A new event type ships with its program or this fails.
 describe('every playbook covers the event itself', () => {
   const { ALL_PLAYBOOKS, playbookRunOfShow } = require('../playbooks');
   const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12); return d.toISOString().slice(0, 10); };
   const NOT_YET_AUTHORED = [];   // ← only ever shrinks
 
-  test('a programme exists, with at least six beats, for every type', () => {
+  test('a program exists, with at least six beats, for every type', () => {
     const thin = [];
     for (const pb of ALL_PLAYBOOKS) {
       const type = pb.label || pb.type || pb.id;
@@ -140,7 +140,7 @@ describe('every playbook covers the event itself', () => {
     expect(thin).toEqual([]);
   });
 
-  test('the authored programme actually reaches the built run of show', () => {
+  test('the authored program actually reaches the built run of show', () => {
     // NB: row._min is absolute minutes-of-day (anchor hour + offset), NOT
     // anchor-relative — an earlier draft of this test assumed otherwise and
     // proved nothing. The honest check is that the beat a playbook AUTHORS is

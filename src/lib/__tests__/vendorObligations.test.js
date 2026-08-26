@@ -108,7 +108,7 @@ describe('each obligation fires on real state, and names the vendor', () => {
 describe('it stays on the PREP side of the line', () => {
   test('no derived row is a day-of beat', () => {
     // The board scoped derivation to prep and barred it from the day-of
-    // programme, which is authored ritual no engine can infer. "Agree an arrival
+    // program, which is authored ritual no engine can infer. "Agree an arrival
     // time" is a prep act; "cue the processional" is not derivable and must
     // never appear here.
     const rows = vendorObligations(EV([booked({

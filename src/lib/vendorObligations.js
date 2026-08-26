@@ -10,7 +10,7 @@
 //
 // WHY THIS IS THE RIGHT PLACE FOR DERIVATION, and the earlier board ruling that
 // scoped it. Two benches ranked derivation second behind authoring the day-of
-// programme, and the Venue Operations seat named its genuine home precisely:
+// program, and the Venue Operations seat named its genuine home precisely:
 // vendor dependency chains and the COI gate, "which no amount of playbook
 // authoring scales across 39 types". Everything here is that and nothing else.
 //
