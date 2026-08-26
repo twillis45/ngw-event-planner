@@ -147,6 +147,62 @@ Convene to push the MOBILE app past competent-dark-card-SaaS into personality + 
 
 _Doctrine: the app is **uninhabited** — it tracks the party instead of being the friend throwing it. Celebrate by getting QUIET, not loud. NEVER: confetti, streaks/points, cartoon mascot, second accent color, illustration-per-card. Warmth must stay honest._
 
+### Pricing & Monetization — added 2026-08-26, for tier ladders / paywalls / willingness-to-pay
+- **Madhavan Ramanujam** (*Monetizing Innovation*) — price BEFORE product; the willingness-to-pay conversation belongs at the start. Where a build already happened, he names it reconstruction and says so.
+- **Patrick Campbell** (ProfitWell / Paddle) — the value metric; "what unit does the customer's value actually scale with," and the pricing page as the highest-leverage page you own.
+- **Kyle Poyar** (OpenView) — PLG benchmarks; seat vs usage vs feature gating, expansion revenue, where free-to-paid actually converts.
+- **April Dunford** (*Obviously Awesome*) — positioning is the input to pricing. You cannot price what you have not positioned.
+- **Wes Bush** (*Product-Led Growth*) — free-tier design: what it MUST give away to prove value, and what it must never give away.
+
+### Advertising & Promotion — added 2026-08-26, distinct from GTM strategy; this wing judges the MESSAGE
+- **Rory Sutherland** (Ogilvy) — perceived value beats spec; psychological pricing, why the frame outperforms the feature list.
+- **Eugene Schwartz** (*Breakthrough Advertising*) — market awareness stages; which message lands on a buyer who does not yet know the problem has a name.
+- **Joanna Wiebe** (Copyhackers) — conversion copywriting; the pricing page and the paywall as copy, not layout.
+- **A performance-marketing operator** (function, not celebrity) — CAC, payback period, channel economics; "can this price survive paid acquisition."
+
+### NGW Lighting Buyer Bench — added 2026-08-26
+**Twenty buyer archetypes for the lighting product.** Convene for pricing, tier, paywall, positioning, and
+campaign questions. **Mining focus: commercial / working / potential-working photographers.**
+
+These are hypotheses, not measured segments. Until `ten-send-price-test` puts one in front of a real buyer,
+every ruling from this bench is reconstruction — the build already happened, so the willingness-to-pay
+conversation is running backwards. Say so in any finding.
+
+**Working professionals**
+1. **Headshot / corporate portrait** — same look, 40 people, all day. Buys repeatability.
+2. **Fashion / editorial** — match a mood-board reference exactly. The core reverse-engineer.
+3. **Commercial / product** — client-approved look, reshoot months later. Buys blueprints + saved setups.
+4. **Wedding** — reception light changes hourly, no time. Buys speed, Shoot Mode.
+5. **Family / newborn / school volume** — templated setups, tight schedule. Buys recipes.
+6. **Event / conference** — mixed ambient, little control. Buys fast reads.
+7. **Boudoir / fine-art portrait** — mood is the product. Buys pattern vocabulary.
+
+**Teams & businesses** — *the `studio` gate already implies these*
+8. **Studio owner with associates** — every shooter delivers the house look. Buys **Teams / seats**.
+9. **Agency art director / photo producer** — specs a look, hands a brief to a hired shooter. Buys **Client Brief**.
+10. **In-house brand / content team** — non-experts shooting their own product. Buys guardrails, Learning mode.
+11. **Retoucher / compositing house** — match plate lighting to a composite. Buys precise angle/elevation data.
+12. **Rental house / camera store** — teach customers the gear they just rented. Buys recipes + My Kit.
+
+**Learners & creators**
+13. **Serious hobbyist** — learning to SEE light. The free → first-paid rung.
+14. **Photography student** — coursework, building an eye. Education pricing.
+15. **Educator / workshop instructor** — teaching 20 at once. Buys **Look Library**, site license.
+16. **Creator making lighting-breakdown content** — publishes the teardown. Buys **Dispatch exports**.
+
+**Adjacent — non-photographers**
+17. **Videographer / cinematographer** — lighting is lighting. Buys **From Video**.
+18. **AI / synthetic imagery operator** — match lighting across generated frames. Buys **API**.
+19. **MUA / stylist** — know the light before prepping the face. Read-only, cheap.
+20. **Gear manufacturer / retailer** — "shot with our modifier" content marketing. Buys **API**, volume.
+
+**The finding this bench exists to keep visible:** six shipped features each serve a *different* buyer above —
+Client Brief (#9), From Video (#17), Teams (#8), Look Library (#15), Dispatch (#16), API keys (#18) — and five
+sit behind the single `studio` gate. **Studio is not a power tier; it is four businesses sharing one unset price.**
+
+**The Working Photographer seat** is this bench's Grandmother equivalent: a commercial shooter who buys tools,
+is not impressed, and closes the tab. Truth-teller on whether the price is credible and the paywall honest.
+
 ---
 
 ## How to run the board
