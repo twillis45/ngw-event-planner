@@ -85,17 +85,20 @@
   .st h3{font-size:15.5px; font-weight:700; letter-spacing:.005em}
   .st p{margin:4px 0 0; font-size:14px; color:var(--muted); max-width:62ch}
   .items{list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:7px}
-  /* Grid, not flex: the item text is an anonymous box, and an anonymous FLEX
-     item takes min-width:auto with no element to override it on — so the row
-     refused to shrink and pushed the stage sideways. A grid track can be told
-     to shrink explicitly. */
-  .items li{display:grid; grid-template-columns:16px minmax(0,1fr); gap:9px; align-items:start; font-size:14px; color:var(--ink-soft)}
-  .items input[type=checkbox]{margin:3px 0 0; accent-color:var(--ember); flex:0 0 auto}
+  /* A hanging indent, NOT flex or grid. Both of those treat the row's inline
+     content as separate items: flex floors the anonymous text box at its
+     min-content width (which pushed the stage past the viewport), and grid
+     promotes every inline <span class="num"> to its own cell on its own row.
+     Plain block text with a negative text-indent has neither failure — the
+     marker sits in the gutter and the text simply wraps. */
+  .items li{display:block; padding-left:25px; text-indent:-25px; font-size:14px; color:var(--ink-soft)}
+  .items li > .mark, .items li > input[type=checkbox]{text-indent:0}
+  .items input[type=checkbox]{width:15px; margin:0 9px 0 0; vertical-align:-2px; accent-color:var(--ember)}
   .items input:disabled{cursor:not-allowed}
   /* RECORDED items are static markers, never inputs — visible with no stored
      state, because a first load with empty localStorage must not contradict a
      stage's own verdict. */
-  .mark{flex:0 0 auto; width:15px; text-align:center; font-weight:700; line-height:1.5}
+  .mark{display:inline-block; width:15px; margin-right:9px; text-align:center; font-weight:700}
   .mark.ok{color:var(--ok)}
   .mark.skip{color:var(--muted)}
   .chip{
@@ -305,7 +308,8 @@
           <h3>Operate</h3>
           <p>Ongoing handoff discipline, dependency review, tech-debt passes.</p>
           <ul class="items">
-            <li><input type="checkbox" disabled> Not reached.</li>
+            <li><input type="checkbox" disabled> Ongoing handoff discipline, dependency review, tech-debt passes.</li>
+            <li><input type="checkbox" disabled> Creative refresh cadence set by measured fatigue, not by calendar.</li>
           </ul>
         </div>
         <span class="chip c-lock">Locked</span>
@@ -315,10 +319,15 @@
         <div class="sn">9</div>
         <div class="st">
           <h3>Promotion</h3>
-          <p>Internal &rarr; public. Retroactively runs every gate skipped on the way here.</p>
+          <p>Internal &rarr; public. Retroactively runs every public-only gate the
+             surface skipped while it was internal &mdash; all four, explicitly, as a checklist.</p>
           <ul class="items">
-            <li><span class="mark skip">&ndash;</span> <b>Already live in effect.</b> Reach is public, so this stage's retroactive rule applies now: the full stage-5 checklist is in force, and its OPENs above are what remains of it.</li>
-            <li><input type="checkbox" disabled> Stranger-proof first run.</li>
+            <li><span class="mark skip">&ndash;</span> <b>Already public in effect.</b> Reach is public, so these four apply now, not later.</li>
+            <li><input type="checkbox" data-k="s9-g2"> Stage 2 public gate &mdash; activation / UX doctrine.</li>
+            <li><input type="checkbox" data-k="s9-g4"> Stage 4 public gate &mdash; impeccable critique.</li>
+            <li><input type="checkbox" data-k="s9-g5"> Stage 5 public gate &mdash; full security and data review. Six OPENs, listed above.</li>
+            <li><input type="checkbox" data-k="s9-g7"> Stage 7 public gate &mdash; instrumentation and tracker sync.</li>
+            <li><input type="checkbox" data-k="s9-spend"> Marketing phase 3 spend gate honored, or no spend.</li>
           </ul>
         </div>
         <span class="chip c-lock">Locked</span>
@@ -330,7 +339,8 @@
           <h3>Sunset</h3>
           <p>An explicit retirement note. Going quiet is not a sunset.</p>
           <ul class="items">
-            <li><input type="checkbox" disabled> Not reached.</li>
+            <li><input type="checkbox" disabled> The retirement note itself.</li>
+            <li><input type="checkbox" disabled> Spend wound down on a named date; creative library valued for what transfers.</li>
           </ul>
         </div>
         <span class="chip c-lock">Locked</span>
@@ -340,30 +350,116 @@
 
   <section>
     <p class="eyebrow">Marketing &amp; promotion &mdash; the parallel track</p>
-    <h2 style="font-family:var(--serif); font-size:26px; font-weight:600; margin:6px 0 14px">
-      Each phase ends on an exit condition, never a date
+    <h2 style="font-family:var(--serif); font-size:26px; font-weight:600; margin:6px 0 4px">
+      It starts at stage 2, not after Deploy
     </h2>
-    <div class="grid2">
-      <div class="phase">
-        <h4>1 &middot; Positioning</h4>
-        <p>Runs at stage 2. The competitive read exists and is specific: the closest funded competitor counts inventory, not readiness.</p>
-        <span class="chip c-none">No gate</span>
-      </div>
-      <div class="phase">
-        <h4>2 &middot; Comprehension proof</h4>
-        <p>Runs at stages 3&ndash;4. Put in front of people who have never seen it. <b>This is the stranger test</b> &mdash; and the spine calls this the phase most often skipped, because the asset existing feels like the work.</p>
+    <p class="lede" style="font-size:16px; margin-bottom:18px">
+      Positioning that arrives after the build is not positioning; it is an apology. Every
+      phase below is a claim-verification gate wearing a marketing name, and the failure is
+      always the same shape: <b>an asset that exists mistaken for an asset that works.</b>
+      This track does not block build stages &mdash; it gates the next marketing phase and
+      the spending of money.
+    </p>
+
+    <div class="ladder mktg" style="margin-bottom:26px">
+      <article class="stage">
+        <div class="sn">1</div>
+        <div class="st">
+          <h3>Positioning &mdash; runs at stage 2</h3>
+          <p>The acquisition thesis written down as something that can turn out false,
+             with its constraints reaching design while design can still absorb them.</p>
+          <p class="guide" style="margin-top:8px">Exit: the thesis names the acquisition unit,
+             the single thing a stranger must understand from it, and what result would falsify
+             it. A thesis nothing could disprove has not been written yet.</p>
+          <ul class="items">
+            <li><span class="mark ok">&check;</span> Competitive reads exist and are specific &mdash; the closest funded competitor counts inventory, not readiness; nobody in the set has a readiness rollup.</li>
+            <li><input type="checkbox" data-k="m1-thesis"> Write the acquisition thesis as one falsifiable sentence. <b>Not yet written</b> &mdash; a competitive read is not a thesis.</li>
+            <li><input type="checkbox" data-k="m1-unit"> Name the acquisition unit: the one screen or clip a stranger actually sees first.</li>
+            <li><input type="checkbox" data-k="m1-falsify"> State what result would falsify it, before any test runs.</li>
+            <li><input type="checkbox" data-k="m1-design"> Hand the positioning constraints to design as requirements, not preferences.</li>
+          </ul>
+        </div>
+        <span class="chip c-open">Open</span>
+      </article>
+
+      <article class="stage is-current">
+        <div class="sn">2</div>
+        <div class="st">
+          <h3>Comprehension proof &mdash; runs at stages 3&ndash;4</h3>
+          <p>The asset is built from the real surface and put in front of people who have
+             never seen the product.</p>
+          <p class="guide" style="margin-top:8px">Exit: strangers state the proposition unaided,
+             at a rate agreed <em>before</em> the test was run. Deciding the threshold after
+             seeing results is not a test.</p>
+          <ul class="items">
+            <li><span class="mark skip">&ndash;</span> <b>The phase the spine calls most often skipped</b>, because the asset existing feels like the work. It is not.</li>
+            <li><input type="checkbox" data-k="m2-threshold"> Pre-register the comprehension rate. This is a threshold, so it is written before results exist and never edited after.</li>
+            <li><input type="checkbox" data-k="m2-asset"> Build the acquisition asset from the real hostv2 surface, never mocked up separately.</li>
+            <li><input type="checkbox" data-k="m2-strangers"> Run the stranger-proof onboarding test. <b>This is that test</b> &mdash; the same item the handoff lists as yours alone, counted once, in the phase that owns it.</li>
+            <li><input type="checkbox" data-k="m2-script"> Verify by script the asset properties that can be measured, rather than judged in the room.</li>
+          </ul>
+        </div>
         <span class="chip c-open">Outstanding</span>
-      </div>
-      <div class="phase">
-        <h4>3 &middot; Economics proof</h4>
-        <p>Runs at stages 4&ndash;5, always before the first paid traffic. Pricing is designed; billing is built and dormant.</p>
-        <span class="chip c-none">No gate</span>
-      </div>
-      <div class="phase">
-        <h4>4 &middot; Spend and iterate</h4>
-        <p>Runs at stages 6&ndash;9. Not started, and correctly so: it cannot begin before phase 3 clears.</p>
+      </article>
+
+      <article class="stage">
+        <div class="sn">3</div>
+        <div class="st">
+          <h3>Economics proof &mdash; stages 4&ndash;5, before the first dollar of spend</h3>
+          <p>Invert the funnel rather than forecasting it. The question is not what we might
+             earn but <b>what we would have to earn for this to work</b> &mdash; required revenue
+             per paid host = acquisition cost &divide; net of platform fees, per geography, with
+             cost and revenue drawn from the <em>same</em> population.</p>
+          <p class="guide" style="margin-top:8px">Exit: at least one named geography where
+             achievable revenue per paid host exceeds the required figure, sourced rather than
+             assumed. A NO-GO here is a real result and stops the track.</p>
+          <ul class="items">
+            <li><span class="mark ok">&check;</span> Price designed: the <span class="num">$39</span> One-Event Pass. Billing built and dormant behind five preconditions.</li>
+            <li><input type="checkbox" data-k="m3-required"> Compute the required revenue per paid host. Platform fee here is the payment processor, not an app store.</li>
+            <li><input type="checkbox" data-k="m3-cost"> Source an acquisition cost from a real channel. None has been measured &mdash; no paid traffic has ever run.</li>
+            <li><input type="checkbox" data-k="m3-geo"> Name one geography that clears, with cost and revenue from the same population. A blended cost against a single-market revenue figure is two populations wearing one number.</li>
+            <li><input type="checkbox" data-k="m3-verdict"> Record the GO or NO-GO. A NO-GO is a finding, not a failure.</li>
+          </ul>
+        </div>
+        <span class="chip c-open">Open</span>
+      </article>
+
+      <article class="stage is-locked">
+        <div class="sn">4</div>
+        <div class="st">
+          <h3>Spend and iterate &mdash; runs at stages 6&ndash;9</h3>
+          <p>Paid traffic begins only after phase 3 clears, with per-asset measurement wired
+             before the first campaign rather than after the first confusing week.</p>
+          <p class="guide" style="margin-top:8px">Exit is continuous, not terminal: paid-cohort
+             revenue net of fees exceeds achieved acquisition cost, inside the agreed payback
+             window. When it stops being true, spend stops. The gate that only ever opens is
+             not a gate.</p>
+          <ul class="items">
+            <li><input type="checkbox" disabled> Per-asset attribution wired before the first campaign. Blended numbers cannot tell you which creative to cut.</li>
+            <li><input type="checkbox" disabled> Agree the payback window.</li>
+            <li><input type="checkbox" disabled> Begin spend. Locked until phase 3 returns a GO.</li>
+          </ul>
+        </div>
         <span class="chip c-lock">Locked</span>
-      </div>
+      </article>
+    </div>
+
+    <p class="eyebrow">Marketing work at every stage &mdash; the touchpoints</p>
+    <div class="panel scroll" style="margin-top:10px">
+      <table>
+        <thead><tr><th>Stage</th><th>Marketing work</th><th>State here</th></tr></thead>
+        <tbody>
+          <tr><td class="n">2 Scope</td><td>Acquisition thesis as a falsifiable sentence; constraints handed to design as requirements.</td><td class="n">Not written</td></tr>
+          <tr><td class="n">3 Build</td><td>The asset built from the real product surface, never mocked separately.</td><td class="n">Not started</td></tr>
+          <tr><td class="n">4 Verify</td><td>Comprehension scored with strangers; measurable properties verified by script.</td><td class="n">Outstanding</td></tr>
+          <tr><td class="n">5 Security</td><td>Consent and tracking-prompt copy &mdash; marketing copy with a legal consequence, orphaned when the track has no stage-5 row.</td><td class="n">Not written</td></tr>
+          <tr><td class="n">6 Deploy</td><td>Listing copy and assets frozen before submission; every sentence carries the check that proves it.</td><td class="n">N/A &mdash; no store listing</td></tr>
+          <tr><td class="n">7 Observe</td><td>Per-asset attribution, not aggregate.</td><td class="n">Not wired</td></tr>
+          <tr><td class="n">8 Maintain</td><td>Refresh cadence set by measured fatigue, not by calendar.</td><td class="n">Not reached</td></tr>
+          <tr><td class="n">9 Promotion</td><td>Spend gate honored, or no spend.</td><td class="n">Not reached</td></tr>
+          <tr><td class="n">10 Sunset</td><td>Spend wound down on a named date; creative library valued for what transfers.</td><td class="n">Not reached</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
