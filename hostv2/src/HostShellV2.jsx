@@ -11953,7 +11953,32 @@ export default function HostShellV2() {
                           <div style={{ fontWeight: 600, lineHeight: 1.4 }}>{h.label}</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                             <span className="of">{h.helperName}</span>
-                            <span className="tag plan" style={stColor}>{short}</span>
+                            {/* ── THE CHIP IS THE CONTROL (ownership ruling, 2026-08-21) ──
+                                This panel is the canonical view of who owes what,
+                                and it was READ-ONLY: a host looking at "not
+                                confirmed" beside a name had no way to act on it
+                                and had to go find the task row to change it.
+                                `helperConfirmed` had no writer at all until this
+                                slice, so the chip could never move -- but giving
+                                it a writer elsewhere and leaving this surface
+                                inert just moved the dead end.
+
+                                `handled` is not offered: the work is finished,
+                                and asking a host to confirm a promise about
+                                something already done is a control with nothing
+                                behind it. Only the assigned -> confirmed step is
+                                a real act here. */}
+                            {st === 'handled' ? (
+                              <span className="tag plan" style={stColor}>{short}</span>
+                            ) : (
+                              <button className="tag plan helper-confirm" style={{ ...stColor, border: 'none', cursor: 'pointer', font: 'inherit' }}
+                                aria-label={st === 'confirmed'
+                                  ? `${h.helperName} confirmed ${h.label}. Mark not confirmed.`
+                                  : `Mark that ${h.helperName} confirmed ${h.label}`}
+                                onClick={() => confirmHelper(h.itemId, h.helperName)}>
+                                {short}
+                              </button>
+                            )}
                           </div>
                         </div>
                       );

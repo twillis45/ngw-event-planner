@@ -87,6 +87,20 @@ export const openSectionByName = async (page, name, opts = {}) => {
   if (await page.locator('.srail-row').count()) {
     await rail.first().click({ timeout });
   } else {
+    // CLOSE ANY OPEN SHEET FIRST. Below the rail band the sheet covers the
+    // whole stage, including the eyebrow this walk starts from, so calling
+    // this helper while a sheet is open put the click on a scrim and timed out
+    // eight seconds later.
+    //
+    // Fixed HERE rather than at the call site, and that is the point: this is
+    // the fifth time in one session that the phone door-walk broke a spec at
+    // every width except desktop. Four of those were patched locally, which is
+    // how it came back a fifth time. A shared helper that only works from one
+    // starting state is a trap with a countdown on it.
+    if (await page.locator('.sheet').count()) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(250);
+    }
     await page.locator('.ev-eyebrow').first().click({ timeout });
     await page.locator('.sheet').last()
       .getByText('Jump to a section', { exact: false }).first().click({ timeout });

@@ -2763,6 +2763,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    a weekend settles, and a control they use that often should not shout. */
 .day-crud{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); }
 .day-crud-btns{ display:flex; align-items:baseline; gap:var(--sp-4); }
+/* The helper status chip, once it became a control. Same size and colour as the
+   chip it replaces -- confirming is a RECORD, not an outward act, and UX_07
+   keeps record-only affordances at chip weight rather than button weight. The
+   44px floor is grown with a centred ::after so the chip keeps its compact
+   look while the target stays a real thumb target. */
+.helper-confirm{ position:relative; }
+.helper-confirm::after{ content:""; position:absolute; left:0; right:0; top:50%;
+  height:44px; transform:translateY(-50%); }
+.helper-confirm:hover, .helper-confirm:focus-visible{ filter:brightness(1.12); }
 /* ── THE ASSIGN CONTROL (ownership ruling, UX_07 Level 4 RECORD-ONLY) ────────
    Never primary styling: assigning records who has a job and performs no
    outward act, so it must not look like the button that sends something. It
