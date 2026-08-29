@@ -1,0 +1,467 @@
+<title>The First Recorded Gate</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400;1,6..72,500&family=Public+Sans:wght@400;500;700&display=swap">
+<style>
+  /* Complete LIGHT palette on bare :root. Warm neutrals, biased toward the
+     ember accent rather than a default grey — this project's own surface is a
+     de-blued carbon ramp, and the artifact echoes the temperature without
+     borrowing the app's UI. */
+  :root{
+    --ground:#F7F3ED; --panel:#FFFFFF; --panel-2:#F1EBE2; --line:#E0D7CA;
+    --ink:#1B1714; --ink-soft:#3D362F; --muted:#6E6459; --faint:#96897A;
+    --ember:#A65E17; --ember-soft:#C58A45; --ember-tint:#F5E7D6;
+    --ok:#3F7A3A; --ok-tint:#E2EFE0;
+    --open:#8A6A0C; --open-tint:#F7EDCE;
+    --locked:#9A8F84; --locked-tint:#EDE7DE;
+    --sans:"Public Sans",system-ui,-apple-system,sans-serif;
+    --serif:"Newsreader",Georgia,serif;
+    --sp:8px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#141210; --panel:#1C1917; --panel-2:#221E1A; --line:#2F2822;
+      --ink:#F1EBE2; --ink-soft:#DCD2C5; --muted:#A2968A; --faint:#7C7166;
+      --ember:#D08A3C; --ember-soft:#E0A661; --ember-tint:#2A2018;
+      --ok:#7FB077; --ok-tint:#1B2A1A;
+      --open:#C9A227; --open-tint:#2A2412;
+      --locked:#6E655C; --locked-tint:#211D1A;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#141210; --panel:#1C1917; --panel-2:#221E1A; --line:#2F2822;
+    --ink:#F1EBE2; --ink-soft:#DCD2C5; --muted:#A2968A; --faint:#7C7166;
+    --ember:#D08A3C; --ember-soft:#E0A661; --ember-tint:#2A2018;
+    --ok:#7FB077; --ok-tint:#1B2A1A;
+    --open:#C9A227; --open-tint:#2A2412;
+    --locked:#6E655C; --locked-tint:#211D1A;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:16px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:56px 24px 96px; display:flex; flex-direction:column; gap:40px}
+  /* A flex item's automatic minimum size is its CONTENT's min-width, so the
+     panel holding the wide table refuses to shrink and the page scrolls
+     sideways — even though the table itself sits in an overflow-x:auto box.
+     The scroll container only works once its ancestor is allowed to narrow. */
+  .wrap > *{min-width:0}
+  h1,h2,h3{text-wrap:balance; margin:0}
+  a{color:var(--ember)}
+  .lede{font-family:var(--serif); font-size:19px; line-height:1.5; color:var(--ink-soft); max-width:66ch; margin:0}
+  .guide{font-family:var(--serif); font-style:italic; color:var(--muted)}
+  .eyebrow{
+    font-size:11.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--faint); margin:0;
+  }
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ── Masthead ─────────────────────────────────────────────────────── */
+  header .name{font-family:var(--serif); font-weight:600; font-size:clamp(34px,6vw,52px); line-height:1.05; letter-spacing:-.015em}
+  .meta{display:flex; flex-wrap:wrap; gap:6px 22px; margin-top:14px}
+  .meta div{font-size:13px; color:var(--muted)}
+  .meta b{color:var(--ink-soft); font-weight:500; font-variant-numeric:tabular-nums}
+
+  /* ── The honest state, first ──────────────────────────────────────── */
+  .state{
+    background:var(--panel); border:1px solid var(--line);
+    border-left:3px solid var(--open); border-radius:3px;
+    padding:22px 24px; display:flex; flex-direction:column; gap:10px;
+  }
+  .state h2{font-family:var(--serif); font-size:22px; font-weight:600}
+  .state p{margin:0; max-width:70ch; color:var(--ink-soft)}
+
+  /* ── Stage ladder ─────────────────────────────────────────────────── */
+  .ladder{display:flex; flex-direction:column; gap:2px}
+  .stage{
+    background:var(--panel); border:1px solid var(--line); border-radius:3px;
+    padding:16px 18px; display:grid; grid-template-columns:34px minmax(0,1fr) auto; gap:14px; align-items:start;
+  }
+  .stage.is-current{border-color:var(--ember); background:var(--panel-2)}
+  .stage.is-locked{opacity:.72}
+  .sn{font-family:var(--serif); font-size:20px; color:var(--faint); font-variant-numeric:tabular-nums; line-height:1.3}
+  .stage.is-current .sn{color:var(--ember)}
+  .st h3{font-size:15.5px; font-weight:700; letter-spacing:.005em}
+  .st p{margin:4px 0 0; font-size:14px; color:var(--muted); max-width:62ch}
+  .items{list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:7px}
+  /* Grid, not flex: the item text is an anonymous box, and an anonymous FLEX
+     item takes min-width:auto with no element to override it on — so the row
+     refused to shrink and pushed the stage sideways. A grid track can be told
+     to shrink explicitly. */
+  .items li{display:grid; grid-template-columns:16px minmax(0,1fr); gap:9px; align-items:start; font-size:14px; color:var(--ink-soft)}
+  .items input[type=checkbox]{margin:3px 0 0; accent-color:var(--ember); flex:0 0 auto}
+  .items input:disabled{cursor:not-allowed}
+  /* RECORDED items are static markers, never inputs — visible with no stored
+     state, because a first load with empty localStorage must not contradict a
+     stage's own verdict. */
+  .mark{flex:0 0 auto; width:15px; text-align:center; font-weight:700; line-height:1.5}
+  .mark.ok{color:var(--ok)}
+  .mark.skip{color:var(--muted)}
+  .chip{
+    font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    padding:4px 9px; border-radius:2px; white-space:nowrap;
+  }
+  .c-none{background:var(--locked-tint); color:var(--locked); border:1px solid var(--line)}
+  .c-open{background:var(--open-tint); color:var(--open)}
+  .c-lock{background:var(--locked-tint); color:var(--locked)}
+  .c-ok{background:var(--ok-tint); color:var(--ok)}
+
+  /* ── Generic panels ───────────────────────────────────────────────── */
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:3px; padding:22px 24px}
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:2px}
+  .phase{background:var(--panel); border:1px solid var(--line); border-radius:3px; padding:16px 18px}
+  .phase h4{margin:0 0 4px; font-size:14.5px; font-weight:700}
+  .phase p{margin:0; font-size:13.5px; color:var(--muted)}
+  .phase .chip{display:inline-block; margin-top:10px}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  .scroll{overflow-x:auto}
+  th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:700}
+  td.n{font-variant-numeric:tabular-nums; white-space:nowrap}
+
+  .corr{border-left:3px solid var(--ember); padding-left:16px; margin:0 0 18px}
+  .corr:last-child{margin-bottom:0}
+  .corr .was{color:var(--muted); text-decoration:line-through; text-decoration-color:var(--faint)}
+  .waiting{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:11px}
+  .waiting li{font-size:14px; display:grid; grid-template-columns:1fr; gap:2px}
+  .waiting b{font-weight:700}
+  .waiting span{color:var(--muted); font-size:13px}
+  footer{color:var(--faint); font-size:12.5px; border-top:1px solid var(--line); padding-top:18px}
+  /* Under ~560px the three-column stage row cannot hold number + body +
+     chip: the chip is nowrap by design (a wrapped state label reads as two
+     labels), so the body column is what gets squeezed past the viewport.
+     Drop to two columns and move the chip below its own stage instead. */
+  @media (max-width: 560px){
+    .stage{grid-template-columns:26px minmax(0,1fr)}
+    .sn{font-size:17px}
+    .stage > .chip{grid-column:2; grid-row:2; justify-self:start; margin-top:12px}
+  }
+  :focus-visible{outline:2px solid var(--ember); outline-offset:2px}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">NGW Event Planner &middot; hostv2 host shell</p>
+    <h1 class="name">The First Recorded Gate</h1>
+    <p class="lede" style="margin-top:14px">
+      This project has been shipping to a public URL since 3 August. Until today it had
+      <em>never had a gate recorded</em> &mdash; not one, at any stage. The standing flag against it
+      was not a failure to build. It was the absence of a record that any of it had been ruled.
+    </p>
+    <div class="meta">
+      <div>Recorded <b>2026-08-29</b></div>
+      <div>HEAD <b>0283a9f8</b></div>
+      <div>Reach <b>public &mdash; anyone</b></div>
+      <div>Host <b>GitHub Pages</b></div>
+      <div>Stage <b>6 &mdash; Deploy</b></div>
+    </div>
+  </header>
+
+  <section class="state">
+    <p class="eyebrow" style="color:var(--open)">Awaiting your ruling</p>
+    <h2>Stage 6 is recorded as <span class="num">not-yet</span>, not as passed.</h2>
+    <p>
+      The deploy itself is done and verified: built from a known SHA in CI, publicly reachable,
+      and proven at the feature level to be HEAD. The recommendation is
+      <b>passed-with-conditions</b>. It is recorded as <b>not-yet</b> because only the owner rules
+      a gate &mdash; recording a pass on the assistant's own authority is the failure this spine
+      logged against another project on 28 August.
+    </p>
+    <p class="guide">
+      What needs you: rule it, or send it back. The conditions below gate stage 9, not stage 6.
+    </p>
+  </section>
+
+  <section>
+    <p class="eyebrow">The spine &mdash; eleven stages</p>
+    <h2 style="font-family:var(--serif); font-size:26px; font-weight:600; margin:6px 0 4px">
+      Six stages of work, one gate on record
+    </h2>
+    <p class="lede" style="font-size:16px; margin-bottom:18px">
+      Stages 0&ndash;5 are marked <b>no gate</b> rather than passed. Substantial work exists behind
+      several of them and is cited below &mdash; but a stage marked done because work happened,
+      rather than because a gate passed, is the thing this artifact exists to stop.
+    </p>
+
+    <div class="ladder">
+      <article class="stage is-locked">
+        <div class="sn">0</div>
+        <div class="st">
+          <h3>Adopt</h3>
+          <p>Re-baselining an inbound project. Inbound only.</p>
+          <ul class="items">
+            <li><span class="mark skip">&ndash;</span> Not applicable: built here, not adopted.</li>
+          </ul>
+        </div>
+        <span class="chip c-lock">N/A</span>
+      </article>
+
+      <article class="stage">
+        <div class="sn">1</div>
+        <div class="st">
+          <h3>Problem</h3>
+          <p>What is broken or missing, for whom.</p>
+          <ul class="items">
+            <li><span class="mark ok">&check;</span> Work exists: the product ships and its problem statement is carried in CLAUDE.md and the competitive reads.</li>
+            <li><input type="checkbox" data-k="s1-gate"> Record a gate stating the problem in one or two sentences.</li>
+          </ul>
+        </div>
+        <span class="chip c-none">No gate</span>
+      </article>
+
+      <article class="stage">
+        <div class="sn">2</div>
+        <div class="st">
+          <h3>Scope &amp; design</h3>
+          <p>Checkable success criteria, and the design that meets them.</p>
+          <ul class="items">
+            <li><span class="mark ok">&check;</span> Three review boards sat and ruled: task ownership (6&ndash;2 ship, narrow), guest transport (6&ndash;2 defer), vendors sheet (all six clauses shipped).</li>
+            <li><input type="checkbox" data-k="s2-gate"> Record those board verdicts as the stage-2 gate. The verdict <em>is</em> the gate record.</li>
+          </ul>
+        </div>
+        <span class="chip c-none">No gate</span>
+      </article>
+
+      <article class="stage">
+        <div class="sn">3</div>
+        <div class="st">
+          <h3>Build</h3>
+          <p>Implementation against scope.</p>
+          <ul class="items">
+            <li><span class="mark ok">&check;</span> <span class="num">6,179</span> unit tests across <span class="num">432</span> suites; <span class="num">791</span> browser tests across eight viewports.</li>
+            <li><input type="checkbox" data-k="s3-gate"> Record the gate.</li>
+          </ul>
+        </div>
+        <span class="chip c-none">No gate</span>
+      </article>
+
+      <article class="stage">
+        <div class="sn">4</div>
+        <div class="st">
+          <h3>Verify</h3>
+          <p>Automated checks pass. Not &ldquo;looks done.&rdquo;</p>
+          <ul class="items">
+            <li><span class="mark ok">&check;</span> Nielsen heuristics pass, 21 August: <b>zero P0/P1</b>.</li>
+            <li><span class="mark ok">&check;</span> Measurement pass caught three defects invisible to both visual and heuristic review &mdash; a sheet painting a phone corner inside a desktop frame, a splash painting a phone bezel, a surface 80px narrower than its neighbours.</li>
+            <li><input type="checkbox" data-k="s4-gate"> Record the gate.</li>
+          </ul>
+        </div>
+        <span class="chip c-none">No gate</span>
+      </article>
+
+      <article class="stage">
+        <div class="sn">5</div>
+        <div class="st">
+          <h3>Security</h3>
+          <p>Mandatory for anything public-facing &mdash; which this is.</p>
+          <ul class="items">
+            <li><span class="mark ok">&check;</span> Load-bearing items done with citations: RLS all-verbs on tenant data, server-side auth on money routes, hosted-checkout isolation, zero-vuln bundle, no secrets in source.</li>
+            <li><span class="mark ok">&check;</span> Per-route sweep exists as a standing gate over eight routers, and caught a live unauthenticated route on its first run.</li>
+            <li><input type="checkbox" data-k="s5-pentest"> External pentest.</li>
+            <li><input type="checkbox" data-k="s5-authz"> Finding #8 &mdash; portal authz design. A board question.</li>
+            <li><input type="checkbox" data-k="s5-rls"> RLS applied-status attested in the live dashboard.</li>
+            <li><input type="checkbox" data-k="s5-backup"> Backups on, and one restore actually performed.</li>
+            <li><input type="checkbox" data-k="s5-rate"> Login rate limiting &mdash; check what Supabase defaults actually are.</li>
+            <li><input type="checkbox" data-k="s5-sentry"> Sentry DSN confirmed reporting in prod.</li>
+          </ul>
+        </div>
+        <span class="chip c-none">No gate</span>
+      </article>
+
+      <article class="stage is-current">
+        <div class="sn">6</div>
+        <div class="st">
+          <h3>Deploy &mdash; recorded today</h3>
+          <p>No default host. Pick the target and record why.</p>
+          <ul class="items">
+            <li><span class="mark ok">&check;</span> <b>GitHub Pages</b>, built from source in CI on every push to main. Recorded as a substitution for <code>deploy-to-render</code>: the shipping profile is the open, localStorage-only demo and needs no server.</li>
+            <li><span class="mark ok">&check;</span> An automatic push can only ever publish the demo profile. Publishing <em>live</em> stays a manual dispatch, because it changes what the product is for every visitor.</li>
+            <li><span class="mark ok">&check;</span> Verified at the feature level, not the hash: the live bundle carries four markers shipped in the last two commits.</li>
+            <li><span class="mark skip">&ndash;</span> Deviation recorded: the <code>at</code> precondition had already passed. This deployed continuously for 26 days before its gate was written.</li>
+            <li><input type="checkbox" data-k="s6-rule"> <b>Your ruling.</b> Recommendation: passed-with-conditions.</li>
+          </ul>
+        </div>
+        <span class="chip c-open">Not yet</span>
+      </article>
+
+      <article class="stage is-locked">
+        <div class="sn">7</div>
+        <div class="st">
+          <h3>Handoff</h3>
+          <p>HANDOFF.md reflects measured reality.</p>
+          <ul class="items">
+            <li><input type="checkbox" disabled> Measured state, traps, and next steps current at the gate date.</li>
+          </ul>
+        </div>
+        <span class="chip c-lock">Locked</span>
+      </article>
+
+      <article class="stage is-locked">
+        <div class="sn">8</div>
+        <div class="st">
+          <h3>Operate</h3>
+          <p>Ongoing handoff discipline, dependency review, tech-debt passes.</p>
+          <ul class="items">
+            <li><input type="checkbox" disabled> Not reached.</li>
+          </ul>
+        </div>
+        <span class="chip c-lock">Locked</span>
+      </article>
+
+      <article class="stage is-locked">
+        <div class="sn">9</div>
+        <div class="st">
+          <h3>Promotion</h3>
+          <p>Internal &rarr; public. Retroactively runs every gate skipped on the way here.</p>
+          <ul class="items">
+            <li><span class="mark skip">&ndash;</span> <b>Already live in effect.</b> Reach is public, so this stage's retroactive rule applies now: the full stage-5 checklist is in force, and its OPENs above are what remains of it.</li>
+            <li><input type="checkbox" disabled> Stranger-proof first run.</li>
+          </ul>
+        </div>
+        <span class="chip c-lock">Locked</span>
+      </article>
+
+      <article class="stage is-locked">
+        <div class="sn">10</div>
+        <div class="st">
+          <h3>Sunset</h3>
+          <p>An explicit retirement note. Going quiet is not a sunset.</p>
+          <ul class="items">
+            <li><input type="checkbox" disabled> Not reached.</li>
+          </ul>
+        </div>
+        <span class="chip c-lock">Locked</span>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Marketing &amp; promotion &mdash; the parallel track</p>
+    <h2 style="font-family:var(--serif); font-size:26px; font-weight:600; margin:6px 0 14px">
+      Each phase ends on an exit condition, never a date
+    </h2>
+    <div class="grid2">
+      <div class="phase">
+        <h4>1 &middot; Positioning</h4>
+        <p>Runs at stage 2. The competitive read exists and is specific: the closest funded competitor counts inventory, not readiness.</p>
+        <span class="chip c-none">No gate</span>
+      </div>
+      <div class="phase">
+        <h4>2 &middot; Comprehension proof</h4>
+        <p>Runs at stages 3&ndash;4. Put in front of people who have never seen it. <b>This is the stranger test</b> &mdash; and the spine calls this the phase most often skipped, because the asset existing feels like the work.</p>
+        <span class="chip c-open">Outstanding</span>
+      </div>
+      <div class="phase">
+        <h4>3 &middot; Economics proof</h4>
+        <p>Runs at stages 4&ndash;5, always before the first paid traffic. Pricing is designed; billing is built and dormant.</p>
+        <span class="chip c-none">No gate</span>
+      </div>
+      <div class="phase">
+        <h4>4 &middot; Spend and iterate</h4>
+        <p>Runs at stages 6&ndash;9. Not started, and correctly so: it cannot begin before phase 3 clears.</p>
+        <span class="chip c-lock">Locked</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="eyebrow">Waiting on &mdash; outside this stage</p>
+    <h2 style="font-family:var(--serif); font-size:22px; font-weight:600; margin:6px 0 16px">
+      Nine dependencies. Seven of them are yours.
+    </h2>
+    <ul class="waiting">
+      <li><b>External pentest</b><span>An outside firm &rarr; a completed engagement report.</span></li>
+      <li><b>Portal authz design (finding #8)</b><span>A review board sitting &rarr; a ruling on the design question.</span></li>
+      <li><b>RLS applied-status</b><span>You, in the live Supabase dashboard &rarr; attestation that every migration is applied.</span></li>
+      <li><b>Backups and a restore drill</b><span>You, Supabase &rarr; backups confirmed on, and one restore actually performed.</span></li>
+      <li><b>Login rate limiting</b><span>You, Supabase auth defaults &rarr; a check of what the defaults actually are.</span></li>
+      <li><b>Sentry DSN in prod</b><span>Next deploy &rarr; eyeball once that it reports.</span></li>
+      <li><b>Stranger-proof onboarding test</b><span>You &rarr; one non-founder host through first run, unaided. This is marketing phase 2.</span></li>
+      <li><b>Resend webhook proven live</b><span>You &rarr; until then <code>delivered</code> cannot honestly exist.</span></li>
+      <li><b>One real vendor email, end to end</b><span>You &rarr; newly possible: add an address to a vendor, sign in, send.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <p class="eyebrow">Corrections</p>
+    <h2 style="font-family:var(--serif); font-size:22px; font-weight:600; margin:6px 0 16px">
+      What was believed, and what replaced it
+    </h2>
+
+    <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">A green Pages run plus a matching CSS hash means the deploy is current.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        The deployed JS chunk did <em>not</em> match the local build, and that looked like the
+        repo's recorded staleness trap firing. It was not. CI injects build variables the local
+        build lacks, so content and therefore hash differ legitimately &mdash; while the CSS hash
+        matched exactly, which made the mismatch look worse than it was.
+        <b>Comparing a deployed hash against a local build proves nothing.</b> Probe the deployed
+        bundle for a feature shipped in a known commit instead.
+      </p>
+    </div>
+
+    <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">Sending is blocked on building transport.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        It was blocked on the transport already built never having had an address to send to:
+        one of 24 draft call sites passed a vendor id, and zero of 126 seeded vendors carried an
+        email. The send button rendered on no event in the app.
+      </p>
+    </div>
+
+    <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">A gate can be recorded as passed once the work is verified.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        Only the owner rules a gate. Research reaches a recommendation. This page carries a
+        recommendation and a <code>not-yet</code>.
+      </p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="eyebrow">Load-bearing numbers</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Figure</th><th>Value</th><th>Source</th><th>Re-check</th></tr></thead>
+        <tbody>
+          <tr><td>Unit tests</td><td class="n">6,179 / 432 suites</td><td>Local run, 29 Aug, at HEAD</td><td class="n">Every commit</td></tr>
+          <tr><td>Browser tests</td><td class="n">791, 8 viewports</td><td>Local matrix, 19.3m, zero failures</td><td class="n">Every commit</td></tr>
+          <tr><td>Stage-5 OPENs</td><td class="n">6</td><td>Security track checklist, 21 Aug</td><td class="n">Before stage 9</td></tr>
+          <tr><td>Draft generators that can send</td><td class="n">1 of 26</td><td>Transport board count, 21 Aug</td><td class="n">On next send work</td></tr>
+          <tr><td>Seeded vendors with an email</td><td class="n">0 of 126</td><td>Transport board measurement</td><td class="n">On next send work</td></tr>
+          <tr><td>Purchases marked synthesized</td><td class="n">16</td><td>clientDinner + fundraiserGala, authored 21 Aug</td><td class="n">Owed a verification pass</td></tr>
+          <tr><td>Gates recorded before today</td><td class="n">0</td><td>Command Center, 30-record cache</td><td class="n">&mdash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Source: <code>demo/docs/artifact/the-first-recorded-gate.html</code> in this repo.
+    Gate record: <code>ptp-gates.json</code>, stage 6, <code>not-yet</code>, 2026-08-29.
+    Republish the same file path so the URL stays stable.
+  </footer>
+</div>
+
+<script>
+  // Open items only. RECORDED items are static markers above and are never
+  // inputs — a first load with empty storage must not contradict a verdict.
+  (function () {
+    var KEY = 'ngw.ngw-event-planner.path.v1';
+    var store = {};
+    try { store = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { store = {}; }
+    var boxes = document.querySelectorAll('input[type=checkbox][data-k]');
+    for (var i = 0; i < boxes.length; i++) {
+      (function (b) {
+        if (store[b.dataset.k]) b.checked = true;
+        b.addEventListener('change', function () {
+          store[b.dataset.k] = b.checked;
+          try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* private mode */ }
+        });
+      })(boxes[i]);
+    }
+  })();
+</script>

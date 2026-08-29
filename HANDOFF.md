@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-08-22 (overnight).
+**Measured reality, not intentions.** Updated 2026-08-29.
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -8,13 +8,42 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `e2ed1e9f` — pushed; CI running on it |
-| Last pushed | `e2ed1e9f`; `9080658b` was the last verified-green run (Checks + Pages) |
-| Jest | **6,151 passed**, 1 skipped, 430 suites — measured this pass |
+| Branch / HEAD | `main` @ `0283a9f8` |
+| Jest | **6,179 passed**, 1 skipped, 432 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
-| e2e (Playwright) | full matrix **692 passed / 1 flaky, zero failures** (all 8 projects, 17.5m) |
+| e2e (Playwright) | full matrix **791 passed**, zero failures (all 8 projects, 19.3m) |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
+| Path to Production | stage **6**, recorded `not-yet` 2026-08-29 — **awaiting your ruling** |
+
+## Path artifact
+
+| Artifact | URL | Source |
+|---|---|---|
+| The First Recorded Gate | https://claude.ai/code/artifact/7f14f1d1-209a-4686-8615-61564542f6db | `docs/artifact/the-first-recorded-gate.html` |
+
+Republish that same file path to keep the URL stable. Its `Recorded` date must
+equal the newest gate record's date, or it is stale by definition.
+
+## What shipped 2026-08-29
+
+**The Helpers panel became actionable.** It was the canonical ownership view
+and was read-only: a host saw "not confirmed" beside a name and had nowhere to
+act on it. The chip is now the control (`HostShellV2.jsx`, Helpers panel), with
+a 44px tap target and an aria-label naming both the person and the act.
+`handled` is deliberately NOT offered — the work is already finished, and
+confirming a promise about something done is a control with nothing behind it.
+Three e2e tests in `hostv2/e2e/helperConfirm.spec.mjs` (confirm, unconfirm,
+survive reload); red-proofed by making the handler inert and watching all three
+fail. Closes item 4 of the previous session's queue.
+
+**The project's first Path to Production gate.** It had deployed publicly and
+continuously since 3 August with *no gate ever recorded at any stage*. Stage 6
+(Deploy) is now on record as `not-yet`, recommendation `passed-with-conditions`,
+awaiting your ruling — only the owner rules a gate. Stages 0-5 are recorded as
+"no gate," not as passed: work exists behind several of them, but a stage marked
+done because work happened rather than because a gate passed is exactly the
+failure the artifact exists to prevent.
 
 ## What shipped overnight 2026-08-22
 
@@ -207,8 +236,13 @@ session — the vendor money that had no tabular-nums, and both lens faults.
 3. Author the 16 `synthesized` purchases in clientDinner/fundraiserGala with
    real citations. Today ADDED to the grounding backlog rather than reducing
    it — honestly, but it is now owed.
-4. `helperConfirmed` has a writer now, but no surface shows the confirmed
-   state anywhere except the row chip.
+4. ~~`helperConfirmed` has a writer but no surface shows the confirmed state~~
+   — **DONE 2026-08-29**, see above.
+5. **Rule the stage 6 gate** (yours, not mine). Then stage 7 unlocks.
+6. The stage 5 security OPENs, which gate promotion: external pentest,
+   finding #8 (portal authz — a board question), and four attestations only
+   you can make (RLS applied-status, backups + one real restore, login rate
+   limiting, Sentry DSN reporting in prod).
 
 ## What only you can do
 
@@ -226,6 +260,19 @@ These are not blocked on engineering and will not move without you:
 
 ## Traps that cost time here
 
+- **A deployed bundle's hash proves nothing against a LOCAL build.** Nearly
+  reported a stale Pages deploy today: the live `HostShellV2-*.js` hash did not
+  match the local build while the CSS hash matched exactly, which looks precisely
+  like the recorded staleness trap firing. It was not — CI injects `REACT_APP_*`
+  repo variables the local build lacks, so content and therefore hash differ
+  legitimately. Probe the deployed bundle for a **feature marker** shipped in a
+  known commit instead.
+- **`minmax(0,1fr)` and anonymous flex items.** Three wrong diagnoses in a row
+  chasing 17px of horizontal scroll on the artifact page. A `1fr` grid track and
+  a flex item both floor at min-content; worse, an item made of a bare text node
+  is an *anonymous* box with no element to set `min-width:0` on. Measure which
+  leaf overflows, then hide top-level children one at a time to find the owner —
+  do not reason about the cascade.
 - The **browser pane** stops accepting clicks after a few interactions and
   never clicks at desktop widths. Drive with Playwright instead.
 - **Four false-zero probes** in one session (grep missed a chunk; a class-name
