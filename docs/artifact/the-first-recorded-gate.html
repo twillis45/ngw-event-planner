@@ -150,32 +150,63 @@
     <p class="eyebrow">NGW Event Planner &middot; hostv2 host shell</p>
     <h1 class="name">The First Recorded Gate</h1>
     <p class="lede" style="margin-top:14px">
-      This project has been shipping to a public URL since 3 August. Until today it had
-      <em>never had a gate recorded</em> &mdash; not one, at any stage. The standing flag against it
-      was not a failure to build. It was the absence of a record that any of it had been ruled.
+      This project had been shipping to a public URL since 3 August with <em>no gate ever
+      recorded</em> &mdash; not one, at any stage. The standing flag against it was never a failure
+      to build; it was the absence of a record that any of it had been ruled. On 29 August the
+      owner ruled its first: stage 6, <b>passed with conditions</b>.
     </p>
     <div class="meta">
       <div>Recorded <b>2026-08-29</b></div>
       <div>HEAD <b>0283a9f8</b></div>
       <div>Reach <b>public &mdash; anyone</b></div>
       <div>Host <b>GitHub Pages</b></div>
-      <div>Stage <b>6 &mdash; Deploy</b></div>
+      <div>Stage <b>6 &mdash; Deploy, passed with conditions</b></div>
     </div>
   </header>
 
-  <section class="state">
-    <p class="eyebrow" style="color:var(--open)">Awaiting your ruling</p>
-    <h2>Stage 6 is recorded as <span class="num">not-yet</span>, not as passed.</h2>
+  <section class="state" style="border-left-color:var(--ok)">
+    <p class="eyebrow" style="color:var(--ok)">Ruled by the owner &mdash; 29 August 2026</p>
+    <h2>Stage 6 passed, with conditions that gate stage 9.</h2>
     <p>
-      The deploy itself is done and verified: built from a known SHA in CI, publicly reachable,
-      and proven at the feature level to be HEAD. The recommendation is
-      <b>passed-with-conditions</b>. It is recorded as <b>not-yet</b> because only the owner rules
-      a gate &mdash; recording a pass on the assistant's own authority is the failure this spine
-      logged against another project on 28 August.
+      Ruled <b>passed-with-conditions</b> by Todd Willis, 29 August 2026. The deploy is built
+      from a known SHA in CI, publicly reachable, and proven at the feature level to be HEAD.
+      <b>Deploy is closed. Handoff opens.</b>
+    </p>
+    <p>
+      The conditions are not deploy problems &mdash; they are named findings that block
+      <b>stage 9, Promotion</b>, and they are in force <em>now</em> rather than later, because
+      the surface is already public. Nine of them, listed below. The same-day
+      <code>not-yet</code> record is deliberately left standing beneath this one: it was a
+      recommendation awaiting a ruling, and an artifact that silently improves its own history
+      teaches nothing.
     </p>
     <p class="guide">
-      What needs you: rule it, or send it back. The conditions below gate stage 9, not stage 6.
+      What this does not mean: it does not mean the security track is finished, and it does
+      not authorize a dollar of paid spend.
     </p>
+  </section>
+
+  <section class="panel" style="border-left:3px solid var(--open)">
+    <p class="eyebrow" style="color:var(--open)">The conditions &mdash; a standing flag</p>
+    <h2 style="font-family:var(--serif); font-size:22px; font-weight:600; margin:6px 0 6px">
+      Nine findings, carried forward past the stage that produced them
+    </h2>
+    <p style="margin:0 0 16px; color:var(--ink-soft); max-width:70ch">
+      These gate <b>stage 9, Promotion</b> &mdash; not stage 6. They persist past this stage by
+      design: that is what a conditional pass is for. Because the surface is already public,
+      they are in force now.
+    </p>
+    <ul class="items" style="margin:0">
+      <li><input type="checkbox" data-k="c-pentest"> <b>External pentest</b> &mdash; not run.</li>
+      <li><input type="checkbox" data-k="c-authz"> <b>Finding #8, portal authorization design</b> &mdash; unresolved, and a board question rather than an engineering one.</li>
+      <li><input type="checkbox" data-k="c-rls"> <b>RLS applied-status</b> &mdash; not attested in the live dashboard.</li>
+      <li><input type="checkbox" data-k="c-backup"> <b>Backups and restore</b> &mdash; not confirmed on, and no restore has ever been performed.</li>
+      <li><input type="checkbox" data-k="c-rate"> <b>Login rate limiting</b> &mdash; unverified; the platform defaults have not been checked.</li>
+      <li><input type="checkbox" data-k="c-sentry"> <b>Sentry DSN</b> &mdash; not confirmed reporting in prod.</li>
+      <li><input type="checkbox" data-k="c-mkt1"> <b>Marketing phase 1</b> &mdash; the falsifiable acquisition thesis is unwritten.</li>
+      <li><input type="checkbox" data-k="c-mkt2"> <b>Marketing phase 2</b> &mdash; the stranger comprehension test has not run.</li>
+      <li><input type="checkbox" data-k="c-mkt3"> <b>Marketing phase 3</b> &mdash; economics unproven, so <b>no paid spend is authorized</b>. No acquisition cost measured, no geography named.</li>
+    </ul>
   </section>
 
   <section>
@@ -274,7 +305,7 @@
         <span class="chip c-none">No gate</span>
       </article>
 
-      <article class="stage is-current">
+      <article class="stage">
         <div class="sn">6</div>
         <div class="st">
           <h3>Deploy &mdash; recorded today</h3>
@@ -284,22 +315,24 @@
             <li><span class="mark ok">&check;</span> An automatic push can only ever publish the demo profile. Publishing <em>live</em> stays a manual dispatch, because it changes what the product is for every visitor.</li>
             <li><span class="mark ok">&check;</span> Verified at the feature level, not the hash: the live bundle carries four markers shipped in the last two commits.</li>
             <li><span class="mark skip">&ndash;</span> Deviation recorded: the <code>at</code> precondition had already passed. This deployed continuously for 26 days before its gate was written.</li>
-            <li><input type="checkbox" data-k="s6-rule"> <b>Your ruling.</b> Recommendation: passed-with-conditions.</li>
+            <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 29 August 2026. Recorded as a standing <code>conditional</code> flag that persists past this stage, because the conditions gate a later one.</li>
           </ul>
         </div>
-        <span class="chip c-open">Not yet</span>
+        <span class="chip c-ok">Passed +cond</span>
       </article>
 
-      <article class="stage is-locked">
+      <article class="stage is-current">
         <div class="sn">7</div>
         <div class="st">
-          <h3>Handoff</h3>
-          <p>HANDOFF.md reflects measured reality.</p>
+          <h3>Handoff &mdash; open as of the stage 6 ruling</h3>
+          <p>HANDOFF.md reflects measured reality. The traps section is the part that pays.</p>
           <ul class="items">
-            <li><input type="checkbox" disabled> Measured state, traps, and next steps current at the gate date.</li>
+            <li><span class="mark ok">&check;</span> Measured state, artifact URL, what shipped, next steps in order, and the active traps &mdash; current at the gate date.</li>
+            <li><input type="checkbox" data-k="s7-instr"> Instrumentation and tracker sync. Also the stage-7 public gate that stage 9 re-runs.</li>
+            <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row.</li>
           </ul>
         </div>
-        <span class="chip c-lock">Locked</span>
+        <span class="chip c-open">Open</span>
       </article>
 
       <article class="stage is-locked">
@@ -511,8 +544,10 @@
     <div class="corr">
       <p style="margin:0 0 4px"><span class="was">A gate can be recorded as passed once the work is verified.</span></p>
       <p style="margin:0; color:var(--ink-soft)">
-        Only the owner rules a gate. Research reaches a recommendation. This page carries a
-        recommendation and a <code>not-yet</code>.
+        Only the owner rules a gate. Research reaches a recommendation; the recommendation was
+        <code>passed-with-conditions</code> and was recorded as <code>not-yet</code> until it
+        could be ruled. It was ruled the same day, and the <code>not-yet</code> record still
+        stands beneath the ruling rather than being edited away.
       </p>
     </div>
   </section>
@@ -530,6 +565,7 @@
           <tr><td>Seeded vendors with an email</td><td class="n">0 of 126</td><td>Transport board measurement</td><td class="n">On next send work</td></tr>
           <tr><td>Purchases marked synthesized</td><td class="n">16</td><td>clientDinner + fundraiserGala, authored 21 Aug</td><td class="n">Owed a verification pass</td></tr>
           <tr><td>Gates recorded before today</td><td class="n">0</td><td>Command Center, 30-record cache</td><td class="n">&mdash;</td></tr>
+          <tr><td>Standing conditions</td><td class="n">9</td><td>Owner ruling, 29 Aug; server-generated <code>conditional</code> flag</td><td class="n">Before stage 9</td></tr>
         </tbody>
       </table>
     </div>
@@ -537,7 +573,9 @@
 
   <footer>
     Source: <code>demo/docs/artifact/the-first-recorded-gate.html</code> in this repo.
-    Gate record: <code>ptp-gates.json</code>, stage 6, <code>not-yet</code>, 2026-08-29.
+    Gate record: <code>ptp-gates.json</code>, stage 6, <code>passed-with-conditions</code>,
+    ruled by Todd Willis 2026-08-29; the superseded <code>not-yet</code> record from the same
+    day is retained beneath it.
     Republish the same file path so the URL stays stable.
   </footer>
 </div>

@@ -14,7 +14,8 @@ this file is the short answer to "where is it, is it green, what's next."
 | e2e (Playwright) | full matrix **791 passed**, zero failures (all 8 projects, 19.3m) |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
-| Path to Production | stage **6**, recorded `not-yet` 2026-08-29 — **awaiting your ruling** |
+| Path to Production | stage **6 PASSED WITH CONDITIONS**, ruled by Todd 2026-08-29. Stage 7 open |
+| Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized |
 
 ## Path artifact
 
@@ -238,11 +239,18 @@ session — the vendor money that had no tabular-nums, and both lens faults.
    it — honestly, but it is now owed.
 4. ~~`helperConfirmed` has a writer but no surface shows the confirmed state~~
    — **DONE 2026-08-29**, see above.
-5. **Rule the stage 6 gate** (yours, not mine). Then stage 7 unlocks.
-6. The stage 5 security OPENs, which gate promotion: external pentest,
-   finding #8 (portal authz — a board question), and four attestations only
-   you can make (RLS applied-status, backups + one real restore, login rate
-   limiting, Sentry DSN reporting in prod).
+5. ~~Rule the stage 6 gate~~ — **RULED 2026-08-29: passed with conditions.**
+   Deploy is closed; stage 7 (Handoff) is now the open stage.
+6. **Work the nine standing conditions.** They gate stage 9 and are in force
+   NOW, not later, because the surface is already public. Six are security
+   (external pentest; finding #8 portal authz, a board question; and four
+   attestations only you can make — RLS applied-status, backups plus one real
+   restore, login rate limiting, Sentry DSN reporting in prod). Three are
+   marketing: the acquisition thesis is unwritten, the stranger test has not
+   run, and economics are unproven — **so no paid spend is authorized.**
+7. Stage 7's own items: instrumentation and tracker sync, and per-asset
+   attribution. Both are re-run retroactively at stage 9, so doing them once,
+   properly, now is the cheap path.
 
 ## What only you can do
 
@@ -258,7 +266,26 @@ These are not blocked on engineering and will not move without you:
 - **Grounding** is authoring, not engineering — capped at 9 by the
   cultural-basis ruling.
 
+## The conditions, verbatim
+
+The server turned the ruling into a standing `conditional` flag that persists
+past stage 6 — that is what a conditional pass is for. Read them off the
+artifact or `~/Code/skill-index/cache/ptp-gates.json` (record 32); do not
+re-derive them from memory.
+
+A conditional pass is not a finished security track, and it is not permission
+to spend money.
+
 ## Traps that cost time here
+
+- **A geometry check is not a look.** The artifact passed 11-stages /
+  zero-horizontal-scroll / no-JS-errors at six viewport-theme combinations
+  while two stages rendered their numbers one word per line. Cause: switching
+  the item rows to CSS grid promoted every inline `<span class="num">` to its
+  own grid cell on its own row. Flex had the opposite failure (an anonymous
+  text box floors at min-content and pushes the row past the viewport). A
+  hanging indent has neither. **Screenshot after the measurement passes**, and
+  count rendered lines per row as part of the check.
 
 - **A deployed bundle's hash proves nothing against a LOCAL build.** Nearly
   reported a stale Pages deploy today: the live `HostShellV2-*.js` hash did not
