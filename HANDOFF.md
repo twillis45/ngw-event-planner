@@ -266,6 +266,16 @@ These are not blocked on engineering and will not move without you:
 - **Grounding** is authoring, not engineering — capped at 9 by the
   cultural-basis ruling.
 
+## The artifact is gated now
+
+`hostv2/e2e/pathArtifact.spec.mjs` — three tests over the "Hide completed"
+toggle the path-artifact skill requires. The one that matters asserts every
+NOT RUN item is still visible with the toggle on: the naive selector catches
+`.mark`, which would bury exactly the findings the page exists to surface.
+Red-proofed by widening the selector to `.mark` and watching it go red
+(4 not-run items visible expected, 0 received), then restoring from a copy
+rather than `git checkout --`.
+
 ## The conditions, verbatim
 
 The server turned the ruling into a standing `conditional` flag that persists
@@ -278,6 +288,14 @@ to spend money.
 
 ## Traps that cost time here
 
+- **Artifact stage items come from the spine, never from a summary.** Writing
+  them out of conversation memory produced three different defects on one page:
+  an invented task (stage 3 has no gate by design, and the page demanded one),
+  four omitted gates (including stage 2's reference-scan ordering rule, the very
+  failure the command exists to prevent), and one softened gate (stage 1's real
+  gate is *name who hits this problem today*). Read
+  `~/Code/ngw-os/docs/path-to-production.md` and count obligations against
+  items. Now written into the path-artifact skill (`c78aff4`).
 - **A geometry check is not a look.** The artifact passed 11-stages /
   zero-horizontal-scroll / no-JS-errors at six viewport-theme combinations
   while two stages rendered their numbers one word per line. Cause: switching

@@ -109,6 +109,7 @@
   .c-open{background:var(--open-tint); color:var(--open)}
   .c-lock{background:var(--locked-tint); color:var(--locked)}
   .c-ok{background:var(--ok-tint); color:var(--ok)}
+  .c-na{background:transparent; color:var(--faint); border:1px dashed var(--line)}
 
   /* ── Generic panels ───────────────────────────────────────────────── */
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:3px; padding:22px 24px}
@@ -141,6 +142,26 @@
     .sn{font-size:17px}
     .stage > .chip{grid-column:2; grid-row:2; justify-self:start; margin-top:12px}
   }
+  /* ── Hide completed ───────────────────────────────────────────────── */
+  .toolbar{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
+  .toggle{
+    font:inherit; font-size:13px; font-weight:500; color:var(--ink-soft);
+    background:var(--panel); border:1px solid var(--line); border-radius:3px;
+    padding:8px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:9px;
+  }
+  .toggle:hover{border-color:var(--ember)}
+  .toggle[aria-pressed="true"]{background:var(--ember-tint); border-color:var(--ember); color:var(--ember)}
+  .toggle .box{
+    width:15px; height:15px; border:1px solid var(--faint); border-radius:2px;
+    display:inline-block; position:relative; flex:0 0 auto;
+  }
+  .toggle[aria-pressed="true"] .box{background:var(--ember); border-color:var(--ember)}
+  .toggle[aria-pressed="true"] .box::after{
+    content:"\2713"; position:absolute; inset:0; color:var(--ground);
+    font-size:11px; line-height:14px; text-align:center; font-weight:700;
+  }
+  .toolbar .count{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
+  [hidden]{display:none !important}
   :focus-visible{outline:2px solid var(--ember); outline-offset:2px}
   @media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important}}
 </style>
@@ -184,6 +205,14 @@
       What this does not mean: it does not mean the security track is finished, and it does
       not authorize a dollar of paid spend.
     </p>
+  </section>
+
+  <section class="toolbar">
+    <button class="toggle" id="hideDone" type="button" aria-pressed="false"
+            aria-describedby="hideCount">
+      <span class="box" aria-hidden="true"></span>Hide completed
+    </button>
+    <span class="count" id="hideCount">&nbsp;</span>
   </section>
 
   <section class="panel" style="border-left:3px solid var(--open)">
@@ -240,7 +269,7 @@
           <p>What is broken or missing, for whom.</p>
           <ul class="items">
             <li><span class="mark ok">&check;</span> Work exists: the product ships and its problem statement is carried in CLAUDE.md and the competitive reads.</li>
-            <li><input type="checkbox" data-k="s1-gate"> Record a gate stating the problem in one or two sentences.</li>
+            <li><input type="checkbox" data-k="s1-who"> <b>The gate is naming who hits this problem today.</b> If you cannot name them it is not a problem yet, it is a preference. Write it in one or two sentences and record it.</li>
           </ul>
         </div>
         <span class="chip c-none">No gate</span>
@@ -253,6 +282,9 @@
           <p>Checkable success criteria, and the design that meets them.</p>
           <ul class="items">
             <li><span class="mark ok">&check;</span> Three review boards sat and ruled: task ownership (6&ndash;2 ship, narrow), guest transport (6&ndash;2 defer), vendors sheet (all six clauses shipped).</li>
+            <li><input type="checkbox" data-k="s2-scan"> <b>Reference scan, in order:</b> own design system &rarr; prior recorded scans &rarr; how the field solves it &rarr; decide and record the reason. It comes <em>first</em>. A scan run after the design is built is not research, it is looking for permission &mdash; and that exact failure is why this command exists.</li>
+            <li><input type="checkbox" data-k="s2-checkable"> Gate (all): confirm the success criteria are machine-checkable. "Add validation" fails; "blank and malformed email each show a specific error, both covered by passing tests" passes.</li>
+            <li><input type="checkbox" data-k="s2-activation"> <b>Gate (public): activation and UX doctrine applied here</b>, not bolted on later &mdash; Ruthless Host Lens, no-guesswork-advance, the Attention System. Re-run retroactively at stage 9.</li>
             <li><input type="checkbox" data-k="s2-gate"> Record those board verdicts as the stage-2 gate. The verdict <em>is</em> the gate record.</li>
           </ul>
         </div>
@@ -265,11 +297,11 @@
           <h3>Build</h3>
           <p>Implementation against scope.</p>
           <ul class="items">
+            <li><span class="mark skip">&ndash;</span> <b>No gate is defined at this stage</b>, by design &mdash; the gate is that the code exists and matches the scope. Nothing is owed here, and a task saying otherwise would be invented.</li>
             <li><span class="mark ok">&check;</span> <span class="num">6,179</span> unit tests across <span class="num">432</span> suites; <span class="num">791</span> browser tests across eight viewports.</li>
-            <li><input type="checkbox" data-k="s3-gate"> Record the gate.</li>
           </ul>
         </div>
-        <span class="chip c-none">No gate</span>
+        <span class="chip c-na">None defined</span>
       </article>
 
       <article class="stage">
@@ -280,6 +312,8 @@
           <ul class="items">
             <li><span class="mark ok">&check;</span> Nielsen heuristics pass, 21 August: <b>zero P0/P1</b>.</li>
             <li><span class="mark ok">&check;</span> Measurement pass caught three defects invisible to both visual and heuristic review &mdash; a sheet painting a phone corner inside a desktop frame, a splash painting a phone bezel, a surface 80px narrower than its neighbours.</li>
+            <li><input type="checkbox" data-k="s4-guard"> Gate (all): the project's own guard script passes. A criterion you have to verify by looking is not a guard.</li>
+            <li><input type="checkbox" data-k="s4-redproof"> <b>Red-proof the gates.</b> A green gate that has never been shown to fail is not evidence: reintroduce the exact fault it guards, watch it go red, restore deliberately. Four false zeroes landed here in one session.</li>
             <li><input type="checkbox" data-k="s4-gate"> Record the gate.</li>
           </ul>
         </div>
@@ -327,8 +361,10 @@
           <h3>Handoff &mdash; open as of the stage 6 ruling</h3>
           <p>HANDOFF.md reflects measured reality. The traps section is the part that pays.</p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Measured state, artifact URL, what shipped, next steps in order, and the active traps &mdash; current at the gate date.</li>
-            <li><input type="checkbox" data-k="s7-instr"> Instrumentation and tracker sync. Also the stage-7 public gate that stage 9 re-runs.</li>
+            <li><span class="mark ok">&check;</span> All five required sections present, in order: measured state, what shipped, scores, next steps in order, and <b>active traps</b> &mdash; the part that pays, and the only place the next session learns what already went wrong.</li>
+            <li><span class="mark ok">&check;</span> Measured reality, not intentions: HEAD, suite counts, deploy target, feature flags. Artifact URL recorded.</li>
+            <li><span class="mark ok">&check;</span> Cross-linked as the <em>first</em> read from CLAUDE.md, ahead of the long-form architecture log &mdash; otherwise it is found second and too late.</li>
+            <li><input type="checkbox" data-k="s7-instr"> <b>Gate (public):</b> instrumentation wired (analytics, error tracking) and the tracker entry matches reality. Re-run retroactively at stage 9.</li>
             <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row.</li>
           </ul>
         </div>
@@ -587,15 +623,64 @@
     var KEY = 'ngw.ngw-event-planner.path.v1';
     var store = {};
     try { store = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { store = {}; }
+    var save = function () {
+      try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* private mode */ }
+    };
+
     var boxes = document.querySelectorAll('input[type=checkbox][data-k]');
-    for (var i = 0; i < boxes.length; i++) {
-      (function (b) {
-        if (store[b.dataset.k]) b.checked = true;
-        b.addEventListener('change', function () {
-          store[b.dataset.k] = b.checked;
-          try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* private mode */ }
-        });
-      })(boxes[i]);
+
+    // "Completed" is recorded-PASS or a ticked open item. Nothing else.
+    // A NOT RUN / not-applicable item renders as a marker too (.mark.skip) and
+    // is deliberately excluded: hiding it would bury exactly the finding the
+    // artifact exists to surface. Locked items are unreached, not completed.
+    function isDone(li) {
+      if (li.querySelector('.mark.ok')) return true;
+      var b = li.querySelector('input[type=checkbox][data-k]');
+      return !!(b && b.checked);
     }
+
+    var btn = document.getElementById('hideDone');
+    var count = document.getElementById('hideCount');
+
+    function apply() {
+      var on = store._hideDone === true;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+
+      var hidden = 0, total = 0;
+      document.querySelectorAll('.items').forEach(function (ul) {
+        var items = ul.querySelectorAll('li'), shown = 0;
+        items.forEach(function (li) {
+          var done = isDone(li);
+          if (done) total++;
+          var hide = on && done;
+          if (hide) { li.hidden = true; hidden++; } else { li.hidden = false; shown++; }
+        });
+        // Hide a stage only when EVERY one of its items is hidden, so the page
+        // never shows an empty card.
+        var card = ul.closest('.stage');
+        if (card) card.hidden = (shown === 0 && items.length > 0);
+      });
+
+      count.textContent = on
+        ? hidden + ' completed ' + (hidden === 1 ? 'item' : 'items') + ' hidden'
+        : total + ' completed of ' + document.querySelectorAll('.items li').length;
+    }
+
+    boxes.forEach(function (b) {
+      if (store[b.dataset.k]) b.checked = true;
+      b.addEventListener('change', function () {
+        store[b.dataset.k] = b.checked;
+        save();
+        apply();
+      });
+    });
+
+    btn.addEventListener('click', function () {
+      store._hideDone = store._hideDone !== true;
+      save();
+      apply();
+    });
+
+    apply();
   })();
 </script>
