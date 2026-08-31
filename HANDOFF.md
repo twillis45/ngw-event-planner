@@ -14,8 +14,34 @@ this file is the short answer to "where is it, is it green, what's next."
 | e2e (Playwright) | full matrix **791 passed**, zero failures (all 8 projects, 19.3m) |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
-| Path to Production | stage **6 PASSED WITH CONDITIONS**, ruled by Todd 2026-08-29. Stage 7 open |
+| Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 open — its analytics half is now wired and gated** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized |
+
+## Stage 7 — what got wired 2026-08-29
+
+**The shipping app reported no activation funnel, and nothing said so.** 55
+events defined, hostv2 fired 7 — all lodging and decision-reason — while every
+activation event (`event_created`, `host_home_viewed`, `invite_shared`,
+`invite_viewed`, `invite_rsvp_submitted`, `signed_up`, `first_value` …) fired
+ONLY from the frozen CRA. Transport worked, both keys ship, and the funnel was
+empty. Same shape as `untrackedIsNotPassing`: a check that never ran scored as
+a check that passed.
+
+Wired in `HostShellV2.jsx` (host home, event created, invite shared × 2
+outcomes) and `InviteV2.jsx` (invite viewed, rsvp submitted). Four of the five
+are gated by `hostv2/e2e/activationFunnel.spec.mjs`, **49/49 across all seven
+viewports**, each hook red-proofed individually.
+
+`event_created` is wired but NOT gated — hostv2 has no create door reachable
+from a seeded boot. Declared, not silently omitted.
+
+Verified in the deployed bundle, at feature level rather than by hash: the
+PostHog key sits in `eventIdentityEngine`, the FIFTH of seven lazy chunks, and
+the Sentry DSN is in the entry. Checking only the entry and `HostShellV2` would
+have produced a confident false zero.
+
+**Presence is not delivery.** Keys shipping proves the client is configured; it
+does not prove an event arrived. That needs the dashboards — yours.
 
 ## Path artifact
 
@@ -288,6 +314,19 @@ to spend money.
 
 ## Traps that cost time here
 
+- **The e2e preview server serves the EXISTING `dist` and never builds.** A
+  source edit changes nothing until `npm run build`, so my first red-proof
+  disabled four hooks in source and watched all 7 tests pass — a completely
+  vacuous green. Rebuild between red-proof steps. (CI is fine: `checks.yml`
+  chains build before `test:e2e`.)
+- **A `test.skip()` on the condition under test turns a broken gate green.**
+  Disabling the instrumentation made the invite spec SKIP rather than fail —
+  7 tests became 6 and the summary still said passed. Guard on a precondition
+  (the surface rendering), never on the thing being asserted.
+- **Track calls are awaited before they fire.** `shareInviteLink` and the RSVP
+  submit both await the clipboard / the API before tracking, so reading the
+  event log after `settled()` is a race — it failed on a different viewport
+  each run, which reads like a layout bug and is timing. Use `expect.poll`.
 - **Artifact stage items come from the spine, never from a summary.** Writing
   them out of conversation memory produced three different defects on one page:
   an invented task (stage 3 has no gate by design, and the page demanded one),

@@ -364,7 +364,11 @@
             <li><span class="mark ok">&check;</span> All five required sections present, in order: measured state, what shipped, scores, next steps in order, and <b>active traps</b> &mdash; the part that pays, and the only place the next session learns what already went wrong.</li>
             <li><span class="mark ok">&check;</span> Measured reality, not intentions: HEAD, suite counts, deploy target, feature flags. Artifact URL recorded.</li>
             <li><span class="mark ok">&check;</span> Cross-linked as the <em>first</em> read from CLAUDE.md, ahead of the long-form architecture log &mdash; otherwise it is found second and too late.</li>
-            <li><input type="checkbox" data-k="s7-instr"> <b>Gate (public):</b> instrumentation wired (analytics, error tracking) and the tracker entry matches reality. Re-run retroactively at stage 9.</li>
+            <li><span class="mark ok">&check;</span> <b>Gate (public), error tracking:</b> Sentry initialises in <code>main.jsx</code> and its DSN ships in the deployed bundle &mdash; verified by reading the live chunk, not the local build.</li>
+            <li><span class="mark ok">&check;</span> <b>Gate (public), analytics:</b> the activation funnel now fires from the app that <em>ships</em>. It did not before: <span class="num">55</span> events were defined, hostv2 fired <span class="num">7</span>, and every activation event fired only from the frozen CRA. Four are wired and gated &mdash; a host arriving, an invite shared, an invite opened, a reply sent &mdash; by <code>e2e/activationFunnel.spec.mjs</code>, red-proofed one hook at a time.</li>
+            <li><span class="mark ok">&check;</span> The tracker entry matches reality: the Command Center reads stage 6 as a conditional pass and carries the flag forward.</li>
+            <li><input type="checkbox" data-k="s7-created"> <code>event_created</code> is wired at the creation site but <b>not gated</b> &mdash; hostv2 has no create door reachable from a seeded boot, so driving it is its own piece of work. Named here rather than left implied.</li>
+            <li><input type="checkbox" data-k="s7-delivery"> <b>Confirm events actually arrive.</b> Keys and DSN shipping is presence, not delivery &mdash; that needs the PostHog and Sentry dashboards, which only you can read.</li>
             <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row.</li>
           </ul>
         </div>
@@ -601,6 +605,7 @@
           <tr><td>Seeded vendors with an email</td><td class="n">0 of 126</td><td>Transport board measurement</td><td class="n">On next send work</td></tr>
           <tr><td>Purchases marked synthesized</td><td class="n">16</td><td>clientDinner + fundraiserGala, authored 21 Aug</td><td class="n">Owed a verification pass</td></tr>
           <tr><td>Gates recorded before today</td><td class="n">0</td><td>Command Center, 30-record cache</td><td class="n">&mdash;</td></tr>
+          <tr><td>Funnel events fired by the shipping app</td><td class="n">4 of 5 wired, 4 gated</td><td>e2e/activationFunnel.spec.mjs, red-proofed 2026-08-29</td><td class="n">On any analytics change</td></tr>
           <tr><td>Standing conditions</td><td class="n">9</td><td>Owner ruling, 29 Aug; server-generated <code>conditional</code> flag</td><td class="n">Before stage 9</td></tr>
         </tbody>
       </table>

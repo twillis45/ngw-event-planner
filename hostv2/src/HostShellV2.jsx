@@ -785,6 +785,22 @@ export default function HostShellV2() {
     let seen = false; try { seen = localStorage.getItem(LS_WELCOMED) === '1'; } catch { seen = false; }
     return shouldShowWelcome({ appEvents: APP_EVENTS, customEvent: CUSTOM_EVENTS_AT_LOAD[0] || null, welcomed: seen });
   });
+  // ── THE SHIPPING APP REPORTED NO ACTIVATION FUNNEL (2026-08-29) ──────────
+  // Every funnel event fired from the frozen CRA and none from here, so the
+  // app that actually ships told us nothing about whether a host arrived,
+  // created, shared, or got a reply. Same shape as untrackedIsNotPassing: a
+  // check that never ran was being scored as a check that passed.
+  //
+  // Fired once per mount, not per render, and deliberately NOT paired with a
+  // generic PAGE_VIEW — two events for one arrival double-counts the top of
+  // the funnel, which is the number everything downstream divides by.
+  const landingSent = useRef(false);
+  useEffect(() => {
+    if (landingSent.current) return;
+    landingSent.current = true;
+    try { trackEvent(ANALYTICS.HOST_HOME_VIEWED, { page: 'host_shell_v2' }); } catch (_e) { /* a counter never blocks a boot */ }
+  }, []);
+
   const dismissWelcome = (dest) => {
     try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode — shows again next load, never blocks */ }
     setWelcome(false);
@@ -4652,7 +4668,11 @@ export default function HostShellV2() {
   const shareInviteLink = async () => {
     const url = inviteLinkUrl();
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      try { await navigator.share({ title: 'You’re invited — ' + (event.name || 'our event'), text: 'You’re invited to ' + (event.name || 'our event') + '. RSVP here: ' + url, url }); return; } catch { /* declined — fall through to copy */ }
+      try {
+        await navigator.share({ title: 'You’re invited — ' + (event.name || 'our event'), text: 'You’re invited to ' + (event.name || 'our event') + '. RSVP here: ' + url, url });
+        try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'native_share', event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
+        return;
+      } catch { /* declined — fall through to copy */ }
     }
     // ── DO NOT PROMISE A LINK THAT ONLY WORKS HERE (2026-08-06, board) ──────
     // "anyone who opens it can RSVP themselves, no app needed" is true only when
@@ -4670,6 +4690,10 @@ export default function HostShellV2() {
     const rsvpLive = (() => { try { return isRsvpApiConfigured(); } catch { return false; } })();
     try {
       await navigator.clipboard.writeText(url);
+      // rsvp_live rides along because a copied link on the demo profile reaches
+      // a guest who cannot reply — a share that cannot convert, and the funnel
+      // must not read it as one that could.
+      try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'clipboard', rsvp_live: rsvpLive, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
       toast(rsvpLive
         ? 'Invite link copied — anyone who opens it can RSVP themselves, no app needed.'
         : 'Invite link copied — it opens on this device. Replies are not collected yet.');
@@ -6318,6 +6342,10 @@ export default function HostShellV2() {
     // passGate treats an UNSTAMPED event as grandfathered free regardless.
     try { Object.assign(ev, passVerdictAtCreation(ev, customs), { briefSharedVendorIds: [] }); } catch { /* engine absent — event stays unstamped, i.e. free */ }
     setCustoms(list => list.some(c => c && c.id === newId) ? list.map(c => (c && c.id === newId) ? ev : c) : [...list, ev]);
+    // `is_first` is read from the events that existed BEFORE this one, which is
+    // the same population passVerdictAtCreation just judged against — measuring
+    // it after the state update would count this event and never report a first.
+    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
     setEventId(newId); setRevealed(true);
     // Build-map #3: a freshly created event is the host's new resume pointer.
     didResume.current = true;

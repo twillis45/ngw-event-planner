@@ -244,6 +244,13 @@ export default function InviteV2({ code }) {
     return () => { cancelled = true; };
   }, [code]);
 
+  // ── DID THE SHARE LAND? (2026-08-29) ──────────────────────────────────────
+  // INVITE_SHARED without INVITE_VIEWED is a host talking to nobody, and until
+  // now the shipping app reported neither. Fired once per code, and ONLY for a
+  // resolved event: a dead link is not a view, and counting it would inflate
+  // the reach half of the only conversion pair this product has.
+  const viewedRef = useRef(null);
+
   // undefined = a lookup is in flight; { event: null } = genuinely not found;
   // { event: null, failed: true } = the lookup itself failed (offline/5xx) — a
   // retryable state, NOT "this link is dead." retryTick re-runs the effect.
@@ -341,6 +348,16 @@ export default function InviteV2({ code }) {
   const [queued, setQueued] = useState(false);
   const [shareState, setShareState] = useState('');
   const shareTimer = useRef(null);
+  useEffect(() => {
+    const ev = resolved && resolved.event;
+    if (!ev || viewedRef.current === code) return;
+    viewedRef.current = code;
+    // No is_past here on purpose: `isPast` is declared far below this effect,
+    // so reading it in the dependency array is a temporal dead zone error on
+    // every invite render. event_type carries the useful cut anyway.
+    try { trackInvite(INVITE_EVENTS.INVITE_VIEWED, { event_type: ev.type }); } catch (_e) { /* a counter never blocks a guest */ }
+  }, [resolved, code]);
+
   useEffect(() => () => clearTimeout(shareTimer.current), []);
   // ── Arrival assist (event day): guest-initiated, entirely client-side —
   // location is watched ONLY after the guest asks, compared against the
@@ -660,6 +677,11 @@ export default function InviteV2({ code }) {
     }
     setQueued(!delivered);
     setSubmitted(true);
+    // `delivered` separates a reply that reached the host from one sitting in
+    // this browser's outbox. Both are guest intent; only one is a reply the
+    // host can act on, and collapsing them would overstate the conversion.
+    // Behavioural only — the guest's name, meal and notes never ride along.
+    try { trackInvite(INVITE_EVENTS.INVITE_RSVP_SUBMITTED, { rsvp: payload.rsvp, delivered, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a reply */ }
     try { if (navigator.vibrate) navigator.vibrate([12, 70, 12]); } catch { /* no haptics */ }
   };
 
