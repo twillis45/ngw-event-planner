@@ -104,8 +104,12 @@ test.describe('activation funnel — hostv2 emits it, not just the frozen CRA', 
   test('a guest replying reports the conversion, and whether it reached the host', async ({ page }) => {
     await boot(page, '?rsvp=test-two-days');
     await settled(page);
+    // Asserted, not skipped — the third of these in this file. In a seeded boot
+    // the invite always resolves (49/49 across every viewport), so a missing
+    // name field means the invite page itself broke, and a skip would hide that
+    // behind a green summary line.
     const name = page.getByLabel(/Your name/i).first();
-    test.skip(!(await name.count()), 'invite did not resolve in this environment');
+    await expect(name).toBeVisible();
     // ORDER MATTERS, and not for a cosmetic reason: a value typed into the name
     // field before the invite finishes resolving is wiped by the re-render that
     // follows, so filling first and picking second submits an empty name and
