@@ -381,12 +381,17 @@ to spend money.
   command in an interactive shell passes all 353. Same interpreter, same cwd,
   opposite result — and nothing prints the parent's architecture unless you ask.
   `verify:all` guards it with `arch -arm64`.
-- **`gate:cra` is red locally and green in CI on the same commit**, and the
-  warning it reports is false: it calls `COST_PROVENANCE_TYPE` unused while it
-  is used at `governedFieldTypes.js:342`. Cause undetermined; CI is
-  authoritative. A subagent that ran the command inferred main was red — the
-  command was reported honestly, the inference was not checked. Verify a
-  board's findings before acting on them.
+- **RESOLVED: `gate:cra` red locally / green in CI was a STALE `node_modules/.cache`.**
+  The babel-loader ESLint cache held a result from before `COST_PROVENANCE_TYPE`
+  acquired its use, so the gate reported the symbol unused while it is used at
+  `governedFieldTypes.js:342`. CI runs `npm ci` into a clean tree and never saw
+  it. `rm -rf node_modules/.cache` makes the gate print CI's exact line —
+  "241 of 245 baselined" — and `verify:all` went 7 of 8 to **8 of 8**.
+  **When a gate disagrees with CI on the same commit, clear the build cache
+  before believing either.** A cached lint result is a measurement's corpse.
+  Related: a subagent that ran the command inferred main was red. The command
+  was reported honestly; the inference past it was not checked. Verify a board's
+  findings before acting on them.
 - **The e2e preview server serves the EXISTING `dist` and never builds.** A
   source edit changes nothing until `npm run build`, so my first red-proof
   disabled four hooks in source and watched all 7 tests pass — a completely
