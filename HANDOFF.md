@@ -18,6 +18,27 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02**, under the owner's standing delegation. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized |
 
+## Board conditions discharged the same session — 4 of 5 stage-7 closure items
+
+| Condition | State |
+|---|---|
+| Prove telemetry ARRIVES, not just ships | **OPEN — yours.** Needs the PostHog and Sentry consoles |
+| Admin console reads the wrong storage key | **DONE.** Reads both books, additively, deduped |
+| `gate:cra` local/CI divergence | **DONE.** It was a stale `node_modules/.cache` |
+| Census the 210 skips | **DONE.** 7 tests cannot fail; 9 rotted guards retargeted |
+| 8th `verify:all` suite | **DONE.** Now **8 of 8** — the set passes together for the first time |
+
+Stage-9 items: durable storage **DONE**, recovery UI **DONE**. Remaining are the
+stranger test, the rollback rehearsal, and the economics — all yours.
+
+**Two findings from the census worth acting on next**, both named by it and
+neither done: three specs (`_boardCapture`, `_riskLaneCapture`,
+`_venueReaderCapture`) are gated on env vars **nothing in the repo sets**, so
+they have never run once; and `boardMatrix`'s loop-advance probe — the harness
+built for the "no next step after selection" class — skips on 4 of 6 states
+**including the day-of ask**, the highest-stakes screen in the product. Invert
+that guard so "no in-place settle" fails with the state named.
+
 ## The board ruled stage 7, 2026-09-02 — and refused stage 9
 
 Two panels, ten seats, under your standing delegation. Both reached
