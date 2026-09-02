@@ -15,8 +15,37 @@ this file is the short answer to "where is it, is it green, what's next."
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
-| Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 open — its analytics half is now wired and gated** |
+| Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 recorded `not-yet` 2026-09-02 — recommendation `passed-with-conditions`, awaiting your ruling.** No standing delegation exists for this project |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized |
+
+## Stage 7 recording, 2026-09-02 — two obligations that had NEVER been met
+
+Both live in the spine's own numbered steps rather than in `requiredSkills`,
+and `requiredSkills[7]` is empty — so the gap table was vacuous while two real
+obligations sat unmet, and nothing surfaced them.
+
+**`verify:all` did not exist.** Nine verification scripts, no way to run them as
+a set, so the full set had never once run together. It exists now and it
+COLLECTS rather than chains, because two scripts cannot be chained:
+`gate:hostv2` exits 1 unconditionally (CI retired it 2026-08-01; the npm script
+was never removed) and in an `&&` chain silently deletes every step after it.
+First full run: **7 of 8 pass**. Backend pytest — 353 tests — is reachable from
+a local command for the first time.
+
+**`docs/ADMIN-CONSOLE.md` did not exist**, required since stage 3. A console
+does ship (`?admin=1`) and its presence read as coverage. Audited by subagent,
+re-verified by hand. Four findings, all now in that file:
+
+- `AdminConsole.jsx:1323` reads `localStorage['ngw-events']` — the FROZEN CRA's
+  key — while hostv2 writes `ngw-hostv2-custom-events`. The "This Browser"
+  panels read **empty against the shipping app while labelled as showing it.**
+- **No admin surface is reachable from the shipping app at all.**
+- `restoreBackup`, `importCustomEvents`, `listBackups`, `readWriteLog` are
+  implemented, guarded, unit-tested and have **zero callers**. Finished work
+  that never reached a surface — invisible to every instrument, because
+  coverage looks healthy and the suite is green.
+- Durable storage is never requested. No `navigator.storage.persist()` on a
+  localStorage-only profile.
 
 ## Stage 7 — what got wired 2026-08-29
 
@@ -315,6 +344,19 @@ to spend money.
 
 ## Traps that cost time here
 
+- **Node 20 here is the INTEL Homebrew prefix** (`/usr/local/opt/node@20`), so
+  on Apple Silicon it runs under Rosetta as x86_64 and **every child process
+  inherits that**. `python3` then cannot dlopen `pydantic_core`'s arm64 binary,
+  so the backend suite fails to COLLECT under a spawn while the identical
+  command in an interactive shell passes all 353. Same interpreter, same cwd,
+  opposite result — and nothing prints the parent's architecture unless you ask.
+  `verify:all` guards it with `arch -arm64`.
+- **`gate:cra` is red locally and green in CI on the same commit**, and the
+  warning it reports is false: it calls `COST_PROVENANCE_TYPE` unused while it
+  is used at `governedFieldTypes.js:342`. Cause undetermined; CI is
+  authoritative. A subagent that ran the command inferred main was red — the
+  command was reported honestly, the inference was not checked. Verify a
+  board's findings before acting on them.
 - **The e2e preview server serves the EXISTING `dist` and never builds.** A
   source edit changes nothing until `npm run build`, so my first red-proof
   disabled four hooks in source and watched all 7 tests pass — a completely

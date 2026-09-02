@@ -177,8 +177,8 @@
       owner ruled its first: stage 6, <b>passed with conditions</b>.
     </p>
     <div class="meta">
-      <div>Recorded <b>2026-08-29</b></div>
-      <div>HEAD <b>0283a9f8</b></div>
+      <div>Recorded <b>2026-09-02</b></div>
+      <div>HEAD <b>e1e146bb</b></div>
       <div>Reach <b>public &mdash; anyone</b></div>
       <div>Host <b>GitHub Pages</b></div>
       <div>Stage <b>6 &mdash; Deploy, passed with conditions</b></div>
@@ -369,6 +369,12 @@
             <li><span class="mark ok">&check;</span> The tracker entry matches reality: the Command Center reads stage 6 as a conditional pass and carries the flag forward.</li>
             <li><input type="checkbox" data-k="s7-created"> <code>event_created</code> is wired at the creation site but <b>not gated</b> &mdash; hostv2 has no create door reachable from a seeded boot, so driving it is its own piece of work. Named here rather than left implied.</li>
             <li><input type="checkbox" data-k="s7-delivery"> <b>Confirm events actually arrive.</b> Keys and DSN shipping is presence, not delivery &mdash; that needs the PostHog and Sentry dashboards, which only you can read.</li>
+            <li><span class="mark ok">&check;</span> <b><code>verify:all</code> now exists</b>, and it COLLECTS rather than chains: every suite runs, each records its own exit code. Two scripts cannot be chained &mdash; <code>gate:hostv2</code> exits 1 unconditionally (retired by CI on 1 Aug, npm script never removed) and would silently delete every step after it. First full run: <b>7 of 8 pass</b>.</li>
+            <li><span class="mark ok">&check;</span> <b>Backend pytest reachable locally for the first time</b> &mdash; <span class="num">353</span> tests that only CI ever ran, so the person about to push could not.</li>
+            <li><span class="mark ok">&check;</span> <b><code>docs/ADMIN-CONSOLE.md</code> now exists.</b> Required since stage 3 and never written, because a console does ship and its presence read as coverage.</li>
+            <li><input type="checkbox" data-k="s7-adminkey"> <b>The admin console reads a key the shipping app never writes.</b> <code>AdminConsole.jsx:1323</code> reads <code>ngw-events</code> (the frozen CRA's key) while hostv2 writes <code>ngw-hostv2-custom-events</code>. Its "This Browser" panels read empty while labelled as showing this browser.</li>
+            <li><input type="checkbox" data-k="s7-recovery"> <b>Four recovery functions have zero callers.</b> <code>restoreBackup</code>, <code>importCustomEvents</code>, <code>listBackups</code>, <code>readWriteLog</code> &mdash; implemented, guarded, unit-tested, unreachable from the product. Finished work that never got a surface.</li>
+            <li><input type="checkbox" data-k="s7-durable"> <b>Durable storage is never requested.</b> No <code>navigator.storage.persist()</code> anywhere, on a localStorage-only shipping profile. The host learns storage was not durable when a write fails, which is after the data is gone.</li>
             <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row.</li>
           </ul>
         </div>
@@ -582,6 +588,18 @@
     </div>
 
     <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">A gate that fails locally is failing.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        <code>gate:cra</code> exits 1 here and passes in CI on the same commit. The warning it
+        reports is <b>demonstrably false</b> &mdash; it calls <code>COST_PROVENANCE_TYPE</code>
+        unused while it is used at <code>governedFieldTypes.js:342</code>, inside an object
+        literal that closes at 343. A subagent that ran the command concluded main was red; the
+        command was reported honestly and the inference was not checked. Cause undetermined,
+        CI is authoritative, and the divergence is recorded rather than papered over.
+      </p>
+    </div>
+
+    <div class="corr">
       <p style="margin:0 0 4px"><span class="was">A gate can be recorded as passed once the work is verified.</span></p>
       <p style="margin:0; color:var(--ink-soft)">
         Only the owner rules a gate. Research reaches a recommendation; the recommendation was
@@ -606,6 +624,9 @@
           <tr><td>Purchases marked synthesized</td><td class="n">16</td><td>clientDinner + fundraiserGala, authored 21 Aug</td><td class="n">Owed a verification pass</td></tr>
           <tr><td>Gates recorded before today</td><td class="n">0</td><td>Command Center, 30-record cache</td><td class="n">&mdash;</td></tr>
           <tr><td>Funnel events fired by the shipping app</td><td class="n">4 of 5 wired, 4 gated</td><td>e2e/activationFunnel.spec.mjs, red-proofed 2026-08-29</td><td class="n">On any analytics change</td></tr>
+          <tr><td><code>verify:all</code> first full run</td><td class="n">7 of 8 pass</td><td>Collecting runner, 2026-09-02</td><td class="n">Every push</td></tr>
+          <tr><td>Backend tests, now reachable locally</td><td class="n">353</td><td>Previously CI-only; no local script invoked pytest</td><td class="n">Every push</td></tr>
+          <tr><td>Recovery functions with zero callers</td><td class="n">4</td><td>Counted, not eyeballed &mdash; ADMIN-CONSOLE.md</td><td class="n">When one gets a surface</td></tr>
           <tr><td>Standing conditions</td><td class="n">9</td><td>Owner ruling, 29 Aug; server-generated <code>conditional</code> flag</td><td class="n">Before stage 9</td></tr>
         </tbody>
       </table>
