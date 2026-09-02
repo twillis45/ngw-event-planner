@@ -214,3 +214,31 @@ is not impressed, and closes the tab. Truth-teller on whether the price is credi
 **Discipline for culturally/regionally-specific playbooks:** author render-first from insider experts (not stereotype), internal-diversity-aware, ASK-don't-ASSUME, opt-in overlay (never auto-applied by name/inference), anti-appropriation, dignity-first. Quantities grounded in real foodway norms, labeled `verificationStatus:'synthesized'`, `sources:[]` (no fabricated citations) until a foreground verification pass attaches them. Every food playbook clears the Food-Safety seat.
 
 **Why this roster:** collapsing it to generic roles loses the specific lens each star enforces (Tufte = density, Rams/Ive = reduction, Norman = truthfulness, the event pros = lived override authority). This named-star method is the user's actual working practice.
+
+---
+
+## Standing amendment — 2026-08-27 (Todd, standing instruction)
+
+**Every board must seat PLAYERS — the people who would actually use the thing.**
+Not only design stars, not only market and finance lenses. A panel of experts
+converges on expert taste, and a panel of commercial lenses converges on a
+spreadsheet; neither is the user. This is now a composition requirement, not a
+coverage nicety: **a board with no player seat is incomplete and must say so in
+its own output.**
+
+For a game, "player" means at minimum: someone who plays this genre, and someone
+who does not (the first-timer / Grandmother seat). For a tool, the practitioner
+who would operate it daily. For a purchase decision, the person who pays.
+
+**Size cap lifted.** The 12-seat guidance above stays as advice, not a limit —
+Todd has granted a standing override. Where a board exceeds it, weight the
+practitioner-override and player seats rather than counting votes, and preserve
+dissent per seat instead of averaging it away.
+
+**Failure this amendment exists to prevent, recorded from the case that produced
+it:** Snug board #4's go/no-go wing seated six commercial lenses (Scope
+Executioner, Market Realist, UA operator, publishing exec, Ramanujam, Dunford)
+and **zero player seats**, then ruled NO-GO on a business the players were never
+asked about. The arithmetic gap was large enough that player input would not have
+reversed it — but nobody in that room had ever wanted to play the game, and that
+is not how a decision of that weight should be composed.
