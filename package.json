@@ -39,7 +39,9 @@
     "grounding:census": "node scripts/groundingCensus.mjs src/lib/playbooks/data",
     "design:build": "node scripts/build-design-lib.mjs && node scripts/check-design-dts.mjs",
     "verify:all": "node scripts/verify-all.mjs",
-    "verify:fast": "node scripts/verify-all.mjs --fast"
+    "verify:fast": "node scripts/verify-all.mjs --fast",
+    "handoff:check": "node scripts/handoff-freshness.mjs",
+    "handoff:stamp": "node scripts/handoff-freshness.mjs --stamp"
   },
   "eslintConfig": {
     "extends": "react-app"

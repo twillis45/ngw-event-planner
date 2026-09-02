@@ -8,10 +8,10 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `d08f75ab` — pushed, 0 unpushed |
-| Jest | **6,179 passed**, 1 skipped, 432 suites — measured this pass |
+| Branch / HEAD | `main` @ `608d83d0` |
+| Jest | **6,201 passed**, 1 skipped, 436 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
-| e2e (Playwright) | full matrix **861 passed / 210 skipped / 0 failed** (20.3m). Skips are pre-existing viewport- and env-gated conditionals, 37 call sites — not new |
+| e2e (Playwright) | full matrix **909 passed / 190 skipped / 0 failed** (20.7m). Skips down 20 from the rotted-guard fix; the census classified all 36 guards |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |

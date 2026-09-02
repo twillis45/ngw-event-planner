@@ -32,7 +32,11 @@ const STATES = [
   { id: 'test-two-days',           label: 'Game Night T-2 (outdoor, weather)', weather: true,  future: true },
   { id: 'test-day-before-vendors', label: 'Dinner T-1 (vendors, COI unverified)', weather: false, future: true, patch: COI_PATCH },
   { id: 'ev-x-repast',             label: 'Repast T-3 (solemn)',               weather: false, future: true },
-  { id: 'ev-x-graduation',         label: 'Graduation (past)',                 weather: false, future: false },
+  // noSettle: a state that legitimately has nothing to settle in place, so a
+  // zero-step walk is the correct outcome rather than a missing one. A PAST
+  // event has no decisions left to make. Every other state must produce at
+  // least one settle or fail — see the walk's tail.
+  { id: 'ev-x-graduation',         label: 'Graduation (past)',                 weather: false, future: false, noSettle: true },
   { id: 'ev-x-wanda',              label: 'Wanda far-out',                     weather: false, future: true },
 ];
 
@@ -160,7 +164,24 @@ for (const state of STATES) {
         // Let the receipt toast clear before the next tap targets anything.
         await page.locator('.toast.on').waitFor({ state: 'hidden', timeout: 7000 }).catch(() => {});
       }
-      if (steps === 0) { test.skip(true, 'no in-place settle on this state'); return; }
+      // ── SILENCE WAS BEING SCORED AS A PASS (2026-09-02, skip census) ────
+      // This used to `test.skip(true)` whenever the walk found nothing to
+      // settle. A skip is indistinguishable from a pass in a summary line, so
+      // the probe this whole file exists for — the W14 "no next step after
+      // selection" class — reported nothing on FOUR of six states, including
+      // the DAY-OF ask, which is the highest-stakes screen in the product and
+      // the one a host is standing in a room using.
+      //
+      // On a state that should have something to settle, finding nothing IS
+      // the finding. Only states declared noSettle may walk zero steps.
+      if (steps === 0) {
+        if (state.noSettle) return;                       // declared, and correct
+        throw new Error(
+          `no in-place settle found on "${state.label}" — either this state has a dead end, `
+          + 'or it genuinely has nothing to settle and must be declared noSettle: true in STATES. '
+          + 'Silence is not a pass.',
+        );
+      }
     });
 
     test('pinned geometry + scroll-end reachability', async ({ page }) => {

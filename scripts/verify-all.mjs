@@ -50,6 +50,12 @@ const fast = process.argv.includes('--fast');   // skip the 14-minute matrix
 // Ordered cheapest-first so a broken snapshot reports as itself rather than as
 // a confusing failure three suites downstream.
 const STEPS = [
+  // FIRST because it is the cheapest and because a stale handoff invalidates
+  // every number reported after it. Stage 7's gate is "reflects measured
+  // reality, not intentions", and the spine's Step 7a — written the same day
+  // the SHA was found five commits stale — went stale again that afternoon
+  // with the rule already in the file. Prose is advice; this is not.
+  { id: 'handoff',    label: 'HANDOFF freshness',   cmd: 'npm', args: ['run', 'handoff:check'] },
   { id: 'knowledge',  label: 'knowledge snapshot',  cmd: 'npm', args: ['run', 'gate:knowledge'] },
   { id: 'migrations', label: 'shared-table migrations', cmd: 'npm', args: ['run', 'check:migrations'] },
   { id: 'design',     label: 'design lib + d.ts',   cmd: 'npm', args: ['run', 'design:build'] },
