@@ -18,7 +18,7 @@
 //  3. THE LANDING RING CLEARS UNDER REDUCED MOTION. The ring lived in the base
 //     rule and only the animation removed it, so `animation:none` left it
 //     stuck on permanently. Invisible to anyone not running the preference.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, RAIL_MIN_WIDTH } from './fixtures.mjs';
 
 const boot = async (page, opts = {}) => {
   await page.addInitScript(() => {
@@ -175,7 +175,7 @@ test('a scaled bar fill lands where the width-based one did', async ({ page }) =
 });
 
 test('a list entrance plays on arrival and not on every redraw', async ({ page }) => {
-  test.skip(!page.viewportSize() || page.viewportSize().width < 1280,
+  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH,
     'needs the rail, whose collapse toggle is the re-render trigger this uses');
   await boot(page);
 

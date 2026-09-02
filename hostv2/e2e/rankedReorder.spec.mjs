@@ -10,10 +10,10 @@
 // Asserting a transform exists at a moment of your choosing races the
 // animation. So this pins the mechanism at the only place it is unambiguous:
 // a row that moved carries a transform TRANSITION it did not have at rest.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, RAIL_MIN_WIDTH } from './fixtures.mjs';
 
 test('a row that changes rank travels to its new place', async ({ page }) => {
-  test.skip(!page.viewportSize() || page.viewportSize().width < 1280, 'uses the rail to change state');
+  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'uses the rail to change state');
   await page.addInitScript(() => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
@@ -87,7 +87,7 @@ test('the decisions queue travels too, and its rows are not nested', async ({ pa
   // map; if any two of them nested, the outer transform would compound with the
   // inner one and a row would travel twice as far as it should. Cheap to check,
   // invisible by eye at 260ms.
-  test.skip(!page.viewportSize() || page.viewportSize().width < 1280, 'reaches the sheet via the rail');
+  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'reaches the sheet via the rail');
   await page.addInitScript(() => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');

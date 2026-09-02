@@ -15324,7 +15324,12 @@ export default function HostShellV2() {
                             : 'Not asked yet — save a change and this will say where you stand.';
                     return (
                       <>
-                        <p className="grounding pre" style={{ margin: '0 0 8px' }}>{line}</p>
+                        {/* NOT `pre`: that class is the reveal animation's HIDDEN start state
+    (opacity:0 until `.in` is added) and this paragraph never gets `.in`,
+    so it rendered permanently invisible. Playwright's toBeVisible()
+    passed on it, because that check tests layout and visibility, NOT
+    opacity. A screenshot caught what four green tests did not. */}
+                        <p className="grounding" style={{ margin: '0 0 8px' }}>{line}</p>
                         <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
                           <button className="mini" onClick={() => {
                             try {
@@ -15360,7 +15365,7 @@ export default function HostShellV2() {
                         </div>
                         {backups.length > 0 && (
                           <>
-                            <p className="grounding pre" style={{ margin: '0 0 6px' }}>
+                            <p className="grounding" style={{ margin: '0 0 6px' }}>
                               Saved copies this device kept before each change. Newest first.
                             </p>
                             {backups.slice(0, 5).map((b) => (

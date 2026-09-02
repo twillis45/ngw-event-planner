@@ -31,6 +31,30 @@ export const test = base.extend({
 
 export { expect };
 
+// ─── THE RAIL IS UP FROM 1024, NOT 1280 (2026-09-02, skip census) ───────────
+//
+// Nine e2e guards read `viewport.width < 1280` and explained themselves as
+// "uses the rail" / "rail is only up at desktop widths". That last one was a
+// flat contradiction of the app: `isWideBp` in lib/viewport.js counts
+// tablet-land as wide, tablet-land starts at 1024, and styles.css:4915 already
+// says in as many words that data-rail is "1" from 1024 and NOT from 1280.
+// A unit test asserts the same thing. Only the e2e guards never got the memo.
+//
+// Measured against the built bundle: 18 rail rows at 1024x768, 1279x800,
+// 1280x800 and 1440x900 alike.
+//
+// Cost: ten tests skipped on two projects each — twenty executions per matrix
+// run — on a geometry where the surface they test demonstrably exists. A skip
+// reads as a pass in a summary line, so this was twenty silent passes.
+//
+// Kept as ONE constant so the next breakpoint move has one place to land, and
+// railBoundaryMatchesApp.test.js fails if it ever drifts from viewport.js.
+export const RAIL_MIN_WIDTH = 1024;
+
+/** True where the section rail is rendered and can be used as the door. */
+export const hasRail = (viewport) => !!viewport && viewport.width >= RAIL_MIN_WIDTH;
+
+
 // ─── THE BOOT BEAT WAS A SLEEP IN FRONT OF A BROKEN STATE-WAIT (2026-08-15) ──
 //
 // Five specs opened with this, character for character:

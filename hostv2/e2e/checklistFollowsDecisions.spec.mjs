@@ -12,7 +12,7 @@
 // were not idempotent, each write would re-render, reconcile, and write again,
 // forever. A render loop does not look like a crash — it looks like a warm
 // laptop and a battery going flat.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, RAIL_MIN_WIDTH } from './fixtures.mjs';
 
 // The app's own crab feast, not a hand-seeded one. The first version invented
 // an event id and localStorage shape; the shell ignored both and booted the
@@ -166,7 +166,7 @@ test.describe('the reconcile reaches the host', () => {
 });
 
 test('the crab swap, driven through the decision board itself', async ({ page }) => {
-  test.skip(!page.viewportSize() || page.viewportSize().width < 1280, 'uses the rail to reach both sheets');
+  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'uses the rail to reach both sheets');
 
   // THE ONE THAT WAS OPEN. Two earlier attempts produced a flaky test rather
   // than a failing feature and it was recorded as a gap rather than papered

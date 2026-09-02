@@ -18,7 +18,7 @@
 //
 // It also pins that the choice PERSISTS, because a host who narrowed their nav
 // said something about how they work, not about this page view.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, RAIL_MIN_WIDTH } from './fixtures.mjs';
 
 const railWidth = (page) => page.locator('.srail').evaluate((n) => n.getBoundingClientRect().width);
 
@@ -37,7 +37,7 @@ const boot = async (page) => {
 };
 
 test.describe('section rail collapse', () => {
-  test.skip(({ viewport }) => !viewport || viewport.width < 1280, 'rail is only up at desktop widths');
+  test.skip(({ viewport }) => !viewport || viewport.width < RAIL_MIN_WIDTH, 'no rail below 1024');
 
   test('narrows to icons, keeps every door named and hittable, and remembers', async ({ page }) => {
     await boot(page);
@@ -151,7 +151,7 @@ test.describe('section rail collapse', () => {
 // asserts the OUTCOME — the rail does not move — rather than the declaration,
 // so it holds no matter which rule a future change touches.
 test.describe('the rail does not drift', () => {
-  test.skip(({ viewport }) => !viewport || viewport.width < 1280, 'desktop-only surface');
+  test.skip(({ viewport }) => !viewport || viewport.width < RAIL_MIN_WIDTH, 'desktop-only surface');
 
   test('walking every section leaves the rail exactly where it started', async ({ page }) => {
     await boot(page);

@@ -57,7 +57,15 @@ test.describe('your data — the recovery surface', () => {
     await boot(page);
     await openSettings(page);
     const sheet = page.locator('.sheet').last();
-    await expect(sheet.getByText(/keep your events|blocking storage|Not asked yet|cannot promise/i).first()).toBeVisible();
+    const line = sheet.getByText(/keep your events|blocking storage|Not asked yet|cannot promise/i).first();
+    await expect(line).toBeVisible();
+    // toBeVisible() IS NOT ENOUGH, and this is the bug it missed: the first cut
+    // gave this paragraph the `pre` class — the reveal animation's hidden start
+    // state, opacity:0 until `.in` is added, which it never was. The text was in
+    // the DOM at full size, so toBeVisible() passed while a screenshot showed
+    // nothing. Assert the opacity a reader actually needs.
+    const opacity = await line.evaluate((el) => Number(getComputedStyle(el).opacity));
+    expect(opacity).toBeGreaterThan(0.9);
   });
 
   test('CORRUPT THE STORE, RESTORE, AND THE PLAN COMES BACK', async ({ page }) => {
