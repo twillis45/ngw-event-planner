@@ -1319,9 +1319,34 @@ const A_SUBTABS = ['Executive', 'Funnel', 'Friction', 'Playbook', 'Memory', 'Cul
 const POSTHOG_URL = 'https://us.posthog.com';
 
 // Read the local book once per render of a panel. Defensive parse.
+//
+// BOTH BOOKS, and that is the fix (2026-09-02, review board). This read only
+// 'ngw-events' — the FROZEN legacy shell's key — while the app that actually
+// ships writes 'ngw-hostv2-custom-events'. So every panel below rendered EMPTY
+// against the shipping app while carrying a banner calling itself "this
+// browser's book". A panel that names its own scope and then reads a different
+// scope is a control lying about what it does, which is the one thing an
+// operator surface may never do.
+//
+// Newest shell first, deduped by id: an event that exists in both books is one
+// event, and the hostv2 copy is the one being edited.
 function readLocalBook() {
-  try { return JSON.parse(localStorage.getItem('ngw-events') || '[]'); }
-  catch { return []; }
+  const read = (key) => {
+    try {
+      const v = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  };
+  const out = [];
+  const seen = new Set();
+  for (const ev of [...read('ngw-hostv2-custom-events'), ...read('ngw-events')]) {
+    if (!ev || !ev.id) continue;
+    const id = String(ev.id);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(ev);
+  }
+  return out;
 }
 
 const BOOK_ONLY_NOTE = "This browser's book only — not a fleet metric.";
