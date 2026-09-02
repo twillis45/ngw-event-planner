@@ -15,8 +15,38 @@ this file is the short answer to "where is it, is it green, what's next."
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
-| Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 recorded `not-yet` 2026-09-02 — recommendation `passed-with-conditions`, awaiting your ruling.** No standing delegation exists for this project |
+| Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02**, under the owner's standing delegation. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized |
+
+## The board ruled stage 7, 2026-09-02 — and refused stage 9
+
+Two panels, ten seats, under your standing delegation. Both reached
+**passed-with-conditions** on stage 7 and both refused stage 9 entry, for the
+same reason: three of the gates stage 9 re-runs retroactively have **never been
+run** rather than run and failed — the stranger test, the rollback rehearsal,
+and the economics. **No offer may be described as ready and no money taken.**
+
+Dissent kept per seat rather than averaged. Panel A's **first-timer** would have
+blocked stage 7 too ("observe cannot pass when nothing has ever been observed
+being *used*"), overruled 4–1. Panel B's **verification** seat entered the
+strongest dissent: three greens cannot currently be trusted — 210 of 1,071
+browser tests are skipped by guards nobody has examined, `gate:cra` emits a
+provably false warning, and Sentry is presence-assumed-delivery. Panel B's
+**paying host**: *"I would ask for a refund, and I would be right to — the
+browser may quietly delete my entire plan, and the backups the app took for me
+cannot be restored by any button I can reach."*
+
+**Their ONE THING, named by six of ten seats, is half done.** Durable storage is
+now requested — asked once on the first successful write, fire-and-forget so it
+can never delay or fail a save, the answer recorded so a surface can report it
+honestly, a refusal kept rather than re-prompted forever. 13 tests, three faults
+red-proofed. **One escaped and is recorded as a finding:** removing the call
+from the write path left all twelve green, because "a refused write does not
+ask" is vacuously true when nothing ever asks. The missing positive assertion —
+that a *successful* write asks at all — is now there.
+
+The other half is not done: **wire the four zero-caller recovery functions to a
+driven UI**, red-proofed by corrupt-then-restore.
 
 ## Stage 7 recording, 2026-09-02 — two obligations that had NEVER been met
 

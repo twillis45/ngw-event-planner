@@ -31,6 +31,7 @@ export const LS_CUSTOMS = 'ngw-hostv2-custom-events';
 export const LS_BACKUP_INDEX = 'ngw-hostv2-store-backups';
 export const BACKUP_PREFIX = 'ngw-hostv2-backup-';
 export const LS_WRITE_LOG = 'ngw-hostv2-write-log';
+export const LS_DURABILITY = 'ngw-hostv2-durability';
 
 /** Test-created events announce themselves. Anything else is the host's. */
 export const TEST_ID_PREFIX = 'E2E_TEST_';
@@ -125,6 +126,67 @@ export function readBackup(key) {
   return Array.isArray(list) ? list.filter((e) => e && e.id) : [];
 }
 
+// ─── ASK THE BROWSER TO KEEP IT (2026-09-02, review board) ──────────────────
+//
+// The shipping profile is localStorage only. Everything else in this file —
+// the backups, the drop-guard, the export — protects against THIS APP losing
+// data, and none of it protects against the BROWSER evicting it. Nothing here
+// had ever called navigator.storage.persist(), so a host learned their storage
+// was never durable at the moment a write failed, which is after the plan is
+// already gone.
+//
+// Two seats reached this independently: the practitioner ("an event plan that
+// vanishes on a cache clear is what ends my use of the tool") and the
+// accessibility seat, who is right that eviction is ROUTINE on shared,
+// borrowed and low-storage devices rather than a tail risk. It is a
+// device-equity item as much as a durability one.
+//
+// Asked ONCE and the answer recorded, because persist() can prompt and because
+// a surface needs to be able to say what happened. Fire-and-forget by
+// construction: nothing here may block, delay or fail a host's write.
+
+/** What we know about durability. Sync, so a render can read it. */
+export function durabilityStatus() {
+  const ls = store();
+  if (!ls) return { state: 'no-storage', asked: false };
+  const rec = readJSON(ls, LS_DURABILITY, null);
+  if (!rec || typeof rec !== 'object') return { state: 'unknown', asked: false };
+  return rec;
+}
+
+/**
+ * Ask once. Returns the recorded answer; never throws, never rejects.
+ * `state` is one of: persisted | refused | unsupported | no-storage | unknown.
+ */
+export async function requestDurableStorage(now = Date.now()) {
+  const ls = store();
+  if (!ls) return { state: 'no-storage', asked: false };
+
+  const prior = durabilityStatus();
+  // Re-ask only if we have never had a real answer. A refusal is a real
+  // answer and is NOT retried on every write.
+  if (prior.asked === true) return prior;
+
+  const write = (rec) => {
+    try { ls.setItem(LS_DURABILITY, JSON.stringify(rec)); } catch { /* quota — the answer is a nicety */ }
+    return rec;
+  };
+
+  const nav = typeof navigator !== 'undefined' ? navigator : null;
+  if (!nav || !nav.storage || typeof nav.storage.persist !== 'function') {
+    return write({ state: 'unsupported', asked: true, at: now });
+  }
+  try {
+    // persisted() first: already-granted needs no prompt.
+    let granted = false;
+    if (typeof nav.storage.persisted === 'function') granted = await nav.storage.persisted();
+    if (!granted) granted = await nav.storage.persist();
+    return write({ state: granted ? 'persisted' : 'refused', asked: true, at: now });
+  } catch {
+    return write({ state: 'unsupported', asked: true, at: now });
+  }
+}
+
 const logWrite = (entry) => {
   const ls = store();
   if (!ls) return;
@@ -189,6 +251,9 @@ export function saveCustomEvents(next, opts = {}) {
     dropped,
     backupKey,
   });
+  // Fire-and-forget, AFTER the write has already succeeded. Never awaited: a
+  // durability question must not delay, block or fail a host's save.
+  try { requestDurableStorage(opts.now || Date.now()); } catch { /* never */ }
   return { ok: true, wrote: true, backupKey, dropped };
 }
 

@@ -181,13 +181,26 @@
       <div>HEAD <b>e1e146bb</b></div>
       <div>Reach <b>public &mdash; anyone</b></div>
       <div>Host <b>GitHub Pages</b></div>
-      <div>Stage <b>6 &mdash; Deploy, passed with conditions</b></div>
+      <div>Stage <b>7 &mdash; Handoff, passed with conditions</b></div>
     </div>
   </header>
 
   <section class="state" style="border-left-color:var(--ok)">
-    <p class="eyebrow" style="color:var(--ok)">Ruled by the owner &mdash; 29 August 2026</p>
-    <h2>Stage 6 passed, with conditions that gate stage 9.</h2>
+    <p class="eyebrow" style="color:var(--ok)">Ruled &mdash; stage 6 by the owner, stage 7 by the board</p>
+    <h2>Stage 7 passed with conditions. Stage 9 entry: <span style="color:var(--open)">no</span>.</h2>
+    <p>
+      Two panels, ten seats, under the owner's standing delegation. Both reached
+      <b>passed-with-conditions</b> on stage 7 and both refused stage 9 entry, for the same
+      reason: three of the gates stage 9 re-runs retroactively have <em>never been run</em>
+      rather than run and failed &mdash; the stranger test, the rollback rehearsal, and the
+      economics. <b>No offer may be described as ready and no money may be taken.</b>
+    </p>
+    <p class="guide">
+      Panel A's first-timer seat would have blocked stage 7 too &mdash; "observe cannot pass
+      when nothing has ever been observed being <em>used</em>." Overruled 4&ndash;1, and kept
+      here rather than averaged away.
+    </p>
+    <h2 style="margin-top:6px">Stage 6 passed, with conditions that gate stage 9.</h2>
     <p>
       Ruled <b>passed-with-conditions</b> by Todd Willis, 29 August 2026. The deploy is built
       from a known SHA in CI, publicly reachable, and proven at the feature level to be HEAD.
@@ -374,11 +387,13 @@
             <li><span class="mark ok">&check;</span> <b><code>docs/ADMIN-CONSOLE.md</code> now exists.</b> Required since stage 3 and never written, because a console does ship and its presence read as coverage.</li>
             <li><input type="checkbox" data-k="s7-adminkey"> <b>The admin console reads a key the shipping app never writes.</b> <code>AdminConsole.jsx:1323</code> reads <code>ngw-events</code> (the frozen CRA's key) while hostv2 writes <code>ngw-hostv2-custom-events</code>. Its "This Browser" panels read empty while labelled as showing this browser.</li>
             <li><input type="checkbox" data-k="s7-recovery"> <b>Four recovery functions have zero callers.</b> <code>restoreBackup</code>, <code>importCustomEvents</code>, <code>listBackups</code>, <code>readWriteLog</code> &mdash; implemented, guarded, unit-tested, unreachable from the product. Finished work that never got a surface.</li>
-            <li><input type="checkbox" data-k="s7-durable"> <b>Durable storage is never requested.</b> No <code>navigator.storage.persist()</code> anywhere, on a localStorage-only shipping profile. The host learns storage was not durable when a write fails, which is after the data is gone.</li>
+            <li><span class="mark ok">&check;</span> <b>Durable storage is now requested</b> &mdash; the board's ONE THING, named independently by six of ten seats. Asked once on the first successful write, fire-and-forget so it can never delay or fail a save, with the answer recorded so a surface can report it. A refusal is kept as a real answer rather than re-prompted forever. <span class="num">13</span> tests; three faults red-proofed, and <b>one escaped</b> &mdash; see corrections.</li>
+            <li><input type="checkbox" data-k="s7-recovery-ui"> <b>Wire the recovery functions to driven UI</b>, red-proofed by corrupt-then-restore. The board's other half of the same item: backups are taken that no button can restore.</li>
+            <li><input type="checkbox" data-k="s7-skipcensus"> <b>Census the <span class="num">210</span> skipped browser tests.</b> Panel B's verification seat: an unexamined skip is a test that cannot fail, and nobody knows how many of those guards have rotted open.</li>
             <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row.</li>
           </ul>
         </div>
-        <span class="chip c-open">Open</span>
+        <span class="chip c-ok">Passed +cond</span>
       </article>
 
       <article class="stage is-locked">
@@ -588,6 +603,29 @@
     </div>
 
     <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">No standing delegation exists for this project.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        Written into a gate record earlier the same day, and false. The owner's standing
+        instruction was to convene the review board for decisions &mdash; which is exactly the
+        delegation the spine describes. It was read as per-project and scoped to the projects
+        whose records happened to name it, then cited as a reason to stop. <b>A hook caught it</b>
+        by reading <code>ruledBy</code> out of the gate file. The earlier record stands beneath
+        the ruling rather than being edited away.
+      </p>
+    </div>
+
+    <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">Three faults red-proofed, so the durability check holds.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        <b>One escaped.</b> Removing the call from the write path left all twelve tests green,
+        because "a refused write does not ask" is vacuously true when <em>nothing</em> ever asks.
+        The positive assertion was missing: that a <em>successful</em> write asks at all. Added,
+        and the fault now fails. Recorded as an escape rather than quietly fixed &mdash; an
+        escape measures the suite, not the fault.
+      </p>
+    </div>
+
+    <div class="corr">
       <p style="margin:0 0 4px"><span class="was">A gate that fails locally is failing.</span></p>
       <p style="margin:0; color:var(--ink-soft)">
         <code>gate:cra</code> exits 1 here and passes in CI on the same commit. The warning it
@@ -627,6 +665,8 @@
           <tr><td><code>verify:all</code> first full run</td><td class="n">7 of 8 pass</td><td>Collecting runner, 2026-09-02</td><td class="n">Every push</td></tr>
           <tr><td>Backend tests, now reachable locally</td><td class="n">353</td><td>Previously CI-only; no local script invoked pytest</td><td class="n">Every push</td></tr>
           <tr><td>Recovery functions with zero callers</td><td class="n">4</td><td>Counted, not eyeballed &mdash; ADMIN-CONSOLE.md</td><td class="n">When one gets a surface</td></tr>
+          <tr><td>Board seats ruling stage 7</td><td class="n">10, two panels</td><td>Subagent panels, dissent preserved per seat</td><td class="n">On the next stage board</td></tr>
+          <tr><td>Browser tests SKIPPED, unexamined</td><td class="n">210 of 1,071</td><td>Pre-existing conditional guards, 37 call sites</td><td class="n">Gates stage 7 closure</td></tr>
           <tr><td>Standing conditions</td><td class="n">9</td><td>Owner ruling, 29 Aug; server-generated <code>conditional</code> flag</td><td class="n">Before stage 9</td></tr>
         </tbody>
       </table>
