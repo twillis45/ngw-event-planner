@@ -62,10 +62,29 @@ than blurred.
       and one of the nine standing conditions. **Risk accepted:** no
       server-held user data exists on the demo profile, so today the exposure
       is bounded to `live`.
-- [ ] **A rollback to private in under a minute — NO PROCEDURE EXISTS.**
-      GitHub Pages serves this publicly and nothing here documents how to take
-      it down or what the command is. **Risk accepted: none. This is a real
-      gap**, and it is the cheapest item on this page to close.
+- [x] **A rollback to private — procedure now written, 2026-09-02.**
+      It was undocumented, which is the same as not existing at 3am. Fastest
+      first; the first two need no deploy and take seconds:
+
+      ```bash
+      # 1. FASTEST — stop serving entirely. Settings > Pages > Source: None.
+      #    Takes effect in under a minute. Reversible from the same screen.
+      gh api -X POST repos/twillis45/ngw-event-planner/pages/builds  # (re-publish after re-enabling)
+
+      # 2. Make the repo private — Pages on a private repo is not served
+      #    publicly on the free tier, so this takes the site down with it.
+      gh repo edit twillis45/ngw-event-planner --visibility private
+
+      # 3. Roll the CONTENT back without unpublishing: re-run the deploy at a
+      #    known-good commit.
+      gh workflow run "Deploy Pages (from source)" --ref <good-sha>
+      ```
+
+      **Not verified by execution** — taking the live site down to prove the
+      command works is not a test worth running unprompted. The commands are
+      documented; the owner should run #1 once, deliberately, to confirm the
+      path and the timing. Until then this is a written procedure, not a
+      rehearsed one, and that distinction is the whole point of this file.
 
 ---
 
