@@ -389,10 +389,10 @@
             <li><input type="checkbox" data-k="s7-recovery"> <b>Four recovery functions have zero callers.</b> <code>restoreBackup</code>, <code>importCustomEvents</code>, <code>listBackups</code>, <code>readWriteLog</code> &mdash; implemented, guarded, unit-tested, unreachable from the product. Finished work that never got a surface.</li>
             <li><span class="mark ok">&check;</span> <b>Durable storage is now requested</b> &mdash; the board's ONE THING, named independently by six of ten seats. Asked once on the first successful write, fire-and-forget so it can never delay or fail a save, with the answer recorded so a surface can report it. A refusal is kept as a real answer rather than re-prompted forever. <span class="num">13</span> tests; three faults red-proofed, and <b>one escaped</b> &mdash; see corrections.</li>
             <li><span class="mark ok">&check;</span> <b>The recovery functions have a surface</b> &mdash; settings &rarr; Your data. Gated to the shape the board named: corrupt the store, restore through the UI, assert the plan returns. Two defects found by building it: every app-written backup row rendered "Invalid Date", and the newest copy after a corruption is a snapshot <em>of the damage</em>.</li>
-            <li><span class="mark ok">&check;</span> <b>The <span class="num">210</span> skips are censused.</b> <span class="num">7</span> tests never execute a single assertion on any project. <span class="num">9</span> guards were rotted &mdash; they skipped at widths where the surface exists &mdash; and are retargeted; the <span class="num">20</span> executions bought back all pass, so they were discarding coverage rather than hiding breakage.</li>
+            <li><span class="mark ok">&check;</span> <b>The <span class="num">210</span> skips are censused.</b> <span class="num">4</span> tests never execute a single assertion on any project. <span class="num">9</span> guards were rotted &mdash; they skipped at widths where the surface exists &mdash; and are retargeted; the <span class="num">20</span> executions bought back all pass, so they were discarding coverage rather than hiding breakage.</li>
             <li><span class="mark ok">&check;</span> <b><code>gate:cra</code> resolved:</b> a stale <code>node_modules/.cache</code>. Clearing it prints CI's exact line, and <code>verify:all</code> went 7 of 8 to <b>8 of 8</b> &mdash; the full set passes together for the first time.</li>
             <li><span class="mark ok">&check;</span> <b>The admin console reads the shipping app's book</b>, additively rather than by swapping keys.</li>
-            <li><input type="checkbox" data-k="s7-capture"> <b>Three specs have never run once.</b> <code>BOARD_CAPTURE</code> and <code>VENUE_CAPTURE</code> are set by nothing in the repo. Wire them into a job or delete them &mdash; a test that has never run is not a test.</li>
+            <li><span class="mark skip">&ndash;</span> Three <code>_*Capture</code> specs are env-gated and have never run &mdash; and that is <b>correct</b>. Each declares "not a gate" in its first line, uses the <code>_</code> prefix convention, and writes to a gitignored directory. They are on-demand capture tools for board sittings, not dormant tests.</li>
             <li><input type="checkbox" data-k="s7-daynot"> <b>The day-of dead-end probe never runs on day-of.</b> <code>boardMatrix</code>'s loop-advance skips on 4 of 6 states including the day-of ask &mdash; the highest-stakes screen in the product. Invert the guard so "no in-place settle" FAILS with the state named.</li>
             <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row.</li>
           </ul>
@@ -607,6 +607,18 @@
     </div>
 
     <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">Seven tests can never fail.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        <b>Four.</b> The census counted three <code>_*Capture</code> specs among them &mdash; but each
+        declares "not a gate" in its own first line, carries the <code>_</code> prefix convention,
+        and writes to a gitignored directory. They are capture tools for board sittings that
+        are <em>meant</em> to lie dormant until asked for. Published as seven here before it
+        was checked; the smallest true number is four, and it is the one that matters because
+        those four are real tests believed to be running.
+      </p>
+    </div>
+
+    <div class="corr">
       <p style="margin:0 0 4px"><span class="was">No standing delegation exists for this project.</span></p>
       <p style="margin:0; color:var(--ink-soft)">
         Written into a gate record earlier the same day, and false. The owner's standing
@@ -671,7 +683,7 @@
           <tr><td>Recovery functions with zero callers</td><td class="n">4</td><td>Counted, not eyeballed &mdash; ADMIN-CONSOLE.md</td><td class="n">When one gets a surface</td></tr>
           <tr><td>Board seats ruling stage 7</td><td class="n">10, two panels</td><td>Subagent panels, dissent preserved per seat</td><td class="n">On the next stage board</td></tr>
           <tr><td>Skips censused</td><td class="n">36 guards, 210 skips</td><td>Subagent census, verified by direct measurement</td><td class="n">On any seed change</td></tr>
-          <tr><td><b>Tests that cannot currently fail</b></td><td class="n">7</td><td>3 env-gated on vars nothing sets; 4 state-conditional</td><td class="n">Gates stage 7 closure</td></tr>
+          <tr><td><b>Tests that cannot currently fail</b></td><td class="n">4</td><td>State-conditional guards, measured on two projects</td><td class="n">Gates stage 7 closure</td></tr>
           <tr><td>Rotted guards, retargeted</td><td class="n">9</td><td>Rail is up from 1024, not 1280 — measured</td><td class="n">Locked by a test</td></tr>
           <tr><td><code>verify:all</code></td><td class="n">8 of 8</td><td>Was 7 of 8; the 8th was a stale cache</td><td class="n">Every push</td></tr>
           <tr><td>Standing conditions</td><td class="n">9</td><td>Owner ruling, 29 Aug; server-generated <code>conditional</code> flag</td><td class="n">Before stage 9</td></tr>

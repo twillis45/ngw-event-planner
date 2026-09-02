@@ -25,19 +25,25 @@ this file is the short answer to "where is it, is it green, what's next."
 | Prove telemetry ARRIVES, not just ships | **OPEN — yours.** Needs the PostHog and Sentry consoles |
 | Admin console reads the wrong storage key | **DONE.** Reads both books, additively, deduped |
 | `gate:cra` local/CI divergence | **DONE.** It was a stale `node_modules/.cache` |
-| Census the 210 skips | **DONE.** 7 tests cannot fail; 9 rotted guards retargeted |
+| Census the 210 skips | **DONE.** **4** tests cannot fail; 9 rotted guards retargeted |
 | 8th `verify:all` suite | **DONE.** Now **8 of 8** — the set passes together for the first time |
 
 Stage-9 items: durable storage **DONE**, recovery UI **DONE**. Remaining are the
 stranger test, the rollback rehearsal, and the economics — all yours.
 
-**Two findings from the census worth acting on next**, both named by it and
-neither done: three specs (`_boardCapture`, `_riskLaneCapture`,
-`_venueReaderCapture`) are gated on env vars **nothing in the repo sets**, so
-they have never run once; and `boardMatrix`'s loop-advance probe — the harness
-built for the "no next step after selection" class — skips on 4 of 6 states
-**including the day-of ask**, the highest-stakes screen in the product. Invert
-that guard so "no in-place settle" fails with the state named.
+**One census finding worth acting on next**, named by it and not done:
+`boardMatrix`'s loop-advance probe — the harness built for the "no next step
+after selection" class — skips on 4 of 6 states **including the day-of ask**,
+the highest-stakes screen in the product. Invert that guard so "no in-place
+settle" fails with the state named.
+
+**A correction to the census, and to what this file said an hour ago.** It
+reported 7 tests that can never fail and I repeated it. Three of those are the
+`_*Capture` specs, and they are *supposed* to be dormant: each declares "not a
+gate" in its first line, uses the `_` prefix convention, and writes to a
+gitignored directory. They are capture tools for board sittings. **The true
+number is 4**, and it is the one that matters — those four are real tests
+everyone believes are running.
 
 ## The board ruled stage 7, 2026-09-02 — and refused stage 9
 
