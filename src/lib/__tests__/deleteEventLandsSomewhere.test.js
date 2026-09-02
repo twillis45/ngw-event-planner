@@ -69,8 +69,25 @@ describe('deleting an event', () => {
     // deleteThisEvent, plus demoSeed and demoRemove — the ?demo=1 QA bar's
     // delete-and-reseed cycle, which by design removes demoqa-* rows. Any
     // FOURTH lift is a new delete-capable write path and must be argued here.
+    //
+    // THE FOURTH, ARGUED (2026-09-02, review board): the "Put this back"
+    // control in settings > Your data. A restore REPLACES the store with an
+    // older snapshot, so by construction it drops whatever was created since —
+    // that is not a side effect of restoring, it is what restoring MEANS, and
+    // the guard would otherwise refuse the one operation that exists to undo a
+    // loss. It earns the lift on three counts the other three also meet:
+    //   · the host is asked first, in a confirm that says plainly that anything
+    //     changed since is replaced;
+    //   · the store still takes a backup BEFORE the restore writes, so the
+    //     pre-restore state is itself recoverable — a wrong restore is undoable;
+    //   · it is driven end to end by e2e/recoverySurface.spec.mjs, which
+    //     corrupts the store, restores through the UI, and asserts the plan
+    //     returns — red-proofed both by making the restore a no-op and by
+    //     pointing it at a key that does not exist.
+    // Before this existed, four recovery functions had zero callers: backups
+    // were taken that no button could put back.
     const lifts = SHELL.match(/allowRemovingUserEvents\s*:/g) || [];
-    expect(lifts.length).toBe(3);
+    expect(lifts.length).toBe(4);
   });
 
   test('a refused write does not lie about having deleted anything', () => {

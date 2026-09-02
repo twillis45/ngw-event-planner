@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
-import { saveCustomEvents, exportCustomEvents } from '@app/lib/customEventStore';
+import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
 import { buildExperienceContext } from '@app/lib/experienceContext';
@@ -794,6 +794,13 @@ export default function HostShellV2() {
   // Fired once per mount, not per render, and deliberately NOT paired with a
   // generic PAGE_VIEW — two events for one arrival double-counts the top of
   // the funnel, which is the number everything downstream divides by.
+  // Recovery surface (settings > Your data). dataTick exists only to re-read
+  // the backup list after a restore or import — the store is the source of
+  // truth and nothing here caches it.
+  const dataFileRef = useRef(null);
+  const [dataTick, setDataTick] = useState(0);
+  const readCustomEventsSafe = () => { try { return readCustomEvents(); } catch { return customs; } };
+
   const landingSent = useRef(false);
   useEffect(() => {
     if (landingSent.current) return;
@@ -15289,7 +15296,108 @@ export default function HostShellV2() {
                       {muted ? 'Muted — tap for sound' : 'On — tap to mute'}
                     </button>
                   </div>
-                  <div className="shelf-label" style={{ margin: '2px 0 6px' }}>You</div>
+                  {/* ── YOUR DATA (2026-09-02, review board) ─────────────────
+                      The board's ONE THING, named by six of ten seats. Four
+                      recovery functions were implemented, guarded, unit-tested
+                      and had ZERO callers — so backups were being taken that no
+                      button could restore, and the only export lived inside the
+                      save-failure banner, which a host with healthy storage
+                      never sees. Finished work that never reached a surface.
+
+                      The durability line is stated plainly rather than
+                      reassuringly: on a browser that refuses persistence the
+                      honest sentence is that this copy can be cleared, and a
+                      host who reads it can act on it. */}
+                  <div className="shelf-label" style={{ margin: '2px 0 6px' }}>Your data</div>
+                  {(() => {
+                    void dataTick;   // re-read after a restore or import
+                    const dur = (() => { try { return durabilityStatus(); } catch { return { state: 'unknown' }; } })();
+                    const backups = (() => { try { return listBackups(); } catch { return []; } })();
+                    const line = dur.state === 'persisted'
+                      ? 'This browser has agreed to keep your events — they survive a normal clear-out.'
+                      : dur.state === 'refused'
+                        ? 'This browser would not promise to keep your events. Download a copy — clearing site data removes them.'
+                        : dur.state === 'no-storage'
+                          ? 'This browser is blocking storage. Nothing is being saved here.'
+                          : dur.state === 'unsupported'
+                            ? 'This browser cannot promise to keep your events. Download a copy to be safe.'
+                            : 'Not asked yet — save a change and this will say where you stand.';
+                    return (
+                      <>
+                        <p className="grounding pre" style={{ margin: '0 0 8px' }}>{line}</p>
+                        <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
+                          <button className="mini" onClick={() => {
+                            try {
+                              const data = JSON.stringify(exportCustomEvents(), null, 1);
+                              const a = document.createElement('a');
+                              a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+                              a.download = 'my-events.json';
+                              a.click();
+                              URL.revokeObjectURL(a.href);
+                              toast('Copy downloaded.');
+                            } catch { toast('Couldn’t download on this browser.'); }
+                          }}>Download a copy</button>
+                          <button className="mini" onClick={() => dataFileRef.current && dataFileRef.current.click()}>Restore from a file</button>
+                          <input ref={dataFileRef} type="file" accept="application/json,.json" style={{ display: 'none' }}
+                            aria-hidden="true" tabIndex={-1}
+                            onChange={(e) => {
+                              const f = e.target.files && e.target.files[0];
+                              e.target.value = '';
+                              if (!f) return;
+                              const r = new FileReader();
+                              r.onload = () => {
+                                let res = null;
+                                try { res = importCustomEvents(JSON.parse(String(r.result)), { reason: 'settings:import' }); }
+                                catch { toast('That file isn’t a copy of your events.'); return; }
+                                if (!res || res.ok === false) { toast('Nothing was changed — that file didn’t bring any events.'); return; }
+                                setCustoms(readCustomEventsSafe());
+                                setDataTick(t => t + 1);
+                                toast('Your events are back.');
+                              };
+                              r.onerror = () => toast('Couldn’t read that file.');
+                              r.readAsText(f);
+                            }} />
+                        </div>
+                        {backups.length > 0 && (
+                          <>
+                            <p className="grounding pre" style={{ margin: '0 0 6px' }}>
+                              Saved copies this device kept before each change. Newest first.
+                            </p>
+                            {backups.slice(0, 5).map((b) => (
+                              <div className="later-row" key={b.key || b}>
+                                {/* The index holds BARE KEY STRINGS, not objects — the
+                                    store appends `ngw-hostv2-backup-<ms>` and nothing
+                                    carries an `at`. Reading b.at rendered "Invalid Date"
+                                    beside a real, restorable copy, which reads as a broken
+                                    row and would stop a host trusting the one control that
+                                    gets their plan back. The timestamp is in the key. */}
+                                <span className="t">{(() => {
+                                  const raw = typeof b === 'string' ? b : (b && b.key) || '';
+                                  const ms = Number(b && b.at) || Number(String(raw).replace(/^.*-/, ''));
+                                  if (!Number.isFinite(ms) || ms <= 0) return 'A saved copy';
+                                  try { return new Date(ms).toLocaleString(); } catch { return 'A saved copy'; }
+                                })()}</span>
+                                <button className="mini" onClick={() => {
+                                  // Restoring REPLACES what is here. The guard in the store
+                                  // refuses a restore that would drop a user event unless
+                                  // told otherwise, so the host is asked first.
+                                  if (!window.confirm('Put this copy back? Anything you changed since then is replaced.')) return;
+                                  let res = null;
+                                  try { res = restoreBackup(b.key || b, { allowRemovingUserEvents: true, reason: 'settings:restore' }); }
+                                  catch { toast('Couldn’t restore that copy.'); return; }
+                                  if (!res || res.ok === false) { toast('Couldn’t restore that copy — nothing was changed.'); return; }
+                                  setCustoms(readCustomEventsSafe());
+                                  setDataTick(t => t + 1);
+                                  toast('That copy is back.');
+                                }}>Put this back</button>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
+                  <div className="shelf-label" style={{ margin: '14px 0 6px' }}>You</div>
                   <input className="field" style={{ maxWidth: 'none' }} placeholder="Your name — it signs every note we draft"
                     defaultValue={(profile && profile.name) || ''} aria-label="Your name"
                     onBlur={e => { const v = e.target.value.trim(); if (v !== ((profile && profile.name) || '')) patchProfile({ name: v }, v ? 'Your notes now sign as ' + v + '.' : 'Signature cleared.'); }} />
