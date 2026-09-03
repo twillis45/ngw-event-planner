@@ -45,16 +45,26 @@ skipped / 0 failed**.
 **If it fails:** see Troubleshooting. Run it DETACHED — a session restart kills
 an attached run and the truncation looks exactly like a failure.
 
-#### Step 3: push, and only when CI is idle
+#### Step 3: push ONCE, and only when CI is idle
 ```
-gh run list --limit 3 --json status --jq '[.[]|select(.status!="completed")]|length'   # must be 0
-git push origin main
-npm run handoff:stamp && git add HANDOFF.md && git commit -m "Stamp HANDOFF to the pushed SHA" && git push
+# GATE the push on the check. Do not print the count and then push anyway.
+[ "$(gh run list --limit 3 --json status --jq '[.[]|select(.status!="completed")]|length')" = 0 ] \
+  && git push origin main \
+  || echo "CI in flight — waiting"
 ```
-**Expected:** `0` in-flight, then a clean push.
-**If it fails:** pushing over a running workflow **cancels it**. Wait, or you
-lose the answer you were waiting for. Gate the push on the check — do not merely
-run the check before it.
+**Expected:** a clean push, or the wait message.
+**If it fails:** pushing over a running workflow **cancels it**.
+
+**Do NOT stamp-and-push as a second commit.** That pattern —
+`push` → `handoff:stamp` → `commit` → `push` — **cancels its own first run,
+every time**, and it did so on 2026-09-03 to a run carrying an allergen fix.
+The freshness check tolerates **3 commits of drift** precisely so the stamp
+does not need to chase every push. Stamp when it complains, not by habit:
+```
+npm run handoff:check   # only stamp when THIS goes red
+```
+**The general form, and it is the same error twice tonight:** a check printed
+before an action is not a gate. Put it in the condition, or it is decoration.
 
 ---
 
