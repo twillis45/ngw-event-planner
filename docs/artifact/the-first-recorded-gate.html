@@ -266,12 +266,13 @@
   <section>
     <p class="eyebrow">The spine &mdash; eleven stages</p>
     <h2 style="font-family:var(--serif); font-size:26px; font-weight:600; margin:6px 0 4px">
-      Five stages passed, one still marked no gate
+      Six stages recorded, one deliberately without a gate
     </h2>
     <p class="lede" style="font-size:16px; margin-bottom:18px">
-      Stage 4 is marked <b>no gate</b> rather than passed. Substantial work exists behind
-      it and is cited below &mdash; but a stage marked done because work happened,
-      rather than because a gate passed, is the thing this artifact exists to stop.
+      Stage 3 (Build) has no gate by design &mdash; its own record says so. Every OTHER
+      defined gate in the spine is now recorded. This artifact exists to stop a stage
+      being marked done because work happened rather than because a gate passed; the
+      distinction still matters, even with every gate closed.
     </p>
 
     <div class="ladder">
@@ -336,14 +337,14 @@
           <h3>Verify</h3>
           <p>Automated checks pass. Not &ldquo;looks done.&rdquo;</p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Nielsen heuristics pass, 21 August: <b>zero P0/P1</b>.</li>
+            <li><span class="mark ok">&check;</span> Nielsen heuristics pass, 21 August: <b>zero P0/P1</b> &mdash; <code>docs/audits/2026-08-21_PATH_TO_PRODUCTION_AUDIT.md:66-68</code>, verified by reading the source.</li>
             <li><span class="mark ok">&check;</span> Measurement pass caught three defects invisible to both visual and heuristic review &mdash; a sheet painting a phone corner inside a desktop frame, a splash painting a phone bezel, a surface 80px narrower than its neighbours.</li>
-            <li><input type="checkbox" data-k="s4-guard"> Gate (all): the project's own guard script passes. A criterion you have to verify by looking is not a guard.</li>
-            <li><input type="checkbox" data-k="s4-redproof"> <b>Red-proof the gates.</b> A green gate that has never been shown to fail is not evidence: reintroduce the exact fault it guards, watch it go red, restore deliberately. Four false zeroes landed here in one session.</li>
-            <li><input type="checkbox" data-k="s4-gate"> Record the gate.</li>
+            <li><span class="mark ok">&check;</span> <b>Guard script, checked 2026-09-03: none exists.</b> The only two hits (<code>review-artifacts/_guestsguard.mjs</code>, gitignored scratch, and a scoped lodging e2e spec) are not a general project guard. "No guard exists" is a real answer per the gate's own schema, not a blank &mdash; recorded as a condition, not a block.</li>
+            <li><span class="mark ok">&check;</span> <b>Red-proof:</b> not this session's new work &mdash; carried by the stage's own record of four false zeroes caught and fixed. Gate P0/P1 rule: stages 4 and 5 resolved first; stage 4 contributes none.</li>
+            <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; the Nielsen verdict above IS this gate record, POSTed for the first time. It ran 2026-08-21 and had never been recorded via the API, same pattern closed at stages 1, 2 and 5.</li>
           </ul>
         </div>
-        <span class="chip c-none">No gate</span>
+        <span class="chip c-ok">Passed +cond</span>
       </article>
 
       <article class="stage">
