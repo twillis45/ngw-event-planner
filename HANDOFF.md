@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-08-29 (stage 7 recording).
+**Measured reality, not intentions.** Updated 2026-09-03 (stage 8 recording).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -8,7 +8,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `54e2e993` |
+| Branch / HEAD | `main` @ `33388412` |
 | Jest | **6,228 passed**, 1 skipped, **441 suites** — measured this pass |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -17,8 +17,9 @@ this file is the short answer to "where is it, is it green, what's next."
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
-| Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02**, under the owner's standing delegation. **Stage 9 entry: NO** |
-| Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized |
+| Path to Production | stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
+| Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
+| Path artifact | Republished 2026-09-03, `Recorded` date current. Stage 5 and 8 cards now show real recorded state instead of "No gate" / "Locked" |
 
 ## STANDING DELEGATION — the board decides, 2026-09-02
 
@@ -681,6 +682,40 @@ three times.
 the thing it claims to check?** Red-proofing and independent verification
 caught every one. Three claims of mine were falsified by a verify pass this
 session — the vendor money that had no tabular-nums, and both lens faults.
+
+## Stage 8's first gate, and a historical tracking gap closed alongside it — 2026-09-03
+
+Running the path-to-production spine fresh (Step 1, not from memory) surfaced
+`historical: 1` in the tracker's own flags — a stage below the current one with
+no gate ever POSTed. That was **stage 5 (Security)**: a full audit ran
+2026-08-21 (`docs/audits/2026-08-21_SECURITY_TRACK_CHECKLIST.md`), a per-route
+sweep exists as a standing gate, and both were cited inside the stage-6 gate's
+own `skillsUsed` — but the stage-5 gate itself had never been recorded via the
+API, so the tracker read it as unanswered rather than done. Recorded now with
+the identical six OPENs already carried by the stage-6 flag. No new security
+work; the gap was in the tracker, not the project.
+
+**Stage 8 (Maintain) recorded for the first time.** Zero gates had ever been
+posted at this stage despite the project sitting there through this entire
+session. Debt ranked by what it blocks (the six stage-5 opens and the repast
+community-review gate block stage 9; Vite 8 adoption and the source-text
+census block nothing, tracked); the runbook's location and what was wrong with
+it; which earlier claims were re-checked fresh this session (CI, unpushed
+count, both test runners, the CI seam) versus left standing on the owner's own
+authority (the security opens, PostHog/Sentry arrival, repast review).
+
+Per Step 2g (added to `ngw-os/commands/path-to-production.md` this session,
+before this recording ran): stage 8 having no required skill is a deliberate,
+dated ruling, not an oversight — and this session's shape (verify claims by
+breaking them, red-proof every gate same-session, read the runner's log rather
+than the workflow file, trace warnings to blast radius, gate pushes in the
+condition, correct stale findings in place) is recorded there as evidence for
+a future adoption decision, which is the board's to make, not this session's.
+
+Artifact republished, `Recorded` date current, stage 5 and 8 cards now show
+real state instead of "No gate" / "Locked". Both gate POSTs re-verified via
+Step 5k (re-read the API, confirm the right flag actually changed) rather than
+assumed.
 
 ## Next, in order
 
