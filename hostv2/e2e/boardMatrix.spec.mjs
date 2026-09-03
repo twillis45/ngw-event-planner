@@ -28,15 +28,22 @@ const COI_PATCH = {
 const DAY_OF_PATCH = { date: new Date().toISOString().slice(0, 10) };
 
 const STATES = [
-  { id: 'test-two-days', label: 'Game Night DAY-OF (elegant ask)', weather: false, future: true, patch: DAY_OF_PATCH, stateKey: 'day-of' },
-  { id: 'test-two-days',           label: 'Game Night T-2 (outdoor, weather)', weather: true,  future: true },
+  // noSettle carries a REASON, never a bare true. A declaration without one is
+  // a silencer wearing a flag's clothes, and this guard exists precisely
+  // because silence was being scored as a pass.
+  { id: 'test-two-days', label: 'Game Night DAY-OF (elegant ask)', weather: false, future: true, patch: DAY_OF_PATCH, stateKey: 'day-of',
+    noSettle: 'the top ask is a FIELD, not a decision — measured 2026-09-02: 0 .decopt, hero reads "Venue … Save". This seeded event has no venue, so readiness surfaces the venue entry above everything. There IS an actionable control; it is simply not the in-place settle this probe walks.' },
+  { id: 'test-two-days',           label: 'Game Night T-2 (outdoor, weather)', weather: true,  future: true,
+    noSettle: 'same venue field as day-of, measured identically. The date does not change what is surfaced, because the missing venue outranks it.' },
   { id: 'test-day-before-vendors', label: 'Dinner T-1 (vendors, COI unverified)', weather: false, future: true, patch: COI_PATCH },
-  { id: 'ev-x-repast',             label: 'Repast T-3 (solemn)',               weather: false, future: true },
+  { id: 'ev-x-repast',             label: 'Repast T-3 (solemn)',               weather: false, future: true,
+    noSettle: 'the solemn path renders NO hero card at all — measured 2026-09-02: .hero-card absent, 0 .decopt. Deliberate calm-path suppression, and worth a human ruling on whether "no ask" is the intent or an over-reach.' },
   // noSettle: a state that legitimately has nothing to settle in place, so a
   // zero-step walk is the correct outcome rather than a missing one. A PAST
   // event has no decisions left to make. Every other state must produce at
   // least one settle or fail — see the walk's tail.
-  { id: 'ev-x-graduation',         label: 'Graduation (past)',                 weather: false, future: false, noSettle: true },
+  { id: 'ev-x-graduation',         label: 'Graduation (past)',                 weather: false, future: false,
+    noSettle: 'a past event has no decisions left to make.' },
   { id: 'ev-x-wanda',              label: 'Wanda far-out',                     weather: false, future: true },
 ];
 
@@ -175,10 +182,19 @@ for (const state of STATES) {
       // On a state that should have something to settle, finding nothing IS
       // the finding. Only states declared noSettle may walk zero steps.
       if (steps === 0) {
-        if (state.noSettle) return;                       // declared, and correct
+        // A declaration must say WHY. `noSettle: true` is refused on purpose:
+        // the whole point of inverting this guard was that a bare skip is
+        // indistinguishable from a pass, and a bare boolean is the same thing
+        // one layer up.
+        if (typeof state.noSettle === 'string' && state.noSettle.length > 20) return;
+        if (state.noSettle) {
+          throw new Error(`"${state.label}" declares noSettle without a reason. `
+            + 'Give it the measured reason, or the declaration is a silencer.');
+        }
         throw new Error(
           `no in-place settle found on "${state.label}" — either this state has a dead end, `
-          + 'or it genuinely has nothing to settle and must be declared noSettle: true in STATES. '
+          + 'or it genuinely has nothing to settle and must be declared in STATES as '
+          + 'noSettle: "<the measured reason>" — a string, not true. '
           + 'Silence is not a pass.',
         );
       }
