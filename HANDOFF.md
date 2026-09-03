@@ -143,6 +143,34 @@ e2e does run on push-to-main (I misread the workflow indentation and nearly
 reported it dead), and my two attempts to measure e2e/text-gate overlap were
 both unsound — no overlap figure is claimed anywhere.
 
+## TRAP (dated, not urgent): hostv2's vite.config.js has two deprecations
+
+Surfaced by reading the CI log for the run that first executed the seam
+(`c0ac1557`, green). Neither breaks anything today; both are scheduled breaks:
+
+```
+(!) Your Vite config uses features that are unsupported by
+    `configLoader: 'native'`, which is planned to become the default in a
+    future major version of Vite:
+  - `__dirname` (vite.config.js:15:45). Use `import.meta.dirname` instead
+warning: `esbuild` option was specified by "vite:react-babel" plugin. This
+    option is deprecated, please use `oxc` instead.
+```
+
+**Why this one matters more than a typical deprecation:** there are **six**
+`__dirname` uses in that file, and **line 25 is the `@app` alias** —
+`alias: { '@app': path.resolve(__dirname, '../src') }`. That alias is how
+hostv2 reaches the entire shared engine. When `configLoader: 'native'` becomes
+the default, the config fails to load and takes the alias with it, so the
+symptom will be "hostv2 cannot find @app/*" rather than anything naming
+`__dirname`.
+
+The `esbuild` → `oxc` warning touches lines 102 and 104, which carry the
+jsx-in-.js loader that lets `../src` modules compile at all.
+
+Fix is mechanical (`import.meta.dirname`) but pins a Vite floor, so it is a
+deliberate bump rather than a drive-by. **Not done, and no date set.**
+
 ## FIXED — the diet picker was flagging no allergens for two of its own options
 
 Found by the stage-8 tech-debt dispatch, verified by hand before acting.
