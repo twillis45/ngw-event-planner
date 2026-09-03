@@ -11577,7 +11577,13 @@ export default function HostShellV2() {
                           {later.map((r, i) => (
                             <div key={r.id || i} className="line" style={{ alignItems: 'center', opacity: 0.9 }}>
                               <span style={{ color: 'var(--muted)' }}>{r.label}</span>
-                              <span className="of">{r.rankReason || r.because || 'Comes up closer to the date.'}</span>
+                              {/* Was `r.rankReason || r.because || 'Comes up closer to
+                                  the date.'` — a FOURTH inline copy of the rank-reason
+                                  fallback, bypassing rankReasonForV2 above. Both tails
+                                  were dead (the engine sets rankReason on every parked
+                                  row) and the literal duplicated this shelf's own label.
+                                  2026-09-03. */}
+                              <span className="of">{rankReasonForV2(r)}</span>
                             </div>
                           ))}
                         </>

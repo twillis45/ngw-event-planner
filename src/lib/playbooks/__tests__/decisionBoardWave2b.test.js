@@ -56,7 +56,12 @@ describe('Wave-2b horizon — same type at 3d vs 90d differs in partition + orde
     // Deferred rows are honestly labelled "comes up closer to the date".
     for (const r of crab90.deferred) {
       expect(r.horizon).toBe('later');
-      expect(r.rankReason).toBe('Comes up closer to the date.');
+      // Was pinned to the literal 'Comes up closer to the date.' — which is the
+      // shelf HEADING HostShellV2 prints above these very rows, so the engine was
+      // repeating it per row and saying nothing (fixed 2026-09-03, see
+      // parkedRowReasonIsSpecific.test.js). The INTENT here — a parked row's
+      // reason is about timing, never stakes — is what the assertion now checks.
+      expect(r.rankReason).toMatch(/^Comes up in about .*(week|month)s?\.$/);
     }
   });
 

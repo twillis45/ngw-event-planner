@@ -2579,7 +2579,25 @@ function decisionRankReason(row) {
   // Wave-2b horizon: a far-future window parked on a long-runway event reads "not yet" —
   // this wins even over an authored rationale, because for a PARKED row the honest headline
   // is its timing, not its stakes (the row still lives in the `deferred` bucket either way).
-  if (row.horizon === 'later') return 'Comes up closer to the date.';
+  //
+  // 2026-09-03: this returned the bare constant 'Comes up closer to the date.',
+  // which is the SHELF HEADING HostShellV2 renders directly above these rows —
+  // so a parked shelf printed that sentence once as its label, once in the
+  // toggle, and once per row, and told the host nothing about any of them.
+  // The call above is right and stands: for a parked row the headline is
+  // timing. It just has to state the timing instead of restating that there
+  // is some. `daysOut` is already on the row, so this is derived, not invented.
+  // Rows in the same window read the same on purpose — five crab decisions at
+  // 110-115 days out ARE the same distance away, and splitting them would be
+  // manufacturing precision the data does not carry.
+  if (row.horizon === 'later') {
+    const d = row.daysOut;
+    if (typeof d !== 'number' || d < 0) return 'Comes up closer to the date.';
+    if (d <= 10) return 'Comes up in about a week.';
+    if (d <= 24) return `Comes up in about ${Math.round(d / 7)} weeks.`;
+    const months = Math.round(d / 30);
+    return months <= 1 ? 'Comes up in about a month.' : `Comes up in about ${months} months.`;
+  }
   const pb = row && row.priorityBasis;
   if (pb && typeof pb.rationale === 'string' && pb.rationale.trim()) return pb.rationale.trim();
   const od = decisionOverdueDays(row);
