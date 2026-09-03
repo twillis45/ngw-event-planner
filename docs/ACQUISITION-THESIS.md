@@ -107,19 +107,36 @@ The part that pays, because it kills options now rather than at stage 9:
   unit until something measures it. Those are the claims most likely to be
   reached for and least likely to have a check behind them.
 
-## Sequencing — binding, from the board
+## Sequencing — binding, from the board (REPLACED after the re-ruling)
 
-**The amended hero card ships before the acquisition unit is shot.** The solemn
-path renders no ask today, so the unit would depict a capability the code cannot
-yet produce, and the threshold would run against a screen that does not exist.
-The data-honesty seat put it as a precondition, not a preference: *the
-empty-but-present ask state must exist in code before the marketing unit ships.*
+The original clause said the amended solemn hero must ship before the unit is
+shot. **Decision 1 was withdrawn** — there is no amended hero, because the
+solemn path already renders an ask; the finding that prompted it was a fixture
+39 days stale. So that gate dissolved, and the board replaced it with one aimed
+at the hazard the correction actually exposed:
 
-The board named this the thesis's sternest test rather than its awkward
-exception: if the product can state the one right thing to a grieving host
-without selling, nudging or performing, then derivation-from-semantics is a real
-capability and not a demo trick — **because the semantics of a repast are
-precisely what a template cannot encode.**
+> **The acquisition unit must be shot from an event that passes the horizon
+> guard, and the guard must be green in the same run that produces the
+> screenshot.**
+
+The reasoning, which is sharper than what it replaces: **the unit is a
+screenshot of a fixture, and a fixture can be stale in a way that is invisible
+in the image.** A unit shot off a drifted seed shows a stranger a plan that is
+quietly wrong — dates behind the event, quantities detached from a real horizon
+— and no rater catches it, because nothing in the picture says how old it is.
+The guard is `every dated state actually sits where its label says` in
+`hostv2/e2e/boardMatrix.spec.mjs`, red-proofed against the exact 39-day drift
+that produced this.
+
+**Still open, and not ruled:** the bereaved host's register standard — *state
+the thing, do not offer choices* — survives the withdrawal and now has a real
+subject. The T-3 repast ask renders **one unsettled option**, which is a choice
+presented to a grieving host. The board has not seen that card and did not rule
+on it; it ruled only that the standard applies and it should be evaluated. The
+T-10 copy it did see — *"What you're serving · 2 open. The last of the planning
+essentials — 5 of 6 are already handled"* — it judged close to correct register:
+declarative, grounded in a real count, and it names what is done before what is
+not.
 
 ## What it does NOT do
 

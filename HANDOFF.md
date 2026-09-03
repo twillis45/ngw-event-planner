@@ -37,6 +37,36 @@ A board can rule on what those results *mean*. It cannot produce them. Anything
 else — every gate ruling, every design call — goes to the board and does not
 wait on Todd.
 
+## The board withdrew its own finding — and what survived
+
+I briefed the board that the solemn path renders no ask. **False**: the repast
+fixture had drifted 39 days into the past, and a past event correctly has
+nothing to settle. A future repast renders a real hero — one unsettled option at
+T-3, and at T-10 *"What you're serving · 2 open… 5 of 6 are already handled."*
+
+Re-convened on its own ruling, the same panel **vacated Decision 1: do not build
+the quiet-ask card.** Its reduction seat put it best — *a board that adds a
+component on one measurement has failed its own principle.*
+
+What survived, and is genuinely open:
+
+- **The register standard has a real subject now.** *State the thing, do not
+  offer choices* — and the T-3 repast ask renders one unsettled **option**,
+  which is a choice handed to a grieving host. Nobody has evaluated that card
+  against the standard.
+- **A past event does not say loudly enough that it is over.** The first-timer
+  read "BEHIND YOU — Deacon's day, done" and still took a finished event for a
+  broken product. Small, and the only thing the false brief actually surfaced.
+- **The sequencing gate was replaced, not dropped:** the acquisition unit must
+  be shot from an event that passes the horizon guard, green in the same run.
+  A fixture can be stale in a way that is invisible in a screenshot.
+
+**On the failure itself**, the board's own accounting: the error was not
+recoverable from the brief — it contained no date, no horizon, no state label.
+But *"checked twice to rule out missing data"* describes two probes, and two
+probes are a hypothesis, not an exhaustion. It should have conditioned the
+verdict on the event's horizon instead of ruling flat. Shared and asymmetric.
+
 ## One product observation still open — now with the board
 
 Inverting `boardMatrix`'s loop-advance guard turned three silent skips into

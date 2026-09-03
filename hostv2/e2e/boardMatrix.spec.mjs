@@ -206,6 +206,19 @@ for (const state of STATES) {
       // The decision panel (article) sits OUTSIDE .hzone — a chosen-badge move
       // is a real change and must be visible to the snapshot.
       const snap = async () => [await read('h2'), await read('.hzone'), await read('article'), await read('#sheet-title')].join('§');
+      // WAIT FOR THE ASK BEFORE CONCLUDING IT IS ABSENT (2026-09-02).
+      // This guard throws when it finds nothing to settle — which makes "not
+      // there" and "not there YET" the same observation. It passed on this
+      // machine and failed in CI in 1.9s, too fast to have waited for
+      // anything: a slower runner had not painted the hero when the walk
+      // started, and a race reported itself as a dead end.
+      //
+      // A bounded wait, and deliberately NOT an assertion: if the ask genuinely
+      // never appears, the walk below still finds zero and the real finding
+      // still fires with the state named. This only removes the timing from it.
+      await page.locator('.decopt:visible, .cta.stay:visible').first()
+        .waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+
       let steps = 0;
       for (let i = 0; i < 8; i++) {
         // Only board-level settles — never controls inside an open sheet or the
