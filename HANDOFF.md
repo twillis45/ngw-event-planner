@@ -18,24 +18,30 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02**, under the owner's standing delegation. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized |
 
-## Two product observations the inverted guard surfaced — for a human to rule
+## One product observation still open — for a human to rule
 
 Inverting `boardMatrix`'s loop-advance guard turned three silent skips into
-three real failures, and diagnosing them measured something nobody had looked
-at. Neither is fixed here, because both are design judgments rather than bugs:
+three real failures. **Two of the three were a FIXTURE artifact, not a product
+defect**, and the first diagnosis got that wrong:
 
-- **On the DAY OF the event, the top ask is "Venue … Save".** Day-of and T-2
-  surface the identical hero, because the seeded event has no venue and
-  readiness ranks that above everything the date changes. There is an
-  actionable control, so it is not a dead end — but a host standing in the room
-  on the day being asked to enter a venue is worth a ruling.
-- **The solemn Repast state renders NO hero card at all** — `.hero-card` absent,
-  zero decision options. That is the calm path doing what it was built to do;
-  whether "no ask" is the intent or an over-reach is a design call.
+- Day-of and T-2 surfaced "Venue … Save" — a field, not a decision — only
+  because the seeded event has no venue, and readiness correctly ranks a
+  missing venue above anything the date changes. Measured on the same state:
+  **with** a venue it renders a real decision ask with an unsettled option;
+  without one it does not. Fixed by giving the fixture a venue. The day-of
+  loop-advance test runs again, verified by breaking the settle selector and
+  watching that state fail.
+- **STILL OPEN, and genuine: the solemn Repast state renders NO hero card at
+  all** — `.hero-card` absent, zero decision options, **and it stays that way
+  with a venue patched in**, so this is the calm path itself rather than
+  missing data. Whether "no ask" is the intent or an over-reach is a design
+  call. Recorded as the measured `noSettle` reason in the spec.
 
-Both are recorded as the measured `noSettle` reasons in
-`hostv2/e2e/boardMatrix.spec.mjs`, so the next reader meets the evidence rather
-than a bare flag.
+**The lesson worth keeping:** the first fix declared all three `noSettle` with
+reasons that read as considered. A declaration that sounds measured is not the
+same as one that was, and it would have excluded the product's highest-stakes
+screen from the probe built for it. Ask whether the fixture is representative
+before concluding the product is wrong.
 
 ## Board conditions discharged the same session — 4 of 5 stage-7 closure items
 
