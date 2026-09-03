@@ -107,10 +107,33 @@ migration.
   `sendLedger` stay green across 73 assertions** — both of which read that
   exact file. Not a criticism of the 73; it is the reach limit, measured.
 
-**Still standing:** the rule "a behavior claim needs an e2e, a text gate is a
-tripwire" is prose with no instrument. The verification-honesty seat dissented
-on exactly that and it is only half discharged — step 2 got built, step 1 is
-still a preference.
+**Dissent DISCHARGED the same session, and it was right within the hour.** The
+seat said step 1 was prose with no instrument. Proof arrived faster than the
+ruling: the census published "35 text gates" and the number was **36** by the
+end of the session, because `seamRunsInCi.test.js` was added and nobody noticed.
+
+`textGateRatchet.test.js` is the instrument — a **ratchet, not a ban**. A new
+text gate on hostv2 fails the build and is named; the author either writes an
+e2e or bumps `MAX_HOSTV2_TEXT_GATES` with a logged reason. Red-proofed against
+exactly that violation. It caught itself first (37 vs 36) and is excluded by
+exact path, never a name pattern.
+
+`npm run coverage:honesty` prints what a green run reaches:
+
+```
+jest suites total                    438   execute demo/src
+  ...of which only READ hostv2        36   TRIPWIRES. Cannot catch a parse error.
+vitest files (execute hostv2)          1   the seam
+e2e specs total                       50
+  ...dormant by design (_*Capture)     3
+e2e LIVE GATES                        47   the real behavior instrument
+```
+
+**Two numbers I published today were wrong** (corrected in the census, originals
+left visible): 35→36 text gates, and 50 e2e specs → **47 live gates**. On the
+second: five files match a grep for "not a gate", but two only quote the phrase
+in comments *about* gate honesty. Classifying from the grep would have retired
+two working gates on paper.
 
 Census, ruling, dissent and the red-proof table:
 `docs/audits/2026-09-03_SOURCE_TEXT_SUITE_CENSUS.md`.
