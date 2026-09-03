@@ -41,7 +41,8 @@
     "verify:all": "node scripts/verify-all.mjs",
     "verify:fast": "node scripts/verify-all.mjs --fast",
     "handoff:check": "node scripts/handoff-freshness.mjs",
-    "handoff:stamp": "node scripts/handoff-freshness.mjs --stamp"
+    "handoff:stamp": "node scripts/handoff-freshness.mjs --stamp",
+    "coverage:honesty": "node scripts/coverage-honesty.mjs"
   },
   "eslintConfig": {
     "extends": "react-app"

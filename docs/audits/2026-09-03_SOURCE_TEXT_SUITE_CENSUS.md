@@ -202,3 +202,47 @@ An earlier report in this session cited the count as 36 with no method beside
 it. The method is at the top of this file; the number is 35 for the hostv2
 subset and 58 for `readFileSync` overall. Both are reproducible from the
 grep above.
+
+## THE DISSENT IS DISCHARGED — and it was right within the hour
+
+The verification-honesty seat objected that step 1 ("a behavior claim needs an
+e2e") is prose with no instrument, and that a rule with no instrument is a
+preference. It was right, and the proof arrived faster than the ruling:
+
+**This document published "35 hostv2 text gates". By the end of the same
+session the number was 36** — `seamRunsInCi.test.js` was added and nobody
+noticed the count move. A rule that cannot survive one session is a preference.
+
+`src/lib/__tests__/textGateRatchet.test.js` is now the instrument. It is a
+**ratchet, not a ban**: adding a text gate stays legal, it just cannot happen
+silently — bump `MAX_HOSTV2_TEXT_GATES` in the same commit and log why the
+claim could not be an e2e. The choice becomes deliberate and reviewable.
+
+Red-proofed by adding exactly what it exists to stop — a new text gate on
+`HostShellV2.jsx` asserting a behavior claim. It fails and **names the file**.
+
+It also caught **itself** on the first run (37 vs 36), because it reads files
+and says "hostv2". Excluded by exact path, never by a name pattern, since a
+pattern is a hole anyone can step through by naming a file well.
+
+## Two numbers in this document were wrong. Corrected here, originals left above.
+
+- **"35 hostv2 text gates" → 36.** Stale before the session ended, as above.
+- **"50 e2e specs" → 50 total, 47 LIVE GATES.** Three `_*Capture` specs are
+  dormant by design and say so in their opening lines. Five files match a grep
+  for "not a gate", but two — `activationFunnel`, `crossDeviceSync` — only
+  quote the phrase in comments *about* gate honesty and are live. Classifying
+  from the grep alone would have retired two working gates on paper.
+
+`npm run coverage:honesty` prints the decomposition on demand, so a claim about
+coverage has the breakdown beside it instead of one headline number:
+
+```
+jest suites total                    438   execute demo/src — the shared engine
+  ...of which only READ hostv2        36   TRIPWIRES. Cannot catch a parse error.
+vitest files (execute hostv2)          1   the seam. imports the tree.
+e2e specs total                       50   execute the built shell in a browser
+  ...dormant by design (_*Capture)     3   render artifacts, never gate
+e2e LIVE GATES                        47   the real behavior instrument
+```
+
