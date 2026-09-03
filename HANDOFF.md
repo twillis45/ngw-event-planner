@@ -76,9 +76,33 @@ tree outside it. Zero tests import from hostv2; every one of the 35 is a
 They are tripwires, not behavior coverage. The 50 specs in `hostv2/e2e/` are
 what actually executes the shell.
 
-Census with method and the two routes forward:
-`docs/audits/2026-09-03_SOURCE_TEXT_SUITE_CENSUS.md`. **The route is a board
-decision and is not made yet.**
+**RULED AND HALF-BUILT the same session.** The board rejected both routes the
+census offered: "eject CRA" was never required. hostv2 had vite + playwright
+and no vitest anywhere, so the seam costs a devDependency, not a toolchain
+migration.
+
+- **Built:** `hostv2/test/shellParses.test.mjs` + `npm run test:unit`. vitest
+  reuses `vite.config.js`, so the `@app` alias, jsx loader and env `define` are
+  the app's own. It **imports** the shell — the thing jest cannot do.
+- **Wired:** runs in the CI e2e job *before* `playwright install`, so a shell
+  that will not compile costs ~3s instead of 14 minutes.
+- **Red-proofed, and this is the number to quote:** with a syntax error in
+  `HostShellV2.jsx`, **vitest fails and jest's `heroComposition` +
+  `sendLedger` stay green across 73 assertions** — both of which read that
+  exact file. Not a criticism of the 73; it is the reach limit, measured.
+
+**Still standing:** the rule "a behavior claim needs an e2e, a text gate is a
+tripwire" is prose with no instrument. The verification-honesty seat dissented
+on exactly that and it is only half discharged — step 2 got built, step 1 is
+still a preference.
+
+Census, ruling, dissent and the red-proof table:
+`docs/audits/2026-09-03_SOURCE_TEXT_SUITE_CENSUS.md`.
+
+**Two suspicions I had this session were WRONG, both caught by checking:**
+e2e does run on push-to-main (I misread the workflow indentation and nearly
+reported it dead), and my two attempts to measure e2e/text-gate overlap were
+both unsound — no overlap figure is claimed anywhere.
 
 ## FIXED — the diet picker was flagging no allergens for two of its own options
 
