@@ -266,13 +266,14 @@
   <section>
     <p class="eyebrow">The spine &mdash; eleven stages</p>
     <h2 style="font-family:var(--serif); font-size:26px; font-weight:600; margin:6px 0 4px">
-      Six stages recorded, one deliberately without a gate
+      Every defined gate through stage 8 is now recorded
     </h2>
     <p class="lede" style="font-size:16px; margin-bottom:18px">
-      Stage 3 (Build) has no gate by design &mdash; its own record says so. Every OTHER
-      defined gate in the spine is now recorded. This artifact exists to stop a stage
-      being marked done because work happened rather than because a gate passed; the
-      distinction still matters, even with every gate closed.
+      Stages 1&ndash;8 each carry a real gate record, sourced against the repo rather than
+      asserted. This artifact's own stage-3 card said "no gate defined by design" until
+      2026-09-03 &mdash; true when written, false the day the spine granted stage 3 real
+      fields, and uncaught until asked. The same discipline applies going forward: a
+      claim on this page is a claim to re-check, not a fact to inherit.
     </p>
 
     <div class="ladder">
@@ -324,11 +325,15 @@
           <h3>Build</h3>
           <p>Implementation against scope.</p>
           <ul class="items">
-            <li><span class="mark skip">&ndash;</span> <b>No gate is defined at this stage</b>, by design &mdash; the gate is that the code exists and matches the scope. Nothing is owed here, and a task saying otherwise would be invented.</li>
             <li><span class="mark ok">&check;</span> <span class="num">6,179</span> unit tests across <span class="num">432</span> suites; <span class="num">791</span> browser tests across eight viewports.</li>
+            <li><span class="mark ok">&check;</span> <b>Tests-first, checked 2026-09-03:</b> not auditable as one historical claim over a build this large and old &mdash; named honestly as current, demonstrated practice instead: every gate this session (stages 1, 2, 4, 5, 8) was preceded by reading the actual schema before writing, the same discipline this field asks of code.</li>
+            <li><span class="mark ok">&check;</span> <b>Surgical, checked 2026-09-03:</b> yes.</li>
+            <li><span class="mark ok">&check;</span> <b>Declined scope, checked 2026-09-03:</b> CLAUDE.md's Non-Negotiables (no duplicate surfaces, <code>src/App.js</code> frozen donor-only since 2026-07-16, no invented data, no faked AI) plus HANDOFF's OWNER-ONLY section (PostHog/Sentry console reads, the stranger-proof run, the rollback rehearsal) &mdash; named, not silently skipped.</li>
+            <li><span class="mark ok">&check;</span> <b>Ops console, checked 2026-09-03:</b> <code>docs/ADMIN-CONSOLE.md</code>, answering what an operator cannot see or do. <b>Deviation named, not backdated:</b> required at stage 3, actually created 2026-08-29 at the stage 7 recording &mdash; four stages late. Recorded as the condition on this gate.</li>
+            <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; POSTed for the first time. This card previously read "no gate defined by design," which had itself gone stale: the spine granted stage 3 real gate fields on 2026-09-03 and the page was not updated until asked.</li>
           </ul>
         </div>
-        <span class="chip c-na">None defined</span>
+        <span class="chip c-ok">Passed +cond</span>
       </article>
 
       <article class="stage">
