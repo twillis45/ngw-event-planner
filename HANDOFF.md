@@ -37,6 +37,49 @@ A board can rule on what those results *mean*. It cannot produce them. Anything
 else — every gate ruling, every design call — goes to the board and does not
 wait on Todd.
 
+## The parked shelf said its own heading seven times — fixed 2026-09-03
+
+`decisionRankReason()` opened with a constant, `'Comes up closer to the date.'`,
+for any row with `horizon === 'later'`. The board partitions
+`deferred = open.filter(r => r.horizon === 'later')` — the same predicate — and
+HostShellV2 prints "Comes up closer to the date" as the shelf HEADING above
+those rows, and again in the toggle above that.
+
+Driven live on a 120-day Crab Feast: **seven copies of one sentence on one
+shelf**, and nothing said about any of the five decisions parked there.
+
+Now derived from `daysOut`, which was already on the row: "Comes up in about 4
+months." The engine's underlying call is unchanged and still right — for a
+parked row the headline is timing, which is why that branch deliberately
+outranks an authored `priorityBasis.rationale`. It just stated the timing in
+the one phrasing that carries none.
+
+The five rows still read alike. They are 110–115 days out — the same distance —
+and the first draft of the test demanded they differ, which would have meant
+manufacturing precision the data does not carry. The probe caught it; the
+assertion now compares a 60-day shelf against a 120-day one.
+
+Gated by `parkedRowReasonIsSpecific.test.js`. `decisionBoardWave2b` had pinned
+the old literal and now checks the property it meant.
+
+**The trap worth keeping:** this defect had no source location. Each file was
+individually reasonable; the duplication existed only in their composition. No
+single-file assertion could see it, which is the argument for the live drive.
+
+## TRAP: a green unit run does not cover the host shell at all
+
+**35 jest suites read `hostv2/` as TEXT** because jest cannot execute it —
+`react-scripts` pins `roots` to `<rootDir>/src`, and hostv2 is a separate Vite
+tree outside it. Zero tests import from hostv2; every one of the 35 is a
+`readFileSync` + regex.
+
+They are tripwires, not behavior coverage. The 50 specs in `hostv2/e2e/` are
+what actually executes the shell.
+
+Census with method and the two routes forward:
+`docs/audits/2026-09-03_SOURCE_TEXT_SUITE_CENSUS.md`. **The route is a board
+decision and is not made yet.**
+
 ## FIXED — the diet picker was flagging no allergens for two of its own options
 
 Found by the stage-8 tech-debt dispatch, verified by hand before acting.
