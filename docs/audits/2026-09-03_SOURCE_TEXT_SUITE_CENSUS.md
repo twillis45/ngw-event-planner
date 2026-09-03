@@ -46,6 +46,48 @@ the host ever sees it. This session already hit that exact class twice:
 So the risk is not that these 35 are wrong. It is that a green run reads as
 coverage of behavior it never touched.
 
+## These are better than "assert on source text" makes them sound
+
+Read before judging them. The idiom is not `src.includes('some copy')`. From
+`heroComposition.test.js`:
+
+```js
+const raw = fs.readFileSync(SHELL, 'utf8');
+// Code only: the comments deliberately quote the OLD strings ("See 3 other
+// ways >") as the record of what was wrong, so the gate must read past them.
+const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+...
+expect(closed).toMatch(/>Other ways\s+\u25b8</);
+expect(closed).not.toContain('\u203a');
+expect(src).not.toMatch(/'See '\s*\+\s*alts\.length/);
+```
+
+That strips comments so a string quoted in a comment cannot false-pass, asserts
+on JSX **structure** rather than prose, and carries **negative** assertions
+against the specific broken construction. The authors already hit the obvious
+false-pass and closed it.
+
+So the weakness is not craft. It is reach: no amount of care in a static
+assertion sees a runtime composition.
+
+## MEASUREMENT NOT MADE — and two unsound attempts, recorded
+
+I tried twice to measure how many of these claims are ALSO covered by an e2e,
+and both probes were unsound:
+
+- the first matched any quoted string of 12+ chars, which swept up **test
+  names** ("the accept is BRIGHTER than the bookmark beside it"), code
+  fragments (`, guestCount: 45, venueKind: `) and fixture data. It reported
+  4%. Meaningless.
+- the second looked for `<var>.includes('...')` where `<var>` held file
+  content. It reported **0**, a false absence — the real idiom assigns through
+  a comment-stripping `.replace()` chain the pattern never matched.
+
+**No overlap figure is claimed here.** Both numbers are recorded only so the
+next person does not rediscover the same two dead ends. The same over-loose
+regex error occurred earlier the same day in a dependency gate, which is what
+made it recognizable the second time.
+
 ## What actually covers the behavior
 
 `hostv2/e2e/` holds **50** Playwright specs, which do execute the shell. That
