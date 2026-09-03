@@ -8,7 +8,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `8b54d180` |
+| Branch / HEAD | `main` @ `d6f20ec6` |
 | Jest | **6,201 passed**, 1 skipped, 436 suites — measured this pass |
 | Backend pytest | **353 passed** (unchanged; not re-run this pass) |
 | e2e (Playwright) | full matrix **909 passed / 190 skipped / 0 failed** (20.7m). Skips down 20 from the rotted-guard fix; the census classified all 36 guards |
