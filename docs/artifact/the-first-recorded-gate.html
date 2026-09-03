@@ -415,7 +415,7 @@
             <li><span class="mark ok">&check;</span> <b>The admin console reads the shipping app's book</b>, additively rather than by swapping keys.</li>
             <li><span class="mark skip">&ndash;</span> Three <code>_*Capture</code> specs are env-gated and have never run &mdash; and that is <b>correct</b>. Each declares "not a gate" in its first line, uses the <code>_</code> prefix convention, and writes to a gitignored directory. They are on-demand capture tools for board sittings, not dormant tests.</li>
             <li><span class="mark ok">&check;</span> <b>Was open, now confirmed fixed &mdash; found stale 2026-09-03.</b> The day-of fixture was seeded with no venue, which made readiness rank "enter your venue" above everything else &mdash; a fixture artifact wearing a product defect's clothes, not a real dead end. Seeded with a venue, day-of renders a real decision ask. Confirmed both ways in <code>boardMatrix.spec.mjs</code>'s own comments, and re-run this session (53 passed) against the corrected fixture.</li>
-            <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row.</li>
+            <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row. <b>Why unchecked:</b> not started, not blocked &mdash; there is no asset to attribute yet (marketing phase 2's asset, m2-asset, has not been built), so this row has nothing to wire against.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
