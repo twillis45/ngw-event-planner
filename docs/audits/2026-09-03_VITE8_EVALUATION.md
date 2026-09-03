@@ -46,9 +46,25 @@ Build ~9.6× faster; Vite 8 uses rolldown.
   carries a dead block that *looks* load-bearing. It must become `oxc` or be
   removed deliberately.
 - **`optimizeDeps.esbuildOptions.loader`** — same question, unexamined.
-- **`__dirname` × 6**, one of which is the `@app` alias. Works today; breaks
-  when `configLoader: 'native'` becomes the default, and will surface as
+- **`__dirname` × 5** (I first wrote 6 — miscounted; `grep -o` says five, on
+  lines 15, 25, 72, 75, 76), one of which is the `@app` alias. Works today;
+  breaks when `configLoader: 'native'` becomes the default, surfacing as
   "cannot find @app/*" while naming nothing about `__dirname`.
+
+  **AND IT IS INDEPENDENT OF THIS UPGRADE, which invalidates the sequencing I
+  first wrote here.** I assumed `import.meta.dirname` required Vite 8. It does
+  not — the config is real ESM (`"type": "module"`), so Vite 4 accepts it:
+
+  ```
+  node v20.20.2 + import.meta.dirname  ->  ✓ built in 4.52s
+  node v16.16.0 + import.meta.dirname  ->  TypeError [ERR_INVALID_ARG_TYPE]
+  node v16.16.0 + __dirname (today)    ->  ✓ built in 7.92s
+  ```
+
+  So it can land on its own — but it pins **Node ≥ 20.11**, and this machine's
+  default node is 16. CI pins 20 and would stay green while a local build broke
+  for anyone who did not switch node: green CI, broken desks. Needs an
+  `engines` field and a runbook line, or it should not go.
 - **The deploy path is partly tested — the risky half PASSES.**
   `pages-from-source.yml` runs `npm run release` (build hostv2 → sync into
   `public/hostv2` → CRA build) and then greps the BUILT hostv2 assets for the

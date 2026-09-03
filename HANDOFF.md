@@ -189,11 +189,29 @@ again before the matrix. So anything Vite 8 accepts and Vite 4 rejects turns
 the real bundler, not a substitute for it, which is the same relationship the
 35 text gates have to the e2e specs.
 
-`__dirname` is still worth fixing — six uses, and **line 25 is the `@app`
-alias**, so when `configLoader: 'native'` becomes default the config fails to
-load and takes the alias with it, surfacing as "hostv2 cannot find @app/*"
-and naming nothing about `__dirname`. But it is a *vitest-side* pressure today,
-not a build-side one.
+`__dirname` is still worth fixing — **five** uses (I wrote six; miscounted),
+and **line 25 is the `@app` alias**, so when `configLoader: 'native'` becomes
+default the config fails to load and takes the alias with it, surfacing as
+"hostv2 cannot find @app/*" and naming nothing about `__dirname`. It is a
+*vitest-side* pressure today, not a build-side one.
+
+**IT IS NOT A FREE MECHANICAL FIX — measured both ways.** `import.meta.dirname`
+works under Vite 4 today (the config is real ESM, since hostv2 is
+`"type": "module"`), so it does *not* need the Vite 8 upgrade. But it lands a
+**Node floor of 20.11**:
+
+```
+node v20.20.2  + import.meta.dirname  ->  ✓ built in 4.52s
+node v16.16.0  + import.meta.dirname  ->  TypeError [ERR_INVALID_ARG_TYPE]:
+                                          The "path" argument must be of type
+                                          string. Received undefined
+node v16.16.0  + __dirname (today)    ->  ✓ built in 7.92s
+```
+
+**This machine's default node is 16.** CI pins 20, so CI would stay green while
+a local `npm run build` broke for anyone who did not switch node first — the
+worst shape of regression. Ship it with an `engines` field and a line in the
+runbook, or not at all.
 
 **Open, and it is a real fork:** accept two Vites and document the caveat, or
 pin vitest to a Vite-4-compatible line (vitest 0.34/1.x — old, its own cost),
