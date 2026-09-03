@@ -18,7 +18,26 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **6 PASSED WITH CONDITIONS** (Todd, 2026-08-29). **Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02**, under the owner's standing delegation. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized |
 
-## One product observation still open — for a human to rule
+## STANDING DELEGATION — the board decides, 2026-09-02
+
+Owner's instruction: **"decisions are to be handled by the review board."**
+Recorded in `ptp-gates.json` with `ruledBy`, because the Stop hook reads that
+field and because a delegation living only in a conversation is one the next
+session cannot see. It persists across stages until withdrawn (Step 8b), and it
+waives seat confirmation with it (Step 4c).
+
+**What it does NOT delegate.** Acts that need Todd's own hands or accounts are
+not decisions and no board can discharge them:
+
+- reading the PostHog and Sentry consoles — proving events *arrive*, not merely ship
+- the stranger-proof first run
+- the rollback-to-private rehearsal
+
+A board can rule on what those results *mean*. It cannot produce them. Anything
+else — every gate ruling, every design call — goes to the board and does not
+wait on Todd.
+
+## One product observation still open — now with the board
 
 Inverting `boardMatrix`'s loop-advance guard turned three silent skips into
 three real failures. **Two of the three were a FIXTURE artifact, not a product
