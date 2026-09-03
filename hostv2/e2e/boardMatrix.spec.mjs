@@ -307,6 +307,42 @@ for (const state of STATES) {
       }
     });
 
+    test('an option-row hero NAMES THE ACT — measured on the card, not the source', async ({ page }) => {
+      // The rendered half of heroNamesTheAct.test.js, and the half that matters.
+      // That unit test asserted the SOURCE carried a gate, passed, and shipped a
+      // card that named the act nowhere — Wanda renders "our pick" with no
+      // assurance sentence, so gating the lead on `proposedOpt` removed the only
+      // line telling a host what tapping does.
+      //
+      // A check that reads the code cannot see what the code renders. This one
+      // opens the page and looks.
+      behaviourOnly(test.info());
+      await boot(page, state);
+      const r = await page.evaluate(() => {
+        const vis = (e) => e && e.offsetParent !== null;
+        const rows = [...document.querySelectorAll('.decopt')].filter(vis);
+        if (!rows.length) return { rows: 0 };
+        const hero = document.querySelector('.hero-card');
+        return {
+          rows: rows.length,
+          // A SETTLED card is exempt, and scoping it out is the point: the
+          // Grandmother finding was about UNSETTLED rows with nothing saying
+          // they were answers. Once a row carries "chosen", the card has said
+          // which one is in force and the rows are self-evidently the choices.
+          // The first cut flagged the settled COI card and would have been
+          // "fixed" by adding a line that card does not need.
+          settled: rows.some((r) => /chosen/i.test(r.textContent || '')),
+          lead: [...document.querySelectorAll('.decopts-lead')].filter(vis).length,
+          assurance: /running on my pick/i.test(hero?.innerText || ''),
+          heroHead: (hero?.innerText || '').replace(/\s+/g, ' ').slice(0, 90),
+        };
+      });
+      if (!r.rows || r.settled) return;          // no rows, or already settled
+      expect(r.lead > 0 || r.assurance,
+        `option rows render with neither a lead line nor an assurance — nothing tells the host `
+        + `what tapping does. hero: "${r.heroHead}"`).toBe(true);
+    });
+
     test('pinned geometry + scroll-end reachability', async ({ page }) => {
       await boot(page, state);
       // Real wheel scrolls (programmatic scrollTop doesn't flip the

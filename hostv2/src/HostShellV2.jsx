@@ -2059,7 +2059,20 @@ export default function HostShellV2() {
             card. `proposed` is emitted on the same condition as the assurance,
             so it is the signal. Gated by heroNamesTheAct.test.js: an option-row
             hero carries one or the other, never neither. */}
-        {!proposedOpt && <p className="decopts-lead">Tap one to settle it — nothing else changes.</p>}
+        {/* REVERTED TO UNCONDITIONAL, 2026-09-03. The gate above used
+            `proposedOpt` as the signal for "an assurance is carrying this
+            card", on the reasoning that both are emitted from the playbook's
+            `default`. THAT IS FALSE, and Wanda proves it: its hero renders
+            "our pick" with NO assurance sentence, so suppressing the lead left
+            that card naming the act NOWHERE — the Grandmother seat's original
+            defect, restored by the fix meant to preserve it.
+            Worse, the test written to prevent exactly this passed, because it
+            asserted on SOURCE STRINGS rather than on a rendered card. A gate
+            that reads the code cannot see what the code renders.
+            Unconditional until a real signal exists. The board ruled (a) and
+            (a) is still right; the implementation was wrong, and shipping a
+            wrong implementation of a correct ruling is worse than waiting. */}
+        <p className="decopts-lead">Tap one to settle it — nothing else changes.</p>
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}
@@ -8492,6 +8505,18 @@ export default function HostShellV2() {
                           const doB = (b) => { if (b.route) routeSheet(b.route); else if (b.patch) writeVendor(v.id, b.patch, b.receipt); };
                           return (
                             <div className="decopts">
+                              {/* NAMES THE ACT. These rows are hand-drawn here rather than
+                                  routed through renderDecision — the one thing the unified
+                                  decision surface says must not happen again — so they never
+                                  inherited the lead line, and this card shipped option rows
+                                  with nothing saying they ARE the answers or what tapping
+                                  does. That is the Grandmother seat's original defect, alive
+                                  on a second path the whole time.
+                                  Found by an e2e assertion measuring the RENDERED card; the
+                                  unit test that reads the source could not see it. The rows
+                                  are mixed here (some route, some settle in place), so the
+                                  wording says both. */}
+                              <p className="decopts-lead">Tap one — some settle here, some open the vendor.</p>
                               {branches.map((b, bi) => (
                                 <button key={bi} className={'decopt' + (bi === 0 ? ' pick' : '')} onClick={() => doB(b)}>
                                   <span className="decopt-main"><span className="decopt-name">{b.label}</span></span>

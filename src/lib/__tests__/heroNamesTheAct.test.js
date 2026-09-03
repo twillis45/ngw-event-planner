@@ -34,10 +34,17 @@ describe('an option-row hero always names the act', () => {
     expect(SHELL).toMatch(/Tap one to settle it/);
   });
 
-  test('and it is gated on the ABSENCE of a proposed pick', () => {
-    // `proposed` is emitted on the same condition as the assurance, so it is
-    // the signal for "an assurance is carrying this card".
-    expect(SHELL).toMatch(/\{!proposedOpt && <p className="decopts-lead">/);
+  test('and it renders UNCONDITIONALLY — the gate attempt was withdrawn', () => {
+    // The gate used `proposedOpt` as a proxy for "an assurance is carrying this
+    // card". False: Wanda renders "our pick" with no assurance, so the lead
+    // vanished from a card that then named the act nowhere.
+    //
+    // This test's earlier version asserted the GATE existed, read the source,
+    // and passed while the regression shipped. That is the lesson worth more
+    // than the fix: a check that reads the code cannot see what the code
+    // renders. The rendered guarantee is asserted in e2e, not here.
+    expect(SHELL).toMatch(/<p className="decopts-lead">Tap one to settle it/);
+    expect(SHELL).not.toMatch(/\{!proposedOpt && <p className="decopts-lead">/);
   });
 
   test('the assurance that replaces it NAMES THE ACT', () => {
