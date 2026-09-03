@@ -398,15 +398,16 @@
             <li><span class="mark ok">&check;</span> <b><code>verify:all</code> now exists</b>, and it COLLECTS rather than chains: every suite runs, each records its own exit code. Two scripts cannot be chained &mdash; <code>gate:hostv2</code> exits 1 unconditionally (retired by CI on 1 Aug, npm script never removed) and would silently delete every step after it. First full run: <b>7 of 8 pass</b>.</li>
             <li><span class="mark ok">&check;</span> <b>Backend pytest reachable locally for the first time</b> &mdash; <span class="num">353</span> tests that only CI ever ran, so the person about to push could not.</li>
             <li><span class="mark ok">&check;</span> <b><code>docs/ADMIN-CONSOLE.md</code> now exists.</b> Required since stage 3 and never written, because a console does ship and its presence read as coverage.</li>
-            <li><input type="checkbox" data-k="s7-adminkey"> <b>The admin console reads a key the shipping app never writes.</b> <code>AdminConsole.jsx:1323</code> reads <code>ngw-events</code> (the frozen CRA's key) while hostv2 writes <code>ngw-hostv2-custom-events</code>. Its "This Browser" panels read empty while labelled as showing this browser.</li>
-            <li><input type="checkbox" data-k="s7-recovery"> <b>Four recovery functions have zero callers.</b> <code>restoreBackup</code>, <code>importCustomEvents</code>, <code>listBackups</code>, <code>readWriteLog</code> &mdash; implemented, guarded, unit-tested, unreachable from the product. Finished work that never got a surface.</li>
+            <li><span class="mark ok">&check;</span> <b>Was open, now confirmed fixed &mdash; found stale 2026-09-03.</b> <code>src/admin/AdminConsole.jsx</code> read only <code>ngw-events</code> (the frozen CRA's key); it now reads BOTH keys additively at :1342, so "This Browser" panels see events written by either shell. Confirmed by reading the source, not by re-trusting the line below that already claimed this.</li>
+            <li><span class="mark ok">&check;</span> <b>Was open, now confirmed 3 of 4 fixed &mdash; found stale 2026-09-03.</b> <code>restoreBackup</code>, <code>importCustomEvents</code>, <code>listBackups</code> are now called from <code>HostShellV2.jsx</code>'s settings &rarr; Your data surface (line below). Confirmed by reading the source, not by re-trusting the claim that a surface exists.</li>
+            <li><input type="checkbox" data-k="s7-recovery2"> <code>readWriteLog</code> alone still has zero callers &mdash; the one of the four genuinely unreached. Re-checked 2026-09-03.</li>
             <li><span class="mark ok">&check;</span> <b>Durable storage is now requested</b> &mdash; the board's ONE THING, named independently by six of ten seats. Asked once on the first successful write, fire-and-forget so it can never delay or fail a save, with the answer recorded so a surface can report it. A refusal is kept as a real answer rather than re-prompted forever. <span class="num">13</span> tests; three faults red-proofed, and <b>one escaped</b> &mdash; see corrections.</li>
             <li><span class="mark ok">&check;</span> <b>The recovery functions have a surface</b> &mdash; settings &rarr; Your data. Gated to the shape the board named: corrupt the store, restore through the UI, assert the plan returns. Two defects found by building it: every app-written backup row rendered "Invalid Date", and the newest copy after a corruption is a snapshot <em>of the damage</em>.</li>
             <li><span class="mark ok">&check;</span> <b>The <span class="num">210</span> skips are censused.</b> <span class="num">4</span> tests never execute a single assertion on any project. <span class="num">9</span> guards were rotted &mdash; they skipped at widths where the surface exists &mdash; and are retargeted; the <span class="num">20</span> executions bought back all pass, so they were discarding coverage rather than hiding breakage.</li>
             <li><span class="mark ok">&check;</span> <b><code>gate:cra</code> resolved:</b> a stale <code>node_modules/.cache</code>. Clearing it prints CI's exact line, and <code>verify:all</code> went 7 of 8 to <b>8 of 8</b> &mdash; the full set passes together for the first time.</li>
             <li><span class="mark ok">&check;</span> <b>The admin console reads the shipping app's book</b>, additively rather than by swapping keys.</li>
             <li><span class="mark skip">&ndash;</span> Three <code>_*Capture</code> specs are env-gated and have never run &mdash; and that is <b>correct</b>. Each declares "not a gate" in its first line, uses the <code>_</code> prefix convention, and writes to a gitignored directory. They are on-demand capture tools for board sittings, not dormant tests.</li>
-            <li><input type="checkbox" data-k="s7-daynot"> <b>The day-of dead-end probe never runs on day-of.</b> <code>boardMatrix</code>'s loop-advance skips on 4 of 6 states including the day-of ask &mdash; the highest-stakes screen in the product. Invert the guard so "no in-place settle" FAILS with the state named.</li>
+            <li><span class="mark ok">&check;</span> <b>Was open, now confirmed fixed &mdash; found stale 2026-09-03.</b> The day-of fixture was seeded with no venue, which made readiness rank "enter your venue" above everything else &mdash; a fixture artifact wearing a product defect's clothes, not a real dead end. Seeded with a venue, day-of renders a real decision ask. Confirmed both ways in <code>boardMatrix.spec.mjs</code>'s own comments, and re-run this session (53 passed) against the corrected fixture.</li>
             <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row.</li>
           </ul>
         </div>
@@ -673,6 +674,23 @@
     </div>
 
     <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">Three checkboxes on stage 7 were open work.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        They were fixed &mdash; the admin console's key mismatch, three of four orphaned
+        recovery functions, the day-of dead-end probe &mdash; and stayed unchecked for
+        up to two days after landing, found only when asked "how was this missed."
+        The pattern each time: a fix landed, a NEW static &check; line was added
+        confirming it, and the OLD unchecked line describing the original problem was
+        never revisited in the same edit. The card grew a line saying "fixed" sitting
+        directly above a checkbox still saying "broken." Caught by reading the actual
+        source for every open item rather than trusting either line. The rule now:
+        when a fix lands, close the checkbox it answers in the SAME edit that adds the
+        confirmation &mdash; a done line and an open line about the same fact are not two
+        different data points, they are one fact recorded twice and only updated once.
+      </p>
+    </div>
+
+    <div class="corr">
       <p style="margin:0 0 4px"><span class="was">A gate can be recorded as passed once the work is verified.</span></p>
       <p style="margin:0; color:var(--ink-soft)">
         Only the owner rules a gate. Research reaches a recommendation; the recommendation was
@@ -699,7 +717,7 @@
           <tr><td>Funnel events fired by the shipping app</td><td class="n">4 of 5 wired, 4 gated</td><td>e2e/activationFunnel.spec.mjs, red-proofed 2026-08-29</td><td class="n">On any analytics change</td></tr>
           <tr><td><code>verify:all</code> first full run</td><td class="n">7 of 8 pass</td><td>Collecting runner, 2026-09-02</td><td class="n">Every push</td></tr>
           <tr><td>Backend tests, now reachable locally</td><td class="n">353</td><td>Previously CI-only; no local script invoked pytest</td><td class="n">Every push</td></tr>
-          <tr><td>Recovery functions with zero callers</td><td class="n">4</td><td>Counted, not eyeballed &mdash; ADMIN-CONSOLE.md</td><td class="n">When one gets a surface</td></tr>
+          <tr><td>Recovery functions with zero callers</td><td class="n">1 of 4</td><td>Was 4 (ADMIN-CONSOLE.md, 2026-09-02); re-checked 2026-09-03, 3 gained callers via the settings surface</td><td class="n">If <code>readWriteLog</code> gets one</td></tr>
           <tr><td>Board seats ruling stage 7</td><td class="n">10, two panels</td><td>Subagent panels, dissent preserved per seat</td><td class="n">On the next stage board</td></tr>
           <tr><td>Skips censused</td><td class="n">36 guards, 210 skips</td><td>Subagent census, verified by direct measurement</td><td class="n">On any seed change</td></tr>
           <tr><td><b>Tests that cannot currently fail</b></td><td class="n">4</td><td>State-conditional guards, measured on two projects</td><td class="n">Gates stage 7 closure</td></tr>
