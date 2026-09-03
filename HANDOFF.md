@@ -62,6 +62,22 @@ assertion now compares a 60-day shelf against a 120-day one.
 Gated by `parkedRowReasonIsSpecific.test.js`. `decisionBoardWave2b` had pinned
 the old literal and now checks the property it meant.
 
+**A FIFTH site, in frozen code — noted, deliberately not fixed.**
+`src/App.js:43171` carries the same fallback,
+`{r.rankReason || r.because || 'Comes up closer to the date.'}`, and the
+comment above it at :43164 asserts the engine's rankReason *is* that string.
+That comment is now false.
+
+No action taken, on purpose. App.js is the FROZEN CRA donor (A1 freeze) and
+this is neither a security nor a data-loss fix. And there is nothing to repair
+behaviorally: App.js reads `rankReason` from the same shared engine, so its
+decisions panel now shows "Comes up in about 4 months." too, and the literal
+stays dead. **The stale comment is the trap** — whoever unfreezes App.js will
+read it as a statement about current engine behavior. It is not.
+
+Checked before worrying: **no e2e spec asserts on this copy**, so the string
+change cannot redden the matrix.
+
 **The trap worth keeping:** this defect had no source location. Each file was
 individually reasonable; the duplication existed only in their composition. No
 single-file assertion could see it, which is the argument for the live drive.
