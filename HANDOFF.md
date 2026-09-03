@@ -157,19 +157,48 @@ warning: `esbuild` option was specified by "vite:react-babel" plugin. This
     option is deprecated, please use `oxc` instead.
 ```
 
-**Why this one matters more than a typical deprecation:** there are **six**
-`__dirname` uses in that file, and **line 25 is the `@app` alias** —
-`alias: { '@app': path.resolve(__dirname, '../src') }`. That alias is how
-hostv2 reaches the entire shared engine. When `configLoader: 'native'` becomes
-the default, the config fails to load and takes the alias with it, so the
-symptom will be "hostv2 cannot find @app/*" rather than anything naming
-`__dirname`.
+**CORRECTED an hour later — the causal story above is wrong.** I wrote that
+these warn about the app's build Vite. They do not, and the real finding is
+about a change *I* made.
 
-The `esbuild` → `oxc` warning touches lines 102 and 104, which carry the
-jsx-in-.js loader that lets `../src` modules compile at all.
+Measured: `hostv2` builds with **vite@4.5.14**, which has no `configLoader` and
+no `oxc` — it cannot emit either warning. The warnings came from **vitest**,
+which declares `vite: ^6 || ^7 || ^8` and therefore installed its own
+**vite@8.2.2** nested under `node_modules/vitest/`. Vite 8 parses the same
+`vite.config.js` and warns about it.
 
-Fix is mechanical (`import.meta.dirname`) but pins a Vite floor, so it is a
-deliberate bump rather than a drive-by. **Not done, and no date set.**
+**So adding vitest put TWO Vite majors in hostv2, four apart:**
+
+| | Version | Role |
+|---|---|---|
+| `node_modules/vite` | **4.5.14** | builds the shipping bundle |
+| `node_modules/vitest/node_modules/vite` | **8.2.2** | transforms the seam's tests |
+
+Neither ships — both are dev-only — and the seam's red-proof still held: a
+syntax error in `HostShellV2.jsx` failed vitest. But **"vitest executes the
+tree the app builds" is now only approximately true.** The two run different
+transform pipelines (Vite 4's esbuild path vs Vite 8's), so the residual risk
+is a **false green**: syntax or syntax-adjacent code that Vite 8 accepts and
+Vite 4 rejects would pass the seam and fail the build.
+
+**That risk is COVERED, checked rather than assumed.** `checks.yml` runs
+`hostv2-build` as its own job on every push and PR — `npm run build`, which is
+`check-parity && vite build` on **Vite 4.5.14** — and the `e2e` job builds
+again before the matrix. So anything Vite 8 accepts and Vite 4 rejects turns
+`hostv2-build` red in the same run. The seam is a fast tripwire *in front of*
+the real bundler, not a substitute for it, which is the same relationship the
+35 text gates have to the e2e specs.
+
+`__dirname` is still worth fixing — six uses, and **line 25 is the `@app`
+alias**, so when `configLoader: 'native'` becomes default the config fails to
+load and takes the alias with it, surfacing as "hostv2 cannot find @app/*"
+and naming nothing about `__dirname`. But it is a *vitest-side* pressure today,
+not a build-side one.
+
+**Open, and it is a real fork:** accept two Vites and document the caveat, or
+pin vitest to a Vite-4-compatible line (vitest 0.34/1.x — old, its own cost),
+or move hostv2 to Vite 8 (large). **Not decided. Not urgent** — nothing is
+broken today and nothing about this reaches a user.
 
 ## FIXED — the diet picker was flagging no allergens for two of its own options
 
