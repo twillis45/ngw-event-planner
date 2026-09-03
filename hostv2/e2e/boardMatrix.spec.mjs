@@ -25,19 +25,31 @@ const COI_PATCH = {
 
 // The seeded states — the same roster the live drives used. Weather is staged
 // deterministically for the outdoor T-2 event via route interception.
-const DAY_OF_PATCH = { date: new Date().toISOString().slice(0, 10) };
+// A DAY-OF EVENT HAS A VENUE (2026-09-02). Seeded without one, readiness
+// correctly ranks "enter your venue" above everything the date changes — so
+// the day-of hero was a FIELD, the loop-advance probe found nothing to settle,
+// and the highest-stakes screen in the product was excluded from the probe
+// built for it. Measured both ways: with a venue the same state renders a real
+// decision ask with an unsettled option; without one it does not.
+//
+// That was a fixture artifact wearing a product defect's clothes, and the
+// first fix declared it noSettle — which would have excluded day-of from this
+// probe permanently. Revert by deleting the two venue keys.
+const VENUE = { venue: 'The Ironwood Room', venueCity: 'Annapolis, MD' };
+const DAY_OF_PATCH = { date: new Date().toISOString().slice(0, 10), ...VENUE };
 
 const STATES = [
   // noSettle carries a REASON, never a bare true. A declaration without one is
   // a silencer wearing a flag's clothes, and this guard exists precisely
   // because silence was being scored as a pass.
-  { id: 'test-two-days', label: 'Game Night DAY-OF (elegant ask)', weather: false, future: true, patch: DAY_OF_PATCH, stateKey: 'day-of',
-    noSettle: 'the top ask is a FIELD, not a decision — measured 2026-09-02: 0 .decopt, hero reads "Venue … Save". This seeded event has no venue, so readiness surfaces the venue entry above everything. There IS an actionable control; it is simply not the in-place settle this probe walks.' },
-  { id: 'test-two-days',           label: 'Game Night T-2 (outdoor, weather)', weather: true,  future: true,
-    noSettle: 'same venue field as day-of, measured identically. The date does not change what is surfaced, because the missing venue outranks it.' },
+  { id: 'test-two-days', label: 'Game Night DAY-OF (elegant ask)', weather: false, future: true, patch: DAY_OF_PATCH, stateKey: 'day-of' },
+  { id: 'test-two-days',           label: 'Game Night T-2 (outdoor, weather)', weather: true,  future: true, patch: VENUE },
   { id: 'test-day-before-vendors', label: 'Dinner T-1 (vendors, COI unverified)', weather: false, future: true, patch: COI_PATCH },
   { id: 'ev-x-repast',             label: 'Repast T-3 (solemn)',               weather: false, future: true,
-    noSettle: 'the solemn path renders NO hero card at all — measured 2026-09-02: .hero-card absent, 0 .decopt. Deliberate calm-path suppression, and worth a human ruling on whether "no ask" is the intent or an over-reach.' },
+    // Checked against the fixture explanation that fixed day-of and T-2, and it
+    // does NOT apply here: Repast renders no hero card even WITH a venue
+    // patched in. The suppression is the solemn path itself, not missing data.
+    noSettle: 'the solemn path renders NO hero card at all — measured 2026-09-02 both as seeded and with a venue patched in: .hero-card absent, 0 .decopt either way. Deliberate calm-path suppression, and worth a human ruling on whether "no ask" is the intent or an over-reach.' },
   // noSettle: a state that legitimately has nothing to settle in place, so a
   // zero-step walk is the correct outcome rather than a missing one. A PAST
   // event has no decisions left to make. Every other state must produce at
