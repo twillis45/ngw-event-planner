@@ -266,11 +266,11 @@
   <section>
     <p class="eyebrow">The spine &mdash; eleven stages</p>
     <h2 style="font-family:var(--serif); font-size:26px; font-weight:600; margin:6px 0 4px">
-      Four stages passed, two still marked no gate
+      Five stages passed, one still marked no gate
     </h2>
     <p class="lede" style="font-size:16px; margin-bottom:18px">
-      Stages 2 and 4 are marked <b>no gate</b> rather than passed. Substantial work exists behind
-      both and is cited below &mdash; but a stage marked done because work happened,
+      Stage 4 is marked <b>no gate</b> rather than passed. Substantial work exists behind
+      it and is cited below &mdash; but a stage marked done because work happened,
       rather than because a gate passed, is the thing this artifact exists to stop.
     </p>
 
@@ -307,14 +307,14 @@
           <h3>Scope &amp; design</h3>
           <p>Checkable success criteria, and the design that meets them.</p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Three review boards sat and ruled: task ownership (6&ndash;2 ship, narrow), guest transport (6&ndash;2 defer), vendors sheet (all six clauses shipped).</li>
-            <li><input type="checkbox" data-k="s2-scan"> <b>Reference scan, in order:</b> own design system &rarr; prior recorded scans &rarr; how the field solves it &rarr; decide and record the reason. It comes <em>first</em>. A scan run after the design is built is not research, it is looking for permission &mdash; and that exact failure is why this command exists.</li>
-            <li><input type="checkbox" data-k="s2-checkable"> Gate (all): confirm the success criteria are machine-checkable. "Add validation" fails; "blank and malformed email each show a specific error, both covered by passing tests" passes.</li>
-            <li><input type="checkbox" data-k="s2-activation"> <b>Gate (public): activation and UX doctrine applied here</b>, not bolted on later &mdash; Ruthless Host Lens, no-guesswork-advance, the Attention System. Re-run retroactively at stage 9.</li>
-            <li><input type="checkbox" data-k="s2-gate"> Record those board verdicts as the stage-2 gate. The verdict <em>is</em> the gate record.</li>
+            <li><span class="mark ok">&check;</span> Three review boards sat and ruled: task ownership (6&ndash;2 ship, narrow, commit <code>e006f52d</code>), guest transport (6&ndash;2 defer), vendors sheet (all six clauses shipped) &mdash; <code>docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md</code>.</li>
+            <li><span class="mark ok">&check;</span> <b>Reference scan, checked 2026-09-03:</b> own design system exists first (<code>docs/claude-skills/02_STUDIO_MATTE_UI_STANDARD.md</code>, UX_01&ndash;09) and is cited by every later scan. Six dated competitive reads on disk (Mobbin &times;4, Triply), each recording the decision reason, not only the finding. No scan-run-after-design defect found.</li>
+            <li><span class="mark ok">&check;</span> <b>Success criteria machine-checkable, checked 2026-09-03:</b> not abstract &mdash; the 6,228-test corpus is built from specifically-named checkable behaviors (<code>dietVocabularyResolves.test.js</code>, <code>parkedRowReasonIsSpecific.test.js</code>, <code>textGateRatchet.test.js</code>, among many). The "add validation" fails / "blank and malformed email each show a specific error" passes standard, in practice.</li>
+            <li><span class="mark ok">&check;</span> <b>Activation/UX doctrine, checked 2026-09-03:</b> applied early, not bolted on &mdash; <code>docs/audits/2026-07-14_ATTENTION_SYSTEM_AUDIT.md</code> and <code>2026-08-18_HOST_LANDING_NEXT_ACTION_MOBBIN_READ.md</code> predate this recording by seven weeks. Re-run retroactively at stage 9, unchanged.</li>
+            <li><span class="mark ok">&check;</span> <b>Ruled passed</b> by Todd Willis, 3 September 2026 &mdash; the board verdicts above ARE this gate record, POSTed for the first time. The ruling existed on disk since 2026-08-21 and had never been recorded via the API, same pattern as the stage-1 and stage-5 gaps closed earlier this session.</li>
           </ul>
         </div>
-        <span class="chip c-none">No gate</span>
+        <span class="chip c-ok">Passed</span>
       </article>
 
       <article class="stage">
