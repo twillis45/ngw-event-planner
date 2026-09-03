@@ -45,11 +45,17 @@ const STATES = [
   { id: 'test-two-days', label: 'Game Night DAY-OF (elegant ask)', weather: false, future: true, patch: DAY_OF_PATCH, stateKey: 'day-of' },
   { id: 'test-two-days',           label: 'Game Night T-2 (outdoor, weather)', weather: true,  future: true, patch: VENUE },
   { id: 'test-day-before-vendors', label: 'Dinner T-1 (vendors, COI unverified)', weather: false, future: true, patch: COI_PATCH },
+  // T-3 MEANS T-3. The seeded date was hardcoded to Jul 25 and had drifted 39
+  // days into the PAST, so this state rendered no ask, no all-clear and no
+  // cards at all — and that was reported as "the solemn path suppresses the
+  // ask", which is false. A future repast renders a real decision hero:
+  // measured at T-3 (1 unsettled option) and T-10 ("What you're serving · 2
+  // open — the heart of a repast"). The solemn path works.
+  //
+  // Third fixture-drift finding in a row, same shape each time: a state's
+  // LABEL claims something its data no longer is. See the guard below.
   { id: 'ev-x-repast',             label: 'Repast T-3 (solemn)',               weather: false, future: true,
-    // Checked against the fixture explanation that fixed day-of and T-2, and it
-    // does NOT apply here: Repast renders no hero card even WITH a venue
-    // patched in. The suppression is the solemn path itself, not missing data.
-    noSettle: 'the solemn path renders NO hero card at all — measured 2026-09-02 both as seeded and with a venue patched in: .hero-card absent, 0 .decopt either way. Deliberate calm-path suppression, and worth a human ruling on whether "no ask" is the intent or an over-reach.' },
+    patch: { date: (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.toISOString().slice(0, 10); })() } },
   // noSettle: a state that legitimately has nothing to settle in place, so a
   // zero-step walk is the correct outcome rather than a missing one. A PAST
   // event has no decisions left to make. Every other state must produce at
@@ -126,6 +132,50 @@ const boot = async (page, state) => {
   await page.goto('?elegant=1');
   await settled(page);
 };
+
+// ─── A DATED LABEL IS A CLAIM (2026-09-02) ─────────────────────────────────
+// Three states in this file have now been found describing data they no longer
+// had: day-of with no venue, T-2 with no venue, and a "T-3" repast that was 39
+// days past. A hardcoded date does not stay T-3; it becomes T-3, then T+1, then
+// a past event, and the state quietly stops testing what it names.
+test('every dated state actually sits where its label says', async ({ page }) => {
+  // MEASURE WHAT THE APP DISPLAYS, not what the fixture declares. The first
+  // cut asserted that a dated state carried a date patch — and flagged T-2 and
+  // T-1, which are CORRECT: their seeds are already date-relative, so they need
+  // no patch. Requiring the patch tested the fixture's shape instead of its
+  // truth, and would have been "fixed" by adding redundant patches.
+  //
+  // What actually rotted was a HARDCODED date: the repast was seeded Jul 25 and
+  // had drifted 39 days into the past while still labelled T-3, so it rendered
+  // no ask at all and that was reported as a solemn-path defect. The horizon
+  // the app puts on screen is the thing to assert.
+  const bad = [];
+  for (const s of STATES) {
+    const m = /\bT-(\d+)\b/.exec(s.label);
+    const wantsDayOf = /DAY-OF/i.test(s.label);
+    if (!m && !wantsDayOf) continue;
+    await boot(page, s);
+    // Read the EYEBROW, not the page. A body-wide scan returned 0 for two
+    // correct states because the word "TODAY" appears elsewhere on the screen —
+    // measuring the container instead of the artifact, which is the mistake
+    // this file keeps recording.
+    const shown = await page.evaluate(() => {
+      const el = document.querySelector('.eb-text');
+      const t = (el ? el.textContent : '').replace(/\s+/g, ' ').trim();
+      if (!t) return null;
+      const past = /(\d+)\s*DAYS?\s+AGO/i.exec(t);
+      if (past) return -Number(past[1]);
+      if (/^TODAY\b/i.test(t)) return 0;
+      const fut = /^(\d+)\s*DAYS?\b/i.exec(t);
+      return fut ? Number(fut[1]) : null;
+    });
+    const want = wantsDayOf ? 0 : Number(m[1]);
+    if (shown === null) { bad.push(`${s.label}: no horizon rendered — cannot verify the label`); continue; }
+    // One day of slack: the app rounds, and a run straddling midnight is not a defect.
+    if (Math.abs(shown - want) > 1) bad.push(`${s.label}: label says ${want} days out, the app shows ${shown}`);
+  }
+  expect(bad).toEqual([]);
+});
 
 for (const state of STATES) {
   test.describe(state.label, () => {
