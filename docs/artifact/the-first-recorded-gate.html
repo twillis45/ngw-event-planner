@@ -431,7 +431,7 @@
             <li><span class="mark ok">&check;</span> <b>Blocks stage 9:</b> the repast cultural copy needs three real community reviewers before reaching strangers &mdash; the insider panel's own sign-off is explicitly not community consent.</li>
             <li><input type="checkbox" data-k="s8-vite8"> <b>Blocks nothing, tracked:</b> Vite 8 adoption &mdash; trialled and reverted, clean on every gate run (build 482ms, vitest 14/14, e2e 208/0, deploy-parity grep). Needs <code>optimizeDeps.esbuildOptions</code> examined and <code>npm run release</code> run end to end before it lands.</li>
             <li><span class="mark ok">&check;</span> <b>Blocks nothing, self-resolving:</b> <code>xlsx@0.18.5</code> carries two unfixable advisories that leave with the CRA at its scheduled post-Sprint-2 deletion.</li>
-            <li><input type="checkbox" data-k="s8-textgate"> <b>Blocks nothing, structural:</b> 35 jest suites assert on hostv2 as text because <code>react-scripts</code> pins jest's roots to <code>src/</code>; the 50 <code>hostv2/e2e</code> specs are the real behavioral coverage. The board has not yet chosen between making jest execute hostv2 or keeping the 35 as tripwires.</li>
+            <li><input type="checkbox" data-k="s8-textgate"> <b>Blocks nothing, structural:</b> 36 jest suites assert on hostv2 as text (the ratchet's own live baseline, <code>textGateRatchet.test.js:35</code> &mdash; corrected 2026-09-03 from a stale 35) because <code>react-scripts</code> pins jest's roots to <code>src/</code>; the 50 <code>hostv2/e2e</code> specs are the real behavioral coverage. The board has not yet chosen between making jest execute hostv2 or keeping the 36 as tripwires.</li>
             <li><span class="mark ok">&check;</span> <b>Runbook:</b> <code>docs/RUNBOOK.md</code>. Corrected this session &mdash; the push step checked CI then pushed unconditionally on the next line, which cancelled an in-flight run carrying an allergen fix. Now gates the push in the condition, and no longer stamps HANDOFF as a self-cancelling second commit.</li>
             <li><span class="mark ok">&check;</span> <b>Re-checked fresh this session:</b> CI green on HEAD, 0 unpushed, jest 441 suites / 6228 tests, vitest 14/14, hostv2 builds on node 16 and node 20, the vitest-in-CI seam confirmed from the runner's own stdout rather than the workflow file.</li>
             <li><input type="checkbox" data-k="s8-notchecked"> <b>Not re-checked this session, still owner-only:</b> the six stage-5 security opens, PostHog/Sentry arrival proof in prod, the repast community-review gate.</li>
@@ -498,10 +498,10 @@
              it. A thesis nothing could disprove has not been written yet.</p>
           <ul class="items">
             <li><span class="mark ok">&check;</span> Competitive reads exist and are specific &mdash; the closest funded competitor counts inventory, not readiness; nobody in the set has a readiness rollup.</li>
-            <li><input type="checkbox" data-k="m1-thesis"> Write the acquisition thesis as one falsifiable sentence. <b>Not yet written</b> &mdash; a competitive read is not a thesis.</li>
-            <li><input type="checkbox" data-k="m1-unit"> Name the acquisition unit: the one screen or clip a stranger actually sees first.</li>
-            <li><input type="checkbox" data-k="m1-falsify"> State what result would falsify it, before any test runs.</li>
-            <li><input type="checkbox" data-k="m1-design"> Hand the positioning constraints to design as requirements, not preferences.</li>
+            <li><input type="checkbox" data-k="m1-thesis"> <b>Corrected 2026-09-03 &mdash; a draft exists, not "unwritten."</b> <code>docs/ACQUISITION-THESIS.md</code> (2026-09-02) states one falsifiable sentence, grounded in <code>COMPETITIVE_AUTOMATION.md</code> and the Blink/Partiful reads. Left unchecked on purpose: the doc's own header says the board "recorded it as unwritten... this is a draft, not a decision. Overrule any line of it" &mdash; drafted, not yet ruled.</li>
+            <li><input type="checkbox" data-k="m1-unit"> <b>Answered in the same draft:</b> "one screen: a real event's plan, mid-flight" &mdash; not a landing page or a video. Same ruled/not-ruled status as above.</li>
+            <li><input type="checkbox" data-k="m1-falsify"> <b>Answered in the same draft:</b> four named falsification conditions, including one added by the board (comprehension that credits a person rather than the product does not count). Same ruled/not-ruled status as above.</li>
+            <li><span class="mark ok">&check;</span> <b>Hand the positioning constraints to design as requirements, checked 2026-09-03:</b> <code>ACQUISITION-THESIS.md</code>, "What this forbids the build from doing" &mdash; no mocked acquisition unit, no onboarding-gated legibility, no unmeasured time/stress/events-run claims. These are build constraints already in force, independent of whether the thesis above is ruled.</li>
           </ul>
         </div>
         <span class="chip c-open">Open</span>
@@ -574,7 +574,7 @@
       <table>
         <thead><tr><th>Stage</th><th>Marketing work</th><th>State here</th></tr></thead>
         <tbody>
-          <tr><td class="n">2 Scope</td><td>Acquisition thesis as a falsifiable sentence; constraints handed to design as requirements.</td><td class="n">Not written</td></tr>
+          <tr><td class="n">2 Scope</td><td>Acquisition thesis as a falsifiable sentence; constraints handed to design as requirements.</td><td class="n">Drafted, not ruled &mdash; docs/ACQUISITION-THESIS.md</td></tr>
           <tr><td class="n">3 Build</td><td>The asset built from the real product surface, never mocked separately.</td><td class="n">Not started</td></tr>
           <tr><td class="n">4 Verify</td><td>Comprehension scored with strangers; measurable properties verified by script.</td><td class="n">Outstanding</td></tr>
           <tr><td class="n">5 Security</td><td>Consent and tracking-prompt copy &mdash; marketing copy with a legal consequence, orphaned when the track has no stage-5 row.</td><td class="n">Not written</td></tr>
@@ -714,7 +714,7 @@
       <table>
         <thead><tr><th>Figure</th><th>Value</th><th>Source</th><th>Re-check</th></tr></thead>
         <tbody>
-          <tr><td>Unit tests</td><td class="n">6,179 / 432 suites</td><td>Local run, 29 Aug, at HEAD</td><td class="n">Every commit</td></tr>
+          <tr><td>Unit tests</td><td class="n">6,228 / 441 suites</td><td>Re-checked 2026-09-03 (was 6,179/432, 29 Aug -- this row claims "every commit" and had not been re-run since)</td><td class="n">Every commit</td></tr>
           <tr><td>Browser tests</td><td class="n">791, 8 viewports</td><td>Local matrix, 19.3m, zero failures</td><td class="n">Every commit</td></tr>
           <tr><td>Stage-5 OPENs</td><td class="n">6</td><td>Security track checklist, 21 Aug</td><td class="n">Before stage 9</td></tr>
           <tr><td>Draft generators that can send</td><td class="n">1 of 26</td><td>Transport board count, 21 Aug</td><td class="n">On next send work</td></tr>
