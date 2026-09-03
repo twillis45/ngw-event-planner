@@ -37,6 +37,37 @@ A board can rule on what those results *mean*. It cannot produce them. Anything
 else — every gate ruling, every design call — goes to the board and does not
 wait on Todd.
 
+## FIXED — the diet picker was flagging no allergens for two of its own options
+
+Found by the stage-8 tech-debt dispatch, verified by hand before acting.
+
+The shipping picker offers **"Egg allergy"** and **"Soy allergy"**. The matcher's
+keys are **"Egg"** and **"Soy"**. So:
+
+    host ticks "Egg allergy" on Deviled eggs   ->  []        nothing flagged
+    guest types it as free text                ->  ["egg"]   flagged
+
+`rosterDiets` normalizes prose to the canonical keys; the picker never did — so
+the app screened allergens better when a host typed a sentence than when they
+used the control built for it. Two Big-9 allergens, silent, on a menu the host
+believed had been screened.
+
+The map's own comment records someone fixing this exact class for the invite
+path — *"before, Egg/Soy/Sesame/Fish matched nothing"* — and never reconciling
+the picker's labels.
+
+**Fixed by ALIAS, not rename**, so every guest record already storing "Egg
+allergy" starts flagging immediately with no migration. Gated by
+`dietVocabularyResolves.test.js`, which ENUMERATES every vocabulary in the tree
+rather than naming files — there were five definitions and naming files is how
+the fifth survives. Red-proofed three ways.
+
+**Still open from that pass, ranked:** hostv2 ships five undeclared dependencies
+resolved from the CRA package.json that is scheduled for deletion; rank-reason
+copy is derived in three places and one already diverges; 36 test suites assert
+on source text rather than behaviour; `xlsx@0.18.5` carries two unfixable
+advisories and leaves with the CRA.
+
 ## OWNER-ONLY: the repast copy needs real people before it reaches strangers
 
 An insider-lens panel ruled the repast cultural copy on 2026-09-03 and the

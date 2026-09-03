@@ -3526,7 +3526,43 @@ const DIET_KEYWORDS = {
   'Halal':        { re: /\b(pork|bacon|ham|sausage|hot links?|half-?smoke|wine|beer|liquor|cocktail|spirits?)\b/i, label: 'check halal' },
   'Kosher':       { re: /\b(pork|bacon|ham|shellfish|shrimp|crabs?|lobster|clams?|oysters?)\b/i, label: 'check kosher' },
   'Alcohol-free': { re: /\b(wine|beer|cocktail|spirits?|liquor|champagne|sangria|rum|vodka|whiskey|bourbon|tequila|prosecco|mimosa|cider|seltzer)\b/i, label: 'alcohol' },
+
+  // ── ALIASES: THE PICKER'S OWN LABELS DID NOT RESOLVE (2026-09-03) ─────────
+  // The shipping picker offers 'Egg allergy' and 'Soy allergy'. The keys above
+  // are 'Egg' and 'Soy'. A host who ticked "Egg allergy" got ZERO flags on
+  // deviled eggs — while the same event flagged it correctly when a guest
+  // typed the need as prose, because rosterDiets normalizes free text to the
+  // canonical keys and the picker does not. The control built for the job was
+  // the one path that did not work.
+  //
+  // The comment above records someone fixing exactly this class for the invite
+  // ("before, Egg/Soy/Sesame/Fish matched nothing") and never reconciling the
+  // picker's labels. Two Big-9 allergens, silent, on a menu the host believes
+  // was screened.
+  //
+  // ALIASED, NOT RENAMED, deliberately: renaming the picker strings would
+  // orphan every guest record already storing "Egg allergy". Aliases fix
+  // stored data and new data at once, with no migration.
+  // Gated by dietVocabularyResolves.test.js, which enumerates every vocabulary
+  // in the tree rather than naming files.
+  'Egg allergy':       { re: /\b(eggs?|mayo|mayonnaise|aioli|custard|meringue|quiche|frittata|omelet)\b/i, label: 'egg' },
+  'Soy allergy':       { re: /\b(soy|soya|tofu|edamame|miso|tempeh|tamari|soybean)\b/i, label: 'soy' },
+  'Shellfish allergy': { re: /\b(shrimp|crabs?|lobster|clams?|oysters?|mussels?|scallops?|crawfish|shellfish|prawn)\b/i, label: 'shellfish' },
+  'Fish allergy':      { re: /\b(fish|salmon|tuna|tilapia|catfish|cod|trout|whiting|anchovy|sardine|mahi)\b/i, not: /shellfish/i, label: 'fish' },
+  'Sesame allergy':    { re: /\b(sesame|tahini|hummus)\b/i, label: 'sesame' },
+  'No alcohol':        { re: /\b(wine|beer|cocktail|spirits?|liquor|champagne|sangria|rum|vodka|whiskey|bourbon|tequila|prosecco|mimosa|cider|seltzer)\b/i, label: 'alcohol' },
 };
+
+// Vocabulary strings a host can select that have NO food-name signal, so they
+// cannot produce a keyword flag and their absence is honest rather than a gap.
+// Declared so the gate can tell "unmappable by nature" from "nobody noticed".
+export const DIET_TAGS_WITHOUT_KEYWORDS = Object.freeze([
+  'Diabetic-friendly',                                  // a preparation property, not an ingredient name
+  'Pregnancy-safe (no raw/soft cheese/high-mercury)',   // a compound rule; the parenthetical is the guidance
+]);
+
+/** Every diet string the matcher understands. */
+export const DIET_KEYWORD_KEYS = Object.freeze(Object.keys(DIET_KEYWORDS));
 export function itemDietaryFlags(name, activeDiets) {
   if (!name || !Array.isArray(activeDiets) || !activeDiets.length) return [];
   const n = String(name);
