@@ -19,7 +19,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 | Path to Production | stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
-| Path artifact | Republished 2026-09-03, `Recorded` date current. Stage 5 and 8 cards now show real recorded state instead of "No gate" / "Locked" |
+| Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
 ## STANDING DELEGATION — the board decides, 2026-09-02
 
