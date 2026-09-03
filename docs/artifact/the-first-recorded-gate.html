@@ -360,12 +360,12 @@
           <ul class="items">
             <li><span class="mark ok">&check;</span> Load-bearing items done with citations: RLS all-verbs on tenant data, server-side auth on money routes, hosted-checkout isolation, zero-vuln bundle, no secrets in source.</li>
             <li><span class="mark ok">&check;</span> Per-route sweep exists as a standing gate over eight routers, and caught a live unauthenticated route on its first run.</li>
-            <li><input type="checkbox" data-k="s5-pentest"> External pentest.</li>
-            <li><input type="checkbox" data-k="s5-authz"> Finding #8 &mdash; portal authz design. A board question.</li>
-            <li><input type="checkbox" data-k="s5-rls"> RLS applied-status attested in the live dashboard.</li>
-            <li><input type="checkbox" data-k="s5-backup"> Backups on, and one restore actually performed.</li>
-            <li><input type="checkbox" data-k="s5-rate"> Login rate limiting &mdash; check what Supabase defaults actually are.</li>
-            <li><input type="checkbox" data-k="s5-sentry"> Sentry DSN confirmed reporting in prod.</li>
+            <li><input type="checkbox" data-k="s5-pentest"> External pentest. <b>Why unchecked:</b> owed to an outside firm &mdash; not run, no engagement report exists.</li>
+            <li><input type="checkbox" data-k="s5-authz"> Finding #8 &mdash; portal authz design. A board question. <b>Why unchecked:</b> a design decision, not an engineering task &mdash; needs a review board sitting to rule it, and none has sat on this question.</li>
+            <li><input type="checkbox" data-k="s5-rls"> RLS applied-status attested in the live dashboard. <b>Why unchecked:</b> requires Todd's own eyes in the live Supabase dashboard, attesting every migration is applied &mdash; nothing an assistant session can attest to.</li>
+            <li><input type="checkbox" data-k="s5-backup"> Backups on, and one restore actually performed. <b>Why unchecked:</b> requires Todd, in Supabase, to confirm backups are on and actually run one restore &mdash; a drill, not a config read.</li>
+            <li><input type="checkbox" data-k="s5-rate"> Login rate limiting &mdash; check what Supabase defaults actually are. <b>Why unchecked:</b> the defaults have never been checked against Supabase's own auth settings; nobody has looked yet.</li>
+            <li><input type="checkbox" data-k="s5-sentry"> Sentry DSN confirmed reporting in prod. <b>Why unchecked:</b> the DSN ships in the bundle (presence, confirmed) but nobody has eyeballed the Sentry console after a deploy to confirm an error actually arrives (delivery, not yet confirmed).</li>
             <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; closing a tracking gap only: the audited work above ran 21 August, the gate was never recorded via the API until now. No new security work performed in this recording.</li>
           </ul>
         </div>
