@@ -12,7 +12,8 @@
     "device": "node scripts/device-preview.mjs",
     "synctest:build": "REACT_APP_AUTH_BYPASS=false vite build --mode synctest --outDir dist-synctest",
     "synctest:serve": "E2E_BASE=1 vite preview --outDir dist-synctest --port 5244",
-    "synctest": "playwright test e2e/crossDeviceSync.spec.mjs --project=desktop"
+    "synctest": "playwright test e2e/crossDeviceSync.spec.mjs --project=desktop",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@sentry/react": "^8.55.2",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^4.5.5"
+    "vite": "^4.5.5",
+    "vitest": "^4.1.11"
   }
 }

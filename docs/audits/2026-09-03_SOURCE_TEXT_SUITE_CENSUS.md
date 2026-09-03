@@ -95,6 +95,91 @@ is the real instrument. The 35 text suites are best understood as **cheap
 tripwires** that fail fast in a 12-second unit run rather than a 14-minute
 matrix — valuable, but not evidence of rendered behavior.
 
+## BOARD RULING — 2026-09-03, under the standing delegation
+
+Convened on the standing delegation of 2026-09-02 ("decisions are to be handled
+by the review board"), which waives seat confirmation. Four archetype seats —
+this is an internal toolchain call, so no named-person credentials are claimed
+and none are needed; the lens was always the point.
+
+| Seat | Catches what the others miss |
+|---|---|
+| **Legacy-code seam practitioner** — introduces test seams into trees that have none | That the question is WHERE THE SEAM GOES, not which runner wins |
+| **Build engineer, CRA→Vite migrations** | The blast radius of a toolchain change, and what is leaving anyway |
+| **Verification honesty** — "would this fail if the fault came back?" | A gate that cannot fail on the fault it names |
+| **The maintainer who inherits it** | The option cheapest to write and dearest to keep |
+
+### The framing in this document was wrong, and the board rejected both routes
+
+Route 1 was written as "eject, or run a second vitest project." **Ejecting was
+never required.** Measured this session: `hostv2/package.json` has
+`vite`, `@vitejs/plugin-react`, `@playwright/test` — and **no vitest anywhere
+in the repo**. Vitest added to hostv2 is *additive*: a second runner beside
+jest, touching no CRA config, inheriting `vite.config.js` — including the
+`@app` alias and the `dedupe` added earlier the same day.
+
+So the real cost of "make the shell executable" is one devDependency and a
+script, not an eject. The document had priced the expensive version.
+
+### The ruling
+
+**Sequence, don't choose.**
+
+1. **Now — route 2, stated as a rule.** The 35 stay. They are careful static
+   gates (comment-stripped, structural, negative assertions) and they fail in
+   12 seconds instead of 14 minutes. But **a behavior claim needs an e2e**;
+   a source-text gate is a tripwire and is never cited as behavior coverage.
+2. **Next — add vitest to hostv2 as a second runner.** Additive, no eject, no
+   CRA change. This is the seam, and it costs a devDependency.
+3. **At CRA deletion — jest leaves with `react-scripts`.** The `src/lib` engine
+   suites need a runner regardless, and by then vitest is already standing.
+   Route 1 arrives at near-zero marginal cost *if step 2 happened first*.
+
+**The seat that carried it** was the maintainer's: choosing route 1 today means
+rewriting 35 working gates against a runner the repo does not yet have, to fix
+a reach problem that 50 e2e specs already address. Choosing route 2 forever
+means the shell is never unit-testable — the condition that let a syntax error
+in `hostv2/src` pass a green 5,451-test run.
+
+**Verification-honesty seat, dissenting in part, recorded:** step 1's rule is
+unenforced prose. Nothing fails if someone cites a text gate as behavior
+coverage tomorrow. It asked that step 2 not be deferred behind an unbounded
+"next", on the ground that a rule with no instrument is a preference.
+**Resolved the same session.** Step 2 was built rather than scheduled, and the
+dissent is discharged. See below.
+
+## STEP 2 BUILT — and the gap is now measured, not argued
+
+`vitest` added to hostv2 as a second runner. No eject, no CRA change: it reuses
+`vite.config.js`, so the `@app` alias, the jsx loader and the env `define` are
+the same ones the app builds with. `test.include` is scoped to `test/**` —
+mandatory, not tidiness, because the default glob swept up all 50 Playwright
+specs and they failed on `test.skip()` outside a describe.
+
+`hostv2/test/shellParses.test.mjs` **imports** the shell. Three tests: the
+module evaluates and default-exports a function; the `@app` alias resolves from
+inside the hostv2 tree; and the engine's parked reasons no longer equal the
+shell's shelf heading — the composition defect fixed earlier today, checked in
+the first place both files can be loaded at once.
+
+### The red-proof, which is the whole argument in one table
+
+The fault from `customEventStore.js` was reintroduced literally — a syntax
+error in `hostv2/src/HostShellV2.jsx` — and both runners were pointed at it:
+
+| Runner | On a shell that cannot parse |
+|---|---|
+| **vitest** (the new seam) | **FAILS** — `Transform failed with 1 error` |
+| **jest** — `heroComposition` + `sendLedger`, which both read that exact file | **73 tests, all green** |
+
+Seventy-three passing assertions about a file that does not compile. That is
+not a criticism of those 73 — they are careful static gates and they check
+things worth checking. It is the reach limit, measured instead of asserted.
+
+Cost: one devDependency, one config block, one test file.
+
+## Superseded — the original framing, kept visible
+
 ## Open — for the board, not for me
 
 Two routes, and choosing between them is a decision:

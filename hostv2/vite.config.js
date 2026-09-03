@@ -83,6 +83,21 @@ export default defineConfig(({ command, mode }) => {
         return { https: { key: fs.readFileSync(key), cert: fs.readFileSync(cert) } };
       })(),
     },
+    // ── VITEST SCOPE: test/, never e2e/ (2026-09-03) ────────────────────
+    // Added with vitest as the SEAM into this tree. jest cannot reach hostv2 at
+    // all — react-scripts pins its roots to demo/src — which is why 35 suites
+    // read this shell as TEXT and why a syntax error here once passed a green
+    // 5,451-test run. vitest reuses THIS config, so the @app alias, the jsx
+    // loader and the env `define` are the same ones the app builds with.
+    //
+    // `include` is mandatory, not tidiness: the default glob swept up all 50
+    // Playwright specs in e2e/ and they failed on `test.skip()` outside a
+    // describe — 50 red files on the first run. Playwright owns e2e/;
+    // vitest owns test/.
+    test: {
+      include: ['test/**/*.test.mjs'],
+      environment: 'node',
+    },
     // Some app modules keep JSX in .js files — transform both extensions.
     esbuild: { loader: 'jsx', include: /\.(js|jsx)$/, exclude: [] },
     optimizeDeps: {
