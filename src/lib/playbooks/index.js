@@ -3001,7 +3001,23 @@ export function playbookDecisionBoard(event, asOf, profile) {
         assurance = d.default
           ? (d.reversibility === 'costly'
             ? 'The plan’s been running on my pick — swapping it now costs more than it did.'
-            : 'Nothing’s stalled — the plan’s been running on my pick.')
+            // BOARD, 2026-09-03, bereaved-host seat decisive: "Nothing's stalled"
+            // answers an anxiety the host did not raise and plants it by denying
+            // it — a grieving host reads it and wonders what might have stalled.
+            // The replacement states the fact, names the act, and keeps the
+            // containment promise, which the same seat called the single most
+            // considerate thing on the card: the fear when you are managing a
+            // funeral with borrowed hands is that touching one thing detonates six
+            // others. "Moves" not "changes" — a plan that MOVES is the host's
+            // mental model; a plan that CHANGES is the system's.
+            // "MY PICK" IS KEPT, and that word is a prior board's ruling: the assurance
+            // must say OUR pick, never "you chose", so an unanswered decision never
+            // reads as though the host answered it. The 2026-09-03 copy said "running
+            // on this", which is silent about who chose — heroComposition.test.js
+            // caught the regression. This keeps every improvement that ruling made
+            // (no "Nothing's stalled", the act named, "moves" not "changes") and
+            // restores the attribution. One word; revert by dropping "my pick".
+            : 'The plan’s been running on my pick. Change it if it’s wrong — nothing else moves.')
           : null;
       } else {
         // never in the easy window — surface as an open, do-this-first item,
