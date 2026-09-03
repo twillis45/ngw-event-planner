@@ -325,7 +325,7 @@
           <h3>Build</h3>
           <p>Implementation against scope.</p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> <span class="num">6,179</span> unit tests across <span class="num">432</span> suites; <span class="num">791</span> browser tests across eight viewports.</li>
+            <li><span class="mark ok">&check;</span> <span class="num">6,228</span> unit tests across <span class="num">441</span> suites; <span class="num">909</span> browser tests across eight viewports (re-checked 2026-09-03; was 6,179/432/791, 29 Aug -- corrected alongside the same figures in the load-bearing table below).</li>
             <li><span class="mark ok">&check;</span> <b>Tests-first, checked 2026-09-03:</b> not auditable as one historical claim over a build this large and old &mdash; named honestly as current, demonstrated practice instead: every gate this session (stages 1, 2, 4, 5, 8) was preceded by reading the actual schema before writing, the same discipline this field asks of code.</li>
             <li><span class="mark ok">&check;</span> <b>Surgical, checked 2026-09-03:</b> yes.</li>
             <li><span class="mark ok">&check;</span> <b>Declined scope, checked 2026-09-03:</b> CLAUDE.md's Non-Negotiables (no duplicate surfaces, <code>src/App.js</code> frozen donor-only since 2026-07-16, no invented data, no faked AI) plus HANDOFF's OWNER-ONLY section (PostHog/Sentry console reads, the stranger-proof run, the rollback rehearsal) &mdash; named, not silently skipped.</li>
@@ -448,11 +448,11 @@
              surface skipped while it was internal &mdash; all four, explicitly, as a checklist.</p>
           <ul class="items">
             <li><span class="mark skip">&ndash;</span> <b>Already public in effect.</b> Reach is public, so these four apply now, not later.</li>
-            <li><input type="checkbox" data-k="s9-g2"> Stage 2 public gate &mdash; activation / UX doctrine.</li>
-            <li><input type="checkbox" data-k="s9-g4"> Stage 4 public gate &mdash; impeccable critique.</li>
-            <li><input type="checkbox" data-k="s9-g5"> Stage 5 public gate &mdash; full security and data review. Six OPENs, listed above.</li>
-            <li><input type="checkbox" data-k="s9-g7"> Stage 7 public gate &mdash; instrumentation and tracker sync.</li>
-            <li><input type="checkbox" data-k="s9-spend"> Marketing phase 3 spend gate honored, or no spend.</li>
+            <li><input type="checkbox" data-k="s9-g2"> <b>Why unchecked:</b> Stage 2 public gate &mdash; activation / UX doctrine. Not attempted: the server hard-refuses any stage-9 pass with no <code>boardVerdict</code>/<code>boardSeats</code>, and no stage-9 board has been convened. This item cannot be closed before that sitting.</li>
+            <li><input type="checkbox" data-k="s9-g4"> <b>Why unchecked:</b> Stage 4 public gate &mdash; impeccable critique. Same blocker as above: gated on the stage-9 board, not yet convened.</li>
+            <li><input type="checkbox" data-k="s9-g5"> <b>Why unchecked:</b> Stage 5 public gate &mdash; full security and data review. Directly blocked: the six stage-5 OPENs above (pentest, RLS attestation, backups, rate limiting, Sentry DSN, and finding #8) are unresolved, and this item re-runs that exact check.</li>
+            <li><input type="checkbox" data-k="s9-g7"> <b>Why unchecked:</b> Stage 7 public gate &mdash; instrumentation and tracker sync. Blocked on the stage-9 board, same as g2/g4 &mdash; and on proving PostHog/Sentry arrival in prod, which is owner-only (s7-delivery, above).</li>
+            <li><input type="checkbox" data-k="s9-spend"> <b>Why unchecked:</b> Marketing phase 3 spend gate honored, or no spend. Phase 3 (economics) has not run &mdash; no acquisition cost has ever been measured (m3-cost, below) &mdash; so there is nothing yet to honor or waive.
           </ul>
         </div>
         <span class="chip c-lock">Locked</span>
@@ -518,10 +518,10 @@
              seeing results is not a test.</p>
           <ul class="items">
             <li><span class="mark skip">&ndash;</span> <b>The phase the spine calls most often skipped</b>, because the asset existing feels like the work. It is not.</li>
-            <li><input type="checkbox" data-k="m2-threshold"> Pre-register the comprehension rate. This is a threshold, so it is written before results exist and never edited after.</li>
-            <li><input type="checkbox" data-k="m2-asset"> Build the acquisition asset from the real hostv2 surface, never mocked up separately.</li>
-            <li><input type="checkbox" data-k="m2-strangers"> Run the stranger-proof onboarding test. <b>This is that test</b> &mdash; the same item the handoff lists as yours alone, counted once, in the phase that owns it.</li>
-            <li><input type="checkbox" data-k="m2-script"> Verify by script the asset properties that can be measured, rather than judged in the room.</li>
+            <li><input type="checkbox" data-k="m2-threshold"> <b>Why unchecked:</b> Pre-register the comprehension rate. Blocked upstream: this phase runs against the thesis in m1-thesis, which is drafted but not yet ruled by the board &mdash; there is nothing to test a rate against until that ruling lands.</li>
+            <li><input type="checkbox" data-k="m2-asset"> <b>Why unchecked:</b> Build the acquisition asset from the real hostv2 surface, never mocked up separately. Same blocker &mdash; the asset is the acquisition unit named in the unruled draft (m1-unit).</li>
+            <li><input type="checkbox" data-k="m2-strangers"> <b>Why unchecked:</b> Run the stranger-proof onboarding test. <b>This is that test</b> &mdash; the same item the handoff lists as yours alone, counted once, in the phase that owns it. Owner-only per HANDOFF's standing delegation scope: no board can run this, and it has not been run.</li>
+            <li><input type="checkbox" data-k="m2-script"> <b>Why unchecked:</b> Verify by script the asset properties that can be measured, rather than judged in the room. No asset exists yet to script against (m2-asset, above).</li>
           </ul>
         </div>
         <span class="chip c-open">Outstanding</span>
@@ -540,10 +540,10 @@
              assumed. A NO-GO here is a real result and stops the track.</p>
           <ul class="items">
             <li><span class="mark ok">&check;</span> Price designed: the <span class="num">$39</span> One-Event Pass. Billing built and dormant behind five preconditions.</li>
-            <li><input type="checkbox" data-k="m3-required"> Compute the required revenue per paid host. Platform fee here is the payment processor, not an app store.</li>
-            <li><input type="checkbox" data-k="m3-cost"> Source an acquisition cost from a real channel. None has been measured &mdash; no paid traffic has ever run.</li>
-            <li><input type="checkbox" data-k="m3-geo"> Name one geography that clears, with cost and revenue from the same population. A blended cost against a single-market revenue figure is two populations wearing one number.</li>
-            <li><input type="checkbox" data-k="m3-verdict"> Record the GO or NO-GO. A NO-GO is a finding, not a failure.</li>
+            <li><input type="checkbox" data-k="m3-required"> <b>Why unchecked:</b> Compute the required revenue per paid host. Platform fee here is the payment processor, not an app store. Not started &mdash; phase 3 itself has not begun; nothing has run against the $39 One-Event Pass price to derive this.</li>
+            <li><input type="checkbox" data-k="m3-cost"> <b>Why unchecked:</b> Source an acquisition cost from a real channel. None has been measured &mdash; no paid traffic has ever run, and marketing phase 3 spend is explicitly not authorized (standing condition, above) until this economics work clears.</li>
+            <li><input type="checkbox" data-k="m3-geo"> <b>Why unchecked:</b> Name one geography that clears, with cost and revenue from the same population. Cannot be named without m3-required and m3-cost, both blocked above.</li>
+            <li><input type="checkbox" data-k="m3-verdict"> <b>Why unchecked:</b> Record the GO or NO-GO. A NO-GO is a finding, not a failure. Nothing to verdict on until m3-required/m3-cost/m3-geo produce a real number.</li>
           </ul>
         </div>
         <span class="chip c-open">Open</span>
