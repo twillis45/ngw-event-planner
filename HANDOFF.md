@@ -418,8 +418,10 @@ from the write path left all twelve green, because "a refused write does not
 ask" is vacuously true when nothing ever asks. The missing positive assertion —
 that a *successful* write asks at all — is now there.
 
-The other half is not done: **wire the four zero-caller recovery functions to a
-driven UI**, red-proofed by corrupt-then-restore.
+**Corrected 2026-09-03 — this line said "the other half is not done" for all
+four; three of four are.** `restoreBackup`, `importCustomEvents`, `listBackups`
+are called from `HostShellV2.jsx` (settings → Your data), re-confirmed by grep
+just now (:15435, :15399, :15359). Only `readWriteLog` still has zero callers.
 
 ## Stage 7 recording, 2026-09-02 — two obligations that had NEVER been met
 
