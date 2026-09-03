@@ -2046,7 +2046,20 @@ export default function HostShellV2() {
             The arrow stays banned (host 2026-07-21: tapping settles in place, it does not
             navigate, and a glyph here would be false navigation). So the act is NAMED in
             words instead — the row is still the whole affordance, it just says so now. */}
-        <p className="decopts-lead">Tap one to settle it — nothing else changes.</p>
+        {/* RENDERS ONLY IN ASK-MODE (board, 2026-09-03). When a pick is already
+            proposed, the hero's assurance now says "The plan's been running on
+            my pick. Change it if it's wrong — nothing else moves" — which
+            discharges the Grandmother seat's finding MORE fully than this line
+            did: it establishes the rows ARE the answers (one is already in
+            force), names what touching one does, and bounds the consequence.
+            This line only ever supplied the last two, so it is a duplicate
+            there.
+            But the requirement must not lapse where no assurance renders — a
+            card with rows and no pre-pick is exactly the Grandmother's original
+            card. `proposed` is emitted on the same condition as the assurance,
+            so it is the signal. Gated by heroNamesTheAct.test.js: an option-row
+            hero carries one or the other, never neither. */}
+        {!proposedOpt && <p className="decopts-lead">Tap one to settle it — nothing else changes.</p>}
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}

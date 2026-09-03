@@ -37,6 +37,42 @@ A board can rule on what those results *mean*. It cannot produce them. Anything
 else — every gate ruling, every design call — goes to the board and does not
 wait on Todd.
 
+## OWNER-ONLY: the repast copy needs real people before it reaches strangers
+
+An insider-lens panel ruled the repast cultural copy on 2026-09-03 and the
+copy is now materially better — but **its own verdict says a panel of lenses is
+not community consent**, and that outranks its approval.
+
+**Before this copy is shown to a stranger in grief**, put the exact string in
+front of **at least three real people** — ideally an active kitchen/repast
+committee member, a pastor or church administrator who handles homegoings, and
+a family member who hosted one recently — across more than one denomination and
+more than one region. The five questions, from the panel:
+
+1. Does *"In many churches the meal is carried by the community rather than the
+   family"* read as true, or as a stranger explaining your own church to you?
+2. Is *"Ask the repast committee to carry it"* the phrase you would actually
+   use, or does your church call it something else?
+3. Read it as though there is no committee and no church — does the catering
+   line feel equal, or feel like a demotion?
+4. **Should an app say any of this at all**, or should it just show the meal
+   task and stay quiet?
+5. What did we get wrong that we do not know we got wrong?
+
+**If (4) comes back "stay quiet" from people inside, that outranks the entire
+panel.** Its dignity seat dissented on shipping at all before that review; I
+shipped the improved string anyway because holding it leaves the *worse* copy
+live — the version that stated a norm as fact and told a mourner how to feel.
+That is my call and it is reversible: `git revert` the copy commit.
+
+**Unresolved and larger, flagged by the tradition seat:** one generic repast
+template serves every denomination, region and immigrant congregation. No
+wording fix addresses that.
+
+Also open: the seeded event is a fabricated deacon ("A Repast for Deacon Willie
+Hayes"). The panel asked whether that name was reviewed by anyone inside. It
+was not.
+
 ## The board withdrew its own finding — and what survived
 
 I briefed the board that the solemn path renders no ask. **False**: the repast
