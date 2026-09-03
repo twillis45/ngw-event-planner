@@ -23,6 +23,18 @@ export default defineConfig(({ command, mode }) => {
     plugins: [react()],
     resolve: {
       alias: { '@app': path.resolve(__dirname, '../src') },
+      // ONE REACT. hostv2/node_modules carried 19.2.7 while the root carried
+      // 19.2.6 and nothing deduped them — two React copies in one bundle is
+      // the classic invalid-hook-call. It was latent only because the five
+      // undeclared deps resolved UPWARD and dragged the root's copy along.
+      // Declaring them (2026-09-03) makes hostv2 resolvable on its own, which
+      // also makes the duplication reachable, so dedupe is part of that fix
+      // rather than a separate tidy.
+      //
+      // MERGED INTO THIS BLOCK, not added as a second `resolve` key: a
+      // duplicate key in an object literal silently wins, and the first
+      // attempt killed the @app alias — the build caught it immediately.
+      dedupe: ['react', 'react-dom'],
     },
     define: {
       // NODE_ENV IS BAKED TOO (2026-08-07). loadEnv only returns REACT_APP_*
