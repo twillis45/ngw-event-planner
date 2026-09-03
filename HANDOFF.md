@@ -337,24 +337,26 @@ But *"checked twice to rule out missing data"* describes two probes, and two
 probes are a hypothesis, not an exhaustion. It should have conditioned the
 verdict on the event's horizon instead of ruling flat. Shared and asymmetric.
 
-## One product observation still open — now with the board
+## One product observation — resolved, corrected 2026-09-03
+
+**This section previously said the solemn Repast state was "STILL OPEN, and
+genuine" — that claim went stale on 2026-09-02 and this file was not updated
+until asked.** Commit `26d3bd71` (22:31, the same day) withdrew the finding:
+the repast's seeded date was hardcoded to Jul 25 and had drifted 39 days into
+the *past*, so the screen correctly read "BEHIND YOU — Deacon's day, done." A
+past event has nothing to settle; that is not a product defect. Its
+`noSettle` declaration is gone from the spec and its loop-advance probe now
+runs like every other state. Re-verified fresh this session: all 6
+loop-advance states pass on `desktop`, including Repast T-3, with no
+`noSettle` on it.
 
 Inverting `boardMatrix`'s loop-advance guard turned three silent skips into
-three real failures. **Two of the three were a FIXTURE artifact, not a product
-defect**, and the first diagnosis got that wrong:
+three real failures, all three of which turned out to be FIXTURE artifacts,
+not product defects:
 
 - Day-of and T-2 surfaced "Venue … Save" — a field, not a decision — only
-  because the seeded event has no venue, and readiness correctly ranks a
-  missing venue above anything the date changes. Measured on the same state:
-  **with** a venue it renders a real decision ask with an unsettled option;
-  without one it does not. Fixed by giving the fixture a venue. The day-of
-  loop-advance test runs again, verified by breaking the settle selector and
-  watching that state fail.
-- **STILL OPEN, and genuine: the solemn Repast state renders NO hero card at
-  all** — `.hero-card` absent, zero decision options, **and it stays that way
-  with a venue patched in**, so this is the calm path itself rather than
-  missing data. Whether "no ask" is the intent or an over-reach is a design
-  call. Recorded as the measured `noSettle` reason in the spec.
+  because the seeded event has no venue. Fixed by giving the fixture a venue.
+- Repast T-3, above — a hardcoded date that had drifted into the past.
 
 **The lesson worth keeping:** the first fix declared all three `noSettle` with
 reasons that read as considered. A declaration that sounds measured is not the
@@ -375,11 +377,11 @@ before concluding the product is wrong.
 Stage-9 items: durable storage **DONE**, recovery UI **DONE**. Remaining are the
 stranger test, the rollback rehearsal, and the economics — all yours.
 
-**One census finding worth acting on next**, named by it and not done:
-`boardMatrix`'s loop-advance probe — the harness built for the "no next step
-after selection" class — skips on 4 of 6 states **including the day-of ask**,
-the highest-stakes screen in the product. Invert that guard so "no in-place
-settle" fails with the state named.
+**The census finding this row used to name — `boardMatrix`'s loop-advance
+probe skipping 4 of 6 states — is DONE, corrected 2026-09-03.** The guard is
+already inverted (a zero-step walk without a reasoned `noSettle` throws, named
+above); re-run fresh this session, all 6 states pass with real settles, zero
+skips.
 
 **A correction to the census, and to what this file said an hour ago.** It
 reported 7 tests that can never fail and I repeated it. Three of those are the
