@@ -226,7 +226,18 @@ for (const state of STATES) {
         // Skip rows already marked chosen — re-tapping a settled value fires a
         // receipt but legitimately re-renders nothing; the dead-end class is an
         // UNSETTLED control that changes nothing.
-        const control = page.locator('.decopt:visible:not(:has-text("chosen")), .cta.stay:visible').first();
+        // THE HERO'S OWN ACTION COUNTS. The selector matched `.decopt` and
+        // `.cta.stay` only, so a hero whose ask is task-shaped — day-of renders
+        // one, with a single `.cta` reading "Decide" — looked like a dead end
+        // while being perfectly settleable. The property under test is "settles
+        // walk the queue without stalling", and Decide is a settle.
+        //
+        // Scoped to `.hero-card .cta` rather than every `.cta` on the page: the
+        // hero's primary action is the queue's next step, and a page-wide match
+        // would start clicking navigation.
+        const control = page.locator(
+          '.decopt:visible:not(:has-text("chosen")), .cta.stay:visible, .hero-card .cta:visible',
+        ).first();
         if (await control.count() === 0) break;
         const inOverlay = await control.evaluate(el => !!el.closest('.sheet, .wxpill')).catch(() => true);
         if (inOverlay) break;
@@ -266,11 +277,32 @@ for (const state of STATES) {
           throw new Error(`"${state.label}" declares noSettle without a reason. `
             + 'Give it the measured reason, or the declaration is a silencer.');
         }
+        // REPORT WHAT WAS ON SCREEN, not merely that nothing was found. This
+        // failed in CI and passed on this machine three times running, and each
+        // reproduction attempt was a guess — the env, then .env.local, then a
+        // timing race — because the message carried no evidence. A check that
+        // says only "absent" makes every diagnosis a hypothesis.
+        const seen = await page.evaluate(() => {
+          const vis = (e) => e && e.offsetParent !== null;
+          const q = (sel) => [...document.querySelectorAll(sel)];
+          const hero = document.querySelector('.hero-card');
+          return {
+            horizon: (document.querySelector('.eb-text')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+            heroPresent: !!hero,
+            heroText: (hero?.innerText || '').replace(/\s+/g, ' ').slice(0, 120),
+            decoptAll: q('.decopt').length,
+            decoptVisible: q('.decopt').filter(vis).length,
+            decoptChosen: q('.decopt').filter((e) => /chosen/i.test(e.textContent)).length,
+            ctaStay: q('.cta.stay').filter(vis).length,
+            cards: q('.card').filter(vis).length,
+            sheetOpen: !!document.querySelector('.sheet'),
+          };
+        }).catch(() => null);
         throw new Error(
           `no in-place settle found on "${state.label}" — either this state has a dead end, `
           + 'or it genuinely has nothing to settle and must be declared in STATES as '
           + 'noSettle: "<the measured reason>" — a string, not true. '
-          + 'Silence is not a pass.',
+          + `Silence is not a pass.\nON SCREEN: ${JSON.stringify(seen)}`,
         );
       }
     });
