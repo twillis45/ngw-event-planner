@@ -20,6 +20,63 @@
 // import specifier, or a module-level throw fails here in seconds.
 import { describe, it, expect } from 'vitest';
 
+// EVERY module, not just the shell. HostShellV2.jsx is the one that gets
+// edited most, but a syntax error in InviteV2, LodgingCockpit, eventPool or
+// sectionIcons was equally invisible to jest — and `main.jsx` imports only
+// some of them, so a broken sibling can sit unreferenced by any entry point
+// the build happens to reach.
+//
+// import.meta.glob is vite's own, resolved at transform time, so this list
+// cannot drift from the tree the way a hand-written array would. eager:false
+// keeps them as thunks so each import is its own assertion with its own name.
+const ALL = import.meta.glob('../src/**/*.{js,jsx}');
+
+// main.jsx is EXCLUDED, and the reason is not "it failed":
+//
+// it is the DOM entry point — it calls createRoot() against a real element, so
+// importing it in a node environment throws `window is not defined`. Reaching
+// for jsdom to satisfy it would also mount the entire app on every unit run,
+// which is a browser test wearing a unit test's clothes; that job belongs to
+// the 50 Playwright specs.
+//
+// It also does not NEED this gate: as the build's entry, a syntax error in it
+// fails `vite build` outright.
+//
+// ── AND SO, TODAY, DOES EVERY OTHER MODULE. Checked, after writing the
+// opposite. ──────────────────────────────────────────────────────────────
+// The first draft of this comment claimed the parse guard covers "a module the
+// build does not happen to reach." Then the red-proof put a syntax error in
+// PhotoStrip.jsx and BOTH vitest and `vite build` caught it, so the claim was
+// tested and failed. Resolving every relative import in the tree: all 11
+// modules are reachable from main.jsx. Nothing here is orphaned.
+//
+// So what the PARSE half of this file actually buys, stated honestly:
+//   • speed and precision — 4ms, and it names the failing file, versus a build
+//     step; it is wired ahead of `playwright install` so a broken tree costs
+//     seconds instead of fourteen minutes of runner time;
+//   • durability — it keeps holding if a module later becomes unreferenced, or
+//     is reached only through a dynamic import behind a flag, which is when
+//     the build silently stops covering it.
+//
+// The parse guard is NOT the reason vitest is here. That is the tests below,
+// which IMPORT modules and assert on what they return — the thing neither a
+// build nor a text gate can do at all.
+const MODULES = Object.fromEntries(
+  Object.entries(ALL).filter(([n]) => !n.endsWith('/main.jsx')));
+
+describe('every hostv2 module parses and evaluates', () => {
+  const names = Object.keys(MODULES);
+
+  it('the glob actually found the tree — the probe is real', () => {
+    // Without this, an empty glob makes every test below pass vacuously.
+    expect(names.length).toBeGreaterThan(8);
+  });
+
+  it.each(names)('%s imports cleanly', async (name) => {
+    await MODULES[name]();
+  });
+});
+
 describe('the hostv2 tree is executable, not merely readable', () => {
   it('HostShellV2.jsx parses and its module evaluates', async () => {
     const mod = await import('../src/HostShellV2.jsx');
