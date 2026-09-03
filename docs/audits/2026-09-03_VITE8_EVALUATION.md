@@ -61,10 +61,17 @@ Build ~9.6× faster; Vite 8 uses rolldown.
   node v16.16.0 + __dirname (today)    ->  ✓ built in 7.92s
   ```
 
-  So it can land on its own — but it pins **Node ≥ 20.11**, and this machine's
-  default node is 16. CI pins 20 and would stay green while a local build broke
-  for anyone who did not switch node: green CI, broken desks. Needs an
-  `engines` field and a runbook line, or it should not go.
+  So it can land on its own — but `import.meta.dirname` pins **Node ≥ 20.11**,
+  and this machine's default node is 16. CI pins 20 and would stay green while
+  a local build broke for anyone who did not switch node: green CI, broken
+  desks.
+
+  **RESOLVED, and the either/or above was false.** `import.meta.dirname` is
+  only shorthand. `path.dirname(fileURLToPath(import.meta.url))` gives the same
+  value on any ESM-capable Node — builds on **node 16 and node 20** — and the
+  `configLoader` warning disappears (red-proofed both directions against
+  vitest's Vite 8). **Landed separately; this item no longer blocks the Vite 8
+  decision.**
 - **The deploy path is partly tested — the risky half PASSES.**
   `pages-from-source.yml` runs `npm run release` (build hostv2 → sync into
   `public/hostv2` → CRA build) and then greps the BUILT hostv2 assets for the

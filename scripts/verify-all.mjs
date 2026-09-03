@@ -66,6 +66,12 @@ const STEPS = [
   // user site-packages resolution differs, and chasing that is not this
   // script's job. Invoke it the way a person and CI both do.
   { id: 'backend',    label: 'backend pytest',      cmd: 'bash', args: ['-lc', native('python3 -m pytest tests/ --strict-markers -q')], cwd: resolve(ROOT, 'backend'), skipIf: () => !existsSync(resolve(ROOT, 'backend/tests')) },
+  // The vitest seam. Runs BEFORE the hostv2 build for the same reason it runs
+  // before playwright install in CI: it is seconds, and it is the only step
+  // here that EXECUTES the hostv2 tree. jest cannot — react-scripts pins its
+  // roots to demo/src — which is why 36 suites reach that shell by reading it
+  // as text and why a syntax error there once passed a green 5,451-test run.
+  { id: 'seam',       label: 'hostv2 vitest seam',  cmd: 'npm', args: ['run', 'test:unit'], cwd: resolve(ROOT, 'hostv2') },
   { id: 'hostv2build',label: 'hostv2 production build', cmd: 'npm', args: ['run', 'build'], cwd: resolve(ROOT, 'hostv2') },
   { id: 'cra',        label: 'CRA build + warning baseline', cmd: 'npm', args: ['run', 'gate:cra'] },
   { id: 'e2e',        label: 'playwright matrix (7 viewports)', cmd: 'npm', args: ['run', 'matrix'], slow: true },

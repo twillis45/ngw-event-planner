@@ -2,6 +2,23 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+// ── __dirname, DERIVED RATHER THAN INHERITED ───────────────────────────────
+// This config is real ESM (hostv2 is "type": "module"), and Vite's planned
+// default `configLoader: 'native'` does not provide the CJS `__dirname` — it
+// warns about exactly that today, under vitest's newer Vite. Five uses below,
+// and ONE OF THEM IS THE @app ALIAS, so a config that fails to load surfaces
+// as "cannot find @app/*" and names nothing about __dirname.
+//
+// `import.meta.dirname` is the obvious replacement and was REJECTED: it needs
+// Node >= 20.11, CI pins 20, and this repo's default local node is 16 — so it
+// would leave CI green while `npm run build` broke on the desk. Measured:
+// node 16 + import.meta.dirname => TypeError, "path" must be a string.
+//
+// This derives the same value from import.meta.url, which every ESM-capable
+// Node has. No version floor, no bundler dependency.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Standalone host-shell prototype. Imports the REAL engines from ../src
 // (eventPlan, sample events) — read-only; never modifies the app.

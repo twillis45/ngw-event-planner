@@ -238,7 +238,7 @@ pattern is a hole anyone can step through by naming a file well.
 coverage has the breakdown beside it instead of one headline number:
 
 ```
-jest suites total                    438   execute demo/src — the shared engine
+jest suites total                    441   execute demo/src — the shared engine
   ...of which only READ hostv2        36   TRIPWIRES. Cannot catch a parse error.
 vitest files (execute hostv2)          1   the seam. imports the tree.
 e2e specs total                       50   execute the built shell in a browser

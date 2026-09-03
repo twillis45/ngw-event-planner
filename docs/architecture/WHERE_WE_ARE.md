@@ -1,5 +1,82 @@
 # Where We Are -- live status board
 
+## 2026-09-03 — the shell was never unit-testable, and now it is
+
+The architectural fact of the day, which had been true for months and unwritten:
+**jest cannot execute `hostv2/` at all.** `react-scripts` pins jest's `roots` to
+`<rootDir>/src`, and hostv2 is a separate Vite tree outside it. So the 35 suites
+that "test" the host shell open it with `readFileSync` and match patterns
+against the text. Zero of them import it.
+
+This was not sloppiness and the suites are not sloppy — `heroComposition`
+strips comments before matching, specifically so old strings quoted in comments
+as the record of what was wrong cannot false-pass, then asserts on JSX
+structure and carries negative assertions against the broken construction. They
+are careful. They are also, structurally, unable to see a parse error.
+
+Measured rather than argued. With a syntax error introduced into
+`HostShellV2.jsx`:
+
+| runner | result |
+|---|---|
+| vitest (added today) | **FAILS** — transform error |
+| jest `heroComposition` + `sendLedger`, which both READ that file | **73 assertions, all green** |
+
+`customEventStore.js` had recorded the same fault in prose in August — "a
+syntax error in hostv2/src sailed through a fully green 5,451-test run" — and
+nothing had changed because the fix looked like a toolchain migration.
+
+**It was not.** hostv2 had `vite` and `@playwright/test` and no vitest anywhere,
+so the seam cost one devDependency: vitest reuses `vite.config.js`, inheriting
+the `@app` alias, the jsx loader and the env `define` the app itself builds
+with. `hostv2/test/shellParses.test.mjs` imports all 11 modules and asserts on
+what they return. It runs in CI ahead of `playwright install`, so a tree that
+will not compile costs ~3s rather than fourteen minutes of runner time —
+verified on the runner, not inferred from the YAML.
+
+### The shape of the instrument set, now stated once
+
+`npm run coverage:honesty` prints it, because "6,228 tests pass" invites exactly
+one wrong inference:
+
+```
+jest suites total                    441   execute demo/src — the shared engine
+  ...of which only READ hostv2        36   TRIPWIRES. Cannot catch a parse error.
+vitest files (execute hostv2)          1   the seam
+e2e specs total                       50
+  ...dormant by design (_*Capture)     3
+e2e LIVE GATES                        47   the real behavior instrument
+```
+
+`textGateRatchet.test.js` holds the line: a new text gate on hostv2 fails and is
+named, so the author either writes an e2e or bumps the baseline with a reason.
+A ratchet, not a ban — the point is that the choice stops being invisible. It
+became necessary within the hour: the census published "35" and the number was
+36 by the end of the session because a new gate was added and nobody noticed.
+
+### The defect that had no source location
+
+Separately, and it is the best argument for the live drive this repo has
+produced: `decisionRankReason()` returned the constant `'Comes up closer to the
+date.'` for every parked row, and `HostShellV2` renders that same sentence as
+the shelf HEADING above those rows. Seven copies on one shelf, driven live.
+**Neither file was wrong on its own.** The defect existed only in their
+composition, where no single-file assertion — however careful — can see it.
+Now derived from `daysOut`, which was already on the row.
+
+### Recorded, not done
+
+- **Vite 8 for hostv2** — trialled fully and reverted. Build 4.65s → 482ms, 208
+  desktop e2e green, one Vite instead of two, and it clears a HIGH advisory
+  (dev-server only; `npm audit --omit=dev` is 0). It stays open because Vite 8
+  silently ignores the `esbuild:` block that lets `../src` JSX-in-`.js`
+  compile. `docs/audits/2026-09-03_VITE8_EVALUATION.md`.
+- **`__dirname` → `path.dirname(fileURLToPath(import.meta.url))`** — done, and
+  worth the note: the obvious fix (`import.meta.dirname`) pins Node ≥ 20.11
+  while this repo's default local node is 16, which would have left CI green
+  and desks broken. The longhand has no floor.
+
+
 ## Overnight 2026-08-22 — the phase the plan never had
 
 The corpus was measured, not assumed: 91 pre-event tasks, 15 day-of, and

@@ -27,8 +27,22 @@ const walk = (d, out = []) => {
   return out;
 };
 
-const jestTests = walk(path.join(ROOT, 'src')).filter((f) => f.endsWith('.test.js'));
-const readsHostv2 = jestTests.filter((f) => {
+// MATCH WHAT JEST ACTUALLY RUNS, not what looks like a test. CRA's default
+// testMatch is `**/__tests__/**/*.{js,jsx,ts,tsx}` PLUS `**/*.{spec,test}.*`,
+// so every file inside a __tests__ directory is a suite whatever it is named.
+// Counting only *.test.js reported 438 against jest's own 441 — a tool called
+// coverage-honesty that undercounts is worse than no tool. The two it missed
+// are fixtures parked in __tests__/ (f4AssembleRevealFixtures.js,
+// storedSchemaFixture.js), which jest loads as suites.
+const isJestSuite = (f) => /\.(test|spec)\.jsx?$/.test(f)
+  || (/(^|\/)__tests__\//.test(f) && /\.jsx?$/.test(f));
+const jestTests = walk(path.join(ROOT, 'src')).filter(isJestSuite);
+// textGateRatchet.test.js is excluded, matching its own self-exclusion, so the
+// two do not publish different numbers for the same population. It is a gate ON
+// the text gates, not one of them. Excluded by exact path, never a name
+// pattern — a pattern is a hole anyone can step through by naming a file well.
+const RATCHET = path.join(ROOT, 'src', 'lib', '__tests__', 'textGateRatchet.test.js');
+const readsHostv2 = jestTests.filter((f) => f !== RATCHET).filter((f) => {
   const s = fs.readFileSync(f, 'utf8');
   return s.includes('readFileSync') && s.includes('hostv2');
 });

@@ -9,8 +9,10 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `c90e1de4` |
-| Jest | **6,201 passed**, 1 skipped, 436 suites — measured this pass |
-| Backend pytest | **353 passed** (unchanged; not re-run this pass) |
+| Jest | **6,228 passed**, 1 skipped, **441 suites** — measured this pass |
+| vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
+| Backend pytest | **353 passed** — re-run this pass via `verify-all` |
+| verify-all | **10 steps**, seam included; `--fast` skips the matrix |
 | e2e (Playwright) | full matrix **909 passed / 190 skipped / 0 failed** (20.7m). Skips down 20 from the rotted-guard fix; the census classified all 36 guards |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
@@ -121,7 +123,7 @@ exact path, never a name pattern.
 `npm run coverage:honesty` prints what a green run reaches:
 
 ```
-jest suites total                    438   execute demo/src
+jest suites total                    441   execute demo/src
   ...of which only READ hostv2        36   TRIPWIRES. Cannot catch a parse error.
 vitest files (execute hostv2)          1   the seam
 e2e specs total                       50
@@ -195,7 +197,26 @@ default the config fails to load and takes the alias with it, surfacing as
 "hostv2 cannot find @app/*" and naming nothing about `__dirname`. It is a
 *vitest-side* pressure today, not a build-side one.
 
-**IT IS NOT A FREE MECHANICAL FIX — measured both ways.** `import.meta.dirname`
+**FIXED 2026-09-03 — and the framing below was wrong, kept for the lesson.**
+The choice was never "pin Node 20.11 or skip it". `import.meta.dirname` is
+shorthand; the longhand needs no version floor:
+
+```js
+import { fileURLToPath } from 'node:url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+```
+
+Builds on **node 16 (7.99s) AND node 20 (4.73s)**, and the warning is **gone** —
+red-proofed by putting `__dirname` back (warning returns) and reapplying the
+fix (0 occurrences), measured against vitest's Vite 8, which is the thing that
+emits it. No `engines` field needed, no runbook line, no bundler dependency.
+
+I had accepted a false either/or and written it into two documents before
+testing the third option. The rejected reasoning follows.
+
+---
+
+**Why `import.meta.dirname` specifically was rejected — measured both ways.**
 works under Vite 4 today (the config is real ESM, since hostv2 is
 `"type": "module"`), so it does *not* need the Vite 8 upgrade. But it lands a
 **Node floor of 20.11**:
