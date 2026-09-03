@@ -179,7 +179,7 @@
     </p>
     <div class="meta">
       <div>Recorded <b>2026-09-03</b></div>
-      <div>HEAD <b>44108fc3</b></div>
+      <div>HEAD at last audit <b>c9dd1d05</b></div>
       <div>Reach <b>public &mdash; anyone</b></div>
       <div>Host <b>GitHub Pages</b></div>
       <div>Stage <b>8 &mdash; Maintain, passed with conditions</b></div>
@@ -344,7 +344,7 @@
           <ul class="items">
             <li><span class="mark ok">&check;</span> Nielsen heuristics pass, 21 August: <b>zero P0/P1</b> &mdash; <code>docs/audits/2026-08-21_PATH_TO_PRODUCTION_AUDIT.md:66-68</code>, verified by reading the source.</li>
             <li><span class="mark ok">&check;</span> Measurement pass caught three defects invisible to both visual and heuristic review &mdash; a sheet painting a phone corner inside a desktop frame, a splash painting a phone bezel, a surface 80px narrower than its neighbours.</li>
-            <li><span class="mark ok">&check;</span> <b>Guard script, checked 2026-09-03: none exists.</b> The only two hits (<code>review-artifacts/_guestsguard.mjs</code>, gitignored scratch, and a scoped lodging e2e spec) are not a general project guard. "No guard exists" is a real answer per the gate's own schema, not a blank &mdash; recorded as a condition, not a block.</li>
+            <li><span class="mark ok">&check;</span> <b>Guard script, checked 2026-09-03, inventory corrected by independent audit:</b> none general exists. Three hits, not two: <code>review-artifacts/_guestsguard.mjs</code> (gitignored scratch), <code>hostv2/e2e/lodgingSpendGuard.spec.mjs</code> (a scoped lodging e2e spec), and <code>src/lib/api/__tests__/studioGuard.test.js</code> (a unit test for one validation function, not previously counted). None is a general project guard, so the underlying verdict is unchanged &mdash; the earlier count was incomplete. "No guard exists" is a real answer per the gate's own schema, not a blank &mdash; recorded as a condition, not a block.</li>
             <li><span class="mark ok">&check;</span> <b>Red-proof:</b> not this session's new work &mdash; carried by the stage's own record of four false zeroes caught and fixed. Gate P0/P1 rule: stages 4 and 5 resolved first; stage 4 contributes none.</li>
             <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; the Nielsen verdict above IS this gate record, POSTed for the first time. It ran 2026-08-21 and had never been recorded via the API, same pattern closed at stages 1, 2 and 5.</li>
           </ul>
@@ -433,7 +433,7 @@
             <li><span class="mark ok">&check;</span> <b>Blocks nothing, self-resolving:</b> <code>xlsx@0.18.5</code> carries two unfixable advisories that leave with the CRA at its scheduled post-Sprint-2 deletion.</li>
             <li><input type="checkbox" data-k="s8-textgate"> <b>Blocks nothing, structural:</b> 36 jest suites assert on hostv2 as text (the ratchet's own live baseline, <code>textGateRatchet.test.js:35</code> &mdash; corrected 2026-09-03 from a stale 35) because <code>react-scripts</code> pins jest's roots to <code>src/</code>; the 50 <code>hostv2/e2e</code> specs are the real behavioral coverage. The board has not yet chosen between making jest execute hostv2 or keeping the 36 as tripwires.</li>
             <li><span class="mark ok">&check;</span> <b>Runbook:</b> <code>docs/RUNBOOK.md</code>. Corrected this session &mdash; the push step checked CI then pushed unconditionally on the next line, which cancelled an in-flight run carrying an allergen fix. Now gates the push in the condition, and no longer stamps HANDOFF as a self-cancelling second commit.</li>
-            <li><span class="mark ok">&check;</span> <b>Re-checked fresh this session:</b> CI green on HEAD, 0 unpushed, jest 441 suites / 6228 tests, vitest 14/14, hostv2 builds on node 16 and node 20, the vitest-in-CI seam confirmed from the runner's own stdout rather than the workflow file.</li>
+            <li><span class="mark ok">&check;</span> <b>Re-checked fresh this session, then found stale within the same session:</b> jest 441 suites / 6228 tests, vitest 14/14, hostv2 builds on node 16 and node 20 (the vitest-in-CI seam confirmed from the runner's own stdout, not the workflow file) all still hold. "CI green on HEAD, 0 unpushed" did not &mdash; an independent audit caught it: CI's latest run was against <code>ae7dc426</code>, four commits behind local HEAD, with 4 unpushed commits sitting on top. A commit that names "current HEAD" can never cite the SHA it produces, so this line is stated as of the audit, not as a live claim: as of that check, CI had one run in flight and a push was queued behind it rather than pushed over it.</li>
             <li><input type="checkbox" data-k="s8-notchecked"> <b>Not re-checked this session, still owner-only:</b> the six stage-5 security opens, PostHog/Sentry arrival proof in prod, the repast community-review gate.</li>
           </ul>
         </div>
