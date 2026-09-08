@@ -87,10 +87,30 @@ if (unpushed !== null) {
   }
 }
 
+// A SHALLOW clone genuinely does not have the ancestors, so "not a commit
+// here" says nothing about the claim. Reporting it as stale is a FALSE
+// POSITIVE on every CI runner and every `git clone --depth 1` — and a guard
+// that cries wolf gets ignored exactly as fast as one that never fires.
+// Observed 9/8/2026: a --depth 1 checkout of this repo failed on 59978c59,
+// which is a valid ancestor once the clone is deepened.
+let shallow = false;
+try { shallow = git('rev-parse', '--is-shallow-repository') === 'true'; }
+catch { /* git too old to know: treat as full, the strict reading */ }
+
 // Is it even a commit?
 let full;
 try { full = git('rev-parse', '--verify', `${claimed}^{commit}`); }
 catch {
+  if (shallow) {
+    console.log(`? CANNOT CHECK — ${claimed} is absent from this SHALLOW clone.`);
+    console.log('  Deepen it (git fetch --depth=1000) or run where full history exists.');
+    // Exit 2, not 0. Cannot-check is a THIRD outcome and must not be spent as
+    // a pass: on a shallow clone a genuinely bogus SHA is indistinguishable
+    // from a merely absent one, so exiting 0 would report green precisely
+    // where the guard could not look. 2 keeps it distinct from real staleness
+    // (1) while still being non-zero, so nothing can quietly skip it forever.
+    process.exit(2);
+  }
   console.error(`✗ HANDOFF.md claims HEAD is ${claimed}, which is not a commit in this repo.`);
   process.exit(1);
 }
