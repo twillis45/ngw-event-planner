@@ -117,12 +117,22 @@ jobs:
       # fourteen minutes of runner time to discover.
       - run: npm run test:unit
         working-directory: hostv2
-      # Google's chrome-stable apt mirror intermittently serves a Packages.gz
-      # whose hash doesn't match its own Release file ("Hash Sum mismatch") --
-      # an edge-cache staleness issue on their end, reproduced 4x in a row on
-      # 2026-09-09 with zero code changes between attempts (spanning ~7 min),
-      # confirming it wasn't this repo and that a 20s retry gap is too short.
-      # Backs off up to 2 minutes between tries.
+      # ROOT CAUSE, found 2026-09-09 after retries alone didn't clear it: the
+      # `ubuntu-latest` image pre-registers Google Chrome's own apt repo
+      # (/etc/apt/sources.list.d/google-chrome.list), for installs of full
+      # `google-chrome-stable`. This project only ever installs the
+      # Playwright-bundled `chromium` via --with-deps, which never touches
+      # that package -- but `apt-get update` (run internally by --with-deps)
+      # refreshes EVERY registered repo regardless, so a stale mirror for a
+      # package we don't use can still fail our install. Drop the repo file
+      # before asking apt to update anything.
+      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
+        working-directory: hostv2
+      # Kept as a safety net for any OTHER transient apt-mirror issue, now
+      # that the one actually observed (Google's chrome-stable Packages.gz
+      # hash mismatch, reproduced 4x over ~17 minutes on 2026-09-09 with zero
+      # code changes between attempts -- long enough to be a real outage, not
+      # edge-cache flicker) is addressed at the source above.
       #
       # KEPT ON ONE LINE ON PURPOSE: seamRunsInCi.test.js parses `run:` steps
       # by matching a single line (`^\s*-?\s*run:\s*(.+)$`), which a `run: |`
