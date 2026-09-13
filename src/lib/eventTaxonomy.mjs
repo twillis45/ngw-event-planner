@@ -247,6 +247,17 @@ const KEYWORDS = [
   // generic party/celebration catch below ('Birthday'). Must resolve before
   // that generic line since "Super Bowl party" contains the word "party".
   [/super\s*bowl|\bplayoffs?\b|\bthe\s+big\s+game\b|march\s*madness|world\s*series|final\s*four|championship\s*game/, 'Watch Party'],
+  // "Cover more sporting events than these 3" (host, 2026-09-13, after Super
+  // Bowl/March Madness/World Series went in). One shared mechanic — a screen
+  // everyone can see, food timed to a start whistle/tipoff/first pitch, drinks
+  // in coolers — covers all of these, so they route to the SAME Watch Party
+  // playbook rather than each getting a near-duplicate authored file (which
+  // would also multiply the same citations across files — exactly what
+  // researchPolicyCompliance.test.js's ratchet exists to catch). "Sweet
+  // sixteen" is deliberately excluded — it already resolves to the Sweet 16
+  // birthday milestone (line ~186) and that rule runs first; the basketball
+  // round of the same name isn't worth breaking a real collision over.
+  [/\bnfl\s*draft\b|\bnba\s*(finals?|draft)\b|stanley\s*cup|\bnhl\s*playoffs?\b|world\s*cup|champions\s*league|\bthe\s*masters\b|ryder\s*cup|kentucky\s*derby|daytona\s*500|indy(?:anapolis)?\s*500|\bwimbledon\b|\bfight\s*night\b|\bufc\b\s*\d*|\bppv\b|boxing\s*match|title\s*fight|\bolympics?\b|bowl\s*game|national\s*championship|\bcfp\b|(rose|sugar|orange|cotton|fiesta|peach)\s*bowl|wild\s*card\s*(game|weekend)?|conference\s*championship|\btailgate\b|elite\s*eight|draft\s*(day|night)|all-?star\s*game/, 'Watch Party'],
   [/get.?together|potluck|\bboil\b|brunch|happy\s*hour|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
   // ── Generic travel (after team retreat / wellness specifics) ──
   // "destination" alone is a MODIFIER on another event ("destination birthday",
