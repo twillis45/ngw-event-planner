@@ -10169,6 +10169,20 @@ export default function HostShellV2() {
               walkthrough preview any other day ══════════ */}
           {stage === 'day' && liveDay && (
             <section className="day-sec" role="main">
+              {/* DAY-OF NAV DEAD-END (host report 2026-09-13, "no way to get back from
+                  day of"): elegantMode hides the floating dock (.dock.dock-retired{display:none})
+                  and its documented replacement — the .ev-eyebrow "Menu" button that opens
+                  setSheet({kind:'nav'}) — was only ever wired into one Plan-tab hero branch
+                  (~7439), never here or on After. A host walking the day-of checklist had
+                  no way off this screen at all. Same button, same handler, no new surface —
+                  restoring the "ONE element every elegant screen keeps" invariant that
+                  branch's own comment already claims. */}
+              {elegantMode && (
+                <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
+                  <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  <span className="eb-text">MENU</span>
+                </button>
+              )}
               <div className="eyebrow">
                 {dayAllDone ? 'All clear — that’s a wrap' : nowActive ? 'Today · live' : dayStarted ? 'Today · next up' : 'Today · starts soon'}
                 {' · '}{new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -10400,6 +10414,15 @@ export default function HostShellV2() {
           )}
           {stage === 'day' && !liveDay && (
             <section className="day-sec" role="main">
+              {/* Same day-of nav dead-end fix as the liveDay branch above — see
+                  that comment. This is the branch a same-day event with no ROS
+                  times set yet actually renders (host-confirmed dead end). */}
+              {elegantMode && (
+                <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
+                  <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  <span className="eb-text">MENU</span>
+                </button>
+              )}
               {/* ── BEFORE THE BIG DAY (audit item 3, 2026-08-21) ─────────────
                   `playbookDayOfChecklist` has existed and worked for months and
                   had ZERO imports in hostv2 — the frozen CRA rendered it and
@@ -10922,6 +10945,14 @@ export default function HostShellV2() {
           {/* ══════════ AFTER — real budget lines, honest tense ══════════ */}
           {stage === 'after' && (
             <section role="main">
+              {/* Same day-of nav dead-end fix as the Day tab — see the comment
+                  on the liveDay day-sec branch above. After had the identical gap. */}
+              {elegantMode && (
+                <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
+                  <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  <span className="eb-text">MENU</span>
+                </button>
+              )}
               <div className="eyebrow">{isPast ? 'Afterward' : 'Preview — how it’ll wrap up'}</div>
               {/* Sans, not serif (font audit): After is an OPERATIONAL host-shell
                   tab, so its hero matches Plan's "56 days" / the sheet heroes (the
