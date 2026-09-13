@@ -1539,16 +1539,24 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   *,*::before,*::after{transition:none!important; animation:none!important}
 }
 
-/* ── Occasion browser: type-ahead + snap-scroll shelves ── */
+/* ── Occasion browser: type-ahead + wrapping shelves ──
+   Was a snap-scroll horizontal carousel (host report 2026-09-13: "Chose game
+   night and it fed day party"). Confirmed live — the row overflows the
+   viewport with no fade/edge cue at all (several types, "Day Party" among
+   them, sat fully off-screen), and scroll-snap-type:x proximity means a
+   flick-then-tap can land on whatever chip has just snapped into place
+   under the thumb, not the one the host meant. This class has exactly one
+   consumer (the occasion picker's per-category shelf) — a selection list,
+   not a browse carousel where horizontal scroll earns its keep — so it
+   wraps now, the same as every other chip row in this screen (.chips). No
+   snap-scroll, no off-screen options, nothing to mis-tap. */
 .typebrowser{display:flex; flex-direction:column}
 .shelf-wrap{margin-top:var(--sp-4)}
 .shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--faint); margin-bottom:var(--sp-2)}
 .shelf{
-  display:flex; gap:var(--gap-chip); overflow-x:auto; scroll-snap-type:x proximity;
-  margin:0 -20px; padding:2px var(--sp-5) 6px; scrollbar-width:none;
+  display:flex; flex-wrap:wrap; gap:var(--gap-chip);
 }
-.shelf::-webkit-scrollbar{display:none}
-.shelf .chip{flex-shrink:0; scroll-snap-align:start; white-space:nowrap}
+.shelf .chip{white-space:nowrap}
 
 /* ── Micro-motion: press feedback + entrance settles (choreography timings, no bounce) ── */
 @keyframes cardin{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}

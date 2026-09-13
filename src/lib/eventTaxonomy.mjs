@@ -226,7 +226,16 @@ const KEYWORDS = [
   [/low.?country\s*boil|frogmore/, 'Low Country Boil'],
   [/fish\s*fry/, 'Fish Fry'],
   [/cook.?out|\bbbq\b|barbecue|barbeque/, 'The Cookout'],
-  [/get.?together|game\s*night|potluck|\bboil\b|brunch|happy\s*hour|watch\s*party|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
+  // Game Night and Watch Party were both authored as their OWN canonical
+  // playbooks (src/lib/playbooks/data/gameNight.js, watchParty.js;
+  // registered in ALL_PLAYBOOKS) but stayed folded into the generic
+  // Get-Together bucket below — the promotion to a real playbook never got
+  // its own keyword carve-out. Host report 2026-09-13: "Chose game night
+  // and it fed day party" (Get-Together, in this build). Must resolve
+  // BEFORE the generic line since KEYWORDS matches in order, first wins.
+  [/game\s*night/, 'Game Night'],
+  [/watch\s*party/, 'Watch Party'],
+  [/get.?together|potluck|\bboil\b|brunch|happy\s*hour|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
   // ── Generic travel (after team retreat / wellness specifics) ──
   // "destination" alone is a MODIFIER on another event ("destination birthday",
   // "destination anniversary") — it must not hijack type resolution before

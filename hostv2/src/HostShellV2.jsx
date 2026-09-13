@@ -6958,6 +6958,7 @@ export default function HostShellV2() {
                   </p>
                   <div className="create-inputrow">
                     <input
+                      id="smart-text-input"
                       className="field"
                       placeholder={listening ? 'Listening…' : 'Try: crab feast for 20, Aug 2'}
                       value={smartText}
@@ -7020,7 +7021,14 @@ export default function HostShellV2() {
                             <button key={o} className="chip" aria-pressed={pick.occ === o}
                               onClick={() => {
                                 // 'Something else' has no honest sentence — hand back to the field.
-                                if (o === 'Something else') { setIntakeOpen(false); return; }
+                                // Host report 2026-09-13: this closed the panel with zero feedback,
+                                // reading as a dead pill ("doesn't extend the type list"). Focusing
+                                // the text field is the honest hand-off it always meant to be.
+                                if (o === 'Something else') {
+                                  setIntakeOpen(false);
+                                  setTimeout(() => document.getElementById('smart-text-input')?.focus(), 0);
+                                  return;
+                                }
                                 setP('occ', o);
                               }}>{o}</button>
                           ))}

@@ -29,7 +29,12 @@ const path = require('path');
 const LADDER = new Set([0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80]);
 
 // Frozen 2026-08-07 at the board sitting. LOWER THIS, NEVER RAISE IT.
-const BASELINE = 272;
+// 2026-09-13: 272 → 271. The occasion-picker's .shelf dropped its
+// `margin:0 -20px` bleed + snap-scroll padding when it stopped being a
+// horizontal carousel (host report: a mis-tap risk, not a spacing cleanup —
+// see styles.css's .shelf comment). One off-ladder declaration removed as a
+// side effect of that fix, not a dedicated pass.
+const BASELINE = 271;
 
 const PROP = /\b(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;{}]+)/g;
 
