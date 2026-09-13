@@ -1,7 +1,14 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (this same session,
-continued again: a host-specified 6-format taxonomy — single game / multi-day
+continued yet again: "demo the top 5 sub-events and audit for logic issues"
+against real engine output found and fixed 3 real host-visible bugs — risks
+were never gated by major_event at all (r_derby_time/r_rivalry showed for
+every event, a defect dating to pass one), a "Halftime hits..." heartMoment
+promised a break to 3 formats that don't have one, and World Cup had zero
+heartMoment differentiation. Also fixed Kentucky Derby's run-of-show, which
+had stayed 100% football-worded through 3 prior passes. See the dated entry
+below. Before that, in this same session: a host-specified 6-format taxonomy — single game / multi-day
 tournament / combat-PPV / racing-spectacle / continuous coverage / broadcast
 event — now genuinely reshapes Watch Party's run-of-show, not just its decor
 and food, via two small precedented engine changes (choiceShown gained a
@@ -32,8 +39,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `389e838` |
-| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the 6-format taxonomy pass below (see its own entry for the ratchet count updated) |
+| Branch / HEAD | `main` @ `9c2512e` |
+| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the audit-and-fix pass below (no ratchet change this pass) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -44,6 +51,72 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-13 (fifth session update, same day) — audited the top 5 sub-events, found and fixed 3 real bugs
+
+Host directive: "Demo the workflows for the top 5 sub events and look for
+logic issues and gaps." Picked one representative per non-default format
+(UFC/Boxing, Kentucky Derby, Wimbledon, World Cup, NFL Draft — covering 5 of
+the 6 formats) and ran the REAL engine functions
+(`playbookFoodPlan`/`playbookRunOfShow`/`playbookChecklist`/
+`playbookHeartMoments`/`playbookRisks`) against each, reading the full
+output the way a host actually would — not just spot-checking the one field
+each format's own pass added.
+
+**Found 3 real, host-visible bugs, all fixed (not just noted):**
+
+1. **Risks were never gated by `major_event` at all.** Unlike purchases,
+   tasks, schedule rows and the multi-day agenda — all of which already read
+   `choiceShown()` — `playbookRisks()` had no gate whatsoever. `r_derby_time`
+   ("the race is over in about two minutes") and `r_rivalry` ("the two
+   schools' fans") showed for EVERY major_event answer, confirmed live for
+   UFC/Boxing, Wimbledon, World Cup and NFL Draft. This dates to pass one
+   (2026-09-13 earlier the same day), not to the taxonomy work — it simply
+   went unaudited until now. Fixed: `playbookRisks()` gained the same
+   `whenChoice` + `copyByAnswer` support schedules already had (same
+   precedented pattern, same "no existing playbook authors this yet" no-op
+   proof). `r_derby_time` → Kentucky Derby only; `r_rivalry` → CFB
+   Championship only. This changes the Super Bowl DEFAULT's risk list (drops
+   2 irrelevant risks) — a bug fix, not a violation of "format 1 stays
+   untouched" (that rule is about this project's own additions, not about
+   preserving a pre-existing defect).
+2. **The "Halftime hits and nobody leaves the couch..." heartMoment showed
+   verbatim for UFC/Boxing, NFL Draft and Awards Show** — three formats with
+   no halftime, promising a moment that literally cannot happen. Gave each a
+   real copyByAnswer override instead.
+3. **World Cup had zero heartMoment differentiation** despite being a
+   Multi-day tournament format member — March Madness and Olympics both got
+   some in the third pass, World Cup was simply missed. Added two.
+
+**Also fixed while auditing** (not a "bug" exactly, but a real inconsistency
+within the racing format): Kentucky Derby's run-of-show (Doors/Kickoff/
+Halftime/Second-half/Finish beats) had stayed 100% football-worded through
+all three prior passes, even though Derby is the racing format's own
+flagship example and Daytona 500 got fully reworded beats when it was added
+in the third pass. Now reads as a real build-up-to-a-2-minute-race day
+(confirmed live: "Undercard races begin — post time is still hours away" →
+"Post time — the race itself, over in about two minutes").
+
+**Disclosed, not fixed** (lower severity, real cost): several purchase
+`.note` fields still say "top up ice at halftime" / "swap trash bags at
+halftime" / "a ~3.5h game" for no-halftime formats (`p_ice`, `p_cleanup`,
+`p_drinks`). Purchase notes have never resolved `copyByAnswer` anywhere in
+this codebase — fixing that would be a THIRD engine surface change in one
+session for a shopping-list caption, not a schedule promise or a wrong risk
+a host actually acts on. Proportionality call.
+
+**Verified live** (same direct-engine method as prior passes — Playwright's
+Chromium still isn't available in this sandbox): re-ran the demo after each
+fix; confirmed `r_derby_time`/`r_rivalry` now appear ONLY for their own
+events across the audited 5; confirmed UFC/Boxing and NFL Draft no longer
+show the impossible halftime heartMoment; confirmed World Cup and Kentucky
+Derby now read coherently.
+
+Files: `src/lib/playbooks/index.js` (`playbookRisks` gains whenChoice/
+copyByAnswer), `src/lib/playbooks/data/watchParty.js` (risk gating, 3
+heartMoment additions, 5 reworded Derby schedule rows). Full Jest **442/442
+suites, 6240/6241 tests** (1 pre-existing skip, no ratchet change this
+pass). `sync:hostv2`/`gate:hostv2` clean. Commit `9c2512e`.
 
 ## ADDED 2026-09-13 (fourth session update, same day) — Watch Party gets a real 6-format taxonomy + a genuine run-of-show shape per format
 
