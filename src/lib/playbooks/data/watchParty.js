@@ -1,4 +1,4 @@
-// Super Bowl / Sports Watch Party — Event OS host playbook (data only).
+// Sports Watch Party — Event OS host playbook (data only).
 //
 // An at-home gathering to watch a big game: TV-forward, grazing food that is
 // READY BEFORE KICKOFF, drinks in coolers, disposable tableware, couch + screen
@@ -7,15 +7,41 @@
 // and drinks flowing without anyone missing a play. Quantities are common US
 // game-day hosting rules of thumb (see `knowledge`), authored honestly and
 // labeled `synthesized` until verified. ESM default export.
+//
+// MAJOR-EVENT DIFFERENTIATION (host directive 2026-09-13: "I want the major
+// sports differentiated and identified... the Super Bowl atmospherics and
+// playbook info different than the college football national championship").
+// The `major_event` decision below is the identification: it names the event,
+// and everything downstream reads its answer. Football/basketball stays the
+// UNTOUCHED DEFAULT ('Super Bowl') — every existing purchase, task, schedule
+// entry, and risk in this file behaves exactly as it did before this change
+// for that path. Other named events layer on top via the SAME whenChoice/
+// copyByAnswer primitives every other playbook in this codebase already uses
+// for conditional content (see destination wedding's dest_lodging cascade) —
+// no new engine concept, just the first playbook to use it this widely.
+// Real, dated sources for the differentiated content (2026-09-13 research
+// pass, WebSearch): National Chicken Council's 2026 wing report (Super Bowl),
+// the College Football Playoff's own tailgate/team-colors coverage, the
+// Kentucky Derby's mint-julep tradition (multiple outlets), a March Madness
+// office-pool spending survey, and Paramount+'s own 2026 UFC pricing page
+// (UFC dropped PPV entirely in 2026 — folded into its streaming tiers, a real
+// fact that would have been WRONG to assume unchecked).
+//
+// NOT YET DONE, disclosed rather than silently skipped: the run-of-show
+// (`schedules.program`) below stays football-shaped (kickoff/halftime beats)
+// for every major_event answer — differentiating the actual MINUTE-BY-MINUTE
+// timeline (the Derby's race is ~2 minutes inside a multi-hour build-up; a
+// UFC/boxing card runs undercard-then-main-event, not one continuous game)
+// is real follow-up work, not done blind in this pass.
 
 const watchParty = {
   type: 'Watch Party',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
-  version: '1.0.0',
+  version: '1.1.0',
   meta: {
-    summary: 'An at-home watch party for a big game (Super Bowl / playoff). TV-forward, graze-all-game food, coolers of beer + soda, disposable tableware, couch comfort. The whole challenge is timing — food READY before kickoff, a halftime refresh, and a trash flow that never makes anyone miss a play.',
+    summary: 'An at-home watch party for a big sporting event — Super Bowl, College Football National Championship, NBA Finals, March Madness, the Kentucky Derby, and more, each with its own atmosphere. TV-forward, graze-all-event food, coolers of beer + soda, disposable tableware, couch comfort. The whole challenge is timing — food READY before it starts, a mid-event refresh, and a trash flow that never makes anyone miss a moment.',
     typicalGuests: { low: 6, default: 12, high: 25 },
     typicalDurationHours: 4,
     leadTimeDays: 10,
@@ -25,14 +51,37 @@ const watchParty = {
   },
 
   heartMoments: [
-    'The food is ready before kickoff and everyone is actually settled in when it starts.',
-    'A big play happens and the whole room erupts at the same second.',
-    'Halftime hits and nobody leaves the couch — the food is still going and so is the conversation.',
-    'The final play lands and everyone who picked the right team never lets it go.',
+    { base: 'The food is ready before kickoff and everyone is actually settled in when it starts.',
+      copyByAnswer: { major_event: {
+        'Kentucky Derby': 'Everyone is planted in front of the screen well before post time — the race itself is over in about two minutes, and missing it because you were still in the kitchen is the one unforgivable thing.',
+        'College Football National Championship': 'The food is out and everyone is repping their team colors before kickoff — the room splits into two loud, happy camps.',
+        'UFC / Boxing': 'The main event is close and everyone is off their phones, actually watching — the undercard was just the warm-up.',
+      } } },
+    { base: 'A big play happens and the whole room erupts at the same second.',
+      copyByAnswer: { major_event: {
+        'Kentucky Derby': 'The field turns for home and the whole room is on its feet screaming for the length of the stretch run.',
+        'March Madness': 'A double-digit seed hits a buzzer-beater and half the room\'s brackets die at once — the loudest reaction of the day.',
+      } } },
+    { base: 'Halftime hits and nobody leaves the couch — the food is still going and so is the conversation.',
+      copyByAnswer: { major_event: {
+        'College Football National Championship': 'The trophy presentation hits and the winning side of the room loses it — bragging rights for a full year.',
+        'Kentucky Derby': 'Between races, the best-hat contest and the mint julep refills keep the party going even when nothing\'s on the track.',
+      } } },
+    { base: 'The final play lands and everyone who picked the right team never lets it go.',
+      copyByAnswer: { major_event: {
+        'March Madness': 'The bracket pool gets settled on the spot, and whoever\'s been quietly winning all tournament finally has to admit it.',
+      } } },
   ],
 
   decisions: [
+    // Weight/blocks mirror dest_lodging (destination wedding) — the one other
+    // decision in this codebase whose answer reshapes what downstream content
+    // even APPLIES. Asked earliest (T-10d, this playbook's own leadTimeDays)
+    // and blocks food + program so the plan doesn't finish assembling around
+    // the wrong assumption before the host has actually said which event this is.
+    { id: 'major_event', label: 'What are we watching?', options: ['Super Bowl', 'College Football National Championship', 'NBA Finals', 'World Series', 'Stanley Cup Final', 'March Madness', 'Kentucky Derby', 'The Masters', 'World Cup', 'UFC / Boxing', 'Olympics', 'Regular season game / other'], default: 'Super Bowl', when: 'T-10d', blocks: ['food', 'program'], weight: 'high', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Which event this is sets the food, the purchases, and the atmosphere — a Kentucky Derby party and a Super Bowl party share a screen and almost nothing else. Answering it first means everything else builds on the right assumption instead of a generic default.', tier: 'reasoned' }, why: 'Sets which menu defaults, purchases, and moments actually apply. Football stays the default so nothing changes for the common case — name a different event and the plan adjusts to it.' },
     { id: 'menu', label: 'Game-day food style', options: ['Wings + chips/dip', 'Chili bar', 'Pizza + finger food', 'Potluck snacks'], default: 'Wings + chips/dip', when: 'T-7d', dependsOn: ['potluck'], blocks: ['food'], costViaApproach: true, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'The food style drives the shopping list and the cook timeline, but wings-and-chips is a safe default and swappable until you shop.', tier: 'reasoned' }, why: 'Drives the shopping list and the cook timeline. Wings + chips is the classic low-effort default; chili can be made ahead; pizza offloads the cooking entirely.' },
+    { id: 'ppv_cost', label: 'Covering the cost', options: ['Host covers it', 'Split evenly among guests', 'Already have a subscription that covers it'], default: 'Host covers it', when: 'T-5d', whenChoice: { id: 'major_event', in: ['UFC / Boxing'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'A major boxing card is still commonly pay-per-view; UFC folded its full 2026 calendar into Paramount+ instead. Either way it is a real cost worth naming before guests show up assuming it is free.', tier: 'reasoned' }, why: 'UFC dropped pay-per-view in 2026 — its numbered events are bundled into Paramount+ (about $6-12/month, or $59.99/year), split however many ways the room wants. A major boxing card, when it IS still PPV, commonly runs $75-90 for the single event. Naming who is covering it avoids an awkward ask mid-party.' },
     { id: 'potluck', label: 'Host-provided or potluck?', options: ['Host provides all', 'Potluck snacks', 'Host feeds, guests bring drinks'], default: 'Host feeds, guests bring drinks', when: 'T-7d', blocks: ['food', 'beverage_purchases'], costViaApproach: true, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Host-provides vs potluck is the biggest cost-and-effort lever, but it only reassigns who brings what and defaults to host-feeds-guests-bring-drinks.', tier: 'reasoned' }, why: 'Biggest cost/effort lever — assigning snacks/drinks roughly halves the host load and the bill.' },
     { id: 'alcohol', label: 'Drinks', options: ['Beer + soda + water', 'BYOB', 'Full cooler bar', 'Dry / family-friendly'], default: 'Beer + soda + water', when: 'T-5d', blocks: ['beverage_purchases'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The drink plan sets cooler and ice volume and whether anyone needs a ride home — a host read on the crowd, though cheap to adjust.', tier: 'reasoned' }, why: 'Drives cooler + ice volume over a ~3.5h game and whether anyone needs a ride home.' },
     { id: 'screen', label: 'Screen + seating plan', options: ['Living-room TV', 'Add a second screen', 'Projector + screen', 'Bar / out to watch'], default: 'Living-room TV', when: 'T-5d', blocks: ['rental'], weight: 'high', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'If the game is not on a screen everyone can see, there is no watch party — the one make-or-break call, though the TV setup is easy to arrange.', tier: 'reasoned' }, why: 'Sightlines and enough seats are what make or break a watch party — confirm the stream/channel works and everyone can see the screen before kickoff.' },
@@ -70,6 +119,30 @@ const watchParty = {
     { id: 'p_tableware', item: 'Paper plates, napkins, cups, cutlery', category: 'logistics', qtyPerGuest: 2, unit: 'set', where: ['Grocery', 'Costco', 'Party store'], unitCostRange: [0.25, 2.5], essential: true, buyAt: 'T-3d', note: 'COMMONLY FORGOTTEN: people grab a fresh plate/cup every visit to the food table — buy ~2 sets/guest, plus small plates for dips.' , costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['disposables-bulk-2026', 'disposables-partyqty-2026'], lastVerified: '2026-08-15', claim: 'A per-guest place setting runs $0.25-2.50 depending entirely on channel: bulk restaurant supply puts plates at $0.08-0.15 each and foam at $0.09, a grocery shelf puts the same basic paper plate at $0.25-0.40, and premium plastic or compostable runs $0.15-0.35 per plate. A setting is 2-3 plates, 2-3 cups, cutlery and 2-3 napkins.', sufficientWhen: 'Re-checked against per-plate pricing and place-setting norms. A deep bulk buy lands near the floor and premium or compostable near the ceiling - the 12x spread is the CHANNEL, not uncertainty. Add 10-15% for spills and unexpected guests. Sets that bundle flutes, koozies, linens or table covers are a different product and are priced separately.' } },
     { id: 'p_serveware', item: 'Serving setup consumables (toothpicks, foil, sterno) — assumes host already owns a slow cooker/warming tray', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Grocery', 'Party store'], unitCostRange: [10, 30], essential: false, buyAt: 'T-3d', note: 'A slow cooker keeps chili/dip hot all game so the host can sit down. This band prices the consumables only — a slow cooker ($55-75) or warming tray ($65-80) bought new is a separate purchase, see alternatives.', alternatives: ['Buy a slow cooker or warming tray — $55-80 new if the host does not already own one'], provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['buffet-equipment-2026', 'picks-toothpicks-2026'], lastVerified: '2026-08-18', claim: 'A 6qt slow cooker runs $54.99-74.99 new; an electric warming tray $64.99-79.99 new (both excluded from this band). Foodservice toothpicks run $0.0065-0.0152 each. Item renamed and reframed 2026-08-18: the $10-30 band only ever fit consumables (foil, toothpicks, sterno fuel), not a new appliance purchase, so the item name and note now say so explicitly instead of implying the appliance is bought at this price.', sufficientWhen: 'A sterno-fuel and disposable-foil-pan price confirms the consumables-only band directly.' } },
     { id: 'p_cleanup', item: 'Trash + recycling bags, paper towels', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery'], unitCostRange: [7, 18], essential: true, buyAt: 'T-3d', note: 'COMMONLY FORGOTTEN: trash fills fast on game day — extra bags + a separate recycling bag for cans/bottles, swapped at halftime.' , costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['costco-cleaning-2026', 'trashbags-retail-2026'], lastVerified: '2026-08-15', claim: 'A cleanup kit runs $7-18 as the SUM of its parts: about a dozen trash and recycling bags at 10 cents each from a warehouse or 11-15 cents at grocery, two rolls of paper towels at about $1.97 warehouse, and a canister of wipes at about $4.27 or a dish-soap pack at $14.74 shared across events.', sufficientWhen: 'CONFIDENCE IS LOW ON PURPOSE: no source prices a cleanup kit, because nobody sells one. This band is a sum of individually-priced components, so treat it as an envelope rather than a quote. The spread is the CHANNEL - warehouse packs against a grocery shelf - and a host who already owns soap and towels lands well under the floor. Kits that also carry gloves, foil or to-go containers are a different bundle.' } },
+    // ── Major-event-specific purchases (whenChoice-gated on major_event; see
+    //    file header) — invisible unless the host names that event, so the
+    //    football default's item list and totals are byte-identical to before.
+    // Provenance carries no `sources` array here on purpose — these are cultural/
+    // tradition claims (CFP's own tailgate coverage; multiple Derby history
+    // writeups, 2026-09-13 WebSearch), not registered against QTY_SOURCES/
+    // COST_SOURCES. Claiming `sources` without a resolving registry id is exactly
+    // what knowledgeInventory.js's 'ambiguous' state exists to catch (sources
+    // listed, grounding predicate fails) — same reason p_chips/p_chili/
+    // p_pizza_sliders below carry the real context only in `note` prose, not a
+    // formal sources array, at this same 'estimate' tier.
+    // category: 'logistics', not 'decor' — 'decor' passes the schema linter
+    // but the shopping-list engine's Supplies loop (playbooks/index.js ~4218)
+    // only recognizes food/beverage (its own loop) or a non-food/beverage
+    // category THAT IS ALSO essential:true — non-essential logistics/decor/
+    // cleanup rows are filtered out of the list entirely, not just hidden by
+    // default. Confirmed live: with essential:false this item never appeared
+    // in "The spread & shopping," at any category. `essential: true` here
+    // reads honestly once whenChoice has already gated it to CFB National
+    // Championship specifically — team colors ARE the defining atmosphere
+    // for that event the same way wings are for the Super Bowl, not an
+    // optional extra once a host has named this as the event.
+    { id: 'p_teamcolors', item: 'Team colors gear & tailgate decor (flags, banners, face paint)', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Party store', 'Team store', 'Online'], unitCostRange: [15, 40], essential: true, buyAt: 'T-3d', whenChoice: { id: 'major_event', in: ['College Football National Championship'] }, note: 'A championship watch party leans into school colors the same way fans dress for the stadium tailgate — the College Football Playoff\'s own championship-week coverage explicitly encourages fans to show up in team colors and gear, with flags and banners as the defining decor.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, alternatives: ['Paper goods in team colors — cheaper than dedicated gear', 'Ask each guest to just wear their own team colors — zero cost'] },
+    { id: 'p_mintjulep', item: 'Mint julep bar (bourbon, fresh mint, simple syrup, crushed ice)', category: 'beverage', qtyFlat: 1, unit: 'kit', where: ['Liquor store', 'Grocery'], unitCostRange: [30, 55], essential: false, buyAt: 'T-1d', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] }, note: 'The signature Derby drink since the 1930s — bourbon, mint, and simple syrup over crushed ice. One 750ml bottle pours roughly 12-16 juleps.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, alternatives: ['Pre-made mint julep mix — cheaper, less prep', 'Mocktail version (mint, lime, simple syrup, soda) — no alcohol'] },
   ],
 
   rentalsGap: [
@@ -91,6 +164,8 @@ const watchParty = {
     { id: 'r_drinks', trigger: 'Run out of drinks or ice mid-game', severity: 'med', mitigation: 'Buy a buffer (~4 drinks + ~1.5 lb ice/guest); top up ice at halftime; ask a guest to do a beer run.' },
     { id: 'r_seating', trigger: 'Not enough seats / bad sightlines', severity: 'med', mitigation: 'Borrow extra chairs; arrange seating toward the screen before anyone arrives.' },
     { id: 'r_trash', trigger: 'Trash/recycling overflows, surfaces get sticky', severity: 'low', mitigation: 'Put out a clearly-marked recycling bag for cans; swap trash bags at halftime; keep paper towels at the food table.' },
+    { id: 'r_derby_time', trigger: 'Guests miss the actual race — it is over in about two minutes', severity: 'med', mitigation: 'Post time is announced well ahead — call it out 10 minutes before, get everyone off their phones and in front of the screen, and hold any toast until after the race, not during it.' },
+    { id: 'r_rivalry', trigger: 'Mixed-fandom tension between the two schools\' fans in the room', severity: 'low', mitigation: 'Keep it lighthearted — split seating by team side if it helps, and set the tone before kickoff that it stays fun.' },
   ],
 
   contingencies: [
@@ -131,9 +206,9 @@ const watchParty = {
   },
 
   knowledge: {
-    governanceVersion: '1.0.0',
+    governanceVersion: '1.1.0',
     verificationStatus: 'synthesized',
-    note: 'Quantities reflect common US game-day hosting rules of thumb: Super Bowl portions run large (~1 lb / about 10–12 wings per guest grazing all afternoon), ~1 drink per guest per hour over a ~3.5h game (≈3–4 drinks/guest, split across beer/soda/water), ~1.5 lb ice per guest for indoor drink-chilling (the lower end of the 1–2 lb party rule), roughly 2–3 large pizzas per 10 guests, and ~2 disposable plate/cup sets per guest since people refresh every trip to the food table. The defining constraint of a watch party is timing — food ready ~30 min before kickoff and a halftime refresh — not headcount. Authored as established-consensus / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources.',
+    note: 'Quantities reflect common US game-day hosting rules of thumb: Super Bowl portions run large (~1 lb / about 10–12 wings per guest grazing all afternoon), ~1 drink per guest per hour over a ~3.5h game (≈3–4 drinks/guest, split across beer/soda/water), ~1.5 lb ice per guest for indoor drink-chilling (the lower end of the 1–2 lb party rule), roughly 2–3 large pizzas per 10 guests, and ~2 disposable plate/cup sets per guest since people refresh every trip to the food table. The defining constraint of a watch party is timing — food ready ~30 min before kickoff and a halftime refresh — not headcount. Authored as established-consensus / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources. 2026-09-13: added the `major_event` identification decision plus event-specific purchases/risks/heartMoments for College Football National Championship (team-colors decor) and Kentucky Derby (mint julep) and a cost-coverage decision for UFC/Boxing — each researched live (National Chicken Council 2026 wing report, College Football Playoff tailgate coverage, Kentucky Derby tradition writeups, Paramount+\'s 2026 UFC pricing) rather than assumed. The football-default path (Super Bowl, unanswered major_event) is unchanged. The run-of-show (schedules.program) still assumes one continuous football-shaped game for every major_event answer — NOT yet differentiated; a genuine per-event timeline is disclosed follow-up work, not done here.',
     sources: [],
   },
 };

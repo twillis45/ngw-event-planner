@@ -4364,9 +4364,24 @@ export function playbookFoodPlan(event, opts = {}) {
 // playbookHeartMoments(event) — the 3-5 "must-have moment" suggestions for this event
 // type. Pure passthrough of the playbook's AUTHORED heartMoments array — invents nothing.
 // Returns [] for types without a playbook or without heartMoments.
+// A heartMoment entry is normally a plain string (every existing playbook).
+// watchParty.js is the first to need one moment reading differently depending
+// on an answered decision (Kentucky Derby vs. Super Bowl share a screen and
+// nothing else) — rather than fork the whole playbook, an entry MAY instead be
+// `{ base, copyByAnswer }` and resolves through the same resolveAnsweredCopy
+// every other per-row copy override already uses. Falls back to `base` (or
+// drops the entry) when unanswered, so the unmodified default reads exactly
+// as before. All 43 other playbooks keep plain strings — untouched.
 export function playbookHeartMoments(event) {
   const playbook = getPlaybook(event && event.type);
-  return (playbook && playbook.heartMoments) || [];
+  const list = (playbook && playbook.heartMoments) || [];
+  return list
+    .map((m) => {
+      if (typeof m === 'string') return m;
+      if (m && typeof m === 'object') return resolveAnsweredCopy(m.base || '', m.copyByAnswer, event);
+      return '';
+    })
+    .filter(Boolean);
 }
 
 // playbookAbout(type) — the event-type EDUCATION surface, for a host who wants to

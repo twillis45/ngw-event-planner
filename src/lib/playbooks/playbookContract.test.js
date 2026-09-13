@@ -70,7 +70,16 @@ describe('playbook contract — hard invariants', () => {
 // rollout (step 3) fixes gaps, lower the baseline to the new count — the drop is visible progress in git.
 // Calibrated 2026-07-02. Goal: every baseline reaches 0 (then the contract is fully enforced).
 const BASELINE = {
-  costFactorGaps: 0,  // COMPLETE 2026-07-02 — all 25 playbooks wired; remainder is empty-stub or noCostEffect
+  // 2026-09-13: +1 for Watch Party's new `major_event` decision. It blocks
+  // 'food' (deliberately — see the attention-system fix in that file's own
+  // comment) and DOES have a real cost effect, so `noCostEffect: true` would
+  // be a lie — but that effect runs through whenChoice-gated purchases
+  // (p_teamcolors, p_mintjulep) appearing or not, not a per-option costFactors
+  // multiplier on one line. This linter's heuristic only recognizes the
+  // multiplier shape (the 25 playbooks below use it); a whenChoice-gated
+  // decision is a second, equally real pattern it doesn't yet have a name
+  // for. Documented here rather than mislabeled to satisfy the linter.
+  costFactorGaps: 1,  // COMPLETE 2026-07-02 — all 25 playbooks wired; remainder is empty-stub or noCostEffect
   idPrefixGaps: 0,    // FIXED 2026-07-02 — reunion + sundayDinner renamed p- → p_
   categoryGaps: 0,    // clean — keep it: no vendor names in purchases.category
   qtyMixGaps: 0,      // clean — keep it: no purchase mixes qtyPerGuest + qtyFlat
