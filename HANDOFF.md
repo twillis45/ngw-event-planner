@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-03 (stage 8 recording).
+**Measured reality, not intentions.** Updated 2026-09-13 (destination-classifier fix).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -8,8 +8,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `1b9027e4` |
-| Jest | **6,228 passed**, 1 skipped, **441 suites** — measured this pass |
+| Branch / HEAD | `main` @ `1b9027e4` (this session's fix commits land on top — see below) |
+| Jest | **6,231 passed**, 1 skipped, 1 failed (pre-existing, unrelated — see below), **441 suites** — measured this pass |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -20,6 +20,58 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-13 — "today" not parsed as a date, and a home venue misread as a destination trip
+
+Driven from a real create-screen input: "Backyard BBQ at my brother's house in
+Greenbelt, MD today at 3pm, about 15 guests." Two separate defects in
+`src/lib/smartParseEvent.js`, both live-verified in `hostv2` (local dev
+build) before and after.
+
+**1. "today"/"tonight" had no relative-date handler.** "Tomorrow", "next
+Saturday", "in 2 weeks" all resolved; the single most literal date a host can
+say fell through to "no date yet." Added alongside the other relative forms.
+Gated: `smartParseEvent.test.js` › `"today" / "tonight" resolve to the
+current date`.
+
+**2. The destination weak-signal fired on ANY resolved city with no signed-in
+profile — including the host's own family's house.** `placeAway` used
+`!homeCity || normCity(placeName) !== homeCity`; with no profile, `homeCity`
+is `''`, so `!homeCity` was always true. A bare "in Savannah, Georgia" firing
+this way is DELIBERATE, tested prior behaviour
+(`destinationDetection.test.js`, `destinationBarePlace.test.js`) — the
+file's own header says a miss here silently deletes the whole travel/lodging
+stack, which is the costlier failure. That tradeoff was not touched.
+
+The narrower, real bug: the text already says whose home it is
+(`home`/`venuePhrase` — "my brother's house", "our place", "at home") and
+those bare-city test cases never have that signal ("in Savannah, Georgia"
+names no one's house). So the carve-out only fires for a NAMED PRIVATE HOME:
+with no known home city to compare against, a named home stays local; with a
+known home city, it's still compared normally (a relative's lake house in
+another state still reads as travel). A bare city with no named home venue
+keeps the old fire-by-default rule exactly as before.
+
+**Why this matters beyond copy:** `isDestination` blends the budget estimate
+toward the `travel_led` per-head band ($200–600 vs. `home_hosted`'s
+$30–120) and is one of Model D's three paywall doors. Before the fix, a
+signed-out host planning an ordinary local BBQ with a known city could get a
+budget estimate ~5x too high (verified: $7,200 "Typical" for 15 guests vs.
+the correct $1,400) and risked the destination paywall gate on a plan that
+never left town.
+
+**First attempt was too broad** (`!!homeCity && normCity(placeName) !==
+homeCity`, no home-venue carve-out) and broke 2 test suites encoding the
+deliberate tradeoff above (6 tests). Caught by running the full suite before
+push, not assumed from the one file touched — re-run confirmed 6,231
+passed / 1 skipped / 0 new failures against the narrower fix, only the
+pre-existing `lodgingOutlet.test.js` failure remains (confirmed via `git
+stash` to predate this session entirely).
+
+Files: `src/lib/smartParseEvent.js`, `src/lib/__tests__/smartParseEvent.test.js`
+(4 new tests, 2 existing tests corrected to pass a `homeCity` matching their
+actual intent, which predated the HostShellV2.jsx call site's documented
+contract for the absent-profile case).
 
 ## STANDING DELEGATION — the board decides, 2026-09-02
 

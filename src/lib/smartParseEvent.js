@@ -87,9 +87,15 @@ export function parseSmartEventText(text, opts = {}) {
 
   // ── Date ────────────────────────────────────────────────────────────────
   let date = null;
-  // Relative forms first — "in 2 weeks", "tomorrow", "next saturday".
+  // Relative forms first — "today", "tonight", "in 2 weeks", "tomorrow", "next saturday".
+  // "Today"/"tonight" is the most literal date a host can say — same-day plans
+  // ("BBQ at my brother's house today at 3pm") were falling through every
+  // branch below to "no date yet", which is worse than not asking: the host
+  // DID say the date, in the one form the parser didn't recognize.
   const rel = t.match(/\bin\s+(\d+)\s+(day|week|month)s?\b/i);
-  if (rel) {
+  if (/\btoday\b|\btonight\b/i.test(t)) {
+    const d = new Date(now); d.setHours(12); date = d.toISOString().slice(0, 10);
+  } else if (rel) {
     const d = new Date(now); const n = parseInt(rel[1], 10);
     if (rel[2].toLowerCase() === 'day') d.setDate(d.getDate() + n);
     else if (rel[2].toLowerCase() === 'week') d.setDate(d.getDate() + n * 7);
@@ -452,7 +458,28 @@ export function parseSmartEventText(text, opts = {}) {
   const normCity = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
   const homeCity = normCity(opts.homeCity);
   const placeName = (loc && loc.city) || awayPlace || spokenPlace || '';
-  const placeAway = !!placeName && (!homeCity || normCity(placeName) !== homeCity);
+  // WITH NO KNOWN HOME, A BARE RESOLVED CITY STILL FLAGS — this is deliberate,
+  // tested "prior behaviour" (destinationDetection.test.js, destinationBarePlace
+  // .test.js): a miss here silently deletes the whole travel stack (lodging,
+  // transport, the reveal's lodging stage), which this file's own header calls
+  // the costlier failure. That tradeoff is intentional and stays.
+  //
+  // Live-drive find (2026-09-13): it over-fires for a NAMED PRIVATE HOME —
+  // "Backyard BBQ at my brother's house in Greenbelt, MD" (no signed-in
+  // profile) flagged a destination event purely because a city+state resolved,
+  // which blends the budget band toward travel_led (home_hosted $30-120/head
+  // times a multiple) for a plan that never left town. The text ALREADY says
+  // whose home it is (`home`/`venuePhrase` below) — that is a real signal the
+  // bare-city cases in the tests above never have ("in Savannah, Georgia" names
+  // no one's house). So the carve-out is narrow: a named private home only
+  // counts as away when we can actually compare it to a KNOWN home city; with
+  // no profile, it stays local, exactly like the other `home` cases just above.
+  // A bare city with no named home venue keeps the old fire-by-default rule.
+  const namedPrivateHome = home || !!venuePhrase;
+  const placeAway = !!placeName && (
+    namedPrivateHome ? (!!homeCity && normCity(placeName) !== homeCity)
+                      : (!homeCity || normCity(placeName) !== homeCity)
+  );
   const isDestination = travelSaid || ((!!loc || !!awayPlace || !!spokenPlace) && placeAway);
 
   // Why it was decided, for the "· heard" chip and any later explanation. Never

@@ -103,6 +103,13 @@ describe('date — precise forms (unchanged behavior)', () => {
   test('"tomorrow"', () => {
     expect(parseSmartEventText('crab feast tomorrow', { now: NOW }).date).toBe('2026-01-16');
   });
+  // Host report: "Backyard BBQ at my brother's house today at 3pm" fell through
+  // to "no date yet" — the most literal date a host can say was the one form
+  // this parser didn't recognize.
+  test('"today" / "tonight" resolve to the current date', () => {
+    expect(parseSmartEventText('BBQ at my brother\'s house today at 3pm', { now: NOW }).date).toBe('2026-01-15');
+    expect(parseSmartEventText('game night tonight', { now: NOW }).date).toBe('2026-01-15');
+  });
   test('"next/this <weekday>"', () => {
     // NOW is Thursday Jan 15 2026 — the very next Saturday is 2 days out.
     expect(parseSmartEventText('party next saturday', { now: NOW }).date).toBe('2026-01-17');
@@ -223,11 +230,25 @@ describe('isDestination — a suggestion, not an invented fact', () => {
     expect(parseSmartEventText('an out-of-town reunion for everyone', { now: NOW }).isDestination).toBe(true);
     expect(parseSmartEventText('fly in for the party', { now: NOW }).isDestination).toBe(true);
   });
-  test('a real city+state match alone also triggers it (a real travel signal)', () => {
-    expect(parseSmartEventText('birthday in Austin, Texas', { now: NOW }).isDestination).toBe(true);
+  test('a real city+state match alone also triggers it — WHEN it differs from a known home', () => {
+    expect(parseSmartEventText('birthday in Austin, Texas', { now: NOW, homeCity: 'Baltimore' }).isDestination).toBe(true);
   });
   test('a plain local event has no destination signal', () => {
     expect(parseSmartEventText('crab feast for 20 in the backyard', { now: NOW }).isDestination).toBe(false);
+  });
+  // Host report (2026-09-13): "Backyard BBQ at my brother's house in
+  // Greenbelt, MD" flagged as a destination event with no signed-in profile —
+  // there was no home city to compare against, so the weak signal fired on
+  // any resolved city. HostShellV2.jsx's own comment says the comparison
+  // should be SKIPPED when homeCity is unknown, not defaulted to "away".
+  test('a resolved city with NO known home city does not trigger the weak signal', () => {
+    expect(parseSmartEventText("BBQ at my brother's house in Greenbelt, MD", { now: NOW }).isDestination).toBe(false);
+  });
+  test('a resolved city that MATCHES the known home city does not trigger it either', () => {
+    expect(parseSmartEventText('birthday in Greenbelt, MD', { now: NOW, homeCity: 'Greenbelt' }).isDestination).toBe(false);
+  });
+  test('strong travel language still triggers it even with no known home city', () => {
+    expect(parseSmartEventText('birthday in Austin, Texas, everyone flying in', { now: NOW }).isDestination).toBe(true);
   });
 });
 
@@ -278,7 +299,10 @@ describe('vacation areas (host ask 2026-07-27)', () => {
 // The app answered "Local event" for a five-day trip to a Santa Fe resort.
 describe('a town listed without a preposition', () => {
   test('"…, Santa Fe, NM resort spa, …" resolves the town AND the destination read', () => {
-    const p = parseSmartEventText('80th birthday for Linda Stewart, 10 of us, Santa Fe, NM resort spa, June 17-21', NOW);
+    // homeCity supplied (and differs from Santa Fe) so the weak signal has a
+    // real home to compare against — see the "no known home" tests above for
+    // what happens when a profile isn't signed in.
+    const p = parseSmartEventText('80th birthday for Linda Stewart, 10 of us, Santa Fe, NM resort spa, June 17-21', { now: NOW, homeCity: 'Baltimore' });
     expect(p.venueCity).toBe('Santa Fe');
     expect(p.venueState).toBe('NM');
     expect(p.isDestination).toBe(true);
