@@ -2215,10 +2215,22 @@ export function playbookRisks(event, domain) {
   const dre = domain ? RISK_DOMAIN_RE[domain] : null;
   const items = pb.risks
     .filter((r) => r && r.trigger && r.mitigation)
+    // whenChoice gate (2026-09-13, found auditing Watch Party's new formats):
+    // r_derby_time/r_rivalry were showing for EVERY major_event answer,
+    // including UFC/Boxing and Wimbledon — risks had no gate at all, unlike
+    // purchases/tasks/schedule rows/agenda, which all already read
+    // choiceShown(). No existing playbook authored whenChoice on a risk
+    // before this, so it is a no-op everywhere else.
+    .filter((r) => choiceShown(event, r.whenChoice))
     .filter((r) => !dre || dre.test(`${r.id || ''} ${r.trigger}`)) // match the trigger/id, not the fix (mitigations mention "guest" generically)
     .map((r) => {
       const sev = String(r.severity || 'med').toLowerCase();
-      return { id: r.id, trigger: String(r.trigger).trim(), mitigation: String(r.mitigation).trim(), severity: sev, rank: (sev in RISK_RANK) ? RISK_RANK[sev] : 2 };
+      return {
+        id: r.id,
+        trigger: resolveAnsweredCopy(String(r.trigger).trim(), r.copyByAnswer && r.copyByAnswer.trigger, event),
+        mitigation: resolveAnsweredCopy(String(r.mitigation).trim(), r.copyByAnswer && r.copyByAnswer.mitigation, event),
+        severity: sev, rank: (sev in RISK_RANK) ? RISK_RANK[sev] : 2,
+      };
     })
     .sort((a, b) => (a.rank - b.rank));
   if (!items.length) return null;
