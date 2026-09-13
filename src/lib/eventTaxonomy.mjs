@@ -235,6 +235,18 @@ const KEYWORDS = [
   // BEFORE the generic line since KEYWORDS matches in order, first wins.
   [/game\s*night/, 'Game Night'],
   [/watch\s*party/, 'Watch Party'],
+  // Sports-watching signals that don't say "watch party" out loud (host
+  // question 2026-09-13: "Do we have event for watching sports? Super Bowl
+  // etc." — the Watch Party playbook already covers this by name in its own
+  // header, but only "watch party" itself and the exact alias strings
+  // 'Super Bowl Party'/'Game Day Party' resolved to it; "Super Bowl for 10
+  // people", "the big game", "playoff game" all fell through — some to a
+  // fragile HOST_TYPES-name substring fallback in smartParseEvent.js that
+  // got lucky on "watching" (contains "watch") and unlucky on "Sunday"
+  // (contains "day" → misread as Day Party), others straight into the
+  // generic party/celebration catch below ('Birthday'). Must resolve before
+  // that generic line since "Super Bowl party" contains the word "party".
+  [/super\s*bowl|\bplayoffs?\b|\bthe\s+big\s+game\b|march\s*madness|world\s*series|final\s*four|championship\s*game/, 'Watch Party'],
   [/get.?together|potluck|\bboil\b|brunch|happy\s*hour|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
   // ── Generic travel (after team retreat / wellness specifics) ──
   // "destination" alone is a MODIFIER on another event ("destination birthday",
