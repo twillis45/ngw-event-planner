@@ -1,7 +1,8 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (a live-hosting session
-closed: no way to start a second event mid-session; a Game Night/Watch Party
+closed: Super Bowl / sports-watching free text not resolving to Watch Party;
+no way to start a second event mid-session; a Game Night/Watch Party
 misclassification; an occasion-picker mis-tap risk; a dead "Something else"
 pill; and, earlier the same session, a severe nav dead end on Day/After. On
 top of the Cookout wings/game-day content, headcount parse fix, and CI-red
@@ -13,7 +14,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `b6e6997` |
+| Branch / HEAD | `main` @ `b7aa5fc` |
 | Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -25,6 +26,46 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-13 — Super Bowl / sports-watching free text didn't resolve to Watch Party
+
+Host question: "Do we have event for watching sports? Super Bowl etc." The
+honest answer at the time: **the playbook does, the parser mostly didn't.**
+`watchParty.js` already exists and is explicitly authored for this — its
+own file header says "Super Bowl / Sports Watch Party... TV-forward,
+grazing food ready before kickoff, halftime refresh." But before this fix,
+free-text recognition only caught the literal phrase "watch party" (fixed
+earlier this session) or the exact alias strings `'Super Bowl Party'` /
+`'Game Day Party'`, which real sentences rarely match verbatim. Tested and
+confirmed broken:
+
+  "Super Bowl for 10 people this weekend"        → no type recognized
+  "Super Bowl Sunday at my place, 10 people"      → **Day Party** (wrong)
+  "Hosting the big game this weekend, 10 people"  → no type recognized
+  "Playoff game at my house, 8 people"            → no type recognized
+
+The "Super Bowl Sunday" → Day Party result is a second bug on its own:
+`smartParseEvent.js` falls back to `HOST_TYPES.find(ht => text.includes(ht
+.replace(' party','')))` when `resolveCanonicalType` finds nothing — a
+bare substring match against type names — and "Sunday" contains "day".
+
+**Fix:** added an explicit `eventTaxonomy.mjs` KEYWORDS entry for `super
+bowl`, `playoffs`, `the big game`, `march madness`, `world series`, `final
+four`, `championship game`, ordered ahead of the generic fallbacks. Once
+`resolveCanonicalType` returns 'Watch Party' directly for these phrasings,
+the fragile substring fallback never runs for them either — one fix closes
+both bugs for this class of input.
+
+Live-verified all 4 broken cases plus 5 more ("Super Bowl party," "watching
+the super bowl," "March Madness," "World Series") now resolve to Watch
+Party. **One residual gap, not fixed:** "Sports watching party" with no
+named event still falls through to the generic party/celebration catch →
+Birthday — matching on bare "sports" without an anchor (a named
+event/team, or "watch") risks false-positiving on unrelated party types,
+so left as a known edge case rather than widened blind.
+
+Root Jest 442/442. hostv2 build + parity gate + hostv2-artifact drift gate
+all clean.
 
 ## FIXED 2026-09-13 — No way to start a second event while one was already loaded
 
