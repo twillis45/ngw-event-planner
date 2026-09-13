@@ -1,8 +1,9 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (a live-hosting session
-closed: Super Bowl / sports-watching free text not resolving to Watch Party;
-no way to start a second event mid-session; a Game Night/Watch Party
+closed: Watch Party missing from the quick occasion picker at creation;
+Super Bowl / sports-watching free text not resolving to Watch Party; no way
+to start a second event mid-session; a Game Night/Watch Party
 misclassification; an occasion-picker mis-tap risk; a dead "Something else"
 pill; and, earlier the same session, a severe nav dead end on Day/After. On
 top of the Cookout wings/game-day content, headcount parse fix, and CI-red
@@ -14,7 +15,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `b7aa5fc` |
+| Branch / HEAD | `main` @ `851243d` |
 | Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -26,6 +27,37 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-13 — Watch Party missing from the quick occasion picker at creation
+
+Host report: "Those events aren't in list at creation." Asked which list
+specifically before touching anything (three real candidates existed) —
+answer: the occasion TYPE list shown while creating an event, not an
+events list after the fact.
+
+**Ruled out first, with live evidence, not assumed:** the searchable event
+palette (Cmd/Ctrl+K → type an event name) and the events-switcher sheet
+("This event" → "Your events") both already show a newly created event
+immediately and correctly — verified by creating two fresh events back to
+back and confirming both listed in each surface with full data intact. My
+first pass at checking this had truncated my own debug output and looked
+like a miss; re-checked with the untruncated text before concluding
+anything, and both were actually fine. Recorded here so the false lead
+isn't re-investigated.
+
+**The real gap:** `QUICK_TYPES` — the 6-chip default shown when picking
+"Which occasion?" — is `['Birthday', 'Wedding', 'Anniversary',
+'Graduation', 'Reunion', 'Get-Together']`. Watch Party existed only one tap
+deeper, inside "See every occasion." That six-item set was a deliberate
+host ruling (2026-08-05, "six common occasions plus search," a density
+fix) — not touching that call in general, but a live host report today
+asking for this specific type is a stronger, current signal than the old
+default. Added `'Watch Party'` as a 7th quick chip. Game Night stays one
+tap away — this report was about Watch Party specifically.
+
+Live-verified: the quick chips now read Birthday, Wedding, Anniversary,
+Graduation, Reunion, Get-Together, Watch (Party) — no extra tap. Root Jest
+442/442. hostv2 build + parity gate + hostv2-artifact drift gate all clean.
 
 ## FIXED 2026-09-13 — Super Bowl / sports-watching free text didn't resolve to Watch Party
 
