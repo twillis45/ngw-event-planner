@@ -1,8 +1,10 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (a live-hosting session
-surfaced and closed a severe nav dead end on Day/After — see below — on top of
-the Cookout wings/game-day content, headcount parse fix, and CI-red closure).
+surfaced and closed a Game Night/Watch Party misclassification, an occasion-
+picker mis-tap risk, a dead "Something else" pill, and — earlier the same
+session — a severe nav dead end on Day/After. On top of the Cookout wings/
+game-day content, headcount parse fix, and CI-red closure).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -10,7 +12,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `5442ac4` |
+| Branch / HEAD | `main` @ `f564424` |
 | Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -22,6 +24,72 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-13 — Game Night/Watch Party misclassification, occasion-picker mis-tap risk, dead "Something else" pill
+
+Three more reports from the same live-hosting session, root-caused and fixed:
+
+**"Chose game night and it fed day party."** `eventTaxonomy.mjs`'s `KEYWORDS`
+list still routed `game\s*night` and `watch\s*party` into the generic
+Get-Together bucket. Both were later promoted to their own authored
+playbooks (`gameNight.js`, `watchParty.js`, both in `ALL_PLAYBOOKS`) but the
+keyword carve-out was never added — a half-finished promotion. Added
+explicit entries for both ahead of the generic line (first match wins).
+Live-verified: "Game night for 6 people this Saturday at 7pm" now resolves
+to Game Night.
+
+**The likely mechanism behind that report's exact wording:** the occasion
+picker's "See every occasion" shelves (`.shelf`) were a horizontal
+snap-scroll carousel with no fade/edge cue, overflowing the viewport —
+several types, "Day Party" (shown as "Day") among them, sat fully
+off-screen. Confirmed by screenshot: cut-off labels, no visible affordance
+that more existed. Combined with `scroll-snap-type:x proximity`, a
+flick-then-tap can land on whatever chip just snapped into place, not the
+one tapped at. This class has exactly one consumer (this picker) and is a
+selection list, not a browse carousel that earns horizontal scroll —
+switched to wrap. No off-screen options left. `spacingLadder.test.js`'s
+ratchet baseline lowered 272 → 271 as a side effect (the carousel's bleed
+margin goes with it) — a legitimate ratchet turn, not a spacing pass.
+
+**"Something else pill in creation doesn't extend type list."** Tapping it
+in the quick-intake flow silently closed the panel — no focus, no hint,
+nothing visibly happened, reading as a dead control. Now focuses the
+free-text input, the hand-off the code's own comment already claimed it
+was doing.
+
+All three live-verified against the running app. Root Jest 442/442
+(271-baseline spacing ratchet included). hostv2 build + parity gate +
+hostv2-artifact drift gate all clean.
+
+## Still open from this session — needs a product call, not a blind patch
+
+**"Nowhere to advance when it's today screen. Can get back but not advance."**
+Confirmed: the persistent "what needs you next" bar (`.next-bar`, the
+primary CTA pinned to the frame bottom) is scoped to `stage === 'plan'`
+only (`hostv2/src/HostShellV2.jsx` ~19779: `{stage === 'plan' && !heroInView && (...)`).
+Day and After never render it — Day-of only has the safety checklist
+(togglable, not sequenced), the Walk-it/Full-agenda toggle, and — only
+before a start time is set — a "pencil in times" propose card. Once that's
+accepted or dismissed, there is no forward-pointing CTA on Day at all; the
+host has to leave the tab (now possible, see below) to see what's next.
+Didn't patch this blind: the next-bar's logic (`queue`, `listIsCalm`,
+`heroInView`) is built for the Plan-tab hero and its `days === 0` branch
+already assumes it's being read FROM Plan, not reused ON Day — grafting it
+on is a product decision (what does "next" mean once you're already on the
+day-of screen?), not a wiring fix.
+
+**"Should also be able to decline hiring anyone."** Confirmed: every
+suggested vendor category (`unbookedSuggestions`, `hostv2/src/HostShellV2.jsx`
+~18373) renders only an "Add" action — no decline/dismiss. The "People you
+might hire" home-tile nudge (~10007) and this list will suggest the same
+roles indefinitely even after a host has consciously decided to DIY
+everything; `cat.altToDIY` shows the DIY alternative as text but there's no
+way to record the decision. The established in-app pattern for exactly
+this (a per-item "skip it" that's undoable) is `event.foodSkip` on the
+shopping list — the natural fix is the same shape here
+(`event.vendorDeclined`), but it also touches `src/lib/vendorPlan.js`'s
+category list and the home-tile count, both shared/tested engine code, so
+it's sized as its own piece of work rather than a same-turn patch.
 
 ## FIXED 2026-09-13 — Day tab and After tab were a hard navigation dead end
 
