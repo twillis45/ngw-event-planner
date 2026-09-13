@@ -1,7 +1,8 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-13 (Cookout wings/game-day
-content added on top of the headcount parse fix + CI-red closure).
+**Measured reality, not intentions.** Updated 2026-09-13 (a live-hosting session
+surfaced and closed a severe nav dead end on Day/After — see below — on top of
+the Cookout wings/game-day content, headcount parse fix, and CI-red closure).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -9,7 +10,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `6af134f` |
+| Branch / HEAD | `main` @ `5442ac4` |
 | Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -21,6 +22,59 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-13 — Day tab and After tab were a hard navigation dead end
+
+Host report while actually running today's real event through the app: "No
+way to get back from day of." Reproduced live (Playwright), root-caused two
+layers deep before touching anything:
+
+1. `elegantMode = q.get('elegant') !== '0'` in `hostv2/src/HostShellV2.jsx`
+   is inverted from its own documented intent — `styles.css:575-576` calls
+   it a "Flag-gated test... `?elegant=1`," but the code makes it opt-OUT
+   (`?elegant=0` required to disable). Every real host, with no query
+   param at all, has been running in elegant mode.
+2. `.dock.dock-retired{ display:none; }` hides the entire floating bottom
+   nav (Create/Plan/The Day/After) whenever elegant mode is on — confirmed
+   via `getComputedStyle`, not just the class name.
+3. The documented replacement for the dock — an `.ev-eyebrow` "Menu"
+   button that opens the phase-nav sheet, commented in its own code as
+   "the ONE element every elegant screen keeps" — was only ever wired into
+   one branch of the Plan tab's hero. The Day tab (both the live-clock
+   branch and the pre-time-set preview branch a same-day event actually
+   renders) and the After tab had **zero** navigation control on screen:
+   no dock, no eyebrow, nothing. Confirmed by DOM inspection
+   (`.ev-eyebrow` did not exist in the tree on Day), not just a screenshot.
+
+**Fix:** added the same button — same class, same `setSheet({kind:'nav'})`
+handler already used elsewhere — to the three screens that were missing
+it. No new surface, no change to `elegantMode`'s default (it gates 61
+call sites across this file's visual language; flipping it was out of
+scope for a nav bug). Live-verified: Day (both branches) and After now
+show Menu, open the nav sheet, and return to Plan correctly. hostv2 build,
+the parity gate, and the hostv2-artifact drift gate (`npm run gate:hostv2`)
+all clean; root Jest still 442/442 (hostv2 is a separate Vite app the root
+suite doesn't import).
+
+**Still open, reported same session, not yet fixed (see below for why):**
+- Shopping-list "skip it" does not update the day-of run-of-show or the
+  "How today starts" checklist text — those are static authored prose in
+  each playbook's `schedules` block, not derived from `foodGot`/`foodSkip`
+  state. Confirmed in `theCookout.js` and `playbooks/index.js`'s
+  `effectiveRos`/`playbookRunOfShow`. This is a real architecture gap
+  spanning every playbook (~40 files), not a one-line bug — scoping it as
+  a project, not patching one file.
+- `smartParseEvent.js` has no street-address extraction at all — only
+  `venuePhrase` (named-place phrases like "my brother's house") and
+  city/state (`parseVenueLocation`). A full address typed into the create
+  sentence is silently dropped; the "Guests will ask where — add the
+  address" prompt (gated on `!/\d/.test(vf.name)`) will therefore always
+  fire for a home-hosted event, regardless of what was typed at creation.
+  Address only ever lands via the separate manual "Add it" flow.
+- Cookout's new `game_day` decision ("Is this cookout also a watch party?")
+  is confirmed live on the decision board for today's real event — but
+  it's the 6th of 6 open calls, collapsed behind "+1 more — show the rest,"
+  and defaults to "No." Shipped and reachable, not surfaced prominently.
 
 ## ADDED 2026-09-13 — Cookout wings alternative + game-day decision (first day of NFL season)
 
