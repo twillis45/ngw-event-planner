@@ -1,6 +1,7 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-13 (headcount parse fix + a real CI-red root-caused and closed).
+**Measured reality, not intentions.** Updated 2026-09-13 (Cookout wings/game-day
+content added on top of the headcount parse fix + CI-red closure).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -8,7 +9,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `be3fd463` |
+| Branch / HEAD | `main` @ `6af134f` |
 | Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -20,6 +21,48 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-13 — Cookout wings alternative + game-day decision (first day of NFL season)
+
+Host directive: "Cookout should have chicken wing alternative. The [demo]
+should also be built for game day. Today is first day of nfl season."
+Two additions to `src/lib/playbooks/data/theCookout.js`, both verified
+against the full 442-suite root Jest run (6,238 passed, 0 failed) before
+commit — not just the touched-file scope.
+
+**Wings:** added to `p_chicken`'s existing `alternatives` array as plain
+text (pricing + the mambo/buffalo-sauce framing), the same pattern every
+other protein alternative in this file already uses. **Two self-inflicted
+regressions found and reverted on the way, worth recording so the pattern
+isn't repeated:**
+1. First attempt added wings as its own standalone `purchases` entry.
+   That silently auto-summed into every Cookout plan's `foodHigh`/`foodLow`
+   total (alternatives-as-text do not; a separate purchase line does),
+   which collapsed a `reader.test.js` assertion (`foodHigh` delta between
+   two fixture plans) to exact equality. Reverted to text-only.
+2. Second attempt merged the wings citation into `p_chicken`'s existing
+   `provenance`/`costProvenance`. That tripped `knowledgeInventory.test.js`
+   ("ambiguous" claim, combined sourcing) and the `researchPolicyCompliance.test.js`
+   ratchet (uncorroborated-claims count went down without a baseline
+   update — that ratchet only permits a *tracked* decrease). Reverted
+   `p_chicken`'s provenance to its original single-claim text; the wings
+   price lives only in the alternatives string, which these corpus
+   scanners don't parse.
+
+**Game day:** new `game_day` decision (between `music` and `shade_seating`)
+asking whether the cookout is also a watch party, defaulting to "No —
+cookout only," framed as a logistics call (TV/sound), not a food one — it
+does not resize the protein order by itself. First draft gave it an
+`affects` array (`['p_wings']`, then `['p_chicken']`); both failed
+`decisionWireProof.test.js`'s "declared effect is real" gate because none
+of its 3 options actually move a quantity or cost. Removed `affects`
+entirely, matching how `music`/`shade_seating` (also non-quantitative) are
+authored in this same file. Added one `heartMoments` line ("a big play on
+the screen and the whole yard erupts together") and updated `meta.summary`
+to mention the game-day framing without pinning it to today's specific date.
+
+Live-verify against the running app is the one item still open from this
+change — code-level tests are green, UI behavior not yet clicked through.
 
 ## FIXED 2026-09-13 — "5 headcount" silently became 40 guests
 
