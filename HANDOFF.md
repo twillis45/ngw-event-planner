@@ -1,11 +1,18 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (this same session,
-continued: extended Watch Party's major-event differentiation to World
-Series/Masters/World Cup/NBA Finals/Stanley Cup/Olympics — this time by
-actually running the codebase's KCR governance pipeline, per Todd's standing
-directive "Don't ever add without pipeline" — see the dated entry below.
-Also, earlier the same session, a live-hosting session built out real
+continued again: a host-specified 6-format taxonomy — single game / multi-day
+tournament / combat-PPV / racing-spectacle / continuous coverage / broadcast
+event — now genuinely reshapes Watch Party's run-of-show, not just its decor
+and food, via two small precedented engine changes (choiceShown gained a
+`{not:[...]}` form; the run-of-show reader now honors per-row whenChoice
+gates). Also fixed a real pre-existing bug found while verifying it: every
+Watch Party's default drinks purchase was silently missing from the shopping
+list. See the dated entry below. Before that, in this same session: extended
+Watch Party's major-event differentiation to World Series/Masters/World
+Cup/NBA Finals/Stanley Cup/Olympics — this time by actually running the
+codebase's KCR governance pipeline, per Todd's standing directive "Don't ever
+add without pipeline." Also, earlier the same session, a live-hosting session built out real
 per-sport differentiation inside the Watch Party playbook —
 Super Bowl vs. College Football National Championship vs. Kentucky Derby
 now genuinely differ in atmosphere and shopping list, not just in name; on
@@ -25,8 +32,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `0fb7202` |
-| Jest | **6,239 passed**, 1 skipped, **0 failed**, **442 suites** — green after the pipeline-governed Watch Party extension below (see its own entry for the one ratchet count updated) |
+| Branch / HEAD | `main` @ `389e838` |
+| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the 6-format taxonomy pass below (see its own entry for the ratchet count updated) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -37,6 +44,100 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-13 (fourth session update, same day) — Watch Party gets a real 6-format taxonomy + a genuine run-of-show shape per format
+
+Host directive, going beyond named-event differentiation: group `major_event`
+answers by STRUCTURAL SHAPE, not just name, and gave the exact 6 groups —
+single game/one break (default), multi-day tournament, combat sports/PPV,
+racing/spectacle, continuous coverage, broadcast event — with the changes
+each format needs vs. today. This closed the gap disclosed at the end of
+passes one and two: `schedules.program` (the run-of-show) had never actually
+been reshaped, only decor/food/heartMoments had.
+
+**Two small, precedented ENGINE changes** (`src/lib/playbooks/index.js`),
+both verified byte-identical for all 44 playbooks before any content was
+built on them (full suite pass count unchanged before/after each):
+- `choiceShown()` gained an optional `{not:[...]}` form — the same two-shape
+  vocabulary `modeShown()` already uses for travel mode, extended rather than
+  invented. Lets a row say "everyone except these formats" instead of
+  enumerating every format that keeps it.
+- `playbookRunOfShow()`'s and `playbookDuringCues()`'s main per-row loops now
+  call `choiceShown(event, entry.whenChoice)` — previously ONLY
+  `schedules.agenda` (the multi-day mechanism) honored a row-level gate, so a
+  `whenChoice` on a `program`/`setup`/`cleanup` row silently did nothing. No
+  existing playbook authored `whenChoice` on a timed row before this, so it
+  is provably a no-op for the other 43 playbooks.
+
+**The 6 formats, mapped onto major_event (12 existing + 4 new: Daytona 500,
+Wimbledon, NFL Draft, Awards Show):**
+1. Single game (Super Bowl, CFB Championship, NBA Finals, Stanley Cup Final,
+   World Series, Regular season/other) — DEFAULT, untouched.
+2. Multi-day tournament (March Madness, World Cup, Olympics) — a new
+   `tourney_span` decision ("how much of the tournament are you hosting
+   for?") plus a repeatable-shopping-list task once it's more than one
+   sitting. Deliberately NOT a fake day-by-day itinerary — a 3-week Olympics
+   has no fixed number of sittings for `schedules.agenda` (built for a dated
+   wedding weekend) to honestly model.
+3. Combat sports/PPV (UFC/Boxing) — real undercard-then-main-event program
+   beats, no halftime.
+4. Racing/spectacle (Kentucky Derby unchanged; Daytona 500 new) — a
+   pre-race-ceremony beat (anthem/flyover/driver intros), real "Daytona Day"
+   decor tradition.
+5. Continuous coverage (The Masters, Wimbledon new) — no halftime; Wimbledon
+   gets a real purchase (Pimm's Cup + strawberries and cream) that genuinely
+   EARNED tier:'researched' through the real KCR functions — its sources
+   price the actual home ingredients, unlike the Masters' pimento cheese.
+6. Broadcast event (NFL Draft, Awards Show — both new) — not a game, no
+   halftime, reworded beats; a draft board and printable prediction ballots
+   respectively, the genuinely defining purchase for each per real research.
+
+**Pipeline discipline held**: ran the real KCR functions
+(createKCR→addEvidence→setProposal→review→publishKCR) for the Wimbledon
+claim exactly as pass two did, verified every gate passed, then — same as
+pass two — did NOT commit it to `publishedKcrs.json`/`publishedKnowledge.json`,
+since that transport's tested invariant (cited + baseline-visible) still
+can't accept `whenChoice`-gated content. Same disclosed, un-started
+infrastructure gap. The draft-board and ballot items stayed at honest
+`estimate` on purpose — their cost is trivial and not worth a corroborated-
+sourcing pass, a proportionality call, not a shortcut.
+
+**A real bug found and fixed, out of scope but too material to leave**:
+verifying the Wimbledon purchase actually appeared in a shopping list
+surfaced that it did NOT — and neither did the plain `p_drinks` line, for
+ANY Watch Party, including the untouched Super Bowl default. Root cause: the
+shared engine's BYOB detector picks the FIRST decision in the array whose
+`blocks` names beverage, and `potluck`'s own default label is literally
+"Host feeds, guests bring drinks" — it matched itself on the phrase "guests
+bring" before `alcohol` (which exists specifically to answer this, with a
+real BYOB option) was ever consulted. Every beverage item without the word
+"ice" in its name (mint julep survived by accident; a beer+soda+water line
+did not) silently vanished from every Watch Party ever generated. Fixed by
+removing `'beverage_purchases'` from `potluck`'s `blocks` — `alcohol` already
+owns that question correctly. This predates all three Watch Party passes;
+not introduced this session, but found and fixed in it.
+
+**Verified live** (temporary Jest scripts calling `playbookFoodPlan`/
+`playbookRunOfShow`/`playbookChecklist`/`playbookHeartMoments` directly,
+deleted after use — Playwright's Chromium channel still isn't available in
+this sandbox): all 6 formats produce the right purchases, program beats, and
+gated tasks; the Super Bowl default's program is unchanged; Kentucky Derby
+is unaffected by the new racing-format Daytona content; the potluck fix
+makes `p_drinks` and the new Wimbledon purchase both appear correctly.
+
+**Discovered, out of scope, NOT fixed** (documented in `watchParty.js`'s own
+`knowledge.note`): the `cleanup` schedule's `{when:'halftime'}` row has never
+reached a host — `rosWhenOffset()` doesn't recognize the bare token
+`'halftime'`, so it silently returns null and the row is dropped by every
+schedule reader. Pre-existing, unrelated to this pass.
+
+Files: `src/lib/playbooks/index.js` (2 engine changes), `src/lib/playbooks/
+data/watchParty.js` (taxonomy, 4 new major_event options, `tourney_span`
+decision, 4 new purchases, reworded/gated program beats, the potluck fix),
+`src/lib/knowledge/costProvenance.js` (2 new Wimbledon sources),
+`src/lib/knowledge/sourceResolverInvariant.test.js` (ratchet 408→410). Full
+Jest **442/442 suites, 6240/6241 tests** (1 pre-existing skip).
+`sync:hostv2`/`gate:hostv2` clean.
 
 ## STANDING RULE 2026-09-13 — Don't ever add playbook knowledge without the KCR pipeline
 
