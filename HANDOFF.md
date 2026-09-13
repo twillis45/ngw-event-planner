@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-13 (budget per-head fix).
+**Measured reality, not intentions.** Updated 2026-09-13 (headcount parse fix + a real CI-red root-caused and closed).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -8,8 +8,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `4035048b` |
-| Jest | **6,236 passed**, 1 skipped, 1 failed (pre-existing, unrelated — see below), **442 suites** — measured this pass |
+| Branch / HEAD | `main` @ (this session's fix lands on top — see below) |
+| Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -20,6 +20,51 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-13 — "5 headcount" silently became 40 guests
+
+Host report, reproduced exactly before touching anything: typing "5
+headcount" into the create screen showed "~40 · typical" on the guest chip.
+Same class of gap as the bachelor/bachelorette fix already in this file's
+history — `COUNT_NOUNS` in `smartParseEvent.js` had no entry for
+"headcount"/"head count", so the guest-count regex never matched, `guests`
+stayed `null`, and `effGuests` fell through to `playbookTypicalGuests('The
+Cookout')` — 40, the playbook's own default, standing in for the 5 the host
+actually typed. Added both forms to `COUNT_NOUNS`. 2 new tests
+(`smartParseEvent.test.js`), live-verified: the same input now shows "~5."
+
+## FIXED 2026-09-13 — CI was red on `main` for 4 days, silently blocking every deploy
+
+Host directive: "Has everything been pushed to prod?" The honest answer at
+the time was **no** — `git push` had succeeded both times this session, but
+that only means the commit reached GitHub. Checked the actual GitHub Actions
+run for each push (`actions_list` / `get_job_logs`, not assumed from the git
+result) and found the **Unit suite step failing on both**, which skips every
+step after it — including the build and the Pages deploy. **The live site
+has been serving commit `02f03cf` (2026-09-09) this entire session**; none
+of today's fixes reached production until this was found and closed.
+
+**Root cause, confirmed from the CI log, not guessed:** `lodgingOutlet.test.js`
+hardcoded its fixture event's date as a literal — `{ date: '2026-09-11',
+endDate: '2026-09-13' }`. `surfaceRegistry.js`'s lodging `raise()` opens with
+`if (isPastEvent(event.date)) return [];` — once today's date passed the
+fixture's, every row the test expects is silently `[]`. This ran green on
+2026-09-09 (the fixture was still in the future) and started failing the
+moment the calendar caught up to it — the exact drift class this file's own
+HANDOFF already documents for the Repast fixture. Confirmed via `git stash`
+that this predates every commit made this session; not something introduced
+today, but something blocking today's (and the last 4 days') deploys
+regardless of who pushed.
+
+**Fix:** the fixture's dates are now computed relative to `Date.now()` (30
+days out, 2-night span preserved) instead of a literal string, so this
+class of failure cannot recur here. Verified: 16/16 tests in that file pass,
+full root suite now genuinely 442/442 suites green — the first clean run
+this session, not a suite with one excused failure.
+
+**Still to confirm once this is pushed:** watch the next Pages deploy run
+actually reach the `deploy` job (not just `build`) and go green — that is
+the only real proof "pushed to prod" is true again.
 
 ## FIXED 2026-09-13 — the "Typical" budget ignored every playbook's own real cost data
 

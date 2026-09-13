@@ -18,7 +18,14 @@ const { lodgingCommitted, stayFromPick } = require('../lodgingIntel');
 const { hostSpending } = require('../hostSpending');
 const { SURFACES } = require('../surfaceRegistry');
 
-const NIGHTS = { date: '2026-09-11', endDate: '2026-09-13' };
+// Relative to "now", not a hardcoded literal — the same drift class HANDOFF
+// already documents elsewhere (a fixed date silently becomes a past event as
+// the calendar advances, and `raise()` short-circuits on isPastEvent before
+// ever reaching the logic under test). 30 days out, 2-night span preserved.
+const FUTURE = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+const toISO = (d) => d.toISOString().slice(0, 10);
+const NIGHTS_END = new Date(FUTURE.getTime() + 2 * 24 * 60 * 60 * 1000);
+const NIGHTS = { date: toISO(FUTURE), endDate: toISO(NIGHTS_END) };
 const ev = (over) => ({
   id: 'outlet', type: 'Family Reunion', guestCount: 10,
   venueCity: 'McHenry', venueState: 'MD', totalBudget: 8000,

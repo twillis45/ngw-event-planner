@@ -66,6 +66,14 @@ describe('guests', () => {
     expect(parseSmartEventText('bachelorette weekend, 8 girls', { now: NOW }).guests).toBe(8);
     expect(parseSmartEventText('wedding party, 6 bridesmaids and 5 groomsmen', { now: NOW }).guests).toBe(6);
   });
+  // Host report (2026-09-13): "Backyard BBQ ... 5 headcount" fell through
+  // every counting noun (same class as the bachelor/bachelorette gap above)
+  // and silently fell back to The Cookout's playbook typical (40) instead of
+  // the 5 the host actually typed.
+  test('"headcount" / "head count" are recognized as counting words', () => {
+    expect(parseSmartEventText('backyard bbq, 5 headcount', { now: NOW }).guests).toBe(5);
+    expect(parseSmartEventText('backyard bbq, 5 head count', { now: NOW }).guests).toBe(5);
+  });
 });
 
 describe('budget', () => {

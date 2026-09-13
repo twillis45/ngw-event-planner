@@ -52,6 +52,7 @@ export function parseSmartEventText(text, opts = {}) {
   // Asheville" as guest counts). Every noun below is a word for PEOPLE.
   const COUNT_NOUNS = [
     'people', 'guests', 'ppl', 'folks', 'friends', 'pickers', 'attendees', 'heads',
+    'headcount', 'head count',
     'adults', 'kids', 'children', 'grandkids', 'teens',
     'cousins', 'relatives', 'family members', 'siblings', 'aunts', 'uncles', 'nieces', 'nephews',
     'coworkers', 'colleagues', 'classmates', 'teammates', 'neighbors', 'neighbours',
