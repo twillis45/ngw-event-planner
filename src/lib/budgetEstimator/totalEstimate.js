@@ -7,6 +7,29 @@
 import { getDatePremium, getTimeOfDayFactor } from '../estimatorFactors.js';
 import { budgetFamilyForType } from './confidence.js';
 import { getCategoryShares } from './categoryShares.js';
+import { getPlaybook } from '../playbooks';
+
+// A type's OWN authored per-head band, when it has one and PER_HEAD_BY_TYPE
+// does not. Every playbook carries `meta.perGuestCost` (grounded to that
+// specific type — Fish Fry $8-18, Crab Feast $25-60, etc.), but ~20
+// home-hosted types (The Cookout, Fish Fry, Sunday Dinner, Housewarming...)
+// have no entry in PER_HEAD_BY_TYPE at all, so every one of them fell to the
+// single flat $30-120/head `home_hosted` family default regardless of how
+// different their real costs are — a Fish Fry could show a "Typical" 3-6x
+// its own playbook's number. Deliberately NOT applied where PER_HEAD_BY_TYPE
+// already has an explicit entry: several of those (Wedding, Birthday,
+// Reunion...) have a DIFFERENT, independently-sourced perGuestCost on their
+// own playbook that disagrees with the curated table — reconciling those is
+// a real pricing-research call, not a missing-data bug, and out of scope
+// here. This only fills the actual gap.
+function playbookPerHead(type) {
+  try {
+    const pb = getPlaybook(type);
+    const c = pb && pb.meta && pb.meta.perGuestCost;
+    if (c && Number(c.low) > 0 && Number(c.high) > 0) return { low: Number(c.low), high: Number(c.high) };
+  } catch (_e) { /* no playbook for this type — fall through */ }
+  return null;
+}
 
 // Per-event-type per-head bands. Reflect commonly cited US bands.
 export const PER_HEAD_BY_TYPE = {
@@ -63,7 +86,7 @@ export const PER_HEAD_BY_FAMILY = {
 export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1, isDestination = false, nights = 0 }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
-  let ph = PER_HEAD_BY_TYPE[type] || PER_HEAD_BY_FAMILY[budgetFamilyForType(type)] || { low: 100, high: 250 };
+  let ph = PER_HEAD_BY_TYPE[type] || playbookPerHead(type) || PER_HEAD_BY_FAMILY[budgetFamilyForType(type)] || { low: 100, high: 250 };
   let destinationAdjusted = false;
   if (isDestination && budgetFamilyForType(type) !== 'travel_led') {
     const tl = PER_HEAD_BY_FAMILY.travel_led;

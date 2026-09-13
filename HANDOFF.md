@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-13 (destination-classifier fix).
+**Measured reality, not intentions.** Updated 2026-09-13 (budget per-head fix).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -8,8 +8,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `0c541e23` |
-| Jest | **6,231 passed**, 1 skipped, 1 failed (pre-existing, unrelated — see below), **441 suites** — measured this pass |
+| Branch / HEAD | `main` @ `0c541e23` (this session's fix lands on top — see below) |
+| Jest | **6,236 passed**, 1 skipped, 1 failed (pre-existing, unrelated — see below), **442 suites** — measured this pass |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -20,6 +20,63 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-13 — the "Typical" budget ignored every playbook's own real cost data
+
+Host directive: "find where the pricing budget is wrong — don't include
+items not part of the plan for the spine." Traced to
+`src/lib/budgetEstimator/totalEstimate.js`.
+
+**The bug:** the "Your budget — Typical/Lean/All-out" number never reads
+what the plan itself already knows. `PER_HEAD_BY_TYPE` has zero entries for
+any of the ~20 home-hosted types (The Cookout, Fish Fry, Crab Feast, Sunday
+Dinner, Housewarming...), so all of them fell to one flat **$30–120/head**
+`home_hosted` family default — even though every one of those playbooks
+already carries its own authored, type-specific `meta.perGuestCost`:
+
+| Type | Playbook's own band | Estimator used instead |
+|---|---|---|
+| Fish Fry | $8–18/head | $30–120/head |
+| Housewarming | $8–22/head | $30–120/head |
+| The Cookout | $15–35/head | $30–120/head |
+| Crab Feast | $25–60/head | $30–120/head |
+
+Live-verified on the exact BBQ input from the previous session: a 15-guest
+Cookout's "Typical" was **$1,400** before the fix (using the flat $30–120
+band), **$500** after (using the playbook's own $15–35). Fish Fry could be
+up to 6x its own playbook's number.
+
+**The fix, deliberately narrow.** `estimateTotalRange` now checks
+`getPlaybook(type)?.meta?.perGuestCost` ONLY when the type has no entry in
+`PER_HEAD_BY_TYPE` — it fills the actual gap, nothing else. Every
+already-curated type in that table (Wedding, Birthday, Reunion, Retirement
+Party, Baby Shower, Bridal Shower, Sweet 16...) is untouched, even though —
+this was the surprise mid-fix — **every one of them ALSO has its own
+`perGuestCost` on its playbook, and it usually disagrees with the curated
+table** (Birthday: playbook $15–60 vs. table $60–250; Reunion: playbook
+$12–35 vs. table $60–200). Overriding those would be a much bigger, riskier
+change than what was asked, and reconciling two independently-sourced price
+datasets is a pricing-research call, not a missing-data bug. Left alone,
+gated by a test that asserts the curated entry always wins.
+
+**Still open, not fixed here — a separate, deeper mismatch.** "Typical" and
+the plan's own real itemized total (the food/shopping list `hostSpending`
+sums from `playbookFoodPlan`) are two independently-computed numbers that
+were never unified, and can still disagree — now in the OTHER direction:
+the same 15-guest Cookout shows "Typical $500" against a real itemized
+total of "~$1,018 spoken for" once the food list is priced out. The
+estimator's own copy claims "the plan sizes food, vendors and shopping from
+here," which isn't true either way — the food plan sizes independently from
+guest count, never from the Typical number. Making them agree means
+picking which one is the source of truth; that's a design call for a board
+sitting, not a code fix, and it's flagged here rather than silently implied
+solved.
+
+Files: `src/lib/budgetEstimator/totalEstimate.js`,
+`src/lib/__tests__/playbookPerHeadBudget.test.js` (5 new tests). Full root
+suite re-verified after the change: 6,236 passed / 1 skipped, same single
+pre-existing `lodgingOutlet.test.js` failure (unrelated, predates this
+session — confirmed via `git stash`).
 
 ## FIXED 2026-09-13 — "today" not parsed as a date, and a home venue misread as a destination trip
 
