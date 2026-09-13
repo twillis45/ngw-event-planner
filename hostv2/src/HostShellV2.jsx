@@ -813,6 +813,35 @@ export default function HostShellV2() {
     setWelcome(false);
     if (dest === 'create') setStage('create');
   };
+  // Host report 2026-09-13: "when in an event need to create new events on
+  // occasion." Every apparent way to start a second event while one is
+  // already loaded — the dock's Create tab, the command palette's "New
+  // event" result — just called setStage('create'). That stage renders the
+  // BLANK prompt only while !revealed; once an event has been through the
+  // reveal ceremony, 'create' shows ITS recap forever ("YOUR EVENT,
+  // UNDERSTOOD"), with nothing anywhere that ever set revealed back to
+  // false except "Change an answer" (which intentionally re-edits the SAME
+  // event via redoEventId, not a new one). Confirmed live: tapping either
+  // entry point mid-event just re-opens the current event's recap — a real
+  // dead end, not a UI nit. assemble() already mints its own new event id
+  // on every call unless redoEventId.current is set, and the current event
+  // is safe in the store under its own id (switch back via This event /
+  // Run it again) — so the only missing piece is clearing the CREATE-FLOW
+  // scratch state so the prompt actually renders blank. Only resets when
+  // there's a finished event to step out of (revealed) — a draft still in
+  // progress (!revealed) is left alone so returning to Create doesn't wipe it.
+  const startNewEvent = () => {
+    if (revealed) {
+      setRevealed(false);
+      setSmartText('');
+      setFType(null);
+      setCreateEdit(null);
+      setIntakeOpen(false);
+      setTypeOpen(false);
+    }
+    setSheet(null);
+    setStage('create');
+  };
   // ── Boot splash: Event Boss DARK CARBON (R13 prototype, host-directed
   // 2026-07-11 — supersedes the R11b carve). 'up' → 'leaving' (200ms fade,
   // app interactive) → 'gone' (unmounted). The app renders BENEATH it the
@@ -14911,7 +14940,7 @@ export default function HostShellV2() {
                 <div className="shelf-label" style={{ margin: '0 0 9px' }}>Where in the event</div>
                 <div className="navseg">
                   {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([s, label]) => (
-                    <button key={s} className={'navseg-b' + (stage === s ? ' on' : '')} onClick={() => { setStage(s); setSheet(null); }}>{label}</button>
+                    <button key={s} className={'navseg-b' + (stage === s ? ' on' : '')} onClick={() => { if (s === 'create') startNewEvent(); else { setStage(s); setSheet(null); } }}>{label}</button>
                   ))}
                 </div>
                 <div className="navrows">
@@ -19816,7 +19845,7 @@ export default function HostShellV2() {
 
       <nav className={'dock' + (dockHidden ? ' dock-hidden' : '') + (stage === 'plan' && !heroInView ? ' has-next-bar' : '') + (elegantMode ? ' dock-retired' : '')} aria-label="Sections">
         {/* No attention badge here by design: the dock is navigation, not an inbox — ledger counts (raiseCounts) surface on the qidx rows instead. */}
-        <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>
+        <button aria-current={stage === 'create'} onClick={startNewEvent}>Create</button>
         <button aria-current={stage === 'plan'} onClick={() => setStage('plan')}>Plan</button>
         <button aria-current={stage === 'day'} onClick={() => setStage('day')}>The Day</button>
         <button aria-current={stage === 'after'} onClick={() => setStage('after')}>After</button>
@@ -19837,7 +19866,7 @@ export default function HostShellV2() {
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
           { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
-          { label: 'New event', sub: 'start another', go: () => setStage('create') },
+          { label: 'New event', sub: 'start another', go: startNewEvent },
           { label: 'Your money', sub: 'budget', go: () => setSheet({ kind: 'budget' }) },
           { label: 'The spread & shopping', sub: 'food', go: () => setSheet({ kind: 'food' }) },
           { label: 'People you’re hiring', sub: 'vendors', go: () => setSheet({ kind: 'vendors' }) },
