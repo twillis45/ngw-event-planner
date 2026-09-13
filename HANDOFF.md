@@ -1,7 +1,10 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (a live-hosting session
-closed: sporting-event recognition widened far beyond Super Bowl (NBA
+built out real per-sport differentiation inside the Watch Party playbook —
+Super Bowl vs. College Football National Championship vs. Kentucky Derby
+now genuinely differ in atmosphere and shopping list, not just in name; on
+top of sporting-event recognition widened far beyond Super Bowl (NBA
 Finals, World Cup, Kentucky Derby, UFC, Olympics, bowl games, and more —
 all routing to Watch Party); Watch Party missing from the quick occasion
 picker at creation; Super Bowl / sports-watching free text not resolving to
@@ -17,7 +20,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `0e1d73b` |
+| Branch / HEAD | `main` @ `62c2b16` |
 | Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -29,6 +32,86 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-13 — Watch Party now genuinely differentiates by major sporting event
+
+Host directive, one step further than the keyword-recognition work below:
+"I want the major sports differentiated and identified. I want the Super
+Bowl atmospherics and playbook info different than the college football
+national championship." Then, before touching code: "start the work of
+doing the research on the backend and admin console references that build
+the playbook in this special way" — answered first (see the research
+findings folded into this entry) so the system built here follows the
+codebase's own established content-governance pattern rather than a new,
+parallel one.
+
+**Research findings, not assumed:** the backend (FastAPI) is irrelevant to
+playbook content — it only ever treats "playbook type" as an opaque label
+in a research/observation pipeline. The admin console (`?admin=1`) DOES
+have a real content pipeline — the Studio tab's KCR workflow (acquisition
+→ observation → evidence → finding → KCR → review → publish) plus a live
+knowledge-inventory audit — but no "variant playbook" feature exists
+anywhere; every one of the 44 playbooks is one static object. The reusable
+primitive for conditional content already exists though: `whenChoice`/
+`choiceShown` (gate a purchase/task/decision on another decision's
+answer) and `copyByAnswer`/`resolveAnsweredCopy` (swap prose on an
+answer), both used throughout the codebase already (destination wedding's
+`dest_lodging` cascade is the deepest existing example) — this is the
+first playbook to lean on them this widely, not a new engine concept.
+
+**What shipped:** a `major_event` decision — "What are we watching?" — 12
+named events, Super Bowl the untouched default. `weight:'high'` +
+`blocks:['food','program']` (mirroring `dest_lodging` exactly) is the
+attention-system fix requested alongside this: it ranks to the top of
+"Calls to make" and gates food/schedule assembly until answered, instead
+of quietly defaulting. Real per-event content, researched live
+(WebSearch, dated 2026-09-13, not fabricated): Super Bowl keeps its
+existing wings-and-halftime content (National Chicken Council's 2026
+report: 1.48B wings); College Football National Championship gets its own
+heartMoments (team colors, trophy presentation) and a team-colors/tailgate
+-decor purchase, grounded in the CFP's own tailgate coverage; Kentucky
+Derby gets mint-julep content and a new risk (the race itself is ~2
+minutes inside a multi-hour build-up — r_derby_time); March Madness gets
+its own heartMoment (a 2026 office-pool spending survey, $97 average
+buy-in); UFC/Boxing gets a `ppv_cost` decision framed on the REAL 2026
+fact that UFC dropped pay-per-view entirely (folded into Paramount+,
+~$6-12/mo or $59.99/yr) while boxing majors are often still PPV
+($75-90/card) — this would have been WRONG to author unchecked.
+
+**Two real bugs caught and fixed before shipping, not glossed over:**
+1. The first draft cited source ids (`cfp-tailgate-2026`, `derby-
+   tradition-2026`) that don't resolve in `QTY_SOURCES`/`COST_SOURCES` —
+   tripped `knowledgeInventory.test.js`'s 'ambiguous' state and
+   `researchPolicyCompliance.test.js`'s corroboration/dating ratchets.
+   Fixed by dropping the `sources` array and keeping the real citations as
+   `note` prose only, at `estimate` tier — the same pattern this exact
+   file's own `p_chips`/`p_chili` already use.
+2. The new team-colors purchase never appeared in the shopping list at
+   any category — traced to `playbookFoodPlan`'s Supplies loop
+   (`playbooks/index.js` ~4218), which silently drops any non-food/
+   beverage purchase unless it's `essential: true` (not just hidden by
+   default — dropped entirely). Fixed: `category: 'logistics'` +
+   `essential: true`, honest once `whenChoice` has already gated it to
+   the one event it belongs to.
+
+Live-verified end to end: heartMoments genuinely swap text per
+`major_event` answer; the mint julep purchase's $30-55 and the team-colors
+purchase's $15-40 each move the shopping total only when their event is
+picked; the football/Super Bowl default path (heartMoments, item count, $
+totals) is byte-identical to before this change when `major_event` is
+left unanswered. `playbookContract.test.js`'s `costFactorGaps` baseline
+raised 0 → 1 with an inline explanation (a whenChoice-gated decision has a
+real cost effect the linter's multiplier-shaped heuristic doesn't
+recognize — a second legitimate pattern, documented rather than
+mislabeled). Root Jest 442/442. hostv2 build + parity gate +
+hostv2-artifact drift gate all clean.
+
+**Not done, disclosed rather than skipped:** the run-of-show
+(`schedules.program`) stays football-shaped (kickoff/halftime beats) for
+every `major_event` answer. A genuine per-event minute-by-minute timeline
+(the Derby's race is ~2 minutes inside hours of build-up; UFC/boxing runs
+undercard-then-main-event, not one continuous game) is real follow-up
+work, not attempted blind under time pressure.
 
 ## ADDED 2026-09-13 — Sporting-event coverage widened far beyond Super Bowl
 
