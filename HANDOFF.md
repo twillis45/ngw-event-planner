@@ -1,7 +1,15 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (this same session,
-continued yet again: "demo the top 5 sub-events and audit for logic issues"
+continued once more: audited the remaining 11 named events the same way,
+found the same bug CLASS on 2 more events the top-5 sample missed (Daytona
+500's run-of-show, The Masters' heartMoments) — both cases of one format
+member getting a fix/variant and its sibling not. Also directly answered
+"did we do non-Super-Bowl NFL games": no — playoffs/wild card/conference
+championship route to the Watch Party TYPE correctly via free-text keywords
+but have no major_event OPTION, so they fall into the generic fallback.
+Flagged for a priority call, not built. See the dated entry below. Before
+that, in this same session: "demo the top 5 sub-events and audit for logic issues"
 against real engine output found and fixed 3 real host-visible bugs — risks
 were never gated by major_event at all (r_derby_time/r_rivalry showed for
 every event, a defect dating to pass one), a "Halftime hits..." heartMoment
@@ -39,8 +47,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `9c2512e` |
-| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the audit-and-fix pass below (no ratchet change this pass) |
+| Branch / HEAD | `main` @ `99d5510` |
+| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the second audit-and-fix pass below (no ratchet change) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -51,6 +59,65 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-13 (sixth session update, same day) — audited the remaining 11 sub-events; answered the NFL-playoffs question
+
+Host directive: "do the same audit for the other formats and did we do
+non-Super-Bowl NFL games." Two asks, both answered directly.
+
+**Audit, extended to the remaining 11 named events** (Super Bowl default,
+CFB Championship, NBA Finals, Stanley Cup Final, World Series, Regular
+season/other, March Madness, Olympics, Daytona 500, The Masters, Awards
+Show), same method as the top-5 pass — real engine calls, full output read.
+
+**Confirmed clean**, no fixes needed: Super Bowl default, CFB Championship,
+NBA Finals, Stanley Cup Final, World Series, Regular season/other. The risk
+gate fix from the prior pass holds correctly on the default path (no
+r_derby_time/r_rivalry leakage). Format 1's generic "Kickoff"/"Halftime"
+wording is confirmed as the deliberate, untouched baseline for these — not
+a defect being carried forward.
+
+**Found 2 more real gaps — the SAME bug class as the prior pass, just on
+events outside the top-5 sample:**
+1. **Daytona 500's run-of-show (Halftime/Second-half beats) was never
+   reworded** — even though Kentucky Derby, the other member of the SAME
+   racing format, got exactly this fix one pass ago. Fixed with matching
+   pit-stop-chatter / late-caution wording.
+2. **The Masters had zero heartMoment differentiation** — including still
+   showing the impossible "Halftime hits and nobody leaves the couch..."
+   line verbatim, even though The Masters is a no-halftime format. This is
+   the exact bug fixed for UFC/Boxing, NFL Draft, Awards Show and Wimbledon
+   in the prior pass — Wimbledon (the other continuous-coverage format
+   member) got 3 of 4 heartMoment bases covered; The Masters had 0. Added
+   all 3.
+
+**Pattern worth naming for future work**: every gap found across both audit
+passes was a FORMAT-MATE inconsistency — one member of a format got a fix
+or a variant, its sibling in the same format did not. Auditing format-by-
+format after the fact catches these; checking every member of a format
+together when adding the first one would prevent them.
+
+**Direct answer: did we build non-Super-Bowl NFL games?** No.
+`eventTaxonomy.mjs`'s free-text keyword recognizer already correctly routes
+"wild card", "conference championship" and "playoffs" to the Watch Party
+event TYPE (this predates the whole Watch Party major_event project). But
+the `major_event` DECISION — the "what are we watching" picker inside a
+Watch Party — only offers **"Super Bowl"** and the generic **"Regular
+season game / other"** for football. There is no "NFL Playoffs" or
+"Conference Championship" option. A host hosting one of the most common
+non-Super-Bowl NFL watch parties (a playoff game, a conference
+championship) has no accurate choice — they'd have to pick the wrong
+named option or the under-specified fallback. **Not built in any of the
+six passes today; flagged here as a real, disclosed gap for a
+prioritization decision — not assumed to be low-priority**, since NFL
+playoff games are arguably as common an occasion as several of the 16
+options that DID get built (Wimbledon, Awards Show, NFL Draft).
+
+Files: `src/lib/playbooks/data/watchParty.js` only (2 heartMoment/schedule
+fixes + documentation, no new engine surface needed — reused the
+`whenChoice`/`copyByAnswer` support built in prior passes). Full Jest
+**442/442 suites, 6240/6241 tests** (1 pre-existing skip, no ratchet
+change). `sync:hostv2`/`gate:hostv2` clean. Commit `99d5510`.
 
 ## ADDED 2026-09-13 (fifth session update, same day) — audited the top 5 sub-events, found and fixed 3 real bugs
 
