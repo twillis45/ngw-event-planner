@@ -14,6 +14,41 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── BALLPARK SNACKS — hot dogs, peanuts, Cracker Jack (registered 2026-09-13) ─
+  // World Series watch-party differentiation (KCR pipeline, not hand-authored —
+  // see watchParty.js header). Two independent price-analysis reads on hot dogs
+  // plus two retailers' own listings on peanuts and Cracker Jack — enough legs
+  // that the World Series ballpark-snacks band does not rest on sellers alone.
+  'hotdogs-retail-2026': {
+    org: 'LatestCost, "Average Cost of a Hot Dog" and "Hot Dog Cost Guide: Price, Ranges, and Savings" (both fetched), 2026',
+    url: 'https://latestcost.com/average-cost-of-a-hot-dog/',
+    fetched: '2026-09-13',
+    sourceClass: 'independent',
+    claim: 'An 8-12 count package of hot dogs runs $4.00-12.00, averaging $0.50-1.50 per hot dog depending on brand and quality. A Kroger receipt example: an 8-count Oscar Mayer Bun-Length Beef Frank at $6.29, or $0.79 per frank.',
+  },
+  'hotdogs-costco-2026': {
+    org: 'Chowhound, "Are Costco\'s Signature Hot Dogs Available For Bulk Purchase?" (fetched), 2026',
+    url: 'https://www.chowhound.com/1877602/costco-signature-hot-dog-purchase-bulk/',
+    fetched: '2026-09-13',
+    sourceClass: 'independent',
+    claim: 'Costco\'s Kirkland Signature all-beef hot dogs come in a 14-count pack; per-dog cost works out to about $1.30 (varies by location).',
+  },
+  'peanuts-costco-2026': {
+    org: 'Costco listing, Sachs Fancy Virginia In-Shell Peanuts, Salted, 80oz (5lb) (fetched), 2026',
+    url: 'https://www.costco.com/sachs-fancy-virgina-in-shell-peanuts,-salted,-80-oz.product.100448593.html',
+    fetched: '2026-09-13',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'A 5lb (80oz) bag of in-shell peanuts runs $5.99-6.99 at Costco warehouse pricing — roughly $1.20-1.40/lb.',
+  },
+  'crackerjack-retail-2026': {
+    org: 'Costco (Cracker Jack, Original, 1.25oz, 30-count) and Sam\'s Club (30-pack, 1.25oz boxes) listings (both fetched), 2026',
+    url: 'https://www.costco.com/cracker-jack,-original,-1.25-oz,-30-count.product.100976159.html',
+    fetched: '2026-09-13',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'A 30-count box of individually-wrapped 1.25oz Cracker Jack runs $11.29 at Costco (about $0.38/box) and $16.98 at Sam\'s Club (about $0.57/box) — two warehouse retailers a full box price apart on the same product.',
+  },
   // ── ZERO-PROOF AND MOCKTAILS, per drink (registered 2026-08-15) ────────────
   // The other half of the non-alcoholic split. Deliberately NOT covered by the
   // soda band below: a zero-proof drink carries an NA spirit, a mixer and a

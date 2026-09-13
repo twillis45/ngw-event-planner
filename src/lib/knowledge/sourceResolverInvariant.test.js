@@ -167,11 +167,16 @@ describe('1 — the source universe is what we think it is', () => {
   // TIMING_SOURCES, `fsis-turkey-thaw` in FOOD_SAFETY_SOURCES and
   // `cdc-halloween-peds` in INCIDENT_SOURCES. Candy and cider are split by
   // publisher so the >=2 corroboration policy sees the real evidence.)
-  test('20 axes, 404 source identities — verified, not assumed', () => {
+  // (408 since 2026-09-13: the Watch Party major_event research pass registered
+  // 4 sources in COST_SOURCES for the new World Series ballpark-snacks purchase
+  // — `hotdogs-retail-2026`, `hotdogs-costco-2026`, `peanuts-costco-2026`,
+  // `crackerjack-retail-2026` — the one claim in that pass that earned tier
+  // 'researched'; see watchParty.js's file header for the full research pass.)
+  test('20 axes, 408 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(404);
-    expect(unionIds().size).toBe(404);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(408);
+    expect(unionIds().size).toBe(408);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
