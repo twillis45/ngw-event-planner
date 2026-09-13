@@ -1,7 +1,14 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (this same session,
-continued once more: audited the remaining 11 named events the same way,
+continued once more: built the "NFL Playoffs" major_event option the audit
+flagged as missing — real research first (Wild Card Weekend is genuinely 6
+games/3 days, every round is single-elimination), joined the existing
+Multi-day tournament format and reused its `tourney_span` decision rather
+than inventing a new mechanism, no fabricated purchase (research found no
+real distinguishing shopping tradition, so it's heartMoments-only, same
+honest treatment NBA Finals/Stanley Cup got). See the dated entry below.
+Before that, in this same session: audited the remaining 11 named events the same way,
 found the same bug CLASS on 2 more events the top-5 sample missed (Daytona
 500's run-of-show, The Masters' heartMoments) — both cases of one format
 member getting a fix/variant and its sibling not. Also directly answered
@@ -47,8 +54,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `99d5510` |
-| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the second audit-and-fix pass below (no ratchet change) |
+| Branch / HEAD | `main` @ `ea23ed1` |
+| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after adding NFL Playoffs (no ratchet change, no new engine surface) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -59,6 +66,55 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-13 (seventh session update, same day) — built the NFL Playoffs major_event option
+
+Host directive: "build the NFL playoffs option" — closing the exact gap
+flagged in the prior audit pass.
+
+**Real research first**, not assumed (see full findings folded into
+`watchParty.js`'s own SIXTH PASS header comment):
+- Wild Card Weekend is genuinely 6 games across 3 days; the Divisional Round
+  is 4 games across 2 days.
+- Every NFL playoff round — not just the Super Bowl — is single-elimination:
+  "win or go home," a real, well-documented tonal difference from the
+  Super Bowl's once-a-year exhibition-plus-spectacle framing.
+- Cold-weather outdoor-tailgate culture around playoff games is real and
+  well-documented (frostbite headlines, Bills Mafia winter tailgating) but
+  was deliberately NOT built into a purchase — this playbook is an indoor
+  living-room watch party by design; a tailgate need doesn't exist inside
+  that scope, and pricing one would be inventing a need the app doesn't
+  actually serve.
+- No real, sourced food/shopping tradition distinguishes an NFL playoff
+  game from the existing wings/chili/pizza defaults.
+
+**What shipped, following exactly what the research supported:**
+- Added `'NFL Playoffs'` to the `major_event` options list.
+- Joined `FORMAT_MULTIDAY` (alongside March Madness/World Cup/Olympics) —
+  the real multi-game/multi-day Wild Card and Divisional structure is
+  exactly what the existing `tourney_span` decision already asks ("just
+  this game" vs "a few key games" vs "the whole run"), so NFL Playoffs
+  reuses that decision and its repeatable-shopping-list task rather than
+  inventing a new mechanism. No new engine surface needed at all this pass.
+- **No new purchase.** Same honest treatment NBA Finals and Stanley Cup
+  Final already got when research found nothing to differentiate: real,
+  sourced heartMoment copy only (the elimination-game stakes — "this isn't
+  a regular-season loss, it's a season") on 2 of the 4 heartMoment bases.
+- Run-of-show wording ("Kickoff"/"Halftime") was deliberately left
+  untouched — unlike Kentucky Derby or Daytona 500, that language is
+  factually correct for an actual NFL game, so rewording it would have
+  been change for its own sake.
+
+**Verified live**: default purchase list unchanged (no fabricated item);
+`tourney_span: 'Following the whole run'` correctly triggers the
+repeatable-shopping-list task, `'Just this game/match'` correctly doesn't;
+real elimination-stakes heartMoments render; no leaked risks
+(`r_derby_time`/`r_rivalry` absent, confirming the risk-gating fix from two
+passes ago still holds on a brand-new event).
+
+Files: `src/lib/playbooks/data/watchParty.js` only. Full Jest **442/442
+suites, 6240/6241 tests** (1 pre-existing skip, no ratchet change).
+`sync:hostv2`/`gate:hostv2` clean. Commit `ea23ed1`.
 
 ## ADDED 2026-09-13 (sixth session update, same day) — audited the remaining 11 sub-events; answered the NFL-playoffs question
 
