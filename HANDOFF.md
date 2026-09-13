@@ -1,7 +1,12 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-13 (a live-hosting session
-built out real per-sport differentiation inside the Watch Party playbook —
+**Measured reality, not intentions.** Updated 2026-09-13 (this same session,
+continued: extended Watch Party's major-event differentiation to World
+Series/Masters/World Cup/NBA Finals/Stanley Cup/Olympics — this time by
+actually running the codebase's KCR governance pipeline, per Todd's standing
+directive "Don't ever add without pipeline" — see the dated entry below.
+Also, earlier the same session, a live-hosting session built out real
+per-sport differentiation inside the Watch Party playbook —
 Super Bowl vs. College Football National Championship vs. Kentucky Derby
 now genuinely differ in atmosphere and shopping list, not just in name; on
 top of sporting-event recognition widened far beyond Super Bowl (NBA
@@ -20,8 +25,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `62c2b16` |
-| Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
+| Branch / HEAD | `main` @ `0fb7202` |
+| Jest | **6,239 passed**, 1 skipped, **0 failed**, **442 suites** — green after the pipeline-governed Watch Party extension below (see its own entry for the one ratchet count updated) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -32,6 +37,116 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## STANDING RULE 2026-09-13 — Don't ever add playbook knowledge without the KCR pipeline
+
+Host directive, absolute and retroactive: **"Don't ever add without
+pipeline."** Triggered by an honest disclosure — asked "how extensively have
+we researched... we have a process and system to fill that data repository,"
+the true answer was that the "genuinely differentiates by major sporting
+event" entry directly below (commit `62c2b16`) hand-typed tier/confidence/
+citations straight into `watchParty.js`, never touching `createKCR` →
+`addEvidence` → review → `publishKCR`. Todd's correction stands for every
+future session, not just this one: **no new priced/quantified/provenance
+claim in any playbook may be hand-authored with a citation-shaped note ever
+again — it goes through the real KCR functions in
+`src/lib/knowledge/knowledgeChange.js` first.** Structural content (a new
+decision, a new purchase, new heartMoments prose) is still authored as plain
+code — the pipeline has no mechanism to create new fields, only to correct
+values on ones that already exist (see `governedFieldTypes.js`/
+`governedOwnership.js` — confirmed by reading, not assumed). Todd also
+delegated the KCR review board's sme/editorial/governance approval roles to
+Claude ("You're directed to pull the review board for decisions.") — reuse
+of the same "owner's standing delegation" concept already established for
+the Path-to-Production review board.
+
+**Real architectural finding from actually doing this once (see the entry
+right below):** the codebase's only durable, git-tracked KCR transport
+(`src/lib/knowledge/publishedKcrs.json` → `bake-published-knowledge.mjs` →
+`publishedKnowledge.json` → `knowledgeOverride.js` at runtime) carries a
+hard, tested invariant — `wave0HostProof.test.js` requires every entry to be
+`verificationStatus:'cited'` AND visible in a baseline event with nothing
+answered ("no invisible grounding"). That transport was built for
+corrections to unconditionally-visible lines; it has **no path for
+`whenChoice`-gated conditional content** or for an honestly-`estimate`
+review outcome. Extending it to cover that case is real, disclosed,
+un-started follow-up infrastructure work — not something to force through
+by weakening the invariant. Until then, decision-gated new content's
+governed values are authored directly (having still gone through the real
+KCR functions to be produced), not piped through that shared transport.
+
+## ADDED 2026-09-13 (second pass, same session) — 3 more major_event formats, this time through the real KCR pipeline
+
+Direct continuation of the standing-rule correction above. Extended
+`watchParty.js` to cover 3 of the remaining 7 `major_event` formats —
+World Series, The Masters, World Cup — plus atmosphere-only heartMoments
+for NBA Finals, Stanley Cup Final and Olympics, and an explicit decision to
+add nothing for "Regular season game / other" (it's the fallback).
+
+**What actually ran, not simulated:** wrote a one-time Jest generator
+(`__generate_watchPartyFormats.test.js`, deleted after use) that called the
+real `createKCR → addEvidence → setProposal → advanceKCR → recordReview
+(sme/editorial/governance, Claude under the delegation above) →
+advanceKCR('approved') → publishKCR` chain for all 6 new
+provenance/costProvenance claims. Every gate in `publishKCR` (type safety,
+field ownership, grounding-honesty, commercial-source policy) genuinely
+executed and passed — proven by the test not throwing, not asserted.
+
+**What the review board actually found, not uniformly upgraded:**
+- **World Series ballpark snacks** (hot dogs/peanuts/Cracker Jack) earned
+  real `tier:'researched'` — 4 dated 2026 retail sources (LatestCost,
+  Chowhound-reported Costco pricing, Costco/Sam's Club listings) genuinely
+  price a home-shopping list. Registered in `COST_SOURCES`
+  (`hotdogs-retail-2026`, `hotdogs-costco-2026`, `peanuts-costco-2026`,
+  `crackerjack-retail-2026`) with `sourceClass`/`limitations` disclosed per
+  the commercial-source policy (Phase 5F.9).
+- **The Masters** (pimento cheese tea sandwiches) and **World Cup**
+  (national flags/jerseys/face paint) both have real, multi-sourced
+  evidence for the *tradition* (Augusta's $1.50 concession-stand sandwich
+  confirmed by NBC New York/Golf Monthly/NPR; World Cup fan flag culture
+  confirmed by KPBS/usflags.com) — but neither evidence prices a host's
+  *home shopping list*, so the review board correctly withheld
+  `tier:'researched'` on cost rather than grounding the wrong transaction.
+  Both stay honest `estimate`/`synthesized`. **Going through the pipeline
+  does not mean every claim reaches "researched" — it means every claim is
+  evidenced and reviewed before it ships, whatever tier the evidence
+  actually earns.**
+
+**Then the transport invariant was discovered (see the standing-rule entry
+above) and the 6 published KCRs were deliberately NOT committed to
+`publishedKcrs.json`/`publishedKnowledge.json`** — running the full suite
+after baking them broke 3 suites / 6 tests (`sourceResolverInvariant`'s
+faithful-index count, `publishedExport`'s lineage-head counts, and
+`wave0HostProof`'s cited+baseline-visible invariant). Reverted both files;
+the reviewed values are authored directly in `watchParty.js` instead
+(honestly documented in the file's own header). The one LEGITIMATE ratchet
+update from this pass: `sourceResolverInvariant.test.js`'s source-identity
+count went 404 → 408 for the 4 newly-registered `COST_SOURCES` entries.
+
+**Verified live** (temporary Jest script against `playbookFoodPlan`/
+`playbookHeartMoments`, deleted after use — no Playwright this pass; the
+sandboxed Chromium channel wasn't available, see Traps below):
+- Super Bowl default path byte-identical (`p_wings`, `p_chips`, `p_chili`,
+  `p_pizza_sliders`, `p_dessert`, `p_ice`, `p_tableware`, `p_cleanup`).
+- World Series shows `p_ballparksnacks` with the researched costProvenance
+  and correct $ math ($28-56 for 14 servings at 12 guests, matching the
+  $2-4/serving band).
+- The Masters shows `p_pimentocheese`; World Cup shows `p_worldcupcolors`.
+- NBA Finals/Stanley Cup/Olympics heartMoments render their new copy.
+
+**Remaining, disclosed, not done:** NBA Finals, Stanley Cup Final, Olympics
+have atmosphere only (no purchases — real research found no food/decor
+tradition as strong or as universal as wings/mint julep/pimento cheese/
+ballpark snacks; forcing one would be inventing a tradition). The
+decision-gated KCR transport gap above is unresolved infrastructure work.
+`schedules.program` (the run-of-show) still assumes one continuous
+football-shaped game for every `major_event` answer.
+
+Files: `src/lib/playbooks/data/watchParty.js`, `src/lib/knowledge/
+costProvenance.js` (4 new `COST_SOURCES`), `src/lib/knowledge/
+sourceResolverInvariant.test.js` (ratchet 404→408). Full Jest **442/442
+suites, 6239/6240 tests** (1 pre-existing skip). `sync:hostv2`/
+`gate:hostv2` clean. Commit `0fb7202`.
 
 ## ADDED 2026-09-13 — Watch Party now genuinely differentiates by major sporting event
 
