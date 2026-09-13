@@ -1262,7 +1262,13 @@ export default function HostShellV2() {
   // grouped catalog only on an explicit ask, same progressive-disclosure
   // pattern as every other picker in this file (count, date).
   const [browseAllTypes, setBrowseAllTypes] = useState(false);
-  const QUICK_TYPES = ['Birthday', 'Wedding', 'Anniversary', 'Graduation', 'Reunion', 'Get-Together']
+  // Host report 2026-09-13: "Those events aren't in list at creation" — Watch
+  // Party existed only inside "See every occasion," one tap deeper than this
+  // default six. The 2026-08-05 ruling ("six common occasions plus search")
+  // stands; this adds a 7th because the host asking for it today, live, is a
+  // stronger signal than the old headcount. Game Night stays one tap away —
+  // asked about specifically for Watch Party, not both.
+  const QUICK_TYPES = ['Birthday', 'Wedding', 'Anniversary', 'Graduation', 'Reunion', 'Get-Together', 'Watch Party']
     .filter((t) => HOST_TYPES.includes(t));
 
   // Type-ahead over the catalog, backed by the REAL alias resolver — "bbq",
