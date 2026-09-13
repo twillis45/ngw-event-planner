@@ -172,11 +172,16 @@ describe('1 — the source universe is what we think it is', () => {
   // — `hotdogs-retail-2026`, `hotdogs-costco-2026`, `peanuts-costco-2026`,
   // `crackerjack-retail-2026` — the one claim in that pass that earned tier
   // 'researched'; see watchParty.js's file header for the full research pass.)
-  test('20 axes, 408 source identities — verified, not assumed', () => {
+  // (410 since 2026-09-13, THIRD PASS: the 6-format taxonomy pass registered 2
+  // more COST_SOURCES sources for the new Wimbledon purchase — `pimms-
+  // retail-2026`, `strawberries-cream-retail-2026` — the one claim in that pass
+  // that earned tier 'researched', for the same reason ballpark snacks did:
+  // its sources price the actual home-shopping ingredients.)
+  test('20 axes, 410 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(408);
-    expect(unionIds().size).toBe(408);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(410);
+    expect(unionIds().size).toBe(410);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

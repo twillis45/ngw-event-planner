@@ -49,6 +49,27 @@ export const COST_SOURCES = {
     limitations: ['commercial_interest_disclosed'],
     claim: 'A 30-count box of individually-wrapped 1.25oz Cracker Jack runs $11.29 at Costco (about $0.38/box) and $16.98 at Sam\'s Club (about $0.57/box) — two warehouse retailers a full box price apart on the same product.',
   },
+  // ── WIMBLEDON: PIMM'S CUP + STRAWBERRIES & CREAM (registered 2026-09-13) ────
+  // Watch-party format work (host directive: 6-format taxonomy). Unlike the
+  // Masters/World Cup claims from the same research pass, this one genuinely
+  // prices the HOME-SHOPPING ingredients (not Wimbledon's own concession
+  // stand), so it earns tier:'researched' the same way ballpark snacks did.
+  'pimms-retail-2026': {
+    org: 'Vons/Albertsons listing and Total Wine & More listing, Pimm\'s No. 1 750ml (both fetched), 2026',
+    url: 'https://www.vons.com/shop/product-details.960042025.html',
+    fetched: '2026-09-13',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'A 750ml bottle of Pimm\'s No. 1 runs $27.77 (member price) to $31.99 at Vons, and $30.99 at Total Wine & More — call it $27-31. One bottle, mixed with lemonade and fruit per the traditional recipe, pours roughly a dozen cups.',
+  },
+  'strawberries-cream-retail-2026': {
+    org: 'Walmart fresh strawberries (1lb) listing and Aldi/Whole Foods heavy whipping cream pint prices via WeekNightWin (all fetched), 2026',
+    url: 'https://www.walmart.com/ip/Fresh-Strawberries-1-lb-Container/44391605',
+    fetched: '2026-09-13',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'Fresh strawberries run $2.57-6.39/lb at retail (Walmart everyday price at the floor, wholesale/retail market average at the ceiling); heavy whipping cream runs $2.50-5.50/pint ($3.07 at Aldi, $6.80 at Whole Foods). A pint of strawberries plus a pint of cream serves a small watch party\'s worth of the tradition.',
+  },
   // ── ZERO-PROOF AND MOCKTAILS, per drink (registered 2026-08-15) ────────────
   // The other half of the non-alcoholic split. Deliberately NOT covered by the
   // soda band below: a zero-proof drink carries an NA spirit, a mixer and a

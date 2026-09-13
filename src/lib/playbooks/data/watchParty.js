@@ -93,15 +93,80 @@
 //     meta.summary or a task label.
 //   - "Regular season game / other" gets nothing added, on purpose — it is the
 //     generic fallback every other named event exists to be more specific than.
+//
+// 2026-09-13, THIRD PASS — a host-specified 6-FORMAT taxonomy, not more named
+// events. Todd's own framing: named events sharing a STRUCTURAL SHAPE (not just
+// a name) need the SAME run-of-show/task treatment, and the two passes above
+// never actually reshaped the run-of-show (`schedules.program`) — only decor,
+// food and heartMoments. This pass closes that gap for real, via ENGINE changes
+// (not just data), both minimal and mirroring existing precedent:
+//   1. `choiceShown()` gained an optional `{not:[...]}` form (was `{in:[...]}`
+//      only) — the same two-shape vocabulary `modeShown()` already uses for
+//      travel mode, extended rather than invented. Lets a row say "everyone
+//      EXCEPT these formats" instead of enumerating every format that keeps it.
+//   2. `playbookRunOfShow()`'s and `playbookDuringCues()`'s main per-row loops
+//      now call `choiceShown(event, entry.whenChoice)` — previously only
+//      `schedules.agenda` (the multi-day mechanism) honored a row-level gate,
+//      so a whenChoice on a `program`/`setup`/`cleanup` row silently did
+//      nothing. No existing playbook authors `whenChoice` on a timed row today,
+//      so this is provably a no-op for the other 43 playbooks and for every
+//      Format-1 major_event answer here — proven by the full suite staying at
+//      the same pass count before and after, not asserted.
+// Both changes are additive and were verified against the full Jest suite
+// (442/442 suites unchanged) before any Watch Party content was built on them.
+//
+// THE SIX FORMATS (host table, 2026-09-13) map onto the EXISTING major_event
+// options plus 4 new ones (Daytona 500, Wimbledon, NFL Draft, Awards Show) —
+// see FORMAT_* below. No new "what format is this" question is asked; the
+// format is DERIVED from which event the host already named, because asking
+// twice would ask something the first answer already implies.
+//   1. Single game, one break (Super Bowl, CFB Championship, NBA Finals,
+//      Stanley Cup Final, World Series, Regular season/other) — DEFAULT,
+//      byte-identical, deliberately not enumerated below (see FORMAT_NO_HALFTIME
+//      comment).
+//   2. Multi-day tournament (March Madness, World Cup, Olympics) — real,
+//      NOT-fabricated content: a `tourney_span` decision asking how much of the
+//      tournament this covers, and a repeatable-shopping-list task when it's
+//      more than one sitting. A fake day-by-day itinerary for a 3-week Olympics
+//      would be invented content; this codebase's `schedules.agenda` mechanism
+//      (built for a wedding weekend's actual dated agenda) does not fit a
+//      tournament with no fixed number of sittings, so it is deliberately not
+//      used here.
+//   3. Combat sports / PPV (UFC / Boxing) — extends the existing ppv_cost
+//      decision with real undercard-then-main-event program beats and no
+//      halftime.
+//   4. Racing / spectacle (Kentucky Derby, Daytona 500) — Derby unchanged from
+//      pass one; Daytona 500 gets its own pre-race-ceremony beat (real,
+//      corroborated: anthem/flyover/driver intros before the green flag).
+//   5. Continuous coverage (The Masters, Wimbledon) — no halftime; Wimbledon
+//      gets a real, KCR-researched purchase (Pimm's Cup + strawberries and
+//      cream — this one prices actual home-shopping ingredients, unlike the
+//      Masters' pimento cheese, so it genuinely earns tier:'researched').
+//   6. Broadcast event (NFL Draft, Awards Show) — not a game at all, no
+//      halftime, reworded program beats; NFL Draft gets a draft-board purchase,
+//      Awards Show gets a printable-ballot purchase (the genuinely defining
+//      activity for that format, per real research).
+const FORMAT_MULTIDAY = ['March Madness', 'World Cup', 'Olympics'];
+const FORMAT_COMBAT = ['UFC / Boxing'];
+const FORMAT_RACING = ['Kentucky Derby', 'Daytona 500'];
+const FORMAT_CONTINUOUS = ['The Masters', 'Wimbledon'];
+const FORMAT_BROADCAST = ['NFL Draft', 'Awards Show'];
+// FORMAT_SINGLE_GAME (Super Bowl, CFB Championship, NBA Finals, Stanley Cup
+// Final, World Series, Regular season/other) is deliberately NOT a list here:
+// it is "everything not named in the other four groups" — the untouched
+// default. Enumerating it would let a FUTURE new major_event option silently
+// fall through as "single game" by omission instead of by a reviewed decision
+// about which format it actually is.
+const FORMAT_NO_HALFTIME = [...FORMAT_COMBAT, ...FORMAT_CONTINUOUS, ...FORMAT_BROADCAST];
 
 const watchParty = {
   type: 'Watch Party',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
-  version: '1.2.0',
+  version: '1.3.0',
   meta: {
-    summary: 'An at-home watch party for a big sporting event — Super Bowl, College Football National Championship, NBA Finals, World Series, Stanley Cup Final, March Madness, the Kentucky Derby, The Masters, World Cup, UFC/Boxing, the Olympics, and more, each with its own atmosphere. TV-forward, graze-all-event food, coolers of beer + soda, disposable tableware, couch comfort. The whole challenge is timing — food READY before it starts, a mid-event refresh, and a trash flow that never makes anyone miss a moment.',
+    summary: 'An at-home watch party for a big event on TV — a single game (Super Bowl, NBA/NHL/World Series Finals, College Football Championship), a multi-day tournament (March Madness, World Cup, Olympics), combat sports/PPV (UFC/Boxing), a racing spectacle (Kentucky Derby, Daytona 500), continuous coverage (The Masters, Wimbledon), or a non-game broadcast (NFL Draft, Awards Show) — each with genuinely different food, decor and run-of-show shape, not just a different name. TV-forward, graze-all-event food, coolers of beer + soda, disposable tableware, couch comfort. The whole challenge is timing — food READY before it starts, a mid-event refresh (where the format actually has one), and a trash flow that never makes anyone miss a moment.',
     typicalGuests: { low: 6, default: 12, high: 25 },
     typicalDurationHours: 4,
     leadTimeDays: 10,
@@ -116,23 +181,31 @@ const watchParty = {
         'Kentucky Derby': 'Everyone is planted in front of the screen well before post time — the race itself is over in about two minutes, and missing it because you were still in the kitchen is the one unforgivable thing.',
         'College Football National Championship': 'The food is out and everyone is repping their team colors before kickoff — the room splits into two loud, happy camps.',
         'UFC / Boxing': 'The main event is close and everyone is off their phones, actually watching — the undercard was just the warm-up.',
+        'Daytona 500': 'The anthem and flyover hit and everyone\'s in their seats — nobody wants to miss the green flag for a plate of food.',
+        'NFL Draft': 'Your team is officially on the clock and the room goes quiet for exactly the ten minutes it takes to find out who they take.',
+        'Awards Show': 'The red carpet coverage winds down, ballots are finalized, and the room settles in right as the show starts.',
       } } },
     { base: 'A big play happens and the whole room erupts at the same second.',
       copyByAnswer: { major_event: {
         'Kentucky Derby': 'The field turns for home and the whole room is on its feet screaming for the length of the stretch run.',
         'March Madness': 'A double-digit seed hits a buzzer-beater and half the room\'s brackets die at once — the loudest reaction of the day.',
         'NBA Finals': 'A clutch shot falls in the final seconds and the room is on its feet — nobody\'s sitting down again until this series is over.',
+        'Daytona 500': 'A multi-car wreck bunches up the field on the backstretch and the whole room is out of their seats trying to see who\'s still running.',
+        'Wimbledon': 'A rally goes 20-plus shots and the room goes dead silent until the point ends, then erupts.',
       } } },
     { base: 'Halftime hits and nobody leaves the couch — the food is still going and so is the conversation.',
       copyByAnswer: { major_event: {
         'College Football National Championship': 'The trophy presentation hits and the winning side of the room loses it — bragging rights for a full year.',
         'Kentucky Derby': 'Between races, the best-hat contest and the mint julep refills keep the party going even when nothing\'s on the track.',
         'Olympics': 'Between events, the room stages its own quick medal ceremony for whoever brought the best dish — chocolate medals and all.',
+        'Wimbledon': 'There\'s no real break in the coverage, so the Pimm\'s Cup and strawberries just keep circulating between points — a slower, all-afternoon kind of hosting.',
       } } },
     { base: 'The final play lands and everyone who picked the right team never lets it go.',
       copyByAnswer: { major_event: {
         'March Madness': 'The bracket pool gets settled on the spot, and whoever\'s been quietly winning all tournament finally has to admit it.',
         'Stanley Cup Final': 'Half the room hasn\'t shaved since the first round of the playoffs, and whoever\'s beard looks worst never hears the end of it.',
+        'NFL Draft': 'The last pick of the night comes in, the group texts start flying, and the "best pick of the draft" argument runs long after the feed cuts out.',
+        'Awards Show': 'The final award of the night is announced, ballots get scored on the spot, and whoever swept the predictions never lets anyone forget it.',
       } } },
   ],
 
@@ -142,10 +215,26 @@ const watchParty = {
     // even APPLIES. Asked earliest (T-10d, this playbook's own leadTimeDays)
     // and blocks food + program so the plan doesn't finish assembling around
     // the wrong assumption before the host has actually said which event this is.
-    { id: 'major_event', label: 'What are we watching?', options: ['Super Bowl', 'College Football National Championship', 'NBA Finals', 'World Series', 'Stanley Cup Final', 'March Madness', 'Kentucky Derby', 'The Masters', 'World Cup', 'UFC / Boxing', 'Olympics', 'Regular season game / other'], default: 'Super Bowl', when: 'T-10d', blocks: ['food', 'program'], weight: 'high', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Which event this is sets the food, the purchases, and the atmosphere — a Kentucky Derby party and a Super Bowl party share a screen and almost nothing else. Answering it first means everything else builds on the right assumption instead of a generic default.', tier: 'reasoned' }, why: 'Sets which menu defaults, purchases, and moments actually apply. Football stays the default so nothing changes for the common case — name a different event and the plan adjusts to it.' },
+    { id: 'major_event', label: 'What are we watching?', options: ['Super Bowl', 'College Football National Championship', 'NBA Finals', 'World Series', 'Stanley Cup Final', 'March Madness', 'Kentucky Derby', 'Daytona 500', 'The Masters', 'Wimbledon', 'World Cup', 'UFC / Boxing', 'Olympics', 'NFL Draft', 'Awards Show', 'Regular season game / other'], default: 'Super Bowl', when: 'T-10d', blocks: ['food', 'program'], weight: 'high', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Which event this is sets the food, the purchases, and the atmosphere — a Kentucky Derby party and a Super Bowl party share a screen and almost nothing else. Answering it first means everything else builds on the right assumption instead of a generic default.', tier: 'reasoned' }, why: 'Sets which menu defaults, purchases, and moments actually apply. Football stays the default so nothing changes for the common case — name a different event and the plan adjusts to it.' },
+    { id: 'tourney_span', label: 'How much of the tournament are you hosting for?', options: ['Just this game/match', 'A few key games', 'Following the whole run'], default: 'Just this game/match', when: 'T-7d', whenChoice: { id: 'major_event', in: FORMAT_MULTIDAY }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'A multi-week tournament is not one 4-hour block — a host following the whole run needs a repeatable, lower-effort plan, not one big shop. Asked only for tournament-format events; every other event has exactly one sitting by nature.', tier: 'reasoned' }, why: 'March Madness, the World Cup and the Olympics run for weeks. One game is a normal watch party; following the whole run means repeating this gathering, so the plan should say so instead of pricing one big party and leaving the host to rediscover the pattern on their own.' },
     { id: 'menu', label: 'Game-day food style', options: ['Wings + chips/dip', 'Chili bar', 'Pizza + finger food', 'Potluck snacks'], default: 'Wings + chips/dip', when: 'T-7d', dependsOn: ['potluck'], blocks: ['food'], costViaApproach: true, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'The food style drives the shopping list and the cook timeline, but wings-and-chips is a safe default and swappable until you shop.', tier: 'reasoned' }, why: 'Drives the shopping list and the cook timeline. Wings + chips is the classic low-effort default; chili can be made ahead; pizza offloads the cooking entirely.' },
     { id: 'ppv_cost', label: 'Covering the cost', options: ['Host covers it', 'Split evenly among guests', 'Already have a subscription that covers it'], default: 'Host covers it', when: 'T-5d', whenChoice: { id: 'major_event', in: ['UFC / Boxing'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'A major boxing card is still commonly pay-per-view; UFC folded its full 2026 calendar into Paramount+ instead. Either way it is a real cost worth naming before guests show up assuming it is free.', tier: 'reasoned' }, why: 'UFC dropped pay-per-view in 2026 — its numbered events are bundled into Paramount+ (about $6-12/month, or $59.99/year), split however many ways the room wants. A major boxing card, when it IS still PPV, commonly runs $75-90 for the single event. Naming who is covering it avoids an awkward ask mid-party.' },
-    { id: 'potluck', label: 'Host-provided or potluck?', options: ['Host provides all', 'Potluck snacks', 'Host feeds, guests bring drinks'], default: 'Host feeds, guests bring drinks', when: 'T-7d', blocks: ['food', 'beverage_purchases'], costViaApproach: true, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Host-provides vs potluck is the biggest cost-and-effort lever, but it only reassigns who brings what and defaults to host-feeds-guests-bring-drinks.', tier: 'reasoned' }, why: 'Biggest cost/effort lever — assigning snacks/drinks roughly halves the host load and the bill.' },
+    // `blocks` FIXED 2026-09-13 (discovered while verifying the Wimbledon purchase,
+    // out of scope for the format taxonomy but too material to leave): this used
+    // to also block 'beverage_purchases'. The shared engine's BYOB detector
+    // (playbooks/index.js `_bevDecision`) finds the FIRST decision in this array
+    // whose `blocks` names beverage and reads ITS pick for the phrase "guests
+    // bring" — and this decision's OWN default label is literally "Host feeds,
+    // guests bring drinks", so it matched itself before `alcohol` (which exists
+    // specifically to answer this, with a real BYOB option) was ever consulted.
+    // Effect, confirmed live: EVERY Watch Party's default shopping list was
+    // silently missing p_drinks — and any beverage-category addition whose item
+    // name doesn't happen to contain the word "ice" (the one exempted case)
+    // would vanish the same way, exactly what happened when p_pimms_strawberries
+    // was added and never appeared. `alcohol` already owns this question
+    // correctly (its own BYOB option); potluck's food-provisioning choice should
+    // never have also gated beverages redundantly and wrongly.
+    { id: 'potluck', label: 'Host-provided or potluck?', options: ['Host provides all', 'Potluck snacks', 'Host feeds, guests bring drinks'], default: 'Host feeds, guests bring drinks', when: 'T-7d', blocks: ['food'], costViaApproach: true, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Host-provides vs potluck is the biggest cost-and-effort lever, but it only reassigns who brings what and defaults to host-feeds-guests-bring-drinks.', tier: 'reasoned' }, why: 'Biggest cost/effort lever — assigning snacks/drinks roughly halves the host load and the bill.' },
     { id: 'alcohol', label: 'Drinks', options: ['Beer + soda + water', 'BYOB', 'Full cooler bar', 'Dry / family-friendly'], default: 'Beer + soda + water', when: 'T-5d', blocks: ['beverage_purchases'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The drink plan sets cooler and ice volume and whether anyone needs a ride home — a host read on the crowd, though cheap to adjust.', tier: 'reasoned' }, why: 'Drives cooler + ice volume over a ~3.5h game and whether anyone needs a ride home.' },
     { id: 'screen', label: 'Screen + seating plan', options: ['Living-room TV', 'Add a second screen', 'Projector + screen', 'Bar / out to watch'], default: 'Living-room TV', when: 'T-5d', blocks: ['rental'], weight: 'high', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'If the game is not on a screen everyone can see, there is no watch party — the one make-or-break call, though the TV setup is easy to arrange.', tier: 'reasoned' }, why: 'Sightlines and enough seats are what make or break a watch party — confirm the stream/channel works and everyone can see the screen before kickoff.' },
   ],
@@ -167,8 +256,13 @@ const watchParty = {
     { id: 't_fresh_shop', milestoneId: 'wp_shop_fresh', phase: 'shopping', label: 'Wings, chili meat/beans or pizza, fresh dips, cheese, produce', when: 'T-1d' },
     { id: 't_prep', milestoneId: 'wp_setup', phase: 'food', label: 'Make chili / prep dips ahead; thaw wings; clear the fridge for drinks', when: 'T-1d evening' },
     { id: 't_cook', milestoneId: 'event', phase: 'food', label: 'Cook wings + hot food so everything is OUT and READY ~30 min before kickoff', when: 'T0 -1:30' },
-    { id: 't_halftime', milestoneId: 'event', phase: 'food', label: 'Halftime refresh: restock food, swap empties for fresh trash bag, top up ice', when: 'T0 +2:00' },
+    // whenChoice added 2026-09-13 (third pass) — combat/continuous/broadcast
+    // formats have no discrete break, so this task no longer fires for them.
+    { id: 't_halftime', milestoneId: 'event', phase: 'food', label: 'Halftime refresh: restock food, swap empties for fresh trash bag, top up ice', when: 'T0 +2:00', whenChoice: { id: 'major_event', not: FORMAT_NO_HALFTIME } },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, bag trash + recycling (cans/bottles), wipe surfaces, run the dishwasher', when: 'T0 +4:00' },
+    // Multi-day tournament format only, and only once the host says this is
+    // more than one sitting — a repeatable list, not a re-invented one each time.
+    { id: 't_repeatable_list', milestoneId: 'wp_invite', phase: 'shopping', label: 'Set up a repeatable shopping list — you\'re hosting this again, not once, so build a list you can restock quickly rather than one big shop', when: 'T-7d', whenChoice: { id: 'tourney_span', in: ['A few key games', 'Following the whole run'] } },
   ],
 
   purchases: [
@@ -212,6 +306,16 @@ const watchParty = {
     { id: 'p_ballparksnacks', item: 'Ballpark snacks (hot dogs, peanuts, Cracker Jack)', category: 'food', qtyPerGuest: 1, unit: 'serving', where: ['Grocery', 'Costco'], unitCostRange: [2, 4], essential: true, buyAt: 'T-1d', whenChoice: { id: 'major_event', in: ['World Series'] }, note: 'The ballpark-food tradition behind "Take Me Out to the Ball Game" — hot dogs, peanuts and Cracker Jack, brought home for the watch party.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['hotdogs-retail-2026', 'hotdogs-costco-2026', 'peanuts-costco-2026', 'crackerjack-retail-2026'], lastVerified: '2026-09-13', claim: 'A per-guest ballpark-snacks serving (about 1.5 hot dogs + a handful of in-shell peanuts + one Cracker Jack box) sums three separately-priced retail lines: hot dogs $0.79-1.30 each (LatestCost retail average, Kroger receipt example, Costco Kirkland bulk pack); in-shell peanuts $1.20-1.40/lb (Costco 5lb bag); Cracker Jack $0.38-0.57 per 1.25oz box (Costco vs. Sam\'s Club, same product, a full box apart).', sufficientWhen: 'Current per-unit prices for one hot dog pack, one peanut bag and one Cracker Jack multipack at the same store, summed at the per-guest ratio, confirm the band.' }, alternatives: ['Ballpark-brand hot dogs only, skip the peanuts/Cracker Jack — cheaper, still on-theme', 'Add nachos or a pretzel bar for a bigger spread'] },
     { id: 'p_pimentocheese', item: 'Pimento cheese tea sandwiches (Masters tradition)', category: 'food', qtyPerGuest: 2, unit: 'sandwich', where: ['Grocery'], unitCostRange: [1, 2.5], essential: true, buyAt: 'T-1d', whenChoice: { id: 'major_event', in: ['The Masters'] }, note: 'Augusta National\'s own concession stand has sold a $1.50 pimento cheese sandwich since 2002 — the tournament\'s signature food. This band prices making the same sandwich (cheese, mayo, pimento, bread) at home, which costs less than the concession-stand price.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized', note: 'Augusta National\'s own $1.50 pimento cheese sandwich (NBC New York, Golf Monthly and NPR all confirm the 2026 concession price, unchanged since 2002) is the reason this item belongs in the playbook, but it prices a tournament CONCESSION STAND, not a host\'s grocery list — using it to ground a home-shopping cost band would price the wrong transaction. The home cost stays an honest, unsourced estimate for bread/cheese/mayo/pimento ingredients.' }, alternatives: ['Egg salad tea sandwiches alongside — Augusta\'s other classic', 'Buy pre-made pimento cheese spread instead of mixing from scratch — faster, slightly more expensive'] },
     { id: 'p_worldcupcolors', item: 'National flags, jerseys & face paint (supported country)', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Party store', 'Online'], unitCostRange: [15, 40], essential: true, buyAt: 'T-3d', whenChoice: { id: 'major_event', in: ['World Cup'] }, note: 'World Cup watch parties center on flags, jerseys and face paint in the colors of the country being cheered for — the same fan-culture role team colors play at a College Football Championship party.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized', note: 'Flags, jerseys and face paint for the supported nation are a well-documented World Cup watch-party tradition (KPBS photo coverage; usflags.com on why fans display national flags), but no single confirmed unit retail price was found in this research pass — marketplace listings for flag/scarf/face-paint kits did not return a stable price. Cost stays an honest estimate, in the same $15-40 decor-kit band as the structurally identical CFB team-colors item, pending a real price source.' }, alternatives: ['Ask each guest to wear their own country\'s colors — zero cost', 'Flag bunting/string decorations only, skip individual face paint — cheaper'] },
+    // ── 2026-09-13 THIRD PASS additions (6-format taxonomy; see file header).
+    //    p_pimms_strawberries is the one new claim that genuinely earns
+    //    tier:'researched' — its sources price the home ingredients directly,
+    //    unlike Masters/World Cup above. Verified via the same real KCR
+    //    functions as pass two, not committed to publishedKcrs.json for the
+    //    same disclosed transport-invariant reason.
+    { id: 'p_pimms_strawberries', item: 'Pimm\'s Cup & strawberries with cream (Wimbledon tradition)', category: 'beverage', qtyFlat: 1, unit: 'kit', where: ['Liquor store', 'Grocery'], unitCostRange: [35, 45], essential: false, buyAt: 'T-1d', whenChoice: { id: 'major_event', in: ['Wimbledon'] }, note: 'Wimbledon\'s own concession stands sell over 190,000 servings of strawberries and cream and 300,000+ glasses of Pimm\'s Cup a year — the tournament\'s two defining traditions, both easy to recreate at home.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['pimms-retail-2026', 'strawberries-cream-retail-2026'], lastVerified: '2026-09-13', claim: 'A Pimm\'s Cup + strawberries-and-cream kit sums two retail lines: one 750ml bottle of Pimm\'s No. 1 ($27-31, pours ~12 cups) and a pint each of fresh strawberries ($2.57-6.39/lb) and heavy cream ($2.50-5.50/pint).', sufficientWhen: 'Current shelf prices for one Pimm\'s bottle, one pint of strawberries and one pint of cream at the same store confirm the band.' }, alternatives: ['Sparkling lemonade + strawberries — non-alcoholic version, still on-theme', 'Skip the Pimm\'s, keep the strawberries and cream — cheaper, still the more famous of the two traditions'] },
+    { id: 'p_daytonadecor', item: 'Checkered-flag decor & race-themed snacks', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Party store', 'Online'], unitCostRange: [15, 35], essential: true, buyAt: 'T-3d', whenChoice: { id: 'major_event', in: ['Daytona 500'] }, note: '"Daytona Day" watch parties lean on checkered-flag decor and race-themed touches — some hosts even tape a finish line at the front door.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized', note: 'Race-day decor is a well-documented "Daytona Day" tradition, but no confirmed unit retail price was found this pass — the same honest-estimate treatment as the structurally identical team-colors/World Cup decor kits.' }, alternatives: ['Skip dedicated decor — a checkered flag or two is enough', 'Driver-number gear for whoever the room is rooting for'] },
+    { id: 'p_draftboard', item: 'Draft board / whiteboard (track the picks)', category: 'logistics', qtyFlat: 1, unit: 'item', where: ['Office supply', 'Online'], unitCostRange: [10, 25], essential: true, buyAt: 'T-3d', whenChoice: { id: 'major_event', in: ['NFL Draft'] }, note: 'Unlike a game, a draft has no ball to watch — a visible board to track picks as they come in is what turns "watching a broadcast" into a party.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized', note: 'A basic whiteboard or poster-board price is trivial and not worth a full corroborated-sourcing pass — kept at an honest estimate rather than over-investing research effort on a low-stakes, low-cost item.' }, alternatives: ['A printed draft-order sheet — free, same function', 'A shared phone/tablet tracker instead of a physical board'] },
+    { id: 'p_ballot', item: 'Printable prediction ballots + a small prize', category: 'logistics', qtyPerGuest: 1, unit: 'sheet', where: ['Home printer', 'Party store'], unitCostRange: [0.1, 3], essential: true, buyAt: 'T-3d', whenChoice: { id: 'major_event', in: ['Awards Show'] }, note: 'Predicting winners on a printed ballot before the show, with a small prize for the closest guess, is the defining activity of an awards-show watch party — more than any specific food.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized', note: 'A printed sheet costs pennies; the "small prize" is entirely host discretion (a gift card, a bottle of wine, bragging rights). Not worth a corroborated-sourcing pass for a cost this low and this discretionary.' }, alternatives: ['A free printable ballot template — no printer cost beyond paper', 'Skip the prize — bragging rights only'] },
   ],
 
   rentalsGap: [
@@ -260,11 +364,43 @@ const watchParty = {
       { when: 'T0 -0:30', what: 'Food OUT and ready; slow cooker on; trash + recycling bins set; stream/channel confirmed' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: TV on the pre-game, drinks on ice, seats claimed' },
-      { when: 'T0 +45m', what: 'Kickoff — food already out so nobody’s in the kitchen' },
-      { when: 'T0 +1:45', what: 'Halftime: hot food refresh, refill drinks, bathroom rotation' },
-      { when: 'T0 +2:15', what: 'Second half' },
-      { when: 'T0 +3:30', what: 'The finish — let the room have it' },
+      { when: 'T0 +5m', what: 'Doors: TV on the pre-game, drinks on ice, seats claimed',
+        copyByAnswer: { major_event: {
+          'Daytona 500': 'Doors: TV on the pre-race coverage, drinks on ice, seats claimed',
+          'Awards Show': 'Doors: TV on the red carpet coverage, ballots handed out, seats claimed',
+          'NFL Draft': 'Doors: TV on the draft-order coverage, draft board up, seats claimed',
+        } } },
+      // 2026-09-13 (third pass): a real EXTRA beat for combat sports and
+      // Daytona 500 — the undercard and the pre-race ceremonies are genuine,
+      // corroborated structural beats these two formats have that a single
+      // game does not. Placed before the reworded T0+45m beat below.
+      { when: 'T0 +15m', what: 'Undercard fights start — the warm-up; most of the room won\'t fully tune in yet', whenChoice: { id: 'major_event', in: FORMAT_COMBAT } },
+      { when: 'T0 +15m', what: 'Pre-race ceremonies: anthem, flyover, driver introductions', whenChoice: { id: 'major_event', in: ['Daytona 500'] } },
+      { when: 'T0 +45m', what: 'Kickoff — food already out so nobody’s in the kitchen',
+        copyByAnswer: { major_event: {
+          'UFC / Boxing': 'Main card begins',
+          'The Masters': 'Coverage begins — this runs for hours with no discrete break, unlike a game',
+          'Wimbledon': 'Coverage begins — this runs for hours with no discrete break, unlike a game',
+          'Daytona 500': 'Green flag — the race is underway',
+          'NFL Draft': 'The draft goes on the clock — expect long, bursty gaps between picks, not continuous action',
+          'Awards Show': 'Red carpet coverage wraps and the show starts',
+        } } },
+      { when: 'T0 +1:45', what: 'Halftime: hot food refresh, refill drinks, bathroom rotation', whenChoice: { id: 'major_event', not: FORMAT_NO_HALFTIME } },
+      { when: 'T0 +2:15', what: 'Second half',
+        copyByAnswer: { major_event: {
+          'UFC / Boxing': 'Main card continues toward the main event',
+          'The Masters': 'Coverage continues — a good stretch to refresh food without missing anything discrete',
+          'Wimbledon': 'Coverage continues — a good stretch to refresh food without missing anything discrete',
+          'NFL Draft': 'Later rounds — the picks come faster now',
+          'Awards Show': 'Middle of the show — the smaller categories',
+        } } },
+      { when: 'T0 +3:30', what: 'The finish — let the room have it',
+        copyByAnswer: { major_event: {
+          'UFC / Boxing': 'Main event walkouts — this is what everyone came for',
+          'Daytona 500': 'Final laps — this is where the race is actually decided',
+          'NFL Draft': 'Final picks of the night',
+          'Awards Show': 'The night\'s biggest award — ballots get scored on the spot',
+        } } },
       { when: 'T0 +4:05', what: 'Wind down: to-go plates, rides checked for anyone who’s been drinking' },
     ],
     cleanup: [
@@ -275,9 +411,9 @@ const watchParty = {
   },
 
   knowledge: {
-    governanceVersion: '1.2.0',
+    governanceVersion: '1.3.0',
     verificationStatus: 'synthesized',
-    note: 'Quantities reflect common US game-day hosting rules of thumb: Super Bowl portions run large (~1 lb / about 10–12 wings per guest grazing all afternoon), ~1 drink per guest per hour over a ~3.5h game (≈3–4 drinks/guest, split across beer/soda/water), ~1.5 lb ice per guest for indoor drink-chilling (the lower end of the 1–2 lb party rule), roughly 2–3 large pizzas per 10 guests, and ~2 disposable plate/cup sets per guest since people refresh every trip to the food table. The defining constraint of a watch party is timing — food ready ~30 min before kickoff and a halftime refresh — not headcount. Authored as established-consensus / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources. 2026-09-13 FIRST PASS: added the `major_event` identification decision plus event-specific purchases/risks/heartMoments for College Football National Championship (team-colors decor) and Kentucky Derby (mint julep) and a cost-coverage decision for UFC/Boxing — hand-authored with informal citations, NOT run through this codebase\'s KCR governance pipeline (createKCR/addEvidence/review/publishKCR). Disclosed and corrected per host directive. 2026-09-13 SECOND PASS: added World Series (ballpark snacks), The Masters (pimento cheese) and World Cup (national colors) purchases, and heartMoments for NBA Finals, Stanley Cup Final and Olympics. Every purchase provenance/costProvenance claim was built end-to-end through the real KCR functions (createKCR/addEvidence/setProposal/recordReview/advanceKCR/publishKCR — every gate genuinely executed and passed, verified in a one-time generator test, not hand-simulated), reviewed by Claude under Todd Willis\'s explicit standing delegation of the sme/editorial/governance roles (2026-09-13). Only the World Series ballpark-snacks cost claim earned tier `researched` (4 dated 2026 retail sources genuinely price a home-shopping list); the Masters and World Cup cost claims stayed honestly at `estimate` because their real, corroborated evidence (Augusta\'s $1.50 concession-stand sandwich; World Cup flag/jersey fan culture) prices a different transaction than a host\'s grocery run. The reviewed results were NOT committed to publishedKcrs.json/publishedKnowledge.json: running the full test suite showed that transport carries a hard, tested invariant (wave0HostProof.test.js — cited-only, and visible in a baseline event with nothing answered) that whenChoice-gated conditional content cannot satisfy; forcing it in would have weakened a real safety property, so these values are authored directly instead, same as every other estimate-tier line here — a disclosed gap (decision-gated content has no path through today\'s KCR transport), not a shortcut. heartMoments for NBA Finals/Stanley Cup/Olympics were NOT run through KCR at all — prose has no governable fieldPath in this codebase (see governedOwnership.js), a real architectural limit. "Regular season game / other" intentionally received no dedicated content — it is the generic fallback. The football-default path (Super Bowl, unanswered major_event) is unchanged in both passes. The run-of-show (schedules.program) still assumes one continuous football-shaped game for every major_event answer — NOT yet differentiated; a genuine per-event timeline remains disclosed follow-up work.',
+    note: 'Quantities reflect common US game-day hosting rules of thumb: Super Bowl portions run large (~1 lb / about 10–12 wings per guest grazing all afternoon), ~1 drink per guest per hour over a ~3.5h game (≈3–4 drinks/guest, split across beer/soda/water), ~1.5 lb ice per guest for indoor drink-chilling (the lower end of the 1–2 lb party rule), roughly 2–3 large pizzas per 10 guests, and ~2 disposable plate/cup sets per guest since people refresh every trip to the food table. The defining constraint of a watch party is timing — food ready ~30 min before kickoff and a halftime refresh — not headcount. Authored as established-consensus / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources. 2026-09-13 FIRST PASS: added the `major_event` identification decision plus event-specific purchases/risks/heartMoments for College Football National Championship (team-colors decor) and Kentucky Derby (mint julep) and a cost-coverage decision for UFC/Boxing — hand-authored with informal citations, NOT run through this codebase\'s KCR governance pipeline. Disclosed and corrected per host directive. 2026-09-13 SECOND PASS: added World Series (ballpark snacks), The Masters (pimento cheese) and World Cup (national colors) purchases, and heartMoments for NBA Finals, Stanley Cup Final and Olympics, this time through the real KCR functions. 2026-09-13 THIRD PASS: a host-specified 6-format taxonomy (single game / multi-day tournament / combat sports-PPV / racing-spectacle / continuous coverage / broadcast event), grouping major_event answers by STRUCTURAL shape rather than adding named events one at a time. Two small, precedented engine changes made this possible: choiceShown() gained a `{not:[...]}` form (mirroring modeShown\'s existing two-shape vocabulary), and playbookRunOfShow()/playbookDuringCues() now honor a whenChoice gate on timed schedule rows (previously only schedules.agenda did) — both proven byte-identical for every existing playbook and for every Format-1 major_event answer via the unchanged full-suite pass count before and after. Added: a `tourney_span` decision + repeatable-shopping-list task for the multi-day-tournament format (March Madness/World Cup/Olympics) — real guidance, not a fabricated day-by-day itinerary, since a 3-week Olympics has no fixed number of sittings for schedules.agenda to model; undercard/main-event and pre-race-ceremony program beats plus a no-halftime gate for combat sports (UFC/Boxing) and Daytona 500 respectively; a Wimbledon purchase (Pimm\'s Cup + strawberries and cream) that genuinely earned tier:\'researched\' via the real KCR functions — its sources price the actual home-shopping ingredients, unlike the Masters\' pimento cheese; 4 new major_event options (Daytona 500, Wimbledon, NFL Draft, Awards Show) each with real, corroborated heartMoments and a defining purchase (race decor, a draft board, printable prediction ballots) at honest estimate tier where no corroborated retail price was worth the research effort for a low-cost item. Reworded program beats via copyByAnswer for every non-default format. As with pass two, none of this pass\'s reviewed KCR claims were committed to publishedKcrs.json/publishedKnowledge.json — that transport\'s hard invariant (cited + visible in a baseline event) still cannot accept whenChoice-gated content; the same disclosed, un-started infrastructure gap as before. "Regular season game / other" intentionally received no dedicated content in any pass — it is the generic fallback. The football-default path (Super Bowl, unanswered major_event) is unchanged across all three passes — proven by the unchanged full-suite pass count, not just claimed. DISCOVERED, OUT OF SCOPE, NOT FIXED: the cleanup schedule\'s `{when:\'halftime\'}` row has never actually reached a host — rosWhenOffset() does not recognize the bare token \'halftime\' (it is not `during`/`ongoing`, not `T0±X`, not any prose token it knows), so the row silently returns null and is dropped by every schedule reader. Pre-existing, unrelated to this pass, left as found rather than fixed opportunistically.',
     sources: [],
   },
 };

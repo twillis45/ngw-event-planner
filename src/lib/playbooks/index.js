@@ -616,7 +616,16 @@ export function choicePickFor(event, id) {
 export function choiceShown(event, whenChoice) {
   if (!whenChoice || !whenChoice.id) return true;
   const v = choicePickFor(event, whenChoice.id);
-  return v == null ? true : (Array.isArray(whenChoice.in) ? whenChoice.in : []).includes(v);
+  if (v == null) return true;
+  // `{not:[...]}` drops a row for those answers (e.g. Watch Party's "halftime"
+  // beat, which UFC/Boxing and continuous-coverage formats don't have); `{in:
+  // [...]}` (the original, only form until 2026-09-13) keeps a row ONLY for
+  // those answers. Same two-shape vocabulary modeShown already uses for
+  // travel mode — extended here rather than invented fresh. Every existing
+  // whenChoice in the corpus authors `in` only, so this is additive: `not`
+  // absent means unchanged behavior, proven by the full suite staying green.
+  if (Array.isArray(whenChoice.not)) return !whenChoice.not.includes(v);
+  return (Array.isArray(whenChoice.in) ? whenChoice.in : []).includes(v);
 }
 
 // ── TRAVEL MODE — how guests actually arrive ────────────────────────────────
@@ -1627,6 +1636,7 @@ export function playbookDuringCues(event) {
     const list = Array.isArray(playbook.schedules[kind.key]) ? playbook.schedules[kind.key] : [];
     for (const entry of list) {
       if (!/^(during|ongoing)\b/i.test(String((entry && entry.when) || '').trim())) continue;
+      if (!choiceShown(event, entry.whenChoice)) continue;
       if (dropCatererCue && /cater(er|ing)/i.test(cueText(entry))) continue;
       const segment = resolveAnsweredCopy(cueText(entry), entry.copyByAnswer, event);
       if (!String(segment || '').trim()) continue;
@@ -1721,6 +1731,10 @@ export function playbookRunOfShow(event) {
     for (const entry of list) {
       const off = rosWhenOffset(entry.when);
       if (off === null) continue;
+      // Same whenChoice vocabulary tasks/purchases/agenda already use (choiceShown
+      // returns true for an absent gate, so every existing playbook — none of
+      // which author this field on a timed row today — is byte-identical).
+      if (!choiceShown(event, entry.whenChoice)) continue;
       if (dropCatererCue && /cater(er|ing)/i.test(cueText(entry))) continue;
       const total = baseMin + off;
       rows.push({
