@@ -1,13 +1,15 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (a live-hosting session
-closed: Watch Party missing from the quick occasion picker at creation;
-Super Bowl / sports-watching free text not resolving to Watch Party; no way
-to start a second event mid-session; a Game Night/Watch Party
-misclassification; an occasion-picker mis-tap risk; a dead "Something else"
-pill; and, earlier the same session, a severe nav dead end on Day/After. On
-top of the Cookout wings/game-day content, headcount parse fix, and CI-red
-closure).
+closed: sporting-event recognition widened far beyond Super Bowl (NBA
+Finals, World Cup, Kentucky Derby, UFC, Olympics, bowl games, and more —
+all routing to Watch Party); Watch Party missing from the quick occasion
+picker at creation; Super Bowl / sports-watching free text not resolving to
+Watch Party; no way to start a second event mid-session; a Game Night/Watch
+Party misclassification; an occasion-picker mis-tap risk; a dead "Something
+else" pill; and, earlier the same session, a severe nav dead end on
+Day/After. On top of the Cookout wings/game-day content, headcount parse
+fix, and CI-red closure).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -15,7 +17,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `851243d` |
+| Branch / HEAD | `main` @ `0e1d73b` |
 | Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -27,6 +29,58 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-13 — Sporting-event coverage widened far beyond Super Bowl
+
+Host: "I want sporting event watch party types. Do we have playbooks?"
+Only one exists — `watchParty.js` — and it's genuinely built for this (see
+the FIXED entry below). Asked which of Super Bowl / March Madness / World
+Series should get their OWN dedicated playbook; host's answer: "All and
+then some. Cover more sporting events than these 3."
+
+**Decision, stated plainly:** did not author a dozen near-duplicate
+playbook files. Every one of these is the same hosting shape — a screen
+everyone can see, food timed to a start whistle/tipoff/first pitch, drinks
+in coolers, cleanup between rounds — and separate files would each carry
+their own copy of the same cost citations, which is exactly what
+`researchPolicyCompliance.test.js`'s ratchet exists to catch (a duplicate,
+not a corroboration). Instead widened `eventTaxonomy.mjs`'s KEYWORDS to
+route many more named events to the existing Watch Party playbook: NFL
+Draft, NBA Finals/Draft, Stanley Cup, NHL playoffs, World Cup, Champions
+League, the Masters, Ryder Cup, Kentucky Derby, Daytona/Indy 500,
+Wimbledon, fight night/UFC/PPV/boxing/title fight, Olympics, bowl games
+(rose/sugar/orange/cotton/fiesta/peach), national championship, CFP, wild
+card, conference championship, tailgate, Elite Eight, draft day/night,
+all-star game.
+
+**Deliberately left alone:** "sweet sixteen" — already resolves to the
+Sweet 16 birthday milestone (that rule runs first in KEYWORDS), and the
+basketball tournament round of the same name isn't worth a real collision
+over. Verified both "Sweet 16 party" and "Sweet sixteen birthday bash"
+still resolve to Sweet 16 after this change, unaffected.
+
+**Honest limitation, disclosed rather than papered over:** the Watch Party
+playbook's actual CONTENT — not just its name — assumes a single
+continuous ~3.5–4h game with one halftime: several schedule tokens and
+risk ids are literally `kickoff`/`halftime` (`r_kickoff`, `t_halftime`,
+`when: 'halftime'`). That's accurate for football/basketball/soccer, a
+looser fit for a multi-fight UFC card, and a real mismatch for a horse
+race (the Derby itself is ~2 minutes; the party is a build-up event, not a
+game with a halftime), a golf major (hours of continuous coverage, no
+discrete break), the NFL Draft (a broadcast announcement show, not a
+game), or the Olympics (multi-week, many discrete events). Recognition
+now routes all of these to Watch Party; the schedule/risk COPY they'll see
+still talks about kickoff and halftime regardless of which one it is. Not
+rewritten in this pass — a genuine per-format content differentiation
+(or at minimum a copy-only de-footballing pass: "kickoff" → "the start,"
+"halftime" → "the midpoint break") is real, scoped work, flagged for a
+follow-up rather than done blind under time pressure.
+
+Live-verified 13 phrasings (NBA Finals, Stanley Cup, World Cup, Kentucky
+Derby, UFC fight night, the Masters, bowl game, national championship,
+wild card weekend, NFL Draft, tailgate, Wimbledon, Olympics) resolve to
+Watch Party; both Sweet 16 phrasings unaffected. Root Jest 442/442. hostv2
+build + parity gate + hostv2-artifact drift gate all clean.
 
 ## FIXED 2026-09-13 — Watch Party missing from the quick occasion picker at creation
 
