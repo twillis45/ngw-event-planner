@@ -8,7 +8,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `1b9027e4` (this session's fix commits land on top — see below) |
+| Branch / HEAD | `main` @ `0c541e23` |
 | Jest | **6,231 passed**, 1 skipped, 1 failed (pre-existing, unrelated — see below), **441 suites** — measured this pass |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
