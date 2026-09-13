@@ -1,10 +1,11 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (a live-hosting session
-surfaced and closed a Game Night/Watch Party misclassification, an occasion-
-picker mis-tap risk, a dead "Something else" pill, and — earlier the same
-session — a severe nav dead end on Day/After. On top of the Cookout wings/
-game-day content, headcount parse fix, and CI-red closure).
+closed: no way to start a second event mid-session; a Game Night/Watch Party
+misclassification; an occasion-picker mis-tap risk; a dead "Something else"
+pill; and, earlier the same session, a severe nav dead end on Day/After. On
+top of the Cookout wings/game-day content, headcount parse fix, and CI-red
+closure).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -12,7 +13,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `f564424` |
+| Branch / HEAD | `main` @ `b6e6997` |
 | Jest | **6,238 passed**, 1 skipped, **0 failed**, **442 suites** — first fully green run this session; the prior pre-existing failure is fixed, not just excused (see below) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -24,6 +25,51 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-13 — No way to start a second event while one was already loaded
+
+Host report: "When in an event need to create new events on occasion."
+Confirmed a real dead end, live, not a UI nit. Every apparent entry point
+for starting a second event mid-session — the dock's Create tab, the nav
+sheet's Create segment (the Menu button added earlier this session), the
+command palette's "New event" result — all called bare `setStage('create')`.
+That stage only renders the blank "What are we planning?" prompt while
+`!revealed`; once the loaded event has cleared the reveal ceremony,
+`'create'` shows THAT event's recap ("YOUR EVENT, UNDERSTOOD…") forever —
+nothing anywhere reset `revealed` back to `false` except "Change an
+answer," which deliberately re-edits the SAME event via `redoEventId`, not
+a new one. Live-verified before touching anything: all three entry points
+looped back to the current event's recap with no way past it.
+
+**Fix:** added `startNewEvent()` (`hostv2/src/HostShellV2.jsx`, near
+`dismissWelcome`) — when a finished event is loaded, clears the
+create-flow scratch state (`smartText`, `fType`, `createEdit`,
+`intakeOpen`, `typeOpen`) and un-reveals so the blank prompt renders; a
+draft still in progress (`!revealed`) is left alone so returning to Create
+doesn't wipe a half-typed one. `assemble()` already mints its own new
+event id on every call unless `redoEventId.current` is set, and the
+current event's data lives in the store under its own id regardless of
+this scratch state, so nothing about the event in progress was ever at
+risk. Wired into all three entry points.
+
+**Live-verified end to end, not just read from code:** created a second
+event ("Sunday Dinner…") from inside today's real Cookout event via
+Day tab → Menu → Create, then confirmed via `localStorage` that both
+events now persist independently under separate ids — the Cookout keeps
+its real date, name and data untouched:
+```
+cust-mtzzrwkd-6byeqj  My The Cookout   The Cookout   2026-09-13
+cust-mtzzs1om-g3n0ei  My Dinner        Dinner Party  (no date)
+```
+Root Jest 442/442. hostv2 build + parity gate + hostv2-artifact drift gate
+all clean.
+
+**Noted in passing, not fixed (separate from what was asked):** the
+free-text type resolver read "Sunday Dinner for 8 next weekend" as generic
+"Dinner Party," not the authored "Sunday Dinner" playbook — the same class
+of gap as the Game Night fix above, in a different type. Flagging for a
+follow-up keyword audit across `eventTaxonomy.mjs`'s `KEYWORDS` list rather
+than patching one more entry blind.
 
 ## FIXED 2026-09-13 — Game Night/Watch Party misclassification, occasion-picker mis-tap risk, dead "Something else" pill
 
