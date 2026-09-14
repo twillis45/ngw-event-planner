@@ -66,7 +66,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `588e520` |
+| Branch / HEAD | `main` @ `c0cac21` |
 | Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the review-board content fixes (no ratchet change, no new engine surface) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
