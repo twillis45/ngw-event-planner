@@ -263,7 +263,10 @@
 // changed to make that possible and what it now guards.
 const FORMAT_MULTIDAY = ['March Madness', 'World Cup', 'Olympics', 'NFL Playoffs'];
 const FORMAT_COMBAT = ['UFC / Boxing'];
-const FORMAT_RACING = ['Kentucky Derby', 'Daytona 500'];
+// The racing spectacle format (Kentucky Derby, Daytona 500) has no
+// FORMAT_RACING constant here: unlike the other four groups, nothing gates
+// on it collectively — each event's run-of-show/heartMoments differ via
+// copyByAnswer keyed on its own name, not a shared whenChoice check.
 const FORMAT_CONTINUOUS = ['The Masters', 'Wimbledon'];
 const FORMAT_BROADCAST = ['NFL Draft', 'Awards Show'];
 // FORMAT_SINGLE_GAME (Super Bowl, CFB Championship, NBA Finals, Stanley Cup
