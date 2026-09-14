@@ -1,7 +1,19 @@
 # HANDOFF — NGW Event Planner
 
 **Measured reality, not intentions.** Updated 2026-09-13 (this same session,
-continued once more: built the "NFL Playoffs" major_event option the audit
+continued once more: asked the KCR review board what the full major_event
+body of work was still missing. The board measured a coverage matrix
+directly off the engine (not memory) and found 2 real format-mate gaps —
+World Series had zero heartMoment overrides despite a real purchase, and its
+run-of-show was never reworded per-event like every sibling; Wimbledon was
+missing one of the two heartMoment variants Masters already had. Fixed all
+three. Also built hostv2/e2e/watchPartyMajorEvent.spec.mjs — the first real
+e2e coverage for this whole differentiation system, driven through the
+rendered screen rather than direct engine calls, guarding the three
+host-visible bugs found earlier by reading engine output by hand (which had
+no permanent regression test until now) plus a click-through wiring proof.
+See the dated entry below.
+Before that, in this same session: built the "NFL Playoffs" major_event option the audit
 flagged as missing — real research first (Wild Card Weekend is genuinely 6
 games/3 days, every round is single-elimination), joined the existing
 Multi-day tournament format and reused its `tourney_span` decision rather
@@ -54,18 +66,78 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `ea23ed1` |
-| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after adding NFL Playoffs (no ratchet change, no new engine surface) |
+| Branch / HEAD | `main` @ `80bb7bd` |
+| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the review-board content fixes (no ratchet change, no new engine surface) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
-| e2e (Playwright) | full matrix **909 passed / 190 skipped / 0 failed** (20.7m). Skips down 20 from the rotted-guard fix; the census classified all 36 guards |
+| e2e (Playwright) | full matrix **909 passed / 190 skipped / 0 failed** (20.7m) as of the prior pass. Skips down 20 from the rotted-guard fix; the census classified all 36 guards. `watchPartyMajorEvent.spec.mjs` (6 new tests) added this pass — verified **6/6 passing on `desktop`** in this sandbox (no working browser channel for the full 7-project matrix here); full-matrix total to be confirmed by CI on the next `pages-from-source.yml` run |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-13 (eighth session update, same day) — review-board audit fixes + real e2e coverage
+
+Host directive: "Ask review board what we are missing," then "Yes then the
+fixes" — build real Playwright e2e coverage first, then the 3 content fixes
+the board flagged.
+
+**The audit, measured not assumed:** a temporary script (`playbooks/data/watchParty.js`'s
+own module, called directly, then deleted) built a coverage matrix across
+all 16 `major_event` options — `{opt, extraPurchases, heartOverrides,
+rosReworded}` — the same category of format-mate-inconsistency bug found and
+fixed repeatedly this session (Daytona/Derby, Masters/Wimbledon, World Cup).
+It found:
+- **World Series: 0/4 heartMoment overrides**, despite having a real
+  purchase (ballpark snacks) — every other event with a purchase had at
+  least one heartMoment variant tied to it.
+- **World Series' run-of-show was never reworded** across its 4 timed
+  program rows, unlike every sibling event that got the per-event
+  copyByAnswer treatment.
+- **Wimbledon: 2/4 heartMoment overrides vs. Masters' 3/4** — missing the
+  "food ready before kickoff" variant every other food-purchasing event has.
+
+**Fixes**, all in `src/lib/playbooks/data/watchParty.js`:
+- World Series heartMoments: "The ballpark snacks are out and everyone's
+  settled in well before the first pitch" (food-ready base) and a walk-off
+  variant (big-play base).
+- World Series run-of-show reworded at all 4 beats: first pitch, 7th-inning
+  stretch, middle innings, final outs.
+- Wimbledon's missing food-ready variant: "The strawberries and Pimm's are
+  out and everyone's settled in well before the first serve."
+- `version`/`governanceVersion` bumped `1.4.0` → `1.4.1`.
+
+**New: `hostv2/e2e/watchPartyMajorEvent.spec.mjs`** — the first e2e coverage
+for the entire major_event differentiation system, driven through the
+rendered screen rather than direct engine calls. It guards the three real,
+host-visible bugs found earlier this session purely by reading engine output
+by hand (ungated risks leaking onto every event, an impossible "halftime"
+heartMoment on no-halftime formats, a missing purchase from a decision
+collision) — none of which had a permanent regression test before this — plus
+a click-through wiring proof that a pick made on the decision board itself
+(not seeded data) actually reaches the spread. Building it surfaced real
+selector bugs of its own (fixed in the same commit, not the app): the spread
+sheet's item names sit behind two layers of disclosure ("The list", then each
+category's own `.fg-label` row), the checklist sometimes needs an explicit
+"Draft my checklist from the playbook" tap before any task renders, and the
+major_event decision card is a `[data-flip="major_event"]` row, not an
+`<article>`.
+
+**Sandbox note**: this environment's pre-installed Playwright browser
+revision doesn't match what `playwright.config.mjs` expects, and this
+sandbox's background-task runner kills a command instantly if any command
+in the chain (e.g. a `pkill` with nothing to match) exits non-zero — a local,
+uncommitted `hostv2/playwright.sandbox.config.mjs` works around the browser
+mismatch (never touches the checked-in config); verified 6/6 passing on the
+`desktop` project only, not the full 7-project matrix.
+
+Files: `src/lib/playbooks/data/watchParty.js`,
+`hostv2/e2e/watchPartyMajorEvent.spec.mjs`. Full Jest **442/442 suites,
+6240/6241 tests** (1 pre-existing skip, no ratchet change). `sync:hostv2`/
+`gate:hostv2` clean. Commit `80bb7bd`.
 
 ## ADDED 2026-09-13 (seventh session update, same day) — built the NFL Playoffs major_event option
 
