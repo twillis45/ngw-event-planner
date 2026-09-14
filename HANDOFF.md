@@ -66,12 +66,12 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `a5d9b27` |
+| Branch / HEAD | `main` @ `588e520` |
 | Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the review-board content fixes (no ratchet change, no new engine surface) |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
-| e2e (Playwright) | full matrix **909 passed / 190 skipped / 0 failed** (20.7m) as of the prior pass. Skips down 20 from the rotted-guard fix; the census classified all 36 guards. `watchPartyMajorEvent.spec.mjs` (6 new tests) added this pass — verified **6/6 passing on `desktop`** in this sandbox (no working browser channel for the full 7-project matrix here); full-matrix total to be confirmed by CI on the next `pages-from-source.yml` run |
+| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
@@ -138,6 +138,28 @@ Files: `src/lib/playbooks/data/watchParty.js`,
 `hostv2/e2e/watchPartyMajorEvent.spec.mjs`. Full Jest **442/442 suites,
 6240/6241 tests** (1 pre-existing skip, no ratchet change). `sync:hostv2`/
 `gate:hostv2` clean. Commit `80bb7bd`.
+
+**Postscript, same day — real CI (`checks.yml`) caught what the sandbox
+couldn't:** the sandbox-verified 6/6 above was `desktop`-project only. The
+full 7-viewport matrix in real CI found the wiring-proof test genuinely
+failing on `mobile`/`landscape`/`tablet` — those viewports open sections via
+the eyebrow-menu-and-sheet path (not the rail), and the decisions sheet
+wasn't actually closing between the two sheet-opens in that one test, so the
+next section's click landed on the old sheet's scrim. Fixed by explicitly
+clicking the sheet's own Close button instead of relying on the shared
+fixture's Escape fallback; re-verified 18/18 directly against those three
+viewports. Commit `c9c686b`.
+
+Also fixed, on Todd's go-ahead: `checks.yml`'s `cra-build` job had been
+failing on an unused `FORMAT_RACING` constant since before this session
+touched anything (confirmed identical at `646fcdd`) — racing events
+(Kentucky Derby, Daytona 500) differentiate individually via `copyByAnswer`
+and never needed the group-level constant its four siblings use. Removed it.
+Commit `588e520`.
+
+`checks.yml` is now **fully green** — jest, hostv2-build, backend, e2e (full
+matrix), and cra-build all passing on the same commit, for the first time in
+at least the last 5 pushes.
 
 ## ADDED 2026-09-13 (seventh session update, same day) — built the NFL Playoffs major_event option
 
