@@ -165,6 +165,15 @@ test('the major_event pick, made on the board itself, reaches the spread', async
   await card.locator('button', { hasText: 'Kentucky Derby' }).first().click();
   await settled(page);
 
+  // Close the board explicitly rather than relying on openSectionByName's
+  // Escape-then-reopen fallback: below the rail band (mobile/landscape/tablet
+  // in CI's full matrix) Escape did not dismiss THIS sheet after a decision
+  // pick, so the next section's eyebrow click landed on its scrim instead and
+  // timed out. At rail widths this sheet's Close is a no-op on the outcome —
+  // the next section opens via the rail regardless — so it's safe everywhere.
+  await board.locator('.sheet-x').click();
+  await page.waitForTimeout(250);
+
   const spread = await readSpread(page);
   expect(spread, 'the board pick never reached the spread').toMatch(/mint julep/i);
 });
