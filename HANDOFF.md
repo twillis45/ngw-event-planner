@@ -79,6 +79,41 @@ this file is the short answer to "where is it, is it green, what's next."
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
+## ADDED 2026-09-17 (fifth entry, same day) — every format now has a task the others never see
+
+Closed the additive task pass across the three remaining formats. The research
+pattern held everywhere, and it is the finding worth keeping: **the per-sport
+differentiator is TIMING, never food.**
+
+- **March Madness** — brackets **LOCK at the first tip** and cannot be changed
+  (NCAA/ESPN), so "we'll do brackets at the party" has already failed if the
+  party starts later; and the opening rounds run **up to eight games at once**,
+  so one TV guarantees missing finishes. (Not generalised to World Cup/Olympics
+  — their simultaneity wasn't researched.)
+- **Continuous coverage** — the format *defined* by having no break. The
+  playbook already gates `t_halftime` off for it, which is right, and also left
+  those hosts with **no mid-event guidance at all**. Documented Wimbledon advice
+  lands on the same point: stock enough glassware that nobody's at the sink
+  mid-match. Plus whites on the invite (same invite-time shape as Derby hats).
+- **Broadcast** — no ball to watch, so what MAKES it a party must be ready before
+  the broadcast: board up before the first pick, ballots out before the first
+  award. Both supply timing that existing purchases (`p_draftboard`, `p_ballot`)
+  always implied but never stated.
+
+**Measured end state**, against the matrix taken before any of this was written:
+
+| | Before | After |
+|---|---|---|
+| Tasks varying across 17 events | **1** (`t_halftime`, by REMOVAL) | **11** |
+| Of those, additive | **0** | **10** |
+| Super Bowl / single-game events | 8 | **8 — unmoved** |
+
+The default path never moved: differentiate the events that differ, leave the
+common case exactly as it was. Still unpriced throughout, so KCR stays out of
+scope — a hat-contest prize or printed sheets would not be, and were left out.
+
+Commit `adfc65f`. Jest 442/442, 6241 passed, zero failures, no drift.
+
 ## ADDED 2026-09-17 (fourth entry, same day) — the catch-all learns which sport, and the list's own cause moves first
 
 **"Which sport?" (`reg_sport`).** `Regular season game / other` is the catch-all
