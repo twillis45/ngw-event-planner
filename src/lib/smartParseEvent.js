@@ -349,6 +349,18 @@ export function parseSmartEventText(text, opts = {}) {
     while ((m = re.exec(t)) !== null) {
       const r = tryLoc(m[1].trim(), m[2].trim());
       if (r) return r;
+      // ── A FAILED CANDIDATE MUST NOT SWALLOW THE REAL ONE (2026-09-17) ────
+      // On a miss, lastIndex sat after the whole match — including the STATE
+      // half — so the very next pair was never tried. "…, 8100 Ryan Way,
+      // Greenbelt, MD" matched "Ryan Way, Greenbelt" first, failed the state
+      // gate (correctly), and resumed at ", MD" with no city in front of it:
+      // the town was dropped from an ordinary sentence, taking weather, the
+      // venue check and the home comparison with it. Any comma phrase sitting
+      // in front of the town did this — a street line is just the common case.
+      // Resuming after the CITY half lets "Greenbelt, MD" be tried on the next
+      // pass. lastIndex still advances by at least one character each time, so
+      // this terminates.
+      re.lastIndex = m.index + m[1].length;
     }
     return null;
   })();
@@ -369,6 +381,24 @@ export function parseSmartEventText(text, opts = {}) {
     return null;
   })();
   const loc = locBare;
+
+  // ── THE STREET LINE (2026-09-17) ─────────────────────────────────────────
+  // parseVenueLocation refuses any string containing digits (cityText.js), and
+  // that is correct for a "City, ST" resolver — but it means a host who gives a
+  // real address gets the one fact she was most specific about thrown away, and
+  // then gets asked for it again in a separate field. venueAddress already
+  // exists on the event and already feeds the invite and the rain note; nothing
+  // ever filled it from what she typed.
+  //
+  // Matched narrowly: a house number, up to four street words, and a real
+  // street-type suffix. The suffix requirement is what keeps this from reading
+  // "5 people" or "20 guests" or "Aug 2" as an address — a number alone is
+  // never enough. Unit/apartment tails are kept when written plainly.
+  const STREET_SUFFIX = '(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|way|ct|court|blvd|boulevard|pl|place|ter|terrace|cir|circle|pkwy|parkway|hwy|highway|trl|trail|loop|run|row|walk|path)';
+  const addrM = t.match(new RegExp(
+    `\\b(\\d{1,6}[A-Za-z]?\\s+(?:[A-Za-z0-9.'’-]+\\s+){0,4}?${STREET_SUFFIX}\\.?)` +
+    `((?:\\s*,?\\s*(?:apt|apartment|unit|suite|ste|#)\\s*[\\w-]+)?)\\b`, 'i'));
+  const venueAddress = addrM ? (addrM[1] + (addrM[2] || '')).replace(/\s+/g, ' ').trim() : '';
 
   // ── Destination modifier — a real signal, surfaced as a SUGGESTION ───────
   // (the host confirms/edits it via a real toggle, same "suggest don't
@@ -533,6 +563,68 @@ export function parseSmartEventText(text, opts = {}) {
     return null;
   })();
 
+  // ── THE CLOCK SHE ACTUALLY SAID (2026-09-17) ─────────────────────────────
+  // The bucket above is deliberately coarse, and the comment explaining why is
+  // right: the app must never INVENT an hour. That was the 15:00 bug — a time
+  // shown as fact and sent to a caterer that nobody chose (see lib/startTime.js).
+  //
+  // But "never invent" is not "never listen". startTime.js's own tier 2 is THE
+  // HOST'S OWN WORD, and `startTimeIsConfirmed` exists precisely to separate a
+  // time the host owns from a derived proposal. A host who types "Sunday at
+  // 1pm" HAS decided; dropping it on the floor and then proposing an hour back
+  // to her is the app ignoring the strongest signal it will ever get about when
+  // the event starts. "BBQ at my brother's house today at 3pm" is already in
+  // this file's own date comment as a real host sentence — the date was rescued
+  // then, the "3pm" was not.
+  //
+  // So: extracted ONLY when said, never derived from the bucket, and always
+  // with a basis the UI can be honest about — the same three-state treatment
+  // overnightBasis and destinationBasis already get in this file.
+  //   'said-exact'       — "1pm", "6:30 PM": the meridiem is on the page.
+  //   'said-with-bucket' — "afternoon at 1": the host's own bucket disambiguates.
+  //   'said-hour-only'   — "at 1" alone: the NUMBER is hers, the half of the day
+  //                        is a reading of it, so it is marked as the weakest.
+  const startTimeParsed = (() => {
+    // "at 1", "at 1:30", "at 1pm", "1:30pm", "kickoff at 1", "doors at 6:30".
+    // Anchored on a preposition/cue or an explicit meridiem so it cannot eat a
+    // guest count ("for 20"), a budget ("$3,000") or a date ("Aug 2").
+    const m = t.match(/\b(?:at|from|starts?(?:\s+at)?|kick(?:s)?\s*off(?:\s+at)?|doors(?:\s+(?:at|open(?:\s+at)?))?)\s+(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m?\.?\b/i)
+           || t.match(/\b(\d{1,2})(?::(\d{2}))\s*([ap])\.?m?\.?\b/i)
+           || t.match(/\b(\d{1,2})\s*([ap])\.m?\.?\b/i)
+           || t.match(/\b(\d{1,2})\s*([ap])m\b/i)
+           || t.match(/\b(?:at|from|starts?(?:\s+at)?|kick(?:s)?\s*off(?:\s+at)?|doors(?:\s+(?:at|open(?:\s+at)?))?)\s+(\d{1,2})(?::(\d{2}))?\b(?!\s*(?:guests?|people|ppl|folks))/i);
+    if (!m) return null;
+    // The meridiem is whichever capture group came back as a/p — the shapes
+    // above put it in different slots, so find it rather than index blindly.
+    const groups = m.slice(1).filter((g) => g != null);
+    const mer = (groups.find((g) => /^[ap]$/i.test(g)) || '').toLowerCase();
+    const nums = groups.filter((g) => /^\d+$/.test(g));
+    let h = parseInt(nums[0], 10);
+    const min = nums.length > 1 ? parseInt(nums[1], 10) : 0;
+    if (!(h >= 1 && h <= 24) || !(min >= 0 && min <= 59)) return null;
+    let basis;
+    if (mer) {
+      if (mer === 'p' && h < 12) h += 12;
+      if (mer === 'a' && h === 12) h = 0;
+      basis = 'said-exact';
+    } else if (h > 12) {
+      basis = 'said-exact';                         // 24-hour clock needs no reading
+    } else if (timeOfDay === 'afternoon' || timeOfDay === 'evening' || timeOfDay === 'night' || timeOfDay === 'late') {
+      if (h < 12) h += 12;
+      basis = 'said-with-bucket';
+    } else if (timeOfDay === 'morning') {
+      basis = 'said-with-bucket';
+    } else {
+      // No meridiem, no bucket. A gathering at "1" is 1 PM, not 1 AM — but that
+      // is a READING, so it says so rather than passing as something she typed.
+      if (h >= 1 && h <= 6) h += 12;
+      basis = 'said-hour-only';
+    }
+    if (h === 24) h = 0;
+    const h12 = h % 12 || 12;
+    return { startTime: `${h12}:${String(min).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`, startTimeBasis: basis };
+  })();
+
   // ── Secondary type — a DUAL / compound event ("retirement AND 50th birthday") ─
   // The primary `type` is the resolved one; if the text clearly names a SECOND
   // occasion, carry it so the caller can build a compound event instead of silently
@@ -593,6 +685,9 @@ export function parseSmartEventText(text, opts = {}) {
 
   return {
     type, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    startTime: startTimeParsed ? startTimeParsed.startTime : null,
+    startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
+    venueAddress: venueAddress || null,
     honoree: hm ? hm[1] : null,
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : (lodging || venueAt ? 'venue' : ''),
     venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),

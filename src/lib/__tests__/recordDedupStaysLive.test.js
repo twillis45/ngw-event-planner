@@ -22,7 +22,21 @@ import { eventPlan } from '../../CommandCenter';
 import { deriveEventPhaseProgress } from '../phaseProgress';
 import { getPlaybook } from '../playbooks';
 
-const AS_OF = new Date('2026-08-07T12:00:00Z');
+// ── ONE CLOCK, NOT TWO (2026-09-17) ─────────────────────────────────────────
+// This was pinned to 2026-08-07 while the OTHER engine in the same loop —
+// eventPlan(ev), which takes no as-of and reads the real date — was not. Every
+// fixture date is AS_OF + horizon, so the two agreed on exactly one day: the
+// day this was written. Forty-one days later the "@60d" bridal shower was 19
+// real days out to eventPlan and still 60 to deriveEventPhaseProgress, the two
+// raised different action sets, and the double-billing assertion tripped. The
+// suite was green in CI on 2026-09-14 and red on 2026-09-17 with no code change
+// in between — a failure that would have recurred every run from then on, and
+// that no diff could have explained.
+//
+// Anchoring to TODAY puts both clocks on the same day, which is what the
+// horizons below were always meant to mean: "this many days from now". Noon
+// keeps the arithmetic clear of timezone edges either side of midnight.
+const AS_OF = (() => { const d = new Date(); d.setUTCHours(12, 0, 0, 0); return d; })();
 const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
 const TYPES = ['birthday', 'wedding', 'babyShower', 'dinnerParty', 'cookout',
   'conference', 'reunion', 'bridalShower'];

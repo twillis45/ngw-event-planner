@@ -1229,7 +1229,26 @@ export default function HostShellV2() {
         if (text) { setSmartText(text); setFType(null); setCreateEdit(null); }
       };
       r.onend = () => { clearVoiceIdleTimer(); setListening(false); };
-      r.onerror = () => { clearVoiceIdleTimer(); setListening(false); toast('Couldn’t hear that — try again or type it.'); };
+      // ── "TRY AGAIN" IS THE WRONG ADVICE FOR A DENIED MIC ──────────────────
+      // One generic toast fired for every error code, including 'not-allowed'.
+      // A host who declined (or never granted) the mic permission was told
+      // "Couldn't hear that — try again", which is advice that cannot work:
+      // retrying re-prompts nothing, the browser remembers the denial, and the
+      // only way out is a setting this copy never mentions. Same class as the
+      // "· heard" ruling — the app stating something it does not know.
+      r.onerror = (ev) => {
+        clearVoiceIdleTimer(); setListening(false);
+        const code = (ev && ev.error) || '';
+        // 'aborted' is the host's own tap to stop — never an error to report.
+        if (code === 'aborted') return;
+        toast(
+          code === 'not-allowed' || code === 'service-not-allowed'
+            ? 'Mic access is blocked — allow the microphone in your browser settings, or type it instead.'
+          : code === 'audio-capture' ? 'No microphone found — type it instead.'
+          : code === 'network' ? 'Voice needs a connection right now — type it instead.'
+          : 'Couldn’t hear that — try again or type it.'
+        );
+      };
       setListening(true);
       r.start();
       voiceIdleTimer.current = setTimeout(() => { toast('Stopped listening — quiet for a while.'); stopVoice(); }, VOICE_IDLE_MS);
@@ -1329,7 +1348,21 @@ export default function HostShellV2() {
   // final until "Put my plan together."
   const effCityText = fCity.trim() || (parsed.venueCity ? (parsed.venueState ? parsed.venueCity + ', ' + parsed.venueState : parsed.venueCity) : '');
   const effBudget = fBudget ?? parsed.budget ?? null;
-  const effIsDestination = fIsDestination ?? !!parsed.isDestination;
+  // ── A GUESS IS NOT AN ANSWER (2026-09-17) ────────────────────────────────
+  // With no home city on the profile, smartParseEvent fires isDestination for
+  // ANY bare resolved city — deliberately, because a miss silently deletes the
+  // whole travel stack. But "fire by default" also means a local party typed as
+  // "in Greenbelt, MD" arrived pre-committed to a destination plan (lodging,
+  // transport, a budget blended toward travel-led) that the host never asked
+  // for and was never asked about.
+  //
+  // basis 'place-named' is exactly and only that guess — 'travel-language' is
+  // the host's own words and 'place-differs-from-your-area' is grounded in her
+  // profile, so both still commit. The guess becomes the THIRD state the
+  // overnight chip already established: unanswered, which stays honest instead
+  // of defaulting. Nothing downstream changes for the two grounded cases.
+  const destinationIsGuess = parsed.destinationBasis === 'place-named';
+  const effIsDestination = fIsDestination ?? (destinationIsGuess ? null : !!parsed.isDestination);
   // Host answer wins over the heard hint, which wins over nothing. Staying null
   // is a real state — it means "we have not been told", and the decisions that
   // depend on it stay out rather than being gated on a guess.
@@ -6348,6 +6381,17 @@ export default function HostShellV2() {
       // "No kids." typed at create carries straight to the invite policy the
       // invite + DIFM copy already consume (parser 2026-07-27; never invented).
       ...(parsed.kidsPolicy ? { kidsPolicy: parsed.kidsPolicy } : {}),
+      // ── A TIME SHE TYPED IS A TIME SHE OWNS (2026-09-17) ──────────────────
+      // The parser now reads a spoken clock ("Sunday at 1pm"), which until now
+      // was dropped so the app could propose an hour back to her on the very
+      // next screen. startTimeSource:'host' is the whole point — startTimeIsConfirmed
+      // gates the invite, the vendor brief and the ROS clock on NOT being
+      // 'derived', and this hour is hers, not ours. The 15:00 bug was the app
+      // inventing a time; writing down the one she gave is the opposite of it.
+      ...(parsed.startTime ? { startTime: parsed.startTime, startTimeSource: 'host' } : {}),
+      // The street line she already typed, instead of asking for it again in a
+      // separate field. venueAddress already feeds the invite and the rain note.
+      ...(parsed.venueAddress ? { venueAddress: parsed.venueAddress } : {}),
       ...((() => {
         // Same strict city/state-or-ZIP gate as the other venueCity writers —
         // this is event CREATION, so a bare city typed here would otherwise
@@ -6359,7 +6403,10 @@ export default function HostShellV2() {
       guestMode: 'count',
       guestEstimate: effGuests || '',
       totalBudget: effBudget || '',
-      isDestination: effIsDestination,
+      // Same "absent means not told" rule as guestsStayOvernight below, now that
+      // an un-grounded destination guess stays unanswered instead of committing:
+      // writing null here would record a decision the host never made.
+      ...(effIsDestination !== null ? { isDestination: effIsDestination } : {}),
       // Persisted only when the event IS a destination and we actually have an
       // answer — an absent field means "not told", which the engines can treat
       // differently from a false. Never written for a local event.
@@ -7144,8 +7191,26 @@ export default function HostShellV2() {
                         <button className="chip" aria-pressed={!!effBudget} onClick={() => setCreateEdit(createEdit === 'budget' ? null : 'budget')}>
                           {effBudget ? '$' + effBudget.toLocaleString() + (fBudget == null && parsed.budget != null ? ' · heard' : '') : 'Budget?'}
                         </button>
-                        <button className="chip" aria-pressed={effIsDestination} onClick={() => setFIsDestination(!effIsDestination)}>
-                          {effIsDestination ? 'Destination event' + (fIsDestination == null ? ' · heard' : '') : 'Local event'}
+                        {/* ── "HEARD" MEANS SHE SAID IT, HERE TOO (2026-09-17) ──────────
+                            The same defect the overnight chip above was fixed for on
+                            2026-08-06, in the same chip row, unfixed until now: this said
+                            "· heard" whenever the host had not overridden it — including
+                            when the flag was a pure GUESS. destinationBasis has carried the
+                            three cases the whole time ('travel-language' = she said it,
+                            'place-differs-from-your-area' = derived from her profile,
+                            'place-named' = no home city known, so a bare city fired the
+                            flag by default) and the shell read it zero times.
+                            'place-named' is the one that mattered: with no profile, a local
+                            party "in Greenbelt, MD" reads Destination, and the chip claimed
+                            the host had SAID so. It says what it actually is instead. */}
+                        <button className="chip" aria-pressed={effIsDestination === true}
+                          onClick={() => setFIsDestination(effIsDestination === true ? false : effIsDestination === false ? null : true)}>
+                          {effIsDestination === true
+                            ? 'Destination event' + (fIsDestination != null ? ''
+                              : parsed.destinationBasis === 'travel-language' ? ' · heard'
+                                : parsed.destinationBasis === 'place-differs-from-your-area' ? ' · not your area' : '')
+                            : effIsDestination === false ? 'Local event'
+                              : 'Local, or folks traveling in?'}
                         </button>
                         {/* ── The two axes, asked rather than guessed ──────────────────
                             One boolean gated lodging, transport, travel-mix and health
@@ -11209,7 +11274,32 @@ export default function HostShellV2() {
                 )}
               <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the Boss' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
               </div>
-              <button className="sheet-x" onClick={closeSheet}>{sheet.from ? 'Back' : 'Close'}</button>
+              {(() => {
+                // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
+                // On the spread sheet the host works down four sections, and the
+                // control they leave by looked identical whether nothing or
+                // everything was settled. It now tracks the same two signals the
+                // sheet already shows — choices settled, items bought — so the way
+                // out brightens as the work closes out.
+                //
+                // Same UX_02 ceiling as the "Done" button below it: green is
+                // "Complete", so it only lands when BOTH are finished; partial
+                // progress gets steel. Scoped to sheet.kind === 'food' because
+                // this is the one sheet with a real completion signal — every
+                // other sheet keeps the plain control rather than inventing one.
+                let tone;
+                if (sheet.kind === 'food' && foodPlan && (foodPlan.itemCount || 0) > 0) {
+                  const picks = event.foodChoices || {};
+                  const chs = foodPlan.choices || [];
+                  const settledAll = chs.length > 0 && chs.every(d => picks[d.id]);
+                  const boughtAll = foodPlan.boughtCount === foodPlan.itemCount;
+                  const started = foodPlan.boughtCount > 0 || chs.some(d => picks[d.id]);
+                  tone = (settledAll && boughtAll) ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
+                    : started ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
+                      : undefined;
+                }
+                return <button className="sheet-x" style={tone} onClick={closeSheet}>{sheet.from ? 'Back' : 'Close'}</button>;
+              })()}
             </div>
             {/* Date & time area is a real door now (host report 2026-07-16: it was tappable
                 copy with no editor behind it). Reuses the same date+arrival-time editor the
@@ -16691,7 +16781,31 @@ export default function HostShellV2() {
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)' }}>
                       Your choices
-                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>Done</button>
+                      {(() => {
+                        // ── THE BUTTON DID NOT MOVE WHEN THE HOST DID (2026-09-17) ──
+                        // Settling a choice folds it to a green settled line, but "Done"
+                        // stayed identical whether nothing or everything had been
+                        // answered — the one control the host reaches for last gave no
+                        // read on whether there was anything left to answer.
+                        //
+                        // UX_02 decides how far it may go: green is "Complete, on track,
+                        // confirmed", so it lands ONLY when every choice is settled.
+                        // Partial progress gets the steel illuminate instead — visible
+                        // movement without claiming a completion the host has not
+                        // reached. The button keeps its own text label either way, so
+                        // the colour is never the only carrier (UX_02's colorblind rule).
+                        const picks = event.foodChoices || {};
+                        const settled = foodPlan.choices.filter(d => picks[d.id]).length;
+                        const tone = settled === foodPlan.choices.length
+                          ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
+                          : settled > 0
+                            ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
+                            : undefined;
+                        return (
+                          <button className="mini" style={{ marginLeft: 'var(--sp-2)', ...tone }}
+                            onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>Done</button>
+                        );
+                      })()}
                     </div>
                     {foodPlan.choices.map(d => {
                       // AUTO-COLLAPSE (host request): a made choice folds to its
