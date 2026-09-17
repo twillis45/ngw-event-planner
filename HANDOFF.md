@@ -79,6 +79,42 @@ this file is the short answer to "where is it, is it green, what's next."
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
+## ADDED 2026-09-17 (fourth entry, same day) — the catch-all learns which sport, and the list's own cause moves first
+
+**"Which sport?" (`reg_sport`).** `Regular season game / other` is the catch-all
+AND the likeliest answer a host picks, yet it carried no content — so the plan
+fell back to the football default. Correct for an NFL Sunday, wrong for
+everything else: an NBA Tuesday and an MLB Saturday both got "Kickoff" and a
+halftime task for a sport with innings.
+
+Asked only for the catch-all (named events already know their sport), defaulting
+to Football (NFL) so the unanswered path is byte-identical — verified: the
+unanswered catch-all and Super Bowl still read "Kickoff"/"Halftime refresh".
+
+It drives **wording, never gating**. Every sport has a mid-event break; it just
+isn't called halftime in all of them, so the honest fix is naming it rather than
+hiding the task: MLB first pitch / seventh-inning stretch · NHL puck drop /
+first intermission · NBA+CBB tip-off / halftime · Soccer kick-off / half-time.
+Verified MLB emits "First pitch" + "Seventh-inning stretch" and **no** "Halftime
+refresh"; NHL emits "Puck drop" + "First intermission". No food invented — a
+sport-specific menu needs real research and KCR.
+
+**"Your choices" moved to the head of the spread sheet's section list.** It sat
+third, under Dietary needs, while the decisions inside it are what PRODUCE the
+list and its totals: `major_event` is `when:'T-10d'` (earliest), `weight:'high'`,
+`blocks:['food','program']`, and its own `priorityBasis` says *"answering it
+first means everything else builds on the right assumption instead of a generic
+default"*. The sheet was ordering its own cause as a detail.
+
+Commit `f395e67`. Jest **442/442, 6241 passed** — up one, because a parameterised
+wire-proof enumerated the new decision and it passed. No drift.
+
+**NOT DONE, deliberately — open host call:** the money/totals block still sits
+above the whole section list, so the host still sees "$85–195 · sized for 4–6"
+before the choice that determines it. Host flagged this ("This needs to be pushed
+to the top of choices"); the row reorder above addresses the section list, but
+demoting the sheet's headline summary is a design ruling, not a reorder.
+
 ## ADDED 2026-09-17 (third entry, same day) — the checklist finally says something sport-specific
 
 The host: *"These checklists feel baked. Should have even more sport event
