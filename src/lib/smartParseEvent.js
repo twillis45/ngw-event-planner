@@ -395,8 +395,18 @@ export function parseSmartEventText(text, opts = {}) {
   // "5 people" or "20 guests" or "Aug 2" as an address — a number alone is
   // never enough. Unit/apartment tails are kept when written plainly.
   const STREET_SUFFIX = '(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|way|ct|court|blvd|boulevard|pl|place|ter|terrace|cir|circle|pkwy|parkway|hwy|highway|trl|trail|loop|run|row|walk|path)';
+  // TWO GUARDS, both found on the live seed "this Sunday at 1 pm at 8100 Ryan Way"
+  // (2026-09-17). Without them the house number matched the "1" of "1 pm" and the
+  // lazy street-word run walked straight through the second "at", yielding the
+  // address "1 pm at 8100 Ryan Way" — which then rode into the invite guests read
+  // and into a Google Maps link that resolves nowhere.
+  //   1. a number followed by am/pm is a TIME, never a house number;
+  //   2. a street-word run may not cross a connective (at/on/in/from/to/for/and)
+  //      or a bare time token — real street names do not contain them, and
+  //      allowing it lets the match start arbitrarily far to the left.
+  const NOT_STREET_WORD = '(?!(?:at|on|in|from|to|for|and|am|pm)\\b)';
   const addrM = t.match(new RegExp(
-    `\\b(\\d{1,6}[A-Za-z]?\\s+(?:[A-Za-z0-9.'’-]+\\s+){0,4}?${STREET_SUFFIX}\\.?)` +
+    `\\b(\\d{1,6}[A-Za-z]?(?!\\s*(?:am|pm|a\\.m\\.|p\\.m\\.)\\b)\\s+(?:${NOT_STREET_WORD}[A-Za-z0-9.'’-]+\\s+){0,4}?${STREET_SUFFIX}\\.?)` +
     `((?:\\s*,?\\s*(?:apt|apartment|unit|suite|ste|#)\\s*[\\w-]+)?)\\b`, 'i'));
   const venueAddress = addrM ? (addrM[1] + (addrM[2] || '')).replace(/\s+/g, ' ').trim() : '';
 
