@@ -79,6 +79,48 @@ this file is the short answer to "where is it, is it green, what's next."
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
+## ADDED 2026-09-17 (second entry, same day) — a task may not name food the host removed
+
+Same live event, later in the session. The host removed chili from the shopping
+list; the checklist went on telling them to shop for it and make it.
+
+`event.foodSkip` already works — it drops the item, its cost, and its per-item
+buy-task. What it could not reach were four hand-written labels with the menu
+baked into their text (`t_fresh_shop`, `t_nonperish_shop`, `t_prep`, and both
+purchasing-schedule rows). Two surfaces disagreeing about one fact, with the one
+the host actually edited losing — the UX_08 source-of-truth failure.
+
+Fixed by deleting the duplication, not patching the strings: the shopping tasks
+already deep-link to the list, so they now name the act and defer to it
+("Shop the non-perishables on your list"). `t_prep` goes generic — less vivid,
+always true. Commit `170b01c`, version → **1.4.2**, Jest 442/442.
+
+**Disclosed, not fixed:** `t_cook` and its run-of-show twin still say "Cook wings
++ hot food" — same exposure, kept deliberately because the back-timed cook
+schedule pivots on wings. A host decision, not a silent change.
+
+**Measured this pass, NOT addressed — the biggest open content gap in this
+playbook.** Checklist tasks are its least differentiated surface by a wide
+margin: **7 of 8 tasks are identical across all 17 `major_event` options**, and
+the only one that varies (`t_halftime`) varies by REMOVAL. Purchases carry 8+
+event-specific items and heartMoments ~12 overrides; tasks have never had an
+additive differentiation pass. That is precisely why the checklist reads the
+same for a Derby party and a UFC card ("these checklists feel baked" — host).
+
+Opening research says the real per-sport difference is **timing and invite
+content, not food** — which a generic checklist structurally cannot express:
+- **Combat:** a UFC card runs early prelims / prelims / main card ~4 hours
+  apart, so the host must tell guests the MAIN CARD time, not the broadcast
+  start. (UFC.com, Paramount+)
+- **Racing:** the Derby is two minutes at the end of a **14-race** day (post
+  time 6:57pm ET 2026); hats belong on the INVITATION, and the betting pool and
+  hat contest need setup before post time. (KentuckyDerby.com, USRacing)
+
+Not built. Two scope questions are open for the host: how wide to go (combat +
+racing are researched and ready), and whether to stay strictly unpriced so the
+KCR pipeline stays out of scope (task copy has not needed it in prior passes;
+anything priced would).
+
 ## ADDED 2026-09-17 — driven live from a real event: the parser starts hearing, the app stops guessing
 
 The host seeded a real watch party (Sunday 2026-09-20, 1:00 PM, 8100 Ryan Way,
