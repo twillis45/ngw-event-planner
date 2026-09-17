@@ -79,6 +79,68 @@ this file is the short answer to "where is it, is it green, what's next."
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
+## ADDED 2026-09-17 (third entry, same day) — the checklist finally says something sport-specific
+
+The host: *"These checklists feel baked. Should have even more sport event
+related."* Measured before writing anything, and he was right in a way worth
+recording: **7 of 8 tasks were identical across all 17 `major_event` options**,
+and the only one that varied (`t_halftime`) varied by REMOVAL. Purchases carry
+8+ event-specific items and heartMoments ~12 overrides; the checklist had never
+had a single task ADDED for a sport.
+
+**The research finding that shaped the fix: the real per-sport difference is
+TIMING and INVITE CONTENT, not food.** A generic checklist structurally cannot
+say "tell them the main card time" or "put hats on the invite" — and no amount
+of menu differentiation reaches either.
+
+Four tasks, all sourced, all gated:
+- **Combat** — tell guests the **MAIN CARD** time, not the broadcast start (a
+  UFC/boxing card runs early prelims / prelims / main card ~4h apart, so "come
+  for the fight" lands people at the wrong end of the night); and sign in and
+  actually **play** the stream ~30 min ahead, distinct from `t_stream`'s T-3d
+  "does this channel work at all". (ufc.com, Paramount+ 2026 schedule)
+- **Kentucky Derby** — gated to the EVENT, not the racing format, because these
+  are Derby traditions and not Daytona's: put the **dress code on the invite**
+  (hats are the documented expectation; a guest told on the day has already
+  dressed — the timing is the point), and **set up the pool before post time**
+  (the Derby is ~2 minutes at the end of a 14-race day). (kentuckyderby.com,
+  USRacing, Covers)
+
+Measured after: Derby **8 → 10**, UFC/Boxing **7 → 9**, Super Bowl default
+**unchanged at 8**. Each gate verified to fire for exactly its event.
+
+All four **unpriced on purpose** — task copy has never needed KCR and none
+assert a cost. A hat-contest prize and printed betting sheets are real
+traditions left out for exactly that reason: priced claims belong in KCR.
+
+Commit `f136680`. Jest 442/442, zero failures, no drift.
+
+**Trap for the next session:** `knowledge.note` is a single 40KB single-quoted
+JS string. An append containing `'quoted phrases'` or a bare apostrophe
+(`host's`) terminates it early and breaks the hostv2 build. Use double quotes
+inside, escape apostrophes, and read the compiler error rather than guessing —
+patching the assumed cause cost a cycle here.
+
+**AUDITED THIS PASS — the governance transport is empty for Watch Party.**
+Asked to confirm the playbooks and backend were updated properly:
+- The **backend consumes neither** `publishedKcrs.json` nor
+  `publishedKnowledge.json`. That transport is a FRONTEND build artifact
+  (operator exports from the admin console → `bake-published-knowledge.mjs` →
+  bundled). No backend update is owed by any playbook change, and no backend
+  code was touched this session.
+- **`publishedKcrs.json` contains ZERO Watch Party entries.** Its 16 records
+  cover 12 other playbooks and are all dated **2026-08-01/02**. Watch Party has
+  now shipped EIGHT content passes — including two claims that genuinely earned
+  `tier:'researched'` with sources (Wimbledon Pimm's kit, World Series ballpark
+  snacks) — and none has ever entered the corpus.
+- **CI cannot catch this.** `gate:knowledge --check` verifies the snapshot
+  matches its input file; it reports `[OK] snapshot is up to date` because the
+  August records bake correctly. It has no opinion on whether a playbook's
+  researched claims were ever SUBMITTED — which is why the gap survived eight
+  passes of being "disclosed".
+- Closing it requires a **human export from the admin console** — there is
+  deliberately no credential in the build path. Host action, not an agent one.
+
 ## ADDED 2026-09-17 (second entry, same day) — a task may not name food the host removed
 
 Same live event, later in the session. The host removed chili from the shopping
