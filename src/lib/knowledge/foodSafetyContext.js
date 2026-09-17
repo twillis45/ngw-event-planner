@@ -79,4 +79,16 @@ export const FOOD_SAFETY_SOURCES = {
     sourceClass: 'government',   // federal agency - no stake in the answer (5F.9)
     claim: 'Refrigerator thawing (40°F or below): allow approximately 24 hours for every 4 to 5 pounds — 4-12 lb takes 1-3 days, 12-16 lb takes 3-4 days, 16-20 lb takes 4-5 days, 20-24 lb takes 5-6 days; a thawed bird keeps 1-2 more days refrigerated and may be refrozen. Cold-water thawing: about 30 minutes per pound, bird in a leak-proof wrapper fully submerged, water changed every 30 minutes, cooked IMMEDIATELY after thawing (16 lb ≈ 8 hours). Counter thawing is never safe — the outer layer enters the 40-140°F danger zone while the center is still frozen. Cooked turkey must reach a minimum internal 165°F, measured in the thickest breast, innermost wing, and innermost thigh without touching bone.',
   },
+  // Registered 2026-09-17 with the Watch Party cook_method work. The slow-cooker
+  // branch tells a host WHEN to start, and the start time is a food-safety fact
+  // before it is a convenience one — FSIS is explicit that the appliance takes
+  // hours to leave the danger zone, which is exactly why 'switch it on at
+  // half-time' is wrong. Agency page, fetched via the MCP path.
+  'fsis-slow-cooker': {
+    org: 'USDA FSIS — Slow Cookers and Food Safety',
+    url: 'https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/slow-cookers-and-food-safety',
+    fetched: '2026-09-17',
+    sourceClass: 'government',   // federal agency - no stake in the answer (5F.9)
+    claim: 'A slow cooker runs roughly 170-280°F and MAY TAKE SEVERAL HOURS TO REACH A SAFE, BACTERIA-KILLING TEMPERATURE, which is why ingredients stay refrigerated until they go in and why a late start is a safety problem, not just a timing one. Always thaw meat or poultry first — never cook it from frozen in a slow cooker. High for the first hour then low is recommended for meat and poultry; cooking on low throughout is also safe. Food stays safe as long as the cooker is operating, and held food must sit at or above 140°F. Reheating leftovers IN a slow cooker is not recommended: reheat to 165°F on the stove, in a microwave or in an oven first, then transfer to a preheated cooker to hold.',
+  },
 };

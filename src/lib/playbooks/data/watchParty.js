@@ -282,7 +282,7 @@ const watchParty = {
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
-  version: '1.6.0',
+  version: '1.6.1',
   meta: {
     summary: 'An at-home watch party for a big event on TV — a single game (Super Bowl, NBA/NHL/World Series Finals, College Football Championship), a multi-day tournament (March Madness, World Cup, Olympics, NFL Playoffs), combat sports/PPV (UFC/Boxing), a racing spectacle (Kentucky Derby, Daytona 500), continuous coverage (The Masters, Wimbledon), or a non-game broadcast (NFL Draft, Awards Show) — each with genuinely different food, decor and run-of-show shape, not just a different name. TV-forward, graze-all-event food, coolers of beer + soda, disposable tableware, couch comfort. The whole challenge is timing — food READY before it starts, a mid-event refresh (where the format actually has one), and a trash flow that never makes anyone miss a moment.',
     typicalGuests: { low: 6, default: 12, high: 25 },
@@ -469,7 +469,7 @@ const watchParty = {
     // (oven/stovetop) path gains one task, so no branch is left thinner than before.
     { id: 't_grill_fuel', milestoneId: 'wp_rsvp', phase: 'food', label: 'Check propane or charcoal now — a fuel run on game day costs you the first quarter', when: 'T-2d', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
     { id: 't_grill_watch', milestoneId: 'wp_setup', phase: 'food', label: 'Sort out how you watch while you grill — speaker at the door, phone stream, or a spotter who calls the score', when: 'T0 -2:00', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
-    { id: 't_slowcooker_start', milestoneId: 'wp_setup', phase: 'food', label: 'Start the slow cooker — hot dishes need the whole window, not the last 90 minutes', when: 'T0 -5:00', whenChoice: { id: 'cook_method', in: ['Slow cooker or warming tray'] } },
+    { id: 't_slowcooker_start', milestoneId: 'wp_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: { id: 'cook_method', in: ['Slow cooker or warming tray'] } },
     { id: 't_airfryer_order', milestoneId: 'wp_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: { id: 'cook_method', in: ['Air fryer, in batches'] } },
     { id: 't_oven_order', milestoneId: 'wp_shop_fresh', phase: 'food', label: 'Work out the oven order — one oven will not hold wings, sliders and a dip at three different temperatures', when: 'T-1d', whenChoice: { id: 'cook_method', in: ['Oven or stovetop indoors'] } },
     { id: 't_pickup_window', milestoneId: 'wp_shop_fresh', phase: 'food', label: 'Lock the pickup or delivery window so it lands BEFORE kickoff — game day is the busiest order slot of the year', when: 'T-1d', whenChoice: { id: 'cook_method', in: ['Store-bought hot or delivered'] } },
@@ -649,7 +649,7 @@ const watchParty = {
     // yet a February kickoff is exactly when a host moves a grill somewhere it
     // should not go. The CO wording follows the charcoal-bag warning already
     // grounded in fireSafetyContext, not a new claim.
-    { id: 'r_grill_cold', trigger: 'Grilling outside means missing the game — and cold slows the grill down', severity: 'med', mitigation: 'Back the cook up by 30 minutes in cold weather, get a speaker or a phone stream to the door, and hand one guest the job of calling the score.', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
+    { id: 'r_grill_cold', trigger: 'Grilling outside means missing the game — and cold slows the grill down', severity: 'med', mitigation: 'Start earlier than you would in summer — cold air and a cold grate both slow the cook, and no published figure says by how much, so give yourself margin rather than a number. Get a speaker or a phone stream to the door, and hand one guest the job of calling the score.', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
     { id: 'r_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the menu indoors to the oven.', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
     { id: 'r_seating', trigger: 'Not enough seats / bad sightlines', severity: 'med', mitigation: 'Borrow extra chairs; arrange seating toward the screen before anyone arrives.' },
     { id: 'r_trash', trigger: 'Trash/recycling overflows, surfaces get sticky', severity: 'low', mitigation: 'Put out a clearly-marked recycling bag for cans; swap trash bags at halftime; keep paper towels at the food table.', copyByAnswer: { mitigation: { major_event: Object.fromEntries(FORMAT_NO_HALFTIME.map((k) => [k, 'Put out a clearly-marked recycling bag for cans; swap trash bags partway through; keep paper towels at the food table.'])) } } },
