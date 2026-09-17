@@ -171,8 +171,15 @@ jobs:
       # entry points. A release where one is configured and the other is not
       # looks completely normal until a host signs in on one surface and not
       # the other. Assert the API base reached both.
+      # CONDITIONED ON THE FLOORED env, NOT on `inputs` (fixed 2026-09-17).
+      # `inputs.release_profile` is EMPTY on a push, so it equalled neither
+      # 'live' nor 'demo' and BOTH of these steps silently skipped on every
+      # automatic deploy since the push trigger was enabled 2026-08-03. The env
+      # below already floors the profile to 'demo'; reading the same value here
+      # is what makes the gate actually run. A gate that no-ops is worse than no
+      # gate, because the workflow reads as though it ran.
       - name: Verify CRA and hostv2 configuration parity
-        if: ${{ inputs.release_profile == 'live' }}
+        if: ${{ env.RELEASE_PROFILE == 'live' }}
         run: |
           set -euo pipefail
           api="${REACT_APP_API_BASE_URL}"
@@ -190,7 +197,7 @@ jobs:
       # claiming not to be, which is the dishonest state this whole contract
       # exists to prevent.
       - name: Verify demo artifact carries no live configuration
-        if: ${{ inputs.release_profile == 'demo' }}
+        if: ${{ env.RELEASE_PROFILE == 'demo' }}
         run: |
           set -uo pipefail
           # A CONCRETE project host (https://<ref>.supabase.co), not the wildcard
