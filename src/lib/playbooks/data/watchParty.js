@@ -363,6 +363,21 @@ const watchParty = {
     // the wrong assumption before the host has actually said which event this is.
     { id: 'major_event', label: 'What are we watching?', options: ['Super Bowl', 'NFL Playoffs', 'College Football National Championship', 'NBA Finals', 'World Series', 'Stanley Cup Final', 'March Madness', 'Kentucky Derby', 'Daytona 500', 'The Masters', 'Wimbledon', 'World Cup', 'UFC / Boxing', 'Olympics', 'NFL Draft', 'Awards Show', 'Regular season game / other'], default: 'Super Bowl', when: 'T-10d', blocks: ['food', 'program'], weight: 'high', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Which event this is sets the food, the purchases, and the atmosphere — a Kentucky Derby party and a Super Bowl party share a screen and almost nothing else. Answering it first means everything else builds on the right assumption instead of a generic default.', tier: 'reasoned' }, why: 'Sets which menu defaults, purchases, and moments actually apply. Football stays the default so nothing changes for the common case — name a different event and the plan adjusts to it.' },
     { id: 'tourney_span', label: 'How much of the tournament are you hosting for?', options: ['Just this game/match', 'A few key games', 'Following the whole run'], default: 'Just this game/match', when: 'T-7d', whenChoice: { id: 'major_event', in: FORMAT_MULTIDAY }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'A multi-week tournament is not one 4-hour block — a host following the whole run needs a repeatable, lower-effort plan, not one big shop. Asked only for tournament-format events; every other event has exactly one sitting by nature.', tier: 'reasoned' }, why: 'March Madness, the World Cup and the Olympics run for weeks; NFL Playoffs run about a month, and Wild Card Weekend alone is 6 games across 3 days. One game is a normal watch party; following the whole run means repeating this gathering, so the plan should say so instead of pricing one big party and leaving the host to rediscover the pattern on their own.' },
+    // ── THE MOST COMMON WATCH PARTY ASKED NOTHING (2026-09-17) ───────────────
+    // "Regular season game / other" is the catch-all, and it is also the single
+    // most likely answer a host will pick — yet it carried no content at all, so
+    // the plan fell back to the football default. That default is RIGHT for an
+    // NFL Sunday and factually wrong for everything else: an NBA Tuesday and an
+    // MLB Saturday both got a run-of-show that said "Kickoff" and "Halftime",
+    // and a halftime task for a sport that has innings.
+    //
+    // Asked only for the catch-all (the named events already know their own
+    // sport), and defaulted to Football (NFL) so the unanswered path is byte-
+    // identical to today's behaviour. The answer is used for WORDING, not for
+    // gating: every sport has a mid-event break, so the honest fix is to call it
+    // what it actually is rather than to hide the task. No food is invented —
+    // sport-specific menus would need real research and the KCR pipeline.
+    { id: 'reg_sport', label: 'Which sport?', options: ['Football (NFL)', 'Basketball (NBA)', 'Baseball (MLB)', 'Hockey (NHL)', 'College football', 'College basketball', 'Soccer', 'Something else'], default: 'Football (NFL)', when: 'T-7d', whenChoice: { id: 'major_event', in: ['Regular season game / other'] }, blocks: ['program'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The catch-all option covers every sport at once, so without this the run of show says "Kickoff" and "Halftime" for a baseball game. Naming the sport costs one tap and makes the day plan factually correct.', tier: 'reasoned' }, why: 'Only changes wording, never the food: a baseball game has innings and a seventh-inning stretch, hockey has periods and intermissions, basketball has quarters and a halftime. The plan should use the words the sport actually uses.' },
     { id: 'menu', label: 'Game-day food style', options: ['Wings + chips/dip', 'Chili bar', 'Pizza + finger food', 'Potluck snacks'], default: 'Wings + chips/dip', when: 'T-7d', dependsOn: ['potluck'], blocks: ['food'], costViaApproach: true, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'The food style drives the shopping list and the cook timeline, but wings-and-chips is a safe default and swappable until you shop.', tier: 'reasoned' }, why: 'Drives the shopping list and the cook timeline. Wings + chips is the classic low-effort default; chili can be made ahead; pizza offloads the cooking entirely.' },
     { id: 'ppv_cost', label: 'Covering the cost', options: ['Host covers it', 'Split evenly among guests', 'Already have a subscription that covers it'], default: 'Host covers it', when: 'T-5d', whenChoice: { id: 'major_event', in: ['UFC / Boxing'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'A major boxing card is still commonly pay-per-view; UFC folded its full 2026 calendar into Paramount+ instead. Either way it is a real cost worth naming before guests show up assuming it is free.', tier: 'reasoned' }, why: 'UFC dropped pay-per-view in 2026 — its numbered events are bundled into Paramount+ (about $6-12/month, or $59.99/year), split however many ways the room wants. A major boxing card, when it IS still PPV, commonly runs $75-90 for the single event. Naming who is covering it avoids an awkward ask mid-party.' },
     // `blocks` FIXED 2026-09-13 (discovered while verifying the Wimbledon purchase,
@@ -424,7 +439,14 @@ const watchParty = {
     { id: 't_cook', milestoneId: 'event', phase: 'food', label: 'Cook wings + hot food so everything is OUT and READY ~30 min before kickoff', when: 'T0 -1:30' },
     // whenChoice added 2026-09-13 (third pass) — combat/continuous/broadcast
     // formats have no discrete break, so this task no longer fires for them.
-    { id: 't_halftime', milestoneId: 'event', phase: 'food', label: 'Halftime refresh: restock food, swap empties for fresh trash bag, top up ice', when: 'T0 +2:00', whenChoice: { id: 'major_event', not: FORMAT_NO_HALFTIME } },
+    // reg_sport rewords the BREAK rather than gating the task away: every sport
+    // here has a mid-event pause, it is just not called halftime in all of them.
+    // Baseball and hockey were the wrong ones before; the rest are unchanged.
+    { id: 't_halftime', milestoneId: 'event', phase: 'food', label: 'Halftime refresh: restock food, swap empties for fresh trash bag, top up ice', when: 'T0 +2:00', whenChoice: { id: 'major_event', not: FORMAT_NO_HALFTIME }, copyByAnswer: { reg_sport: {
+      'Baseball (MLB)': 'Seventh-inning stretch: restock food, swap empties for fresh trash bag, top up ice',
+      'Hockey (NHL)': 'First intermission: restock food, swap empties for fresh trash bag, top up ice',
+      'Soccer': 'Half-time: restock food, swap empties for fresh trash bag, top up ice',
+    } } },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, bag trash + recycling (cans/bottles), wipe surfaces, run the dishwasher', when: 'T0 +4:00' },
     // Multi-day tournament format only, and only once the host says this is
     // more than one sitting — a repeatable list, not a re-invented one each time.
@@ -601,8 +623,18 @@ const watchParty = {
       // game does not. Placed before the reworded T0+45m beat below.
       { when: 'T0 +15m', what: 'Undercard fights start — the warm-up; most of the room won\'t fully tune in yet', whenChoice: { id: 'major_event', in: FORMAT_COMBAT } },
       { when: 'T0 +15m', what: 'Pre-race ceremonies: anthem, flyover, driver introductions', whenChoice: { id: 'major_event', in: ['Daytona 500'] } },
+      // reg_sport (the catch-all's own follow-on) is listed FIRST so it wins for
+      // a regular-season game; resolveAnsweredCopy returns on the first decision
+      // id that has a matching answer, and "Regular season game / other" has no
+      // major_event entry below, so the named events are unaffected either way.
       { when: 'T0 +45m', what: 'Kickoff — food already out so nobody’s in the kitchen',
-        copyByAnswer: { major_event: {
+        copyByAnswer: { reg_sport: {
+          'Baseball (MLB)': 'First pitch — food already out so nobody’s in the kitchen',
+          'Hockey (NHL)': 'Puck drop — food already out so nobody’s in the kitchen',
+          'Basketball (NBA)': 'Tip-off — food already out so nobody’s in the kitchen',
+          'College basketball': 'Tip-off — food already out so nobody’s in the kitchen',
+          'Soccer': 'Kick-off — food already out so nobody’s in the kitchen',
+        }, major_event: {
           'UFC / Boxing': 'Main card begins',
           'The Masters': 'Coverage begins — this runs for hours with no discrete break, unlike a game',
           'Wimbledon': 'Coverage begins — this runs for hours with no discrete break, unlike a game',

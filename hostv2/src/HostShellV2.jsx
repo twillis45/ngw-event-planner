@@ -16742,13 +16742,15 @@ export default function HostShellV2() {
                   // on tap. Hairline rows, value neutral until resolved (378:72 treatment).
                   return (
                     <div className="fstat-list">
-                      <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
-                        <span className="fstat-l">Dietary needs</span>
-                        <span className="fstat-v" style={anyDiet || event.dietaryNoted ? { color: 'var(--ok)' } : null}>
-                          {anyDiet ? 'noted · ' + DIET_TAGS.filter(k => Number(dc[k]) > 0).length + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet'}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
-                      </button>
+                      {/* ── THE CHOICE THAT BUILDS THE LIST GOES FIRST (2026-09-17) ──
+                          "Your choices" sat third, under Dietary needs, while the
+                          decisions inside it are what PRODUCE the list and its
+                          totals — major_event is authored when:'T-10d' (the
+                          earliest), weight:'high', blocks:['food','program'], and
+                          its own priorityBasis says "answering it first means
+                          everything else builds on the right assumption instead of
+                          a generic default". The sheet was ordering it as though it
+                          were a detail. Host-reported this session. */}
                       {hasChoices && (
                         <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
                           <span className="fstat-l">Your choices</span>
@@ -16758,6 +16760,13 @@ export default function HostShellV2() {
                           </span>
                         </button>
                       )}
+                      <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
+                        <span className="fstat-l">Dietary needs</span>
+                        <span className="fstat-v" style={anyDiet || event.dietaryNoted ? { color: 'var(--ok)' } : null}>
+                          {anyDiet ? 'noted · ' + DIET_TAGS.filter(k => Number(dc[k]) > 0).length + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet'}
+                          <span className="fstat-chev" aria-hidden="true">›</span>
+                        </span>
+                      </button>
                       {hasSourcing && (
                         <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, sourced: true }))}>
                           <span className="fstat-l">How it’s sourced</span>
