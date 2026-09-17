@@ -67,7 +67,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `c0cac21` |
-| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites** — green after the review-board content fixes (no ratchet change, no new engine surface) |
+| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites**. A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -78,6 +78,83 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-17 — driven live from a real event: the parser starts hearing, the app stops guessing
+
+The host seeded a real watch party (Sunday 2026-09-20, 1:00 PM, 8100 Ryan Way,
+Greenbelt MD, 5 guests, cooking everything) and worked the actual screens.
+Every fix below started as something visibly wrong on them.
+
+**The time bomb, fixed first — it made every other result unreadable.**
+`recordDedupStaysLive.test.js` pinned `AS_OF` to 2026-08-07 while `eventPlan(ev)`
+— which takes no as-of and reads the real clock — was not pinned at all. Fixture
+dates are `AS_OF + horizon`, so the two clocks agreed on exactly ONE day: the day
+the test was written. Forty-one days on, the `@60d` bridal shower was 19 real
+days out to `eventPlan` and still 60 to `deriveEventPhaseProgress`; they raised
+different action sets and the double-billing assertion tripped. **Green in CI
+2026-09-14, red 2026-09-17, no code change in between** — and it would have
+failed every run from then on, reddening `checks.yml` for any push regardless of
+content. Proven pre-existing by stashing the working tree and re-running on clean
+HEAD. `AS_OF` now anchors to today, so both clocks sit on the same day.
+
+**Parser — it discarded the two things the host was most specific about.**
+- Reads a spoken clock now ("Sunday at 1pm", "6:30pm", "morning at 10", "19:30"),
+  with `startTimeBasis` ('said-exact' | 'said-with-bucket' | 'said-hour-only') —
+  the same three-state honesty `overnightBasis`/`destinationBasis` already carry.
+  This does NOT breach the bucket-only rule directly above it: that rule exists
+  so the app never INVENTS an hour (the 15:00 bug that reached a caterer).
+  `startTime.js`'s own tier 2 is THE HOST'S OWN WORD, and `startTimeSource:'host'`
+  exists to mark exactly this. Counts, budgets and dates still yield no time.
+- **A town behind a comma phrase was being lost entirely** — the loose "City, ST"
+  scanner advanced `lastIndex` past a FAILED candidate's state half, so
+  "…, 8100 Ryan Way, Greenbelt, MD" tried "Ryan Way, Greenbelt", failed the state
+  gate correctly, then resumed at ", MD" with no city in front of it. Greenbelt
+  vanished, taking weather, the venue check and the home comparison with it. Not
+  an address bug — ANY comma phrase in front of the town did this.
+- The street line now fills `venueAddress`, which already feeds the invite and
+  the rain note and had never once been filled from what the host typed.
+  `parseVenueLocation` untouched (refusing digits is right for a city resolver);
+  the new extractor requires a real street suffix so a bare number can't pose as
+  an address.
+
+**Destination — stop claiming she said what she did not.** The chip said
+"· heard" whenever the host hadn't overridden it, including when the flag was a
+pure guess; `destinationBasis` had carried the three cases since it was written
+and the shell read it **zero times** — the same defect, same chip row, that the
+overnight chip was fixed for on 2026-08-06. And with no home city a bare resolved
+city fired `isDestination` by default, so a local party typed as "in Greenbelt,
+MD" arrived pre-committed to lodging, transport and a travel-led budget. That
+guess is now unanswered (the third state the overnight chip established), and the
+commit path omits the field rather than writing null — matching the "absent means
+not told" rule on the very next line.
+
+**Voice.** Web Speech input already existed and was well built; `onerror` fired
+one generic toast for every code. A host who denied the mic was told "try again",
+which re-prompts nothing. Branches now, and `'aborted'` (her own tap to stop) is
+silent rather than reported as a failure.
+
+**Controls that didn't move when the host did.** "Done" on Your choices and
+"Close" on the spread sheet looked identical whether nothing or everything was
+settled. Both now read signals already on screen. UX_02 sets the ceiling: green
+means Complete, so it lands only when everything is settled AND bought; partial
+progress gets steel, never a completion the host hasn't reached.
+
+Files: `src/lib/__tests__/recordDedupStaysLive.test.js`,
+`src/lib/smartParseEvent.js`, `hostv2/src/HostShellV2.jsx`. Full Jest **442/442
+suites, 6240 passed, 1 pre-existing skip, ZERO failures** — the first fully green
+run of the session. `sync:hostv2`/`gate:hostv2` clean. Commit `7a7e936`.
+
+**Open, not built** (raised by the host, deliberately left for a decision):
+`'Regular season game / other'` is the most common watch party and the one
+`major_event` option that asks nothing — an NBA Tuesday still gets "Kickoff" and
+"Halftime". The proposed shape is a gated "Which sport?" follow-on (the same
+mechanism `tourney_span` uses), earning its keep on run-of-show vocabulary alone
+— halftime vs quarters vs innings vs periods is plain fact, not researched
+content. Sport-specific food/traditions would need the real KCR pipeline.
+Also open: pushing "Your choices" above the totals on the spread sheet — the
+playbook's own `priorityBasis` says `major_event` should be answered first
+("everything else builds on the right assumption"), yet it renders below four
+blocks of totals and price caveats.
 
 ## ADDED 2026-09-13 (eighth session update, same day) — review-board audit fixes + real e2e coverage
 
