@@ -1,5 +1,44 @@
 # Where We Are -- live status board
 
+## 2026-09-17 — Watch Party's knowledge became governed
+
+Twelve Watch Party claims moved from code-authored to governed (corpus 16 -> 28
+records, 15 -> 27 heads). Nine cost claims, then three quantity claims once
+re-research earned them `cited`. Records authored by `claude`, approved and
+published by `admin` — separate identities on purpose.
+
+Six candidates were withheld by CORPUS invariants rather than publish gates:
+`whenChoice`-gated rows are invisible in a baseline event and `wave0HostProof`
+refuses to govern a line no host reaches. The `knowledge.note` warning about
+this, dismissed earlier in the same session as unverified, was right.
+
+Three things worth keeping beyond the features:
+
+1. **A blocked research pass was not blocked.** `WebFetch` is bound by the
+   environment's network allowlist; MCP connector traffic is not, because it
+   travels through Anthropic's servers. Exa fetched the exact page WebFetch
+   refused. No allowlist to maintain, no reason to widen network access for
+   research. Now `RESEARCH_DOCTRINE.md` section 6.
+
+2. **Four claims cited sources backing no figure in them.** One audit of one
+   source across eight citations found seven exact and one mismatch. Removing
+   dead sources pushed the uncorroborated ratchet UP — the suite correctly
+   refusing to call a shorter list a better one — so real corroboration was
+   researched instead of the list being padded.
+
+3. **A high-effort code review found ten defects that 442 green suites did
+   not**, including a regression making EVERY Watch Party claim open flame
+   (`playbookInfraPrompts` greps the authored blob ungated; a new CO mitigation
+   put "charcoal" in it). Green tests measured what we thought to ask.
+
+`cook_method` also landed: the first decision in any playbook asking HOW the
+protein is cooked, branching six tasks, `t_cook`, its run-of-show twin and two
+new grill risks.
+
+**Known gap, unscoped:** decisions, tasks and risks cannot enter governance at
+all — the backend keys research gaps by `field_path`, and only purchase paths
+are recognised and consumed.
+
 ## 2026-09-03 — the shell was never unit-testable, and now it is
 
 The architectural fact of the day, which had been true for months and unwritten:

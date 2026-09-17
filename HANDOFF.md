@@ -1,6 +1,18 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-13 (this same session,
+**Measured reality, not intentions.** Updated 2026-09-17 (governance day: Watch
+Party's authored knowledge became GOVERNED knowledge. The corpus went 16 -> 28
+records after nine cost claims and three re-researched quantity claims were
+published through the real KCR functions; four source-citation defects were
+found and fixed across two playbooks; and the playbooks gained their first
+cook-method decision, so the checklist finally knows whether the host is
+grilling. Two things worth carrying forward more than the features: a research
+pass reported as BLOCKED was not — WebFetch is bound by the environment's
+network allowlist but the Exa MCP tools are not, and they reach pages WebFetch
+cannot. And a high-effort code review of the day's six commits found ten
+defects that 442 green suites had not, including a regression that made EVERY
+Watch Party claim open flame. See the dated entry below.)
+Before that, on 2026-09-13 (this same file's prior session,
 continued once more: asked the KCR review board what the full major_event
 body of work was still missing. The board measured a coverage matrix
 directly off the engine (not memory) and found 2 real format-mate gaps —
@@ -66,8 +78,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `a384a60` |
-| Jest | **6,240 passed**, 1 skipped, **0 failed**, **442 suites**. A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `db63b288` |
+| Jest | **6,242 passed**, 1 skipped, **0 failed**, **442 suites**. A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -78,6 +90,112 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-17 (sixth entry, same day) — Watch Party's knowledge became governed, and the review board found what green tests missed
+
+**Corpus 16 -> 28 records, 15 -> 27 lineage heads, still exactly one superseded.**
+Twelve Watch Party claims moved from code-authored to governed, so a price or a
+portion can now be corrected without a code change. Nine cost claims published
+first (`p_wings` `p_chips` `p_chili` `p_pizza_sliders` `p_dessert` `p_drinks`
+`p_ice` `p_tableware` `p_cleanup`, all `.costProvenance`); three quantity claims
+followed once they earned `cited`. Records are authored by `claude` and reviewed
+and published by `admin` — two identities, deliberately, so the audit trail does
+not collapse who wrote a record into who approved it.
+
+**Six candidates were withheld, and the reasons are CORPUS invariants, not the
+publish gates.** All fifteen passed ownership, type, evidence, grounding-honesty
+and commercial-source. What stopped the rest lives in the test suite:
+`p_ballparksnacks` and `p_pimms_strawberries` are `whenChoice`-gated on
+`major_event`, so they are invisible in a baseline event, and `wave0HostProof`
+asserts every governed line reaches a host; `p_serveware` is absent from baseline
+food-plan output for the same reason; and three `.provenance` slots read
+`researched` where the corpus requires `cited`. **The `knowledge.note` warning
+about whenChoice-gated content, which an earlier pass in this session dismissed
+as unverified, was correct.**
+
+**THE RESEARCH PASS WAS NEVER BLOCKED.** It was reported blocked after `WebFetch`
+returned EGRESS_BLOCKED for every research domain — including
+`webstaurantstore.com`, a host already in this repo's own registry. That was a
+premature call: `WebFetch` goes through the environment's network allowlist, but
+**MCP connector traffic travels through Anthropic's servers and is not subject to
+it**. The Exa tools fetched the exact blocked page on the first try. There is no
+allowlist to maintain and no reason to widen the environment's network access for
+research. Written into `RESEARCH_DOCTRINE.md` section 6 with both of the day's
+source defects as worked examples.
+
+**Four citation defects, all the same shape — a claim citing a source that backs
+no figure in it.** `watchParty p_chips` cited `cheese-sliced-2026` (Kraft Singles,
+block cheddar) with no cheese figure in the claim. Auditing that one source across
+the seven other playbooks citing it found seven exact citations and one more
+mismatch: `holidayParty p_veg_option` carried TWO sources backing nothing.
+Removing them alone pushed the uncorroborated-claims ratchet UP, which is the
+suite correctly refusing to accept a shorter list as a better one — so a publisher
+that actually prices the item was researched and added instead.
+
+**Three quantity claims were re-researched to `cited`, and two of them were
+wrong.** `p_drinks` described a flat ~1 drink/guest/hour; the convention four
+publishers actually state is 2 in the first hour then 1 an hour, so 4 covers a
+THREE-hour game and a four-hour one is 5. `p_wings` turned out to depend entirely
+on a conditional nobody had written down: 10-12 split pieces when wings are the
+main food, 4-6 when they sit beside other mains — and this playbook serves chips,
+chili, pizza and dessert, so 1 lb/guest is the generous reading, not the floor.
+Values did not move; what changed is that each claim now carries the conditional
+that makes its number mean anything.
+
+**`cook_method`: the playbooks never asked how the protein gets cooked.** `menu`
+asks what, `potluck` and `food_style` ask who, and across all 40 playbooks nothing
+asked how — so `t_cook` fired one identical "Cook wings + hot food" whether the
+host was grilling outside in February, holding chili since noon, or collecting a
+pizza. New decision at T-5d with five answers, gated to the menus that actually
+have a hot cook. Six method-specific tasks, a `copyByAnswer` branch on `t_cook`
+and its run-of-show twin, and two grill risks this playbook never had because
+grilling was never contemplated. It blocks `cook_schedule`, NOT `food`: the method
+does not change the shopping list, and claiming it did would have demanded a cost
+model with invented per-method multipliers.
+
+**THE REVIEW BOARD FOUND TEN DEFECTS THAT 442 GREEN SUITES DID NOT.** The worst
+was a regression shipped green: the new carbon-monoxide mitigation put the word
+"charcoal" into `playbook.risks`, and `playbookInfraPrompts()` greps that whole
+authored blob with no answer gate — so EVERY Watch Party began emitting grill and
+child safety prompts and "...+ open flame + alcohol service + kids present in your
+plan". Fixed at the reader: the haystack now filters through `choiceShown`, the
+same gate risks, tasks, purchases and schedule rows already read. That reader was
+simply missed when risks were gated four days earlier.
+
+The other nine were contradictions and overclaims in the same day's work — a
+run-of-show twin telling a slow-cooker host to start at T0-1:30 against a
+checklist saying T0-5:00; `p_drinks.note` still using the framing its own new
+provenance calls an understatement; `p_wings.note` saying 8-12 pieces beside a
+claim saying 10-12; a provenance claiming "four INDEPENDENT publishers" when the
+primary one sells bar service; `p_ice` claiming two publishers agree on 1.5 lb
+when only one does; a source claim quoting a publisher its own `org` did not name,
+breaking a rule added to the doctrine in the same commit range; and a
+"corroborating" lasagna source whose $4.60/lb actually sits BELOW the band it was
+added to support. All fixed, and the disagreement stated rather than smoothed.
+
+**Two numbers I invented and then removed.** "Back the cook up by 30 minutes in
+cold weather" had no source — replaced with margin and no figure. And the
+slow-cooker start time was right but under-argued: USDA FSIS states a slow cooker
+may take SEVERAL HOURS to reach a bacteria-killing temperature and that meat must
+be thawed first, which makes a late start a safety problem rather than a timing
+one. Registered as `fsis-slow-cooker`.
+
+**The architectural gap, stated plainly.** Decisions, tasks and risks CANNOT enter
+the governance transport. The backend tracks research gaps by `playbook_type` +
+`field_path`, and only purchase paths (`.provenance`, `.costProvenance`,
+`unitCostRange`) are recognised and consumed. A governed record on a task would
+publish and never be read — the exact "authoritative and unread" defect that
+withdrew `Crawfish Boil p_cups`. So the cook-method grounding went where the
+architecture actually consumes it: the axis source registries. Extending
+governance to tasks and risks is real work, unscoped, not started.
+
+**Files:** `src/lib/knowledge/publishedKcrs.json`, `publishedKnowledge.json`,
+`quantityProvenance.js`, `costProvenance.js`, `foodSafetyContext.js`,
+`RESEARCH_DOCTRINE.md`, `src/lib/playbooks/index.js`,
+`src/lib/playbooks/data/watchParty.js` (1.4.2 -> 1.6.2),
+`data/holidayParty.js` (1.0.0 -> 1.0.2), plus five ratchet/invariant updates.
+**Verified:** jest 442 suites / 6,242 passed; `gate:hostv2` no drift;
+`gate:knowledge` up to date; CI green on `54f7420`, `c3471c8`, `a02fc59`.
 
 ## ADDED 2026-09-17 (fifth entry, same day) — every format now has a task the others never see
 
