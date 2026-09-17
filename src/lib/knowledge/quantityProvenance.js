@@ -126,7 +126,7 @@ export const QTY_SOURCES = {
     claim: 'Wings per guest depends ENTIRELY on whether wings are the main food or one dish among several, and the two answers differ by roughly 2x. Wings as the main event: 10-12 split pieces per person (OnePageParty), 9-11 for a wing-night centrepiece (Handy Chefdom), 6-8 whole wings as a main course (WebstaurantStore). Wings alongside a full spread of chips, chili, pizza and dessert: 4-6 split pieces (OnePageParty), 5-6 for a game-day snack plate (Handy Chefdom), 3-5 as an appetizer portion (WebstaurantStore). UNIT CONVERSION, where most published figures disagree with each other: a whole two-joint wing runs about 3.0-3.2oz and splits into two pieces of about 1.5oz, so a pound is roughly 10-12 split pieces or 5-6 whole wings. A watch party that also serves chips, chili, pizza and dessert is the SECOND case, not the first.',
   },
   'drinks-pace-2026': {
-    org: 'Marisol Vega (caterer, Texas Hill Country) party-portions bar calculator, updated July 2026, corroborated by Summer & Cinnamon drinks-per-person guide (2026-03-26) and the Czech Drinks event quantity guide (2026-05-27)',
+    org: 'Marisol Vega (caterer, Texas Hill Country) party-portions bar calculator, updated July 2026, corroborated by Summer & Cinnamon drinks-per-person guide (2026-03-26), the Czech Drinks event quantity guide (2026-05-27) and the Sipulus drinks-per-hour planning model (2025-09-15)',
     url: 'https://www.party-portions.com/wedding-alcohol-calculator/',
     corroboratingUrl: 'https://summerandcinnamon.com/how-many-drinks-per-person/',
     fetched: '2026-09-17',

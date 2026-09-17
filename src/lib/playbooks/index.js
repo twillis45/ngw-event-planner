@@ -2150,9 +2150,18 @@ export function playbookInfraPrompts(event) {
   if (!playbook) return null;
 
   // Authored-signal haystack: search the playbook's own words, not inference.
+  // GATED by choiceShown (2026-09-17). The haystack read every authored row
+  // regardless of the host's answers, so a row that only exists for one answer
+  // still fired its prompt for everyone. Watch Party surfaced it: a
+  // grill-gated carbon-monoxide risk put the word "charcoal" in the blob, and
+  // every Watch Party then claimed "open flame ... in your plan" whether or not
+  // the host was grilling. Same gate, same reason, as the one risks/tasks/
+  // purchases already read — this reader was simply missed.
+  const gated = (rows) => (Array.isArray(rows) ? rows : [])
+    .filter((r) => !r || !r.whenChoice || choiceShown(event, r.whenChoice));
   const hay = JSON.stringify([
-    playbook.risks || [], playbook.contingencies || [],
-    playbook.decisions || [], playbook.purchases || [],
+    gated(playbook.risks), gated(playbook.contingencies),
+    gated(playbook.decisions), gated(playbook.purchases),
   ]).toLowerCase();
   const has = (re) => re.test(hay);
   const grill = has(/charcoal|propane/);                 // a real grill (fuel purchased)
