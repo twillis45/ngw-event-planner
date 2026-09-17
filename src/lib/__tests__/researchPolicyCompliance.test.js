@@ -29,8 +29,8 @@ import { ALL_PLAYBOOKS } from '../playbooks/index';
 import { RESEARCH_POLICIES } from '../knowledge/researchPolicies';
 
 // Frozen 2026-08-07. LOWER THESE, NEVER RAISE THEM.
-const BASELINE_UNCORROBORATED = 39;
-const BASELINE_UNDATED = 43;
+const BASELINE_UNCORROBORATED = 36;
+const BASELINE_UNDATED = 40;
 
 const claimsResearch = (p) => p && typeof p === 'object'
   && (p.verificationStatus === 'cited' || p.verificationStatus === 'researched');

@@ -107,6 +107,43 @@ export const QTY_SOURCES = {
     claimType: 'planning_guidance',
     claim: 'A standard 750ml bottle of champagne or sparkling wine serves five to six flutes at the ~125ml (4.2oz) pour both guides recommend; toast planning runs about one glass per guest, with a bottle per 3-5 people depending on how festive the service is. Producer-published planning guidance, consistent with the US bar-provisioning consensus of ~5 servings a bottle and ~1 sparkling bottle per 4-5 guests.',
   },
+  // ─── 2026-09-17 PASS. Three registrations, one per Watch Party quantity claim that
+  // was sitting at verificationStatus 'researched' on a single source and could not
+  // reach 'cited'. Each corroborates an existing registry entry from an independent
+  // publisher, so the claim rests on two sources rather than one.
+  //
+  // WHY THE WINGS ENTRY MATTERS MOST. webstaurant-protein-2026 DOES state a wing piece
+  // count — 6-8 per person as a main course, 3-5 as an appetizer, at 2-3oz a wing. A
+  // 2026-09-17 commit asserted it states none; that was read off this registry's summary
+  // rather than the page, and it was wrong. The figure below is the page's own.
+  'wings-serving-2026': {
+    org: 'OnePageParty wing serving guide (2026-01-18) and Handy Chefdom wings-per-person calculator (2026-06-20), independent party-planning publishers, read together with the WebstaurantStore foodservice portion guide',
+    url: 'https://www.onepageparty.com/blog/how-many-wings-per-person-calculator',
+    corroboratingUrl: 'https://handychefdom.com/chicken-wings-serving-calculator/',
+    fetched: '2026-09-17',
+    sourceClass: 'independent',
+    claimType: 'planning_guidance',
+    claim: 'Wings per guest depends ENTIRELY on whether wings are the main food or one dish among several, and the two answers differ by roughly 2x. Wings as the main event: 10-12 split pieces per person (OnePageParty), 9-11 for a wing-night centrepiece (Handy Chefdom), 6-8 whole wings as a main course (WebstaurantStore). Wings alongside a full spread of chips, chili, pizza and dessert: 4-6 split pieces (OnePageParty), 5-6 for a game-day snack plate (Handy Chefdom), 3-5 as an appetizer portion (WebstaurantStore). UNIT CONVERSION, where most published figures disagree with each other: a whole two-joint wing runs about 3.0-3.2oz and splits into two pieces of about 1.5oz, so a pound is roughly 10-12 split pieces or 5-6 whole wings. A watch party that also serves chips, chili, pizza and dessert is the SECOND case, not the first.',
+  },
+  'drinks-pace-2026': {
+    org: 'Marisol Vega (caterer, Texas Hill Country) party-portions bar calculator, updated July 2026, corroborated by Summer & Cinnamon drinks-per-person guide (2026-03-26) and the Czech Drinks event quantity guide (2026-05-27)',
+    url: 'https://www.party-portions.com/wedding-alcohol-calculator/',
+    corroboratingUrl: 'https://summerandcinnamon.com/how-many-drinks-per-person/',
+    fetched: '2026-09-17',
+    sourceClass: 'commercial_practitioner',
+    claimType: 'planning_guidance',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'The US bar-provisioning convention is TWO drinks per guest in the first hour, then ONE per guest per hour after — not a flat one per hour. Three publishers state it identically: a 3-hour event plans 4 drinks a guest, a 4-hour event 5, a 5-hour event 6. All three also insist on what the number IS: a purchasing convention sized so the bar does not run dry, explicitly "not a law of nature and not a prescription" (party-portions) and "a conservative purchasing allowance, not a prediction or recommendation of how much anyone should consume" (Sipulus, same convention). The caterer publishing the primary figure sells catering and bar service, so the interest runs toward buying more rather than less.',
+  },
+  'ice-party-2026': {
+    org: 'Summer & Cinnamon ice-per-person guide (2026-06-02) and the LoveMyDrink party ice guide (2026-08-08), independent party-planning publishers',
+    url: 'https://summerandcinnamon.com/how-much-ice-per-person/',
+    corroboratingUrl: 'https://lovemydrink.com/how-much-ice-do-you-need-for-a-party-a-practical-guide-for-1050-guests',
+    fetched: '2026-09-17',
+    sourceClass: 'independent',
+    claimType: 'planning_guidance',
+    claim: 'Party ice runs 1-3 lb per guest and the figure is set by EVENT TYPE, not by guest count. Indoor dinner party 1 lb; casual party or cookout 1.5 lb; cocktail party, wedding or GAME DAY 2 lb (Summer & Cinnamon). LoveMyDrink puts a typical indoor party at 1.5 lb, a warm outdoor one at 2 lb, and 2.5 lb when bottles and cans also need chilling. Both place an air-conditioned indoor room at the LOW end and add 25-30% above 80F. THE DISTINCTION MOST GUIDES BURY: serving ice (in the glass, about half a pound per iced drink) and chilling ice (around cans in a cooler, about a pound a guest) are separate jobs, and Summer & Cinnamon states plainly that a published "1 lb per person" usually covers one job or the other, not both. Both publishers add a 15-20% melt buffer on top.',
+  },
 };
 
 // A quantity provenance is GROUNDED only when it is tier:'researched' AND cites >=1 real

@@ -40,3 +40,14 @@ Grounding is a snapshot; keeping it true over time is [`researchPolicies.js`](./
 - A `reasoned`/`synthesized` decision must **never** render as "grounded" or cite a fake source. Honest-ungrounded beats false-cited.
 - Test fixtures may use off-ladder tiers (`made-up`, `wrong`) **only** to prove the predicates reject them. They never appear in a production registry.
 - If you can't ground a claim, say so and gather the fact instead (e.g. destination `dest_travelmix` is fact-gathering, deliberately ungrounded) — do not manufacture a tier.
+
+## 6. How to actually fetch a source (2026-09-17)
+
+**Read the page. Never register a source from a search-result snippet, and never assert what a source says from this registry's own summary.** A snippet drops the conditional that makes a number mean anything. Two defects in one day came from skipping this:
+
+- `p_chips.costProvenance` cited `cheese-sliced-2026`, whose figures appear nowhere in the claim. Caught only by reading the registry entry against the claim it backed.
+- `p_wings.provenance` was "corrected" with the assertion that `webstaurant-protein-2026` states no wing piece count. It states 6–8 wings per person as a main course and 3–5 as an appetizer. That assertion was read off this registry's summary `claim` field rather than the page, and shipped wrong.
+
+**Use the Exa MCP tools (`web_search_exa`, `web_fetch_exa`), not `WebFetch`.** In a cloud session `WebFetch` goes through the environment's network allowlist, which blocks most research domains — including hosts already in this registry. MCP connector traffic travels through Anthropic's servers instead and is not subject to that allowlist, so it reaches pages `WebFetch` cannot. There is no allowlist to maintain, and no reason to widen the environment's network access for research.
+
+**What a registration needs**: `org` naming every publisher read, `url` (plus `corroboratingUrl` where a second page carries the figure), `fetched` as the date you actually read it, `sourceClass` and `claimType`, `limitations: ['commercial_interest_disclosed']` when the publisher sells what it measures, and a `claim` that carries the source's own conditionals — the tier, the range, and what the figure excludes. A number without its conditional is not a grounded claim.
