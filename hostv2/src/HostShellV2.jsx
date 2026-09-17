@@ -1043,6 +1043,35 @@ export default function HostShellV2() {
   // styling. 'ok' ⇒ green success; null/undefined ⇒ the neutral pill (errors keep it).
   const [toastTone, setToastTone] = useState(null);
   const [handledOpen, setHandledOpen] = useState(false);
+  // ── THE ONLY OPENER WAS HIDDEN ON THE PHONE (2026-09-17) ──────────────────
+  // The "what's counted" panel (~:9740) carries the four readiness pillar
+  // pills — Calls to make / People / Paperwork / Checklist — and the engine's
+  // handled facts. Its ONLY toggle lived inside `.tile-a`, and styles.css:695
+  // + :954 set that tile `display:none !important` in elegant mode, which has
+  // been the DEFAULT since 2026-07-21. So on the flagship 390px phone the
+  // panel had no opener at all: measured live, the Checklist pill sat 758px
+  // into a panel whose computed height was 0, still in the DOM, still in the
+  // tab order, and un-tappable by any thumb. (`boardMatrix.spec.mjs:396`
+  // already worked AROUND the symptom — "a closed .slidepanel keeps its
+  // children's rects while max-height:0 hides them" — without anyone asking
+  // why a panel nobody could open was rendering controls.)
+  //
+  // ONE caret, rendered in two homes that are exact complements, never both:
+  // `.tile-a`'s own label at desktop-rail (where the tile is un-hidden,
+  // styles.css:5378) and the elegant `.bento-head` everywhere else (which
+  // styles.css:5395 hides at exactly that same breakpoint). A function, not a
+  // component, so it cannot remount the caret on every parent render.
+  const countedCaret = (extra) => (
+    <span role="button" tabIndex={0} aria-expanded={handledOpen} aria-controls="whats-counted"
+      className="counted-caret"
+      /* display lives in CSS, not here: the ≤480px tap floor switches it to
+         inline-flex, and an inline style would outrank that. */
+      style={{ opacity: .55, padding: '11px 8px', margin: '-9px -2px', ...extra }}
+      onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setHandledOpen(o => !o); } }}>
+      {handledOpen ? '▴ what’s counted' : '▾ what’s counted'}
+    </span>
+  );
   const toastTimer = useRef(null);
   // Latches once when persistence fails, so a full disk warns the host a single
   // time instead of on every edit. Cleared by the next write that succeeds.
@@ -9366,7 +9395,16 @@ export default function HostShellV2() {
                     Elegant only, and deliberately so: outside elegant the bento
                     is a 2x2 `grid-template-areas` and an extra child would
                     auto-place into a track it was never meant for. */}
-                {elegantMode && <h2 className="bento-head">Where you stand</h2>}
+                {/* The caret rides the header that SURVIVES on the phone. It is the
+                    same control as tile-a's, from the same helper — textTransform /
+                    letterSpacing are reset because `.bento-head` is an uppercase
+                    tracked eyebrow and the disclosure reads as its own sentence-case
+                    affordance, exactly as it does at desktop. */}
+                {elegantMode && (
+                  <h2 className="bento-head">Where you stand
+                    {countedCaret({ textTransform: 'none', letterSpacing: 'normal', marginLeft: 6 })}
+                  </h2>
+                )}
                 {/* role=button div, NOT a <button> — it contains its own interactive
                     "what's counted" caret, and a native button-in-button is invalid
                     HTML + ambiguous to screen readers (per-screen re-audit). */}
@@ -9392,13 +9430,7 @@ export default function HostShellV2() {
                       {orient.lifecycleLabel}{orient.countText ? ` · ${orient.countText}` : ''} — {orient.summary}
                     </p>
                   )}
-                  <div className="t-label">Where you stand{' '}
-                    <span role="button" tabIndex={0} style={{ opacity: .55, padding: '11px 8px', margin: '-9px -2px', display: 'inline-block' }}
-                      onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setHandledOpen(o => !o); } }}>
-                      {handledOpen ? "▴ what’s counted" : "▾ what’s counted"}
-                    </span>
-                  </div>
+                  <div className="t-label">Where you stand{' '}{countedCaret()}</div>
                   <div>
                     {(() => {
                       // TRUTH RULE (Todd, 2026-07-08): the tile reads the WIDER
@@ -9713,10 +9745,16 @@ export default function HostShellV2() {
                 </div>
               )}
 
-              {/* Slide-down readouts: hidden until the Basics tile is tapped —
-                  never-dense doctrine. Pills = the 4 readiness pillars; below them
-                  the engine's handled facts. */}
-              <div className={'slidepanel' + (handledOpen ? ' open' : '')}>
+              {/* Slide-down readouts: hidden until the "what's counted" caret is
+                  tapped — never-dense doctrine. Pills = the 4 readiness pillars;
+                  below them the engine's handled facts.
+                  `inert` while closed, because `overflow:hidden` hides a thing from
+                  the EYE and from nothing else: every button in here stayed in the
+                  tab order and in the a11y tree, so a keyboard host tabbed into
+                  controls that were not on the screen (measured: .focus() on the
+                  Checklist pill succeeded and scrolled the board to a blank spot).
+                  The id is the caret's aria-controls target. */}
+              <div id="whats-counted" className={'slidepanel' + (handledOpen ? ' open' : '')} inert={!handledOpen}>
                 <div className="slidepanel-inner">
                   {/* WHAT THESE TWO NUMBERS ARE (host, 2026-07-14).
                       The hero shows "3 of 5" in one tile and "3 things need you" in the other,

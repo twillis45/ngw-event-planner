@@ -1,5 +1,34 @@
 # Where We Are -- live status board
 
+## 2026-09-17 — the board's readiness pills had no opener on the phone
+
+A Playwright click on the "Checklist" pill at 390x844 failed with
+`<section role="main"> intercepts pointer events`. Driven live in Chromium
+against the built bundle, that was the true report of a shipping defect, not a
+flake: the `.slidepanel` holding the four readiness pillars measured **0px
+tall** with **924px of content inside it**, and `.tile-a` — the only thing in
+the app that toggles it — is `display:none` in elegant mode, which has been the
+default hero since 2026-07-21. The phone had **zero** ways to open it. Two more
+defects sat under that one: the panel's `max-height:420px` open state amputated
+504px of its own content at every viewport (desktop included), and
+`overflow:hidden` kept every control inside a *closed* panel in the tab order
+and the a11y tree.
+
+The lesson is the one about workarounds. `boardMatrix.spec.mjs:396` had already
+written this symptom down in as many words — "a closed `.slidepanel` keeps its
+children's rects while `max-height:0` hides them" — and taught the sweep to
+skip those elements. The harness learned to live with it instead of asking why
+a panel nobody could open was rendering controls. A test that routes around a
+defect is a defect report nobody filed, and it stayed unfiled across every
+audit since.
+
+Fix: one caret helper in two complementary homes (`.tile-a` at desktop-rail,
+the elegant `.bento-head` everywhere else) so every viewport has exactly one
+visible opener; `grid-template-rows` 0fr→1fr so the panel opens to its real
+height with no magic number; `inert` while closed; and the caret on the ≤480px
+44px tap floor. Proven in the browser at 390/768/1440 — an ordinary un-forced
+click on the Checklist pill now opens the "Your checklist" sheet.
+
 ## 2026-09-17 — Watch Party's knowledge became governed
 
 Twelve Watch Party claims moved from code-authored to governed (corpus 16 -> 28

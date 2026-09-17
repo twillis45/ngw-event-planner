@@ -1593,8 +1593,15 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* button.tag = an INTERACTIVE status pill (lodging/rides/vendor pickers). Spans
    with .tag are display-only labels and stay out of this — scoping to button.tag
    floors just the tappable ones (audit S1: picker pills were ~24px). */
-.chip, .lens, .mini, .dock button, .sheet-x, .toast-undo, .vc-pill, .ev-kicker, button.tag, button.pill, .path-row{ position:relative; }
-.chip::after, .lens::after, .mini::after, .dock button::after, .sheet-x::after, .toast-undo::after, .vc-pill::after, .ev-kicker::after, button.tag::after, button.pill::after, .path-row::after{
+/* .counted-caret joined this list on 2026-09-17: it used to render only inside
+   `.tile-a`, which the phone never shows, so it was never swept at 390px. Now
+   that it also rides `.bento-head` — the header that DOES survive on the phone
+   — it is a real thumb target and measures 36px on its own. Expanded, not
+   grown: it is a quiet disclosure beside an eyebrow, and inflating the text
+   would make the smallest affordance on the surface one of the loudest. */
+.counted-caret{ display:inline-block; vertical-align:middle; }
+.chip, .lens, .mini, .dock button, .sheet-x, .toast-undo, .vc-pill, .ev-kicker, button.tag, button.pill, .path-row, .counted-caret{ position:relative; }
+.chip::after, .lens::after, .mini::after, .dock button::after, .sheet-x::after, .toast-undo::after, .vc-pill::after, .ev-kicker::after, button.tag::after, button.pill::after, .path-row::after, .counted-caret::after{
   content:''; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
   height:100%; min-height:44px;
 }
@@ -2195,9 +2202,30 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .p-steel{color:var(--steel-soft); background:var(--steel-tint)}
 
 /* ── Slide-down readouts (never-dense: hidden until asked) ── */
-.slidepanel{max-height:0; overflow:hidden; transition:max-height var(--ms-sheet) var(--ease-standard)}
-.slidepanel.open{max-height:420px}
-.slidepanel-inner{padding:14px 2px var(--sp-1)}
+/* ── THE OPEN PANEL AMPUTATED ITS OWN SECOND HALF (2026-09-17) ──────────────
+   Was `max-height:0` → `max-height:420px` with `overflow:hidden`. Measured
+   live at 390x844 against a real event, `.slidepanel-inner` is 924px tall —
+   so 504px of it, INCLUDING the Checklist and People readiness pills, sat
+   outside the 420px window with no scroller and no way to reach them. The
+   panel was not "collapsed"; it was open and clipped in half, and the magic
+   number had no relationship to the content it was supposed to reveal.
+   Desktop measured 762px against the same 420, so this was never phone-only.
+
+   A single-row grid animating 0fr → 1fr opens to the content's TRUE height
+   with no number to get wrong. `overflow:hidden` stays on both boxes: on the
+   panel so the closed state clips the inner's padding to a true zero, on the
+   inner so it can be sized below its content by the 0fr row. A browser that
+   cannot interpolate grid-template-rows opens instantly instead of animating,
+   which is the right way to lose this bet. */
+.slidepanel{display:grid; grid-template-rows:0fr; overflow:hidden; transition:grid-template-rows var(--ms-sheet) var(--ease-standard)}
+.slidepanel.open{grid-template-rows:1fr}
+/* Padding rides the OPEN state, not the box. A grid item's padding is not
+   shrinkable, so a padded inner keeps an 18px floor even at 0fr — which would
+   leave a permanent gap under the stat rows where a closed panel used to take
+   exactly nothing. It animates alongside the row so the open is still one
+   movement rather than a jump. */
+.slidepanel-inner{padding:0 2px; min-height:0; overflow:hidden; transition:padding var(--ms-sheet) var(--ease-standard)}
+.slidepanel.open > .slidepanel-inner{padding:14px 2px var(--sp-1)}
 
 /* ── Attention system: focus-mode veil + decaying spotlight ring ── */
 .dimveil{
@@ -4328,7 +4356,14 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .chip,
   .mini,
   .lc-door,
-  .lens {
+  .lens,
+  /* .counted-caret joins the REAL-HEIGHT floor rather than leaning on its
+     ::after expander (2026-09-17). The expander is a genuine hit area in a
+     browser, but it is credited only where a hit test can reach it, and this
+     control sits well below the fold on the phone — so the honest number, and
+     the one the sweep measures, is its own box. It is transparent padding
+     either way: the caret's type size does not change. */
+  .counted-caret {
     min-height: 44px;
     display: inline-flex;
     align-items: center;

@@ -78,8 +78,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `db63b288` |
-| Jest | **6,242 passed**, 1 skipped, **0 failed**, **442 suites**. A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `162e37a5` |
+| Jest | **6,251 passed**, 1 skipped, **0 failed**, **443 suites** (re-measured 2026-09-17, seventh entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -90,6 +90,63 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-17 (seventh entry, same day) — the readiness pills were dead controls on the phone: the panel holding them had no opener
+
+**A Playwright click on the board's "Checklist" pill at 390x844 failed with
+`<section role="main"> intercepts pointer events`, and that was not a harness
+artifact.** Measured in Chromium against the built bundle, a real event seeded:
+
+| Measurement | Before |
+|---|---|
+| `.slidepanel` computed height, phone | **0px** (`max-height:0`, `overflow:hidden`) |
+| `.slidepanel-inner` content height, phone | **924px** |
+| Checklist pill offset inside that panel | **758px** |
+| `.tile-a` (the panel's only opener) at 390px | **`display:none`** |
+| Visible openers for the panel at 390px | **0** |
+
+Three defects, stacked, all of them shipping:
+
+1. **No opener on the phone.** `handledOpen` has exactly two setters and both
+   live inside `.tile-a`, which `styles.css:695` + `:954` set
+   `display:none !important` in elegant mode — the DEFAULT hero since
+   2026-07-21. So the panel carrying the four readiness pillars (Calls to make
+   / People / Paperwork / Checklist) plus the engine's handled facts could
+   never be opened by a thumb at all. The pills rendered, kept layout boxes,
+   and painted nothing; the hit test at their coordinates returned the nearest
+   painted ancestor, which is the `<section role="main">` Playwright named.
+2. **Clipped in half even when open.** `.slidepanel.open{max-height:420px}`
+   against 924px of content (762px at desktop) with no scroller — 504px of a
+   panel the host DID open, including the Checklist and People pills, sat
+   outside the window. Never phone-only.
+3. **Hidden from the eye and from nothing else.** `overflow:hidden` leaves
+   every control inside a closed panel in the tab order and the a11y tree:
+   `.focus()` on the Checklist pill succeeded and scrolled the board to a
+   blank spot.
+
+**Fixed:** one `countedCaret()` helper renders the "what's counted" control in
+two homes that are exact complements — `.tile-a`'s label at desktop-rail, the
+elegant `.bento-head` everywhere else (`styles.css:5395` hides that header at
+exactly the breakpoint `:5378` un-hides the tile), so every viewport has one
+visible opener and never two. The panel animates `grid-template-rows` 0fr→1fr
+to its true height instead of a 420px magic number, with padding on the open
+state so the closed box is still exactly 0. It carries `inert` while closed.
+The caret joins the ≤480px real-height tap floor (44px, transparent padding —
+the type size does not change), because a pseudo-element expander is credited
+only where a hit test can reach it and this control sits below the fold.
+
+**Verified in the browser, not only in tests:** at 390x844, 768x1024 and
+1440x900 — one visible opener each, panel opens to full height (924/762px,
+nothing clipped), an ordinary un-forced click on the Checklist pill opens the
+"Your checklist" sheet. e2e: `mobileTapFloor` + `tapTargets` + `a11yFloor`
+15/15, then `boardMatrix` + `heroVoid` + `responsiveBaseline` + `foldAtTheFoot`
++ `watchPartyMajorEvent` 192 passed / 144 skipped / 0 failed.
+
+**The trap worth carrying forward:** `boardMatrix.spec.mjs:396` already
+described this exact symptom — "a closed `.slidepanel` keeps its children's
+rects while `max-height:0` hides them" — and taught the harness to skip those
+elements instead of asking why a panel nobody could open was rendering
+controls. A workaround in a test is a defect report nobody filed.
 
 ## ADDED 2026-09-17 (sixth entry, same day) — Watch Party's knowledge became governed, and the review board found what green tests missed
 
