@@ -2314,5 +2314,1736 @@
         "note": "retirement-party-p-wine-provenance-v2"
       }
     ]
+  },
+  {
+    "id": "authored-watch-party-p-chili-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_chili.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "cited",
+      "sources": [
+        "costco-groundbeef-2026",
+        "bls-staples-2026",
+        "bls-saladveg-2026"
+      ],
+      "lastVerified": "2026-08-18",
+      "claim": "A pot dish priced per serving. Ground beef is $3.29/lb in Costco bulk against $5.86-7.66/lb at grocery; dried beans $1.704/lb per BLS; tomatoes $2.154/lb. A pot stretching beef with beans and tomatoes lands at this band's floor, a meat-forward one at its ceiling.",
+      "sufficientWhen": "Per-pound beef, beans and tomato prices at the pot's actual ratio confirm the band."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Chili (meat, beans, tomatoes, toppings). The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "costco-groundbeef-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-07",
+        "source": "Beyond Forest (Costco meat price list 2025) + The Kitchn (Kirkland 90/10 ground beef review)",
+        "url": "https://www.beyondforest.org/post/costco-meat-prices-list-2025"
+      },
+      {
+        "id": "bls-staples-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "US Bureau of Labor Statistics CPI Average Price Data via FRED — white long-grain rice (APU0000701312) and dried beans, any type (APU0000714233), with other June 2026 staples (listing - figures read from search results)",
+        "url": "https://fred.stlouisfed.org/series/APU0000714233"
+      },
+      {
+        "id": "bls-saladveg-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "US Bureau of Labor Statistics CPI Average Price Data (romaine lettuce series APU0000FL2101) with USDA ERS food price outlook, via FRED and press coverage (listing - figures read from search results)",
+        "url": "https://fred.stlouisfed.org/series/APU0000FL2101"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "costco-groundbeef-2026",
+          "bls-staples-2026",
+          "bls-saladveg-2026"
+        ],
+        "lastVerified": "2026-08-18",
+        "claim": "A pot dish priced per serving. Ground beef is $3.29/lb in Costco bulk against $5.86-7.66/lb at grocery; dried beans $1.704/lb per BLS; tomatoes $2.154/lb. A pot stretching beef with beans and tomatoes lands at this band's floor, a meat-forward one at its ceiling.",
+        "sufficientWhen": "Per-pound beef, beans and tomato prices at the pot's actual ratio confirm the band."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "costco-groundbeef-2026",
+          "bls-staples-2026",
+          "bls-saladveg-2026"
+        ],
+        "lastVerified": "2026-08-18",
+        "claim": "A pot dish priced per serving. Ground beef is $3.29/lb in Costco bulk against $5.86-7.66/lb at grocery; dried beans $1.704/lb per BLS; tomatoes $2.154/lb. A pot stretching beef with beans and tomatoes lands at this band's floor, a meat-forward one at its ceiling.",
+        "sufficientWhen": "Per-pound beef, beans and tomato prices at the pot's actual ratio confirm the band."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "costco-groundbeef-2026",
+        "bls-staples-2026",
+        "bls-saladveg-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-chili-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Beyond Forest (Costco meat price list 2025) + The Kitchn (Kirkland 90/10 ground beef review)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "US Bureau of Labor Statistics CPI Average Price Data via FRED — white long-grain rice (APU0000701312) and dried beans, any type (APU0000714233), with other June 2026 staples (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "US Bureau of Labor Statistics CPI Average Price Data (romaine lettuce series APU0000FL2101) with USDA ERS food price outlook, via FRED and press coverage (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-chili-costProvenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-watch-party-p-chips-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_chips.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "cited",
+      "sources": [
+        "snacks-format-2026",
+        "dips-retail-2026"
+      ],
+      "lastVerified": "2026-09-17",
+      "claim": "Chips and dips per serving. Chips from a party bag are $0.38-0.40 an ounce ($6.14-6.39 a pound, close to the BLS all-chips average). The DIPS are the larger share: queso 8oz $0.97, hummus 16oz $3.97-6.67, guacamole 15oz $5.27 and 14oz $6.58, prepared dips 16oz about $4.97. A generous serving with two or three dips out lands in this band; a chips-only table would sit below it.",
+      "sufficientWhen": "A party chip bag and two dip tubs, divided by the servings actually poured, confirm the band."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Chips + dips (queso, guac, salsa, French onion). The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "snacks-format-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "Target, FoodMaxx, WebstaurantStore and FoodServiceDirect snack listings (all fetched)",
+        "url": "https://www.target.com/p/lay-39-s-classic-potato-chips-13oz/-/A-13335441"
+      },
+      {
+        "id": "dips-retail-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "Walmart and H-E-B dip, hummus and salsa listings, 2026 (listing - figures read from search results)",
+        "url": "https://www.walmart.com/browse/food/shop-all-hummus-dips-salsas/976759_976789_7056897_6173058"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "snacks-format-2026",
+          "dips-retail-2026"
+        ],
+        "lastVerified": "2026-09-17",
+        "claim": "Chips and dips per serving. Chips from a party bag are $0.38-0.40 an ounce ($6.14-6.39 a pound, close to the BLS all-chips average). The DIPS are the larger share: queso 8oz $0.97, hummus 16oz $3.97-6.67, guacamole 15oz $5.27 and 14oz $6.58, prepared dips 16oz about $4.97. A generous serving with two or three dips out lands in this band; a chips-only table would sit below it.",
+        "sufficientWhen": "A party chip bag and two dip tubs, divided by the servings actually poured, confirm the band."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "snacks-format-2026",
+          "dips-retail-2026"
+        ],
+        "lastVerified": "2026-09-17",
+        "claim": "Chips and dips per serving. Chips from a party bag are $0.38-0.40 an ounce ($6.14-6.39 a pound, close to the BLS all-chips average). The DIPS are the larger share: queso 8oz $0.97, hummus 16oz $3.97-6.67, guacamole 15oz $5.27 and 14oz $6.58, prepared dips 16oz about $4.97. A generous serving with two or three dips out lands in this band; a chips-only table would sit below it.",
+        "sufficientWhen": "A party chip bag and two dip tubs, divided by the servings actually poured, confirm the band."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "snacks-format-2026",
+        "dips-retail-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-chips-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Target, FoodMaxx, WebstaurantStore and FoodServiceDirect snack listings (all fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Walmart and H-E-B dip, hummus and salsa listings, 2026 (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-chips-costProvenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-watch-party-p-cleanup-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_cleanup.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "low",
+      "verificationStatus": "cited",
+      "sources": [
+        "costco-cleaning-2026",
+        "trashbags-retail-2026"
+      ],
+      "lastVerified": "2026-08-15",
+      "claim": "A cleanup kit runs $7-18 as the SUM of its parts: about a dozen trash and recycling bags at 10 cents each from a warehouse or 11-15 cents at grocery, two rolls of paper towels at about $1.97 warehouse, and a canister of wipes at about $4.27 or a dish-soap pack at $14.74 shared across events.",
+      "sufficientWhen": "CONFIDENCE IS LOW ON PURPOSE: no source prices a cleanup kit, because nobody sells one. This band is a sum of individually-priced components, so treat it as an envelope rather than a quote. The spread is the CHANNEL - warehouse packs against a grocery shelf - and a host who already owns soap and towels lands well under the floor. Kits that also carry gloves, foil or to-go containers are a different bundle."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Trash + recycling bags, paper towels. The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "costco-cleaning-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-15",
+        "source": "Wealthy Single Mommy, \"16 Costco cleaning supply deals\" - Kirkland Signature shelf prices (fetched)",
+        "url": "https://www.wealthysinglemommy.com/costco-cleaning-supply-deals"
+      },
+      {
+        "id": "trashbags-retail-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-15",
+        "source": "Grocery and big-box trash-bag listings, 2026 (listing - figures read from search results)",
+        "url": "https://www.walmart.com/browse/household-essentials/trash-bags/1115193_1073264_1149385"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "low",
+        "verificationStatus": "cited",
+        "sources": [
+          "costco-cleaning-2026",
+          "trashbags-retail-2026"
+        ],
+        "lastVerified": "2026-08-15",
+        "claim": "A cleanup kit runs $7-18 as the SUM of its parts: about a dozen trash and recycling bags at 10 cents each from a warehouse or 11-15 cents at grocery, two rolls of paper towels at about $1.97 warehouse, and a canister of wipes at about $4.27 or a dish-soap pack at $14.74 shared across events.",
+        "sufficientWhen": "CONFIDENCE IS LOW ON PURPOSE: no source prices a cleanup kit, because nobody sells one. This band is a sum of individually-priced components, so treat it as an envelope rather than a quote. The spread is the CHANNEL - warehouse packs against a grocery shelf - and a host who already owns soap and towels lands well under the floor. Kits that also carry gloves, foil or to-go containers are a different bundle."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "low",
+        "verificationStatus": "cited",
+        "sources": [
+          "costco-cleaning-2026",
+          "trashbags-retail-2026"
+        ],
+        "lastVerified": "2026-08-15",
+        "claim": "A cleanup kit runs $7-18 as the SUM of its parts: about a dozen trash and recycling bags at 10 cents each from a warehouse or 11-15 cents at grocery, two rolls of paper towels at about $1.97 warehouse, and a canister of wipes at about $4.27 or a dish-soap pack at $14.74 shared across events.",
+        "sufficientWhen": "CONFIDENCE IS LOW ON PURPOSE: no source prices a cleanup kit, because nobody sells one. This band is a sum of individually-priced components, so treat it as an envelope rather than a quote. The spread is the CHANNEL - warehouse packs against a grocery shelf - and a host who already owns soap and towels lands well under the floor. Kits that also carry gloves, foil or to-go containers are a different bundle."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "costco-cleaning-2026",
+        "trashbags-retail-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-cleanup-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Wealthy Single Mommy, \"16 Costco cleaning supply deals\" - Kirkland Signature shelf prices (fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Grocery and big-box trash-bag listings, 2026 (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-cleanup-costProvenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-watch-party-p-dessert-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_dessert.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "cited",
+      "sources": [
+        "warehouse-trays-2026",
+        "snacks-format-2026",
+        "bakery-cake-retail-2026"
+      ],
+      "lastVerified": "2026-08-18",
+      "claim": "Sweets and snack mix per serving. Warehouse cookies are $9.99 for 24 ($0.42 each) rising to $12.43 on a delivery marketplace; bakery brownies price with the grocery-bakery tier. SNACK MIX is $0.29-0.31 an ounce in party size and $0.37-0.43 single-serve. A cookie plus a scoop of mix lands in this band.",
+      "sufficientWhen": "A cookie box divided per piece and a party mix bag divided per serving confirm the band."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Brownies, cookies & snack mix. The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "warehouse-trays-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "Chowhound and The Takeout on the Costco wing tray, with WarehouseRunner and Instacart on Kirkland pantry items (all fetched except WarehouseRunner, which 403d and is search-results)",
+        "url": "https://www.chowhound.com/2083221/chicken-wings-costco-party-tray-super-bowl/"
+      },
+      {
+        "id": "snacks-format-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "Target, FoodMaxx, WebstaurantStore and FoodServiceDirect snack listings (all fetched)",
+        "url": "https://www.target.com/p/lay-39-s-classic-potato-chips-13oz/-/A-13335441"
+      },
+      {
+        "id": "bakery-cake-retail-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "US grocery-bakery cake price guides with per-retailer figures, 2026 (listing - figures read from search results)",
+        "url": "https://eathealthy365.com/how-much-does-a-cake-cost-at-walmart-a-full-breakdown/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "warehouse-trays-2026",
+          "snacks-format-2026",
+          "bakery-cake-retail-2026"
+        ],
+        "lastVerified": "2026-08-18",
+        "claim": "Sweets and snack mix per serving. Warehouse cookies are $9.99 for 24 ($0.42 each) rising to $12.43 on a delivery marketplace; bakery brownies price with the grocery-bakery tier. SNACK MIX is $0.29-0.31 an ounce in party size and $0.37-0.43 single-serve. A cookie plus a scoop of mix lands in this band.",
+        "sufficientWhen": "A cookie box divided per piece and a party mix bag divided per serving confirm the band."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "warehouse-trays-2026",
+          "snacks-format-2026",
+          "bakery-cake-retail-2026"
+        ],
+        "lastVerified": "2026-08-18",
+        "claim": "Sweets and snack mix per serving. Warehouse cookies are $9.99 for 24 ($0.42 each) rising to $12.43 on a delivery marketplace; bakery brownies price with the grocery-bakery tier. SNACK MIX is $0.29-0.31 an ounce in party size and $0.37-0.43 single-serve. A cookie plus a scoop of mix lands in this band.",
+        "sufficientWhen": "A cookie box divided per piece and a party mix bag divided per serving confirm the band."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "warehouse-trays-2026",
+        "snacks-format-2026",
+        "bakery-cake-retail-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-dessert-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Chowhound and The Takeout on the Costco wing tray, with WarehouseRunner and Instacart on Kirkland pantry items (all fetched except WarehouseRunner, which 403d and is search-results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Target, FoodMaxx, WebstaurantStore and FoodServiceDirect snack listings (all fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "US grocery-bakery cake price guides with per-retailer figures, 2026 (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-dessert-costProvenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-watch-party-p-drinks-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_drinks.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "low",
+      "verificationStatus": "cited",
+      "sources": [
+        "beer-retail-2026",
+        "beer-budget-2026",
+        "soda-12pack-2026",
+        "bottledwater-case-2026"
+      ],
+      "lastVerified": "2026-08-16",
+      "claim": "This band is a SUM of separately-priced drink families, not a single quoted item: domestic lager $0.80-1.20 per 12oz (about $20-22 a 24-pack), craft $1.50-3.00; soda $0.25-0.60 a can ($3.00-6.50 a 12-pack); bottled water about $0.17-0.38 a bottle ($4-9 a 24-pack). Each component is cited to its own registered source; the summed band is therefore low-confidence by construction.",
+      "sufficientWhen": "Current shelf prices for one pack of each named component at the same store, summed to the per-serving band, confirm the range."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Beer + soda + water. The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "beer-retail-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-16",
+        "source": "LatestCost — \"Average Cost of Beer 2026\" (fetched; states its figures are ranges, not confirmed year-end prices)",
+        "url": "https://latestcost.com/average-cost-of-beer/"
+      },
+      {
+        "id": "beer-budget-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-16",
+        "source": "PorchDrinking — \"Best Cheap Beer for 2026\" (fetched; range estimates, varies by state and retailer)",
+        "url": "https://porchdrinking.com/best-cheap-beer/"
+      },
+      {
+        "id": "soda-12pack-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-15",
+        "source": "LatestCost, \"12 Pack Soda Pricing Guide for U.S. Shoppers 2026\" (fetched)",
+        "url": "https://latestcost.com/12-pack-soda-pricing-u-s-shoppers/"
+      },
+      {
+        "id": "bottledwater-case-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-15",
+        "source": "LatestCost pack-of-water pricing and 2026 bulk-beverage listings (listing - figures read from search results)",
+        "url": "https://latestcost.com/cost-pack-water-bottles/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "low",
+        "verificationStatus": "cited",
+        "sources": [
+          "beer-retail-2026",
+          "beer-budget-2026",
+          "soda-12pack-2026",
+          "bottledwater-case-2026"
+        ],
+        "lastVerified": "2026-08-16",
+        "claim": "This band is a SUM of separately-priced drink families, not a single quoted item: domestic lager $0.80-1.20 per 12oz (about $20-22 a 24-pack), craft $1.50-3.00; soda $0.25-0.60 a can ($3.00-6.50 a 12-pack); bottled water about $0.17-0.38 a bottle ($4-9 a 24-pack). Each component is cited to its own registered source; the summed band is therefore low-confidence by construction.",
+        "sufficientWhen": "Current shelf prices for one pack of each named component at the same store, summed to the per-serving band, confirm the range."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "low",
+        "verificationStatus": "cited",
+        "sources": [
+          "beer-retail-2026",
+          "beer-budget-2026",
+          "soda-12pack-2026",
+          "bottledwater-case-2026"
+        ],
+        "lastVerified": "2026-08-16",
+        "claim": "This band is a SUM of separately-priced drink families, not a single quoted item: domestic lager $0.80-1.20 per 12oz (about $20-22 a 24-pack), craft $1.50-3.00; soda $0.25-0.60 a can ($3.00-6.50 a 12-pack); bottled water about $0.17-0.38 a bottle ($4-9 a 24-pack). Each component is cited to its own registered source; the summed band is therefore low-confidence by construction.",
+        "sufficientWhen": "Current shelf prices for one pack of each named component at the same store, summed to the per-serving band, confirm the range."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "beer-retail-2026",
+        "beer-budget-2026",
+        "soda-12pack-2026",
+        "bottledwater-case-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-drinks-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "LatestCost — \"Average Cost of Beer 2026\" (fetched; states its figures are ranges, not confirmed year-end prices)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "PorchDrinking — \"Best Cheap Beer for 2026\" (fetched; range estimates, varies by state and retailer)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "LatestCost, \"12 Pack Soda Pricing Guide for U.S. Shoppers 2026\" (fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "LatestCost pack-of-water pricing and 2026 bulk-beverage listings (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-drinks-costProvenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-watch-party-p-ice-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_ice.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "cited",
+      "sources": [
+        "ice-retail-2026",
+        "ice-warehouse-2026"
+      ],
+      "lastVerified": "2026-08-16",
+      "claim": "Bagged ice 2026: warehouse clubs run 10-12c per pound (a 20lb bag is $1.75-2.50 at Sams Club, $1.80-2.50 at Costco); grocery and gas-station bags cluster 23-31c/lb (BJs and 7-Eleven 20lb about $4.49-4.79, Giant 20lb $4.99, Publix 16lb $4.99); small bags and hardware stores reach 41-45c/lb. Convenience ice is more than four times warehouse ice per pound.",
+      "sufficientWhen": "Current shelf prices for one 20lb bag at a warehouse club and one at a grocery store confirm the per-pound spread."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Ice (coolers + drinks). The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "ice-retail-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-16",
+        "source": "Hip2Save — \"Where to Buy Ice from Everywhere & Best Prices\" (fetched; per-retailer survey)",
+        "url": "https://hip2save.com/tips/where-to-buy-ice/"
+      },
+      {
+        "id": "ice-warehouse-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-16",
+        "source": "Eat Healthy 365 — \"How Much is a Bag of Ice at Sams Club? (2026 Price)\" (fetched)",
+        "url": "https://eathealthy365.com/sams-club-ice-prices-your-complete-2026-buying-guide/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "ice-retail-2026",
+          "ice-warehouse-2026"
+        ],
+        "lastVerified": "2026-08-16",
+        "claim": "Bagged ice 2026: warehouse clubs run 10-12c per pound (a 20lb bag is $1.75-2.50 at Sams Club, $1.80-2.50 at Costco); grocery and gas-station bags cluster 23-31c/lb (BJs and 7-Eleven 20lb about $4.49-4.79, Giant 20lb $4.99, Publix 16lb $4.99); small bags and hardware stores reach 41-45c/lb. Convenience ice is more than four times warehouse ice per pound.",
+        "sufficientWhen": "Current shelf prices for one 20lb bag at a warehouse club and one at a grocery store confirm the per-pound spread."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "ice-retail-2026",
+          "ice-warehouse-2026"
+        ],
+        "lastVerified": "2026-08-16",
+        "claim": "Bagged ice 2026: warehouse clubs run 10-12c per pound (a 20lb bag is $1.75-2.50 at Sams Club, $1.80-2.50 at Costco); grocery and gas-station bags cluster 23-31c/lb (BJs and 7-Eleven 20lb about $4.49-4.79, Giant 20lb $4.99, Publix 16lb $4.99); small bags and hardware stores reach 41-45c/lb. Convenience ice is more than four times warehouse ice per pound.",
+        "sufficientWhen": "Current shelf prices for one 20lb bag at a warehouse club and one at a grocery store confirm the per-pound spread."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "ice-retail-2026",
+        "ice-warehouse-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-ice-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Hip2Save — \"Where to Buy Ice from Everywhere & Best Prices\" (fetched; per-retailer survey)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Eat Healthy 365 — \"How Much is a Bag of Ice at Sams Club? (2026 Price)\" (fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-ice-costProvenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-watch-party-p-pizza-sliders-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_pizza_sliders.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "cited",
+      "sources": [
+        "pizza-chain-primary-2026",
+        "frozen-pizza-2026",
+        "buns-walmart-2026"
+      ],
+      "lastVerified": "2026-08-18",
+      "claim": "Handheld mains per pizza, from PRIMARY chain sources. Dominos publishes a Mix and Match at $6.99 each for two or more items including a two-topping pizza; Papa Johns publishes a create-your-own large at $9.99; Papa Murphys take-and-bake large is $10.99 ($9.99 on its pepperoni promotion). Frozen: a 24.7oz rising crust is $7.29. THESE ARE ADVERTISED DEAL PRICES, NOT MENU PRICES - every chain disclaims that franchise prices vary, and none publishes an a-la-carte national figure, so this band's ceiling covers a non-promotional or specialty pie.",
+      "sufficientWhen": "A local store's own online price for a large pizza, against the published national deal, confirms how far a given market sits above the band's floor."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Pizza / sliders (handheld mains). The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "pizza-chain-primary-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "Domino's Pizza Inc. and Papa John's International official press releases, with Papa Murphy's own site (all fetched)",
+        "url": "https://ir.papajohns.com/news-events/news-releases/detail/644/dont-settle-for-less-papa-johns-delivers-better-for-just-9-99"
+      },
+      {
+        "id": "frozen-pizza-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "Target and FoodMaxx frozen pizza listings (both fetched)",
+        "url": "https://www.target.com/p/digiorno-wood-fired-pepperoni-frozen-pizza-15-7oz/-/A-94415304"
+      },
+      {
+        "id": "buns-walmart-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "Walmart bun listings with per-ounce unit pricing, 2026 (listing - figures read from search results)",
+        "url": "https://www.walmart.com/browse/food/buns/976759_976779_5829009"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "pizza-chain-primary-2026",
+          "frozen-pizza-2026",
+          "buns-walmart-2026"
+        ],
+        "lastVerified": "2026-08-18",
+        "claim": "Handheld mains per pizza, from PRIMARY chain sources. Dominos publishes a Mix and Match at $6.99 each for two or more items including a two-topping pizza; Papa Johns publishes a create-your-own large at $9.99; Papa Murphys take-and-bake large is $10.99 ($9.99 on its pepperoni promotion). Frozen: a 24.7oz rising crust is $7.29. THESE ARE ADVERTISED DEAL PRICES, NOT MENU PRICES - every chain disclaims that franchise prices vary, and none publishes an a-la-carte national figure, so this band's ceiling covers a non-promotional or specialty pie.",
+        "sufficientWhen": "A local store's own online price for a large pizza, against the published national deal, confirms how far a given market sits above the band's floor."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "pizza-chain-primary-2026",
+          "frozen-pizza-2026",
+          "buns-walmart-2026"
+        ],
+        "lastVerified": "2026-08-18",
+        "claim": "Handheld mains per pizza, from PRIMARY chain sources. Dominos publishes a Mix and Match at $6.99 each for two or more items including a two-topping pizza; Papa Johns publishes a create-your-own large at $9.99; Papa Murphys take-and-bake large is $10.99 ($9.99 on its pepperoni promotion). Frozen: a 24.7oz rising crust is $7.29. THESE ARE ADVERTISED DEAL PRICES, NOT MENU PRICES - every chain disclaims that franchise prices vary, and none publishes an a-la-carte national figure, so this band's ceiling covers a non-promotional or specialty pie.",
+        "sufficientWhen": "A local store's own online price for a large pizza, against the published national deal, confirms how far a given market sits above the band's floor."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "pizza-chain-primary-2026",
+        "frozen-pizza-2026",
+        "buns-walmart-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-pizza-sliders-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Domino's Pizza Inc. and Papa John's International official press releases, with Papa Murphy's own site (all fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Target and FoodMaxx frozen pizza listings (both fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Walmart bun listings with per-ounce unit pricing, 2026 (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-pizza-sliders-costProvenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-watch-party-p-tableware-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "cited",
+      "sources": [
+        "disposables-bulk-2026",
+        "disposables-partyqty-2026"
+      ],
+      "lastVerified": "2026-08-15",
+      "claim": "A per-guest place setting runs $0.25-2.50 depending entirely on channel: bulk restaurant supply puts plates at $0.08-0.15 each and foam at $0.09, a grocery shelf puts the same basic paper plate at $0.25-0.40, and premium plastic or compostable runs $0.15-0.35 per plate. A setting is 2-3 plates, 2-3 cups, cutlery and 2-3 napkins.",
+      "sufficientWhen": "Re-checked against per-plate pricing and place-setting norms. A deep bulk buy lands near the floor and premium or compostable near the ceiling - the 12x spread is the CHANNEL, not uncertainty. Add 10-15% for spills and unexpected guests. Sets that bundle flutes, koozies, linens or table covers are a different product and are priced separately."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Paper plates, napkins, cups, cutlery. The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "disposables-bulk-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-15",
+        "source": "DTOCS, \"Bulk Disposable Plates for Large Seasonal Gatherings\" - a host costing a 200-person event (fetched)",
+        "url": "https://dtocs.com/blogs/news/bulk-disposable-plates-for-large-seasonal-gatherings-everything-i-learned-hosting-200-people"
+      },
+      {
+        "id": "disposables-partyqty-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-15",
+        "source": "2026 party-supply planning guides and bulk retail listings (listing - figures read from search results)",
+        "url": "https://www.webstaurantstore.com/48825/disposable-party-supplies.html"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "disposables-bulk-2026",
+          "disposables-partyqty-2026"
+        ],
+        "lastVerified": "2026-08-15",
+        "claim": "A per-guest place setting runs $0.25-2.50 depending entirely on channel: bulk restaurant supply puts plates at $0.08-0.15 each and foam at $0.09, a grocery shelf puts the same basic paper plate at $0.25-0.40, and premium plastic or compostable runs $0.15-0.35 per plate. A setting is 2-3 plates, 2-3 cups, cutlery and 2-3 napkins.",
+        "sufficientWhen": "Re-checked against per-plate pricing and place-setting norms. A deep bulk buy lands near the floor and premium or compostable near the ceiling - the 12x spread is the CHANNEL, not uncertainty. Add 10-15% for spills and unexpected guests. Sets that bundle flutes, koozies, linens or table covers are a different product and are priced separately."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "disposables-bulk-2026",
+          "disposables-partyqty-2026"
+        ],
+        "lastVerified": "2026-08-15",
+        "claim": "A per-guest place setting runs $0.25-2.50 depending entirely on channel: bulk restaurant supply puts plates at $0.08-0.15 each and foam at $0.09, a grocery shelf puts the same basic paper plate at $0.25-0.40, and premium plastic or compostable runs $0.15-0.35 per plate. A setting is 2-3 plates, 2-3 cups, cutlery and 2-3 napkins.",
+        "sufficientWhen": "Re-checked against per-plate pricing and place-setting norms. A deep bulk buy lands near the floor and premium or compostable near the ceiling - the 12x spread is the CHANNEL, not uncertainty. Add 10-15% for spills and unexpected guests. Sets that bundle flutes, koozies, linens or table covers are a different product and are priced separately."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "disposables-bulk-2026",
+        "disposables-partyqty-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-tableware-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "DTOCS, \"Bulk Disposable Plates for Large Seasonal Gatherings\" - a host costing a 200-person event (fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "2026 party-supply planning guides and bulk retail listings (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-tableware-costProvenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-watch-party-p-wings-costProvenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "claude",
+    "createdAt": "2026-09-17",
+    "assetId": "Watch Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_wings.costProvenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "cited",
+      "sources": [
+        "wings-extension-2026",
+        "wings-retail-2026",
+        "chicken-retail-2026"
+      ],
+      "lastVerified": "2026-08-18",
+      "claim": "Chicken wings 2026, from a land-grant extension market report and a retail guide. Southeast retail average for conventional fresh party wings $2.49/lb, IQF frozen $2.67/lb; the broader retail range is $2.50-5.00/lb, with frozen $2.50-3.50 and fresh or organic $4.50 and above. Wholesale is $1.10/lb, which is why a party-sized bulk buy sits near the band's floor while a fresh tray at a supermarket sits at its ceiling.",
+      "sufficientWhen": "One fresh party-wing shelf price and one frozen bulk-bag unit price at the same store confirm the band."
+    },
+    "currentProvenance": null,
+    "reason": "First governance of an authored, sourced Watch Party cost claim for Chicken wings. The value is unchanged; this places it under correction control.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "wings-extension-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "Alabama Cooperative Extension System, \"Chicken Wings Market Starts Strong in 2026\" - land-grant extension market report (fetched)",
+        "url": "https://www.aces.edu/blog/topics/farm-management/chicken-wings-market-starts-strong-in-2026/"
+      },
+      {
+        "id": "wings-retail-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-18",
+        "source": "US chicken-wing retail pricing guide, 2026 (listing - figures read from search results)",
+        "url": "https://latestcost.com/average-cost-chicken-wings-what-determines-pricing-how-much/"
+      },
+      {
+        "id": "chicken-retail-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-16",
+        "source": "Cook Answers — \"What Is the Price of Chicken Thighs? Your 2026 Cost Guide\" (fetched)",
+        "url": "https://cookanswers.com/what-is-the-price-of-chicken-thighs/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "wings-extension-2026",
+          "wings-retail-2026",
+          "chicken-retail-2026"
+        ],
+        "lastVerified": "2026-08-18",
+        "claim": "Chicken wings 2026, from a land-grant extension market report and a retail guide. Southeast retail average for conventional fresh party wings $2.49/lb, IQF frozen $2.67/lb; the broader retail range is $2.50-5.00/lb, with frozen $2.50-3.50 and fresh or organic $4.50 and above. Wholesale is $1.10/lb, which is why a party-sized bulk buy sits near the band's floor while a fresh tray at a supermarket sits at its ceiling.",
+        "sufficientWhen": "One fresh party-wing shelf price and one frozen bulk-bag unit price at the same store confirm the band."
+      },
+      "newProvenance": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "wings-extension-2026",
+          "wings-retail-2026",
+          "chicken-retail-2026"
+        ],
+        "lastVerified": "2026-08-18",
+        "claim": "Chicken wings 2026, from a land-grant extension market report and a retail guide. Southeast retail average for conventional fresh party wings $2.49/lb, IQF frozen $2.67/lb; the broader retail range is $2.50-5.00/lb, with frozen $2.50-3.50 and fresh or organic $4.50 and above. Wholesale is $1.10/lb, which is why a party-sized bulk buy sits near the band's floor while a fresh tray at a supermarket sits at its ceiling.",
+        "sufficientWhen": "One fresh party-wing shelf price and one frozen bulk-bag unit price at the same store confirm the band."
+      },
+      "rationale": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "wings-extension-2026",
+        "wings-retail-2026",
+        "chicken-retail-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "Reviewed against the source registry in the 2026-09-17 packet; claim, band and evidence approved.",
+        "at": "2026-09-17"
+      }
+    },
+    "publishedVersion": "authored-watch-party-p-wings-costProvenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Alabama Cooperative Extension System, \"Chicken Wings Market Starts Strong in 2026\" - land-grant extension market report (fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "US chicken-wing retail pricing guide, 2026 (listing - figures read from search results)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Cook Answers — \"What Is the Price of Chicken Thighs? Your 2026 Cost Guide\" (fetched)"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Authored value carried forward verbatim. No number changes; the record moves from code-authored to governed so a price correction no longer needs a code change."
+      },
+      {
+        "at": "2026-09-17",
+        "by": "claude",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": "first governance approved"
+      },
+      {
+        "at": "2026-09-17",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-watch-party-p-wings-costProvenance-v1"
+      }
+    ]
   }
 ]
