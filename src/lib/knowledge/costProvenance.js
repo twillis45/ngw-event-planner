@@ -2322,6 +2322,25 @@ export const COST_SOURCES = {
     sourceClass: 'trade_association',
     claim: 'NRF 2025 Halloween survey: total spending a record $13.1 billion (up from $11.6B in 2024); per-person spending a record $114.45, of which $34.24 is candy; category totals — costumes $4.3B, decorations $4.2B, candy $3.9B, greeting cards $0.7B. 73% of consumers plan to celebrate; top activities are handing out candy (66%), dressing in costume (51%), decorating (51%); 32% plan to throw or attend a party.',
   },
+  // Registered 2026-09-17 to CORROBORATE brunch-prepared-2026 on holidayParty
+  // p_veg_option. That line cited three sources, two of which (bls-saladveg-2026,
+  // cheese-sliced-2026) backed no figure in its claim; removing them left it
+  // single-sourced. This is the honest way back to two — a second publisher that
+  // actually prices the item, not a third that pads the list.
+  //
+  // It also closes the gap the claim itself declared. brunch-prepared-2026 says
+  // "NO fetched source stated a serving count, so no per-serving figure can be
+  // derived without inventing a portion." The Stouffer's retail listing states one.
+  'lasagna-retail-2026': {
+    org: 'Lowes Foods To Go product listing for Stouffers Vegetable Lasagna Family Size 37.5oz (fetched), with the Price Chopper listing of the same SKU and a Kroger-API record for Amys Kitchen Vegetable Lasagna Family Size 32.5oz (Kroger data last verified 2026-07-19)',
+    url: 'https://shop.lowesfoods.com/products/stouffer-s-vegetable-lasagna-family-size-37-5-oz/21322',
+    corroboratingUrl: 'https://food.rootz.global/product/0004227201396',
+    fetched: '2026-09-17',
+    sourceClass: 'commercial_practitioner',
+    claimType: 'planning_guidance',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'Prepared vegetable lasagna at retail 2026, mainstream against organic. Stouffers Vegetable Lasagna Family Size 37.5oz is $10.79 at Lowes Foods ($0.29/oz, about $4.60/lb) and $11.49 at Price Chopper for the same 2.344lb tray ($4.90/lb). Amys Kitchen Vegetable Lasagna Family Size 32.5oz is $16.49 at Kroger ($0.507/oz, about $8.12/lb) — organic runs roughly 1.7x the mainstream tray. SERVING COUNT, which no earlier source published: the Stouffers label states about 4 servings at a 1-cup portion, so a 37.5oz tray is about 9.4oz a serving and $2.70 a serving at the Lowes price. Cut into party-sized bites rather than dinner portions a tray yields roughly 12, putting a bite near $0.90 mainstream and $1.37 organic. These are single-retailer shelf prices, not a national average.',
+  },
 };
 
 // A costFactorProvenance is GROUNDED only when it is tier:'researched' AND cites >=1 real
