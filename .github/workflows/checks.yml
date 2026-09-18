@@ -252,8 +252,16 @@ jobs:
           pattern: blob-*
           merge-multiple: true
           path: all-blob-reports
-      - run: npx playwright merge-reports --reporter=list ../all-blob-reports
+      # `--reporter=json`, NOT `list`. MEASURED on run 658 and reproduced locally:
+      # piped into a log, `list` truncated at test 611 of 1216 and printed no
+      # summary at all — so the job reported neither the per-test detail nor the
+      # total, which is half of what it exists for. The per-test detail still
+      # ships as the uploaded blobs, which render a full HTML report on download.
+      - run: npx playwright merge-reports --reporter=json ../all-blob-reports > ../merged.json
         working-directory: hostv2
+      # Prints the combined total and fails on an empty or failure-carrying
+      # merge — a SECOND verdict, independent of the shard results below.
+      - run: node hostv2/scripts/e2eTotal.mjs merged.json
       - name: Fail if any shard failed
         if: needs.e2e-shard.result != 'success'
         run: |

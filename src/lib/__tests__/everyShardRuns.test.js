@@ -93,6 +93,22 @@ describe('every shard of the e2e matrix actually runs', () => {
     expect(download.with['merge-multiple']).toBe(true);
   });
 
+  test('the merge reports a TOTAL, and json is why', () => {
+    // MEASURED on run 658, the first sharded run, and reproduced locally:
+    // `merge-reports --reporter=list` piped into a log truncated at test 611 of
+    // 1216 and printed no summary at all, so the job reported neither the
+    // per-test detail nor the combined total — half of what it exists for.
+    // `list` streams for a terminal and loses most of its output on exit.
+    // json is deterministic; the per-test detail still ships as the blobs.
+    const steps = (wf.jobs.e2e.steps || []).map((x) => x.run || '');
+    const merge = steps.find((r) => r.includes('merge-reports'));
+    expect(merge).toMatch(/--reporter=json/);
+    expect(merge).not.toMatch(/--reporter=list/);
+    // And something must actually READ that json — a merge written to a file
+    // nobody opens is the silent half of this defect all over again.
+    expect(steps.some((r) => r.includes('e2eTotal.mjs'))).toBe(true);
+  });
+
   test('NEGATIVE CONTROL: the timeout still exceeds the measured shard time', () => {
     // The job this replaced ran 27.0 min against `timeout-minutes: 30` — a 10%
     // margin on a repo that auto-deploys from main, where a slow runner turns a
