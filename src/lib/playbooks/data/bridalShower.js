@@ -17,7 +17,7 @@ const bridalShower = {
   solveFamily: 'home_gathering',
   family: 'host_driven',
   recordKind: 'client',
-  version: '1.0.0',
+  version: '1.1.0',
   meta: {
     summary: 'A host-run bridal shower for the bride — daytime and seated (brunch or afternoon tea), with a coffee + mimosa/punch bar, a sweet, shower games + prizes, favors, and a gift-opening moment. The host (often the maid of honor) is planner, host, and cleanup, so the playbook front-loads guest list + registry + menu and back-loads a calm setup → shower → gift-log → reset.',
     typicalGuests: { low: 15, default: 22, high: 30 },
@@ -37,6 +37,15 @@ const bridalShower = {
 
   decisions: [
     { id: 'food_style', label: 'How is the food handled?', options: ['Host makes the spread', 'Caterer / tea service', 'Potluck', 'Restaurant'], default: 'Host makes the spread', when: 'T-21d', blocks: ['food', 'vendors'], costFactors: { 'Caterer / tea service': 1.35, 'Potluck': 0.55, 'Restaurant': 1.4 }, costFactorProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'researched', sources: ['catering-perperson-2026'], note: 'Grounded against 2026 US catering per-person data (full-service $75-150 vs drop-off $15-35 vs buffet-with-servers $45-85; a restaurant lands at the full-service end; the difference is labor, not food). The service-level hierarchy follows directly; the per-menu percentages calibrate that structure.', claim: 'Hiring a caterer/tea service adds ~35% to per-guest food cost, potluck reduces it ~45%, and a restaurant adds ~40% vs. host-made brunch', sufficientWhen: 'catering, tea service, and restaurant price quotes compared against grocery cost for equivalent host-made brunch confirm the cost-factor ratios' }, affects: ['p_food'], weight: 'high', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'How the food is handled — a host spread, caterer, or restaurant; a real cost call, but a host-made brunch is a safe default the app can set.', tier: 'reasoned' }, why: 'A shower spread is host-friendly; a caterer or restaurant suits a larger or fancier one.' },
+    // COOK METHOD (2026-09-18). Rolled out from Watch Party, where the gap was
+    // found: the playbooks asked WHAT food and WHO provides it, never HOW it is
+    // cooked — so a host holding a dish since noon and one collecting a tray got
+    // the same prep. Gated to the answer(s) where this host actually cooks, and
+    // authored as `in` because the coherence contract requires a gate to name the
+    // answers that keep it. Blocks cook_schedule, NOT food: the method does not
+    // change the shopping list, and claiming it did would demand per-method cost
+    // multipliers that no source supports.
+    { id: 'cook_method', label: 'How is the hot food getting cooked?', options: ['Oven or stovetop indoors', 'Grill or smoker outside', 'Slow cooker or warming tray', 'Air fryer, in batches', 'Store-bought hot or delivered'], default: 'Oven or stovetop indoors', when: 'T-3d', dependsOn: ['food_style'], blocks: ['cook_schedule'], whenChoice: { id: 'food_style', in: ['Host makes the spread'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The method sets the cook window and the equipment, and only the host knows which one they will actually use — but it stays easy to change until the day before.', tier: 'reasoned' }, why: 'Changes the prep more than the menu does. A slow cooker has to start hours ahead; a grill needs fuel checked and puts you outside; an air fryer does one tray at a time; store-bought food needs a pickup window that lands before guests do.' },
     { id: 'style', label: 'Shower style', options: ['Brunch', 'Afternoon tea / sweets', 'Garden luncheon', 'Cocktail-hour shower'], default: 'Brunch', when: 'T-14d', blocks: ['menu', 'beverage_purchases'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Sets the menu, the time of day, and whether the bar skews mimosa or tea — a reversible call the app can default to a brunch.', tier: 'reasoned' }, why: 'Sets the menu, time of day, and whether the bar skews mimosa/coffee (brunch) or punch/tea (afternoon).' },
     { id: 'guestlist', label: 'Confirm guest list with the bride (and her mother / future MIL)', options: [], default: null, when: 'T-14d', blocks: ['food', 'favors', 'seating', 'tableware'], weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'Every quantity and the seat count scale from this, and the bride must approve who is invited — a call the host makes with her, not the app.', tier: 'reasoned' }, why: 'Every quantity and the seat count scale from this — and the bride must approve who is invited (no shower guest should be off the wedding list).' },
     { id: 'registry', label: 'Confirm registry to share on the invite', options: ['Store registry', 'Honeymoon fund', 'Cash / gift card', 'No gifts (presence only)'], default: 'Store registry', when: 'T-14d', weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Guests ask immediately, so it belongs on the invite — a low-stakes but couple-specific choice the host confirms with them.', tier: 'reasoned' }, why: 'Guests ask immediately; include it on the invite to reduce back-and-forth and steer the gift haul.' },
@@ -56,6 +65,12 @@ const bridalShower = {
   ],
 
   tasks: [
+    // Method-specific prep, each firing for exactly one cook_method answer.
+    { id: 't_cm_grillfuel', milestoneId: 'br_shop_fresh', phase: 'food', label: 'Check propane or charcoal now — a fuel run once guests have arrived costs you the party', when: 'T-2d', whenChoice: [{ id: 'food_style', in: ['Host makes the spread'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
+    { id: 't_cm_oven', milestoneId: 'br_shop_fresh', phase: 'food', label: 'If anything goes in the oven, work out the order — one oven will not hold three dishes at three temperatures', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host makes the spread'] }, { id: 'cook_method', in: ['Oven or stovetop indoors'] }] },
+    { id: 't_cm_pickup', milestoneId: 'br_shop_fresh', phase: 'food', label: 'Lock the pickup or delivery window so the food arrives BEFORE your guests do, not with them', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host makes the spread'] }, { id: 'cook_method', in: ['Store-bought hot or delivered'] }] },
+    { id: 't_cm_slowcooker', milestoneId: 'br_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: [{ id: 'food_style', in: ['Host makes the spread'] }, { id: 'cook_method', in: ['Slow cooker or warming tray'] }] },
+    { id: 't_cm_airfryer', milestoneId: 'br_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: [{ id: 'food_style', in: ['Host makes the spread'] }, { id: 'cook_method', in: ['Air fryer, in batches'] }] },
     { id: 't_invite', milestoneId: 'br_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
     { id: 't_rsvp', milestoneId: 'br_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count and seat plan', when: 'T-4d' },
     { id: 't_giftlog', milestoneId: 'br_setup', phase: 'planning', label: 'Set up the gift log (who-gave-what) for thank-you notes', when: 'T-1d' },
@@ -99,6 +114,9 @@ const bridalShower = {
   ],
 
   risks: [
+    // Gated to the grill answer. The wording follows the charcoal-bag warning
+    // already grounded in fireSafetyContext; it is not a new claim.
+    { id: 'r_cm_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the dish to the oven.', whenChoice: [{ id: 'food_style', in: ['Host makes the spread'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
     { id: 'r_headcount', trigger: 'Final headcount still not locked 4 days out', severity: 'high', mitigation: 'Chase RSVPs with the bride / co-hosts; buy fresh food and confirm seats after the count locks.' },
     { id: 'r_giftlog', trigger: 'No gift-tracking plan during the opening', severity: 'high', mitigation: 'Assign one person to log each gift → giver as it is opened; the bride needs this list for thank-you notes.' },
     { id: 'r_guestlist', trigger: 'Shower guest not on the wedding guest list', severity: 'med', mitigation: 'Vet the shower list against the wedding list with the bride before invites go out — never invite to the shower someone not invited to the wedding.' },

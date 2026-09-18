@@ -17,7 +17,7 @@ const housewarming = {
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
-  version: '1.0.0',
+  version: '1.1.0',
 
   meta: {
     summary:
@@ -40,6 +40,15 @@ const housewarming = {
   decisions: [
     { id: 'window', label: 'Open-house window or fixed start?', options: ['Open house (drop in 2-5pm)', 'Fixed start, afternoon', 'Fixed start, evening', 'Brunch / daytime'], default: 'Open house (drop in 2-5pm)', when: 'T-14d', blocks: ['invite', 'food_volume'], weight: 'med', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'The open-house window sets how many guests overlap at once, which is what food and drink volumes are sized to — and it locks once it is on the invite.', tier: 'reasoned' }, why: 'An open-house window keeps a new-home crowd light at any one moment and lets a single host greet, tour, and refill without a rush — but it spreads food consumption out, so volumes are estimated on peak overlap, not the full guest list.' },
     { id: 'food_style', label: 'Food style', options: ['Grazing board + passed snacks', 'Grazing board only', 'Light apps + one warm bite', 'Order-in finger food'], default: 'Grazing board + passed snacks', when: 'T-7d', blocks: ['purchases', 'rentals'], weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'A housewarming is snacks, not dinner, so a grazing board plus passed bites reads generous, costs little, and is a safe default.', tier: 'reasoned' }, why: 'Sets the bite count and whether the host cooks at all. A housewarming is snacks, not dinner — a grazing board plus a couple of room-temp passed items reads generous while keeping the host out of the kitchen.' },
+    // COOK METHOD (2026-09-18). Rolled out from Watch Party, where the gap was
+    // found: the playbooks asked WHAT food and WHO provides it, never HOW it is
+    // cooked — so a host holding a dish since noon and one collecting a tray got
+    // the same prep. Gated to the answer(s) where this host actually cooks, and
+    // authored as `in` because the coherence contract requires a gate to name the
+    // answers that keep it. Blocks cook_schedule, NOT food: the method does not
+    // change the shopping list, and claiming it did would demand per-method cost
+    // multipliers that no source supports.
+    { id: 'cook_method', label: 'How is the hot food getting cooked?', options: ['Oven or stovetop indoors', 'Grill or smoker outside', 'Slow cooker or warming tray', 'Air fryer, in batches', 'Store-bought hot or delivered'], default: 'Oven or stovetop indoors', when: 'T-3d', dependsOn: ['food_style'], blocks: ['cook_schedule'], whenChoice: { id: 'food_style', in: ['Light apps + one warm bite'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The method sets the cook window and the equipment, and only the host knows which one they will actually use — but it stays easy to change until the day before.', tier: 'reasoned' }, why: 'Changes the prep more than the menu does. A slow cooker has to start hours ahead; a grill needs fuel checked and puts you outside; an air fryer does one tray at a time; store-bought food needs a pickup window that lands before guests do.' },
     { id: 'drinks', label: 'Drink plan', options: ['Beer + wine + soda', 'Beer + wine + soda + one signature cocktail', 'BYOB + host provides mixers/soda', 'Zero-proof / dry'], default: 'Beer + wine + soda + one signature cocktail', when: 'T-7d', blocks: ['purchases'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Drinks are the biggest line item and set the ice-and-glassware math, but a beer-wine-soda-plus-one-cocktail default carries it and adjusts at the store.', tier: 'reasoned' }, why: 'Drives the biggest line item and the glassware/ice math. One batched signature cocktail feels special without a bartender; a self-serve beer-wine-soda station carries the rest.' },
     { id: 'entry', label: 'Shoes-off house, or shoes-on?', options: ['Shoes off (provide a tray + basket)', 'Shoes on', "Host's call at the door"], default: 'Shoes off (provide a tray + basket)', when: 'T-14d', blocks: ['setup', 'invite'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Shoes-off protects new floors, so the entry plan — tray, basket, sign — must be staged before guests arrive, a new-home-specific call the app can default.', tier: 'reasoned' }, why: 'New-home hosts often want shoes off to protect new floors. Decide early so the entry plan (shoe tray, coat space, a friendly sign) is ready and no guest is caught off guard at the door.' },
     { id: 'gifts', label: 'Gifts: welcome them, or "no gifts"?', options: ['No gifts (say so on the invite)', 'Welcome — set a gift table', 'House fund / registry link'], default: 'Welcome — set a gift table', when: 'T-14d', blocks: ['setup', 'invite'], weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Welcoming gifts or saying no-gifts is the host\'s preference to state on the invite; either way it just needs a landing spot by the door.', tier: 'reasoned' }, why: 'Guests will bring housewarming gifts unless told not to. Either say "no gifts, just come" on the invite or set an obvious gift-landing spot near the door so nobody is left holding a plant and a bottle.' },
@@ -58,6 +67,12 @@ const housewarming = {
   ],
 
   tasks: [
+    // Method-specific prep, each firing for exactly one cook_method answer.
+    { id: 't_cm_grillfuel', milestoneId: 'hw_prep', phase: 'food', label: 'Check propane or charcoal now — a fuel run once guests have arrived costs you the party', when: 'T-2d', whenChoice: [{ id: 'food_style', in: ['Light apps + one warm bite'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
+    { id: 't_cm_oven', milestoneId: 'hw_prep', phase: 'food', label: 'If anything goes in the oven, work out the order — one oven will not hold three dishes at three temperatures', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Light apps + one warm bite'] }, { id: 'cook_method', in: ['Oven or stovetop indoors'] }] },
+    { id: 't_cm_pickup', milestoneId: 'hw_prep', phase: 'food', label: 'Lock the pickup or delivery window so the food arrives BEFORE your guests do, not with them', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Light apps + one warm bite'] }, { id: 'cook_method', in: ['Store-bought hot or delivered'] }] },
+    { id: 't_cm_slowcooker', milestoneId: 'hw_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: [{ id: 'food_style', in: ['Light apps + one warm bite'] }, { id: 'cook_method', in: ['Slow cooker or warming tray'] }] },
+    { id: 't_cm_airfryer', milestoneId: 'hw_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: [{ id: 'food_style', in: ['Light apps + one warm bite'] }, { id: 'cook_method', in: ['Air fryer, in batches'] }] },
     { id: 't_invite', milestoneId: 'hw_invite', phase: 'guest', label: 'Send invite: address, parking note, open-house window, shoes-off heads-up, and your gift stance ("no gifts, just come" or "we have a spot for them")', when: 'T-12d' },
     { id: 't_buffer', milestoneId: 'hw_rsvp', phase: 'guest', label: 'Estimate peak overlap (assume ~50-60% of an open-house list is present at once) and plan food/drink to that, not the full list', when: 'T-3d' },
     { id: 't_dry_shop', milestoneId: 'hw_shop_dry', phase: 'shopping', label: 'Drinks, soda, water, paper goods, napkins, trash bags, decor, candles, non-perishable snacks', when: 'T-3d' },
@@ -108,6 +123,9 @@ const housewarming = {
   ],
 
   risks: [
+    // Gated to the grill answer. The wording follows the charcoal-bag warning
+    // already grounded in fireSafetyContext; it is not a new claim.
+    { id: 'r_cm_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the dish to the oven.', whenChoice: [{ id: 'food_style', in: ['Light apps + one warm bite'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
     { id: 'r_entry', trigger: 'No coat/shoe/entry plan — 25 pairs of shoes pile at a new front door', severity: 'med', mitigation: 'Decide shoes-on/off at a week out; stage a shoe tray + basket, a cleared coat space, and a small sign before anyone arrives.' },
     { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1-1.5 lb ice/guest the day of; keep a backup bag in the freezer and bottles pre-chilled.' },
     { id: 'r_overlap', trigger: 'Everyone arrives at once instead of spreading across the window', severity: 'med', mitigation: 'Size food/drink to peak overlap (~50-60% of the list) and keep a non-perishable backup (extra crackers, nuts, frozen apps) ready to deploy.' },

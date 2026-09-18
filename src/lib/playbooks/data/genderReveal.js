@@ -23,7 +23,7 @@ const genderReveal = {
   solveFamily: 'home_gathering',
   family: 'host_driven',
   recordKind: 'client',
-  version: '1.0.0',
+  version: '1.1.0',
   meta: {
     summary:
       'A host-run gender reveal built around ONE hero moment — the reveal. An outside party (baker or balloon shop) holds the sealed sex result so the parents are surprised too. The playbook front-loads the secret-keeping handoff and a SAFE reveal method, then layers snacks + mocktails, pink/blue decor, a guessing-board game, and a planned photo/video capture.',
@@ -134,6 +134,15 @@ const genderReveal = {
       priorityBasis: { rationale: 'A great zero-proof pour matters for the pregnant guest of honor, but drinks are cheap and easy to adjust at the store.', tier: 'reasoned' },
       why: 'The pregnant guest of honor needs a genuinely good zero-proof option; make the mocktail the centerpiece drink, not an afterthought.',
     },
+    // COOK METHOD (2026-09-18). Rolled out from Watch Party, where the gap was
+    // found: the playbooks asked WHAT food and WHO provides it, never HOW it is
+    // cooked — so a host holding a dish since noon and one collecting a tray got
+    // the same prep. Gated to the answer(s) where this host actually cooks, and
+    // authored as `in` because the coherence contract requires a gate to name the
+    // answers that keep it. Blocks cook_schedule, NOT food: the method does not
+    // change the shopping list, and claiming it did would demand per-method cost
+    // multipliers that no source supports.
+    { id: 'cook_method', label: 'How is the hot food getting cooked?', options: ['Oven or stovetop indoors', 'Grill or smoker outside', 'Slow cooker or warming tray', 'Air fryer, in batches', 'Store-bought hot or delivered'], default: 'Oven or stovetop indoors', when: 'T-3d', dependsOn: ['food_style'], blocks: ['cook_schedule'], whenChoice: { id: 'food_style', in: ['Host makes finger food'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The method sets the cook window and the equipment, and only the host knows which one they will actually use — but it stays easy to change until the day before.', tier: 'reasoned' }, why: 'Changes the prep more than the menu does. A slow cooker has to start hours ahead; a grill needs fuel checked and puts you outside; an air fryer does one tray at a time; store-bought food needs a pickup window that lands before guests do.' },
   ],
 
   milestones: [
@@ -150,6 +159,12 @@ const genderReveal = {
   ],
 
   tasks: [
+    // Method-specific prep, each firing for exactly one cook_method answer.
+    { id: 't_cm_grillfuel', milestoneId: 'gr_shop_fresh', phase: 'food', label: 'Check propane or charcoal now — a fuel run once guests have arrived costs you the party', when: 'T-2d', whenChoice: [{ id: 'food_style', in: ['Host makes finger food'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
+    { id: 't_cm_oven', milestoneId: 'gr_shop_fresh', phase: 'food', label: 'If anything goes in the oven, work out the order — one oven will not hold three dishes at three temperatures', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host makes finger food'] }, { id: 'cook_method', in: ['Oven or stovetop indoors'] }] },
+    { id: 't_cm_pickup', milestoneId: 'gr_shop_fresh', phase: 'food', label: 'Lock the pickup or delivery window so the food arrives BEFORE your guests do, not with them', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host makes finger food'] }, { id: 'cook_method', in: ['Store-bought hot or delivered'] }] },
+    { id: 't_cm_slowcooker', milestoneId: 'gr_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: [{ id: 'food_style', in: ['Host makes finger food'] }, { id: 'cook_method', in: ['Slow cooker or warming tray'] }] },
+    { id: 't_cm_airfryer', milestoneId: 'gr_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: [{ id: 'food_style', in: ['Host makes finger food'] }, { id: 'cook_method', in: ['Air fryer, in batches'] }] },
     { id: 't_handoff', milestoneId: 'gr_handoff', phase: 'reveal', label: 'Give baker/shop the sealed envelope; confirm neutral exterior so parents are surprised', when: 'T-18d' },
     { id: 't_invite', milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with RSVP-by, dietary ask, and "wear pink or blue" note', when: 'T-14d' },
     { id: 't_capture', milestoneId: 'gr_capture', phase: 'reveal', label: 'Assign a photographer/videographer; frame the parents + reveal in one shot; charge devices', when: 'T-10d' },
@@ -195,6 +210,9 @@ const genderReveal = {
   ],
 
   risks: [
+    // Gated to the grill answer. The wording follows the charcoal-bag warning
+    // already grounded in fireSafetyContext; it is not a new claim.
+    { id: 'r_cm_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the dish to the oven.', whenChoice: [{ id: 'food_style', in: ['Host makes finger food'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
     { id: 'r_reveal_stunt', trigger: 'Reveal uses fireworks, Tannerite/explosive targets, homemade pyro, or hot/burning smoke devices — especially near dry brush', severity: 'high', mitigation: 'Use only food-, balloon-, biodegradable-confetti-, or rated non-pyro powder-cannon reveals. No explosives or open flame. If outdoor, check fire conditions and keep water/extinguisher nearby; never reveal near dry grass or brush.' },
     { id: 'r_secret_leak', trigger: 'Hosts open the envelope or the wrong color is prepped', severity: 'high', mitigation: 'Hand the sealed result straight to the baker/shop; never open it; have them confirm color privately and pick up the item neutral.' },
     { id: 'r_capture_miss', trigger: 'The un-repeatable reveal moment is not captured on camera', severity: 'med', mitigation: 'Assign a dedicated shooter, frame parents + reveal in one shot, charge devices, do a quick test, and have a backup phone filming.' },

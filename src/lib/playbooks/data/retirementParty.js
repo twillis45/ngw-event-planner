@@ -22,7 +22,7 @@ const retirementParty = {
   solveFamily: 'retirement_party',
   family: 'host_driven',
   recordKind: 'client',
-  version: '1.0.0',
+  version: '1.1.0',
 
   meta: {
     summary:
@@ -49,6 +49,15 @@ const retirementParty = {
   // is a stated one-line rationale (also the "show your work" the host sees), tier 'reasoned'.
   decisions: [
     { id: 'food_style', label: 'How is the food handled?', options: ['Host cooks', 'Drop-off catering / buffet', 'Restaurant', 'Potluck'], default: 'Drop-off catering / buffet', when: 'T-21d', blocks: ['food', 'vendors'], costViaApproach: true, weight: 'high', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'How the food is handled frees or traps the host during the tribute — a big, costly-to-undo call, but one the app can safely default to drop-off.', tier: 'reasoned' }, why: 'A buffet drop-off keeps the host present for the tributes instead of in the kitchen.' },
+    // COOK METHOD (2026-09-18). Rolled out from Watch Party, where the gap was
+    // found: the playbooks asked WHAT food and WHO provides it, never HOW it is
+    // cooked — so a host holding a dish since noon and one collecting a tray got
+    // the same prep. Gated to the answer(s) where this host actually cooks, and
+    // authored as `in` because the coherence contract requires a gate to name the
+    // answers that keep it. Blocks cook_schedule, NOT food: the method does not
+    // change the shopping list, and claiming it did would demand per-method cost
+    // multipliers that no source supports.
+    { id: 'cook_method', label: 'How is the hot food getting cooked?', options: ['Oven or stovetop indoors', 'Grill or smoker outside', 'Slow cooker or warming tray', 'Air fryer, in batches', 'Store-bought hot or delivered'], default: 'Oven or stovetop indoors', when: 'T-3d', dependsOn: ['food_style'], blocks: ['cook_schedule'], whenChoice: { id: 'food_style', in: ['Host cooks'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The method sets the cook window and the equipment, and only the host knows which one they will actually use — but it stays easy to change until the day before.', tier: 'reasoned' }, why: 'Changes the prep more than the menu does. A slow cooker has to start hours ahead; a grill needs fuel checked and puts you outside; an air fryer does one tray at a time; store-bought food needs a pickup window that lands before guests do.' },
     { id: 'venue', label: 'At home, a restaurant, or the workplace?', options: ['Host home', 'Restaurant private room', 'Workplace / office common area', 'Banquet hall / event venue', 'Backyard / outdoor'], default: 'Restaurant private room', when: 'T-35d', blocks: ['rentals', 'staffing', 'catering', 'accessibility'], weight: 'high', reversibility: 'locked', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'The venue locks the guest count, the accessibility, and every rental — the hardest-to-reverse call on the board, and the host has to make it.', tier: 'reasoned' }, why: 'Drives whether you rent tables/AV and hire staff (home/office) or the venue covers it (restaurant/hall). It also fixes accessibility — an older crowd needs parking, a no-stairs entrance, and a restroom near the room. Caps the realistic guest count.' },
     { id: 'surprise', label: 'Surprise or announced?', options: ['Full surprise', 'Soft surprise (honoree knows, not the details)', 'Announced celebration'], default: 'Soft surprise (honoree knows, not the details)', when: 'T-30d', blocks: ['runofshow', 'invite'], weight: 'high', reversibility: 'costly', emotionalWeight: 'high', difmCapable: 'needs-host', priorityBasis: { rationale: 'Surprise-or-not rewrites the invites, the arrival, and the emotional peak — high-stakes, and hard to walk back once invites go out.', tier: 'reasoned' }, why: 'A surprise changes everything: invite wording ("SHHH — surprise"), a separate arrival time and choreography, and a co-conspirator to get the honoree to the venue. A soft surprise spares older honorees the shock while keeping the wow.' },
     { id: 'format', label: 'Heavy appetizers or a buffet / seated dinner?', options: ['Heavy passed + stationed apps', 'Buffet (mains + sides)', 'Seated plated dinner', 'Restaurant set menu', 'Dessert + cake reception only'], default: 'Buffet (mains + sides)', when: 'T-30d', dependsOn: ['venue'], optionGates: { 'Restaurant set menu': { whenChoice: { id: 'venue', in: ['Restaurant private room'] } } }, blocks: ['menu', 'rentals', 'seating'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Buffet-vs-apps sets the shopping list and the seat count, but it is cheap and easy to change — a modest, reversible call the app can default.', tier: 'reasoned' }, why: 'A career send-off usually overlaps a meal hour, so plan ~1-1.25 servings/guest. Locking buffet vs heavy-apps sets the shopping list (~0.5 lb protein/guest for a buffet, or ~10-12 bites/guest for apps) and how many seats you need.' },
@@ -107,6 +116,12 @@ const retirementParty = {
   ],
 
   tasks: [
+    // Method-specific prep, each firing for exactly one cook_method answer.
+    { id: 't_cm_grillfuel', milestoneId: 'rp_prep', phase: 'food', label: 'Check propane or charcoal now — a fuel run once guests have arrived costs you the party', when: 'T-2d', whenChoice: [{ id: 'food_style', in: ['Host cooks'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
+    { id: 't_cm_oven', milestoneId: 'rp_prep', phase: 'food', label: 'If anything goes in the oven, work out the order — one oven will not hold three dishes at three temperatures', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host cooks'] }, { id: 'cook_method', in: ['Oven or stovetop indoors'] }] },
+    { id: 't_cm_pickup', milestoneId: 'rp_prep', phase: 'food', label: 'Lock the pickup or delivery window so the food arrives BEFORE your guests do, not with them', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host cooks'] }, { id: 'cook_method', in: ['Store-bought hot or delivered'] }] },
+    { id: 't_cm_slowcooker', milestoneId: 'rp_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: [{ id: 'food_style', in: ['Host cooks'] }, { id: 'cook_method', in: ['Slow cooker or warming tray'] }] },
+    { id: 't_cm_airfryer', milestoneId: 'rp_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: [{ id: 'food_style', in: ['Host cooks'] }, { id: 'cook_method', in: ['Air fryer, in batches'] }] },
     { id: 't_invite', milestoneId: 'rp_invite', phase: 'guest', label: 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by', when: 'T-28d',
       copyByAnswer: { surprise: {
         'Full surprise': 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by; mark SURPRISE + a guests-arrive-by time',
@@ -192,6 +207,9 @@ const retirementParty = {
   ],
 
   risks: [
+    // Gated to the grill answer. The wording follows the charcoal-bag warning
+    // already grounded in fireSafetyContext; it is not a new claim.
+    { id: 'r_cm_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the dish to the oven.', whenChoice: [{ id: 'food_style', in: ['Host cooks'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
     { id: 'r_headcount', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, food ~10-15%, not 30%.' },
     { id: 'r_surprise_leak', trigger: 'The surprise leaks, or the honoree arrives before guests are set', severity: 'med', mitigation: 'Mark every invite SURPRISE with a guests-arrive-by time 15-30 min early; pick one co-conspirator to control the honoree\'s arrival; have a lookout text "she\'s here".' },
     { id: 'r_speeches', trigger: 'Speeches run long / no mic / open-mic rambles / audience can\'t hear', severity: 'high', mitigation: 'Pre-assign 3-5 speakers at ~2-3 min, ALWAYS have a tested mic + speaker, seat the older crowd up front, lower the music before the toast.' },

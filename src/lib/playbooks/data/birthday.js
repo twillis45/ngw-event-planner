@@ -12,7 +12,7 @@ const birthday = {
   solveFamily: 'birthday',
   family: 'host_driven',
   recordKind: 'event',
-  version: '1.0.0',
+  version: '1.1.0',
   meta: {
     summary: 'A host-run birthday party (kid or adult) at home, a backyard, or a small rented room. The host is planner, caterer, and cleanup — so the playbook front-loads theme/headcount and back-loads a tight setup + reset.',
     typicalGuests: { low: 12, default: 20, high: 40 },
@@ -35,6 +35,15 @@ const birthday = {
     { id: 'theme', label: 'Pick a theme / vibe (or "no theme")', ask: 'Is there a theme, or keep it casual?', options: ['Kids character/theme', 'Milestone (decade) theme', 'Cocktail / grown-up', 'Casual / no theme'], default: 'Casual / no theme', when: 'T-21d', blocks: ['decor', 'cake', 'favors'], weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Theme only steers the look of decor, cake, and invites — cosmetic, cheap, and swappable, so the app can safely default it.', tier: 'reasoned' }, why: 'Theme drives decor, cake design, favors, and invite look. Decide first so the rest is coherent.' },
     { id: 'headcount', label: 'Confirm guest count (and kids vs adults)', options: [], default: null, when: 'T-7d', blocks: ['food', 'cake', 'tableware'], weight: 'high', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Every food, cake, and tableware amount scales off the count, so a wrong number mis-buys everything — and only the host knows who is really coming.', tier: 'reasoned' }, why: 'Every food/cake/tableware quantity scales from this. Kids vs adults changes food and drink mix.' },
     { id: 'food_style', label: 'Food style', options: ['Cook/grill yourself', 'Order pizza/trays', 'Drop-off catering', 'Potluck'], default: 'Order pizza/trays', when: 'T-10d', blocks: ['food', 'vendors'], costViaApproach: true, weight: 'med', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Food is the biggest effort-and-cost lever, but trays or drop-off is a safe default and the choice can change right up until you order.', tier: 'reasoned' }, why: 'The biggest effort/cost lever. Trays or drop-off removes the riskiest day-of cooking.' },
+    // COOK METHOD (2026-09-18). Rolled out from Watch Party, where the gap was
+    // found: the playbooks asked WHAT food and WHO provides it, never HOW it is
+    // cooked — so a host holding a dish since noon and one collecting a tray got
+    // the same prep. Gated to the answer(s) where this host actually cooks, and
+    // authored as `in` because the coherence contract requires a gate to name the
+    // answers that keep it. Blocks cook_schedule, NOT food: the method does not
+    // change the shopping list, and claiming it did would demand per-method cost
+    // multipliers that no source supports.
+    { id: 'cook_method', label: 'How is the hot food getting cooked?', options: ['Oven or stovetop indoors', 'Grill or smoker outside', 'Slow cooker or warming tray', 'Air fryer, in batches', 'Store-bought hot or delivered'], default: 'Oven or stovetop indoors', when: 'T-3d', dependsOn: ['food_style'], blocks: ['cook_schedule'], whenChoice: { id: 'food_style', in: ['Cook/grill yourself'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The method sets the cook window and the equipment, and only the host knows which one they will actually use — but it stays easy to change until the day before.', tier: 'reasoned' }, why: 'Changes the prep more than the menu does. A slow cooker has to start hours ahead; a grill needs fuel checked and puts you outside; an air fryer does one tray at a time; store-bought food needs a pickup window that lands before guests do.' },
     { id: 'alcohol', label: 'Alcohol? (adult parties)', options: ['No alcohol', 'Beer + wine', 'Full bar / signature drink', 'BYOB'], default: 'No alcohol', when: 'T-10d', blocks: ['beverage_purchases'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Whether to pour at all turns on a kid-vs-adult crowd and who drives home — a host call, though the drinks themselves are cheap to adjust at the store.', tier: 'reasoned' }, why: 'Drives beverage spend, glassware, and whether anyone needs a ride home.' },
     { id: 'dietary', label: 'Collect allergies & dietary needs', options: [], default: null, when: 'T-7d', blocks: ['food'], weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'One unflagged nut or dairy allergy is a safety issue, not a courtesy — it must come from the guests before the menu locks.', tier: 'reasoned' }, why: 'Board add: the high-severity allergy risk needs a step that actually asks. Collect from the guest list before locking the menu — one unflagged nut/dairy allergy is a safety issue, not a courtesy.' },
     { id: 'cake', label: 'Cake: bake, order, or cupcakes?', options: ['Order a cake', 'Bake it', 'Cupcakes', 'Both cake + treats'], default: 'Order a cake', when: 'T-7d', dependsOn: ['theme', 'headcount'], weight: 'med', reversibility: 'costly', emotionalWeight: 'high', difmCapable: 'can-derive', deliversHeartMoment: true, priorityBasis: { rationale: 'The lit cake is the moment everyone sings around — the centerpiece of the party, and an ordered one has to be placed ahead so it cannot be left late.', tier: 'reasoned' }, why: 'Ordered cakes need ~3–5 days lead; size scales with headcount (~1 slice/guest).' },
@@ -62,6 +71,12 @@ const birthday = {
   ],
 
   tasks: [
+    // Method-specific prep, each firing for exactly one cook_method answer.
+    { id: 't_cm_grillfuel', milestoneId: 'bd_shop_fresh', phase: 'food', label: 'Check propane or charcoal now — a fuel run once guests have arrived costs you the party', when: 'T-2d', whenChoice: [{ id: 'food_style', in: ['Cook/grill yourself'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
+    { id: 't_cm_oven', milestoneId: 'bd_shop_fresh', phase: 'food', label: 'If anything goes in the oven, work out the order — one oven will not hold three dishes at three temperatures', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Cook/grill yourself'] }, { id: 'cook_method', in: ['Oven or stovetop indoors'] }] },
+    { id: 't_cm_pickup', milestoneId: 'bd_shop_fresh', phase: 'food', label: 'Lock the pickup or delivery window so the food arrives BEFORE your guests do, not with them', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Cook/grill yourself'] }, { id: 'cook_method', in: ['Store-bought hot or delivered'] }] },
+    { id: 't_cm_slowcooker', milestoneId: 'bd_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: [{ id: 'food_style', in: ['Cook/grill yourself'] }, { id: 'cook_method', in: ['Slow cooker or warming tray'] }] },
+    { id: 't_cm_airfryer', milestoneId: 'bd_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: [{ id: 'food_style', in: ['Cook/grill yourself'] }, { id: 'cook_method', in: ['Air fryer, in batches'] }] },
     { id: 't_invite', milestoneId: 'bd_invite', phase: 'guest', label: 'Send invites with date/time/place + RSVP-by + allergy ask', when: 'T-18d' },
     { id: 't_rsvp', milestoneId: 'bd_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-3d' },
     { id: 't_decor_shop', milestoneId: 'bd_shop_nonperish', phase: 'shopping', label: 'Decor, balloons, drinks, paper goods, favors run', when: 'T-3d' },
@@ -112,6 +127,9 @@ const birthday = {
   ],
 
   risks: [
+    // Gated to the grill answer. The wording follows the charcoal-bag warning
+    // already grounded in fireSafetyContext; it is not a new claim.
+    { id: 'r_cm_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the dish to the oven.', whenChoice: [{ id: 'food_style', in: ['Cook/grill yourself'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
     { id: 'r_headcount', trigger: 'Final headcount still not locked 3 days out', severity: 'high', mitigation: 'Chase RSVPs; buy fresh after the count locks; round up ~10%, not 30%.' },
     { id: 'r_cake', trigger: 'Cake ordered too late', severity: 'med', mitigation: 'Order 3–5 days ahead; have a grocery-cake backup.' },
     { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'low', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill drinks.' },

@@ -33,8 +33,14 @@ describe('dependency-driven ordering (gate-holders lead)', () => {
   });
 
   test('no gate-holders on a playbook with no authored deps → additive (unchanged ordering)', () => {
-    // Baby Shower authors zero decision-level dependsOn, so no gateHolder rows (bump never fires).
-    const b = playbookDecisionBoard({ id: 'b', type: 'Baby Shower', date: iso(50), guests: [], guestEstimate: 20 });
+    // Day Party authors zero decision-level dependsOn, so no gateHolder rows (bump never fires).
+    // REPOINTED 2026-09-18: this was Baby Shower until cook_method gave it a real
+    // `dependsOn: ['food_style']`. The fixture's premise — a playbook with NO authored
+    // deps — stopped being true of Baby Shower, so the fixture moved rather than the
+    // assertion weakening. Day Party has 5 decisions and no dependsOn today; the
+    // premise check below fails loudly if that ever stops holding.
+    const b = playbookDecisionBoard({ id: 'b', type: 'Day Party', date: iso(50), guests: [], guestEstimate: 20 });
+    expect(b.open.length).toBeGreaterThan(0);   // premise: there ARE rows to judge
     expect(b.open.every((r) => !r.gateHolder)).toBe(true);
   });
 

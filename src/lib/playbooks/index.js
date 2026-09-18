@@ -614,7 +614,25 @@ export function choicePickFor(event, id) {
   return (dd && dd.default) || null;
 }
 export function choiceShown(event, whenChoice) {
-  if (!whenChoice || !whenChoice.id) return true;
+  if (!whenChoice) return true;
+  // AN ARRAY MEANS AND (2026-09-18). Every gate in the list must pass.
+  //
+  // WHY IT WAS NEEDED. Rolling cook_method out beyond Watch Party, a method
+  // task needs TWO conditions — this host is cooking at all, AND the method is
+  // this one. With a single gate the only expressible condition was the method,
+  // and `choicePickFor` resolves a HIDDEN decision's authored default, so a
+  // Birthday host who chose "Order pizza/trays" (cook_method correctly hidden)
+  // was still told to plan their oven order. Measured, not theorised: one leaked
+  // task, and the food cue's count moved from 2 to 3 ninety days out.
+  //
+  // Additive by construction: every authored gate in the corpus today is a plain
+  // object, which takes the original path untouched. Same shape of extension as
+  // the `{not:[...]}` form added 2026-09-13.
+  //
+  // `itinerary.js` carries its own copy of this predicate for agenda rows and is
+  // reworded in the same commit — its comment says to keep them together.
+  if (Array.isArray(whenChoice)) return whenChoice.every((g) => choiceShown(event, g));
+  if (!whenChoice.id) return true;
   const v = choicePickFor(event, whenChoice.id);
   if (v == null) return true;
   // `{not:[...]}` drops a row for those answers (e.g. Watch Party's "halftime"
@@ -3699,8 +3717,17 @@ export function playbookFoodPlan(event, opts = {}) {
 
   // The food/drink CHOICES the host should make (menu style, host-vs-potluck, drinks…).
   // Same predicate the Decisions board uses to decide a decision is actionable here.
+  // GATED (2026-09-18). This list feeds hostv2's "Your choices" card AND the
+  // hero's food cue count (phaseProgress reads plan.choices), and it applied
+  // isMenuDecision with NO whenChoice gate — so a decision the Decisions board
+  // correctly hid was still shown here and counted as unsettled. Flagged by the
+  // code review on 2026-09-17 and left unfixed; rolling cook_method out to
+  // eleven playbooks made it bite, because cook_method only applies to a host
+  // who is actually cooking. Two surfaces, one event, opposite answers — the
+  // same defect class as the board-vs-hero deferral bug this file already names.
   const choices = (playbook.decisions || [])
     .filter(isMenuDecision)
+    .filter((d) => choiceShown(event, d.whenChoice))
     .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
 
   // Sprint 60F — make the spread REACT to the menu/sourcing choices. A purchase

@@ -191,7 +191,10 @@ export function guestItinerary(event, getPlaybook) {
   // always-on agenda is untouched. Reword choiceShown and this together.
   const agendaShown = (r) => {
     const g = r && r.whenChoice;
-    if (!g || !g.id) return true;
+    if (!g) return true;
+    // An ARRAY means AND, matching choiceShown (2026-09-18).
+    if (Array.isArray(g)) return g.every((one) => agendaShown({ whenChoice: one }));
+    if (!g.id) return true;
     const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
     const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === g.id) : null;
     const v = picks[g.id] || (dec && dec.default) || null;
