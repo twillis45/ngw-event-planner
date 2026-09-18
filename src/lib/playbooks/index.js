@@ -10,10 +10,6 @@
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
-
-// One list, so every reader takes the same shape as destinationDecisionsFor and
-// nobody re-derives "is there a cook lever" locally.
-const cookDecisionsFor = (pb) => { const d = cookDecisionFor(pb); return d ? [d] : []; };
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
 import { attendanceAdjustment } from '../hostIntel';
@@ -101,6 +97,13 @@ import { authoredQuestion } from '../askVoice';
 // deployed since. The local matrix never runs that gate, which is why every run
 // looked green.
 import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
+
+// One list, so every reader takes the same shape as destinationDecisionsFor and
+// nobody re-derives "is there a cook lever" locally. Declared BELOW the imports:
+// a statement between them makes every later import an `import/first` error, and
+// react-scripts fails the release build on it — which is exactly how two deploys
+// failed on 2026-09-18 while jest and both gates stayed green.
+const cookDecisionsFor = (pb) => { const d = cookDecisionFor(pb); return d ? [d] : []; };
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
