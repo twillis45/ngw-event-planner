@@ -89,7 +89,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `96db7c99` |
-| Jest | **6,520 passed**, 1 skipped, **0 failed**, **457 suites** (re-measured 2026-09-18, sixth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **6,535 passed**, 1 skipped, **0 failed**, **458 suites** (re-measured 2026-09-18, seventh entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -101,6 +101,75 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (seventh entry, same day) — HOST REPORT: "Nothing needs you today" over three past-due rows
+
+Todd, verbatim: *"Nothing needs you today. Not matching todos, have items
+overdue."* Reproduced against the running engine, then **driven in a real
+browser at 390px** — which is the part that matters most below.
+
+**The mechanism — two snooze stores, one fact.**
+
+| | writes | reads |
+|---|---|---|
+| a card set aside | `event.snoozed[ACTION id]` (`HostShellV2 ~:8561`) | — |
+| a step's lateness | — | `task.snoozedUntil` (`taskLead`) |
+
+Tapping "not now" on the last few **cards** emptied `nextActions`; nothing ever
+set down the **work**. `listIsCalm` is `queue.length === 0`, so the app read one
+as the other and granted calm while the steps sheet below still printed *"9 days
+past its window"* over three rows.
+
+**The fix is NOT to silence the rows.** Writing `snoozedUntil` onto the task when
+its card is snoozed would hide the contradiction by making the app stop calling
+real late work late — a visible lie traded for an invisible one. The rows are
+right; the calm claim is wrong. So this is the **mirror of `exhaleGate`'s own
+invariant**: that rule says a CHECKLIST may not license calm while the ENGINE
+still has something to say; this one says the ENGINE going quiet does not license
+calm while a surface the host is LOOKING AT says something is late.
+
+**Three authors of the same false sentence, not one.** Vetoing the calm pole left
+the verdict line under it (*"All quiet — you're genuinely set for now"*) and the
+empty-queue fallback each reading `listIsCalm` directly. The test's source sweep
+found the second and third. The fallback also had to move from `listIsCalm` to
+`mayBeCalm`: those gates were interchangeable only while calm could not be
+vetoed — the moment it could, a vetoed state would have rendered **neither** the
+pole nor the fallback, i.e. a blank hero.
+
+### THE FIRST VERSION OF THIS FIX WAS INERT — carry this forward
+
+It counted `upNext.filter(r => r.overdue)`. It did nothing, for two reasons:
+
+1. `upNext` ends with `.filter(x => x.days >= 0).slice(0, 3)` — it is the
+   "Coming up · dated, not urgent" list, so it **excludes past-due rows by
+   construction** and its `overdue` flag can never be true.
+2. That flag came from `taskIsOverdue`, the **blame** policy, which forgives a
+   snoozed or unreachable row — while the sheet's label derives from the raw due
+   number and forgives neither.
+
+**Green in jest, nothing on the screen.** The jest test passed because it
+computed the count itself; the source sweep passed because the wiring existed.
+Neither proved the wiring carried a value. *Driving the real app is what caught
+it.* `taskLead` gains `taskWindowClosed` — the DISPLAY fact — so "is the host
+being told this is late" and "is the host to blame for it being late" stop being
+the same question.
+
+**Measured in the browser**, same event, everything snoozed:
+
+| | hero |
+|---|---|
+| before | "Nothing needs you until Sep 23." |
+| after | **"3 things are past due — in the list below."** |
+| control | tick the rows off → "Nothing needs you until Sep 23." returns |
+
+**Files:** `src/lib/exhaleGate.js` (`calmVetoFor`), `src/lib/taskLead.js`
+(`taskWindowClosed`), `hostv2/src/HostShellV2.jsx` (three surfaces),
+`src/lib/__tests__/calmNeverOverOverdue.test.js` (new, 15 tests).
+**QA:** 458 suites / 6,535 passed; `verify:push` green; **driven at 390px with a
+negative control**. Ratchet 41 → 42, reasoned.
+**ALSO FOUND, NOT FIXED:** the steps sheet's due label bypasses the one overdue
+policy entirely — a row with `snoozedUntil` set, or one the event was created too
+late to ever reach, still reads "past its window" there. Reported, not folded in.
 
 ## FIXED 2026-09-18 (sixth entry, same day) — six readers disagreed on "is the budget set", and the shipped demo made them all speak at once
 
