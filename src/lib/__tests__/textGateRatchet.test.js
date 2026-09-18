@@ -80,7 +80,22 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // app's own bracketed template. The gate itself (guestFacing.js) is pure and
 // fully behaviour-tested in the same file; only the "no surface reads it raw"
 // sweep needs the shell's source.
-const MAX_HOSTV2_TEXT_GATES = 40;
+// 40 -> 41 on 2026-09-18 for budgetIsSetOnce.test.js. FIFTH bump in one day, and
+// the note above stands: the seam needs widening, logged as its own item. This
+// one is not the shell-write case the other four were, though, and the
+// distinction matters for whether the ratchet is being leaned on or used.
+//
+// 21 of its 22 tests are genuine behaviour against src/lib — the accessor itself,
+// hostSpending, phaseProgress, taskEngine, budgetSwap, and the Reveal's rendered
+// copy, all executed, with a negative control on each direction. Only the closing
+// sweep reads source, and its claim is literally about source: "no engine keeps a
+// private copy of the rule". Six did. Five of the six are library files a
+// behaviour test could reach one branch of; the sixth is hostv2, and it is where
+// the copy had drifted furthest — the fold and the editor it folds asked the same
+// question two hundred lines apart, in different words. A behaviour test only
+// reaches the branches it renders, which is exactly how six copies survived a
+// green suite.
+const MAX_HOSTV2_TEXT_GATES = 41;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

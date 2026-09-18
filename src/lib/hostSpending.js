@@ -39,6 +39,7 @@
 // real checked-off total; committed never dips below spent (the un-bought remainder
 // is clamped at ≥ 0).
 
+import { budgetTotal } from './budgetFor';
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan } from './crabPlan';
 import { vendorOutstanding } from './vendorMoney';
@@ -88,9 +89,14 @@ function foodBoughtFrom(event, plan) {
 export function hostSpending(event, priceFactor, itemFactors) {
   const ev = event || {};
   const rows = Array.isArray(ev.budget) ? ev.budget : [];
-  const budgetedSum = rows.reduce((s, r) => s + num(r && r.budgeted), 0);
   const rowsActual = rows.reduce((s, r) => s + num(r && r.actual), 0);
-  const total = num(ev.totalBudget) > 0 ? num(ev.totalBudget) : budgetedSum;
+  // THE RULE MOVED OUT, NOT AWAY (2026-09-18). This line carried the most honest
+  // of three rules in the tree for "what is the budget", and five other readers
+  // had each picked a different one — see lib/budgetFor.js for the measured
+  // damage. It lives there now, named, and this file reads it like everyone
+  // else. Byte-identical: budgetFor returns null where this returned 0, and
+  // `total` has always been a number here.
+  const total = num(budgetTotal(ev));
 
   // The SAME food plan the food panel renders — single source, no parallel math.
   let plan = null;

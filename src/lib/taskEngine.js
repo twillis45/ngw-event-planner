@@ -1,5 +1,6 @@
 import { vendorIsCommitted, vendorOutstanding } from './vendorMoney';
 import { venueFor } from './venueFor';
+import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
 
 // Single source of truth for "is this planning task already handled by real event state?"
@@ -38,7 +39,13 @@ export function taskSatisfied(event, task) {
   if (!s) return false;
   const guests     = Array.isArray(event.guests) ? event.guests : [];
   const hasGuests  = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
-  const hasBudget  = (Number(event.totalBudget) || 0) > 0 || (Array.isArray(event.budget) && event.budget.some((b) => Number(b && b.budgeted) > 0));
+  // ONE BUDGET READER (2026-09-18) — this rule was correct and was one of SIX
+  // private copies (lib/budgetFor.js carries the measured damage). Same
+  // semantics, now shared: a budget exists whether it lives in `totalBudget` or
+  // in the rows. One narrowing: a row budgeted at $0 no longer counts, which is
+  // what `some(budgeted > 0)` already meant here but the rows SUM now decides,
+  // so a row of 0 beside a row of 500 reads the same as it always did.
+  const hasBudget  = budgetIsSet(event);
   // venueFor: an at-home event with a city IS venued — reading the bare venue
   // name here told home hosts to go book a venue (audit divergence #2).
   const hasVenue   = (() => { const v = venueFor(event); return v.isSet && !/^(tbd|tba)$/i.test(v.name); })();

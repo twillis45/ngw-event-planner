@@ -119,6 +119,7 @@ import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
+import { budgetFor } from '@app/lib/budgetFor';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
@@ -6329,7 +6330,19 @@ export default function HostShellV2() {
     const typical = est ? Math.round(((low + high) / 2) / 100) * 100 : 0;
     // "Budget is set" = the host gave us a NUMBER (event.totalBudget), NOT money.planned
     // (which is spend.total — non-zero from line items even when the host set no budget).
-    const isSet = Number(event.totalBudget) > 0;
+    //
+    // 2026-09-18: that distinction was right and is now NAMED rather than
+    // re-derived here. This editor asks budgetFor's second question — did the
+    // host give an OVERALL figure — because that is the field it writes. The
+    // other five readers in the tree were each answering one of two questions by
+    // accident; see lib/budgetFor.js.
+    const bf = budgetFor(event);
+    const isSet = bf.hostSetTotal;
+    // …but when they HAVE budgeted rows and no overall figure, this control must
+    // not speak as though nothing is known. Measured live: the money bar at the
+    // top of this same sheet read "$3,113 of $18,900 left" while the editor two
+    // hundred lines below asked for a budget as if from scratch.
+    const rowsStandIn = !bf.hostSetTotal && bf.basis === 'rows' ? bf : null;
     const setB = (n) => {
       setCustomBudget('');
       setBudgetChanging(false);
@@ -6374,6 +6387,17 @@ export default function HostShellV2() {
           <Grounding>
             {`For ${guests} at a ${String(event.type).toLowerCase()}, typical lands near ${fmt(typical)}. `}The plan sizes food, vendors and shopping from here — change it anytime.
           </Grounding>
+          {/* THE HOST'S OWN ROWS, SAID OUT LOUD (2026-09-18). A host who filled in
+              budget categories but never named an overall figure used to reach an
+              ask written as though nothing were known — on a sheet whose money bar
+              was already counting against their $18,900. Their number leads the
+              alternatives now; the estimator's typical is still the proposal, but
+              it no longer pretends to be the only figure in the room. */}
+          {rowsStandIn && (
+            <Grounding gap={8}>
+              Your categories already add up to {fmt(rowsStandIn.rowsSum)} across {rowsStandIn.rowCount} {rowsStandIn.rowCount === 1 ? 'line' : 'lines'} — <button style={linkBtn} onClick={() => setB(rowsStandIn.rowsSum)}>use that</button> if it is the ceiling you mean.
+            </Grounding>
+          )}
           {est && est.destinationAdjusted && (
             <Grounding gap={8}>These ranges run wider because guests are traveling in — travel-scale costs are part of the numbers.</Grounding>
           )}
@@ -19053,8 +19077,13 @@ export default function HostShellV2() {
                     </div>
                   )}
                   {/* the editor is settled work once a number exists — it folds;
-                      no number yet → it IS the ask, so it stays open */}
-                  {Number(event.totalBudget) > 0 ? (
+                      no number yet → it IS the ask, so it stays open.
+                      ONE READER (2026-09-18): this asked the same question as
+                      budgetEditorBlock's `isSet` in its own words, two hundred
+                      lines apart. Both now read the accessor, so the fold and
+                      the block it folds can never disagree about which state
+                      the host is in. */}
+                  {budgetFor(event).hostSetTotal ? (
                     budgetFoldOpen ? (
                       // Fold-open = intent to change → open straight into the CHANGE drawer (its
                       // own "Pick a number, or set your own" header carries it, so no shelf-label

@@ -9,6 +9,7 @@ import { playbookFoodPlan, effectiveRos } from './playbooks';
 // FEWER than remained, and the 30-day risk thresholds below fired a day early.
 import { daysUntil as daysToEvent, spanNights } from './dates';
 import { venueFor } from './venueFor';
+import { budgetFor } from './budgetFor';
 import { lodgingIntel, lodgingKitchen } from './lodgingIntel';
 import { foodSpanText } from './foodSpan';
 
@@ -403,12 +404,28 @@ function assemblePlanningDomains(event, profile, foodPP) {
   } catch {}
 
   // === BUDGET (if set) ===
+  // THE GATE AND THE PRINTER USED DIFFERENT FACTS (measured 2026-09-18). The gate
+  // here admitted the card on `rows sum > 0 || totalBudget > 0` — then packed only
+  // `totalBudget` into `data`, dropping the very rows sum that had just qualified
+  // it. Downstream, `$${Number(data.totalBudget) || 0}` turned undefined into 0,
+  // so the SHIPPED demo wedding — $18,900 across six rows, no totalBudget field —
+  // rendered "$0 allocated across 6 categories. Budget is set and live."
+  //
+  // A wrong dollar figure and a false readiness claim in the same sentence, on the
+  // surface whose entire job is to earn the host's trust. One accessor now answers
+  // both, and the BASIS travels with the number so the copy can say which fact it
+  // is standing on instead of implying one it does not have.
   try {
-    const budgetSet = (event.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0;
-    if (budgetSet || Number(event.totalBudget) > 0) {
+    const b = budgetFor(event);
+    if (b.isSet) {
       domains.push({
         type: 'budget',
-        data: { totalBudget: event.totalBudget, categories: event.budget || [] }
+        data: {
+          totalBudget: b.total,
+          budgetBasis: b.basis,
+          hostSetTotal: b.hostSetTotal,
+          categories: event.budget || [],
+        },
       });
     }
   } catch {}
@@ -514,10 +531,24 @@ function buildDomainStage(domain) {
       title: 'Budget',
       // "across 0 categories" read as broken (host 2026-07-27) — when no
       // categories exist yet, say the honest simpler thing instead.
-      buildWhat: (data) => (data.categories.length > 0
-        ? `$${(Number(data.totalBudget) || 0).toLocaleString()} allocated across ${data.categories.length} categories.`
-        : `$${(Number(data.totalBudget) || 0).toLocaleString()} set — ready to allocate.`),
-      buildWhy: (data) => 'Budget is set and live. Track spending in real time.',
+      //
+      // 2026-09-18: and the number is the accessor's, not a bare `totalBudget`
+      // coerced through `|| 0`. That coercion is how a $18,900 plan printed $0.
+      // The word ALLOCATED is also now earned rather than assumed: money spread
+      // across rows IS allocated; one overall figure with no rows is not.
+      buildWhat: (data) => {
+        const n = (Number(data.totalBudget) || 0).toLocaleString();
+        if (!data.categories.length) return `$${n} set — ready to allocate.`;
+        return data.budgetBasis === 'rows'
+          ? `$${n} allocated across ${data.categories.length} categories.`
+          : `$${n} set, allocated across ${data.categories.length} categories.`;
+      },
+      // A budget assembled from rows is real money the host planned, but they
+      // have named no ceiling — so "set and live" would be claiming a fact they
+      // never gave us. Say what is true of each shape.
+      buildWhy: (data) => (data.budgetBasis === 'rows'
+        ? 'Your categories add up — set an overall number whenever you want a ceiling to track against.'
+        : 'Budget is set and live. Track spending in real time.'),
       status: 'Ready'
     },
     vendors: {

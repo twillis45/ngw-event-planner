@@ -3,6 +3,7 @@
 // apps consume one implementation; re-derives over/under from the SAME
 // hostSpending source — no parallel math, fully honest.
 import hostSpending from './hostSpending';
+import { budgetBasis } from './budgetFor';
 
 // \bcater\b missed 'Catering'/'Caterer' (no boundary after 'cater') — the
 // engine offered to DROP THE CATERER as a discretionary cut. cater\w* fixes
@@ -16,7 +17,13 @@ export function pickDroppableBudgetRow(event, priceFactor) {
   // budgets). When derived, removing a row lowers the ceiling too, so we must simulate
   // the FULL removal — committed AND total both move — and only offer the drop if the
   // post-drop state is genuinely under. hostSpending is the one source for both numbers.
-  const fixedTotal = (Number(ev.totalBudget) > 0);
+  //
+  // 2026-09-18: this file is asking a DIFFERENT question from the other five
+  // budget readers — not "is a budget set" but "does the ceiling move when a row
+  // goes". That distinction had no name, which is how the six copies drifted
+  // apart in the first place. `budgetBasis` names it: 'host-total' is a fixed
+  // ceiling, 'rows' is a derived one. Same value as before, now stated.
+  const fixedTotal = budgetBasis(ev) === 'host-total';
   const candidates = rows
     .filter((r) => r && (r.category || r.label))
     .filter((r) => !BUDGET_ESSENTIAL_RE.test(String(r.category || r.label || '')))

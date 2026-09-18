@@ -29,6 +29,7 @@ import { isVendorConfirmed } from './workstreams';
 import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd } from './dates';
 import { venueFor } from './venueFor';
+import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
 import { lodgingIsHeld } from './lodgingIntel';
 
@@ -357,8 +358,20 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
     // vendor term at all until then, which is why this used to add vendorOutstanding
     // separately). Adding it again here would double-count the balance — caught by
     // this file's own test 11c. One source: read `committed` and nothing else.
-    const totalBudget = num(ev.totalBudget);
-    const budgetSet = totalBudget > 0;
+    // ONE BUDGET READER (2026-09-18). This read `ev.totalBudget` alone, so on any
+    // event whose budget lives in ROWS it raised "Set your budget" — over a plan
+    // with $18,900 across six categories, while `hostSpending` two lines below
+    // was already reporting that same $18,900 as the total, and taskEngine was
+    // marking "Set the budget" DONE. The over-budget arithmetic was dead there
+    // too: `over` could never be non-zero without a totalBudget, so a rows-only
+    // host was never told they had gone past their own numbers.
+    //
+    // budgetFor answers it once. `total` is the number to plan against whatever
+    // field it lives in; the ask below now fires only when there is genuinely no
+    // number anywhere, which is the state that sentence describes.
+    const b = budgetFor(ev);
+    const totalBudget = num(b.total);
+    const budgetSet = b.isSet;
     const money = (() => { try { return hostSpending(ev); } catch { return null; } })();
     const knownCosts = money ? num(money.committed) : 0;
     const over = budgetSet ? Math.round(knownCosts - totalBudget) : 0;
