@@ -131,3 +131,79 @@ describe('the venue blocker respects an address', () => {
     expect(types({ venueKind: 'venue', venue: 'VFW Post 3150' })).not.toContain('venue-selection');
   });
 });
+
+// ─── NO SURFACE MAY RE-DERIVE THE VERDICT ────────────────────────────────────
+// Four private copies of "is the venue set?" were found by one host sentence.
+// Three were `!!vf.name`; the fourth (HostShellV2's "Where is it happening?"
+// card) was HIDDEN by the third, so fixing the blocker un-suppressed it and the
+// host went on being asked over a plan that knew the street.
+//
+// PART A of venueSourceProof ratchets raw `event.venue*` reads to zero. It
+// cannot see this class: these all read THROUGH venueFor and then recomputed
+// the rule. This is the ratchet for the verdict.
+describe('no surface re-derives "is the venue set?"', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const ROOT = path.join(__dirname, '..', '..', '..');
+
+  // WHICH VARIABLES ACTUALLY HOLD A VENUE, resolved per file rather than
+  // guessed from the name. The first version matched any `v.name` and fired on
+  // `event.vendors.filter(v => v && v.name ...)` — a VENDOR. A ratchet with a
+  // false positive gets weakened or deleted, so it has to be precise about the
+  // thing it guards.
+  //
+  // NO `g` FLAG on the matcher: a /g/ regex carries `lastIndex` between
+  // `.test()` calls, so the first canary returned true, false, true, false down
+  // the assertion list and "failed" on a line it matches perfectly well.
+  const venueVars = (src) => {
+    const names = new Set();
+    for (const m of src.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*venueFor\s*\(/g)) names.add(m[1]);
+    return names;
+  };
+  // NEGATION ONLY — `!vf.name` / `!!vf.name`. Both real defects took this
+  // shape, and it is the shape that means "decide whether the venue is
+  // unanswered". The `&&` and `?` forms are deliberately NOT flagged: they are
+  // usually legitimate (`vf.name ? ` · ${vf.name}` : ''` is a display
+  // fallback; `vf.name && isHomeish(vf.name)` genuinely wants the NAME, not the
+  // verdict). A ratchet that fires on correct code gets weakened or deleted, so
+  // this one is narrow on purpose and says so rather than pretending to total
+  // coverage.
+  const boolUse = (v) => new RegExp(`!\\s*!?\\s*\\b${v}\\.name\\b`);
+
+  const FILES = [
+    'src/lib/assembleRevealEngines.js',
+    'src/lib/taskEngine.js',
+    'src/lib/locationAssist.js',
+    'hostv2/src/HostShellV2.jsx',
+  ];
+
+  test.each(FILES)('%s asks venueFor for the verdict, not its own', (rel) => {
+    // Block comments stripped too (JSX `{/* … */}`), space-filled so line
+    // numbers survive — otherwise this file's own explanatory comments, which
+    // necessarily QUOTE the banned shape, trip the scanner that reads them.
+    const raw = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const src = raw.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+      .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const vars = [...venueVars(raw)];
+    expect(vars.length).toBeGreaterThan(0);           // premise: the file reads venueFor at all
+    const res = vars.map(boolUse);
+    const hits = src.split('\n')
+      .map((l, i) => [i + 1, l])
+      .filter(([, l]) => !l.includes('venue-verdict-exempt:') && res.some((re) => re.test(l)))
+      .map(([n, l]) => `${rel}:${n}  ${l.trim().slice(0, 90)}`);
+    expect(hits).toEqual([]);
+  });
+
+  test('canary: bites the verdict shape, spares vendors and string reads', () => {
+    const bite = boolUse('vf');
+    expect(bite.test('if (!vf.name && !shown) {')).toBe(true);
+    expect(bite.test('const r = vf.isHome ? x : !!vf.name;')).toBe(true);
+    expect(bite.test('const r = vf.isHome ? x : vf.isSet;')).toBe(false);
+    expect(bite.test("{vf.name ? ` · ${vf.name}` : ''}")).toBe(false);   // display, not verdict
+    expect(bite.test('venue: venueFor(e).name,')).toBe(false);       // legitimate string read
+    expect(bite.test('vendors.filter(v => v && v.name && x)')).toBe(false);  // a VENDOR, not a venue
+    expect([...venueVars('const vf = venueFor(event);')]).toEqual(['vf']);
+    expect([...venueVars('const v = venueFor(ev);')]).toEqual(['v']);
+    expect([...venueVars('const v = other(ev);')]).toEqual([]);
+  });
+});

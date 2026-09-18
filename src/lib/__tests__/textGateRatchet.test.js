@@ -32,7 +32,19 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 //  36  2026-09-03  baseline at the ruling. 35 in the census + seamRunsInCi
 //                  (which asserts checks.yml declares the vitest step — a
 //                  claim about file content, so text IS the direct evidence).
-const MAX_HOSTV2_TEXT_GATES = 36;
+// 36 -> 37 on 2026-09-18 for creationAddressCarries.test.js, with the reason
+// this ratchet asks for: it asserts FILE CONTENT, not behavior. The claim is
+// "no line in HostShellV2 re-derives 'is the venue set?' from `vf.name`" — a
+// property of the source text, which is what a text gate can prove and a
+// runtime test cannot. That distinction is not theoretical here: SIX copies of
+// that rule existed, a behavior test only reaches the branches it renders, and
+// the first fix reached exactly one of them.
+//
+// The BEHAVIOR half is not smuggled in. It lives in hostv2/e2e/ryanWay.spec.mjs,
+// which drives creation and asserts no surface asks for a venue the plan
+// already knows — with a negative control proving the ask still fires when
+// there is genuinely no location.
+const MAX_HOSTV2_TEXT_GATES = 37;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

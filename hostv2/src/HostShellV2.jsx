@@ -9981,7 +9981,8 @@ export default function HostShellV2() {
                 .filter(b => !(heroBlockerType && b && b.blockerType === heroBlockerType))
                 .filter(b => !(elegantMode && b && b.fieldKey && Array.isArray(b.options) && b.options.length && !/venue/i.test(String(b.title || '')))).map((b, i) => {
                 const isVenueBlock = /venue/i.test(String(b.title || ''));
-                const venueSet = !!vf.name;
+                // vf.isSet, not vf.name — the fifth copy of the verdict (2026-09-18).
+                const venueSet = vf.isSet;
                 return (
                   <article className="card" key={'blk-' + i} style={{ marginTop: i === 0 ? 24 : 0 }}>
                     <div className="card-head">
@@ -10111,7 +10112,18 @@ export default function HostShellV2() {
                 </button>
               )}
 
-              {!vf.name && !venueBlockerShown && (
+              {/* `!vf.isSet`, NOT `!vf.name` (host report 2026-09-18, second
+                  pass). The FOURTH private copy of "is the venue set?" found by
+                  one seed, and the one that proved why copies are dangerous in
+                  a way the other three did not: this card was only ever hidden
+                  because `venueBlockerShown` was true. Standing the BLOCKER
+                  down for an address-only event un-suppressed THIS card, so the
+                  host went on being asked "Where is it happening?" over a plan
+                  that knew the street — the fix moved the ask instead of ending
+                  it, and the first run of the Ryan Way walk only passed because
+                  it grepped the blocker's wording, not this one.
+                  A host who gave an address knows where it is happening. */}
+              {!vf.isSet && !venueBlockerShown && (
                 <article className="card" style={{ marginTop: 'var(--sp-5)' }}>
                   <div className="card-head">
                     <div className="card-top">
@@ -14903,7 +14915,9 @@ export default function HostShellV2() {
               // the host makes progress (real state, never a static checklist).
               const foundations = [
                 { done: !!String(event.date || '').trim(), label: 'Set the date', route: { tab: 'Event Details', focusField: 'event-date' } },
-                { done: !!vf.name, label: 'Add the location', route: { tab: 'Event Details', focusField: 'event-venue' } },
+                // vf.isSet, not vf.name — the sixth copy (2026-09-18). This one told a
+                // host whose plan already held "8100 Ryan Way" to "Add the location".
+                { done: vf.isSet, label: 'Add the location', route: { tab: 'Event Details', focusField: 'event-venue' } },
                 { done: guests > 0, label: 'Set the guest count', route: { tab: 'Guests', focusField: 'guests-entry' } },
                 { done: !!money.planned, label: 'Set a budget', route: { tab: 'Budget', focusField: 'budget' } },
               ].filter(f => !f.done);
