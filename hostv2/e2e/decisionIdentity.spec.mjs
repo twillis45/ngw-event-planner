@@ -171,7 +171,18 @@ for (const { name, viewport } of VIEWPORTS) {
       const hero = await readHero(page);
 
       // The repast's food-provider lever is genuinely open — the panel belongs here.
-      expect(hero.ask).toMatch(/who provides the food/i);
+      //
+      // WHY THIS PATTERN CHANGED (2026-09-18, `615ef02`). It read /who provides
+      // the food/i, which is the decision's LABEL — the hero was falling back to
+      // a question derived from it because `food_source` had no authored ask.
+      // The ask-coverage lane gave all 594 board rows their own question, and
+      // this one now reads the authored line: "Has anyone offered to carry the
+      // meal, or should it be catered?" That is the better copy and the point of
+      // the lane, so the expectation moved rather than the product.
+      //
+      // Found by CI, not locally — this is the failure that turned run 651 red
+      // across 14 project×viewport combinations while jest stayed green.
+      expect(hero.ask).toMatch(/offered to carry the meal|who provides the food/i);
       expect(hero.hasPanel).toBe(true);
       expect(hero.options.join(' • ')).toMatch(/church|repast committee/i);
 
