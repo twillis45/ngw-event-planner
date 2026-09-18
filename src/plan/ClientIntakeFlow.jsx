@@ -20,6 +20,7 @@ import US_CITIES from '../lib/usCities';
 import BudgetEstimateHint from '../lib/budgetEstimator/BudgetEstimateHint';
 import { breakdownByCategory, estimateTotalRange } from '../lib/budgetEstimator';
 import { playbookBudgetCategories } from '../lib/playbooks';
+import { isVendorBooked, isVendorConfirmed } from '../lib/workstreams';
 import { proposedVendorCategories } from '../lib/vendorCategoriesByType';
 
 const P = {
@@ -810,10 +811,19 @@ function Step6({ data, onChange }) {
               padding: `${space[3]}px ${space[5]}px`,
               borderBottom: i < vendors.length - 1 ? `1px solid ${P.borderSubtle}` : 'none',
             }}>
+              {/* TWO DEFECTS IN ONE CHIP (2026-09-18). `=== 'Confirmed'` was a
+                  private copy of the confirmed predicate, so a vendor at Booked
+                  or Paid — statuses the host ladder treats as Confirmed
+                  synonyms — read as NOT STARTED. And 'Partial' is a PHANTOM:
+                  nothing in this repo writes it, measured. Its one route in was
+                  CSV intake accepting an unrecognised status verbatim, which is
+                  now closed. Both replaced by the canonical two rungs:
+                  isVendorConfirmed (nothing left to confirm) and isVendorBooked
+                  (secured, still owes a confirmation). */}
               <div style={{
                 width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                background: v.status === 'Confirmed' ? P.green
-                  : v.status === 'Partial' ? P.amber
+                background: isVendorConfirmed(v) ? P.green
+                  : isVendorBooked(v) ? P.amber
                   : P.borderDef,
               }} />
               <div style={{ flex: 1, fontSize: type.size.base, color: P.textPrimary, fontFamily: FF }}>
@@ -824,8 +834,8 @@ function Step6({ data, onChange }) {
               </div>
               <div style={{
                 fontSize: type.size.xs, fontWeight: type.weight.medium,
-                color: v.status === 'Confirmed' ? P.green
-                  : v.status === 'Partial' ? P.amber
+                color: isVendorConfirmed(v) ? P.green
+                  : isVendorBooked(v) ? P.amber
                   : P.textTertiary,
                 fontFamily: FF, letterSpacing: '0.06em',
               }}>

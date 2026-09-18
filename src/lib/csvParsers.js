@@ -1,3 +1,7 @@
+// ONE VENDOR-STATUS VOCABULARY — intake derives from the canon rather than
+// keeping a second list beside it. See the note at VALID_VENDOR_STATUS.
+import { ALL_VENDOR_STATUSES } from './workstreams';
+
 // ─── platform definitions ────────────────────────────────────────────────────
 
 export const PLATFORMS = {
@@ -409,12 +413,15 @@ export function applyMerge(existing, incoming, mode, batchId) {
 // isVendorBooked/isVendorConfirmed in BOTH directions, so adding a status to
 // either side without the other fails a test instead of shipping.
 const VENDOR_STATUS_COERCE_FALLBACK = 'Considering';
-const VALID_VENDOR_STATUS   = new Set([
-  // pre-commitment rungs of the host ladder
-  'Considering', 'Quoted',
-  // everything isVendorBooked answers true for (workstreams BOOKED_STATUSES),
-  // which is a superset of isVendorConfirmed's CONFIRMED_STATUSES
-  'Contracted', 'Deposit Paid', 'Confirmed', 'Booked', 'Paid',
+// DERIVED, NOT MIRRORED (2026-09-18). This was a hand-kept copy of the ladder
+// with a comment promising it matched workstreams. It is now the union
+// workstreams itself exports, so a status added to the canon cannot be one the
+// importer silently rejects — which is the failure this file already had:
+// 'Booked' and 'Paid' were real statuses missing from the list, so their
+// lowercase forms were never case-normalised and landed in the store as values
+// isVendorBooked answers false for.
+const VALID_VENDOR_STATUS = new Set([
+  ...ALL_VENDOR_STATUSES,
   // blank — handled before the lookup, defaults to Considering
   '',
 ]);

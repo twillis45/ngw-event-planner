@@ -70,7 +70,15 @@ const WORKSTREAM_LABELS = {
 // this set had 'Booked' but was missing its documented equivalent, which is
 // exactly how a vendor could read "ready" in one surface and unresolved on
 // its own card in another.
-const BOOKED_STATUSES = new Set(['Confirmed', 'Booked', 'Paid', 'Deposit Paid', 'Contracted']);
+// EXPORTED (2026-09-18). The predicates were exported; the SETS were not — so
+// csvParsers, which needs the vocabulary itself rather than a yes/no about one
+// vendor, had to MIRROR the list by hand. A mirror is a copy with a promise
+// attached, and this file's own history is the argument against that: the
+// comment above describes four surfaces drifting apart on exactly this
+// vocabulary. Intake now derives from here, so a status added to the ladder
+// cannot be one the importer rejects.
+// Frozen so a consumer cannot mutate the canon it is reading from.
+export const BOOKED_STATUSES = Object.freeze(new Set(['Confirmed', 'Booked', 'Paid', 'Deposit Paid', 'Contracted']));
 
 // POP-1C: the ONE canonical "is this vendor booked?" status predicate. Four
 // surfaces used to re-derive this with drifting vocabularies (a regex that
@@ -88,10 +96,20 @@ export function isVendorBooked(vendor) {
 // so "is this vendor DONE — nothing left to confirm?" needs its own ONE source.
 // Used by BOTH the readiness area dot (phaseProgress) and the "Confirm vendor"
 // action (CommandCenter) so a green dot never coexists with a confirm action.
-const CONFIRMED_STATUSES = new Set(['Confirmed', 'Booked', 'Paid']);
+export const CONFIRMED_STATUSES = Object.freeze(new Set(['Confirmed', 'Booked', 'Paid']));
 export function isVendorConfirmed(vendor) {
   return !!vendor && CONFIRMED_STATUSES.has(vendor.status);
 }
+
+// The rungs BEFORE any commitment — the host ladder's shopping phase. Named here
+// so intake has one place to ask "is this a status this app tracks at all",
+// rather than a second hand-kept list beside the first.
+export const SHOPPING_STATUSES = Object.freeze(new Set(['Considering', 'Quoted']));
+
+/** Every status this app tracks. The union the importer validates against. */
+export const ALL_VENDOR_STATUSES = Object.freeze(
+  new Set([...SHOPPING_STATUSES, ...BOOKED_STATUSES]),
+);
 
 function workstreamKeyForVendor(vendor) {
   return CATEGORY_TO_WORKSTREAM[vendor && vendor.category] || 'other';
