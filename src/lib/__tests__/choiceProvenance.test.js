@@ -170,7 +170,12 @@ describe('the shell writes through the one builder', () => {
 
   test('settleDecision no longer builds the foodChoices patch by hand', () => {
     const s = src();
-    expect(s).toMatch(/settleChoicePatch\(event, r\.id, opt, source\)/);
+    // The decision argument is OPTIONAL and was added 2026-09-18: a multi
+    // decision (a dietary restriction list) must ACCUMULATE answers rather than
+    // replace them, and the builder cannot know which kind it is holding
+    // without being handed the decision. Widened rather than rewritten so the
+    // gate still pins the shell to the one builder — the thing it exists for.
+    expect(s).toMatch(/settleChoicePatch\(event, r\.id, opt, source(, r)?\)/);
     // The shape that shipped the bug: a bare spread with no provenance beside it.
     expect(s).not.toMatch(/patchEvent\(\{ foodChoices: \{ \.\.\.\(event\.foodChoices \|\| \{\}\), \[r\.id\]: opt \} \}/);
   });

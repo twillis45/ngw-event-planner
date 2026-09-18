@@ -198,7 +198,12 @@ export function guestItinerary(event, getPlaybook) {
     const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
     const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === g.id) : null;
     const v = picks[g.id] || (dec && dec.default) || null;
-    return v == null ? true : (Array.isArray(g.in) ? g.in : []).includes(v);
+    if (v == null) return true;
+    // A multi answer is stored as a LIST and matches on intersection, same as
+    // choiceShown (2026-09-18). Scalars take the original comparison unchanged.
+    const answers = Array.isArray(v) ? v : [v];
+    const want = Array.isArray(g.in) ? g.in : [];
+    return answers.some((a) => want.includes(a));
   };
   const authored = agenda
     .filter(agendaShown)

@@ -16,6 +16,9 @@ import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
 import { attendanceAdjustment } from '../hostIntel';
 import { geoItemForPurchase } from '../knowledge/geoItemMap';
+// The one display form for an answer that may be a string OR a list. `decisionType`
+// is a leaf (no imports of its own), so this cannot create a cycle.
+import { answerText } from '../decisionType';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -826,8 +829,21 @@ export function choiceShown(event, whenChoice) {
   // travel mode — extended here rather than invented fresh. Every existing
   // whenChoice in the corpus authors `in` only, so this is additive: `not`
   // absent means unchanged behavior, proven by the full suite staying green.
-  if (Array.isArray(whenChoice.not)) return !whenChoice.not.includes(v);
-  return (Array.isArray(whenChoice.in) ? whenChoice.in : []).includes(v);
+  // A MULTI ANSWER IS A LIST, AND A LIST MATCHES ON INTERSECTION (2026-09-18).
+  // Three decisions type as `multi` today (Dinner Party, Bridal Shower and Crab
+  // Feast `dietary`) and their answer is stored as an array of restrictions.
+  // MEASURED: no whenChoice in the corpus targets any of the three, so this is a
+  // trap being closed before it is sprung, not a live bug — but `['Vegan']` is
+  // not equal to `'Vegan'`, so the day someone authors `{id:'dietary',
+  // in:['Vegan']}` the row would silently never appear, and `{not:[...]}` would
+  // never suppress. Both forms now read the list: `in` fires when ANY recorded
+  // answer is named, `not` suppresses when ANY is.
+  // Scalars keep the exact original comparison — an array answer is the only new
+  // shape, so a numeric or otherwise non-string pick is untouched by this.
+  const answers = Array.isArray(v) ? v : [v];
+  if (Array.isArray(whenChoice.not)) return !answers.some((a) => whenChoice.not.includes(a));
+  const want = Array.isArray(whenChoice.in) ? whenChoice.in : [];
+  return answers.some((a) => want.includes(a));
 }
 
 // ── TRAVEL MODE — how guests actually arrive ────────────────────────────────
@@ -3233,7 +3249,10 @@ export function playbookDecisionBoard(event, asOf, profile) {
       // and this one did not, so a decision that authored its own question lost
       // it the moment it locked. Found while correcting the schema spec against
       // the code (2026-09-18); worth more now that the corpus is gaining asks.
-      locked.push({ id: d.id, label: decisionShortLabel(d.label), ask: d.ask || authoredQuestion(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
+      // `answerText`, not `String` — a MULTI answer is stored as a list and
+      // `String(['Vegetarian','Nut allergy'])` is "Vegetarian,Nut allergy" with
+      // no space, which is what the board would have printed (2026-09-18).
+      locked.push({ id: d.id, label: decisionShortLabel(d.label), ask: d.ask || authoredQuestion(d.label), status: 'locked', because: answerText(val) || String(val), dueDate, daysOut, ...priority, ...derived, route });
       continue;
     }
 

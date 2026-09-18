@@ -30,6 +30,8 @@
 // copies of "is the venue set?" earlier the same day are why that sentence is
 // here rather than assumed.
 
+import { isMultiDecision, answerList } from './decisionType';
+
 /** How a settled value came to be. Absent means: never settled by anyone. */
 export const CHOICE_SOURCES = Object.freeze(['host', 'accepted']);
 
@@ -49,10 +51,40 @@ const sourcesOf = (ev) => ((ev && ev[CHOICE_SOURCE_FIELD]) || {});
  * @param value   the option string being settled
  * @param source  'host' (they picked it) | 'accepted' (they took OUR proposal)
  */
-export function settleChoicePatch(event, id, value, source) {
+export function settleChoicePatch(event, id, value, source, decision) {
   const src = CHOICE_SOURCES.includes(source) ? source : 'host';
+  const picks = picksOf(event);
+  // ── A MULTI DECISION ACCUMULATES; IT DOES NOT REPLACE (2026-09-18) ────────
+  // This builder replaced unconditionally, which is right for a pick-one and
+  // was silently destructive for the dietary lists. MEASURED: pick "Vegetarian",
+  // then pick "Nut allergy", and the vegetarian is gone — on a decision offering
+  // TEN independent restrictions that describe DIFFERENT GUESTS. For allergens
+  // that is a safety defect, not a preference.
+  //
+  // `decision` is optional and the behaviour is unchanged without it, so every
+  // existing two-and-three-argument caller keeps today's semantics exactly. Only
+  // a caller that hands over the decision — and only when that decision types as
+  // multi — gets the accumulating path.
+  //
+  // Toggling, not just adding: the same tap that records a need has to be able
+  // to take it back, or the host can never correct a mis-tap.
+  //
+  // AN EMPTIED LIST STORES AS '', NEVER []. `[]` is TRUTHY in JavaScript, and
+  // this value is read at ~80 sites across the tree — `if (foodChoices[id])`,
+  // `filter(c => !choices[c.id])`, `Object.keys(...).length`. A host who
+  // toggled their only restriction back OFF would have read as ANSWERED at
+  // every one of them: the same class of defect this change exists to fix,
+  // pointed the other way. The empty string is falsy everywhere and
+  // `answerList('')` is `[]`, so both readerships agree on "nothing recorded".
+  const nextValue = (() => {
+    if (!decision || !isMultiDecision(decision)) return value;
+    const have = answerList(picks[id]);
+    const v = String(value == null ? '' : value).trim();
+    const next = !v ? have : (have.includes(v) ? have.filter((x) => x !== v) : [...have, v]);
+    return next.length ? next : '';
+  })();
   return {
-    foodChoices: { ...picksOf(event), [id]: value },
+    foodChoices: { ...picks, [id]: nextValue },
     [CHOICE_SOURCE_FIELD]: { ...sourcesOf(event), [id]: src },
   };
 }

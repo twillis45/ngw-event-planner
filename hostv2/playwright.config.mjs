@@ -21,6 +21,9 @@ const SELF_PINNED = [
   '**/mobileTapFloor.spec.mjs',
   '**/spreadLinkTapFloor.spec.mjs',
   '**/driftCapture.spec.mjs',
+  // Pins 390px in its own boot(): the dietary picker is the mobile-flagship
+  // surface and that is the geometry its behaviour was driven at.
+  '**/dietaryHoldsTwo.spec.mjs',
   '**/_boardCapture.spec.mjs',
   '**/_riskLaneCapture.spec.mjs',
   '**/_venueReaderCapture.spec.mjs',

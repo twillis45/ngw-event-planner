@@ -121,6 +121,7 @@ import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { budgetFor } from '@app/lib/budgetFor';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
+import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
@@ -2087,13 +2088,30 @@ export default function HostShellV2() {
   // through settleChoicePatch so the value and its provenance cannot be stored
   // apart — no caller is able to write one map without the other.
   const settleDecision = (r, opt, source = 'host') => {
-    patchEvent(settleChoicePatch(event, r.id, opt, source),
-      r.label + ': ' + opt + (source === 'accepted' ? ' — our pick, settled.' : ' — settled.'));
-    setChoiceOpen(null);
+    // `r` is handed to the builder so a MULTI decision accumulates instead of
+    // replacing (2026-09-18). Measured before: picking "Vegetarian" then "Nut
+    // allergy" on a ten-option dietary list left only the nut allergy — two
+    // different guests, one slot. The toast then has to say what is ON RECORD
+    // now, not just what was tapped, or a host who just removed an item reads
+    // "Nut allergy — settled." and believes they added it.
+    const _p = settleChoicePatch(event, r.id, opt, source, r);
+    const _now = answerText((_p.foodChoices || {})[r.id]);
+    const _multi = isMultiDecision(r);
+    patchEvent(_p,
+      _multi
+        ? r.label + ': ' + (_now || 'nothing yet') + ' — noted.'
+        : r.label + ': ' + (_now || 'nothing yet') + (source === 'accepted' ? ' — our pick, settled.' : ' — settled.'));
+    // A MULTI LIST DOES NOT CLOSE ON THE FIRST TAP (2026-09-18). One tap is the
+    // whole answer for a pick-one, so folding is right there. On a restriction
+    // list it is the defect restated as layout — driven in Chromium, tapping
+    // "Vegetarian" folded the row to "Vegetarian · Change" and the nut allergy
+    // had nowhere to go. The host closes a list themselves.
+    if (!_multi) setChoiceOpen(null);
     // A routed focus (Next up's "Decide:", the ground sheet's "Decide it" /
     // "Change the call") has done its job once the pick lands — clear it so
-    // the now-settled row doesn't re-open its chips as if still asking.
-    setSheet(s => (s && s.focus === r.id ? { ...s, focus: null } : s));
+    // the now-settled row doesn't re-open its chips as if still asking. A multi
+    // list is not done after one tap, so it keeps its focus.
+    if (!_multi) setSheet(s => (s && s.focus === r.id ? { ...s, focus: null } : s));
   };
   // Shared grounded-decision resolution (elegant loop): the why + the fix, resolved
   // IN PLACE via settleDecision — a proposed default with one-tap "Go with X" +
@@ -12123,7 +12141,15 @@ export default function HostShellV2() {
                               {canChange && (
                                 <div className="chips-compact" style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '10px 0 0' }}>
                                   {opts.options.map(opt => (
-                                    <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
+                                    // A multi decision holds SEVERAL answers, so "is this one
+                                    // pressed" is a membership test, not an equality test
+                                    // (2026-09-18). Equality reads false for every chip the
+                                    // moment the answer becomes a list, and the host loses
+                                    // sight of what they have already recorded.
+                                    <button key={opt} className="chip"
+                                      aria-pressed={isMultiDecision(r)
+                                        ? answerList(opts.chosen).includes(opt)
+                                        : opts.chosen === opt}
                                       onClick={() => settleDecision(r, opt)}>{opt}</button>
                                   ))}
                                 </div>
@@ -17219,7 +17245,11 @@ export default function HostShellV2() {
                           <div key={d.id} className="line" style={{ alignItems: 'center' }}>
                             <span>{d.label}</span>
                             <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
-                              <span className="of" style={{ color: 'var(--ok)', fontWeight: 600 }}>{picked}</span>
+                              {/* A MULTI ANSWER IS A LIST AND MUST NOT PRINT BARE (2026-09-18).
+                                  React renders an array by concatenation, so two recorded
+                                  restrictions read "VegetarianNut allergy". answerText is the
+                                  one display form for both shapes. */}
+                              <span className="of" style={{ color: 'var(--ok)', fontWeight: 600 }}>{answerText(picked)}</span>
                               <button className="mini" onClick={() => setChoiceOpen(d.id)}>Change</button>
                             </span>
                           </div>
@@ -17230,17 +17260,37 @@ export default function HostShellV2() {
                           <div className="f-name" style={{ marginBottom: 6 }}>{d.label}</div>
                           <div className="chips">
                             {(d.options || []).map(opt => (
-                              <button key={opt} className="chip" aria-pressed={(d.chosen || d.default) === opt}
+                              <button key={opt} className="chip"
+                                aria-pressed={isMultiDecision(d)
+                                  ? answerList(d.chosen).includes(opt)
+                                  : (d.chosen || d.default) === opt}
                                 onClick={() => {
-                                  const patch = settleChoicePatch(event, d.id, opt, 'host');
+                                  const patch = settleChoicePatch(event, d.id, opt, 'host', d);
                                   const nextChoices = patch.foodChoices;
                                   const stillOpen = (foodPlan.choices || []).filter(c => !nextChoices[c.id]).length;
+                                  // ── A MULTI LIST STAYS OPEN WHILE THE HOST IS STILL IN IT ──
+                                  // (2026-09-18) The auto-collapse below is right for a
+                                  // pick-one: one tap IS the answer. On the dietary list it
+                                  // was the whole defect, restated as layout — DRIVEN IN
+                                  // CHROMIUM: tap "Vegetarian" and the row folded to
+                                  // "Vegetarian · Change", so a table with a vegetarian AND a
+                                  // nut allergy had nowhere to put the second one. The store
+                                  // already held a list by then; the screen had closed over
+                                  // it. The host leaves a multi list by its own "Done".
+                                  const multi = isMultiDecision(d);
+                                  const now = answerText(nextChoices[d.id]);
                                   patchEvent(patch,
-                                    stillOpen === 0
-                                      ? d.label + ': ' + opt + ' — that was the last call. The spread is fully priced.'
-                                      : d.label + ': ' + opt + ' — the spread just re-sized.');
-                                  setChoiceOpen(null);
-                                  if (stillOpen === 0) setFoodSect(m => ({ ...m, choices: false }));
+                                    multi
+                                      ? d.label + ': ' + (now || 'nothing yet') + ' — noted.'
+                                      : stillOpen === 0
+                                        ? d.label + ': ' + opt + ' — that was the last call. The spread is fully priced.'
+                                        : d.label + ': ' + opt + ' — the spread just re-sized.');
+                                  if (!multi) {
+                                    setChoiceOpen(null);
+                                    if (stillOpen === 0) setFoodSect(m => ({ ...m, choices: false }));
+                                  } else {
+                                    setChoiceOpen(d.id);
+                                  }
                                 }}>{opt}</button>
                             ))}
                           </div>
