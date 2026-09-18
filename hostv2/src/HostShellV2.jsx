@@ -79,6 +79,7 @@ import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
 // playbookDayOfChecklist was a finished engine with ZERO hostv2 imports — the
 // frozen CRA rendered it and the shipping shell never did (audit 2026-08-21).
 import { playbookDayOfChecklist } from '@app/lib/playbooks';
+import { settleChoicePatch, choiceStateFor, choiceAttribution } from '@app/lib/choiceProvenance';
 import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcile';
 import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { tweenNumber } from '@app/lib/tweenNumber';
@@ -2053,9 +2054,19 @@ export default function HostShellV2() {
   // and travel/ground (lib/travelPlan transportDecision) read the same answer.
   // decisionMemory is NOT written here — that stays the host's own optional
   // "note why" on the settled row, exactly as before.
-  const settleDecision = (r, opt) => {
-    patchEvent({ foodChoices: { ...(event.foodChoices || {}), [r.id]: opt } },
-      r.label + ': ' + opt + ' — settled.');
+  // `source` IS NOT OPTIONAL IN MEANING (audit, 2026-09-18). A value the host
+  // picked and a value the APP proposed that they tapped "Sounds good" on were
+  // byte-identical afterwards — same string, same field, same toast — so the
+  // settled card printed `Your call: "…"` over the app's own pick. Same shape as
+  // the start-time stamp deleted earlier today, across ~130 decisions.
+  //
+  // It defaults to 'host' because four of the five call sites ARE the host
+  // tapping an option; only the accept button passes 'accepted'. The write goes
+  // through settleChoicePatch so the value and its provenance cannot be stored
+  // apart — no caller is able to write one map without the other.
+  const settleDecision = (r, opt, source = 'host') => {
+    patchEvent(settleChoicePatch(event, r.id, opt, source),
+      r.label + ': ' + opt + (source === 'accepted' ? ' — our pick, settled.' : ' — settled.'));
     setChoiceOpen(null);
     // A routed focus (Next up's "Decide:", the ground sheet's "Decide it" /
     // "Change the call") has done its job once the pick lands — clear it so
@@ -11695,7 +11706,7 @@ export default function HostShellV2() {
                   // event.foodChoices) — invents nothing, and the host can still tap any chip.
                   const canAccept = !!(approach && approach.mode === 'propose' && approach.proposed && opts && opts.options.length);
                   const acceptBtn = canAccept ? (
-                    <button type="button" className="mini" onClick={(e) => { e.stopPropagation(); settleDecision(r, approach.proposed); }}
+                    <button type="button" className="mini" onClick={(e) => { e.stopPropagation(); settleDecision(r, approach.proposed, 'accepted'); }}
                       /* THE ACCEPT MUST NOT LOOK WEAKER THAN THE BOOKMARK (board re-sit
                          2026-07-30, both panels; measured live rather than judged off a JPG).
                          `.mini` paints --steel-soft rgb(138,163,176) on a --steel tint; this
@@ -11949,7 +11960,19 @@ export default function HostShellV2() {
                               {!canChange && editorKind && (
                                 <div style={{ margin: '10px 0 0' }}>{renderEditor(r)}</div>
                               )}
-                              {why && <p className="grounding" style={{ margin: '10px 0 0' }}>Your call: “{why}”</p>}
+                              {/* ATTRIBUTION FOLLOWS PROVENANCE (audit, 2026-09-18).
+                                  This said `Your call: "…"` whatever had happened — so a
+                                  decision the APP proposed, that the host merely accepted,
+                                  was stamped as theirs the moment they added a note. The
+                                  note IS the host's words; the PICK may not be. Both are
+                                  now said accurately, and an answer with no recorded source
+                                  (written before provenance existed, or by the frozen CRA
+                                  shell) prints the note with no claim about whose call it
+                                  was — unknown is its own answer. */}
+                              {why && (() => {
+                                const attribution = choiceAttribution(choiceStateFor(event, r, r.id));
+                                return <p className="grounding" style={{ margin: '10px 0 0' }}>{attribution ? attribution + ': ' : ''}“{why}”</p>;
+                              })()}
                               {!why && whyOpen !== r.id && (
                                 <button className="mini" style={{ background: 'none', color: 'var(--muted)', padding: '11px 2px 0', fontWeight: 600, display: 'block' }}
                                   onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>Note why</button>

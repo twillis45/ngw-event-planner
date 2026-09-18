@@ -54,7 +54,21 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // The fourth subject — a drafted contact is never "silent" — is a real
 // behavioural test against src/lib/vendorContact.js in the same file, and needs
 // no shell text at all.
-const MAX_HOSTV2_TEXT_GATES = 38;
+// 38 -> 39 on 2026-09-18 for choiceProvenance.test.js. THIRD bump in one day,
+// which is worth naming rather than quietly adding: each was a shell WRITE or a
+// shell LABEL, and jest cannot execute the shell. That is the ratchet working —
+// it is making a real cost visible — not a loophole being leaned on.
+//
+// Of this file's 13 tests only 3 read shell text; the other 10 are genuine
+// behaviour tests against src/lib/choiceProvenance.js, which is where the logic
+// was deliberately put so it could be executed. The 3 assert the WIRING: that
+// settleDecision builds its patch through the one write builder, that exactly
+// one call site records an app pick, and that the settled card asks the
+// accessor instead of asserting "Your call". Those are claims about the source,
+// and no runtime test can make them — a behaviour test only reaches the
+// branches it renders, which is exactly how six copies of the venue verdict
+// survived a green suite earlier today.
+const MAX_HOSTV2_TEXT_GATES = 39;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
