@@ -21,6 +21,10 @@ const engagementParty = {
   recordKind: 'client',
   version: '1.1.0',
 
+  // The engine owns the cook question; this says only which answer means
+  // THIS host is the one cooking. See playbooks/cookLever.js.
+  cookLever: { decision: 'food_style', hostCooks: ['Host makes heavy apps'], kind: 'indoor' },
+
   meta: {
     summary:
       "A celebratory cocktail party for the newly-engaged couple — heavy passed and stationed appetizers (no seated meal), a real bar with a signature couple's cocktail, and a champagne toast as the emotional centerpiece. The host's whole job is to engineer one great toast moment and keep food, drinks, and flow effortless around it.",
@@ -41,15 +45,6 @@ const engagementParty = {
 
   decisions: [
     { id: 'food_style', optionGates: { 'Restaurant / private room': { standsDownWhen: { id: 'venue', in: ['Host home', 'Backyard / outdoor'] } } }, label: 'How is the food handled?', options: ['Host makes heavy apps', 'Caterer / passed apps', 'Potluck spread', 'Restaurant / private room'], default: 'Host makes heavy apps', when: 'T-21d', blocks: ['food', 'vendors'], costFactors: { 'Caterer / passed apps': 1.4, 'Potluck spread': 0.6, 'Restaurant / private room': 1.5 }, costFactorProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'researched', sources: ['catering-perperson-2026'], note: 'Grounded against 2026 US catering per-person data (full-service $75-150 vs drop-off $15-35 vs buffet-with-servers $45-85; the difference between staffed and host-made is labor). The service-level hierarchy follows directly; the per-menu multipliers calibrate that structure.', claim: 'Caterer/passed apps costs ~1.4× the host-makes baseline; potluck costs ~0.6×; restaurant/private room costs ~1.5×', sufficientWhen: 'Verified against actual caterer quotes and restaurant private-room pricing for 20-40 person cocktail parties' }, affects: ['p_apps_hot', 'p_apps_cold', 'p_grazing'], weight: 'high', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'For a party format the apps must be a real meal — a big, costly-to-change call, but the app can default to host-made heavy apps.', tier: 'reasoned' }, why: 'For a party format the apps must be a real meal — a caterer or restaurant is the call if the host wants to be a guest at their own engagement.' },
-    // COOK METHOD (2026-09-18). Rolled out from Watch Party, where the gap was
-    // found: the playbooks asked WHAT food and WHO provides it, never HOW it is
-    // cooked — so a host holding a dish since noon and one collecting a tray got
-    // the same prep. Gated to the answer(s) where this host actually cooks, and
-    // authored as `in` because the coherence contract requires a gate to name the
-    // answers that keep it. Blocks cook_schedule, NOT food: the method does not
-    // change the shopping list, and claiming it did would demand per-method cost
-    // multipliers that no source supports.
-    { id: 'cook_method', label: 'How is the hot food getting cooked?', options: ['Oven or stovetop indoors', 'Grill or smoker outside', 'Slow cooker or warming tray', 'Air fryer, in batches', 'Store-bought hot or delivered'], default: 'Oven or stovetop indoors', when: 'T-3d', dependsOn: ['food_style'], blocks: ['cook_schedule'], whenChoice: { id: 'food_style', in: ['Host makes heavy apps'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The method sets the cook window and the equipment, and only the host knows which one they will actually use — but it stays easy to change until the day before.', tier: 'reasoned' }, why: 'Changes the prep more than the menu does. A slow cooker has to start hours ahead; a grill needs fuel checked and puts you outside; an air fryer does one tray at a time; store-bought food needs a pickup window that lands before guests do.' },
     { id: 'venue', label: 'At home or a venue / restaurant?', options: ['Host home', 'Backyard / outdoor', 'Restaurant private room', 'Event venue / bar buyout', 'Rooftop / brewery'], default: 'Host home', when: 'T-35d', blocks: ['rentals', 'staffing', 'catering'], weight: 'high', reversibility: 'locked', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'Decides whether you rent and staff it or the venue covers it, and caps the realistic guest count — a hard-to-reverse booking the host makes.', tier: 'reasoned' }, why: 'Drives whether you rent glassware/bar gear and hire staff (home) or whether the venue covers it (restaurant). It also caps the realistic guest count.' },
     { id: 'format', label: 'Confirm cocktail format (passed + stationed apps, no seated meal)', options: ['Fully passed hors d\'oeuvres', 'Passed + grazing/cheese station', 'Stationed only (self-serve)', 'Light bites + dessert table'], default: 'Passed + grazing/cheese station', when: 'T-30d', dependsOn: ['venue'], blocks: ['menu', 'rentals'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Locking "apps, not a meal" keeps the host from accidentally cooking a dinner — a safe, adjustable default.', tier: 'reasoned' }, why: 'A cocktail party lives or dies on the bite count and flow. Locking "apps, not a meal" sets ~10-12 bites/guest and prevents the host from accidentally cooking a dinner.' },
     { id: 'bar', label: 'Bar strategy + the signature couple\'s cocktail', options: ['Beer + wine + signature cocktail', 'Full open bar', 'Beer + wine only', 'Signature cocktails only + zero-proof', 'Cash/limited bar'], default: 'Beer + wine + signature cocktail', when: 'T-25d', blocks: ['beverage_purchases', 'glassware'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'A named couple\'s cocktail is the cheapest way to make the bar feel like them — meaningful, but easily adjusted at the store.', tier: 'reasoned' }, why: 'A named "his & hers" or couple\'s signature drink is the cheapest way to make the bar feel personal. It also fixes spirit/mixer quantities and whether a bartender is worth it.' },
@@ -76,12 +71,6 @@ const engagementParty = {
   ],
 
   tasks: [
-    // Method-specific prep, each firing for exactly one cook_method answer.
-    { id: 't_cm_grillfuel', milestoneId: 'ep_prep', phase: 'food', label: 'Check propane or charcoal now — a fuel run once guests have arrived costs you the party', when: 'T-2d', whenChoice: [{ id: 'food_style', in: ['Host makes heavy apps'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
-    { id: 't_cm_oven', milestoneId: 'ep_prep', phase: 'food', label: 'If anything goes in the oven, work out the order — one oven will not hold three dishes at three temperatures', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host makes heavy apps'] }, { id: 'cook_method', in: ['Oven or stovetop indoors'] }] },
-    { id: 't_cm_pickup', milestoneId: 'ep_prep', phase: 'food', label: 'Lock the pickup or delivery window so the food arrives BEFORE your guests do, not with them', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host makes heavy apps'] }, { id: 'cook_method', in: ['Store-bought hot or delivered'] }] },
-    { id: 't_cm_slowcooker', milestoneId: 'ep_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: [{ id: 'food_style', in: ['Host makes heavy apps'] }, { id: 'cook_method', in: ['Slow cooker or warming tray'] }] },
-    { id: 't_cm_airfryer', milestoneId: 'ep_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: [{ id: 'food_style', in: ['Host makes heavy apps'] }, { id: 'cook_method', in: ['Air fryer, in batches'] }] },
     { id: 't_invite', milestoneId: 'ep_invite', phase: 'guest', label: 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary-ask, RSVP-by', when: 'T-28d' },
     { id: 't_menu_lock', milestoneId: 'ep_menu', phase: 'food', label: 'Lock 6-8 appetizer types (mix hot/cold, 1 veg + 1 GF), targeting ~10-12 bites/guest', when: 'T-21d' },
     { id: 't_signature', milestoneId: 'ep_bar', phase: 'beverage', label: 'Test the signature cocktail at scale; write the batch recipe + a printed bar card', when: 'T-18d' },
@@ -141,9 +130,6 @@ const engagementParty = {
   ],
 
   risks: [
-    // Gated to the grill answer. The wording follows the charcoal-bag warning
-    // already grounded in fireSafetyContext; it is not a new claim.
-    { id: 'r_cm_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the dish to the oven.', whenChoice: [{ id: 'food_style', in: ['Host makes heavy apps'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
     { id: 'r_headcount', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, not 30%.' },
     { id: 'r_underfood', trigger: 'Under-counting bites — guests treat it like dinner', severity: 'high', mitigation: 'Plan ~10-12 bites/guest and a grazing station; alcohol increases food appetite — round up, never down.' },
     { id: 'r_toast_flop', trigger: 'Toast runs long / open-mic rambles / no one can hear', severity: 'med', mitigation: 'Pre-assign 1-2 speakers at ≤2 min, pre-pour champagne, lower the music, gather the room before starting.' },

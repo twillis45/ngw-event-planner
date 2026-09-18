@@ -13,7 +13,11 @@ const backyardBbq = {
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
-  version: '1.0.0',
+  version: '1.1.0',
+
+  // The engine owns the cook question; this says only which answer means
+  // THIS host is the one cooking. See playbooks/cookLever.js.
+  cookLever: { decision: 'food_style', hostCooks: ['Host grills everything', 'Potluck — guests bring sides'], kind: 'grill' },
   meta: {
     summary: 'A casual backyard BBQ / get-together. Grill-forward, drinks-in-coolers, disposable tableware, outdoor comfort. Lowest-formality host event — the playbook keeps decisions light and front-loads fuel + ice + shade so the host can actually hang out.',
     typicalGuests: { low: 8, default: 16, high: 30 },

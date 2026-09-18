@@ -9,6 +9,11 @@
 // ESM-only (per the prod-bundle lesson — no CJS module.exports in src/).
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
+import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
+
+// One list, so every reader takes the same shape as destinationDecisionsFor and
+// nobody re-derives "is there a cook lever" locally.
+const cookDecisionsFor = (pb) => { const d = cookDecisionFor(pb); return d ? [d] : []; };
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
 import { attendanceAdjustment } from '../hostIntel';
@@ -609,6 +614,8 @@ export function choicePickFor(event, id) {
   // overnight event (a staycation), this branch would have returned null for it
   // and any whenChoice hanging off it would read "unanswered" — the row visible
   // on the board, its dependent item gated on a default that never resolved.
+  const cd = cookDecisionFor(pb);
+  if (cd && cd.id === id) return picks[id] || cd.default || null;
   const dd = destinationDecisionsFor(event, pb).find((d) => d.id === id)
     || militaryDecisionsFor(event).find((d) => d.id === id) || null;
   return (dd && dd.default) || null;
@@ -1071,7 +1078,11 @@ export function playbookChecklist(event, asOf) {
   const kidsComing = eventHasKids(event);
   // DESTINATION-1: generic travel tasks, additive on top of the base playbook's
   // own — never gating on type, only on the host-set isDestination modifier.
-  const taskList = event.isDestination ? [...playbook.tasks, ...DESTINATION_TASKS] : playbook.tasks;
+  // Cook-lever tasks are ENGINE-owned and injected here, the same way
+  // DESTINATION_TASKS already are — they are not authored into the 14 playbooks
+  // that use them, so the copy lives once (playbooks/cookLever.js).
+  const base = [...playbook.tasks, ...cookTasksFor(playbook)];
+  const taskList = event.isDestination ? [...base, ...DESTINATION_TASKS] : base;
   for (const t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
@@ -2178,7 +2189,7 @@ export function playbookInfraPrompts(event) {
   const gated = (rows) => (Array.isArray(rows) ? rows : [])
     .filter((r) => !r || !r.whenChoice || choiceShown(event, r.whenChoice));
   const hay = JSON.stringify([
-    gated(playbook.risks), gated(playbook.contingencies),
+    gated([...(playbook.risks || []), ...cookRisksFor(playbook)]), gated(playbook.contingencies),
     gated(playbook.decisions), gated(playbook.purchases),
   ]).toLowerCase();
   const has = (re) => re.test(hay);
@@ -2239,8 +2250,9 @@ export function playbookRisks(event, domain) {
   if (!event) return null;
   const pb = getPlaybook(event.type);
   if (!pb || !Array.isArray(pb.risks)) return null;
+  const authoredRisks = [...pb.risks, ...cookRisksFor(pb)];
   const dre = domain ? RISK_DOMAIN_RE[domain] : null;
-  const items = pb.risks
+  const items = authoredRisks
     .filter((r) => r && r.trigger && r.mitigation)
     // whenChoice gate (2026-09-13, found auditing Watch Party's new formats):
     // r_derby_time/r_rivalry were showing for EVERY major_event answer,
@@ -2831,6 +2843,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
   const decisions = [
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
     ...destinationDecisionsFor(event, pb),
+    ...cookDecisionsFor(pb),
     ...militaryDecisionsFor(event),
   ];
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
@@ -3464,6 +3477,7 @@ export function playbookDecisionOptions(event, id) {
   const decisions = [
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
     ...destinationDecisionsFor(event, pb),
+    ...cookDecisionsFor(pb),
     ...militaryDecisionsFor(event),
   ];
   const d = decisions.find((x) => x && x.id === id);
@@ -3725,7 +3739,10 @@ export function playbookFoodPlan(event, opts = {}) {
   // eleven playbooks made it bite, because cook_method only applies to a host
   // who is actually cooking. Two surfaces, one event, opposite answers — the
   // same defect class as the board-vs-hero deferral bug this file already names.
-  const choices = (playbook.decisions || [])
+  // Reads the SAME combined list every other surface reads — authored decisions
+  // plus the engine-injected cook lever. A local `playbook.decisions` here was
+  // how this list and the Decisions board came to disagree in the first place.
+  const choices = [...(playbook.decisions || []), ...cookDecisionsFor(playbook)]
     .filter(isMenuDecision)
     .filter((d) => choiceShown(event, d.whenChoice))
     .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));

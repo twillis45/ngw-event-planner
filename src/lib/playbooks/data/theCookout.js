@@ -21,7 +21,11 @@ const theCookout = {
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
-  version: '1.0.0',
+  version: '1.1.0',
+
+  // The engine owns the cook question; this says only which answer means
+  // THIS host is the one cooking. See playbooks/cookLever.js.
+  cookLever: { decision: 'grill_master', hostCooks: ['Host grills', 'Designated grill master (uncle / family pitmaster)'], kind: 'grill' },
 
   meta: {
     summary:

@@ -12,6 +12,10 @@ const babyShower = {
   family: 'host_driven',
   recordKind: 'event',
   version: '1.1.0',
+
+  // The engine owns the cook question; this says only which answer means
+  // THIS host is the one cooking. See playbooks/cookLever.js.
+  cookLever: { decision: 'food_style', hostCooks: ['Host makes a brunch spread'], kind: 'indoor' },
   meta: {
     summary: 'A host-run baby shower — daytime, finger-food/brunch forward, often alcohol-free, with games + favors. Host is planner, caterer, and cleanup, so the playbook front-loads guest list + menu and back-loads a calm setup → shower → reset.',
     typicalGuests: { low: 15, default: 25, high: 40 },
@@ -31,15 +35,6 @@ const babyShower = {
 
   decisions: [
     { id: 'food_style', label: 'How is the food handled?', options: ['Host makes a brunch spread', 'Drop-off catering', 'Potluck', 'Order platters'], default: 'Host makes a brunch spread', when: 'T-21d', blocks: ['food', 'vendors'], costFactors: { 'Drop-off catering': 1.35, 'Potluck': 0.55, 'Order platters': 1.15 }, costFactorProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'researched', sources: ['catering-perperson-2026'], note: 'Grounded against 2026 US catering per-person data (full-service $75-150 vs drop-off $15-35 vs buffet-with-servers $45-85; the difference between drop-off and staffed is labor, not food). The service-level hierarchy follows directly; the per-menu percentages calibrate that structure.', claim: 'Drop-off catering adds ~35% to per-guest food cost, potluck reduces it ~45%, and ordered platters add ~15% vs. host-made brunch', sufficientWhen: 'catering and platter price quotes vs. grocery cost for equivalent host-made brunch confirm the cost-factor ratios' }, affects: ['p_food'], weight: 'med', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Grazing food frees or traps the host during the shower, but a daytime brunch spread is a safe default the app can fill.', tier: 'reasoned' }, why: 'A daytime shower is grazing food — easy to host-make, or a drop-off if the guest list is big.' },
-    // COOK METHOD (2026-09-18). Rolled out from Watch Party, where the gap was
-    // found: the playbooks asked WHAT food and WHO provides it, never HOW it is
-    // cooked — so a host holding a dish since noon and one collecting a tray got
-    // the same prep. Gated to the answer(s) where this host actually cooks, and
-    // authored as `in` because the coherence contract requires a gate to name the
-    // answers that keep it. Blocks cook_schedule, NOT food: the method does not
-    // change the shopping list, and claiming it did would demand per-method cost
-    // multipliers that no source supports.
-    { id: 'cook_method', label: 'How is the hot food getting cooked?', options: ['Oven or stovetop indoors', 'Grill or smoker outside', 'Slow cooker or warming tray', 'Air fryer, in batches', 'Store-bought hot or delivered'], default: 'Oven or stovetop indoors', when: 'T-3d', dependsOn: ['food_style'], blocks: ['cook_schedule'], whenChoice: { id: 'food_style', in: ['Host makes a brunch spread'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The method sets the cook window and the equipment, and only the host knows which one they will actually use — but it stays easy to change until the day before.', tier: 'reasoned' }, why: 'Changes the prep more than the menu does. A slow cooker has to start hours ahead; a grill needs fuel checked and puts you outside; an air fryer does one tray at a time; store-bought food needs a pickup window that lands before guests do.' },
     { id: 'style', label: 'Shower style', options: ['Brunch', 'Afternoon tea / sweets', 'Lunch buffet', 'Co-ed "sip & see"'], default: 'Brunch', when: 'T-28d', blocks: ['menu', 'beverage_purchases'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Brunch-or-tea sets the menu and the time of day, but it is easy to change and a brunch default is safe.', tier: 'reasoned' }, why: 'Sets the menu, time of day, and whether it skews sweet or savory.' },
     { id: 'guestlist', label: 'Finalize guest list with the parent(s)', options: [], default: null, when: 'T-21d', blocks: ['food', 'favors', 'tableware'], weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'Every quantity scales off the count, and the list belongs to the parent-to-be — the master variable, and only she can confirm it.', tier: 'reasoned' }, why: 'Every quantity scales from this; confirm with the guest of honor first.' },
     { id: 'registry', label: 'Confirm registry / gift theme to share on the invite', options: ['Store registry', 'Books for baby', 'Diapers & wipes', 'No gifts'], default: 'Store registry', when: 'T-21d', weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The registry is the parent\'s own choice and guests ask right away, but it is a quick, low-stakes note on the invite.', tier: 'reasoned' }, why: 'Guests ask immediately; include it on the invite to reduce back-and-forth.' },
@@ -59,12 +54,6 @@ const babyShower = {
   ],
 
   tasks: [
-    // Method-specific prep, each firing for exactly one cook_method answer.
-    { id: 't_cm_grillfuel', milestoneId: 'bs_shop_fresh', phase: 'food', label: 'Check propane or charcoal now — a fuel run once guests have arrived costs you the party', when: 'T-2d', whenChoice: [{ id: 'food_style', in: ['Host makes a brunch spread'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
-    { id: 't_cm_oven', milestoneId: 'bs_shop_fresh', phase: 'food', label: 'If anything goes in the oven, work out the order — one oven will not hold three dishes at three temperatures', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host makes a brunch spread'] }, { id: 'cook_method', in: ['Oven or stovetop indoors'] }] },
-    { id: 't_cm_pickup', milestoneId: 'bs_shop_fresh', phase: 'food', label: 'Lock the pickup or delivery window so the food arrives BEFORE your guests do, not with them', when: 'T-1d', whenChoice: [{ id: 'food_style', in: ['Host makes a brunch spread'] }, { id: 'cook_method', in: ['Store-bought hot or delivered'] }] },
-    { id: 't_cm_slowcooker', milestoneId: 'bs_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: [{ id: 'food_style', in: ['Host makes a brunch spread'] }, { id: 'cook_method', in: ['Slow cooker or warming tray'] }] },
-    { id: 't_cm_airfryer', milestoneId: 'bs_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: [{ id: 'food_style', in: ['Host makes a brunch spread'] }, { id: 'cook_method', in: ['Air fryer, in batches'] }] },
     { id: 't_invite', milestoneId: 'bs_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
     { id: 't_rsvp', milestoneId: 'bs_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },
     { id: 't_nonperish_shop', milestoneId: 'bs_shop_nonperish', phase: 'shopping', label: 'Decor, favors, mocktail mixers, games, paper goods', when: 'T-3d' },
@@ -103,9 +92,6 @@ const babyShower = {
   ],
 
   risks: [
-    // Gated to the grill answer. The wording follows the charcoal-bag warning
-    // already grounded in fireSafetyContext; it is not a new claim.
-    { id: 'r_cm_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the dish to the oven.', whenChoice: [{ id: 'food_style', in: ['Host makes a brunch spread'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
     { id: 'r_dietary', trigger: 'Menu not screened for pregnancy-safe foods', severity: 'high', mitigation: 'Avoid raw fish, soft/unpasteurized cheese, deli meats, high-mercury fish; label items; offer mocktails.' },
     { id: 'r_headcount', trigger: 'Final headcount still not locked 4 days out', severity: 'high', mitigation: 'Chase RSVPs with the parent(s); buy fresh after the count locks.' },
     { id: 'r_gifts', trigger: 'No gift-tracking plan', severity: 'med', mitigation: 'Assign someone to log gifts as opened for thank-you notes.' },

@@ -19,7 +19,11 @@ const juneteenthCookout = {
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
-  version: '1.0.0',
+  version: '1.1.0',
+
+  // The engine owns the cook question; this says only which answer means
+  // THIS host is the one cooking. See playbooks/cookLever.js.
+  cookLever: { decision: 'sourcing', hostCooks: ['Host cooks the mains, supports a Black-owned bakery for the cake', 'Host cooks everything'], kind: 'grill' },
   meta: {
     summary: 'A home-hosted Juneteenth celebration — a Black American freedom holiday (June 19, 1865; federal holiday since 2021). It is a full summer cookout (BBQ ribs, chicken, links + the sides — mac & cheese, baked beans, collard greens, potato salad, cornbread) carried by the Juneteenth layer: symbolic RED foods and drinks (red velvet cake, watermelon, hibiscus/strawberry "red drink") that honor resilience and sacrifice, Pan-African red/black/green touches, music celebrating Black artists, and a moment of meaning — a reading of the history, a reflection, or a kids\' education element. The playbook front-loads the meaning/program choice and the heat/ice/shade logistics so the host can honor the day and still enjoy it.',
     typicalGuests: { low: 12, default: 25, high: 50 },

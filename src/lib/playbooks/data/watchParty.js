@@ -282,7 +282,13 @@ const watchParty = {
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
-  version: '1.6.2',
+  version: '1.7.0',
+
+  // The engine owns the cook question; this says only which answer means THIS
+  // host is cooking. The decision and the five generic method tasks come from
+  // playbooks/cookLever.js. What stays authored here is genuinely Watch Party's:
+  // t_cook's copyByAnswer branch, its run-of-show twin, and r_grill_cold.
+  cookLever: { decision: 'menu', hostCooks: ['Wings + chips/dip', 'Chili bar'], kind: 'indoor' },
   meta: {
     summary: 'An at-home watch party for a big event on TV — a single game (Super Bowl, NBA/NHL/World Series Finals, College Football Championship), a multi-day tournament (March Madness, World Cup, Olympics, NFL Playoffs), combat sports/PPV (UFC/Boxing), a racing spectacle (Kentucky Derby, Daytona 500), continuous coverage (The Masters, Wimbledon), or a non-game broadcast (NFL Draft, Awards Show) — each with genuinely different food, decor and run-of-show shape, not just a different name. TV-forward, graze-all-event food, coolers of beer + soda, disposable tableware, couch comfort. The whole challenge is timing — food READY before it starts, a mid-event refresh (where the format actually has one), and a trash flow that never makes anyone miss a moment.',
     typicalGuests: { low: 6, default: 12, high: 25 },
@@ -379,25 +385,6 @@ const watchParty = {
     // sport-specific menus would need real research and the KCR pipeline.
     { id: 'reg_sport', label: 'Which sport?', options: ['Football (NFL)', 'Basketball (NBA)', 'Baseball (MLB)', 'Hockey (NHL)', 'College football', 'College basketball', 'Soccer', 'Something else'], default: 'Football (NFL)', when: 'T-7d', whenChoice: { id: 'major_event', in: ['Regular season game / other'] }, blocks: ['program'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The catch-all option covers every sport at once, so without this the run of show says "Kickoff" and "Halftime" for a baseball game. Naming the sport costs one tap and makes the day plan factually correct.', tier: 'reasoned' }, why: 'Only changes wording, never the food: a baseball game has innings and a seventh-inning stretch, hockey has periods and intermissions, basketball has quarters and a halftime. The plan should use the words the sport actually uses.' },
     { id: 'menu', label: 'Game-day food style', options: ['Wings + chips/dip', 'Chili bar', 'Pizza + finger food', 'Potluck snacks'], default: 'Wings + chips/dip', when: 'T-7d', dependsOn: ['potluck'], blocks: ['food'], costViaApproach: true, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'The food style drives the shopping list and the cook timeline, but wings-and-chips is a safe default and swappable until you shop.', tier: 'reasoned' }, why: 'Drives the shopping list and the cook timeline. Wings + chips is the classic low-effort default; chili can be made ahead; pizza offloads the cooking entirely.' },
-    // COOK METHOD (2026-09-17). The playbook asked WHAT food (menu) and WHO
-    // provides it (potluck), and never asked HOW the protein gets cooked — so
-    // t_cook fired the same 'Cook wings + hot food' whether the host was grilling
-    // outside in February or collecting a pizza. The method changes the prep
-    // window, the equipment, where the host physically IS during the game, and
-    // whether a fire risk applies at all.
-    //
-    // GATED on menu rather than asked always: a pizza or potluck table has no hot
-    // cook to plan. Authored as `in` rather than `not` because the coherence
-    // contract (decisionWireProof) requires a gate to name the answers that KEEP
-    // it, so a new menu option cannot silently inherit this question.
-    //
-    // BLOCKS cook_schedule, not food. The method does not change the shopping
-    // list — the wings are the same wings, and this playbook has no fuel line —
-    // it changes when the cook starts, what equipment is involved and where the
-    // host stands during the game. Claiming blocks:['food'] would demand a cost
-    // model, and inventing per-method multipliers is the thing the doctrine
-    // forbids. cook_schedule and oven_plan are both existing block names.
-    { id: 'cook_method', label: 'How is the hot food getting cooked?', options: ['Oven or stovetop indoors', 'Grill or smoker outside', 'Slow cooker or warming tray', 'Air fryer, in batches', 'Store-bought hot or delivered'], default: 'Oven or stovetop indoors', when: 'T-5d', dependsOn: ['menu'], blocks: ['cook_schedule'], whenChoice: { id: 'menu', in: ['Wings + chips/dip', 'Chili bar'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'The method sets the cook window and the equipment, and only the host knows which one they will actually use — but it is easy to change right up to the day before.', tier: 'reasoned' }, why: 'Changes the prep more than the menu does. A slow cooker needs to start hours before kickoff; a grill needs fuel checked and puts you outside during the first quarter; an air fryer only does one tray at a time; store-bought hot food needs a pickup window that lands before the game, not at it.' },
     { id: 'ppv_cost', label: 'Covering the cost', options: ['Host covers it', 'Split evenly among guests', 'Already have a subscription that covers it'], default: 'Host covers it', when: 'T-5d', whenChoice: { id: 'major_event', in: ['UFC / Boxing'] }, weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'needs-host', priorityBasis: { rationale: 'A major boxing card is still commonly pay-per-view; UFC folded its full 2026 calendar into Paramount+ instead. Either way it is a real cost worth naming before guests show up assuming it is free.', tier: 'reasoned' }, why: 'UFC dropped pay-per-view in 2026 — its numbered events are bundled into Paramount+ (about $6-12/month, or $59.99/year), split however many ways the room wants. A major boxing card, when it IS still PPV, commonly runs $75-90 for the single event. Naming who is covering it avoids an awkward ask mid-party.' },
     // `blocks` FIXED 2026-09-13 (discovered while verifying the Wimbledon purchase,
     // out of scope for the format taxonomy but too material to leave): this used
@@ -465,19 +452,6 @@ const watchParty = {
         'Air fryer, in batches': 'Start the batches — first trays go into a low oven to hold while the rest cook',
         'Store-bought hot or delivered': 'Collect or receive the food, get it onto serving trays, and have it OUT ~30 min before kickoff',
       } } },
-    // Method-specific prep. Each fires for exactly one answer; the default
-    // (oven/stovetop) path gains one task, so no branch is left thinner than before.
-    { id: 't_grill_fuel', milestoneId: 'wp_rsvp', phase: 'food', label: 'Check propane or charcoal now — a fuel run on game day costs you the first quarter', when: 'T-2d', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
-    { id: 't_grill_watch', milestoneId: 'wp_setup', phase: 'food', label: 'Sort out how you watch while you grill — speaker at the door, phone stream, or a spotter who calls the score', when: 'T0 -2:00', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
-    { id: 't_slowcooker_start', milestoneId: 'wp_setup', phase: 'food', label: 'Start the slow cooker with thawed ingredients — USDA says it can take SEVERAL HOURS to reach a bacteria-killing temperature, so a late start is a safety problem, not just a timing one', when: 'T0 -5:00', whenChoice: { id: 'cook_method', in: ['Slow cooker or warming tray'] } },
-    { id: 't_airfryer_order', milestoneId: 'wp_setup', phase: 'food', label: 'Work out the batch order — an air fryer does one tray at a time, so decide what cooks first and what holds', when: 'T0 -2:30', whenChoice: { id: 'cook_method', in: ['Air fryer, in batches'] } },
-    { id: 't_oven_order', milestoneId: 'wp_shop_fresh', phase: 'food', label: 'If anything goes in the oven, work out the order — one oven will not hold wings, sliders and a dip at three different temperatures', when: 'T-1d', whenChoice: { id: 'cook_method', in: ['Oven or stovetop indoors'] } },
-    { id: 't_pickup_window', milestoneId: 'wp_shop_fresh', phase: 'food', label: 'Lock the pickup or delivery window so it lands BEFORE kickoff — game day is the busiest order slot of the year', when: 'T-1d', whenChoice: { id: 'cook_method', in: ['Store-bought hot or delivered'] } },
-    // whenChoice added 2026-09-13 (third pass) — combat/continuous/broadcast
-    // formats have no discrete break, so this task no longer fires for them.
-    // reg_sport rewords the BREAK rather than gating the task away: every sport
-    // here has a mid-event pause, it is just not called halftime in all of them.
-    // Baseball and hockey were the wrong ones before; the rest are unchanged.
     { id: 't_halftime', milestoneId: 'event', phase: 'food', label: 'Halftime refresh: restock food, swap empties for fresh trash bag, top up ice', when: 'T0 +2:00', whenChoice: { id: 'major_event', not: FORMAT_NO_HALFTIME }, copyByAnswer: { reg_sport: {
       'Baseball (MLB)': 'Seventh-inning stretch: restock food, swap empties for fresh trash bag, top up ice',
       'Hockey (NHL)': 'First intermission: restock food, swap empties for fresh trash bag, top up ice',
@@ -644,13 +618,10 @@ const watchParty = {
     { id: 'r_kickoff', trigger: 'Food not ready when the game starts', severity: 'high', mitigation: 'Back-time the cook so everything is OUT ~30 min before kickoff; use the slow cooker for hot dishes; pre-order pizza for delivery at kickoff.' },
     { id: 'r_stream', trigger: 'Game not on / stream or channel fails', severity: 'high', mitigation: 'Test the exact channel/stream at 3 days out; know the backup (antenna, alternate app, or a nearby bar) before guests arrive.' },
     { id: 'r_drinks', trigger: 'Run out of drinks or ice mid-game', severity: 'med', mitigation: 'Buy a buffer (~4 drinks + ~1.5 lb ice/guest); top up ice at halftime; ask a guest to do a beer run.', copyByAnswer: { mitigation: { major_event: Object.fromEntries(FORMAT_NO_HALFTIME.map((k) => [k, 'Buy a buffer (~4 drinks + ~1.5 lb ice/guest); top up ice partway through; ask a guest to do a beer run.'])) } } },
-    // GRILL RISKS (2026-09-17), gated to the grill answer of cook_method. Watch
-    // Party had no grill risk at all, because grilling was never contemplated —
-    // yet a February kickoff is exactly when a host moves a grill somewhere it
-    // should not go. The CO wording follows the charcoal-bag warning already
-    // grounded in fireSafetyContext, not a new claim.
+    // r_grill_cold is Watch-Party's OWN: missing the game is a cost no other
+    // playbook has. The generic carbon-monoxide risk that sat beside it moved to
+    // playbooks/cookLever.js, where every indoor playbook gets it from one copy.
     { id: 'r_grill_cold', trigger: 'Grilling outside means missing the game — and cold slows the grill down', severity: 'med', mitigation: 'Start earlier than you would in summer — cold air and a cold grate both slow the cook, and no published figure says by how much, so give yourself margin rather than a number. Get a speaker or a phone stream to the door, and hand one guest the job of calling the score.', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
-    { id: 'r_grill_indoors', trigger: 'Cold or rain tempts the grill into the garage or under an overhang', severity: 'high', mitigation: 'Never. Burning charcoal indoors can kill you and carbon monoxide has no odor — no grill in a home, garage or tent, and a still-warm grill does not come inside either. Cook under open sky or move the menu indoors to the oven.', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
     { id: 'r_seating', trigger: 'Not enough seats / bad sightlines', severity: 'med', mitigation: 'Borrow extra chairs; arrange seating toward the screen before anyone arrives.' },
     { id: 'r_trash', trigger: 'Trash/recycling overflows, surfaces get sticky', severity: 'low', mitigation: 'Put out a clearly-marked recycling bag for cans; swap trash bags at halftime; keep paper towels at the food table.', copyByAnswer: { mitigation: { major_event: Object.fromEntries(FORMAT_NO_HALFTIME.map((k) => [k, 'Put out a clearly-marked recycling bag for cans; swap trash bags partway through; keep paper towels at the food table.'])) } } },
     { id: 'r_derby_time', trigger: 'Guests miss the actual race — it is over in about two minutes', severity: 'med', mitigation: 'Post time is announced well ahead — call it out 10 minutes before, get everyone off their phones and in front of the screen, and hold any toast until after the race, not during it.', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] } },
