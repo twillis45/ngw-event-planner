@@ -88,7 +88,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `041b313c` |
+| Branch / HEAD | `main` @ `da7f2373` |
 | Jest | **6,251 passed**, 1 skipped, **0 failed**, **443 suites** (re-measured 2026-09-17, seventh entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -101,6 +101,63 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (third entry, same day) — testing the venue fix found it incomplete: the verdict had SIX copies
+
+Asked to test the Ryan Way seed against the venue fix. The test found the fix
+incomplete, the only way it could be found — by driving the real screens.
+
+**The reveal stopped asking. The plan did not:**
+
+    | venueaddress
+    | Where is it happening?
+    | Everything hangs off the venue — invites, the rain backup, seats and space.
+
+The first walk reported **11/11 PASS** over that output, because it grepped
+`"Where is the event"` — the reveal engine's wording — and this card says
+something else. A check that names one surface proves one surface.
+
+**Six copies of "is the venue set?", not the two fixed in the second entry:**
+
+| # | Where | Shape | |
+|---|---|---|---|
+| 1 | `venueFor.isSet` ignoring its own `address` | — | fixed, entry 2 |
+| 2 | `assembleRevealEngines` | `!!vf.name` | fixed, entry 2 |
+| 3 | `HostShellV2:10114` "Where is it happening?" card | `!vf.name` | **this entry** |
+| 4 | `HostShellV2:9984` blocker-card `venueSet` | `!!vf.name` | **this entry** |
+| 5 | `HostShellV2:14917` foundations "Add the location" | `!!vf.name` | **this entry** |
+| 6 | `phaseProgress` | delegates via `eventLocationStatus` | already correct |
+
+**#3 is the one worth carrying forward.** That card was only ever hidden
+because `venueBlockerShown` was true. Standing the BLOCKER down un-suppressed
+it — so the previous fix **moved** the ask rather than ending it, and a host
+with "8100 Ryan Way" on file was still being told to "Add the location".
+
+**Two guards, deliberately different shapes.**
+
+*Source text* — a verdict ratchet in `creationAddressCarries.test.js`: no line
+may re-derive the verdict by negating `vf.name`. It resolves which variables
+actually hold a `venueFor` result per file (the first version matched
+`event.vendors.filter(v => v && v.name)` — a VENDOR), strips block comments so
+the repo's own explanatory comments do not trip the scanner that reads them,
+and drops the `/g` flag, whose `lastIndex` made the first canary return
+true/false/true/false down the assertion list. Negation only: `vf.name ?` and
+`vf.name &&` are usually legitimate, and a ratchet that fires on correct code
+gets deleted.
+
+*Behavior* — `hostv2/e2e/ryanWay.spec.mjs`, where it can actually execute.
+`textGateRatchet` caught the source-text guard growing the hostv2 text-gate
+count and said exactly what to do; the baseline moves 36 -> 37 with the stated
+reason, and the behavior claim went to e2e rather than being smuggled into a
+text gate. **jest cannot run hostv2** — that is what that ratchet exists to
+say, and it was right.
+
+The e2e checks ALL SIX ask wordings and carries a **negative control**: an
+event with no location at all must still be asked. Every other assertion is an
+absence, and absences pass for the wrong reason all the time.
+
+**Verified:** `npm run verify:push` all 5 pass — jest 446 suites / 6,295
+passed; `ryanWay.spec.mjs` 3/3 at mobile-390.
 
 ## FIXED 2026-09-18 (second entry, same day) — one host sentence, two defects: "Big game" misrouted, and a street address the app stored and could not see
 
