@@ -1,6 +1,16 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-17 (governance day: Watch
+**Measured reality, not intentions.** Updated 2026-09-18 (the pre-push routine
+now runs what the deploy runs. Two deploys — 310 and 311 — died at "Build
+release artifact" while jest and both gates were green, and both were reported
+as verified; production sat two commits stale for two and a half hours. The
+break was a statement between two imports, which react-scripts treats as a
+build ERROR, so no suite could see it. `verify:all` step 9 is now `npm run
+release`, and `npm run verify:push` is the ~40s routine that can be run every
+time. Worth carrying forward: "jest is green" was TRUE and did not mean the
+change shipped — name which checks ran rather than letting "verified" imply
+the set. See the dated entry below.)
+Before that, on 2026-09-17 (governance day: Watch
 Party's authored knowledge became GOVERNED knowledge. The corpus went 16 -> 28
 records after nine cost claims and three re-researched quantity claims were
 published through the real KCR functions; four source-citation defects were
@@ -78,11 +88,12 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `ec25c04a` |
+| Branch / HEAD | `main` @ `9367e534` |
 | Jest | **6,251 passed**, 1 skipped, **0 failed**, **443 suites** (re-measured 2026-09-17, seventh entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
-| verify-all | **10 steps**, seam included; `--fast` skips the matrix |
+| verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
+| Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
 | e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
@@ -90,6 +101,57 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 — the pre-push routine did not run the thing that deploys, and two deploys died unnoticed
+
+**What happened, measured.** Deploy runs 310 (`880c666`, the cook-lever
+refactor) and 311 (`8928ef9`, the review-board fixes) both failed at "Build
+release artifact". Run 312 (`e8bd9a1`) is the first green one. Production
+served `ef787f2` from 00:34 to 03:05 UTC — two and a half hours, two commits
+stale — and **both failing commits were reported to the owner as verified.**
+
+**Why nothing caught it.** The break was `const` between two `import`
+statements in `playbooks/index.js`. react-scripts treats `import/first` as a
+build ERROR, not a lint warning, so the CRA build refuses to compile. jest,
+`gate:hostv2` and `gate:knowledge` were all green on both commits — none of
+them builds. The pre-push routine in use was exactly those three.
+
+**The honest finding is narrower than "add a gate".** `verify:all` already
+had `gate:cra`, and `gate:cra` *does* catch this — verified by reintroducing
+the exact defect and running it: exit 1, "CRA production build FAILED to
+compile. This is a real build error, not a lint warning." So the coverage
+existed. **Nobody ran it**, because `verify:all` is ~20 minutes and there was
+no shorter thing to run.
+
+**So two changes, not one.**
+
+1. `verify:all` step 9 is now **`npm run release`** with `CI: ''`, replacing
+   the bare `hostv2 production build` step *which it contains*. `release` =
+   `sync:hostv2` (hostv2's own build — parity check, then vite — then copy
+   `dist/` into `public/hostv2/`) `&&` the CRA build. That middle copy is the
+   one step nothing local had ever run, and it is the only thing standing
+   between a green hostv2 build and a site with no hostv2 in it. `CI: ''`
+   because the deploy sets exactly that, for exactly the same reason — a
+   preflight that builds under different rules is not a preflight.
+
+2. **`npm run verify:push`** — handoff + knowledge + jest + hostv2 seam +
+   release. The fast routine that can actually be run every time. The
+   release step measured **41.2s**.
+
+`public/hostv2/` is gitignored (`.gitignore:62`), so the release step leaves
+the tracked tree clean — checked with `git status`, not assumed.
+
+`docs/claude-skills/09_CLAUDE_CODE_EXECUTION_DISCIPLINE.md` carried a generic
+"Run or recommend: npm run build / npm run lint / npm run test" list, none of
+which is a real command in this repo. It now names the real ones and says why
+the release step is not optional.
+
+**Worth carrying forward more than the fix.** "Verified: jest 445 suites /
+6,274 passed" was a TRUE statement that did not mean the change shipped. The
+word "verified" was allowed to imply a set of checks it did not cover. Name
+which checks ran. And note the failure ORDER: the build step dies first, so
+the demo-artifact safety scan never ran on either commit — a skipped safety
+check and a passing one look identical in a log nobody read.
 
 ## FIXED 2026-09-17 (seventh entry, same day) — the readiness pills were dead controls on the phone: the panel holding them had no opener
 
