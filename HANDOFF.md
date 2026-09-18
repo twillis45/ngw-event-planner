@@ -88,7 +88,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `c8daab5` |
+| Branch / HEAD | `main` @ `a932d44` |
 | Jest | **6,950 passed**, 1 skipped, **0 failed**, **472 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -174,6 +174,29 @@ The `whenChoice` hardening is a trap closed before it is sprung and is recorded
 that way: MEASURED, no `whenChoice` in the corpus targets any of the three multi
 decisions. `['Vegan'] !== 'Vegan'`, so the day someone authors one the row would
 silently never appear.
+
+### CI was red before this entry, and jest could not see it
+
+Checks run **651** on `90f4949` failed. Deploy succeeded; jest, the hostv2 seam,
+the CRA build, the hostv2 build and pytest were all green. Only the **e2e job**
+failed — 14 identical failures across every project × viewport:
+
+```
+Expected pattern: /who provides the food/i
+Received string:  "Has anyone offered to carry the meal, or should it be catered?"
+```
+
+`/who provides the food/i` is Repast `food_source`'s LABEL. The hero had been
+falling back to a question derived from it; the ask-coverage lane (`615ef02`,
+earlier today) gave the decision its own authored `ask` and the hero now reads
+that. The authored copy is better and is the point of the lane, so the
+EXPECTATION moved, not the product — `a932d44`. The surrounding assertions (the
+panel is present, the options name the church or repast committee) are what
+prove the hero is still the food-provider lever, and they were left alone.
+
+990 e2e tests passed in that same run. **A green `verify:push` says nothing
+about a string only the rendered hero composes** — the e2e matrix is the only
+check that sees it, and it runs in CI, not in `verify:push`.
 
 ### One test overturned
 
