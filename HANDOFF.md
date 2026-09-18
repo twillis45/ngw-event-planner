@@ -88,19 +88,125 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `ced8030` |
-| Jest | **6,989 passed**, 1 skipped, **0 failed**, **478 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `f1871a9` |
+| Jest | **6,996 passed**, 1 skipped, **0 failed**, **479 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
-| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008 |
+| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008. **SHARDED 2026-09-18 (`dffc86e` + `f1871a9`)** — two runners, `--shard=k/2`, merged with `merge-reports`. **CONFIRMED on run 659 (`f1871a9`), which prints the combined total itself:** `e2e MERGED TOTAL — 1009 passed · 207 skipped · 0 failed · 0 flaky`. Shard 1 **12m33s**, shard 2 **14m50s**, merge 26s, whole workflow **16m37s** against 29m20s unsharded (run 658, the first sharded run, measured 12m22s / 14m26s / 16m20s). The e2e step went **27.0 -> ~14.5 min, a 46% cut**. `workers: 2` is UNCHANGED — each shard runs two workers on its own machine, so the 2026-08-06 flake fix is untouched |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (fourteenth entry, same day) — e2e: 27 minutes to 14, and the fix's own first run caught the rest
+
+Commits `dffc86e` `f1871a9`. **479 suites / 6,996 tests.** `verify:push` green on
+all five. CI runs **658** and **659** both green; 659 is the one that prints the
+combined total: `e2e MERGED TOTAL — 1009 passed · 207 skipped · 0 failed · 0 flaky`.
+
+### The constraint, measured before touching anything
+
+Parsed all 1009 test timings out of run 656's job log:
+
+```
+52.6 min of test work  ÷  workers: 2  =  27.0 min wall
+parallel efficiency 1.95x of 2 workers — the workers are SATURATED
+```
+
+That efficiency number is what ruled out the cheap fixes rather than my
+guessing. `fullyParallel` is unset so tests inside one file run serially — but
+with no idle worker slots there is nothing to reclaim. The `waitForTimeout`
+sleeps total only **~3-4 min** across the whole matrix; I expected more and was
+wrong. The only way through is more parallelism.
+
+### And the job was 3 minutes from its own timeout
+
+The comment on that job read "~14 min end to end" and was true when written. The
+matrix had since doubled, to **27.0 against `timeout-minutes: 30`** — a 10%
+margin on a repo that auto-deploys from main, where one slow runner turns a
+green build into a false red and costs a full re-run. Sharding fixed it as a
+side effect.
+
+### The result
+
+| | before | after |
+|---|---|---|
+| e2e step | 27.0 min | **14.4 min** (longest shard) |
+| whole workflow | 29m 20s | **16m 20s** |
+| CI minutes | ~27 | ~34 |
+
+**`workers: 2` is unchanged.** Three workers on the 4-vCPU runner would have
+been free, and would have reversed a deliberate fix — two runs at the same SHA
+produced DISJOINT failure sets on 2026-08-06. Each shard runs two workers on its
+own machine, so the flake posture is untouched. That is the whole appeal.
+
+**`boardMatrix.spec.mjs` was deliberately not cut** — 690s, 22% of all test
+time, the obvious target. Its probes are pinned-geometry and fold-peek, so it
+genuinely earns all seven viewports. Cutting the biggest number would have cut
+the most geometry-sensitive coverage in the repo.
+
+### Carry forward: merge-reports cannot be the verdict
+
+MEASURED against a deliberately failing spec:
+
+```
+playwright test          on a failing spec  -> exit 1
+playwright merge-reports on that same blob  -> exit 0
+```
+
+The merge step alone paints a red matrix green. The verdict comes from
+`needs.e2e-shard.result` in an explicit failure step, with `if: always()` so a
+failed shard cannot leave the merge job merely SKIPPED — a skipped required
+check reports neutral, not red, which is how a required check quietly stops
+being one. The job keeps the name `e2e` so anything pinned to it still resolves.
+
+### The fix's own first run caught the next defect
+
+Sharding worked; the merge job printed **no total**. Its output stopped at test
+611 of 1216 with no summary line — so it reported neither the per-test detail
+nor the combined total, which was half of why it exists. Reproduced locally:
+
+```
+--reporter=list  ->  3 lines, no summary
+--reporter=json  ->  {"expected":7,"skipped":5,"unexpected":0,"flaky":0}
+```
+
+`list` streams for a terminal and loses its output when stdout is a pipe.
+`f1871a9` merges to json and `hostv2/scripts/e2eTotal.mjs` prints the total —
+and fails on a merged report carrying failures OR containing zero passing
+tests. That second case is the one worth having: an empty or half-merged blob
+set otherwise sails through as "0 failures".
+
+### Two guards, and what they refused
+
+`everyShardRuns.test.js` pins the shard topology. The count lives in two places
+— `matrix: shard: [1, 2]` and `--shard=${{ matrix.shard }}/2` — and bumping the
+denominator while leaving the matrix alone means a third of the suite is never
+executed by anybody, every job green. Red-proofed four ways, each failing
+exactly one test.
+
+**`textGateRatchet` refused the first version of that gate and was right.** Two
+things came out of it, both recorded because the reasoning generalises:
+
+- The reporter assertion was a regex over `playwright.config.mjs`. jest cannot
+  execute that tree, so it proved the file CONTAINS a ternary, not that the
+  ternary evaluates. It moved to `test/shardReporter.test.mjs` under the vitest
+  seam, which imports the config and reads what it produced.
+- The ratchet then still counted the jest gate at 43/42, because its predicate
+  is `readFileSync && includes('hostv2')` — a SUBSTRING match, and the file only
+  said the word in prose. **The baseline was NOT bumped**: that would have
+  recorded a false fact and permanently loosened a real guard. Tightening the
+  predicate to a path match was measured too and dropped THREE existing gates —
+  trading a false positive for false negatives. The word came out of the comment
+  instead.
+
+`js-yaml` was promoted from transitive to an explicit devDependency: the gate
+parses the workflow rather than regexing it, and a parser present only by a
+dependency's grace is the lockfile class `seamRunsInCi` already guards.
 
 ## FIXED 2026-09-18 (thirteenth entry, same day) — 15% of host-facing decision copy is a functional string
 
