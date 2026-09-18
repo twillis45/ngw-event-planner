@@ -89,7 +89,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `01714b33` |
-| Jest | **6,535 passed**, 1 skipped, **0 failed**, **458 suites** (re-measured 2026-09-18, seventh entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **6,857 passed**, 1 skipped, **0 failed**, **466 suites** (re-measured 2026-09-18, eighth entry — five parallel lanes). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -101,6 +101,84 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (eighth entry, same day) — five lanes in parallel: 466 suites / 6,857 tests
+
+Four subagents on disjoint file sets plus my own shell lane. Ownership was
+partitioned by FILE, which is what let five editors work one tree without a
+single collision. Commits `90344a5`, `f759e18`, `406e99d`, `fa9f372`, `8038fc6`.
+
+**Carry this forward before the findings: an agent report is evidence, not a
+verdict.** Three times today a conclusion needed checking and three times the
+check paid.
+
+| Who checked whom | Outcome |
+|---|---|
+| Agent → me | I passed on a stale "this finding is latent". It measured: a **blank vendor category** falls through to the `OTHER` playbook, which *does* declare the promise. Host-reachable, not latent |
+| Me → agent | Its follow-up recommendation (drop the shell's `!ha.overwhelm` fold gate) would have started folding in **9 of 21 states**, seasoned hosts included, bypassing its own small-pile control. Declined, reasoning pinned at the gate |
+| Agent → its own test | A negative control caught a real error in the test itself — `getActionableNextStep` reads `sourceCategory`, not `category`. Eight assertions had been passing against a generic fallback |
+
+### The lanes
+
+**Vendor vocabulary (`90344a5`).** Ten private copies of "is this vendor booked"
+retired across nine files. `'Paid'` was the hole every one shared. Closeout went
+from *"All wrapped up"* to *"1 thing left"* over a $6,000 outstanding balance;
+silent vendors 6 → 2. The closeout fix is **not** a word-list swap — a status
+should not decide whether money is settled, so it now asks `vendorMoney` whether
+a balance is outstanding, catching a deposit paid under a `Considering` status
+that no word list could. The `'Partial'` phantom is written by nothing in the
+repo, but reached a store through CSV intake and rendered an amber PARTIAL badge
+while `isVendorBooked` answered false on the same screen. Intake now coerces with
+a warning naming the planner's own word — the house pattern already used on the
+guest side. **Reachability was traced, not assumed:** of ten sites exactly one
+ships to a host today.
+
+**Host engine (`f759e18`).** `blocks` was **deliberately not wired in**, and the
+measurement is the deliverable: 46 of 471 entries name a real decision (vs 67 of
+67 for `dependsOn`), it sits on 92% of rows, and giving it the obvious bump moved
+8 rows of 249. It is a domain-tag vocabulary, not a dependency graph. The
+first-timer fold now fires — 0/45 → 20/45 at T-45, still 0/45 for a host who said
+nothing. Nine strings asserting the host is alone, fixed; the design rule worth
+keeping is that **`helperCount` is `known` only when positive** — zero is silence,
+not evidence of being alone, so the app can never derive "you're on your own"
+from nothing.
+
+**Parser (`406e99d`).** The town survives — bare ZIP and bare city both resolve —
+**without inventing a state**. Admission is a curated whitelist, not a loosened
+regex, and `state` is always null even for a name unique in the list: `Arlington`
+appears once (TX) because Arlington VA is absent, and "unique in a 240-row list"
+is not "unique in America". 30 junk strings must stay town-less, including `Vida`
+— a real US place, still refused, which is why the 29,738-row list was rejected.
+
+**Money (`fa9f372`).** 17 records, 116 numbers, **0 grounded** — and no citation
+was invented to change that. The predicate checks the registry rather than the
+adjective, so an unsourced constant cannot pass by editing its tier. Three
+refusals are on the record, including that `SOURCING_TIERS` does not reproduce
+from the table said to back it (mean costco 0.706 vs shipped 0.85). **98,280
+evaluations captured before and after prove no dollar moved.**
+
+**Shell (`8038fc6`).** An invented headcount no longer reaches a vendor; absence
+is no longer recorded as an answer; the arrival roster stopped dropping
+`Booked`/`Paid` vendors; national prices stopped presenting as unqualified; the
+draft sheet's private bracket rule retired ({2,60} against the guest gate's
+{2,80} — a 65-char blank was withheld from guests *and* drew no warning).
+
+### The ratchet got paid down
+
+`textGateRatchet` went **36 → 42 today**, five bumps, each logged as "the seam
+needs widening". This session's seam fix is the first entry that did something
+about it: the rule moved out of four `...( ? : {})` spreads inside hostv2 into
+`lib/travelFieldsToPersist.js`, and got **16 behavioural tests and no bump**.
+The fix for an untestable rule is to move the rule, not to assert on the source
+that holds it.
+
+**NOT runtime-verified:** the draft-sheet notice render and the rows-only budget
+branch both need states I could not drive open. Said plainly rather than folded
+into "QA performed".
+
+**Next:** the per-head table is the highest-leverage target left — one dated
+per-head survey registered in `MONEY_SOURCES` would promote the largest number a
+host sees. Then `perHeadFallback`: delete it or turn it into a refusal.
 
 ## FIXED 2026-09-18 (seventh entry, same day) — HOST REPORT: "Nothing needs you today" over three past-due rows
 
