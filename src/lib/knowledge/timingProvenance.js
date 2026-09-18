@@ -79,6 +79,19 @@ export const TIMING_SOURCES = {
     fetched: '2026-08-21',
     claim: 'Party-planning timeline guide (2026): start the planning timeline at least 8 weeks out for best availability; "4 to 8 weeks is the sweet spot" for a standard party, and popular dates — holidays and in-demand weekends — book earliest, so the conservative end of the window wins for a date-competitive holiday weekend.',
   },
+  // Registered 2026-09-18 for the cookouts' fire_type decision. All three
+  // cookout playbooks hardcoded one fire-up lead ("Fire up the grill ~45 min
+  // before") and a fuel-blind "check fuel level" task, so a gas host waited
+  // far longer than needed and a charcoal host got no chimney lead at all.
+  'grill-preheat-2026': {
+    org: 'Outdoor Cooking Lab gas-vs-charcoal comparison (2026-06-18) and Grill Theory charcoal-vs-gas buying guide (2026-06-23), with Serious Eats charcoal-vs-gas definitive guide as the older third reading',
+    url: 'https://outdoorcookinglab.com/blog/gas-vs-charcoal-grill/',
+    corroboratingUrl: 'https://grilltheoryco.com/posts/charcoal-grill-vs-gas-grill-which-to-buy',
+    fetched: '2026-09-18',
+    sourceClass: 'independent',
+    claimType: 'planning_guidance',
+    claim: 'A GAS grill preheats in 5-10 minutes; all three publishers give the same figure. CHARCOAL lit in a chimney starter needs 15-20 minutes (Outdoor Cooking Lab) or 15-25 (Grill Theory) for the coals to ash over and reach cooking temperature, and Serious Eats puts the whole charcoal setup at about 30 minutes end to end because handling lit coals is part of it. The chimney is what makes that number achievable - the same sources note lighter fluid is faster but leaves off-flavours in the food. So the two fuels differ by roughly 15 minutes of unavoidable lead.',
+  },
 };
 
 // Category → grounding. `pattern` matches the decision's id + label; `antiPattern`
@@ -245,20 +258,6 @@ export function resolveTimingProvenance(decision) {
     sources: cat.sources.slice(),
     claim: cat.claim,
     resolvedBy: 'timing-category-resolver',
-    // Registered 2026-09-18 for the cookouts' fire_type decision. All three
-  // cookout playbooks hardcoded one fire-up lead ("Fire up the grill ~45 min
-  // before") and a fuel-blind "check fuel level" task, so a gas host waited
-  // four times longer than needed and a charcoal host got no chimney lead at
-  // all. Three publishers agree on both numbers.
-  'grill-preheat-2026': {
-    org: 'Outdoor Cooking Lab gas-vs-charcoal comparison (2026-06-18) and Grill Theory charcoal-vs-gas buying guide (2026-06-23), with Serious Eats\' charcoal-vs-gas definitive guide as the older third reading',
-    url: 'https://outdoorcookinglab.com/blog/gas-vs-charcoal-grill/',
-    corroboratingUrl: 'https://grilltheoryco.com/posts/charcoal-grill-vs-gas-grill-which-to-buy',
-    fetched: '2026-09-18',
-    sourceClass: 'independent',
-    claimType: 'planning_guidance',
-    claim: 'A GAS grill preheats in 5-10 minutes; all three publishers give the same figure. CHARCOAL lit in a chimney starter needs 15-20 minutes (Outdoor Cooking Lab) or 15-25 (Grill Theory) for the coals to ash over and reach cooking temperature, and Serious Eats puts the whole charcoal setup at about 30 minutes end to end because handling lit coals is part of it. The chimney is what makes that number achievable — the same sources note lighter fluid is faster but leaves off-flavours in the food. So the two fuels differ by roughly 15 minutes of unavoidable lead, which is the difference between a host standing over a cold grate and one who started on time.',
-  },
 };
 }
 

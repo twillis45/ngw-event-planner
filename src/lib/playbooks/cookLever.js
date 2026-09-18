@@ -51,9 +51,15 @@ export function cookLeverOf(pb) {
   // Refuse it here rather than let it look configured. cookLeverIntegrity.test.js
   // asserts no playbook ships one.
   if (!parent || !Array.isArray(parent.options)) return null;
-  const answers = L.hostCooks.filter((a) => parent.options.includes(a));
-  if (!answers.length) return null;
-  return { decision: L.decision, hostCooks: answers, kind: L.kind === 'grill' ? 'grill' : 'indoor', parent };
+  // ALL-OR-NOTHING, deliberately. Narrowing to the answers that still match was
+  // the first version and it hides exactly the failure worth catching: rename one
+  // option and the lever quietly covers fewer hosts — or, if the renamed one was
+  // the only match, drops the question and all five tasks — with the suite still
+  // green. A lever that no longer describes its own playbook is broken, not
+  // smaller, so it resolves to null and cookLeverIntegrity fails loudly.
+  const missing = L.hostCooks.filter((a) => !parent.options.includes(a));
+  if (missing.length) return null;
+  return { decision: L.decision, hostCooks: L.hostCooks.slice(), kind: L.kind === 'grill' ? 'grill' : 'indoor', parent };
 }
 
 /** The decision itself — `cook_method` or `fire_type`, gated to the host-cooks answers. */

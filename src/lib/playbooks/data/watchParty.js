@@ -447,7 +447,7 @@ const watchParty = {
     // the equipment differ, and the old single label implied an oven for all five.
     { id: 't_cook', milestoneId: 'event', phase: 'food', label: 'Cook the hot food so everything is OUT and READY ~30 min before kickoff', when: 'T0 -1:30',
       copyByAnswer: { cook_method: {
-        'Grill or smoker outside': 'Light the grill with time to spare — food OUT and READY ~30 min before kickoff, and you back inside with it',
+        'Grill or smoker outside': 'If you are grilling, light it with time to spare — food OUT and READY ~30 min before kickoff, and you back inside with it',
         'Slow cooker or warming tray': 'Hot dishes should already be holding by now — taste, adjust, and move them to the serving spot',
         'Air fryer, in batches': 'Start the batches — first trays go into a low oven to hold while the rest cook',
         'Store-bought hot or delivered': 'Collect or receive the food, get it onto serving trays, and have it OUT ~30 min before kickoff',
@@ -621,7 +621,7 @@ const watchParty = {
     // r_grill_cold is Watch-Party's OWN: missing the game is a cost no other
     // playbook has. The generic carbon-monoxide risk that sat beside it moved to
     // playbooks/cookLever.js, where every indoor playbook gets it from one copy.
-    { id: 'r_grill_cold', trigger: 'Grilling outside means missing the game — and cold slows the grill down', severity: 'med', mitigation: 'Start earlier than you would in summer — cold air and a cold grate both slow the cook, and no published figure says by how much, so give yourself margin rather than a number. Get a speaker or a phone stream to the door, and hand one guest the job of calling the score.', whenChoice: { id: 'cook_method', in: ['Grill or smoker outside'] } },
+    { id: 'r_grill_cold', trigger: 'Grilling outside means missing the game — and cold slows the grill down', severity: 'med', mitigation: 'Start earlier than you would in summer — cold air and a cold grate both slow the cook, and no published figure says by how much, so give yourself margin rather than a number. Get a speaker or a phone stream to the door, and hand one guest the job of calling the score.', whenChoice: [{ id: 'menu', in: ['Wings + chips/dip', 'Chili bar'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
     { id: 'r_seating', trigger: 'Not enough seats / bad sightlines', severity: 'med', mitigation: 'Borrow extra chairs; arrange seating toward the screen before anyone arrives.' },
     { id: 'r_trash', trigger: 'Trash/recycling overflows, surfaces get sticky', severity: 'low', mitigation: 'Put out a clearly-marked recycling bag for cans; swap trash bags at halftime; keep paper towels at the food table.', copyByAnswer: { mitigation: { major_event: Object.fromEntries(FORMAT_NO_HALFTIME.map((k) => [k, 'Put out a clearly-marked recycling bag for cans; swap trash bags partway through; keep paper towels at the food table.'])) } } },
     { id: 'r_derby_time', trigger: 'Guests miss the actual race — it is over in about two minutes', severity: 'med', mitigation: 'Post time is announced well ahead — call it out 10 minutes before, get everyone off their phones and in front of the screen, and hold any toast until after the race, not during it.', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] } },

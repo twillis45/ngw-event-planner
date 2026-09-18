@@ -177,11 +177,11 @@ describe('1 — the source universe is what we think it is', () => {
   // retail-2026`, `strawberries-cream-retail-2026` — the one claim in that pass
   // that earned tier 'researched', for the same reason ballpark snacks did:
   // its sources price the actual home-shopping ingredients.)
-  test('20 axes, 415 source identities — verified, not assumed', () => {
+  test('20 axes, 416 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(415);
-    expect(unionIds().size).toBe(415);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(416);
+    expect(unionIds().size).toBe(416);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

@@ -58,8 +58,8 @@ const backyardBbq = {
     { id: 't_weather', milestoneId: 'bbq_rsvp', phase: 'guest', label: 'Check the forecast; confirm shade/rain plan; loose headcount', when: 'T-3d' },
     { id: 't_nonperish_shop', milestoneId: 'bbq_shop_nonperish', phase: 'shopping', label: 'Drinks, charcoal/propane, disposables, bug spray, sunscreen', when: 'T-3d' },
     { id: 't_fresh_shop', milestoneId: 'bbq_shop_fresh', phase: 'shopping', label: 'Proteins, buns, produce, condiments', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'bbq_setup', phase: 'food', label: 'Marinate proteins; prep cold sides; check fuel level', when: 'T-1d evening' },
-    { id: 't_grill', milestoneId: 'event', phase: 'food', label: 'Fire up the grill ~45 min before; cook in batches', when: 'T0 -0:45' },
+    { id: 't_prep', milestoneId: 'bbq_setup', phase: 'food', label: 'Marinate proteins; prep cold sides', when: 'T-1d evening' },
+    { id: 't_grill', milestoneId: 'event', phase: 'food', label: 'Fire up the grill on the lead your fuel needs — the fire task on your checklist has the number; cook in batches', when: 'T0 -0:45' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the grill, pack leftovers, bag trash + recycling, fold chairs/canopy', when: 'T0 +4:00' },
   ],
 

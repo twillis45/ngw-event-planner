@@ -2475,7 +2475,12 @@ function friendlyDate(d) {
 // the board must not render a dead arrow for them (it would route to a nonexistent
 // food line and do nothing — an affordance that lies). Keep this in lockstep with the
 // `choices` filter in playbookFoodPlan — both must use this one function.
-const MENU_DECISION_RE = /food|menu|drink|beverage|potluck|cater|spread|bar|dish|fish|fillings?|meat|protein|reveal/;
+// `fire_type` joined this list 2026-09-18: it is a food decision by every
+// meaning that matters, but its id and label say 'fire' and 'cooking on',
+// so the pattern missed it — and the three cookouts' food card then
+// disagreed with their Decisions board about the same event, which is the
+// exact divergence the cook-lever work exists to remove.
+const MENU_DECISION_RE = /food|menu|drink|beverage|potluck|cater|spread|bar|dish|fish|fillings?|meat|protein|reveal|fire_type|cook/;
 export function isMenuDecision(d) {
   if (!d || !Array.isArray(d.options) || d.options.length === 0) return false;
   const hay = `${d.id || ''} ${d.label || ''} ${(d.blocks || []).join(' ')}`.toLowerCase();
