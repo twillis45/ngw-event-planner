@@ -3229,7 +3229,11 @@ export function playbookDecisionBoard(event, asOf, profile) {
     const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, militaryContext, militaryGrounded, destinationContext, destinationGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
-      locked.push({ id: d.id, label: decisionShortLabel(d.label), ask: authoredQuestion(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
+      // `d.ask ||` — the open branch below has always honoured an authored ask
+      // and this one did not, so a decision that authored its own question lost
+      // it the moment it locked. Found while correcting the schema spec against
+      // the code (2026-09-18); worth more now that the corpus is gaining asks.
+      locked.push({ id: d.id, label: decisionShortLabel(d.label), ask: d.ask || authoredQuestion(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
       continue;
     }
 

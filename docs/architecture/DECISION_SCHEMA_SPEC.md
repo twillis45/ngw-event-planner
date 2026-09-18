@@ -1,6 +1,7 @@
 # Decision & Playbook Schema Spec — the intelligence a decision must carry
 
-**Status:** design spec (2026-07-15) · **Owner doctrine:** every decision — authored in a
+**Status:** design spec (2026-07-15) · **status column re-measured against the corpus
+2026-09-18** · **Owner doctrine:** every decision — authored in a
 playbook or made by the app for the host — must declare what it **reads** from the engines
 (in), how it is **grounded** (intelligence + provenance), and what it **impacts** (out). No
 standalone picks. A decision missing any of the three is incomplete and should be flagged by
@@ -75,33 +76,58 @@ Everything is **nullable and additive** — no existing playbook breaks; an unse
 
 Format: `field` · *level* · type · **reads → grounds → impacts (engine)** · status today.
 
+> **The status column was stale, and a stale spec is worse than no spec** — it is
+> planned against. Five fields it listed as BLANK had shipped, in some cases months
+> earlier, and three more shipped during the 2026-09-18 session. Every entry below now
+> carries a MEASURED count (`scripts/` audit over the 45 playbook data files), not a
+> recollection. Counts are occurrences of the authored key across `src/lib/playbooks/data/`.
+>
+> **SHIPPED** means the field is authored and a reader consumes it. **BLANK** means zero
+> occurrences in the corpus. A field can be authored and still be inert — `blocks` is
+> authored 250 times and contributes nothing to the score, which is measured and
+> deliberate (see the note on it below); "authored" and "load-bearing" are different
+> claims and this catalog now distinguishes them.
+
 ### A. Ranking & priority — the missing axis (Shape 3, but cheap; do early)
-- `weight` · decision · `'low'|'med'|'high'` · **— → authored+Provenance → decision scorer** · BLANK. How consequential the decision is (venue vs place cards). Distinct from `risk.severity` (delay-only).
-- `reversibility` · decision · `'reversible'|'costly'|'locked'` · **— → authored → urgency + budget** · BLANK. A deposit-locked pick ≠ a change-anytime pick.
-- `emotionalWeight` · decision · `'low'|'med'|'high'` · **— → authored → scorer + tone** · BLANK. Floats the tribute/toast above logistics.
+- `weight` · decision · `'low'|'med'|'high'` · **— → authored+Provenance → decision scorer** · **SHIPPED — 261 across 39 playbooks.** How consequential the decision is (venue vs place cards). Distinct from `risk.severity` (delay-only).
+- `reversibility` · decision · `'reversible'|'costly'|'locked'` · **— → authored → urgency + budget** · **SHIPPED — 261 across 39.** A deposit-locked pick ≠ a change-anytime pick.
+- `emotionalWeight` · decision · `'low'|'med'|'high'` · **— → authored → scorer + tone** · **SHIPPED — 261 across 39.** Floats the tribute/toast above logistics.
 - `blastRadius` · decision · number (DERIVED from `blocks`/`dependsOn`) · **graph → — → scorer** · derivable now. How many downstream things it unblocks.
+
+### A2. Fields the corpus authors that this spec never listed
+Measured 2026-09-18. They exist, they are load-bearing, and a catalog that omits them
+sends a reader looking for a gap that is already filled.
+
+- `dependsOn` · decision · `decisionId[]` · **— → authored → gateHolder + the board's unlock count** · **SHIPPED — 491 across 35, and 100% name a real decision.** This is the real dependency graph.
+- `blocks` · decision · `tag[]` · **— → authored → route + menu/beverage detection** · **AUTHORED 250 across 40 — and contributes ZERO to the score, deliberately.** Measured: only 46 of 471 entries name a real decision (against 67 of 67 for `dependsOn`); it sits on 92% of rows, so it cannot discriminate; giving it the obvious bump moved 8 rows of 249, and would mostly promote rows that gate nothing. It is a DOMAIN-TAG vocabulary, not a dependency graph. Not dead — it drives the Vendors deep link and menu/beverage detection. Do not "fix" this without re-reading `blocks IsNotAScore` first.
+- `priorityBasis` · decision · `string` · **— → authored → rankReason** · **SHIPPED — 262 across 39.**
+- `defaultWhy` · decision · `string` · **— → authored → why THIS option, not why the decision matters** · **SHIPPED — 135 across 34.** Two readers used to fall back to `why`, which answered a different question 127 times; the fallback is deleted.
+- `whenChoice` · decision option · gate · **— → authored → conditional rows** · 119 across 13.
+- `costFactors` / `affects` · decision · **— → authored → the money + sync layer** · 51 each, ~20 playbooks. 34 of 51 cost factors are tier `synthesized`, and none of that self-declared weakness reaches a host surface yet.
+- `ask` · decision · `string` · **— → authored → `heroAskFor`** · **7 authored explicitly.** The board fills the rest from labels authored with a `?` (`ask: d.ask || authoredQuestion(d.label)`), which is why ~61% of board rows carry one. The 39% that do not fall through to a prose ladder that classifies by domain and title — and misfires whenever a surface's domain is not its job.
+- `copyWhen` · decision · `[{when, why?, defaultWhy?, rationale?}]` · **facts → authored → conditional copy** · **SHIPPED 2026-09-18 — 5.** Evaluated by the same `clauseHolds` as `recommendedWhen`, same unknown-refuses contract.
 
 ### B. Timing — with provenance + coupling (Shapes 1 & 2)
 - `when` · decision · `'T-Nd'` · existing (the deadline). Keep.
-- `timingProvenance` · decision · `Provenance` · **— → grounds `when` → compression/taskLead** · BLANK. `T-7d` is currently a guess with no source.
+- `timingProvenance` · decision · `Provenance` · **— → grounds `when` → compression/taskLead** · **2 of ~260 (0.8%).** Effectively blank: nearly every `T-Nd` deadline is still a guess with no source, and those deadlines drive the urgency ladder and every "good to lock" line the host reads.
 - `headsUp` · decision · number days (OPTIONAL override) · **— → authored → approach-window** · BLANK. Default is compression-derived (see `standardRunway`); this overrides per decision.
 - `vendorLead` · decision · `{ inheritsFrom: vendorCategory }` · **vendor engine → — → timing** · GAP. A decision that `blocks:['vendors']` inherits how far ahead that vendor books as its real deadline.
 - **playbook** `standardRunway` · number days + `Provenance` · **— → grounds compression → workflowCompression** · PARTIAL (lives in generic `STANDARD_LEAD_DAYS` with gaps — no Crab Feast). Move to playbook meta, sourced.
 
 ### C. Do-it-for-me / how the host decides (Shape 3 — powers propose-don't-ask)
-- `difmCapable` · decision · `'can-derive'|'needs-host'` · **engines → — → auto-propose vs ask** · BLANK. The signal that tells the app when to fill a grounded default (sides) vs ask (menu taste, a real quote).
+- `difmCapable` · decision · `'can-derive'|'needs-host'` · **engines → — → auto-propose vs ask** · **SHIPPED — 262 across 39.** The signal that tells the app when to fill a grounded default (sides) vs ask (menu taste, a real quote).
 - `defaultConfidence` · decision · `'fallback'|'recommendation'|'strong'` · **— → authored → how assertively we propose** · BLANK.
-- `recommendedWhen` · decision · `[{ when: condition, pick: option }]` · **budget/count engines → — → the recommendation** · BLANK. Best pick adapts to context instead of a static default.
+- `recommendedWhen` · decision · `[{ when: condition, pick: option }]` · **budget/count engines → — → the recommendation** · **MECHANISM SHIPPED 2026-09-18, AUTHORING AT 3.** `playbooks/recommendedPick.js` evaluates it against a fact bag built from the real engines, and an UNKNOWN fact refuses its rule rather than comparing as zero. The engine is live; the corpus has barely started using it. Best pick adapts to context instead of a static default.
 - `effort` · decision · `'quick'|'compare'|'research'` · **— → authored → lead-time needed + help offer** · BLANK.
 - `researchActions` · decision · `[{ step, why }]` · **— → authored → a real "help me decide" checklist / DIFM task** · PARTIAL (prose in `why` today).
-- `decisionType` · decision · `'pick-one'|'multi'|'count'|'yes-no'|'free'` · **— → — → UI render + validation** · BLANK (`options` implies pick-one).
+- `decisionType` · decision · `'pick-one'|'multi'|'count'|'yes-no'|'free'` · **BLANK — 0 occurrences.** Everything is implicitly pick-one, and it bites: the repast headcount is a *count*, surprise/announced is *yes-no*, dietary is *multi*. Forcing a count into chips is why that headcount had to ship as a band-string.
 - `relevantWhen` · decision · condition (generalizes `whenChoice`) · **event facts → — → surfacing** · PARTIAL. Childcare only if kids; alcohol only adult events; buffet-vs-plated matters more at 50 than 8.
 
 ### D. Consequence graph — the doctrine's "out" (Shape 2)
 - `affects` · decision · existing (cost drivers). Keep.
 - `impacts` · decision · `('budget'|'shopping'|'schedule'|'guestComms'|'seating'|'vendors'|'risk')[]` · **— → — → keep those surfaces in sync** · BLANK for non-cost. Alcohol hits shopping + liability + comms, not just cost.
 - `causesRisk` · decision · `riskId` · **— → — → risk engine** · BLANK. "DIY the food" raises a day-of-overwhelm risk; today risk is a separate authored list, unlinked to the choice that causes it.
-- `guestFacing` · decision · bool · **— → — → the provenance gate** · BLANK. Does this produce something guests must be told (start time yes, DIY-vs-cater no)? Gates derived values out of invites until confirmed.
+- `guestFacing` · decision · bool · **— → — → the provenance gate** · **SUPERSEDED 2026-09-18, not built as specced.** The spec imagined a decision flag; the measured leak was a TEMPLATE IN A TEXT FIELD — a bracketed draft written straight into `parkingNotes` and printed verbatim on the invite. `lib/guestFacing.js` gates on the text itself (an unfilled `[blank]` is our handwriting, not the host's), which needs no field retrofitted and cannot be forgotten by a new writer. The decision flag would today be a gate with nothing to gate.
 
 ### E. Human & emotional (Shape 3 — true blanks)
 - `heartMomentDecisionId` · playbook · links a `heartMoment` → the decision that delivers it · **— → — → momentProtect + scorer** · BLANK. So picking a default that kills the moment warns the host.
@@ -111,7 +137,7 @@ Format: `field` · *level* · type · **reads → grounds → impacts (engine)**
 
 ### F. Host state (Shape 3 — true blanks; wire the one that exists)
 - `hostExperienceLevel` · event/profile · `'first-time'|'some'|'seasoned'` · **hostIntel → — → DIFM intensity + compression + copy verbosity** · BLANK. App assumes "solo first-timer" universally.
-- `hostCapacity` · event · `'solo'|'has-help'|'coordinator'` · **— → — → DIFM load** · BLANK. Retirement's own `why` admits "one host can't run a buffet, tend bar, AND run the program" — no field captures whether they have help.
+- `hostCapacity` · event · `'solo'|'has-help'|'coordinator'` · **— → — → DIFM load** · **SHIPPED 2026-09-18 — 10 uses across 5 playbooks.** It is now a fact key in `recommendedPick.js` alongside `helperCount`, and nine authored strings that asserted the host was alone stand down on either signal. The rule worth knowing: **`helperCount` is `known` only when positive** — one named helper is evidence of help, zero is silence, so the app can never derive "you're on your own" from nothing.
 - `hostConfidenceNeeded` · decision · `'low'|'high'` · **— → authored → hand-holding intensity** · BLANK.
 - `hostDifficulty` · playbook meta · existing — **CONSUME IT.** Authored on all 40, read by nothing. Wire → DIFM intensity + reassurance pacing.
 - `hostWorry` · captured event input · free/enum · **host → — → reassurance voice** · BLANK. Reassurance is computed from objective readiness only; capture what they fear.
