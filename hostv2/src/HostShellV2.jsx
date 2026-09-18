@@ -75,7 +75,7 @@ import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth } from '@app/lib/dates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
-import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
+import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
 // playbookDayOfChecklist was a finished engine with ZERO hostv2 imports — the
 // frozen CRA rendered it and the shipping shell never did (audit 2026-08-21).
 import { playbookDayOfChecklist } from '@app/lib/playbooks';
@@ -175,7 +175,7 @@ import { venueFor, setVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
-import { mayExhale } from '@app/lib/exhaleGate';
+import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { vendorObligations } from '@app/lib/vendorObligations';
 import { heartPlaceholders } from '@app/lib/heartPrompts';
@@ -3309,7 +3309,38 @@ export default function HostShellV2() {
   // The veto is scoped to MONEY on purpose. `worries` are deliberately non-blocking
   // heads-ups, and the CALM_CATEGORIES ruling (one calm item is still calm) stands. Money
   // is the one the board proved the checklist cannot see and must not talk over.
-  const calmVeto = (worries || []).find(w => w && String(w.category) === 'money') || null;
+  // ── AND THE ROWS THE HOST IS LOOKING AT (reported live 2026-09-18) ──────────
+  // "Nothing needs you today. Not matching todos, have items overdue." Measured:
+  // the snooze the shell writes is keyed by ACTION id (~:8561), and the step
+  // list's overdue verdict reads the per-ROW `task.snoozedUntil`. Two stores, one
+  // fact — so setting down the last few CARDS emptied the queue and granted calm
+  // while three rows below still read "past due". lib/exhaleGate carries the
+  // reasoning and the rule; the COUNT is the rows the STEPS SHEET actually prints
+  // a closed-window label over (~:16513 renders `taskDueLabel`), matched row for
+  // row — same `!done && !retired` filter, same resolved-step exemption.
+  //
+  // THE FIRST VERSION OF THIS COUNTED `upNext.filter(r => r.overdue)` AND WAS
+  // INERT. Two reasons, both worth keeping written down. `upNext` ends with
+  // `.filter(x => x.days >= 0).slice(0, 3)` — it is the "Coming up · dated, not
+  // urgent" list, so it EXCLUDES past-due rows by construction and its `overdue`
+  // flag can never be true. And it flagged rows with `taskIsOverdue`, the BLAME
+  // policy, which forgives a snooze and an unreachable lead — while the sheet's
+  // label derives from the raw due number and forgives neither. Green in jest,
+  // nothing on the screen. Driving the real app is what caught it.
+  const overdueShown = useMemo(() => {
+    try {
+      return (event.timeline || []).filter(t =>
+        taskWindowClosed(t, event) && !isTimelineStepResolved(t)).length;
+    } catch (_e) { return 0; }
+    // `event` alone: isTimelineStepResolved is a plain closure over this same
+    // event, rebuilt every render, so listing it would defeat the memo without
+    // adding a dependency the memo does not already have.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event]);
+  const calmVeto = calmVetoFor({
+    moneyWorry: (worries || []).find(w => w && String(w.category) === 'money') || null,
+    overdueCount: overdueShown,
+  });
   const mayBeCalm = mayExhale(listIsCalm, calmVeto);
 
   // ── ONE COMPLETENESS READ, ONE EXPIRY (board step 2) ────────────────────────
@@ -7909,6 +7940,18 @@ export default function HostShellV2() {
                           Mostly on course — {slipText}. Worth a look today.
                         </p>
                       );
+                    } else if (listIsCalm && calmVeto && calmVeto.kind === 'overdue-steps') {
+                      // THE VERDICT LINE READ THE UNVETOED PREDICATE TOO (2026-09-18).
+                      // Vetoing the calm POLE was not enough: this is the sentence that
+                      // renders under the headline, on `listIsCalm` alone, so a host who
+                      // had set the last cards down still got "All quiet — you're
+                      // genuinely set for now." directly above rows reading "9 days past
+                      // its window". Same fact, third author. It says the true thing now,
+                      // in the one wording exhaleGate owns, and points at the list rather
+                      // than leaving the host to find it.
+                      statusNode = <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
+                        {calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)} — still worth doing, or tick {calmVeto.count === 1 ? 'it' : 'them'} off below.
+                      </p>;
                     } else if (listIsCalm) {
                       statusNode = <p className="verdict">{solemn
                         ? 'Everything’s ready — nothing needs you today.'
@@ -8199,9 +8242,20 @@ export default function HostShellV2() {
                 );
               })()}
 
-              {queue.length === 0 && !(elegantMode && listIsCalm && !isPast && days !== null && days > 0) && !(elegantMode && isPast) && (
+              {/* `mayBeCalm`, not `listIsCalm` (2026-09-18). These two have to be
+                  the SAME gate: the calm pole renders on mayBeCalm while this
+                  fallback stood down on listIsCalm. That half-step was survivable
+                  only while calm could not be vetoed — the moment it could, a
+                  vetoed state got the pole withheld AND the fallback suppressed,
+                  and the hero would have rendered nothing at all. One predicate. */}
+              {queue.length === 0 && !(elegantMode && mayBeCalm && !isPast && days !== null && days > 0) && !(elegantMode && isPast) && (
                 <div className="empty">{isPast
                   ? 'The recap is below.'
+                  /* AN EMPTY QUEUE IS NOT A QUIET PLAN. The host set the CARDS
+                     down; the ROWS are still late. This is the sentence that says
+                     so, instead of the one that contradicts the list below it. */
+                  : (calmVeto && calmVeto.kind === 'overdue-steps')
+                  ? `${calmVeto.label} — in the list below.`
                   : worries.length
                   ? 'Nothing needs you right now — just the heads-ups below.'
                   : 'Nothing needs you right now — the basics are all settled.'}</div>

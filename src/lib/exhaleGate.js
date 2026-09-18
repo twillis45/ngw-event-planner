@@ -45,4 +45,65 @@ export function mayExhale(checklistDone, nextAction) {
   return !!checklistDone && !nextAction;
 }
 
+// ─── THE MIRROR CASE: AN EMPTY QUEUE IS NOT A QUIET PLAN ─────────────────────
+//
+// REPORTED LIVE 2026-09-18 ("Nothing needs you today. Not matching todos, have
+// items overdue"), then reproduced and measured:
+//
+//   the host taps "not now" on the last few cards
+//   -> the shell writes event.snoozed[ACTION id]        (HostShellV2 ~:8561)
+//   -> eventPlan moves those actions to `setAside`, nextActions = []
+//   -> listIsCalm is queue.length === 0                 -> TRUE
+//   -> the hero says "Nothing needs you today."
+//   -> the step list, one scroll below, still reads
+//        "Borrow the extra folding tables — 9 days past its window"
+//        "Print the parking map for the corner — 8 days past its window"
+//        "Pick up the propane and ice chests — 2 days past its window"
+//
+// because `taskIsOverdue` honours `task.snoozedUntil` — a per-ROW field on the
+// timeline entry — and the action snooze never writes it. TWO SNOOZE STORES, ONE
+// FACT: the host set down the CARDS, and the app read that as having set down
+// the WORK.
+//
+// THE FIX IS NOT TO SILENCE THE ROWS. Writing `snoozedUntil` onto the task when
+// its card is snoozed would make the contradiction disappear by making the app
+// stop calling real late work late — trading a visible lie for an invisible one.
+// The rows are right. The calm claim is what is wrong.
+//
+// So this is the mirror of mayExhale's own invariant. That rule says a CHECKLIST
+// may not license calm while the ENGINE still has something to say. This one says
+// the ENGINE going quiet does not license calm while a SURFACE THE HOST IS
+// LOOKING AT still says something is late. Same principle, other direction: the
+// quiet claim has to be true of the whole screen, not of one producer.
+//
+// PURE, and deliberately takes COUNTS rather than the event: the rows that matter
+// are the ones the shell actually RENDERS, after its own resolved-step filter. A
+// veto recomputed from `event.timeline` here would count rows the host cannot
+// see and raise an alarm they have no way to clear — worse than the defect.
+
+/**
+ * Why the screen may not claim quiet, or null when it may.
+ *
+ * @param {object} opts
+ * @param {object|null} opts.moneyWorry  an over-budget heads-up (the 2026-08-03
+ *   veto, unchanged): money is the one thing the checklist cannot see.
+ * @param {number} opts.overdueCount     past-due rows the host is being shown,
+ *   counted from the SAME list that renders them.
+ * @returns {{kind:string, count:number, label:string}|null}
+ */
+export function calmVetoFor({ moneyWorry = null, overdueCount = 0 } = {}) {
+  if (moneyWorry) return { kind: 'money', count: 1, label: 'money' };
+  const n = Number(overdueCount) || 0;
+  if (n > 0) {
+    return {
+      kind: 'overdue-steps',
+      count: n,
+      // The honest headline for the state, authored once here so the shell does
+      // not write a second wording of the same fact.
+      label: n === 1 ? '1 thing is past due' : `${n} things are past due`,
+    };
+  }
+  return null;
+}
+
 export default mayExhale;

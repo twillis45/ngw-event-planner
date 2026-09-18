@@ -95,7 +95,23 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // question two hundred lines apart, in different words. A behaviour test only
 // reaches the branches it renders, which is exactly how six copies survived a
 // green suite.
-const MAX_HOSTV2_TEXT_GATES = 41;
+// 41 -> 42 on 2026-09-18 for calmNeverOverOverdue.test.js — a HOST-REPORTED
+// defect ("Nothing needs you today. Not matching todos, have items overdue"),
+// reproduced in jest against the real engine before a line was changed.
+//
+// 10 of its 14 tests are executed behaviour, including both premises and a
+// negative control that ticks the rows off and proves the quiet comes back. The
+// 4 source tests exist because the first fix was INCOMPLETE and the sweep is what
+// found it: vetoing the calm pole left the verdict line under it still reading
+// the unvetoed predicate, so "All quiet — you're genuinely set for now" would
+// have rendered over three past-due rows anyway. Same fact, three authors in one
+// file. A behaviour test reaches the branches it renders; this claim is about
+// which predicate each of three branches READS, which is source by nature.
+//
+// One of the four is a claim about what the fix did NOT do — no `snoozedUntil` is
+// written onto a task row — and that one can only ever be a source assertion: it
+// pins the absence of the easier, dishonest fix.
+const MAX_HOSTV2_TEXT_GATES = 42;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

@@ -174,6 +174,29 @@ export function taskIsOverdue(task, event, now) {
   return taskWasReachable(task, event);
 }
 
+/**
+ * Is this row's window CLOSED — i.e. does the checklist print "N days past its
+ * window" over it?
+ *
+ * DELIBERATELY NOT `taskIsOverdue` (2026-09-18). That one is the BLAME policy: it
+ * forgives a snoozed row, and a row the event was created too late to ever reach.
+ * This is the DISPLAY fact — the same number `taskDueLabel` renders from — so a
+ * surface that needs to reason about what the host is being SHOWN reads this and
+ * cannot drift from the label sitting beside it.
+ *
+ * The distinction is load-bearing, and it was found the hard way: a calm-state
+ * veto built on `taskIsOverdue` measured green in jest and was INERT on the real
+ * screen, because the rows the host was reading as late were ones the blame
+ * policy had already forgiven. "Is the host being told this is late" and "is the
+ * host to blame for it being late" are two different questions, and the hero was
+ * answering the second while the list in front of them showed the first.
+ */
+export function taskWindowClosed(task, event, now) {
+  if (!task || task.done || task.retired) return false;
+  const due = taskDueInDays(task, event, now);
+  return due != null && due < 0;
+}
+
 /** Due today or in the next `within` days (default 3), and not already overdue. */
 export function taskIsDueSoon(task, event, within = 3, now) {
   if (!task || task.done) return false;
