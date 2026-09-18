@@ -78,6 +78,7 @@ const theCookout = {
       id: 'drinks',
       weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'A red drink for everyone plus a separate grown-folks section is what keeps it family-safe, but it is a cheap store call the app can default.', tier: 'reasoned' },
       label: 'Drinks — family + grown folks',
+      ask: 'Red drink and sodas for everybody — and a grown section?',
       options: ['Red drink + soda + water (family-friendly)', 'Add a grown-folks section (brown liquor + mixers, beer)', 'Full bar + punch'],
       default: 'Add a grown-folks section (brown liquor + mixers, beer)',
       defaultWhy:
@@ -93,6 +94,7 @@ const theCookout = {
       id: 'music',
       weight: 'low', reversibility: 'reversible', emotionalWeight: 'high', difmCapable: 'can-derive', priorityBasis: { rationale: 'Music is half of what makes it a cookout — a curated playlist is a free, swappable default, yet getting it right carries the whole feeling of the day.', tier: 'reasoned' },
       label: 'Music — DJ or playlist',
+      ask: 'Hire a DJ, or does somebody run the aux?',
       options: ['Curated playlist + good speaker', 'Hire a DJ', 'Designate a family DJ on the aux'],
       default: 'Curated playlist + good speaker',
       defaultWhy:
@@ -117,6 +119,7 @@ const theCookout = {
       id: 'shade_seating',
       weight: 'med', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'Shade and comfortable seating for the elders is a point of respect, not an afterthought, and rentals book ahead — the host sizes it to their space.', tier: 'reasoned' },
       label: 'Shade + seating for every age',
+      ask: 'Where do the elders and the babies sit, out of the sun?',
       options: ['Existing patio/yard shade', 'Pop-up canopies + chairs', 'Rent tent + tables + chairs', 'Reserve a park shelter'],
       default: 'Pop-up canopies + chairs',
       when: 'T-10d',

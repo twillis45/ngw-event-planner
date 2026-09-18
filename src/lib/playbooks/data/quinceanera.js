@@ -63,6 +63,7 @@ const quinceanera = {
     {
       id: 'venue',
       label: 'Choose the reception venue (salón / banquet hall)',
+      ask: 'A salón, a hotel ballroom, or the parish hall?',
       options: ['Banquet hall / salón de fiestas', 'Hotel ballroom', 'Community / parish hall', 'Outdoor or tented venue'],
       default: 'Banquet hall / salón de fiestas',
       when: 'T-270d',
@@ -92,6 +93,7 @@ const quinceanera = {
     {
       id: 'dress',
       label: 'Order the quinceañera ballgown and the court attire',
+      ask: 'Custom-made, off-the-rack with alterations, or an heirloom?',
       options: ['Custom / boutique ballgown', 'Off-the-rack ballgown + alterations', 'Family heirloom / borrowed gown'],
       default: 'Off-the-rack ballgown + alterations',
       when: 'T-240d',
@@ -109,6 +111,7 @@ const quinceanera = {
     {
       id: 'theme_colors',
       label: 'Pick the theme and color story',
+      ask: 'Which colors does she want everything built around?',
       options: ['Classic / fairytale', 'Single signature color', 'Cultural / regional motif', 'Modern / aesthetic'],
       default: 'Single signature color',
       when: 'T-210d',

@@ -51,6 +51,7 @@ const genderReveal = {
     {
       id: 'reveal_method',
       label: 'Reveal method (the hero moment)',
+      ask: 'Cake, a balloon box, confetti, or a powder cannon?',
       options: [
         'Cake / cupcakes (cut to colored inside)',
         'Balloon box (release pink/blue balloons)',
@@ -71,6 +72,7 @@ const genderReveal = {
     {
       id: 'secret_keeper',
       label: 'Who holds the sealed sex result',
+      ask: 'The baker, the party shop, or a friend who won’t be there?',
       options: ['Baker', 'Balloon / party shop', 'Trusted friend (not attending the surprise)'],
       default: 'Baker',
       when: 'T-18d',
@@ -85,6 +87,7 @@ const genderReveal = {
     {
       id: 'venue',
       label: 'Indoor or outdoor',
+      ask: 'The backyard, indoors, or an open park?',
       options: ['Backyard / outdoor', 'Indoor (home or rented room)', 'Park / open space'],
       default: 'Backyard / outdoor',
       when: 'T-18d',
@@ -99,6 +102,7 @@ const genderReveal = {
     {
       id: 'guestlist',
       label: 'Finalize guest list with the parents',
+      ask: 'Who do the parents-to-be want in the room?',
       options: [],
       default: null,
       when: 'T-14d',
@@ -113,6 +117,7 @@ const genderReveal = {
     {
       id: 'game',
       label: 'Guessing game / activity',
+      ask: 'A pink-vs-blue guessing board, guess cards, or just mingling?',
       options: ['Team Pink vs Team Blue guessing board', 'Guess-the-date + sex cards', 'Low-key mingling only'],
       default: 'Team Pink vs Team Blue guessing board',
       defaultWhy: 'The guessing board is the default because it gives guests something to do while everyone waits on the reveal, and it costs a board and some markers. Change it to low-key mingling if this crowd already knows each other well enough to just talk — that option is a real answer and it needs nothing set up.',
@@ -128,6 +133,7 @@ const genderReveal = {
     {
       id: 'beverage',
       label: 'Drinks (mocktails for the parent-to-be)',
+      ask: 'Mocktails and sodas only, or beer and wine alongside?',
       options: ['Mocktails + soft drinks only', 'Mocktails + soft drinks + beer/wine', 'Pink/blue punch bar'],
       default: 'Mocktails + soft drinks + beer/wine',
       defaultWhy: 'Mocktails with beer and wine alongside is the default because the pregnant guest of honor needs a genuinely good zero-proof pour, and making the mocktail the centerpiece does that whether or not anyone else is drinking. Change it to soft drinks only if alcohol is not right for this family or this room.',

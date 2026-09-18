@@ -63,6 +63,7 @@ const sweet16 = {
     {
       id: 'theme',
       label: 'Pick a theme / color story',
+      ask: 'Red carpet, neon, masquerade — or just her colors?',
       options: ['Hollywood / red-carpet glam', 'Neon / glow party', 'Masquerade', 'Aesthetic (e.g. pastel, Y2K)', 'No formal theme — just colors'],
       default: 'Aesthetic (e.g. pastel, Y2K)',
       when: 'T-75d',
