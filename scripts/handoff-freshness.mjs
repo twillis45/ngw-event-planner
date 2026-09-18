@@ -99,8 +99,35 @@ catch { /* git too old to know: treat as full, the strict reading */ }
 
 // Is it even a commit?
 let full;
-try { full = git('rev-parse', '--verify', `${claimed}^{commit}`); }
+// stderr ignored: a miss here is EXPECTED and handled below, and git's own
+// "fatal: Needed a single revision" printed above this script's diagnosis
+// reads like a crash rather than the probe it is.
+try { full = execFileSync('git', ['rev-parse', '--verify', `${claimed}^{commit}`], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
 catch {
+  // BEFORE blaming the clone, rule out a TYPO — the two are not always
+  // indistinguishable. Observed 2026-09-18: the row read `ec25c04a` while the
+  // commit is `ec25c042`, one wrong character in a hand-written SHA. This
+  // branch reported "absent from this SHALLOW clone", the clone was deepened
+  // to 200 commits on that advice, and it failed again identically. A guard
+  // that confidently names the wrong cause costs more than one that says
+  // nothing — it sends you to fix something that was never broken.
+  //
+  // `--disambiguate` lists every LOCAL object under a prefix. If the claimed
+  // SHA's first 7 characters resolve here but the full claim does not, the
+  // history IS present and the SHA is simply wrong. That is knowable with
+  // certainty even on a shallow clone, because the evidence is a commit we
+  // DO have — which is exactly what the shallow caveat below cannot say.
+  const near = (() => {
+    if (claimed.length < 8) return [];
+    try { return git('rev-parse', `--disambiguate=${claimed.slice(0, 7)}`).split('\n').filter(Boolean); }
+    catch { return []; }
+  })();
+  if (near.length) {
+    console.error(`✗ HANDOFF.md claims ${claimed}, which is not a commit — but ${near[0].slice(0, claimed.length)} IS here.`);
+    console.error('  One wrong character in a hand-written SHA, not a missing ancestor.');
+    console.error('  Fix:  npm run handoff:stamp');
+    process.exit(1);
+  }
   if (shallow) {
     console.log(`? CANNOT CHECK — ${claimed} is absent from this SHALLOW clone.`);
     console.log('  Deepen it (git fetch --depth=1000) or run where full history exists.');

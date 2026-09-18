@@ -72,7 +72,34 @@ const STEPS = [
   // roots to demo/src — which is why 36 suites reach that shell by reading it
   // as text and why a syntax error there once passed a green 5,451-test run.
   { id: 'seam',       label: 'hostv2 vitest seam',  cmd: 'npm', args: ['run', 'test:unit'], cwd: resolve(ROOT, 'hostv2') },
-  { id: 'hostv2build',label: 'hostv2 production build', cmd: 'npm', args: ['run', 'build'], cwd: resolve(ROOT, 'hostv2') },
+  // ── WHAT THE DEPLOY ACTUALLY RUNS ────────────────────────────────────────
+  // Added 2026-09-18 after deploys 310 and 311 both died at "Build release
+  // artifact" while jest, gate:hostv2 and gate:knowledge were green on both
+  // commits. Production sat two commits stale for two and a half hours and
+  // BOTH were reported as verified. The break was a statement between imports
+  // — `import/first`, which react-scripts treats as a build ERROR, not a
+  // warning — so no test suite could see it. Only a build can.
+  //
+  // This REPLACES the bare `hostv2 production build` step, which it contains:
+  // release = sync:hostv2 (which runs hostv2's OWN build — parity check, then
+  // vite — and copies dist into public/hostv2) && the CRA build. That middle
+  // copy is the part nothing here reached before, and it is the only thing
+  // standing between a green hostv2 build and a site that actually HAS hostv2
+  // in it.
+  //
+  // CI: '' because the deploy sets exactly that, and for the same reason it
+  // does: GitHub Actions always sets CI=true, which makes react-scripts fail
+  // on any of the 250 baselined warnings. Warning policy is `cra`'s job,
+  // immediately below. Matching the deploy's env is the whole point — a
+  // preflight that builds under different rules is not a preflight.
+  //
+  // public/hostv2/ is gitignored (.gitignore:62), so this leaves the tracked
+  // tree clean — checked, not assumed.
+  { id: 'release',    label: 'npm run release (what deploys)', cmd: 'npm', args: ['run', 'release'], env: { CI: '' } },
+  // A SECOND CRA build, deliberately. `release` proves the tree compiles; this
+  // one owns the reviewed warning baseline, which needs the FULL warning set
+  // and so cannot abort at the first. Ordered after `release` so a compile
+  // break reports as the deploy step it would really break, not as a lint gate.
   { id: 'cra',        label: 'CRA build + warning baseline', cmd: 'npm', args: ['run', 'gate:cra'] },
   { id: 'e2e',        label: 'playwright matrix (7 viewports)', cmd: 'npm', args: ['run', 'matrix'], slow: true },
 ];

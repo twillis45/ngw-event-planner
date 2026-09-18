@@ -42,16 +42,45 @@ Avoid:
 
 ## After Editing
 
-Run or recommend:
+Run these — they are the repo's real commands, not placeholders:
 
-- npm run build
-- npm run lint
-- npm run test
-- manual runtime QA
-- mobile viewport check
-- desktop viewport check
+| Command | What it proves | When |
+|---|---|---|
+| `npx react-scripts test --watchAll=false` | the suites (jest) | every code change |
+| `npm run gate:knowledge` | the knowledge snapshot is baked | any KCR/knowledge change |
+| **`npm run verify:push`** | **handoff + knowledge + jest + hostv2 seam + `npm run release`** | **before every push** |
+| `npm run verify:all` | the full set, ~20 min incl. the 7-viewport matrix | before a release, or when the change is broad |
+| `npm run verify:fast` | the same minus the 14-minute matrix | when the matrix is not implicated |
 
-Use actual repo commands if known.
+Plus manual runtime QA at the mobile and desktop viewports.
+
+### Before pushing, `npm run release` is not optional
+
+`npm run release` is what the deploy runs (`sync:hostv2` → hostv2's own
+build → copy into `public/hostv2` → the CRA build). It is a SEPARATE
+TOOLCHAIN from the test runners, and it can be red while every suite is
+green.
+
+That is not hypothetical. On 2026-09-18 deploys 310 and 311 both died at
+"Build release artifact" — a statement between two imports, which
+react-scripts treats as a build ERROR (`import/first`), not a lint
+warning. jest, `gate:hostv2` and `gate:knowledge` were green on both
+commits, both were reported to the owner as verified, and production sat
+two commits stale for two and a half hours. No test suite could have seen
+it; only a build can.
+
+So: **"jest is green" is a true statement that does not mean the change
+ships.** `npm run verify:push` is the check that does, and its `release`
+step is the reason it exists.
+
+Two consequences worth stating plainly:
+
+- A failing `release` step also means every LATER deploy step never ran —
+  including the demo-artifact safety scan. A skipped safety check and a
+  passing one look identical in a log you did not read.
+- Reporting "verified" on a set of checks that excludes the one the
+  deploy actually performs is how both of those commits were signed off.
+  Name which checks ran; do not let the word "verified" imply the set.
 
 ## Final Report Required
 
