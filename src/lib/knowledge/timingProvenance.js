@@ -239,6 +239,22 @@ function parseLeadDays(when) {
 // TEXT gate; resolveTimingProvenance adds the lead-window consistency gate.
 export function detectTimingCategory(decision) {
   if (!decision) return null;
+  // ── AN AUTHORED CATEGORY WINS, SO A LABEL CAN BE COPY AGAIN (2026-09-18) ──
+  // Everything below matches on the decision's host-facing LABEL, which made
+  // that label a functional string: "Collect dietary restrictions from RSVPs"
+  // grounded, and the same decision named "Dietary needs and allergies" would
+  // not, because the pattern needs a verb. Rewording a line of copy silently
+  // un-grounded its deadline — and three of those labels were long enough to
+  // TRUNCATE on the board, so they were being kept for the matcher's sake.
+  //
+  // An explicit `timingCategory` declares the intent instead of leaving the
+  // engine to infer it from prose. Same shape as `decisionType` and as the
+  // authored `timingProvenance` this module already honours: authored wins,
+  // otherwise derive. Detection stays for the 250-odd decisions that declare
+  // nothing, and an unknown key is REFUSED rather than trusted — a typo must
+  // not silently ground a deadline on the wrong source.
+  const declared = String(decision.timingCategory || '');
+  if (declared) return TIMING_CATEGORIES.find((c) => c.category === declared) || null;
   const hay = `${decision.id || ''} ${decision.label || ''}`;
   for (const cat of TIMING_CATEGORIES) {
     if (cat.pattern.test(hay) && !(cat.antiPattern && cat.antiPattern.test(hay))) {

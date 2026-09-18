@@ -51,14 +51,43 @@ describe('the same act grounds however the label words it', () => {
     expect(all.filter(({ d }) => detectTimingCategory(d)).length).toBeGreaterThan(25);
   });
 
-  test('THE FIX: Crab Feast asks rather than collects, and now grounds', () => {
+  test('THE FIX: Crab Feast grounds — now by DECLARATION, not by its wording', () => {
+    // WHAT CHANGED SINCE THIS FILE WAS WRITTEN (same day). The fix here was to
+    // widen the verb set so "Ask your guests about shellfish allergies" matched.
+    // That worked, and it left the label load-bearing: the decision grounded
+    // because of how its copy was phrased. The label has since been rewritten to
+    // a noun phrase — it was one of three long enough to TRUNCATE on the board —
+    // and the decision now declares `timingCategory` outright.
+    //
+    // So the grounding is IDENTICAL and its cause is better. Asserted on the
+    // declaration, because that is what carries it now.
     const d = decisionOf('Crab Feast', 'dietary');
-    expect(d.label).toBe('Ask your guests about shellfish allergies');
+    expect(d.label).toBe('Shellfish allergies and dietary needs');
+    expect(d.timingCategory).toBe('dietary_collection');
     const cat = detectTimingCategory(d);
     expect(cat && cat.category).toBe('dietary_collection');
     expect(isGroundedTiming(effectiveTimingProvenance(d))).toBe(true);
     // T-10d is INSIDE the sourced window, so this is a grounding, not a conflict.
     expect(timingConflict(d)).toBe(null);
+  });
+
+  test('the widened verb still works for a decision that declares nothing', () => {
+    // The pattern is not dead code because the corpus stopped needing it. Any
+    // decision authored with that wording and no declared category still
+    // grounds — which is the detector's whole job for the ~250 that declare
+    // nothing. Asserted on a synthetic decision so it cannot be quietly lost.
+    const synthetic = { id: 'diet_ask', label: 'Ask your guests about nut allergies', when: 'T-12d' };
+    const cat = detectTimingCategory(synthetic);
+    expect(cat && cat.category).toBe('dietary_collection');
+    expect(isGroundedTiming(effectiveTimingProvenance(synthetic))).toBe(true);
+  });
+
+  test('an unknown declared category is REFUSED, never trusted', () => {
+    // A typo must not ground a deadline on the wrong source, or on nothing
+    // while looking authoritative. Declaring also OVERRIDES detection, so a
+    // decision cannot declare junk and fall back to its prose.
+    expect(detectTimingCategory({ id: 'dietary', label: 'Collect dietary restrictions', timingCategory: 'dietary_colection' })).toBe(null);
+    expect(detectTimingCategory({ id: 'dietary', label: 'Collect dietary restrictions' })).toBeTruthy();
   });
 
   test('every dietary-COLLECTION decision now grounds, by whatever verb', () => {
