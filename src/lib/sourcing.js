@@ -1,3 +1,19 @@
+import { moneyProvenanceFor } from './budgetEstimator/moneyProvenance.js';
+
+// ─── Provenance markers ─────────────────────────────────────────────────────
+// SOURCING_TIERS re-prices every protein line in the app and had no provenance
+// field. Its record carries a MEASURED finding: the file states the grocery
+// premium is "honestly backed by the raw per-channel data below", and computing
+// the channel ratios from CANONICAL_PROTEIN_PRICES gives means of 0.706 (costco)
+// and 1.064 (grocery) against the shipped 0.85 and 1.18. The data corroborates
+// the direction of both factors and the magnitude of neither.
+//
+// NONPROTEIN_CHANNEL_FACTOR is the one constant in these files that cites a
+// real dated source — and it is still ungrounded, because it deliberately
+// ships 10% where the source says 21%. That is `editorial`, not `researched`.
+export const SOURCING_TIERS_PROVENANCE          = moneyProvenanceFor('sourcing.tiers');
+export const NONPROTEIN_CHANNEL_PROVENANCE      = moneyProvenanceFor('sourcing.nonProteinChannel');
+
 // FOOD-2A Stage 0 — price-table provenance. Metadata ONLY: no function reads these at
 // runtime, so this changes no math. It exists so the canonical $ ranges below carry a
 // visible vintage + a review cadence (the audit flagged "stale prices, no versioning").

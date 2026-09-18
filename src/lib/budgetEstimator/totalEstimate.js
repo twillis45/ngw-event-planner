@@ -8,6 +8,7 @@ import { getDatePremium, getTimeOfDayFactor } from '../estimatorFactors.js';
 import { budgetFamilyForType } from './confidence.js';
 import { getCategoryShares } from './categoryShares.js';
 import { getPlaybook } from '../playbooks';
+import { moneyProvenanceFor } from './moneyProvenance.js';
 
 // A type's OWN authored per-head band, when it has one and PER_HEAD_BY_TYPE
 // does not. Every playbook carries `meta.perGuestCost` (grounded to that
@@ -32,6 +33,11 @@ function playbookPerHead(type) {
 }
 
 // Per-event-type per-head bands. Reflect commonly cited US bands.
+//
+// PROVENANCE: `estimate` — no source. See PER_HEAD_BY_TYPE_PROVENANCE below
+// and moneyProvenance.js for what "commonly cited" is and is not worth. This
+// table becomes the number a host is shown first and largest; a surface must
+// ask `moneyDisclosure` before rendering any figure derived from it.
 export const PER_HEAD_BY_TYPE = {
   Wedding:             { low: 200, high: 500 },
   'Vow Renewal':       { low: 150, high: 400 },
@@ -66,6 +72,20 @@ export const PER_HEAD_BY_FAMILY = {
   travel_led:   { low: 200, high: 600 },  // destination / wellness retreats
 };
 
+// ─── Provenance markers ─────────────────────────────────────────────────────
+// The provenance FIELD these tables never had. Records live in
+// moneyProvenance.js (one-way import, no cycle); they are re-exported here so
+// an editor changing a band sees the marker in the same file as the number,
+// and so a reader can ask what backs it without knowing where the registry is.
+//
+// All three are currently tier 'estimate' with EMPTY sources, which means
+// `isGroundedMoneyFactor` returns false for every one of them. That is the
+// honest state, not a TODO that was skipped: no source was attached because
+// none was researched, and inventing one would be worse than the silence.
+export const PER_HEAD_BY_TYPE_PROVENANCE   = moneyProvenanceFor('budget.perHeadByType');
+export const PER_HEAD_BY_FAMILY_PROVENANCE = moneyProvenanceFor('budget.perHeadByFamily');
+export const PER_HEAD_FALLBACK_PROVENANCE  = moneyProvenanceFor('budget.perHeadFallback');
+
 /**
  * Planning-grade total budget range for an event.
  * Returns { lowTotal, highTotal, destinationAdjusted } rounded to the nearest
@@ -86,16 +106,38 @@ export const PER_HEAD_BY_FAMILY = {
 export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1, isDestination = false, nights = 0 }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
-  let ph = PER_HEAD_BY_TYPE[type] || playbookPerHead(type) || PER_HEAD_BY_FAMILY[budgetFamilyForType(type)] || { low: 100, high: 250 };
+  // PROVENANCE TRACKING (added with moneyProvenance.js). Records WHICH unsourced
+  // constant tables actually built this figure, so a surface can ask
+  // `moneyDisclosure(result.provenanceKeys)` instead of guessing. Collected as
+  // the existing branches run — no branch is added, reordered or re-evaluated,
+  // and nothing here is read back by the math. Only factors that actually MOVED
+  // the number are recorded: a 1.0 multiplier changed no dollar, so it is not a
+  // contributor to what the host is being shown.
+  const provenanceKeys = [];
+  const cite = (k) => { if (!provenanceKeys.includes(k)) provenanceKeys.push(k); };
+  let ph = PER_HEAD_BY_TYPE[type];
+  if (ph) cite('budget.perHeadByType');
+  if (!ph) { ph = playbookPerHead(type); if (ph) cite('budget.playbookPerGuestCost'); }
+  if (!ph) { ph = PER_HEAD_BY_FAMILY[budgetFamilyForType(type)]; if (ph) cite('budget.perHeadByFamily'); }
+  if (!ph) { ph = { low: 100, high: 250 }; cite('budget.perHeadFallback'); }
   let destinationAdjusted = false;
   if (isDestination && budgetFamilyForType(type) !== 'travel_led') {
     const tl = PER_HEAD_BY_FAMILY.travel_led;
     const blended = { low: Math.max(ph.low, tl.low), high: Math.max(ph.high, tl.high) };
     destinationAdjusted = blended.low !== ph.low || blended.high !== ph.high;
     ph = blended;
+    if (destinationAdjusted) cite('budget.perHeadByFamily');
   }
   const tod = getTimeOfDayFactor(timeOfDay);
   const datePrem = getDatePremium(date, type);
+  if ((tod.multiplier || 1) !== 1) cite('factors.timeOfDay');
+  if ((metroFactor || 1) !== 1) cite('vendor.metroMarkets');
+  for (const c of (datePrem.components || [])) {
+    if (c.key === 'dow') cite('factors.dowPremium');
+    else if (c.key === 'holiday') cite('factors.usHolidays');
+    else if (c.key === 'season') cite('factors.peakWeddingSeason');
+  }
+  if (datePrem.cappedAtCap) cite('factors.datePremiumCap');
   const factor = (metroFactor || 1) * (tod.multiplier || 1) * (datePrem.multiplier || 1);
   let low = ph.low * guests * factor;
   let high = ph.high * guests * factor;
@@ -118,6 +160,7 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
       low  += low  * cat.min * extraDays;
       high += high * cat.max * extraDays;
       nightsAdjusted = true;
+      cite('budget.categoryShares');
     }
   }
   return {
@@ -125,5 +168,9 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
     highTotal: Math.round(high / 100) * 100,
     destinationAdjusted,
     nightsAdjusted,
+    // The constants this particular figure was built from. Pass straight to
+    // `moneyDisclosure` — today it always answers mustMark:true, because not
+    // one of them is grounded.
+    provenanceKeys,
   };
 }

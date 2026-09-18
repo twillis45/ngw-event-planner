@@ -9,6 +9,16 @@
 // carries a plain-language explanation the UI can show verbatim.
 
 import { daysUntil } from './dates';
+import { moneyProvenanceFor } from './budgetEstimator/moneyProvenance.js';
+
+// ─── Provenance markers ─────────────────────────────────────────────────────
+// The header above promises "no invented market data" and "every factor
+// carries a plain-language explanation." Both were true. Neither is a source,
+// and until now there was no field in which to say so. Both records below are
+// ungrounded; the rush record documents why its comment's reference to two
+// named publishers must NOT be read as a citation.
+export const METRO_MARKETS_PROVENANCE = moneyProvenanceFor('vendor.metroMarkets');
+export const RUSH_FACTOR_PROVENANCE   = moneyProvenanceFor('vendor.rushFactor');
 
 // 27-market cost-of-vendor-services index, tiered 1 (premium) to 4 (value).
 // Factors are directional planning multipliers against a US national baseline,
@@ -66,6 +76,14 @@ export const getMetroFactor = (marketId) => {
 };
 
 // getRushFactor(eventDate) — timeline-compression premium for vendor estimates.
+//
+// PROVENANCE WARNING — read RUSH_FACTOR_PROVENANCE before trusting the line
+// below. "planner surveys + Wedding Wire / The Knot patterns" names two real
+// publishers but records no page, no date and no figure from either. It reads
+// like a citation and cannot be followed like one. The premiums are registered
+// as a trade-heuristic with EMPTY sources; the publishers are deliberately not
+// written into the record's `sources` until someone actually fetches a page.
+//
 // Industry-typical premiums (planner surveys + Wedding Wire / The Knot patterns):
 //   <30 days  → ~25% (heavy rush — limited vendor pool, last-minute booking
 //                     fees, catering minimums often scale up)

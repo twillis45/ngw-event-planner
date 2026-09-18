@@ -31,6 +31,29 @@
 // Service+Tax line is labeled "Estimated service charge + tax" because the
 // rate IS configurable per region — we can't promise a jurisdiction match.
 
+import { moneyProvenanceFor } from './budgetEstimator/moneyProvenance.js';
+
+// ─── Provenance markers ─────────────────────────────────────────────────────
+//
+// The FIELD these factors never had. Each constant below now carries a record
+// naming its real tier, and NOT ONE of them is 'researched' — the header above
+// is careful prose about honest language, and it sat on top of eight holiday
+// premiums, two day-of-week premiums, four time-of-day multipliers and three
+// invoice rates with no recorded source between them.
+//
+// The plain-language `explanation` strings on the slot objects below are
+// UNCHANGED and stay where they are. They are good copy, and they are also the
+// reason this file needed markers most: a persuasive reason next to an
+// unsourced multiplier is the most convincing an ungrounded number ever looks.
+export const US_HOLIDAYS_PROVENANCE        = moneyProvenanceFor('factors.usHolidays');
+export const DOW_PREMIUM_PROVENANCE        = moneyProvenanceFor('factors.dowPremium');
+export const PEAK_SEASON_PROVENANCE        = moneyProvenanceFor('factors.peakWeddingSeason');
+export const DATE_PREMIUM_CAP_PROVENANCE   = moneyProvenanceFor('factors.datePremiumCap');
+export const TIME_OF_DAY_PROVENANCE        = moneyProvenanceFor('factors.timeOfDay');
+export const SERVICE_CHARGE_PROVENANCE     = moneyProvenanceFor('factors.serviceCharge');
+export const TAX_PROVENANCE                = moneyProvenanceFor('factors.tax');
+export const CONTINGENCY_PROVENANCE        = moneyProvenanceFor('factors.contingency');
+
 // ─── Date-premium constants ──────────────────────────────────────────────────
 
 // US holiday weekends. Each entry expresses the rule used to evaluate a given

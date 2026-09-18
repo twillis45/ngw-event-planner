@@ -8,6 +8,13 @@
 // overlap because real events shift budget between categories.
 
 import { budgetShareFamilyFor } from '../eventTaxonomyAdapter';
+import { moneyProvenanceFor } from './moneyProvenance.js';
+
+// PROVENANCE: `estimate` — no source. "Commonly-cited US event planning bands"
+// names no publisher and no date, so none of the 29 bands below can be
+// presented as checked. The record covers all four tables; see
+// moneyProvenance.js#budget.categoryShares.
+export const CATEGORY_SHARES_PROVENANCE = moneyProvenanceFor('budget.categoryShares');
 
 // NOTE (Sprint 53 engine hardening): bands are PLANNING estimates and intentionally
 // OVERLAP — they do NOT sum to 100% (a planner shifts budget between categories).
