@@ -12,6 +12,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import PhotoStrip from './PhotoStrip.jsx';
 import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
+import { guestSafeText } from '@app/lib/guestFacing';
 import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytics';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
@@ -1317,7 +1318,11 @@ export default function InviteV2({ code }) {
               {nearState === 'near' && (
                 <p className="grounding" style={{ margin: '8px 0 0', color: 'var(--ok)', fontWeight: 600 }}>
                   You’re basically there.
-                  {String(event.parkingNotes || '').trim() ? ' Parking: ' + event.parkingNotes : ''}
+                  {/* THE PAGE GUESTS ACTUALLY READ. This printed the field
+                      verbatim, and the field can hold the app's own bracketed
+                      template — a guest could be shown "Parking: Guests can park
+                      [street / driveway / nearby lot — pick what fits]." */}
+                  {guestSafeText(event.parkingNotes) ? ' Parking: ' + guestSafeText(event.parkingNotes) : ''}
                   {String(event.rainPlan || '').trim() ? ' If the sky turns: ' + event.rainPlan : ''}
                 </p>
               )}

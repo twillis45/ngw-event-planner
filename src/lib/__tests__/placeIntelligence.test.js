@@ -194,11 +194,32 @@ describe('draftParkingInstructions — conservative, never invents logistics', (
     expect(draftParkingInstructions(homeEvent())).not.toMatch(/weather turns/);
   });
 
-  test('8 · saving the drafted text clears the Place parking gap', () => {
+  // ── AMENDED 2026-09-18, and the amendment is a real behaviour change ───────
+  // This asserted that saving the DRAFTED text clears the parking gap. It was
+  // deliberately written and it is being overturned, so the reasoning belongs
+  // here rather than in a commit message nobody re-reads.
+  //
+  // The drafted text carries the app's own blanks — "Guests can park [street /
+  // driveway / nearby lot — pick what fits]". Test 10 below already rules that
+  // this exact text may NOT leak into the public vendor brief. So the file held
+  // two positions at once: not fit to send a vendor, yet "handled" for the host.
+  // That tension is the defect. A host told parking is handled stops thinking
+  // about parking — and InviteV2 was meanwhile printing those blanks to guests.
+  //
+  // The intent of the original test is kept: tapping "draft" must still DO
+  // something the host can see. It now moves the row off its empty state with a
+  // reason, instead of claiming completion.
+  test('8 · drafted text is progress, not completion — only a filled-in note is handled', () => {
     const before = derivePlaceIntelligence(homeEvent());
     expect(sec(before, 'parking').state).not.toBe(PLACE_STATES.HANDLED);
-    const after = derivePlaceIntelligence(homeEvent({ parkingNotes: draftParkingInstructions(homeEvent()) }));
-    expect(sec(after, 'parking').state).toBe(PLACE_STATES.HANDLED);
+
+    const drafted = derivePlaceIntelligence(homeEvent({ parkingNotes: draftParkingInstructions(homeEvent()) }));
+    expect(sec(drafted, 'parking').state).not.toBe(PLACE_STATES.HANDLED);
+    // …and the host is TOLD why, rather than being silently returned to empty.
+    expect(String(sec(drafted, 'parking').detail || sec(drafted, 'parking').note || '')).toMatch(/blank/i);
+
+    const filled = derivePlaceIntelligence(homeEvent({ parkingNotes: 'Park on Elm, come to the side gate.' }));
+    expect(sec(filled, 'parking').state).toBe(PLACE_STATES.HANDLED);
   });
 
   test('10 · drafted parking text cannot leak into the public vendor brief', () => {

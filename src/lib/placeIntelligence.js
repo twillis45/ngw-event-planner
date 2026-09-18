@@ -15,6 +15,7 @@
 // with wholeEventReadinessScore (PROGRESS doctrine). Counts, not percentages.
 
 import { rainPlanStatus, RAIN_PLAN_TARGET, isLikelyOutdoor } from './weather';
+import { guestSafeText } from './guestFacing';
 import { venueFor } from './venueFor';
 
 export const PLACE_STATES = {
@@ -91,8 +92,25 @@ export function derivePlaceIntelligence(event = {}) {
   }
 
   // 3 · Parking / access — host-authored notes only; never invented.
-  if (has(event.parkingNotes)) {
+  //
+  // THE COMMENT WAS TRUE OF THE INTENT AND FALSE OF THE CODE (2026-09-18).
+  // `has()` accepted ANY text, including this app's OWN bracketed template,
+  // which the frozen CRA shell writes into the field with one tap. So the app
+  // drafted a note, saved it, and then told the host "Parking notes saved —
+  // HANDLED" about its own placeholder. The host then reasonably stops thinking
+  // about parking, and the invite shows guests the blanks.
+  //
+  // guestSafeText is the same gate the three guest-facing readers now use, so
+  // "handled" and "safe to show a guest" cannot drift apart: a note that is not
+  // fit to send is not a note that is done.
+  if (guestSafeText(event.parkingNotes)) {
     add('parking', 'Parking & access', PLACE_STATES.HANDLED, 'Parking notes saved.');
+  } else if (has(event.parkingNotes)) {
+    // Drafted but still carrying our blanks. NOT handled, and say why rather
+    // than silently reverting to "needs" — the host did tap the button, and
+    // being told nothing happened would be its own small lie.
+    add('parking', 'Parking & access', PLACE_STATES.NEEDS,
+      'A parking note is drafted, but it still has blanks we left for you — guests are not shown it until they are filled in.');
   } else {
     add('parking', 'Parking & access',
       outdoors ? PLACE_STATES.RISK : PLACE_STATES.NEEDS,

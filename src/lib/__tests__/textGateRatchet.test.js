@@ -68,7 +68,19 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // and no runtime test can make them — a behaviour test only reaches the
 // branches it renders, which is exactly how six copies of the venue verdict
 // survived a green suite earlier today.
-const MAX_HOSTV2_TEXT_GATES = 39;
+// 39 -> 40 on 2026-09-18 for guestFacing.test.js. FOURTH bump in one day. The
+// pattern is now the finding, not the exception: every one of the four was a
+// claim about a hostv2 WRITE, LABEL or RENDER, and jest cannot execute hostv2.
+// The ratchet is doing its job — making a real cost visible — but four in a day
+// says the seam needs widening, not that the baseline should keep climbing.
+// Logged in the tracker as its own item rather than absorbed silently again.
+//
+// This one guards the InviteV2 render that printed `event.parkingNotes`
+// verbatim — the page GUESTS actually read, over a field that can hold the
+// app's own bracketed template. The gate itself (guestFacing.js) is pure and
+// fully behaviour-tested in the same file; only the "no surface reads it raw"
+// sweep needs the shell's source.
+const MAX_HOSTV2_TEXT_GATES = 40;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

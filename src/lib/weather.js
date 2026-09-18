@@ -10,6 +10,7 @@
  */
 
 import { daysUntil, spanEnd } from './dates';
+import { guestSafeText } from './guestFacing';
 import { venueFor } from './venueFor';
 
 const API_KEY = process.env.REACT_APP_OPENWEATHER_KEY;
@@ -473,7 +474,9 @@ export function guestRainMessage(event, wx) {
   const v = venueFor(ev);
   const venue = v.name;
   const atHome = v.isHome;
-  const parkingNote = String(ev.parkingNotes || ev.parking || '').trim();
+  // Same gate as draftGuestUpdate: this string goes to guests, and the field can
+  // hold the app's own bracketed template.
+  const parkingNote = guestSafeText(ev.parkingNotes || ev.parking);
 
   const where = atHome
     ? 'Head inside when you arrive'

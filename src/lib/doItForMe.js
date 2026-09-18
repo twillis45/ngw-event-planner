@@ -8,6 +8,7 @@
 import { isVendorBooked } from './workstreams';
 import { transportDecision } from './travelPlan';
 import { venueFor } from './venueFor';
+import { guestSafeText } from './guestFacing';
 import { STAY_FROM_PICK, STAY_FROM_PLAN } from './lodgingIntel';
 import { normalizeCvbContact } from './cvbIntel';
 import { incidentPlanFor } from './knowledge/incidentContext';
@@ -896,7 +897,15 @@ export function draftGuestUpdate(event, opts = {}) {
   const vf = venueFor(ev);
   const venueName = vf.name;
   const city = vf.city;
-  const parking = String(ev.parkingNotes || '').trim();
+  // GUEST-SAFE ONLY (2026-09-18). parkingNotes can hold THIS MODULE'S OWN
+  // bracketed template — the frozen CRA shell writes draftParkingInstructions
+  // straight into the field with one tap and no review — and this line printed
+  // it verbatim to every guest. An unfilled blank is our handwriting, not the
+  // host's, and withholding beats sending "[street / driveway — pick what fits]"
+  // to forty people. The empty branch below already handles no-parking, and it
+  // brackets ITS blank inside a draft the host reviews, which is the honest
+  // place for one.
+  const parking = guestSafeText(ev.parkingNotes);
   const rain = String(ev.rainPlan || '').trim();
   const when = (() => { try { return fmtLongDate(ev.date); } catch { return ''; } })();
   const tp = (() => { try { return timePhrase(ev); } catch { return ''; } })();
