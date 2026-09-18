@@ -89,7 +89,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `af37eeab` |
-| Jest | **6,251 passed**, 1 skipped, **0 failed**, **443 suites** (re-measured 2026-09-17, seventh entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **6,498 passed**, 1 skipped, **0 failed**, **456 suites** (re-measured 2026-09-18, fifth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -101,6 +101,99 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (fifth entry, same day) — the board's whole ranking died at one boundary: a bundle scored exactly 0.000
+
+`nextActions` groups a surface's raises into ONE bundle at three or more. The
+bundle carried the tightest child's **dates** (`dueInDays`, `leadDays`) and
+dropped every signal `actionConsequence` reads — `priorityScore`, `gateHolder`,
+`unlocks`. So a bundle scored **exactly 0.000** while its own children scored
+2.0–10.1.
+
+Crab Feast, ONE HORIZON APART:
+
+| | rows | shape | consequence |
+|---|---|---|---|
+| T-8 | 1 overdue | single | **2.025** |
+| T-6 | 3 overdue | BUNDLE | **0.000** |
+
+Three or more overdue decisions is the **ordinary** state of a real event from a
+few months out. So on almost every live plan, the entire authoring effort behind
+the 260-decision board — weight, reversibility, emotionalWeight, gate-holding,
+dependent counts — arrived at the host's most important screen as zero.
+
+What ranked instead was `latenessBoost`, which saturates at 4.9. On a wedding at
+T-150 the top **two** actions tied at exactly 4.9000; `compareBandedActions`
+returns 0 on a tie and the sort is stable, so the host's single most important
+instruction was ordered by **producer push order** — the exact failure the
+2026-08-17 ranking-floor ruling set out to stop ("age alone can never hold
+position one"), surviving inside the one construction the ruling never reached.
+
+**The fix.** The bundle inherits its children's strongest claim, per axis:
+`priorityScore` MAX · `gateHolder` SOME · `unlocks` **MAX, not SUM** (each
+child's `unlocks` is its OWN dependent count and two decisions routinely gate
+the same downstream work — summing [food,vendors] beside [food,timeline] claims
+4 against a true union of 3, a number nobody counted) · `ask` the lead child's
+authored question, verbatim or null.
+
+Measured after: Wedding T-150 top `c=10.140`; Crab Feast T-6 `3.060` (was
+0.000); T-8 `3.055` — continuous across the boundary.
+
+**The `ask` axis was found BY the fix, which is the part worth carrying
+forward.** With a real consequence the decisions bundle reaches position one —
+which is where `heroAskFor` reads the ask — and with none it fell to its prose
+branch and said *"Settle your decisions."* over six consecutive wedding stages
+that had been asking an authored question. A ranking change moved a **copy**
+defect into view. On the wedding it is still empty, and that is a separate,
+measured authoring gap: **362 of 594 board rows (60.9%) carry an authored
+`ask`; 114 distinct decisions carry none** — including both of the wedding's two
+most consequential overdue calls (`Venue + date`, `Total budget + who pays`).
+The fix there is to author the missing questions, not to re-rank the board
+around the ones that have one. Tracked, not absorbed.
+
+**Four existing tests pinned an action by ARRAY INDEX** (`nextActions[0]`) and
+moved with the reranking — `severityBand` F6/F7, `snoozeIntegrity`,
+`reAuditFixes` F1, `heroAskNeverPlaceholder`. Each is amended in place with the
+before/after measurement and re-anchored on the action's **identity**, so a
+future reordering cannot silently drop the guard. Every doctrine still holds:
+the wave-5 demotion to `attention`, the window-closed snooze cap, the authored
+question reaching the host — and the cap is now **additionally** asserted on
+whatever actually renders first, which it never was.
+
+Worth carrying forward: *a test that pins a behaviour by list position is
+pinning the ranking too, whether or not it means to.* Four of them did, and all
+four passed for months over a boundary where the board's entire score was zero.
+
+**Also measured this session, not yet fixed** (four parallel audits, all
+verified against the running engine — full detail in the artifact tracker):
+`blocks` is authored on 95% of decisions and contributes **zero** (its only
+reader is gated on `weight == null` and all 260 author `weight`); board order
+has been frozen for five months (aging saturates at 24 days); four engines give
+four different "do this first"; 19/450 playbook×horizon combos have a completely
+empty active board; the fold promised to first-timers never fires for them
+(measured 0/45 at T-45); nine authored strings assert the host is alone after
+they have said twice that they have help; post-event closeout reports "All
+wrapped up" over a `Deposit Paid` vendor with an outstanding balance (one pill
+tap in hostv2 — money, host-reachable); a vendor labelled "Locked in" is chipped
+"Silent 25 days" on the same screen; the Reveal prints **$0** over $18,900 of
+real budget rows and calls it "Budget is set and live"; six surfaces disagree on
+"is the budget set"; and `guestEstimate` has no provenance, so a playbook's
+typical headcount reaches a **vendor outreach email** as "about 40 guests" on an
+event where the host never gave a count.
+
+**Files:** `src/CommandCenter.jsx` (bundle construction),
+`src/lib/__tests__/bundleCarriesConsequence.test.js` (new, 11 tests), and the
+four amended test files.
+**Runtime impact:** hostv2 imports `eventPlan` from `@app/CommandCenter`
+(`HostShellV2.jsx:10`) — this is the production engine for the host shell, not
+frozen CRA code. Every host with three or more raises on one surface gets a
+differently-ordered board.
+**QA:** 456 suites / 6,498 passed, 1 skipped, 0 failed. `npm run verify:push`
+green on all five steps (handoff, knowledge, unit, seam, release).
+**Risk:** the reranking is behavioural and broad — it changes position one on
+most live plans. The amended tests pin the direction, not just the absence of a
+crash. **Next:** the `ask` authoring gap (114 decisions), then the scoring
+audit's `blocks`-is-inert finding.
 
 ## ADDED 2026-09-18 (fourth entry, same day) — a parser corpus, the venue verdict ratchet, and three audit fixes
 
