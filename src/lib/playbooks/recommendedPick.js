@@ -49,7 +49,24 @@
 export const OPERATORS = Object.freeze(['gte', 'lte', 'gt', 'lt', 'eq', 'in', 'not']);
 
 /** The facts a rule may read. Each is `{ value, known }` — never a bare value. */
-export const FACT_KEYS = Object.freeze(['guests', 'budget', 'daysOut', 'venueKind', 'isDestination', 'overnight']);
+export const FACT_KEYS = Object.freeze([
+  'guests', 'budget', 'daysOut', 'venueKind', 'isDestination', 'overnight',
+  // ── THE HOST IS A FACT TOO (2026-09-18) ────────────────────────────────────
+  // Until this line there was NO host fact in this bag at all, so no authored
+  // rule could condition on who is carrying the event — only on how big it is,
+  // when it is, and where. Measured consequence in the corpus: nine authored
+  // strings across five playbooks assert the host is on their own ("a dinner
+  // party this size is one person's job", "one host cannot pass apps, tend bar,
+  // AND host", "a brutal solo lift", "the app assumes solo until you say
+  // otherwise") and they were UNCONDITIONAL — they printed unchanged to a host
+  // who had set hostCapacity:'has_help' AND typed named helpers onto their food
+  // and timeline rows. Two independent statements of "I have help", both
+  // ignored, because the fact bag had nowhere to put them.
+  'hostCapacity', 'helperCount',
+]);
+
+/** The two values hostCapacity may take. Anything else is "not told". */
+const HOST_CAPACITY = Object.freeze(['solo', 'has_help']);
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 
@@ -58,10 +75,14 @@ const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; 
  * This is the half that makes it a derivation: `guests` is sizingGuests — the
  * same number the food plan and the budget size against — not `event.guestCount`.
  */
-export function buildFacts({ guests, guestsKnown, budget, daysOut, venueKind, venueKnown, isDestination, overnight } = {}) {
+export function buildFacts({
+  guests, guestsKnown, budget, daysOut, venueKind, venueKnown, isDestination, overnight,
+  hostCapacity, helperCount,
+} = {}) {
   const g = num(guests);
   const b = num(budget);
   const d = num(daysOut);
+  const h = num(helperCount);
   return {
     // KNOWN means the app genuinely has the number — not that a field coerced
     // to zero. A roster of nothing but pending RSVPs is not a headcount, and
@@ -76,6 +97,25 @@ export function buildFacts({ guests, guestsKnown, budget, daysOut, venueKind, ve
     // `undefined` on these is genuinely "not told", not false.
     isDestination: { value: isDestination === true, known: typeof isDestination === 'boolean' },
     overnight: { value: overnight === true, known: typeof overnight === 'boolean' },
+    // What the host SAID about capacity. Unset, misspelt, or any other value is
+    // "not told", and not told is NOT 'solo' — that inference is precisely the
+    // one the nine strings were making for free.
+    hostCapacity: {
+      value: HOST_CAPACITY.includes(hostCapacity) ? hostCapacity : null,
+      known: HOST_CAPACITY.includes(hostCapacity),
+    },
+    // How many distinct people the host has NAMED as helping (the helper
+    // engine's own count — see decisionFactsFor for where it comes from).
+    //
+    // KNOWN ONLY WHEN POSITIVE, and that asymmetry is deliberate, not a bug:
+    //   • ≥1 named helper is EVIDENCE the host has help. The app can act on it.
+    //   • 0 named helpers is SILENCE. A host who has not typed anyone onto a
+    //     food row has not told us they are alone; they have told us nothing.
+    // So `{ helperCount: { lt: 1 } }` can never fire, by construction. A rule
+    // that wants to say "you are on your own" has no fact to stand on, which is
+    // the correct outcome — the authored literal stays and says whatever it
+    // always said. Only the claim that the host HAS help is derivable here.
+    helperCount: { value: h, known: h != null && h > 0 },
   };
 }
 
@@ -139,6 +179,77 @@ export function evaluateRecommendation(decision, facts) {
     if (pass) return { pick: rule.pick, because: rule.because || null, read, rule };
   }
   return null;
+}
+
+/**
+ * The first authored rule in `rules` whose `when` clause holds. Same contract as
+ * `evaluateRecommendation` above — authored order, first match wins, an unknown
+ * fact REFUSES the clause rather than comparing as zero/false — but it returns
+ * the rule itself rather than a pick, so a caller can hang something other than
+ * an option off a condition. Returns null when nothing holds.
+ */
+export function firstHoldingRule(rules, facts) {
+  if (!Array.isArray(rules) || !rules.length) return null;
+  for (const rule of rules) {
+    if (!rule || typeof rule !== 'object') continue;
+    const { pass, read } = clauseHolds(rule.when, facts || {});
+    if (pass) return { rule, read };
+  }
+  return null;
+}
+
+/**
+ * CONDITIONAL AUTHORED COPY — `copyWhen`.
+ *
+ * WHAT IT EXISTS TO FIX. Nine authored strings across five playbooks stated as
+ * fact that the host is on their own — "a dinner party this size is one
+ * person's job", "one host cannot pass apps, tend bar, AND host", "a brutal
+ * solo lift", "the app assumes solo until you say otherwise". Measured
+ * 2026-09-18: all nine were UNCONDITIONAL literals, so they printed verbatim to
+ * a host who had already set hostCapacity:'has_help' and named real people on
+ * their food and timeline rows. The app had the answer twice over and said the
+ * opposite anyway.
+ *
+ * WHY A DECLARED CONDITION, SAME AS `recommendedWhen`. These strings live in
+ * content files reviewed by people who do not read the engine. `{ when: {
+ * helperCount: { gte: 1 } }, why: '…' }` is legible, diffable and scannable;
+ * a predicate function in a data file is none of those. The data says the
+ * condition, the engine says what happens.
+ *
+ * A CLAUSE IS AN AND, SO AN OR IS TWO ENTRIES. `{a, b}` requires both facts.
+ * Authors who mean "either signal" write two rules with the same copy — which
+ * is what the nine do, because either "I have help" statement is enough to stop
+ * asserting the opposite.
+ *
+ * SILENCE CHANGES NOTHING. Every fact these rules read is unknown on an event
+ * that has said nothing, an unknown fact refuses its clause, and a decision
+ * with no `copyWhen` never enters this function's body at all — so every
+ * existing playbook renders byte-identically. That is the additive guarantee,
+ * and conditionalCopy.test.js holds it.
+ *
+ * Returns the three resolved strings plus `copyBasis`:
+ *   'authored'    the literal stands (no rules, or none held)
+ *   'conditional' a rule fired on facts the app knows; `read` names them
+ */
+export function resolveCopy(decision, facts) {
+  const base = {
+    why: (decision && typeof decision.why === 'string') ? decision.why : '',
+    defaultWhy: (decision && typeof decision.defaultWhy === 'string') ? decision.defaultWhy : '',
+    rationale: (decision && decision.priorityBasis && typeof decision.priorityBasis.rationale === 'string')
+      ? decision.priorityBasis.rationale : '',
+  };
+  const rules = (decision && Array.isArray(decision.copyWhen)) ? decision.copyWhen : null;
+  const hit = rules ? firstHoldingRule(rules, facts) : null;
+  if (!hit) return { ...base, copyBasis: 'authored', read: [] };
+  const r = hit.rule;
+  const take = (k) => (typeof r[k] === 'string' && r[k].trim() ? r[k] : base[k]);
+  return {
+    why: take('why'),
+    defaultWhy: take('defaultWhy'),
+    rationale: take('rationale'),
+    copyBasis: 'conditional',
+    read: hit.read,
+  };
 }
 
 /**

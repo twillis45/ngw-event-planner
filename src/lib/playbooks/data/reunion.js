@@ -149,6 +149,31 @@ const reunion = {
       priorityBasis: { rationale: 'A multi-household reunion is too much work and too much family politics for one person past a few households, but only the host knows whether there are relatives willing to own a lane — and a solo host with a small local crowd is a perfectly safe default.', tier: 'reasoned' },
       why:
         'Past a few households, a reunion is a committee-sized job: food, where everyone stays, the program, and the money each want an owner, and a shared load is also how the family politics stay manageable — nobody argues with a plan four branches built together. One relative per branch of the family, three to six people total, works well. Solo is fine for a smaller local crowd; the app assumes solo until you say otherwise.',
+      // "THE APP ASSUMES SOLO UNTIL YOU SAY OTHERWISE" — and the host HAD said otherwise, in
+      // two places the app already stores: hostCapacity:'has_help', and named people on their
+      // own food / timeline / supply rows. The sentence was literally an admission that this
+      // decision ignores a signal the product holds, printed to exactly the hosts it was
+      // wrong about.
+      //
+      // WHAT THE CONDITIONAL COPY DELIBERATELY DOES NOT DO: it does not flip the pick. 'A
+      // cousins committee (3-6 people)' is a claim about who in the FAMILY has agreed to own a
+      // lane, and "I have help with this event" is not that — a spouse and a neighbour are
+      // help, and neither is a cousins committee. Nothing in the app knows the difference, so
+      // there is NO recommendedWhen rule here and the default stays 'Just me'. The copy stops
+      // asserting the host is alone and hands the question back to the only person who can
+      // answer it. Two entries because a clause is an AND. (recommendedPick.resolveCopy)
+      copyWhen: [
+        {
+          when: { hostCapacity: { eq: 'has_help' } },
+          why: 'Past a few households, a reunion is a committee-sized job: food, where everyone stays, the program, and the money each want an owner, and a shared load is also how the family politics stay manageable — nobody argues with a plan four branches built together. One relative per branch of the family, three to six people total, works well. Solo is fine for a smaller local crowd. You have said you have help on this one — if those people are relatives willing to own a lane, say so here and the plan splits into lanes for them.',
+          rationale: 'A multi-household reunion is too much work and too much family politics for one household to carry past a few branches, and only you know whether the people helping are relatives willing to own a lane — which is why this call stays yours rather than the app\'s.',
+        },
+        {
+          when: { helperCount: { gte: 1 } },
+          why: 'Past a few households, a reunion is a committee-sized job: food, where everyone stays, the program, and the money each want an owner, and a shared load is also how the family politics stay manageable — nobody argues with a plan four branches built together. One relative per branch of the family, three to six people total, works well. Solo is fine for a smaller local crowd. You have already named people helping — if they are relatives willing to own a lane, say so here and the plan splits into lanes for them.',
+          rationale: 'A multi-household reunion is too much work and too much family politics for one household to carry past a few branches, and only you know whether the people helping are relatives willing to own a lane — which is why this call stays yours rather than the app\'s.',
+        },
+      ],
     },
     {
       id: 'reunion-span',

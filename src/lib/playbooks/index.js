@@ -10,7 +10,8 @@
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
-import { buildFacts, proposedPickFor } from './recommendedPick';
+import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
+import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
 import { attendanceAdjustment } from '../hostIntel';
@@ -139,6 +140,72 @@ const DECISION_INJECTORS = [
   (event) => militaryDecisionsFor(event),
 ];
 
+// ─── namedHelperCount — how many people the host has said are helping ────────
+//
+// WHY THIS IS NOT A CALL TO deriveHelperResponsibilities(). It would be, and it
+// should be: helperResponsibility.js is the real engine for this and its rules
+// (which owner fields count, which are retired/skipped, how two spellings of
+// one person dedupe) belong in one place. It cannot be called from here, and
+// the reason is structural, not stylistic:
+//
+//   decisionFactsFor → deriveHelperResponsibilities → playbookFoodPlan
+//     → choicePickFor (index.js:3867) → decisionFactsFor → …
+//
+// That is unbounded recursion, not a slow path. So this reads the SAME
+// host-typed fields off the raw event, applies the SAME filters, and dedupes
+// with the SAME single-source name matcher (matchGuestIndexByName, the one
+// helperResponsibility itself uses), while touching neither the food plan nor
+// the capacity plan.
+//
+// A SECOND COPY OF A RULE IS A LIABILITY UNLESS SOMETHING HOLDS THEM TOGETHER,
+// so hostFacts.test.js runs both over the same events and fails if the counts
+// ever disagree. Read that test before changing either side.
+//
+// Two engine reads are deliberately OUT of scope here because they are the ones
+// that would recurse: a food row is counted from event.foodAdd (the host's own
+// named dishes, which is where a helper name is actually typed) rather than
+// from the rendered plan, and a supply helper is counted from
+// event.capacityHelpers minus event.capacitySkip rather than from the rendered
+// capacity list. Both under-count rather than over-count on the edge cases, and
+// under-counting is the safe direction: it can only leave the "you're on your
+// own" copy standing, never assert help the host does not have.
+const HOSTY_OWNER = /^(host|you|yours|me|myself|self)$/i;
+const isNamedHelper = (v) => {
+  const s = String(v || '').trim();
+  return !!s && !HOSTY_OWNER.test(s);
+};
+export function namedHelperCount(event) {
+  const ev = event || {};
+  const guests = Array.isArray(ev.guests) ? ev.guests : [];
+  const foodSkip = (ev.foodSkip && typeof ev.foodSkip === 'object') ? ev.foodSkip : {};
+  const capSkip = (ev.capacitySkip && typeof ev.capacitySkip === 'object') ? ev.capacitySkip : {};
+  const capHelpers = (ev.capacityHelpers && typeof ev.capacityHelpers === 'object') ? ev.capacityHelpers : {};
+  const names = [];
+  for (const a of (Array.isArray(ev.foodAdd) ? ev.foodAdd : [])) {
+    if (a && a.name && !foodSkip[a.id] && isNamedHelper(a.owner)) names.push(a.owner);
+  }
+  for (const t of (Array.isArray(ev.timeline) ? ev.timeline : [])) {
+    if (t && t.task && !t.retired && isNamedHelper(t.owner)) names.push(t.owner);
+  }
+  for (const r of (Array.isArray(ev.ros) ? ev.ros : [])) {
+    if (r && r.segment && r.type !== 'vendor' && isNamedHelper(r.owner)) names.push(r.owner);
+  }
+  for (const k of Object.keys(capHelpers)) {
+    if (!capSkip[k] && isNamedHelper(capHelpers[k])) names.push(capHelpers[k]);
+  }
+  for (const v of (Array.isArray(ev.vendors) ? ev.vendors : [])) {
+    if (v && v.isInformal && isNamedHelper(v.name)) names.push(v.name);
+  }
+  // Dedupe exactly as the helper engine does: by the REAL guest id when the
+  // typed name resolves to someone on the list, else by the lowercased string.
+  const keys = new Set();
+  for (const n of names) {
+    const ix = matchGuestIndexByName(guests, String(n || '').trim());
+    keys.add(ix >= 0 && guests[ix] ? `g:${guests[ix].id}` : `n:${String(n).trim().toLowerCase()}`);
+  }
+  return keys.size;
+}
+
 // ─── THE FACT BAG A RECOMMENDATION MAY READ ──────────────────────────────────
 // Gathered HERE because this is where the engines live, and handed to the pure
 // evaluator in recommendedPick.js — which imports nothing, so there is no cycle.
@@ -149,7 +216,13 @@ const DECISION_INJECTORS = [
 // nothing but pending RSVPs is not a headcount, so a guest-count rule refuses
 // to fire rather than recommend the small-party option to someone who never
 // gave a number.
-export function decisionFactsFor(event, playbook, asOf) {
+//
+// `profile` is OPTIONAL and only the board passes it today, because only the
+// board has one. An event that carries its own hostCapacity therefore reads the
+// same from every caller; a host who set it once on their profile is seen by the
+// board's rationale and not yet by the option sheet. That is an honest partial,
+// not a silent one — hostFacts.test.js pins both paths.
+export function decisionFactsFor(event, playbook, asOf, profile) {
   const ev = event || {};
   const gcr = (() => { try { return guestCountResolved(ev); } catch (_e) { return { resolved: false }; } })();
   const band = (() => { try { return attendanceBand(ev); } catch (_e) { return { applicable: false }; } })();
@@ -163,6 +236,14 @@ export function decisionFactsFor(event, playbook, asOf) {
     venueKnown: !!(vf && vf.isSet),
     isDestination: ev.isDestination,
     overnight: ev.overnight,
+    // THE HOST, as two independent things they have already told the app.
+    // `hostCapacity` follows the same event-then-profile read the decision board
+    // uses for adaptivity — "doing this alone" describes the PERSON, so it
+    // follows them to every event, and the event still wins when it carries its
+    // own answer. Anything other than 'solo'/'has_help' lands as unknown in
+    // buildFacts and refuses every rule that reads it.
+    hostCapacity: ev.hostCapacity || (profile && profile.hostCapacity) || null,
+    helperCount: namedHelperCount(ev),
   });
 }
 
@@ -2809,7 +2890,16 @@ function decisionRankReason(row) {
 // decision (all NULLABLE per the spec). Passed onto every decision row so a
 // shell / DIFM surface and the ordering below can read them without re-opening
 // the playbook. A null source field stays null on the row.
-function decisionPriorityFields(d) {
+function decisionPriorityFields(d, facts) {
+  // `copyWhen` (recommendedPick.resolveCopy) may replace the authored rationale
+  // with one that does not assert the host is on their own, when the app
+  // genuinely knows otherwise. No rules / unknown facts ⇒ the literal, so a
+  // board with no host signal is byte-identical.
+  const copy = resolveCopy(d, facts || {});
+  const basis = d.priorityBasis != null ? d.priorityBasis : null;
+  const priorityBasis = (basis && copy.copyBasis === 'conditional' && copy.rationale !== basis.rationale)
+    ? { ...basis, rationale: copy.rationale, rationaleBasis: 'conditional', rationaleRead: copy.read }
+    : basis;
   return {
     weight: d.weight != null ? d.weight : null,
     reversibility: d.reversibility != null ? d.reversibility : null,
@@ -2820,7 +2910,7 @@ function decisionPriorityFields(d) {
     // { rationale, tier, sources? }. Passed through so the ordering's rankReason
     // can PREFER an authored rationale and the UI can render provenance. Null when
     // the source decision doesn't declare one (most today).
-    priorityBasis: d.priorityBasis != null ? d.priorityBasis : null,
+    priorityBasis,
   };
 }
 
@@ -2946,6 +3036,12 @@ export function playbookDecisionBoard(event, asOf, profile) {
     ...injectedDecisionsFor(event, pb),
   ];
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // The fact bag, built ONCE for the whole board (it is identical for every row)
+  // and handed to decisionPriorityFields so an authored rationale that asserts
+  // the host is on their own can stand down when the app knows they are not.
+  const boardFacts = (() => {
+    try { return decisionFactsFor(event, pb, asOf, profile); } catch (_e) { return {}; }
+  })();
   const isDietaryDecision = (d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || '');
   // A decision is locked when the host picked it (foodChoices[id]) OR the underlying
   // fact is settled — dietary uses the SAME predicate the food gate / next-step use.
@@ -3061,7 +3157,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
       : /menu|food|dish|course|drink/.test(_hay) ? { eventId: event.id, tab: 'Planning', focusField: 'food-plan' }
       : null;
 
-    const priority = decisionPriorityFields(d);
+    const priority = decisionPriorityFields(d, boardFacts);
     // Wave-2b: when the source decision authors no `weight`, derive an importance signal
     // from its own structure (blocks / dependsOn / costFactors / id+label text). Authored
     // weight always wins — the 2 flagships keep `importanceBasis:'authored'` and are
@@ -3455,15 +3551,62 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
   // is); no new input, no fabrication. Requires BOTH a real pile AND real time pressure, so a
   // calm board (few open, OR a long runway) never trips it — every existing scenario stays
   // byte-identical (relaxed/unknown runway can't be overwhelmed here by design).
-  const overwhelm = typeof openCount === 'number' && openCount > 0 && (
-    (runway === 'rush' && openCount >= 5) ||
-    (runway === 'tight' && openCount >= 8) ||
-    (runway === 'standard' && openCount >= 14)
-  );
+  const OVERWHELM_PILE = { rush: 5, tight: 8, standard: 14 };
   // hand-holding level: high (walk them through), standard (neutral), light (get out of the way).
+  // Computed BEFORE overwhelm now, because overwhelm reads it (see below).
   let handHolding = 'standard';
   if (firstTime || (solo && band === 'hard') || (solo && size === 'large')) handHolding = 'high';
   else if (experienced && band !== 'hard' && size !== 'large') handHolding = 'light';
+  // ── "NO MATTER HOW SEASONED THEY ARE" IS A FLOOR, NOT A CEILING (2026-09-18) ──
+  //
+  // The paragraph above is right that a big pile plus a short runway is underwater
+  // for anyone. It was wrong to stop there. The thresholds were UNIVERSAL — they
+  // never read `experience` or `capacity` — so the one signal in this whole
+  // function that says "this person has never done this before" had no bearing on
+  // whether the app thought they were struggling.
+  //
+  // MEASURED, before this change (45 playbooks, guestEstimate 60, real boards):
+  //   runway   first-timer trips overwhelm   host who said nothing
+  //     7d              34/45                       34/45
+  //    14d               6/45                        6/45
+  //    45d               0/45                        0/45
+  //    90d               0/45                        0/45
+  // Identical in every row. And the shipping shell folds the board only when
+  // `overwhelm && staged` (HostShellV2 callsFocus / queueFocus), so the fold a
+  // first-timer is promised fired for them exactly as often as for a host who
+  // never said anything: 0 out of 45 at 45 days out. The largest board in the
+  // corpus at that runway carries 9 open calls; the bar was 14. It could not fire.
+  //
+  // THE FIX READS THE HOST, AND ONLY THE HOST. A host this model has already
+  // classified as needing to be walked through (handHolding 'high' — a first-timer,
+  // or a solo host on a hard or large event) is underwater at a smaller pile. The
+  // lower bar is NOT a new constant: it is this board's OWN pacing arithmetic —
+  // the first foreground it would give them, plus one follow-on batch. Past that,
+  // the board it is offering cannot walk them through the list in two sittings,
+  // which is exactly what "underwater" is supposed to mean here.
+  //
+  // `Math.min` with the universal bar means this can only ever LOWER the threshold,
+  // never raise it, and only for a hand-held host. Arithmetically it moves one band:
+  // at rush (5 vs 5+2=7) and tight (8 vs 4+4=8) the universal bar already binds, so
+  // only `standard` changes — 14 down to 6 (small/medium/unknown event) or 7 (large).
+  // Everyone else — no host input, experienced, solo-with-help on an easy event —
+  // keeps the universal bar untouched, and relaxed/unknown runway still cannot trip
+  // at all. overwhelm.test.js pins the negative controls, including the one that
+  // matters most: a host who has said nothing still folds 0 boards out of 45.
+  //
+  // WHAT THIS DOES NOT FIX, stated plainly: the shipping shell requires BOTH
+  // `overwhelm` and `staged` before it folds, and `staged` has been true for a
+  // first-timer all along. Gating the shell on `staged` alone would be the more
+  // direct repair; it lives in hostv2/src/HostShellV2.jsx (callsFocus, queueFocus)
+  // and is not this file's to make. This change is worth making on its own terms
+  // regardless — `overwhelm` claims "this host is underwater" and was blind to the
+  // strongest predictor of that the model holds.
+  const handHeldBatch = Math.max(2, (size === 'large' ? 4 : 3) + RUNWAY_BATCH_ADJ[runway]);
+  const pile = OVERWHELM_PILE[runway];
+  const overwhelmPile = pile == null ? null
+    : (handHolding === 'high' ? Math.min(pile, RUNWAY_FOCUS[runway] + handHeldBatch) : pile);
+  const overwhelm = typeof openCount === 'number' && openCount > 0
+    && overwhelmPile != null && openCount >= overwhelmPile;
   // OVERWHELM never RE-ORDERS the board — safety (dietary/allergy/heart) and overdue must keep
   // leading no matter how underwater the host is, so it deliberately does NOT force handHolding
   // 'high' (which would trigger the ease-in re-sequence). It only (a) stops the terse "get out
@@ -3498,6 +3641,12 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     // ("that's a lot with the clock ticking — just these few first") distinctly from the
     // first-timer's gentler reassurance. False on every calm board ⇒ additive.
     overwhelm,
+    // The bar `overwhelm` was measured against — the open-call count at which THIS
+    // host, on THIS runway, is treated as underwater. Exposed so the threshold is
+    // inspectable rather than folklore, and so a test can assert it moved for the
+    // host it was supposed to move for. null on a relaxed/unknown runway, where
+    // overwhelm cannot fire at all.
+    overwhelmPile,
     // Wave-2s PACE — a hand-held host doesn't get the whole list at once; the board is
     // chunked into paced sessions ("start with these few, the rest surface after") sized by
     // focusCount. This adapts the PACE across the runway, not just the order — and it stays
@@ -3605,11 +3754,24 @@ export function playbookDecisionOptions(event, id) {
     return true;
   });
   if (gatedOptions.length === 0) return null;
+  // `copyWhen` — an authored string that asserts the host is on their own stands
+  // down when the app genuinely knows otherwise (hostCapacity:'has_help', or
+  // people the host has named as helping). No rules, or facts the app does not
+  // know ⇒ the authored literal, unchanged.
+  const copy = resolveCopy(d, (() => {
+    try { return decisionFactsFor(event, pb); } catch (_e) { return {}; }
+  })());
   return {
     id: d.id,
     label: d.label,
     options: gatedOptions,
-    why: d.why || '',
+    why: copy.why || '',
+    // How `why`/`defaultWhy` resolved: 'authored' (the literal stands) or
+    // 'conditional' (a copyWhen rule fired), with `copyRead` naming the facts it
+    // read — the same "a recommendation must name itself" rule recommendedWhen
+    // follows, so a surface can show WHY the wording moved.
+    copyBasis: copy.copyBasis,
+    copyRead: copy.read,
     chosen: choicePickFor(event, d.id),
     // AUTHORED per-option intelligence (optional, playbook-by-playbook): the
     // distinguishing tradeoff per option, the engine's default pick, and WHY that
@@ -3629,7 +3791,7 @@ export function playbookDecisionOptions(event, id) {
     // defaultWhy is now VISIBLE as missing instead of silently wearing `why`'s
     // clothes — and decisionContract.test.js fails the build if a can-derive
     // decision ships without one.
-    defaultWhy: d.defaultWhy || '',
+    defaultWhy: copy.defaultWhy || '',
   };
 }
 
