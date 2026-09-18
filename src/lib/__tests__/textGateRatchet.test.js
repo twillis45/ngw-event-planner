@@ -44,7 +44,17 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // which drives creation and asserts no surface asks for a venue the plan
 // already knows — with a negative control proving the ask still fires when
 // there is genuinely no location.
-const MAX_HOSTV2_TEXT_GATES = 37;
+// 37 -> 38 on 2026-09-18 for difmTruthfulness.test.js, with the reason this
+// ratchet asks for: three of its four subjects are WRITES and CTA copy in a
+// shell jest cannot execute (the reconfirm sweep's removed setTimeout staging,
+// Skip writing thankYouSkipped rather than thankYouSent, and the draft sheet's
+// unfilled-blank warning). Those are claims about the source, and a source
+// assertion is the only thing that can hold them from here.
+//
+// The fourth subject — a drafted contact is never "silent" — is a real
+// behavioural test against src/lib/vendorContact.js in the same file, and needs
+// no shell text at all.
+const MAX_HOSTV2_TEXT_GATES = 38;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

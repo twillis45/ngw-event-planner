@@ -77,7 +77,7 @@ export function contactState(vendor, now = new Date()) {
     // phoned them; the app simply does not know, and must not say otherwise.
     return {
       contactedAt: null, source: null, daysSince: null,
-      awaitingReply: false, silent: false, known: false,
+      handedOff: false, awaitingReply: false, silent: false, known: false,
     };
   }
 
@@ -99,14 +99,39 @@ export function contactState(vendor, now = new Date()) {
     );
   const daysSince = Math.max(0, dayDiff(at, asOf));
 
+  // ── A DRAFT IS NOT A HANDOFF (audit finding, 2026-09-18) ──────────────────
+  // `CONTACT_SOURCES` has carried 'drafted' since this module was written, for
+  // exactly this case, and NOTHING ever passed it — every channel, including
+  // the clipboard, stamped 'host-logged'. So copying a draft to read it on your
+  // phone was recorded as having reached out, and three weeks later the app
+  // told the host "You reached out 21 days ago and haven't heard back", listed
+  // the vendor as silent, and marked the readiness score down for it. The host
+  // then chases a vendor who was never contacted.
+  //
+  // 'host-logged' means the host performed a handoff (opened the SMS composer,
+  // sent the mail, or ticked "I sent it myself"). 'drafted' means we prepared
+  // words and have NO IDEA whether they left the room. The second cannot carry
+  // awaitingReply or silent, because both assert the vendor owes a reply — and
+  // a vendor who was never written to owes nothing.
+  //
+  // The stamp is still kept, and `known` stays true: "a draft was prepared on
+  // the 3rd" is a real, useful fact. It is just not evidence of contact, and
+  // the header of this file already says the app may not claim what it cannot
+  // do. This is that rule reaching the one source that was bypassing it.
+  const handedOff = (v.lastContactSource || 'host-logged') !== 'drafted';
+
   return {
     contactedAt: at.toISOString(),
     source: v.lastContactSource || null,
     daysSince,
-    awaitingReply: !replied,
+    // TRUE only when the host actually handed the words over. Surfaces that
+    // word this as "you reached out" must read THIS, not `known`.
+    handedOff,
+    awaitingReply: handedOff && !replied,
     // Silence is only worth naming once it has run past the same line the
-    // readiness score already uses.
-    silent: !replied && daysSince >= SILENCE_DAYS,
+    // readiness score already uses — and only for a vendor we know was written
+    // to at all.
+    silent: handedOff && !replied && daysSince >= SILENCE_DAYS,
     known: true,
   };
 }

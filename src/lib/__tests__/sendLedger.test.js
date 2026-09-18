@@ -125,7 +125,19 @@ describe('the shell wiring (draft sheet)', () => {
     // silence clock (contactState) starts on the same tap.
     const fn = fnAfter('const recordSend = ', 'const sendEntry');
     expect(fn).toMatch(/sheet\.vendorId/);
-    expect(fn).toMatch(/logVendorContact\(sheet\.vendorId\)/);
+    expect(fn).toMatch(/logVendorContact\(sheet\.vendorId/);
+    // ── AND THE CLOCK ONLY STARTS ON A REAL HANDOFF (2026-09-18) ────────────
+    // This used to pin `logVendorContact(sheet.vendorId)` exactly, which is why
+    // it caught the change — correctly. The call now carries the SOURCE,
+    // because every channel including the clipboard used to stamp
+    // 'host-logged': copying a draft to read it on your phone was recorded as
+    // reaching out, and three weeks later the app said "You reached out 21 days
+    // ago and haven't heard back" and marked the vendor silent.
+    //
+    // The original intent — one gesture, both ledgers — is unchanged and still
+    // asserted above. What is added is WHICH gesture: a composer or an
+    // attestation is a handoff, a clipboard write is a draft.
+    expect(fn).toMatch(/channel === 'copy' \? 'drafted' : 'host-logged'/);
   });
 
   test('the state chip renders the attested line, never the word Sent alone', () => {

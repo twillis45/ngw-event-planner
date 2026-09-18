@@ -2928,14 +2928,28 @@ export default function HostShellV2() {
   // imply it did — CONTACT_SOURCES omits 'sent' for exactly this reason. Per
   // the 2026-08-07 board ruling there is NO comms hub: contact is an act on
   // the vendor row, where the host is already standing when they notice.
-  const logVendorContact = (id) => {
+  // `source` SAYS WHICH THING HAPPENED (audit finding, 2026-09-18). Every
+  // channel used to stamp 'host-logged', including the clipboard — so copying a
+  // draft to read it on your phone was recorded as having reached out, and three
+  // weeks later the app said "You reached out 21 days ago and haven't heard
+  // back", listed the vendor as silent and marked the readiness score down for
+  // it. The host then chases a vendor nobody ever wrote to.
+  //
+  // CONTACT_SOURCES has carried 'drafted' for exactly this since the module was
+  // written, with zero call sites. This is it finally being passed.
+  const logVendorContact = (id, source = 'host-logged') => {
     const v = (event.vendors || []).find(x => x && x.id === id);
     const name = (v && String(v.name || '').trim()) || 'them';
-    writeVendor(id, recordContact({ source: 'host-logged' }),
+    const drafted = source === 'drafted';
+    writeVendor(id, recordContact({ source }),
       // Names the act in the host's own words, and says what it BUYS them —
       // otherwise "logged" reads as bookkeeping rather than as the thing that
-      // makes silence visible later.
-      `Noted — you reached out to ${name}. If they go quiet, this is what tells you.`);
+      // makes silence visible later. The drafted wording promises nothing about
+      // the vendor, because nothing is known about them: the words may still be
+      // sitting on a clipboard.
+      drafted
+        ? `Copied — the note for ${name} is on your clipboard. Tap “Mark it sent” once it's actually gone.`
+        : `Noted — you reached out to ${name}. If they go quiet, this is what tells you.`);
   };
   // WAVE-B write path (a): booking status. The EXACT vocabulary every status
   // read expects (lib/vendorIntelligence header: 'Considering' | 'Quoted' |
@@ -3086,12 +3100,24 @@ export default function HostShellV2() {
     patchEvent({ vendors: [...(event.vendors || []), v] }, (name || category) + ' added — open it to add what you know.');
     setSheet(s => ({ ...s, focus: v.id }));
   };
+  // ── NO THEATRE (audit finding, 2026-09-18) ───────────────────────────────
+  // This used to stage 'drafting…' at 120 + i*430ms and 'ready' at 520 + i*430ms
+  // — two setTimeouts per vendor and nothing else. No draft was produced here:
+  // draftVendorReconfirm runs synchronously at render and the note is already
+  // in hand before the first timer fires. The timers existed only to gate the
+  // Text/Copy buttons behind a cascade, so a host at T-2 days with five vendors
+  // watched ~2.2 seconds of "drafting…" and could reasonably conclude five
+  // reconfirmations had gone out. Nothing had left the app.
+  //
+  // That is fake intelligence by the house definition — a synchronous template
+  // lookup dressed as work in flight — and the honest version is shorter: the
+  // drafts ARE ready, so say so and show the buttons.
   const runSweepDrafts = () => {
     sweepTimers.current.forEach(clearTimeout); sweepTimers.current = [];
-    reconfirmables.forEach((v, i) => {
-      if (v.reconfirmed72) return;
-      sweepTimers.current.push(setTimeout(() => setSweepState(m => ({ ...m, [v.id]: 'drafting' })), 120 + i * 430));
-      sweepTimers.current.push(setTimeout(() => setSweepState(m => ({ ...m, [v.id]: 'ready' })), 520 + i * 430));
+    setSweepState(m => {
+      const next = { ...m };
+      reconfirmables.forEach((v) => { if (!v.reconfirmed72) next[v.id] = 'ready'; });
+      return next;
     });
   };
   const spend = useMemo(() => {                          // lib/hostSpending — budget single-source
@@ -9781,7 +9807,10 @@ export default function HostShellV2() {
                   <div className="sc-eyebrow">{days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days + ' days out'} · the reconfirm window</div>
                   <h3>Reconfirm your vendors</h3>
                   <p>{reconfirmables.length === 1 ? reconfirmables[0].name + ' holds your day' : reconfirmables.length + ' vendors hold your day'} — one tap drafts every reconfirm, each with their own time and details.{reconfirmedN > 0 ? ' ' + reconfirmedN + ' of ' + reconfirmables.length + ' already answered.' : ''}</p>
-                  <button className="mini" onClick={() => { setSheet({ kind: 'sweep' }); runSweepDrafts(); }}>Reconfirm everyone</button>
+                  {/* "Reconfirm everyone" named an act on every vendor that this app cannot
+                      perform — nothing is sent from here, each note is handed to the host
+                      to send. UX_07: never name a verb the full path does not deliver. */}
+                  <button className="mini" onClick={() => { setSheet({ kind: 'sweep' }); runSweepDrafts(); }}>Draft a reconfirm for each</button>
                 </div>
               )}
               {sweepWindow && reconfirmedN === reconfirmables.length && (
@@ -15881,8 +15910,12 @@ export default function HostShellV2() {
             })()}
             {sheet.kind === 'thanks' && (() => {
               const yes = (event.guests || []).map((g, i) => ({ g, i })).filter(x => x.g && x.g.rsvp === 'Yes');
+              // `sent` counts ONLY real thank-yous. `queue` also drops the skipped,
+              // so the run does not re-offer someone the host deliberately passed —
+              // two different questions that used to share one field.
               const sent = yes.filter(x => x.g.thankYouSent).length;
-              const queue = yes.filter(x => !x.g.thankYouSent);
+              const skipped = yes.filter(x => !x.g.thankYouSent && x.g.thankYouSkipped).length;
+              const queue = yes.filter(x => !x.g.thankYouSent && !x.g.thankYouSkipped);
               const cur = queue[0] || null;
               const pct = yes.length ? Math.round((sent / yes.length) * 100) : 0;
               const noteFor = (g) => {
@@ -15904,7 +15937,13 @@ export default function HostShellV2() {
                       tone={sent >= yes.length ? 'ok' : undefined}
                       sub={sent >= yes.length
                         ? 'That’s everyone — every yes has a thank-you.'
-                        : 'One at a time — each note already knows who came and what they brought.'}
+                        // THE RUN CAN END WITHOUT BEING COMPLETE. When the queue
+                        // is empty but some were skipped, the old copy said
+                        // "That's everyone" because skipping wrote thankYouSent.
+                        // Name the remainder instead of absorbing it.
+                        : !queue.length && skipped
+                          ? `${sent} thanked · ${skipped} skipped — ${skipped === 1 ? 'that one is' : 'those are'} still unthanked if you want to come back to ${skipped === 1 ? 'it' : 'them'}.`
+                          : 'One at a time — each note already knows who came and what they brought.'}
                     />
                   )}
                   <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ '--fill': pct / 100, background: 'var(--ok)' }} /></div>
@@ -15923,8 +15962,17 @@ export default function HostShellV2() {
                           {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(body)}>Text it</a>}
                           {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent('Thank you') + '&body=' + encodeURIComponent(body)}>Email it</a>}
                           <button className="mini" onClick={() => { try { navigator.clipboard.writeText(body); toast('Copied.'); } catch { /* nothing */ } }}>Copy</button>
-                          <button className="cta" onClick={() => writeGuest(i, { thankYouSent: true }, queue.length > 1 ? g.name.split(' ')[0] + ' thanked — next up.' : 'That was the last one — every yes is thanked.')}>Mark thanked</button>
-                          <button className="mini" onClick={() => writeGuest(i, { thankYouSent: true }, 'Skipped — marked handled.')}>Skip</button>
+                          <button className="cta" onClick={() => writeGuest(i, { thankYouSent: true }, queue.length > 1 ? g.name.split(' ')[0] + ' thanked — next up.' : (skipped ? 'That was the last in the queue — ' + skipped + ' skipped and still unthanked.' : 'That was the last one — every yes is thanked.'))}>Mark thanked</button>
+                          {/* SKIP IS NOT THANKED (audit finding, 2026-09-18). This wrote
+                              `thankYouSent: true` — byte-identical to "Mark thanked" one
+                              line up — so a host who skipped four guests to thank in
+                              person and two she'd decided not to thank was told "12 of
+                              12 · That's everyone — every yes has a thank-you." Six
+                              people had not been thanked and the app had erased the
+                              difference. `thankYouSkipped` keeps the queue moving without
+                              claiming the note was sent; the count below reads only
+                              `thankYouSent`, so the tally is now true. */}
+                          <button className="mini" onClick={() => writeGuest(i, { thankYouSkipped: true }, 'Skipped — left unthanked, and the count says so.')}>Skip</button>
                         </div>
                       </div>
                     );
@@ -16041,7 +16089,10 @@ export default function HostShellV2() {
                   // ("if they go quiet, this is what tells you") is the one
                   // that earns the moment. One gesture, both records.
                   patchEvent({ sendLedger: led }, null, { noUndo: true });
-                  logVendorContact(sheet.vendorId);
+                  // The clipboard proves a draft exists, not that it left the
+                  // room. Every other channel here opens a composer or is the
+                  // host attesting they sent it themselves — those are handoffs.
+                  logVendorContact(sheet.vendorId, channel === 'copy' ? 'drafted' : 'host-logged');
                   return;
                 }
                 patchEvent({ sendLedger: led }, 'Noted — the plan remembers this went out.');
@@ -16186,6 +16237,29 @@ export default function HostShellV2() {
                 <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"
                   onChange={e => { setDraftBody(e.target.value); draftEditsRef.current[draftEditKey(sheet.title)] = e.target.value; }}
                   rows={Math.min(14, shownDraft().split('\n').length + 2)} />
+                {/* ── UNFILLED BLANKS ARE NOT READY TO SEND (audit, 2026-09-18) ──
+                    Several drafts deliberately bracket what the app does not know
+                    rather than invent it — the right call, and the Unknown Rule.
+                    But hostv2's sheet had no guard and no warning: "Update
+                    everyone" with no type produces a body whose only content is
+                    "[Add the update here]", and Share…/Text it sat right under it.
+                    One tap and forty guests receive a bracket. App.js carried the
+                    line "anything in [brackets] is yours to fill in"; this shell
+                    dropped it when the sheet was rebuilt.
+                    Named, counted, and pointed at the textarea directly above —
+                    not a block, because a host may legitimately want to send a
+                    draft and fill a blank in their own messages app. */}
+                {(() => {
+                  const blanks = (shownDraft().match(/\[[^\]\n]{2,60}\]/g) || []);
+                  if (!blanks.length) return null;
+                  return (
+                    <p className="grounding" style={{ margin: '10px 0 0', color: 'var(--warn)' }}>
+                      {blanks.length === 1
+                        ? `One blank still to fill — ${blanks[0]}. Edit it above before you send.`
+                        : `${blanks.length} blanks still to fill — ${blanks.slice(0, 2).join(' ')}${blanks.length > 2 ? '…' : ''}. Edit them above before you send.`}
+                    </p>
+                  );
+                })()}
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
                     plus direct sms: and wa.me deep links — no fake "sent" states. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
@@ -18149,11 +18223,20 @@ export default function HostShellV2() {
                                     steps aside and the chip carries the fact. */}
                                 {!cs.known
                                   ? (vSend ? '' : 'No record of reaching out yet.')
-                                  : !cs.awaitingReply
-                                    ? 'They came back to you.'
-                                    : cs.silent
-                                      ? `You reached out ${cs.daysSince} days ago and haven’t heard back.`
-                                      : `You reached out ${cs.daysSince === 0 ? 'today' : cs.daysSince + ' days ago'}.`}
+                                  : !cs.handedOff
+                                    // A DRAFT, NOT A HANDOFF (2026-09-18). We
+                                    // prepared words; whether they ever left the
+                                    // clipboard is unknown, so this says exactly
+                                    // that and names the tap that would settle
+                                    // it. `handedOff` also holds awaitingReply
+                                    // and silent false, so this vendor is never
+                                    // called quiet on the strength of a copy.
+                                    ? `Draft ready ${cs.daysSince === 0 ? 'today' : cs.daysSince + ' days ago'} — not marked sent yet.`
+                                    : !cs.awaitingReply
+                                      ? 'They came back to you.'
+                                      : cs.silent
+                                        ? `You reached out ${cs.daysSince} days ago and haven’t heard back.`
+                                        : `You reached out ${cs.daysSince === 0 ? 'today' : cs.daysSince + ' days ago'}.`}
                               </span>
                               {vSendLine && (
                                 <span className="of" style={{
