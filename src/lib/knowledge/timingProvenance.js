@@ -251,6 +251,9 @@ export function resolveTimingProvenance(decision) {
   if (lead === null) return null;
   const [lo, hi] = cat.leadDays;
   if (lead < lo || lead > hi) return null;
+  // (see timingConflict below: a lead OUTSIDE the window is not merely ungrounded —
+  // when it is LATER than the source supports it is a contradiction, and this
+  // function's null was swallowing that distinction.)
   return {
     tier: 'researched',
     verificationStatus: 'researched',
@@ -259,6 +262,68 @@ export function resolveTimingProvenance(decision) {
     claim: cat.claim,
     resolvedBy: 'timing-category-resolver',
 };
+}
+
+// ─── WHEN OUR DEADLINE CONTRADICTS THE SOURCE ───────────────────────────────
+//
+// `resolveTimingProvenance` returns null in two very different situations and the
+// caller could not tell them apart:
+//
+//   1. no category matched — genuinely unsourced. "What sides to serve" has no
+//      published lead time and never will. This is the honest, intended majority.
+//   2. a category MATCHED and then the lead-window gate rejected it — meaning a
+//      real dated source speaks to this exact kind of decision and OUR DEADLINE
+//      DISAGREES WITH IT.
+//
+// Case 2 was being filed as case 1. A contradiction was reported as an absence.
+//
+// MEASURED 2026-09-18 across all 45 playbooks / 260 decisions: 31 match a
+// category, 27 ground, and SIX are case 2. Four of the six tell the host to act
+// LATER than the source supports:
+//
+//   Holiday Party    venue                T-35d  vs  2-3 months for a party space
+//   Retirement Party venue                T-35d  vs  2-3 months
+//   Day Party        venue                T-28d  vs  2-3 months
+//   Surprise Proposal photographer_hidden T-30d  vs  photographers book far out
+//
+// The other two (Vow Renewal guestlist T-49d, Wedding guestcount T-365d) sit
+// EARLIER than the source's window, which is not a harm — asking for a headcount
+// sooner than a caterer needs it costs nobody anything.
+//
+// THIS DOES NOT CHANGE A SINGLE AUTHORED DEADLINE, deliberately. Every timing
+// source in this registry is a commercial practitioner (see each entry's own
+// note), and "a wedding blog says 2-3 months" is not sufficient grounds to move
+// a Day Party's backyard-venue deadline — the source's "weekend party space"
+// may not even be the same thing. Moving a host-facing deadline on that evidence
+// would be the over-application this file's header was written to prevent.
+// What was missing is that the disagreement was INVISIBLE. It is a value now.
+
+/**
+ * Does this decision's own deadline contradict a source that speaks to it?
+ *
+ * Returns null when there is no conflict — no category matched, the lead is
+ * unparseable, or it sits inside the source's window. Otherwise returns the
+ * conflict, with `direction`:
+ *   'late'   our deadline is AFTER the source's window closes — the host is
+ *            being told to start too late. This is the one that can cost them.
+ *   'early'  our deadline precedes the window. Recorded for completeness; acting
+ *            sooner than a source requires is not a harm.
+ */
+export function timingConflict(decision) {
+  const cat = detectTimingCategory(decision);
+  if (!cat) return null;
+  const lead = parseLeadDays(decision && decision.when);
+  if (lead === null) return null;
+  const [lo, hi] = cat.leadDays;
+  if (lead >= lo && lead <= hi) return null;
+  return {
+    category: cat.category,
+    ourLeadDays: lead,
+    sourceWindowDays: [lo, hi],
+    direction: lead < lo ? 'late' : 'early',
+    sources: cat.sources.slice(),
+    claim: cat.claim,
+  };
 }
 
 // A resolved/authored timing provenance is GROUNDED only when tier:'researched' AND it
