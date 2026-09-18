@@ -88,8 +88,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `23c32f6` |
-| Jest | **6,976 passed**, 1 skipped, **0 failed**, **476 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `bc4c211` |
+| Jest | **6,978 passed**, 1 skipped, **0 failed**, **476 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -101,6 +101,84 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (twelfth entry, same day) — the labels were being kept for the matcher, not for the host
+
+Commit `bc4c211`. **476 suites / 6,978 tests.** `verify:push` green on all five.
+
+This closes the item the eleventh entry flagged and deliberately did not take:
+"a label is load-bearing for timing provenance… that job needs the detector
+patterns moved in the same commit."
+
+### The coupling, and its two costs
+
+`detectTimingCategory` matched on the decision's host-facing LABEL:
+
+```
+"Collect dietary restrictions + the parent's pregna…"
+"Collect dietary restrictions + allergies with the…"
+```
+
+Three of the five dietary labels were long enough to TRUNCATE on the board, and
+shortening them would have silently un-grounded their deadlines — the pattern
+needs a verb beside the dietary word. They also read as unfinished CHORES in the
+settled fold, sitting beside the answer they already hold.
+
+### The fix is a declaration, not a wider pattern
+
+`timingCategory` is now declared on the decision, and an authored value wins over
+detection — the same shape as `decisionType` and the authored `timingProvenance`
+this module already honoured. Detection stays for the ~250 decisions that declare
+nothing. **An unknown key is REFUSED** rather than falling back to prose: a typo
+must not ground a deadline on the wrong source, nor look authoritative while
+grounding on nothing.
+
+| Playbook | Label now | Declares |
+|---|---|---|
+| Baby Shower | Dietary needs and pregnancy-safe foods | `dietary_collection` |
+| Birthday | Allergies and dietary needs | `dietary_collection` |
+| Bridal Shower | Dietary needs and allergies | `dietary_collection` |
+| Crab Feast | Shellfish allergies and dietary needs | `dietary_collection` |
+| Dinner Party | Dietary needs and allergies | **`invitation`** |
+
+Dinner Party declares `invitation` because that is what it already grounded on —
+its old label said "with the invite", and asking with the invitations is paced by
+when the invitations go out. The declaration preserves the intent that the
+wording was carrying by accident.
+
+### How it was proven safe
+
+A full snapshot across every playbook of each decision's derived type, timing
+category, grounding, conflict, board label, ask, status, route and weight basis,
+plus each playbook's food-plan choices and dietary item flags — captured before
+and after. **The only lines that differ are the five labels.** `type=multi` holds
+on all three restriction lists; every category and grounding is unchanged; no
+route moves; no diet flag changes.
+
+Driven at 390px — the fold now reads:
+
+```
+Shellfish allergies and dietary needs
+Vegetarian, Nut allergy                              Change
+```
+
+The widened "ask … guests about" verb from `14efcfe` is KEPT and is not dead
+code: the corpus stopped needing it, but any decision authored that way with no
+declared category still grounds. Pinned on a synthetic decision.
+
+### Carry forward
+
+**`timingCategory` is the pattern to reach for next time a label fights a
+matcher.** The decision corpus has several other `id + label` haystacks —
+`isDietaryDecision`, the route cascade's `_hay`, `looksLikeRestrictionList`,
+`venueContext` — and each one is a place where copy is quietly functional. They
+all held here only because every new label kept a dietary/allergy word. That is
+luck, not design, and the next label rewrite should declare rather than rely on it.
+
+**Flagged, not taken:** the sourcing row beside it still reads "Steam them
+yourself or order them steamed (pickup)?" — a QUESTION labelling a choice rather
+than a chore instruction, which is a different (and defensible) shape. Rewriting
+every settled label in the corpus is a wider call than this one.
 
 ## FIXED 2026-09-18 (eleventh entry, same day) — four things the dietary lane walked past
 
