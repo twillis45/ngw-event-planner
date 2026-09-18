@@ -88,19 +88,89 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `bc4c211` |
-| Jest | **6,978 passed**, 1 skipped, **0 failed**, **476 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `ced8030` |
+| Jest | **6,989 passed**, 1 skipped, **0 failed**, **478 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
-| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 654 (commit `4767f08`): 1008 passed / 207 skipped / 0 failed (25.6m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. A 5th test was added to that spec after the run and is passing locally, red-proofed |
+| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008 |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (thirteenth entry, same day) — 15% of host-facing decision copy is a functional string
+
+Commit `ced8030`. **478 suites / 6,989 tests.** `verify:push` green on all five.
+CI run **656** green on `372886d`: e2e **1009 passed / 207 skipped / 0 failed**.
+
+Closes the carry-forward the twelfth entry left: the corpus has other `id +
+label` haystacks where copy is quietly functional, and they all held through
+that pass only because every new label happened to keep a dietary word. **Luck,
+not design** — so this measures it instead of assuming.
+
+### The measurement
+
+For every decision the probe swaps ONLY the label for a neutral string and diffs
+everything the engine derives: decision type, timing category, timing grounding,
+timing conflict, board status, route, weight basis, and all thirteen
+knowledge-context groundings.
+
+**38 of 260 decisions (15%) change engine behaviour when only their label
+changes.** The full map is pinned in `whichLabelsAreLoadBearing.test.js`.
+
+| Class | Count | What a host loses |
+|---|---|---|
+| knowledge-context | 33 | A grounded claim disappears. "Is there a bar for the grown-ups?" grounds `legal`; neutral, it does not — on a decision entirely about serving alcohol |
+| timing-category / grounding | 7 | The deadline stops citing its source. The date still shows; it just no longer says where it came from |
+| timing-conflict | 3 | A contradiction between our deadline and its source appears or disappears |
+| route | 6 | The row's tap target moves. Losing `fp-diet-e` sends a host collecting allergies somewhere else |
+
+### This is not all debt, and the gate says so
+
+For three venue decisions ("Indoor or outdoor?", "At home or a venue/restaurant?")
+neutralising the label does not lose a grounding — it **adds a wrong one**,
+because the antiPattern reads the label to say these are not booking calls.
+There the label is doing correct, load-bearing work the id cannot do, and
+converting it to a declaration would throw information away. Held by its own test.
+
+### The clean result worth keeping clean
+
+**No label decides a decision TYPE, a STATUS, or a WEIGHT basis.** Those three
+are what would make copy edits genuinely unsafe rather than merely lossy — a
+label that decided whether a restriction list is multi-select is the defect this
+whole day started with, one layer down. Asserted as its own test so it stays
+empty.
+
+### The escape hatch, and why not to over-use it
+
+When a label genuinely has to change, DECLARE the fact: `timingCategory`
+(authored on five decisions, all absent from the map for that reason) and
+`decisionType` both work that way. Declaring beats widening a pattern, which is
+how a false positive gets in. **The 38 were deliberately NOT converted** — that
+is a large authoring job, it would lose information for the antiPattern cases,
+and the gate makes the coupling visible without it.
+
+### Carry forward: red-proofing found the gate was too noisy
+
+The first version failed THREE tests when one corpus label was reworded, and
+only one of them was the news. The premise test now asserts on a synthetic
+decision and the mutation guard compares against its own snapshot, so an
+ordinary copy edit fails exactly one test — the map — pointing straight at the
+finding. **A gate that fires on the wrong line is nearly as bad as one that does
+not fire.**
+
+### Two corrections to this file's own numbers
+
+`bc4c211` and the twelfth entry said **476 suites / 6,978 tests**. The real
+committed figure was **477 / 6,983** — measured before adding
+`aLabelIsCopyAgain` and not re-measured after. The e2e row also still cited run
+654; run 656 is the current confirmed one. Both corrected above. Nothing about
+the code changes; the numbers were wrong in the document whose whole job is
+measured reality.
 
 ## FIXED 2026-09-18 (twelfth entry, same day) — the labels were being kept for the matcher, not for the host
 
