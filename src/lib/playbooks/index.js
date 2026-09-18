@@ -18,7 +18,7 @@ import { attendanceAdjustment } from '../hostIntel';
 import { geoItemForPurchase } from '../knowledge/geoItemMap';
 // The one display form for an answer that may be a string OR a list. `decisionType`
 // is a leaf (no imports of its own), so this cannot create a cycle.
-import { answerText } from '../decisionType';
+import { answerText, answerList } from '../decisionType';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -4579,7 +4579,32 @@ export function playbookFoodPlan(event, opts = {}) {
     if (/kosher/.test(need)) rosterDiets.add('Kosher');
     if (/no alcohol|alcohol-free|sober|non-?alcoholic/.test(need)) rosterDiets.add('Alcohol-free');
   }
-  const activeDiets = [...new Set([...specialDiets.map((d) => d.diet), ...rosterDiets])];
+  // ── THE PICKER THE HOST ACTUALLY TAPS WAS THE ONE STORE NOBODY READ ───────
+  // (2026-09-18) Three places hold a dietary fact: `dietCounts` (the diet
+  // drill-in), the per-guest roster, and `foodChoices.dietary` — the option
+  // chips on the playbook's own dietary DECISION. The union above read the
+  // first two. MEASURED on a Crab Feast, tapping "Nut allergy" and "Shellfish"
+  // on the decision chips:
+  //
+  //   specialDiets []   dietaryResolved false   flagged items: NONE
+  //
+  // Byte-identical to recording nothing at all — while the board counted the
+  // decision as settled and the toast said so. The same event flags "Blue
+  // crabs -> shellfish" and "Steamed shrimp -> shellfish" the moment the SAME
+  // restriction arrives through either of the other two doors.
+  //
+  // On the decision whose own `why` reads "One guest with an allergy needs a
+  // separate plate kept away from the crab steam and the tools."
+  //
+  // Read through `answerList` so a pick-one string and a multi list both land,
+  // and kept as a FLAG source only — chips say WHICH restrictions exist, never
+  // how many guests have them, so they do not join `specialDiets` (counts) and
+  // do not set `dietaryResolved` (which means resolved PER GUEST). The honest
+  // tiering between the three stores is preserved, not flattened.
+  const chipDiets = answerList((event.foodChoices || {}).dietary)
+    .map((s) => String(s).trim())
+    .filter((s) => s && Object.prototype.hasOwnProperty.call(DIET_KEYWORDS, s));
+  const activeDiets = [...new Set([...specialDiets.map((d) => d.diet), ...rosterDiets, ...chipDiets])];
   if (activeDiets.length) {
     for (const it of list) {
       const flags = itemDietaryFlags(it.item || it.short, activeDiets);

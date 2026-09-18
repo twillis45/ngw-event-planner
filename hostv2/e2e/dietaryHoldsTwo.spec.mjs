@@ -111,6 +111,36 @@ test('a mis-tap is correctable, and an emptied list claims nothing', async ({ pa
   await expect(chip(sheet, 'Vegetarian')).toHaveAttribute('aria-pressed', 'false');
 });
 
+// ─── AND THE RESTRICTION REACHES THE SHOPPING LIST ───────────────────────────
+//
+// Recording a restriction is only half of it. MEASURED 2026-09-18: the decision
+// chips wrote to `foodChoices.dietary`, and `playbookFoodPlan` built its
+// `activeDiets` union from the OTHER two stores only — so tapping "Shellfish"
+// on a Crab Feast produced output byte-identical to recording nothing, while
+// the board counted the decision settled.
+//
+// Then, once the flag did reach the list, it was the FOURTH tag on a row that
+// renders TWO — so on Blue crabs it was always the one folded into "+1".
+//
+// Both halves are shell-visible and neither is reachable from jest.
+test('tapping a restriction marks the lines it applies to', async ({ page }) => {
+  const sheet = await boot(page);
+  await chip(sheet, 'Shellfish').click();
+  await settled(page);
+  await sheet.getByText('Done', { exact: false }).first().click();
+  await settled(page);
+  await sheet.getByText('The list', { exact: false }).first().click();
+  await settled(page);
+  // The list is grouped; open Food to reach the item rows.
+  await sheet.getByText('0 of 7 bought', { exact: false }).first().click();
+  await settled(page);
+
+  // Blue crabs is the row that carries `decision open` AND `essential`, so it is
+  // the one where a fourth-place tag disappears.
+  const crabRow = sheet.locator('.v-row, li, div').filter({ hasText: /Blue crabs/ }).last();
+  await expect(crabRow.getByText('shellfish', { exact: false }).first()).toBeVisible();
+});
+
 test('NEGATIVE CONTROL: a pick-one decision still folds on one tap', async ({ page }) => {
   // The multi behaviour must not leak. If the sourcing question stopped folding,
   // every pick-one in the app would have become a toggle list.

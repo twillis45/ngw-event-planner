@@ -17543,6 +17543,20 @@ export default function HostShellV2() {
                                     // shoved the price/tune controls onto a 3rd line). The
                                     // rest fold into a "+N" that the tune panel expands.
                                     const tags = [];
+                                    // ── THE ALLERGEN MARKER GOES FIRST (2026-09-18) ──────────
+                                    // Only the first TWO tags render; the rest fold into "+N".
+                                    // This sat FOURTH, behind `decision open`, `essential` and
+                                    // `day-of` — so on Blue crabs, a row carrying the first two,
+                                    // the shellfish marker was ALWAYS the one collapsed. DRIVEN
+                                    // at 390px: the row read "decision open · essential · +1"
+                                    // with the allergen inside the +1.
+                                    //
+                                    // Every other tag here says something about shopping. This
+                                    // one is the only label whose absence can hurt somebody, so
+                                    // it outranks them. It keeps the neutral `.tag.plan`
+                                    // treatment WAVE-5 gave it — an identification label, not a
+                                    // gap warning — this is about ORDER, not about shouting.
+                                    if (Array.isArray(it.dietFlags) && it.dietFlags.length) tags.push(<span key="diet" className="tag plan">{it.dietFlags.join(' · ').toLowerCase()}</span>);
                                     if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
                                     if (it.essential && !got) tags.push(<span key="ess" className="tag essential">essential</span>);
                                     // WAVE-5 (UX_02 amber budget): "day-of" and diet flags are
@@ -17551,7 +17565,6 @@ export default function HostShellV2() {
                                     // their sibling tags (owner/yours/swapped) already use.
                                     // Only `essential && !got` above stays amber: that one IS a gap.
                                     if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag plan">day-of</span>);
-                                    if (Array.isArray(it.dietFlags) && it.dietFlags.length) tags.push(<span key="diet" className="tag plan">{it.dietFlags.join(' · ').toLowerCase()}</span>);
                                     if (it.added && it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
                                     else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
                                     if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
