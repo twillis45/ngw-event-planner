@@ -88,19 +88,171 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `a932d44` |
-| Jest | **6,950 passed**, 1 skipped, **0 failed**, **472 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `23c32f6` |
+| Jest | **6,976 passed**, 1 skipped, **0 failed**, **476 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
-| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **+4 tests 2026-09-18** (`dietaryHoldsTwo.spec.mjs`, self-pinned to 390px so it runs once, not seven times) — passing locally and red-proofed; the next full-matrix run is what confirms the new total |
+| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 654 (commit `4767f08`): 1008 passed / 207 skipped / 0 failed (25.6m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. A 5th test was added to that spec after the run and is passing locally, red-proofed |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (eleventh entry, same day) — four things the dietary lane walked past
+
+Commits `8471946` `2bb28ff` `14efcfe` `23c32f6`. **476 suites / 6,976 tests.** `verify:push`
+green on all five. Each lane was MEASURED against the whole corpus before and
+after, and each changed a countable, named set of rows.
+
+### 1. The app claimed a vegetarian nobody mentioned — `8471946`
+
+On an UNTOUCHED Bridal Shower, no host input at all:
+
+```
+choicePickFor(event, 'dietary')            -> "Vegetarian"
+playbookDecisionOptions(event, 'dietary')  -> { chosen: "Vegetarian", … }
+playbookFoodPlan(event) dietary row        -> { chosen: "Vegetarian" }
+```
+
+It was the only dietary decision in the corpus authoring a default at all.
+Dinner Party and Crab Feast both author `null`, and Dinner Party's `why` says
+why: *"One unflagged severe allergy can send a guest to the ER."*
+
+A default is legitimate and most of the corpus needs one — the plan has to be
+right on first render. That works for a PLAN SETTING. A dietary restriction is
+a claim about a REAL GUEST that only the guests can answer. It got sharper the
+same day `dietary` became multi: the picker presses every recorded restriction,
+so an untouched Bridal Shower rendered "Vegetarian" as ON.
+
+**One field.** Negative controls hold both sides: Repast's `place` still
+proposes a fellowship hall with its authored `defaultWhy`, and a host who
+records "Vegetarian" themselves still gets it back.
+
+### 2. `blocks` was being read as a destination — `2bb28ff`
+
+The board's route cascade tests `` `${d.id} ${d.label} ${_blocks}` ``. A guest
+question that blocks the food carries the word "food" in its own haystack.
+
+MEASURED over 359 board rows — SIX landed on `food-plan`, ONE was about food:
+
+| Decision | Label | Routed to |
+|---|---|---|
+| Baby Shower/guestlist | "Finalize guest list with the parent" | food plan |
+| Bridal Shower/guestlist | "Confirm guest list with the bride" | food plan |
+| Gender Reveal/guestlist | "Finalize guest list with the parents" | food plan |
+| Birthday/headcount | "Confirm guest count" | food plan |
+| Graduation/headcount | "Estimate peak + total headcount" | food plan |
+| Dinner Party/menu | "Lock the menu" | food plan ✓ |
+
+What a decision UNBLOCKS is not WHERE it is answered. No new destination was
+invented — `f-headcount` and hostv2's readiness list already route to
+`{ tab: 'Guests', focusField: 'guests-entry' }`. Scoped to decisions with no
+authored options, which is exactly those five; a full before/after sweep of all
+359 rows differs on those five lines and nothing else.
+
+**Not verified end-to-end.** The route is asserted against `resolveRoute` and
+traced through `wiredKind`, and it re-points to a destination the app already
+ships — but a Chromium tap-through was not completed (the board's decision rows
+sit behind a scroll/expand the probe could not drive quickly). Recorded as a
+gap, not reported as a drive.
+
+### 3. A verb decided whether the app knew its deadline was sourced — `14efcfe`
+
+`dietary_collection` maps one act to a sourced cadence and its pattern required
+"collect" or "gather". Of eleven dietary-subject decisions, ten grounded. The
+one that did not:
+
+```
+Crab Feast/dietary   "Ask your guests about shellfish allergies"   T-10d
+```
+
+Same act, same cadence, T-10d squarely inside the sourced 5–45 day window —
+ungrounded because the label opens with "Ask". On the one decision whose entire
+menu is the allergen.
+
+Widened narrowly (requires "guests" between the ask and the dietary word).
+MEASURED before and after over all 262 decisions: **exactly one row changes.**
+Bachelorette Party's "Drinking mix + dietary/no-alcohol needs" stays out on
+purpose — a negative control holds it, and another holds the menu antiPattern.
+
+### 4. The picker the host taps was the one store nobody read — `23c32f6`
+
+Asked which of the two dietary-collection mechanisms is better for safety, the
+answer turned out to be **neither of the two being compared**.
+
+| Store | specialDiets | dietaryResolved | Spread items flagged |
+|---|---|---|---|
+| nothing recorded | — | false | none |
+| **decision chips** `foodChoices.dietary` | **—** | **false** | **NONE** |
+| `dietCounts` (drill-in) | 2 diets | false | Blue crabs, Steamed shrimp |
+| per-guest roster | — | **true** | Blue crabs, Steamed shrimp |
+
+Tapping "Nut allergy" and "Shellfish" on a Crab Feast produced output
+**byte-identical to recording nothing**, while the board counted the decision
+settled and the toast said so. On the decision whose own `why` reads: *"One
+guest with an allergy needs a separate plate kept away from the crab steam and
+the tools."*
+
+**A correction on this same day's work.** Making those chips multi-select
+(`c8daab5`) fixed what they RECORDED and what they DISPLAYED. It did not make
+one spread item safer, because the store they write to had no reader in the
+flagging engine. That lane was reported as a safety fix; this is the part that
+earns it.
+
+Tiering preserved, not flattened: chips join as a FLAG source only — never
+`specialDiets` (counts they cannot know), never `dietaryResolved` (which means
+resolved PER GUEST, and only the roster earns it). Both held by negative
+controls.
+
+**And the marker was invisible where it landed.** Only the first TWO tags on a
+spread row render; the rest fold into "+N". The diet flag sat FOURTH, behind
+`decision open`, `essential` and `day-of` — so on Blue crabs, a row carrying the
+first two, the allergen marker was ALWAYS the one collapsed. Driven at 390px:
+the row read `decision open · essential · +1`. It goes first now. Every other
+tag on that row is about shopping; this is the only one whose absence can hurt
+somebody. It keeps its neutral `.tag.plan` treatment — this is ORDER, not
+shouting.
+
+The chip vocabulary also joined the resolution gate: `dietVocabularyResolves`
+enumerates arrays named DIET_TAGS / DIETARY_TAGS / DIET_OPTIONS, and the
+playbook decisions' own `options:` arrays were a **sixth** vocabulary outside
+that sweep — which matters now that they reach the matcher.
+
+DRIVEN END TO END at 390px:
+
+```
+nothing recorded   -> no marker anywhere on the list
+"Shellfish" tapped -> Blue crabs [shellfish] · Steamed shrimp [shellfish]
+```
+
+e2e `dietaryHoldsTwo.spec.mjs` is now 5 tests. Red-proofed: reverting the tag
+order fails the new one and leaves the other four green.
+
+### Carry forward: a label is load-bearing for timing provenance
+
+`detectTimingCategory` reads the decision's LABEL. That makes every dietary
+label ("Collect dietary restrictions from RSVPs", "Ask your guests about
+shellfish allergies") a functional string, not just copy — renaming one to a
+noun phrase would silently un-ground its deadline. **This is why the imperative
+dietary labels were NOT rewritten in this pass**, despite reading as unfinished
+chores beside their own recorded value in the multi fold. That job needs the
+detector patterns moved in the same commit.
+
+### The architecture question, answered by measurement
+
+Raised here as "which of the two mechanisms is better for safety" — tag list vs
+per-guest roster. Measuring it found a third store and a better answer: the
+chips, the mechanism most hosts actually touch, reached nothing at all. All
+three now feed the same flagging engine, at honest tiers (see lane 4 above).
+
+The roster remains the strongest of the three — it is the only one that knows
+WHO and the only one that sets `dietaryResolved` — so converting the tag-list
+types to per-guest collection is still a live product call. It is no longer
+urgent, because the weakest path is no longer silent.
 
 ## FIXED 2026-09-18 (tenth entry, same day) — the second allergy erased the first
 
