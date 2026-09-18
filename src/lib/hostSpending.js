@@ -246,7 +246,47 @@ export function hostSpending(event, priceFactor, itemFactors) {
   // because "no budget" and "no room left" are different facts. Can go negative when the
   // plan commits past the budget; that overage is the truth and is NOT clamped.
   const uncommitted = total > 0 ? Math.round(total - committed) : null;
-  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+
+  // ── ONE HEADLINE NUMBER, TWO PRICE BASES (measured 2026-09-18) ────────────
+  // `committed` sums components priced on DIFFERENT bases and said nothing
+  // about it. Measured on a 150-guest Cookout across regional factors
+  // 0.90 / 1.00 / 1.12:
+  //
+  //     foodEstimate      5080 -> 5648 -> 6323     moves
+  //     suppliesEstimate   808 ->  898 -> 1003     moves
+  //     capacityEstimate  1453 -> 1453 -> 1453     FLAT
+  //
+  // Capacity is 18.2% of `committed` on that event, priced at national
+  // baseline while the food beside it is priced regionally.
+  //
+  // THE FIX IS NOT TO MULTIPLY CAPACITY BY THE SAME FACTOR. That factor is a
+  // BLS Average Price food-commodity basket (backend/app/routers/food_prices.py
+  // fetches a grocery basket and takes the mean of per-item regional ratios).
+  // Chair, table and glassware rentals are not groceries; a grocery CPI ratio
+  // does not predict rental pricing, and applying it would be inventing a
+  // relationship nobody measured — which is the exact failure this file's
+  // neighbours spent the day removing.
+  //
+  // What was actually missing is the DISCLOSURE. A surface can now say which
+  // parts of the number are regional and which are national, instead of
+  // presenting a mixed figure as uniformly priced. `vendorEstimator`'s
+  // METRO_MARKETS is a services index and is the right basis for durables if
+  // this is ever genuinely adjusted — noted rather than guessed at here.
+  const pf = num(priceFactor) > 0 ? num(priceFactor) : 1;
+  const nationalAtPlay = [capacityEstimate, vendorOwed, lodgingCommitted_, crabEstimate]
+    .some((n) => num(n) > 0);
+  const priceBasis = {
+    factor: pf,
+    // Priced through the regional food factor.
+    adjusted: ['food', 'supplies'],
+    // Priced at national baseline, or host-entered and therefore not ours to adjust.
+    nationalBaseline: ['capacity', 'vendorOwed', 'lodging', 'crab'],
+    // True only when the mixing is actually VISIBLE: a factor that is 1 mixes
+    // nothing, and a component worth $0 cannot skew a total.
+    mixed: pf !== 1 && nationalAtPlay,
+  };
+
+  return { priceBasis, total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;
