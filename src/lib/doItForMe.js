@@ -9,6 +9,7 @@ import { isVendorBooked } from './workstreams';
 import { transportDecision } from './travelPlan';
 import { venueFor } from './venueFor';
 import { guestSafeText } from './guestFacing';
+import { guestCountIsConfirmed, guestCountNotice } from './guestCountFor';
 import { STAY_FROM_PICK, STAY_FROM_PLAN } from './lodgingIntel';
 import { normalizeCvbContact } from './cvbIntel';
 import { incidentPlanFor } from './knowledge/incidentContext';
@@ -69,6 +70,23 @@ function headCount(event) {
   const n = Number(event && event.guestCount) || Number(event && event.guestEstimate) || (event && event.guests ? event.guests.length : 0) || 0;
   return n > 0 ? n : null;
 }
+
+// ─── THE OUTWARD HEADCOUNT — ONLY A NUMBER THE HOST ACTUALLY GAVE ────────────
+//
+// Measured 2026-09-18: a host who types "Cookout on June 12, 2027" and nothing
+// else gets a STORED headcount of 40, substituted from the playbook's typical by
+// the creation seam — and `draftVendorOutreach` told a caterer "for about 40
+// guests". Of everything this app derives, that was the only measured case of an
+// invented number leaving the app in the host's name. A caterer quotes against it.
+//
+// `timePhrase` two hundred lines above already does exactly this for the derived
+// start time (startTimeIsConfirmed). The headcount had no equivalent because it
+// had no provenance field at all. It has one now; this is its gate.
+//
+// WITHHOLDS, NEVER GUESSES DOWN. A vendor inquiry with no headcount is a normal
+// inquiry — the caterer asks. A vendor inquiry with OUR number in it is us
+// speaking for the host to a third party.
+const outwardHeadCount = (event) => (guestCountIsConfirmed(event) ? headCount(event) : null);
 
 // Possessive that reads right: "Maya's" / "the family's". Falls back to the event
 // name when there's no honoree.
@@ -259,7 +277,8 @@ export function draftVendorOutreach(event, vendor, profile) {
   const name = (vendor && vendor.name ? String(vendor.name) : '').trim();
   const type = (event.type ? String(event.type) : 'event').toLowerCase();
   const date = fmtLongDate(event.date);
-  const count = headCount(event);
+  // OUTWARD: our own typical never goes to a vendor. See outwardHeadCount.
+  const count = outwardHeadCount(event);
   const place = placePhrase(event);
   const host = hostName(profile);
   const greeting = name ? `Hi ${name},` : 'Hi there,';
@@ -270,7 +289,14 @@ export function draftVendorOutreach(event, vendor, profile) {
   const ask = `I’m looking for ${cat}. Are you available that date, and could you share your pricing and what’s included?`;
   const lines = [greeting, '', `${bits.join(' ')}. ${ask}`, '', 'Thanks so much!'];
   if (host) lines.push(host);
-  return { subject: `${type[0].toUpperCase()}${type.slice(1)}${date ? ' · ' + date : ''} — ${cat} inquiry`, body: lines.join('\n').trim() };
+  // The other half of withholding: silently dropping the headcount would leave
+  // the host believing the vendor was told one. `notice` is null when there is
+  // nothing to say, so a surface can render it without a branch.
+  return {
+    subject: `${type[0].toUpperCase()}${type.slice(1)}${date ? ' · ' + date : ''} — ${cat} inquiry`,
+    body: lines.join('\n').trim(),
+    notice: guestCountNotice(event),
+  };
 }
 
 // #3 — the thank-yous. One warm note the host sends to guests / anyone who helped.

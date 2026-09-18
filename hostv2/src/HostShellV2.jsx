@@ -120,8 +120,11 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { budgetFor } from '@app/lib/budgetFor';
+import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
+import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
+import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
@@ -1794,6 +1797,24 @@ export default function HostShellV2() {
   // ignored it and rendered the whole list under copy that said otherwise. Fold
   // ONLY when the engine says to AND it actually removes rows, so a calm board
   // stays byte-identical (additive) and the copy is never an overclaim.
+  // THE `overwhelm` CHECK STAYS — MEASURED 2026-09-18, DO NOT "SIMPLIFY" IT.
+  // A review proposed gating on `staged` alone, on the reasoning that
+  // `staged = handHolding === 'high' || overwhelm` makes the pair redundant. It
+  // is redundant in one direction only: overwhelm implies staged, so the pair
+  // reduces to `overwhelm` — which is the STRICTER half, and the one that reads
+  // the size of the pile.
+  //
+  // `staged` alone is far broader than "a first-timer": handHolding goes high
+  // for anyone solo on a hard event, seasoned or not. Measured across
+  // experience x open-count, dropping the check starts folding in 9 of 21
+  // states — every host at 2, 3 or 5 open calls, including seasoned ones. That
+  // is hiding work from people who are not underwater, and it would bypass the
+  // engine's own negative control that a small pile must not fold.
+  //
+  // The real repair for "the fold never fires for first-timers" was in the
+  // ENGINE: computeHostAdaptation's overwhelm threshold now reads the host, so
+  // this gate fires for them without being loosened. Measured after: 20/45 at
+  // T-45 for a first-timer, still 0/45 for a host who said nothing.
   const callsFocus = (() => {
     const ha = decisionBoard.hostAdaptation;
     if (!ha || !ha.overwhelm || !ha.staged) return null;
@@ -4773,6 +4794,11 @@ export default function HostShellV2() {
     // (contactState/derive.js) starts without a second tap.
     setSheet(prev => ({
       kind: 'draft', title, body, queue: queue || null,
+      // A draft may carry a note for the HOST about what it deliberately left
+      // OUT — today, a headcount the app substituted rather than one they gave.
+      // Withholding without saying so would leave them believing the vendor was
+      // told. Null for every draft that has nothing to declare.
+      notice: (d && typeof d === 'object' && d.notice) || null,
       vendorId: (opts && opts.vendorId) || null,
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
@@ -5819,7 +5845,9 @@ export default function HostShellV2() {
     );
   };
 
-  const setGuests = (n) => patchEvent({ guestEstimate: n }, 'Planning around ' + n + ' now — the plan just recomputed.');
+  // guestCountSource:'host' — this write IS the host answering, so it clears any
+  // 'playbook-typical' the creation seam recorded and unblocks the outward drafts.
+  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host' }, 'Planning around ' + n + ' now — the plan just recomputed.');
   // The count RESOLUTION rows — shared by the 'count' editor and the guests
   // editor's drift bridge (W14): when the caterer's number and the confirmed
   // yeses disagree, the fix is one of these two taps, wherever the host is.
@@ -5966,7 +5994,7 @@ export default function HostShellV2() {
           {event.guestMode !== 'list' && guestN > 0 && (
             <CtaRow>
               <button className="cta" onClick={() => {
-                patchEvent({ guestCount: guestN, guestEstimate: guestN },
+                patchEvent({ guestCount: guestN, guestEstimate: guestN, guestCountSource: 'host' },
                   guestN + ' locked in — food, seats, and buys now size from it.');
                 // Answering the ask advances the loop (W14b): the engine stops
                 // generating this action once guestCount is set, but the session
@@ -6352,6 +6380,11 @@ export default function HostShellV2() {
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
     // request, 2026-07-08), a custom number, and the range as a hint.
+    // What this proposal stands on, from the factors that actually moved it.
+    const estDisclosure = (() => {
+      try { return est && est.provenanceKeys ? moneyDisclosure(est.provenanceKeys) : null; }
+      catch (_e) { return null; }
+    })();
     const opts = est
       ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
       : [];
@@ -6414,9 +6447,22 @@ export default function HostShellV2() {
       return (
         <AskColumn>
           <Eyebrow>A number to plan around</Eyebrow>
-          <BigValue suffix="Typical">{fmt(typical)}</BigValue>
+          {/* THE LEAST-GROUNDED NUMBER IN THE PRODUCT WAS THE ONE THAT BECOMES
+              THE BUDGET (2026-09-18). 532 of 622 priced food LINES pass a
+              registry-checked provenance predicate against 297 dated sources —
+              and the per-head bands that produce THIS figure had no provenance
+              field in their shape at all, while rendering as a bare big number
+              with a one-tap "Use $X". UX_08: never show an estimate without the
+              marker. `provenanceKeys` lists only the factors that actually moved
+              this figure, so the disclosure is specific rather than a blanket
+              disclaimer, and `sources` is empty for every budget figure — this
+              reads as an explanation, never as a citation. */}
+          <BigValue suffix={estDisclosure && estDisclosure.mustMark ? 'Typical · est.' : 'Typical'}>{fmt(typical)}</BigValue>
           <Grounding>
-            {`For ${guests} at a ${String(event.type).toLowerCase()}, typical lands near ${fmt(typical)}. `}The plan sizes food, vendors and shopping from here — change it anytime.
+            {`For ${guests} at a ${String(event.type).toLowerCase()}, typical lands near ${fmt(typical)}. `}
+            {estDisclosure && estDisclosure.mustMark
+              ? 'That is a planning estimate from typical per-head bands, not a quote. '
+              : ''}The plan sizes food, vendors and shopping from here — change it anytime.
           </Grounding>
           {/* THE HOST'S OWN ROWS, SAID OUT LOUD (2026-09-18). A host who filled in
               budget categories but never named an overall figure used to reach an
@@ -6549,22 +6595,46 @@ export default function HostShellV2() {
         // Same strict city/state-or-ZIP gate as the other venueCity writers —
         // this is event CREATION, so a bare city typed here would otherwise
         // slip past every later check (needsCity only fires on an EMPTY city).
+        //
+        // THE GATE IS RIGHT; THE SILENCE WAS NOT (2026-09-18). The parser now
+        // resolves a bare town against a curated whitelist, so "Reunion in
+        // Asheville" pre-fills this field — and then this line ran it through the
+        // commit gate, wrote `venueCity: ''` and said NOTHING. The host watched
+        // their own word disappear. The manual path has always been honest about
+        // this (~:1228 toasts "Add the state or ZIP too — a city name alone could
+        // be in any state"); creation was the one door that swallowed it.
+        // `_cityDropped` is read just after the write to say the same sentence.
         const p = effCityText.trim() ? parseVenueLocation(effCityText.trim()) : null;
         if (!p) return { venueCity: '' };
         return p.zip ? { venueCity: p.zip } : { venueCity: p.city, venueState: p.state };
       })()),
       guestMode: 'count',
       guestEstimate: effGuests || '',
+      // WHOSE NUMBER IS THIS (2026-09-18). `effGuests` is
+      // `(fGuests ?? parsed.guests) ?? pbTypical` (~:1370) — so when BOTH host
+      // sources are null the app is substituting the playbook's typical, and the
+      // chip a few lines up already says so out loud ("~40 · typical"). That fact
+      // was on screen at creation and thrown away one line later at persist, which
+      // is how an invented 40 reached a caterer as "for about 40 guests".
+      // Same shape as startTimeSource directly above; lib/guestCountFor.js gates
+      // the outward drafts on it, exactly as startTimeIsConfirmed does.
+      ...(effGuests ? { guestCountSource: (fGuests ?? parsed.guests) != null ? 'host' : 'playbook-typical' } : {}),
       totalBudget: effBudget || '',
-      // Same "absent means not told" rule as guestsStayOvernight below, now that
-      // an un-grounded destination guess stays unanswered instead of committing:
-      // writing null here would record a decision the host never made.
-      ...(effIsDestination !== null ? { isDestination: effIsDestination } : {}),
-      // Persisted only when the event IS a destination and we actually have an
-      // answer — an absent field means "not told", which the engines can treat
-      // differently from a false. Never written for a local event.
-      ...(effOvernight !== null ? { guestsStayOvernight: effOvernight } : {}),
-      ...(effIsDestination && effTravelMode ? { travelMode: effTravelMode } : {}),
+      // ── WHAT WE MAY WRITE DOWN ABOUT TRAVEL ─────────────────────────────
+      // Four spreads lived here and encoded a rule jest could never run — which
+      // is how `isDestination: false` survived on every event where the parser
+      // simply heard NOTHING. The parser has no affirmative "this is local"
+      // detector (smartParseEvent ~:524), so a derived false only ever meant "no
+      // travel signal found", and persisting it deleted the travel, lodging and
+      // transport stack on a claim the host never made.
+      // The rule, its decision table and its reasoning now live in
+      // lib/travelFieldsToPersist.js, where they are executed by real tests.
+      ...travelFieldsToPersist({
+        effIsDestination, manualIsDestination: fIsDestination,
+        effOvernight, manualOvernight: fOvernight,
+        destinationBasis: parsed.destinationBasis, overnightBasis: parsed.overnightBasis,
+        travelMode: effTravelMode,
+      }),
       // The coarse time-of-day the host said ("cookout in the afternoon"). Persisted so the
       // grounded start-time default below has a bucket to propose from — without this it was
       // dropped, and defaultStartTime had nothing to ground on for a brand-new event.
@@ -6615,6 +6685,19 @@ export default function HostShellV2() {
     // it after the state update would count this event and never report a first.
     try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
     setEventId(newId); setRevealed(true);
+    // THE TOWN THEY TYPED DID NOT MAKE IT (2026-09-18). The parser resolves a bare
+    // town against a curated whitelist, so it pre-fills the create field — but the
+    // commit gate needs a state or ZIP, so a state-less town is refused and stored
+    // as ''. Refusing is correct (a city name alone could be in any state, and a
+    // wrong state is worse than none). Refusing SILENTLY is not: the host watched
+    // their own word vanish with no explanation, while the manual path has always
+    // said this out loud. Same sentence, same door.
+    try {
+      const _typed = effCityText.trim();
+      if (_typed && !parseVenueLocation(_typed)) {
+        toast('Add the state or ZIP for ' + _typed + ' — a city name alone could be in any state.');
+      }
+    } catch { /* never let a notice block a creation */ }
     // Build-map #3: a freshly created event is the host's new resume pointer.
     didResume.current = true;
     if (session) { try { patchProfile({ lastEventId: newId }); } catch { /* offline — localStorage profile holds it */ } }
@@ -6928,7 +7011,16 @@ export default function HostShellV2() {
     let cooking = false; try { cooking = hostIsCooking(event); } catch { cooking = false; }
     for (const v of (event.vendors || [])) {
       if (!v || !v.name || !v.arrivalTime) continue;
-      if (!['Confirmed', 'Contracted', 'Deposit Paid'].includes(v.status)) continue;
+      // ONE VOCABULARY (2026-09-18). This inline array was the last host-reachable
+      // private copy of "is this vendor booked", and it omitted 'Booked' and
+      // 'Paid' — two statuses THIS SAME FILE's cycleVendorStatus treats as
+      // Confirmed synonyms and labels "Locked in". So a vendor the host had
+      // marked Paid, with an arrival time and a COI on file, was silently absent
+      // from the day-of arrival roster and the print sheet: the one list where a
+      // missing name is discovered at the gate, on the day, with no way to fix it.
+      // isVendorBooked is the canonical predicate (lib/workstreams.js) and is
+      // already imported here.
+      if (!isVendorBooked(v)) continue;
       if (cooking && /cater/i.test(String(v.category || ''))) continue;
       if (seen.has(String(v.name).toLowerCase())) continue;
       let coi = null; try { coi = getVendorCOIState(v, event); } catch { coi = null; }
@@ -16351,8 +16443,15 @@ export default function HostShellV2() {
                     Named, counted, and pointed at the textarea directly above —
                     not a block, because a host may legitimately want to send a
                     draft and fill a blank in their own messages app. */}
+                {/* ONE BRACKET RULE (2026-09-18). This carried a private copy with a
+                    bound of {2,60} while lib/guestFacing.js — the gate that decides
+                    what a GUEST may be shown — uses {2,80}. The two disagreed in the
+                    worst direction: a 65-character blank was withheld from guests by
+                    the gate and drew NO warning here, so the host was never told why
+                    their parking line vanished. Same defect class as the venue verdict
+                    and the budget predicate; the accessor already existed. */}
                 {(() => {
-                  const blanks = (shownDraft().match(/\[[^\]\n]{2,60}\]/g) || []);
+                  const blanks = unfilledBlanks(shownDraft());
                   if (!blanks.length) return null;
                   return (
                     <p className="grounding" style={{ margin: '10px 0 0', color: 'var(--warn)' }}>
@@ -16362,6 +16461,17 @@ export default function HostShellV2() {
                     </p>
                   );
                 })()}
+                {/* WHAT THIS DRAFT LEFT OUT, AND WHY (2026-09-18). Measured: a
+                    host who typed eight words got a stored headcount of 40 from the
+                    playbook's typical, and this draft told a caterer "for about 40
+                    guests" — the one case found where a number the APP invented
+                    left the app in the host's name. doItForMe now withholds it; this
+                    is the other half, so the omission is visible rather than silent.
+                    Sits beside the blanks warning because it is the same kind of
+                    fact: something the host should see before they hand this off. */}
+                {sheet.notice ? (
+                  <p className="grounding" style={{ margin: '10px 0 0' }}>{sheet.notice}</p>
+                ) : null}
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
                     plus direct sms: and wa.me deep links — no fake "sent" states. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
@@ -19045,9 +19155,19 @@ export default function HostShellV2() {
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
                                   : <>All {foodPlan.itemCount} item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — add a real price anytime (bought or not).</>}
-                                {foodPP.priceContext && (
-                                  <> Prices adjusted for the {foodPP.priceContext.split(' · ')[0]} region.</>
-                                )}
+                                {/* SILENCE READS AS "THESE ARE YOUR PRICES" (2026-09-18).
+                                    priceContext is set only when the regional factor is
+                                    NOT 1 (~:1460), and rendered only when truthy — so a
+                                    host on national baseline prices, which is EVERY host
+                                    in an unconfigured build and every host whose state
+                                    cannot be resolved, got no pricing source line at all.
+                                    National figures presented with no qualifier.
+                                    The frozen shell had this right with an always-set
+                                    national note; this shell dropped it in the rebuild.
+                                    Both branches now say where the number came from. */}
+                                {foodPP.priceContext
+                                  ? <> Prices adjusted for the {foodPP.priceContext.split(' · ')[0]} region.</>
+                                  : <> Prices are a national baseline — not adjusted for your area.</>}
                               </div>
                             )}
                             {/* #39 POST-HOC PRICE NUDGE — only when the budget is
