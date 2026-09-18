@@ -7214,6 +7214,21 @@ export default function HostShellV2() {
                           if (town && (town === lv || town.startsWith(lv + ',') || town.startsWith(lv + ' ') || lv.startsWith(town))) return null;
                           return <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{v}</span>;
                         })()}
+                        {/* THE STREET SHE TYPED, SHOWN BACK TO HER (host report 2026-09-18:
+                            "Address from creation field not carrying to venue"). The row
+                            above confirms the venue NAME and nothing confirmed the street,
+                            so a host who typed "…at 8100 Ryan Way, Greenbelt MD" saw only
+                            a town chip and had no way to know the address had been heard —
+                            it had, and was stored correctly, but silence reads as dropped.
+                            Same rules as the venue chip beside it: dead (nothing to tap),
+                            and only when it says something the other chips do not. */}
+                        {(() => {
+                          const a = String(parsed.venueAddress || '').trim();
+                          if (!a) return null;
+                          const vname = String(parsed.venue || '').trim().toLowerCase();
+                          if (vname && vname.includes(a.toLowerCase())) return null;
+                          return <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{a}</span>;
+                        })()}
                         <button className="chip" aria-pressed={!!effCityText} onClick={() => setCreateEdit(createEdit === 'city' ? null : 'city')}>
                           {effCityText || 'Which town?'}
                         </button>

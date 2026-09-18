@@ -125,7 +125,20 @@ function deriveDecisionBlockers(event, eventIdentity) {
   // rides inside — a polluted venueCity no longer fakes a resolved venue);
   // everything else needs a name.
   const vf = venueFor(event);
-  const venueResolved = vf.isHome ? !vf.needsCityForWeather : !!vf.name;
+  // `vf.isSet`, NOT `vf.name` (host report 2026-09-18). This line kept its own
+  // copy of "is the venue set?" — and it is the copy the comment directly above
+  // claims was retired by adopting the single reader. Reading `.name` left a
+  // host who typed a street address at creation, and never named a venue, with
+  // a permanent venue blocker: measured live, "Big game this Sunday at 1 pm at
+  // 8100 Ryan Way" stored the street correctly and the plan still asked "Where
+  // is the event?". Teaching venueFor that an address is a location did NOT
+  // reach this surface, which is the whole argument against a private copy —
+  // taskEngine.js:44 and playbooks/index.js:2792 read `isSet` and got it free.
+  //
+  // The HOME branch is deliberately untouched: needsCityForWeather asks a
+  // DIFFERENT question (an at-home event can be set and still owe a city for
+  // geocoding), and folding it into isSet would silently drop that ask.
+  const venueResolved = vf.isHome ? !vf.needsCityForWeather : vf.isSet;
   if (!venueResolved) {
     // ── SEVERITY IS A COUNTDOWN, NOT A CONSTANT (board ruling 2026-08-14) ────
     // docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md

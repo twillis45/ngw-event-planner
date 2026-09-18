@@ -246,7 +246,15 @@ const KEYWORDS = [
   // (contains "day" → misread as Day Party), others straight into the
   // generic party/celebration catch below ('Birthday'). Must resolve before
   // that generic line since "Super Bowl party" contains the word "party".
-  [/super\s*bowl|\bplayoffs?\b|\bthe\s+big\s+game\b|march\s*madness|world\s*series|final\s*four|championship\s*game/, 'Watch Party'],
+  // "THE" IS NOT LOAD-BEARING (host seed, 2026-09-18). This required `the big
+  // game`, so the host's own live text — "Big game this Sunday at 1 pm at 8100
+  // Ryan Way" — fell straight through to the generic catch and came back a DAY
+  // PARTY. That is the very fall-through this block exists to close, missed by
+  // one article. A host does not type the sentence a regex expects, and the
+  // article is exactly the kind of word that gets dropped at the start of a
+  // sentence. `big game hunting` is excluded so the one common non-sports
+  // sense of the phrase does not route a hunting trip to a Watch Party.
+  [/super\s*bowl|\bplayoffs?\b|\bbig\s+game\b(?!\s+hunt)|march\s*madness|world\s*series|final\s*four|championship\s*game/, 'Watch Party'],
   // "Cover more sporting events than these 3" (host, 2026-09-13, after Super
   // Bowl/March Madness/World Series went in). One shared mechanic — a screen
   // everyone can see, food timed to a start whistle/tipoff/first pitch, drinks

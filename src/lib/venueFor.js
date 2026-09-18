@@ -104,15 +104,33 @@ export function venueFor(event) {
   // The at-home carve-out, defined ONCE: a home host's location lives in
   // venueCity; a named-venue host's lives in venue. (Three engines used to
   // each carry their own copy of this rule.)
-  const isSet = isHome ? !!(city || name) : !!name;
+  // ── A STREET ADDRESS IS A LOCATION (host report, 2026-09-18) ─────────────
+  // `address` was computed right above and then never consulted here, so an
+  // event carrying venueAddress:'8100 Ryan Way' with no venue NAME read as
+  // having no venue at all. Measured on a real creation: the host typed "Watch
+  // the big game this Sunday at 1 pm at 8100 Ryan Way, Greenbelt MD", the
+  // creation seam stored the street correctly (HostShellV2 ~6423) — and the
+  // plan still asked "Where is the event? Everything depends on venue." The
+  // fact was on the record and the app could not see it, which is the exact
+  // split this module was built to end.
+  //
+  // This does NOT loosen the 2026-08-14 board ruling that a town and an address
+  // answer different questions. `address` is street-gated fifteen lines up — a
+  // bare city/state can never produce one — so the test "a named-venue event
+  // without a name is NOT set, even with a city" still holds, and so does the
+  // production-layer reading that a town alone does not unblock.
+  const isSet = isHome ? !!(city || name || address) : !!(name || address);
   // The SECOND venue question, distinct from isSet: an at-home event can be
   // "set" (name or city) yet still need a CITY for weather geocoding and maps.
   // The reveal blocker and the shell's city ask both ask THIS, not isSet —
   // they were two of the three hand-copied variants the audit flagged.
   const needsCityForWeather = isHome && !city;
+  // Same finding as isSet: with no name, an event holding a real street had
+  // nothing to show for itself but its town. Show the street the host typed —
+  // it is the most specific thing known about where this is.
   const displayLine = name
     ? [name, city].filter(Boolean).join(', ')
-    : (isHome && city ? `At home in ${city}` : city);
+    : (isHome && city ? `At home in ${city}` : (address || city));
   const mapsQuery = address
     || [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', ');
   return { name, kind, isHome, city, state, address, isSet, needsCityForWeather, displayLine, mapsQuery };
