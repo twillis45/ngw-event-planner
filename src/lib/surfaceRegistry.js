@@ -354,10 +354,23 @@ export const SURFACES = [
         // source text and does not strip comments, so writing the forbidden form
         // even to say "not this" trips the CITY-LEAK guard. It caught this
         // comment, which is the scanner being blunt rather than wrong.)
+        // `addressSettled`, NOT the name alone (audit finding, 2026-09-18).
+        // Reading only the name meant a host who typed a STREET ADDRESS at
+        // creation, and never named a hall, was told "No venue booked yet —
+        // Book your venue" and routed to Vendors, over a plan holding her
+        // address. The same event on the same day was correctly NOT asked by
+        // the blocker engine: two surfaces, one fact, opposite answers — the
+        // exact failure the paragraph above ("the kind of wrong that makes a
+        // host stop believing the rest of the list") was written about.
+        //
+        // addressSettled is venueFor's published production-layer verdict — a
+        // name OR a street, never a bare town — so the CITY-LEAK concern above
+        // is unchanged. Published there rather than assembled here precisely so
+        // this file does not carry its own copy of the rule.
         if (/venue/i.test(String(row.category))) {
-          let vname = '';
-          try { vname = String((venueFor(event) || {}).name || '').trim(); } catch (_e) { vname = ''; }
-          if (vname) continue;
+          let settled = false;
+          try { settled = !!(venueFor(event) || {}).addressSettled; } catch (_e) { settled = false; }
+          if (settled) continue;
         }
         // The authored window, e.g. 'T-300d' -> 300 days before the event.
         const m = /^T-(\d+)d$/.exec(String(row.when || ''));

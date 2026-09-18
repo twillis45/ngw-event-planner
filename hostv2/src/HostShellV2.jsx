@@ -6015,7 +6015,38 @@ export default function HostShellV2() {
         // The named month has been answered by a real day — drop it rather than
         // leave a second, staler "when" on the record.
         if (event.targetMonth) patch.targetMonth = null;
-        if (String(event.startTime || '').trim() && !startTimeIsConfirmed(event)) patch.startTimeSource = 'host';
+        // THE DATE TAP DOES NOT CONFIRM THE HOUR (audit finding, 2026-09-18).
+        // This line used to read:
+        //
+        //   if (startTime && !startTimeIsConfirmed(event)) patch.startTimeSource = 'host';
+        //
+        // with the intent stated above — "mark it host-confirmed in the same tap
+        // so BOTH halves of 'when' clear together". That intent is wrong, and
+        // this same file says so fifty lines down.
+        //
+        // The hour on a new event is OURS: every event is created with
+        // defaultStartTime (`startTimeSource: 'derived'`), which on the tier-3
+        // path traces to nothing better than "most events of this kind"
+        // (startTime.js, grounded:false). And `startTimeSource: 'host'` is the
+        // OUTWARD GATE — eventWhen.js:67 releases the hour to the guest invite
+        // on it, vendorBrief.js:79 nulls every run-of-show clock time without
+        // it. Stamping it here printed an hour WE invented to her guests and her
+        // caterer, attributed to her, on a tap that asked about the DATE.
+        //
+        // The hour has its own confirmation one row below: a "that's right"
+        // button beside the time, under copy that promises her in writing —
+        // "We set this one, not you… your invite and your vendor briefs won't
+        // name an hour until you say it's right." This line broke that written
+        // promise from a different button.
+        //
+        // Worse, and why this is a deletion rather than a narrowing: the time
+        // block only renders once `event.date` is set, so on a dateless event
+        // the stamp fired on the very tap that first revealed the time UI. The
+        // disclosure and the "that's right" button never rendered at all. It did
+        // not skip her confirmation — it removed the chance to give one.
+        //
+        // The datetime domino now stays open until she confirms the hour, which
+        // is what an unconfirmed hour should look like.
         patchEvent(patch, 'Date confirmed — every countdown, deadline, and shopping window just moved to it.');
         setDateDraft(null);
       };
@@ -10065,7 +10096,16 @@ export default function HostShellV2() {
                 );
               })}
 
-              {!isPast && vf.name && !venueBlockerShown && !/\d/.test(vf.name) && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && (
+              {/* `!vf.address`, NOT "no digit in the venue name" (audit, 2026-09-18).
+                  This row asks for the address and then decided whether it
+                  already HAD one by testing the venue NAME for a digit — so
+                  saving the address never retired the ask. Measured: venue
+                  "Backyard", host taps Add it, types "12 Elm St", saves, and the
+                  row re-renders "Guests will ask where — add the address for
+                  backyard." She could answer it an unlimited number of times.
+                  vf.address is the fact this row is about; the digit heuristic
+                  was standing in for it and was never the same question. */}
+              {!isPast && vf.name && !venueBlockerShown && !vf.address && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
                     {addressOpen ? 'Where exactly?' : 'Guests will ask where — add the address for ' + vf.name.toLowerCase()}
@@ -10073,7 +10113,7 @@ export default function HostShellV2() {
                   {addressOpen ? null : <button className="mini" onClick={() => setAddressOpen(true)}>Add it</button>}
                 </div>
               )}
-              {!isPast && vf.name && !venueBlockerShown && !/\d/.test(vf.name) && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && addressOpen && (
+              {!isPast && vf.name && !venueBlockerShown && !vf.address && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && addressOpen && (
                 <div className="hc-row" style={{ marginTop: 'var(--sp-2)' }}>
                   <AddressField value={addressDraft} onChange={setAddressDraft} onPick={sg => setAddressDraft(sg.label)}
                     inputStyle={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it" ariaLabel="Venue address" />

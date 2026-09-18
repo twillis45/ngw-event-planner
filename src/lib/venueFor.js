@@ -125,6 +125,31 @@ export function venueFor(event) {
   // The reveal blocker and the shell's city ask both ask THIS, not isSet —
   // they were two of the three hand-copied variants the audit flagged.
   const needsCityForWeather = isHome && !city;
+  // ── THE PRODUCTION-LAYER VERDICT, PUBLISHED (2026-09-18) ─────────────────
+  // The 2026-08-14 board ruling split the venue fact in two: the TOWN unblocks
+  // travel (weather, shopping, lodging search), the ADDRESS unblocks production
+  // (COI, dock, rentals, power, run-of-show, every signature and deposit). This
+  // module published `isSet` for the first question and nothing for the second,
+  // so callers that needed the second had to build it — and three of them did,
+  // each slightly differently:
+  //
+  //   phaseProgress `_addressSigned`   via eventLocationStatus  (correct)
+  //   LodgingCockpit  !(v.address || v.name)                    (correct, copied)
+  //   surfaceRegistry  truthiness of .name alone                 (WRONG: told a
+  //                    host with a street on file "No venue booked yet")
+  //
+  // A verdict that consumers must assemble themselves WILL fork; it forked six
+  // ways for `isSet` before this. So it is published here, once.
+  //
+  // A NAME COUNTS. `venue_only` is settled for this purpose — a named hall IS
+  // the address, and the street line merely adds precision. That is
+  // phaseProgress's existing rule, kept rather than tightened, because
+  // demanding a street on top of a named venue re-opens a nag this repo already
+  // took a scar for.
+  //
+  // A BARE CITY NEVER COUNTS: `address` is street-gated above and `name` is
+  // city-rejected, so neither half can be satisfied by a town.
+  const addressSettled = !!(name || address);
   // Same finding as isSet: with no name, an event holding a real street had
   // nothing to show for itself but its town. Show the street the host typed —
   // it is the most specific thing known about where this is.
@@ -133,7 +158,7 @@ export function venueFor(event) {
     : (isHome && city ? `At home in ${city}` : (address || city));
   const mapsQuery = address
     || [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', ');
-  return { name, kind, isHome, city, state, address, isSet, needsCityForWeather, displayLine, mapsQuery };
+  return { name, kind, isHome, city, state, address, isSet, addressSettled, needsCityForWeather, displayLine, mapsQuery };
 }
 
 // ─── setVenue — THE one venue WRITE path ─────────────────────────────────────
