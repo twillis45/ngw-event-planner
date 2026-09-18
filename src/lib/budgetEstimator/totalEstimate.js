@@ -34,10 +34,15 @@ function playbookPerHead(type) {
 
 // Per-event-type per-head bands. Reflect commonly cited US bands.
 //
-// PROVENANCE: `estimate` — no source. See PER_HEAD_BY_TYPE_PROVENANCE below
-// and moneyProvenance.js for what "commonly cited" is and is not worth. This
-// table becomes the number a host is shown first and largest; a surface must
-// ask `moneyDisclosure` before rendering any figure derived from it.
+// PROVENANCE: still `estimate`. A 2026-09-18 research pass reached ONE of these
+// 17 rows: The Knot 2026 Real Weddings Study (10,474 US couples) puts the
+// average cost per wedding guest at $292, which falls inside the Wedding row's
+// $200–500 while sitting 19.9% BELOW that row's midpoint. One published mean
+// does not ground a band, and it says nothing at all about the other 16 rows —
+// so the table is unchanged and still ungrounded. This table becomes the number
+// a host is shown first and largest; a surface must ask `moneyDisclosure`
+// before rendering any figure derived from it. Read
+// moneyProvenance.js#budget.perHeadByType before editing any number here.
 export const PER_HEAD_BY_TYPE = {
   Wedding:             { low: 200, high: 500 },
   'Vow Renewal':       { low: 150, high: 400 },
@@ -115,11 +120,39 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
   // contributor to what the host is being shown.
   const provenanceKeys = [];
   const cite = (k) => { if (!provenanceKeys.includes(k)) provenanceKeys.push(k); };
-  let ph = PER_HEAD_BY_TYPE[type];
+  // OWN-PROPERTY LOOKUPS ONLY (2026-09-18). A plain `TABLE[type]` walks the
+  // prototype chain, so an event type literally named '__proto__',
+  // 'constructor' or 'toString' returned Object.prototype — a truthy object
+  // with no `.low` or `.high`. The estimator then emitted lowTotal: NaN,
+  // highTotal: NaN AND cited 'budget.perHeadByType' as the table that built
+  // them. A false provenance attribution on a figure that is not a figure is
+  // the exact defect this module exists to prevent, so it is fixed at the
+  // lookup rather than patched downstream. `moneyProvenanceFor` already guards
+  // itself the same way. No real event type is affected: every one of the 17
+  // named rows is an own property, so every shipped estimate is unchanged.
+  const own = (table, key) => (
+    Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined
+  );
+  let ph = own(PER_HEAD_BY_TYPE, type);
   if (ph) cite('budget.perHeadByType');
   if (!ph) { ph = playbookPerHead(type); if (ph) cite('budget.playbookPerGuestCost'); }
-  if (!ph) { ph = PER_HEAD_BY_FAMILY[budgetFamilyForType(type)]; if (ph) cite('budget.perHeadByFamily'); }
-  if (!ph) { ph = { low: 100, high: 250 }; cite('budget.perHeadFallback'); }
+  if (!ph) { ph = own(PER_HEAD_BY_FAMILY, budgetFamilyForType(type)); if (ph) cite('budget.perHeadByFamily'); }
+  // REFUSAL (2026-09-18). This branch used to invent `{ low: 100, high: 250 }` —
+  // an unsourced last-resort band for an event the engine cannot place at all.
+  // It was measured UNREACHABLE (intakeFamilyFor answers 'host_driven' for
+  // anything it cannot resolve, so PER_HEAD_BY_FAMILY always answers first), and
+  // an unreachable invented figure is still an invented figure sitting in the
+  // lookup chain: the day someone makes the family resolver strict, it becomes
+  // the silent answer to a question we cannot answer.
+  //
+  // Deleting the literal alone was not available — `ph` is dereferenced below,
+  // so removing the assignment would crash instead of declining. Returning null
+  // removes the figure AND keeps a defined behaviour, on a contract this
+  // function already has: it returns null when type or guestCount is missing, so
+  // every caller has always handled null on this path. "We don't have a band for
+  // this" is true; "$100–250 per head" for an unrecognised event was not.
+  // See moneyProvenance.js#budget.perHeadFallback for the full reasoning.
+  if (!ph) return null;
   let destinationAdjusted = false;
   if (isDestination && budgetFamilyForType(type) !== 'travel_led') {
     const tl = PER_HEAD_BY_FAMILY.travel_led;

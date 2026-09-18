@@ -178,18 +178,26 @@ describe('the predicate — negative controls', () => {
   });
 
   // ── THE ONE THAT MATTERS ──────────────────────────────────────────────────
-  test('AN UNSOURCED SHIPPED CONSTANT CANNOT PASS — not even if someone edits its tier', () => {
-    // PER_HEAD_BY_TYPE is the biggest number a host sees. Its only recorded
-    // basis is the words "Reflect commonly cited US bands".
-    expect(PER_HEAD_BY_TYPE_PROVENANCE.sources).toEqual([]);
+  test('THE BIGGEST NUMBER A HOST SEES IS STILL NOT GROUNDED — and the tier is now the only thing holding it', () => {
+    // PER_HEAD_BY_TYPE is the biggest number a host sees. Until 2026-09-18 its
+    // only recorded basis was the words "Reflect commonly cited US bands".
+    // It now CITES a real retrieved source (The Knot 2026 Real Weddings Study),
+    // and it is still not grounded, because that source publishes a single
+    // per-guest MEAN of $292 for ONE of the 17 rows and states nothing about a
+    // band or about the other 16.
+    expect(PER_HEAD_BY_TYPE_PROVENANCE.sources).toEqual(['theknot-realweddings-2026']);
+    expect(PER_HEAD_BY_TYPE_PROVENANCE.tier).toBe('estimate');
     expect(isGroundedMoneyFactor(PER_HEAD_BY_TYPE_PROVENANCE)).toBe(false);
 
-    // The obvious shortcut — relabel it 'researched' — still fails, because
-    // the predicate checks the REGISTRY, not the adjective.
+    // READ THIS: the shortcut that used to fail now WORKS, and that is the
+    // point of the assertion above. Once a record cites a RESOLVING id, the
+    // tier is the last thing standing between it and a grounded badge. So the
+    // honest tier is load-bearing, not decorative, and the line above is what
+    // guards it.
     const relabelled = { ...PER_HEAD_BY_TYPE_PROVENANCE, tier: 'researched' };
-    expect(isGroundedMoneyFactor(relabelled)).toBe(false);
+    expect(isGroundedMoneyFactor(relabelled)).toBe(true);
 
-    // And inventing a plausible-looking id fails too: it must resolve.
+    // Inventing a plausible-looking id still fails: it must resolve.
     const faked = { ...PER_HEAD_BY_TYPE_PROVENANCE, tier: 'researched', sources: ['us-per-head-survey-2026'] };
     expect(isGroundedMoneyFactor(faked)).toBe(false);
   });
@@ -206,19 +214,28 @@ describe('the predicate — negative controls', () => {
   test('the rush record does NOT launder its comment\'s name-drop into a citation', () => {
     // The code comment credits "planner surveys + Wedding Wire / The Knot
     // patterns" with no page, date or figure. That must not become `sources`.
-    expect(RUSH_FACTOR_PROVENANCE.sources).toEqual([]);
+    // The 2026-09-18 pass searched for both and found neither publishing a
+    // lead-time premium schedule, so NEITHER is cited. What it did find (a
+    // WPIC rush-fee structure) is cited instead — on a different base, so the
+    // record is still not grounded.
+    const cited = RUSH_FACTOR_PROVENANCE.sources.join(' ').toLowerCase();
+    expect(cited).not.toMatch(/knot|weddingwire|wedding-wire/);
+    expect(RUSH_FACTOR_PROVENANCE.sources).toEqual(['wpic-rushfees-2026']);
     expect(isGroundedMoneyFactor(RUSH_FACTOR_PROVENANCE)).toBe(false);
   });
 
-  test('THE HEADLINE: zero registered money constants are grounded today', () => {
+  test('THE HEADLINE: exactly one registered money constant is grounded', () => {
     const grounded = Object.entries(MONEY_PROVENANCE)
       .filter(([, p]) => isGroundedMoneyFactor(p))
       .map(([k]) => k);
-    expect(grounded).toEqual([]);
+    // 2026-09-18: one research pass, one honest promotion. Everything the host
+    // is shown FIRST and LARGEST — the per-head bands, the date premiums, the
+    // metro index — is still ungrounded, and BUDGET_TOTAL_FACTOR_KEYS does not
+    // contain this key, so no figure a host sees became grounded.
+    expect(grounded).toEqual(['factors.serviceCharge']);
     expect(MONEY_PROVENANCE_META.groundedCount).toBe(grounded.length);
-    // If this ever fails because something became genuinely researched: update
-    // the META count and celebrate. If it fails because a tier was edited
-    // without a source, the test above already caught the shortcut.
+    expect(BUDGET_TOTAL_FACTOR_KEYS).not.toContain('factors.serviceCharge');
+    expect(VENDOR_RANGE_FACTOR_KEYS).not.toContain('factors.serviceCharge');
   });
 
   test('moneySourcesFor never invents a source, and drops ids that do not resolve', () => {
@@ -282,8 +299,11 @@ describe('moneyDisclosure — what a surface gets back before it renders a figur
 
   test('resolved sources are deduped and surfaced so the UI can answer "says who?"', () => {
     const d = moneyDisclosure(['sourcing.nonProteinChannel', 'sourcing.nonProteinChannel', 'budget.perHeadByType']);
-    expect(d.sources.length).toBe(1);
-    expect(d.sources[0].url).toMatch(/^https:\/\//);
+    // Two distinct records, two distinct sources — and the repeated key is
+    // deduped rather than counted twice.
+    expect(d.sources.length).toBe(2);
+    expect(d.sources.map((s) => s.url).sort()).toEqual([...new Set(d.sources.map((s) => s.url))].sort());
+    for (const s of d.sources) expect(s.url).toMatch(/^https:\/\//);
     // ...and a resolvable source still did not make it grounded.
     expect(d.grounded).toBe(false);
   });
