@@ -62,7 +62,8 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "js-yaml": "5.4.2"
   },
   "module": "./dist-design/index.mjs",
   "main": "./dist-design/index.cjs",

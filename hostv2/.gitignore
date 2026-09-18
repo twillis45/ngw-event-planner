@@ -1,3 +1,8 @@
 node_modules/
 dist/
 dist-synctest/
+
+# Playwright blob reports — written only by a PW_BLOB=1 (sharded) run, merged
+# in CI and never committed.
+blob-report/
+all-blob-reports/

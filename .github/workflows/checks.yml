@@ -81,14 +81,48 @@ jobs:
       - run: npm run gate:knowledge
       - run: CI=true npx react-scripts test --watchAll=false
 
-  e2e:
+  # ── SHARDED ACROSS TWO RUNNERS (2026-09-18) ────────────────────────────────
+  # MEASURED off run 656, parsing all 1009 test timings out of the job log:
+  #
+  #   52.6 min of test work  ÷  workers: 2  =  27.0 min wall
+  #   parallel efficiency 1.95x of 2 workers — the workers are SATURATED
+  #
+  # That efficiency number is why the cheap fixes were ruled out rather than
+  # tried. `fullyParallel` is unset, so tests inside one file run serially — but
+  # with no idle worker slots there is nothing for it to reclaim. The
+  # `waitForTimeout` sleeps total only ~3-4 min across the whole matrix; I
+  # expected more and was wrong. The only way through is more parallelism.
+  #
+  # AND THE JOB WAS 3 MINUTES FROM ITS OWN TIMEOUT. The comment below used to
+  # read "~14 min end to end" and that was true when it was written; the matrix
+  # has since doubled to 27.0 against `timeout-minutes: 30`. A 10% margin on a
+  # repo that auto-deploys from main turns a slow runner into a false red and
+  # costs a full re-run. Sharding fixes that as a side effect: each shard is
+  # ~14 min against the same 30.
+  #
+  # WHY SHARDING AND NOT `workers: 3`. Three workers on the 4-vCPU runner would
+  # be free, and it would reverse a deliberate decision: the config's own note
+  # records that on 2026-08-06 two runs at the same SHA produced DISJOINT
+  # failure sets, and `workers: 2` was the fix. Each shard here still runs
+  # `workers: 2` on its own machine, so the flake posture is untouched. The
+  # trade is CI minutes (~34 runner-min vs 27) for wall clock (27 -> ~14).
+  #
+  # The merge job below keeps the name `e2e`, so any required-check or branch
+  # rule pinned to that name still resolves, and it still reports ONE combined
+  # total — which HANDOFF.md tracks.
+  e2e-shard:
     runs-on: ubuntu-latest
-    # The matrix itself is ~14 min end to end. Three times on 2026-08-19 the
-    # `playwright install` step hung indefinitely (60-90+ min, runner-side),
-    # squatting the concurrency slot until someone noticed. A hang is not a
-    # verdict — kill it and let the next dispatch (or a manual re-run) try a
-    # fresh runner.
+    # Three times on 2026-08-19 the `playwright install` step hung indefinitely
+    # (60-90+ min, runner-side), squatting the concurrency slot until someone
+    # noticed. A hang is not a verdict — kill it and let the next dispatch (or a
+    # manual re-run) try a fresh runner.
     timeout-minutes: 30
+    strategy:
+      # A failing shard must not cancel its sibling. Half a verdict is how you
+      # re-run twice to learn what one run already knew.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -166,8 +200,65 @@ jobs:
         working-directory: hostv2
         env:
           REACT_APP_API_BASE_URL: https://e2e-mock.invalid
-      - run: npm run test:e2e
+      # PW_BLOB switches the reporter to `blob` (playwright.config.mjs), which is
+      # the only format `merge-reports` can recombine. Local runs keep `list`.
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
         working-directory: hostv2
+        env:
+          PW_BLOB: '1'
+      # `always()`: a FAILED shard's blob is the one worth keeping.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-${{ matrix.shard }}
+          path: hostv2/blob-report
+          retention-days: 3
+          if-no-files-found: error
+
+  # ── ONE VERDICT, ONE TOTAL ─────────────────────────────────────────────────
+  # Keeps the job name `e2e` so anything pinned to it still resolves, and prints
+  # a single combined summary instead of two half-counts.
+  #
+  # THE EXPLICIT FAILURE STEP IS LOAD-BEARING, NOT BELT-AND-BRACES. MEASURED
+  # locally against a deliberately failing spec: `playwright test` exits 1, and
+  # `playwright merge-reports` on a blob CONTAINING that failure exits **0**. So
+  # the merge step alone would paint a red matrix green. The verdict comes from
+  # `needs.e2e-shard.result`, never from the merge's exit code.
+  #
+  # `if: always()` pairs with it: a job SKIPPED because its `needs` failed
+  # reports as neutral rather than red, which is exactly how a required check
+  # stops being one. This runs either way, merges whatever arrived so the log
+  # still shows what happened, and THEN fails.
+  e2e:
+    needs: e2e-shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            hostv2/package-lock.json
+      # hostv2 only — `merge-reports` is the Playwright CLI and nothing here
+      # touches the app tree.
+      - run: npm ci
+        working-directory: hostv2
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: blob-*
+          merge-multiple: true
+          path: all-blob-reports
+      - run: npx playwright merge-reports --reporter=list ../all-blob-reports
+        working-directory: hostv2
+      - name: Fail if any shard failed
+        if: needs.e2e-shard.result != 'success'
+        run: |
+          echo "e2e-shard result: ${{ needs.e2e-shard.result }}"
+          exit 1
 
   # ── Backend suite ──────────────────────────────────────────────────────────
   # Python 3.12 and the pinned requirements, matching the deployment workflow and

@@ -65,7 +65,12 @@ export default defineConfig({
   // the path-to-9, not fixed here.
   retries: 1,
   workers: 2,
-  reporter: [['list']],
+  // ── BLOB WHEN SHARDED, LIST OTHERWISE (2026-09-18) ───────────────────────
+  // `blob` is the only reporter `merge-reports` can recombine, and CI now runs
+  // two shards that have to produce ONE total. Gated on an env var rather than
+  // on `process.env.CI` so a local `npx playwright test` still prints the list
+  // it always did — and so the sandbox/self-hosted paths are unaffected.
+  reporter: process.env.PW_BLOB ? [['blob']] : [['list']],
   use: {
     // vite preview serves dist under the build base.
     baseURL: 'http://127.0.0.1:5233/ngw-event-planner/hostv2/',
