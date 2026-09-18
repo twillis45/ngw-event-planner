@@ -3168,6 +3168,29 @@ export function playbookDecisionBoard(event, asOf, profile) {
     const route = (Array.isArray(d.options) && d.options.length > 0 && _isFoodChoice) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
       : isDietaryDecision(d) ? { eventId: event.id, tab: 'Planning', focusField: `fp-diet-${event.id}` }
       : /vendor|team|hire|staff/.test(_blocks) ? _firstUndoneVendorRoute()
+      // ── `blocks` IS NOT A DESTINATION (2026-09-18) ────────────────────────
+      // The food branch below reads `_hay`, which folds in `blocks`. Five
+      // free-form GUEST questions block food — "Confirm guest count", "Finalize
+      // guest list with the parent", "Who does the bride want in the room" —
+      // so all five routed the host to the SPREAD. MEASURED: of the six
+      // decisions landing on `food-plan`, only Dinner Party's "Lock the menu"
+      // was actually about food; it matches on its own id and label and is
+      // untouched here.
+      //
+      // What a decision unblocks downstream is not where it is answered. The
+      // app already knows the right door: the synthetic `f-headcount` row
+      // routes to `{ tab: 'Guests', focusField: 'guests-entry' }`, and
+      // `resolveRoute` has real landings for it.
+      //
+      // Scoped to decisions with NO authored options, which is exactly those
+      // five — every optioned decision's route is byte-identical to before.
+      // A count question lands on the count entry; a guest-LIST question lands
+      // on the Guests surface with no focus, because promising a row-level
+      // anchor that does not exist would be the same defect one door along.
+      : (!Array.isArray(d.options) || d.options.length === 0) && /headcount|guestlist|guestcount|guest count|guest list/.test(_hay)
+        ? (/headcount|guestcount|guest count/.test(_hay)
+          ? { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' }
+          : { eventId: event.id, tab: 'Guests' })
       // Free-form menu/food decisions (no authored options) resolve on the food
       // plan card — the host locks the menu there, never on a bare tab.
       : /menu|food|dish|course|drink/.test(_hay) ? { eventId: event.id, tab: 'Planning', focusField: 'food-plan' }
