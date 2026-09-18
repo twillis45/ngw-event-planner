@@ -89,7 +89,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `f64cee2d` |
-| Jest | **6,857 passed**, 1 skipped, **0 failed**, **466 suites** (re-measured 2026-09-18, eighth entry — five parallel lanes). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **6,930 passed**, 1 skipped, **0 failed**, **471 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -101,6 +101,99 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (ninth entry, same day) — two more agent lanes, and three measurements that were asking the wrong question
+
+Commits `a11cd23` `ce891e7` `10d7457` `615ef02` `8ef6df7` + the timing lane.
+**471 suites / 6,930 tests.** `verify:push` green on jest, seam and release.
+
+### The theme: three "gaps" that were mis-measured
+
+| Claimed | Actually |
+|---|---|
+| `ask` at 61% | **now 100%** — 267/267 decisions, 594/594 rows |
+| `timingProvenance` at 2/260 | **10.4% grounded** — it is a CENTRAL RESOLVER, not a per-decision field. The 2 are overrides |
+| eight spec fields "empty" | **seven have no READER either** — not a gap, an unbuilt spec line |
+
+The last one is the rule worth keeping: **a field with no reader is not a gap.**
+Authoring it produces data nothing consumes. We have the precedent measured —
+`blocks` is authored 250 times and contributes exactly zero.
+
+### `615ef02` — every open decision asks its own question
+
+61% → 100%. Only SEVEN authored `ask` fields existed; the other 355 rows got
+theirs from a label that happened to end in a question mark. 114 authored.
+
+**This closed a defect from earlier today, verified end to end rather than
+assumed.** The wedding bundle read *"Settle your decisions."* at six stages. The
+bundle-inherits-its-lead-child's-ask mechanism shipped this morning was INERT
+because no child authored one. All six stages now read **"What's the number, and
+who is paying it?"**
+
+Register held: Repast was written against that file's own 2026-09-03 panel ruling
+that "the community carries the meal" is a NORM, not a fact — *"Has anyone
+offered to carry the meal, or should it be catered?"*, naming no church.
+
+### `8ef6df7` — real 2026 research, one promotion, five divergences
+
+Seven pages retrieved in full via **Exa** (WebFetch is allowlist-blocked; Exa is
+not — a prior session reported research "BLOCKED" having never tried it).
+0 → 1 of 17 grounded, 9 citing. And it is honest about the limit: the one
+promotion is in NEITHER factor-key list, so **no figure a host sees became
+grounded**, asserted by three tests rather than left to imply otherwise.
+
+Every source is a commercial practitioner — no independent or government
+measurement of US event pricing was found to exist.
+
+Five divergences reported, **not applied**: Saturday ships +20% against a measured
+1.2% on the matching unit (and ~16× the observed differential); peak season +15%
+against 4.9%. **Bug found while probing:** `PER_HEAD_BY_TYPE[type]` was a
+prototype-chain lookup, so a type named `__proto__` emitted `NaN` **while citing
+the provenance table that supposedly produced it**. 39,312-case sweep hashed
+before/after — byte-identical.
+
+### The timing lane — a contradiction was being reported as an absence
+
+`resolveTimingProvenance` returned null for two situations no caller could tell
+apart: *no category matched* (honest, the majority) and *a category matched and
+then the lead-window gate rejected it* — meaning a real dated source speaks to
+this decision **and our deadline disagrees with it**.
+
+Six decisions are the second case. **Four tell the host to act LATER than the
+source supports:**
+
+| | ours | source |
+|---|---|---|
+| Holiday Party · venue | T-35d | 2–3 months for a party space |
+| Retirement Party · venue | T-35d | 2–3 months |
+| Day Party · venue | T-28d | 2–3 months |
+| Surprise Proposal · photographer | T-30d | photographers book far out |
+
+December venues are the most contested booking of the year, and five weeks out is
+where a host finds that out. **No authored deadline was changed** — every source
+here is a commercial practitioner and "a wedding blog says 2–3 months" is not
+grounds to move a backyard Day Party's date. The four shipped leads are pinned so
+a future pass that does move them fails first and has to say so.
+
+### `a11cd23` `ce891e7` `10d7457`
+
+Intake **derives** the vendor vocabulary instead of mirroring it — `Booked` and
+`Paid` were canonical and missing from the importer's list, and only listed
+members get case-normalised, so `booked` from a CSV stored as `booked`, which
+`isVendorBooked` answers false for. A vendor that read as never-contacted.
+
+The schema spec stops lying — five fields it marked BLANK had shipped. **That
+sweep found a live defect:** a locked decision was silently dropping its authored
+question (`ask: authoredQuestion(label)` where the open branch reads `d.ask ||`).
+
+`hostSpending` declares its price bases. Measured: food and supplies move with the
+regional factor, capacity is flat at $1,453 — 18.2% of `committed`, national
+baseline inside a regionally-priced total. **The obvious fix was wrong**: that
+factor is a BLS *grocery* basket, and chairs are not groceries. The disclosure
+shipped; the multiplication did not.
+
+**Corrected in passing:** an agent reported a committed leftover probe running in
+CI. Checked — never committed, not on disk. Nothing in CI.
 
 ## FIXED 2026-09-18 (eighth entry, same day) — five lanes in parallel: 466 suites / 6,857 tests
 
