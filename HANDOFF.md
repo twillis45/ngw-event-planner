@@ -102,6 +102,56 @@ this file is the short answer to "where is it, is it green, what's next."
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
+## FIXED 2026-09-18 (second entry, same day) — one host sentence, two defects: "Big game" misrouted, and a street address the app stored and could not see
+
+**The seed**, typed live by the host:
+
+    Big game this Sunday at 1 pm at 8100 Ryan Way, Greenbelt MD. For 5 people.
+
+Both defects were reproduced in the RENDERED app before any code changed, and
+re-verified there after. Neither was visible to 446 green suites.
+
+**1. "Big game" came back a Day Party.** The sports pattern required `the big
+game`. A sentence that STARTS with "Big game" — which is how a sentence
+naturally starts — fell through to the generic party catch. That is the exact
+fall-through the block was written to close on 2026-09-13, missed by one
+article. Now `\bbig\s+game\b(?!\s+hunt)`, with hunting excluded.
+
+**2. The street was stored and still invisible.** `venueAddress: '8100 Ryan
+Way'` was written correctly at creation, and the plan went on asking *"Where is
+the event? Everything depends on venue."* Two causes, the same shape:
+
+- `venueFor` computed `address` fifteen lines above `isSet` and never consulted
+  it — `isHome ? (city || name) : name`. A host who gives a street and never
+  names a venue (the normal case for a house party) had no venue at all.
+- Fixing that was **not sufficient**. `assembleRevealEngines` kept a private
+  `!!vf.name` copy of the rule, three lines below a comment claiming it had
+  adopted the single reader, so the blocker survived the fix. It reads
+  `vf.isSet` now — and `taskEngine.js:44` and `playbooks/index.js:2792`, which
+  already read `isSet`, got the fix for free. That contrast is the argument
+  against a private copy, visible in one file.
+
+The 2026-08-14 board ruling (a town and an address answer DIFFERENT questions)
+is intact: `address` is street-gated, so a bare city can never produce one, and
+the new guards assert a city alone still raises the blocker at both the reader
+and the surface.
+
+**3. Silence read as dropped.** The creation review confirmed the venue NAME and
+nothing confirmed the street, so the host saw only a town chip. The address had
+been heard and stored — she just had no way to know. A dead address chip now
+shows it back, under the same rules as the venue chip beside it.
+
+**Verified in the running app** at 390px, driven through creation: routes to
+Watch Party, review echoes "8100 Ryan Way", the record carries venueAddress and
+startTime 1:00 PM (`startTimeSource: 'host'`), and "Where is the event?" is gone
+from the reveal. `npm run verify:push` all 5 pass; jest 446 suites / 6,290
+passed (16 new).
+
+**Worth recording.** Mid-investigation I reported a startTime bug that did not
+exist: my probe regexed the first match across ALL localStorage keys and picked
+up another record's `15:00`. Reading the actual event showed `1:00 PM`. The
+measurement was wrong, not the code — and I reported it before checking.
+
 ## FIXED 2026-09-18 — the pre-push routine did not run the thing that deploys, and two deploys died unnoticed
 
 **What happened, measured.** Deploy runs 310 (`880c666`, the cook-lever
