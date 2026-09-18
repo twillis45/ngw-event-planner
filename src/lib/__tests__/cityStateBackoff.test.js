@@ -34,16 +34,31 @@ describe('a word after the state no longer eats the state', () => {
 });
 
 describe('the strict gate is NOT loosened', () => {
-  test('a bare city with no state is still refused — never a guessed state', () => {
-    expect(p('80th birthday dinner in Charleston for 45').venueCity).toBeNull();
+  // ⚠ TWO ASSERTIONS AMENDED 2026-09-18 (CITY-SAID-1). Both read
+  // `venueCity → null` and were measured as `'Charleston'` / `'Springfield'`
+  // after the bare-city fix. What this describe block is actually protecting —
+  // "never a guessed state" — is unchanged and is now asserted DIRECTLY
+  // (venueState null) instead of via the town's absence, which was only ever a
+  // proxy for it. The state-backoff behaviour these tests were written for is
+  // untouched; so is parseVenueLocation. See spokenCityGate.test.js.
+  test('a bare city is heard, and its state is still NEVER guessed', () => {
+    const r = p('80th birthday dinner in Charleston for 45');
+    // Three Charlestons (SC, WV, and a second SC row) sit in the curated list.
+    // The town is her word and is carried; which Charleston stays hers to say.
+    expect(r.venueCity).toBe('Charleston');
+    expect(r.venueState).toBeNull();
   });
 
   test('a non-state after the comma still yields nothing', () => {
     expect(p('crab feast at the park, food, and games').venueCity).toBeNull();
   });
 
-  test('backing off never invents a DIFFERENT city', () => {
+  test('backing off never invents a DIFFERENT city, and never a state', () => {
     const r = p('party in Springfield, Notarealstate June 5');
-    expect(r.venueCity).toBeNull();
+    // "Notarealstate" is not a state, so nothing is committed: the city is the
+    // word in front of the comma, exactly as typed, and the state stays null
+    // rather than being back-filled from a list.
+    expect(r.venueCity).toBe('Springfield');
+    expect(r.venueState).toBeNull();
   });
 });

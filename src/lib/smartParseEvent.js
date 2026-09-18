@@ -13,7 +13,7 @@
 import { ALL_PLAYBOOKS } from './playbooks';
 import { matchVacationArea } from './vacationAreas';
 import { resolveCanonicalType } from './eventTaxonomyAdapter';
-import { parseVenueLocation } from './cityText';
+import { parseVenueLocation, resolveSpokenCity } from './cityText';
 
 // Occasion choices = the REAL playbook catalog: every type the engine ships a
 // full playbook for, minus the business types a host never plans.
@@ -380,7 +380,6 @@ export function parseSmartEventText(text, opts = {}) {
     }
     return null;
   })();
-  const loc = locBare;
 
   // ── THE STREET LINE (2026-09-17) ─────────────────────────────────────────
   // parseVenueLocation refuses any string containing digits (cityText.js), and
@@ -409,6 +408,26 @@ export function parseSmartEventText(text, opts = {}) {
     `\\b(\\d{1,6}[A-Za-z]?(?!\\s*(?:am|pm|a\\.m\\.|p\\.m\\.)\\b)\\s+(?:${NOT_STREET_WORD}[A-Za-z0-9.'’-]+\\s+){0,4}?${STREET_SUFFIX}\\.?)` +
     `((?:\\s*,?\\s*(?:apt|apartment|unit|suite|ste|#)\\s*[\\w-]+)?)\\b`, 'i'));
   const venueAddress = addrM ? (addrM[1] + (addrM[2] || '')).replace(/\s+/g, ' ').trim() : '';
+
+  // ── A BARE ZIP IS UNAMBIGUOUS (2026-09-18) ───────────────────────────────
+  // "Cookout in 20770 for 30" resolved to NOTHING. parseVenueLocation has
+  // accepted a bare 5-digit ZIP since the day it was written — the ZIP is the
+  // one location form that names exactly one place with no state to guess — but
+  // every pattern above requires a "City, ST" SHAPE, so the parser never once
+  // handed it a ZIP. The gate was fine; nothing was knocking on it.
+  //
+  // Narrow on purpose: only after a locative preposition, so "budget 15000",
+  // "for 20000", "$12,500" and a bare year can never be read as a town. And
+  // never a number the street parser already claimed as a HOUSE NUMBER — "at
+  // 20770 Main St" is an address, not a ZIP, and venueAddress (computed right
+  // above) is what says so.
+  const locZip = locBare || (() => {
+    const m = t.match(/\b(?:in|at|near|around|zip|zipcode)\s+(\d{5})(?:-\d{4})?\b/i);
+    if (!m) return null;
+    if (venueAddress && venueAddress.includes(m[1])) return null;
+    try { return parseVenueLocation(m[1]); } catch { return null; }
+  })();
+  const loc = locZip;
 
   // ── Destination modifier — a real signal, surfaced as a SUGGESTION ───────
   // (the host confirms/edits it via a real toggle, same "suggest don't
@@ -495,6 +514,32 @@ export function parseSmartEventText(text, opts = {}) {
     if (!words.length || NOT_A_PLACE.test(words[0])) return '';
     return words.join(' ');
   })();
+
+  // ── THE TOWN SHE NAMED, CARRIED (2026-09-18) ─────────────────────────────
+  // Both captures above end with the same sentence — "it never becomes
+  // venueCity" — and that was measured as a real loss, not a safe default:
+  // "Reunion in Asheville Aug 3 to Aug 7 2027" and "Bachelorette weekend trip
+  // to Nashville" flagged isDestination correctly and then reported venueCity
+  // '', so weather, the shopping list, lodging search and maps all had nothing
+  // to anchor on for an event whose town was typed in the first sentence.
+  //
+  // WHAT CHANGED IS ONLY THE CITY HALF. resolveSpokenCity (cityText.js) admits
+  // a name ONLY if it is in the curated usCities whitelist, and it returns
+  // state: null ALWAYS — so the rule those comments were really protecting
+  // ("committing a city without a state is the thing parseVenueLocation rightly
+  // refuses") still holds exactly: no state is invented here, and the strict
+  // gate is untouched and still refuses bare cities everywhere it runs.
+  //
+  // The town is a PRE-FILL, not a commitment: HostShellV2 (~1382) shows it in
+  // the editable town field, and its creation seam (~6558) still runs the field
+  // through parseVenueLocation, so a state-less town is offered to the host to
+  // complete rather than written to the event behind her. Her word, visible and
+  // editable, beats an empty field she has to retype.
+  //
+  // "in <Town>" and "trip to <Town>" only — never a bare "at <X>", which in
+  // host speech names a VENUE ("at Hilton", "at the clubhouse"), not a town.
+  const spokenCity = loc ? null
+    : (resolveSpokenCity(spokenPlace) || resolveSpokenCity(awayPlace));
 
   const normCity = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
   const homeCity = normCity(opts.homeCity);
@@ -701,7 +746,10 @@ export function parseSmartEventText(text, opts = {}) {
     honoree: hm ? hm[1] : null,
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : (lodging || venueAt ? 'venue' : ''),
     venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),
-    venueCity: loc ? (loc.zip || loc.city) : (area ? area.hubTown : null),
+    // Order is strongest-first: a said "City, ST" or ZIP, then a curated
+    // vacation area's real hub town, then the bare town she named — which
+    // carries NO state, because none was said (resolveSpokenCity, cityText.js).
+    venueCity: loc ? (loc.zip || loc.city) : (area ? area.hubTown : (spokenCity ? spokenCity.city : null)),
     venueState: loc ? (loc.state || null) : (area ? area.state : null),
     vacationArea: area ? area.id : null,
     // "No kids." / "adults only" → the invite policy InviteV2 + doItForMe already

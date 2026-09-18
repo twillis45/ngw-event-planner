@@ -1,3 +1,5 @@
+import US_CITIES from './usCities';
+
 // CITY-LEAK-1 — shared gate for "is this a city name, or a whole venue/address
 // string?" Guards every seam where a remembered city crosses events (the
 // Where & when localStorage seed, the ngw-host-city writeback) and where a
@@ -62,4 +64,67 @@ export function parseVenueLocation(v) {
   const byName = US_STATE_NAME_TO_ABBR[stateRaw.toLowerCase()];
   if (byName) return { city, state: byName };
   return null;
+}
+
+// ─── resolveSpokenCity — the TOWN SHE NAMED, WITHOUT A STATE (2026-09-18) ────
+//
+// THIS DOES NOT LOOSEN parseVenueLocation. That gate is untouched and still
+// refuses a bare city outright, because it answers "may the app COMMIT this
+// string as a located venue?" — and for that question a guessed state is worse
+// than asking (see its comment above; the manual "Which town?" field, the
+// creation seam and setVenue all still route through it).
+//
+// This answers a DIFFERENT and weaker question: "did the host name a town at
+// all?" Measured 2026-09-18 on the seed corpus: three of seven real sentences
+// lost the town entirely — "Reunion in Asheville Aug 3 to Aug 7 2027",
+// "Bachelorette weekend trip to Nashville", "Cookout in 20770 for 30" — and the
+// town is what gates weather, the shopping list, lodging search and maps. The
+// parser was throwing away a fact the host stated plainly.
+//
+// TWO PROPERTIES, both deliberate:
+//
+//   1. A NON-PLACE WORD CAN NEVER BECOME A CITY. Membership in the curated
+//      lib/usCities.js list — the ~240 largest metros, all 50 state capitals
+//      and the popular event/wedding destinations, already statically bundled
+//      for the city autocomplete — is the whole admission test. It is a
+//      WHITELIST, not a regex: "Memory", "Grand Ballroom", "Aisha's", "June"
+//      and "Vida" are not on it and can never resolve. (Vida is a REAL US place
+//      — Vida, OR — and is still refused, which is the point: the 29,738-entry
+//      usCitiesFull list would admit person-shaped names like Vida, Linda and
+//      May, so it is deliberately NOT the list used here. It is also
+//      dynamic-import-only, so a sync parser could not read it anyway.)
+//
+//   2. THE STATE IS NEVER GUESSED — `state` is always null here, even when the
+//      name appears exactly once in the list. PROOF that "unique in the list"
+//      would be a lie: "Arlington" appears once, as Arlington, TX, because
+//      Arlington, VA (pop. ~238k, and the likelier one for this app's
+//      Washington-area hosts) is not in the curated set. Publishing TX there
+//      would fabricate a fact the host never typed, which is exactly what
+//      parseVenueLocation exists to prevent. Ambiguous names resolve too
+//      ("Springfield", "Charleston") — carrying the host's own word forward is
+//      not the same as resolving it, and the state stays hers to supply.
+//
+// Returns { city, state: null } or null. `city` is the LIST's spelling of the
+// name ("St. Louis", "Winston-Salem"), never a new string.
+const MAJOR_CITY_BY_NAME = (() => {
+  const idx = new Map();
+  for (const entry of US_CITIES) {
+    const i = String(entry).lastIndexOf(',');
+    if (i < 0) continue;
+    const name = String(entry).slice(0, i).trim();
+    const key = name.toLowerCase();
+    if (!key) continue;
+    if (!idx.has(key)) idx.set(key, name);
+  }
+  return idx;
+})();
+
+export function resolveSpokenCity(v) {
+  const s = String(v || '').trim().replace(/\s+/g, ' ');
+  if (!s) return null;
+  if (s.includes(',')) return null;        // "City, ST" is parseVenueLocation's job, not this one
+  if (!isPlausibleCityText(s)) return null; // digits / dashes / absurd length, same shared gate
+  const name = MAJOR_CITY_BY_NAME.get(s.toLowerCase());
+  if (!name) return null;
+  return { city: name, state: null };
 }

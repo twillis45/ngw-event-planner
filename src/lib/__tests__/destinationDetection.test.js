@@ -81,11 +81,19 @@ describe('destination detection — provenance', () => {
 });
 
 describe('destination detection — the flag never invents a location', () => {
-  test('a bare city used only for the away comparison does not become venueCity', () => {
+  // ⚠ AMENDED 2026-09-18 (CITY-SAID-1). This asserted that "Weekend trip to
+  // Asheville" produces NO town. Measured that day over the seed corpus, that
+  // rule cost the town in three of seven real sentences — and the town gates
+  // weather, the shopping list, lodging search and maps. What "never invents a
+  // location" actually protects is the STATE, which was never said; the city
+  // WAS said, in the same sentence that set the flag. So the assertion now
+  // names the invented half directly. parseVenueLocation is untouched and still
+  // refuses a bare city wherever a location is COMMITTED; a name is admitted
+  // here only if it is in the curated usCities whitelist (spokenCityGate.test.js).
+  test('a bare city becomes the town, but never brings a state with it', () => {
     const p = parseSmartEventText('Weekend trip to Asheville for 12');
     expect(p.isDestination).toBe(true);
-    // parseVenueLocation's strict "City, ST" gate still governs what is
-    // COMMITTED — a guessed state is worse than asking.
-    expect(p.venueCity || '').toBe('');
+    expect(p.venueCity).toBe('Asheville');
+    expect(p.venueState).toBeNull();
   });
 });

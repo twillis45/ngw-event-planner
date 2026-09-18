@@ -206,9 +206,20 @@ describe('city + state extraction (DESTINATION-1 follow-up)', () => {
     expect(p.venueCity).toBe('Annapolis');
     expect(p.venueState).toBe('MD');
   });
-  test('a bare city with no state is NOT accepted (same strict gate as the manual field)', () => {
+  // ⚠ AMENDED 2026-09-18 (CITY-SAID-1) — THIS TEST ENCODED THE DEFECT.
+  // It asserted that a town the host typed in plain English is thrown away, on
+  // the grounds that the strict gate refuses a bare city. Half of that is right
+  // and is asserted explicitly below: a STATE is never accepted from a bare
+  // city, and parseVenueLocation itself is untouched (spokenCityGate.test.js
+  // holds both properties down). The other half was the defect — measured over
+  // the seed corpus on 2026-09-18, three of seven real sentences lost their town
+  // entirely, and the town gates weather, the shopping list, lodging search and
+  // maps. A bare name now resolves ONLY if it is in the curated usCities
+  // whitelist, and it resolves to a CITY ONLY.
+  test('a bare city is heard, but a state is NEVER guessed from it', () => {
     const p = parseSmartEventText('party in Austin sometime soon', { now: NOW });
-    expect(p.venueCity).toBeNull();
+    expect(p.venueCity).toBe('Austin');
+    expect(p.venueState).toBeNull();
   });
   test('no location phrase → null, not a false positive', () => {
     const p = parseSmartEventText('crab feast for 20 in the backyard', { now: NOW });

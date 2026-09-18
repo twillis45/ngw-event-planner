@@ -12,9 +12,18 @@
 // (phaseProgress), kitchenConsequence, the reveal's lodging stage, and
 // foodSpanNote. One missed boolean removed the whole destination stack.
 //
-// The captured place is used for the home comparison ONLY — it must never
-// become venueCity, because committing a city with no state is exactly what
-// parseVenueLocation rightly refuses to do.
+// ⚠ HEADER AMENDED 2026-09-18 (CITY-SAID-1). The paragraph that stood here said
+// the captured place "must never become venueCity". That conflated two facts:
+// the CITY (her word) and the STATE (our guess). Measured over the seed corpus
+// on 2026-09-18, refusing both threw the town away in three of seven real
+// sentences — and the town gates weather, the shopping list, lodging search and
+// maps, the same "whole stack removed by one missing value" failure this file
+// was written about. So the captured place now DOES become venueCity when it is
+// a name in the curated usCities whitelist, and NEVER carries a state.
+// parseVenueLocation — what the sentence above was really defending — is
+// untouched and still refuses a bare city at every seam that commits a
+// location. See spokenCityGate.test.js for both properties, and the test below
+// for this file's own version.
 const { parseSmartEventText } = require('../smartParseEvent');
 
 describe('a bare "in <City>" counts as a place', () => {
@@ -25,11 +34,11 @@ describe('a bare "in <City>" counts as a place', () => {
     expect(r.endDate).toBe('2027-08-07');
   });
 
-  it('still refuses to COMMIT a city that carries no state', () => {
+  it('carries the town she named, and still refuses to invent its state', () => {
     const r = parseSmartEventText('Family reunion in Asheville Aug 3 to Aug 7 2027');
-    // The flag flips; the location does not get invented.
+    // The flag flips; the town is recorded as typed; the STATE is not invented.
     expect(r.isDestination).toBe(true);
-    expect(r.venueCity || '').toBe('');
+    expect(r.venueCity).toBe('Asheville');
     expect(r.venueState || '').toBe('');
   });
 

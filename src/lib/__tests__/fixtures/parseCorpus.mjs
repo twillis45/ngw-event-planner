@@ -42,9 +42,14 @@
 //     test still asserts the recorded value so the suite stays honest about
 //     what ships today, and the note is the handoff. When the parser is fixed,
 //     the golden test fails on that entry — which is the point.
+//   * `note` is the OPPOSITE of `suspect`, and the distinction matters: it
+//     records behaviour review judged RIGHT where a reader would otherwise
+//     assume a defect — a deliberate miss, or a value that looks thin until you
+//     know what was refused and why. A sentence is never spent once: a case we
+//     decide NOT to fix stays here with its reason, same as one we do.
 //
 // The entry shape:
-//   { text, from, expect: { <parser field>: <value>, … }, suspect?: '…' }
+//   { text, from, expect: { <parser field>: <value>, … }, suspect?: '…', note?: '…' }
 
 // The frozen reference clock. A function, not a shared Date, so no test can
 // mutate the corpus out from under another.
@@ -89,7 +94,7 @@ export const PARSE_CORPUS = [
   { text: "Cookout for 8 people at my place", from: 'negative case — "my place" is a venue, not a street line', expect: { type: 'The Cookout', guests: 8, venueAddress: null, venueCity: null, venue: 'Home', venueKind: 'home' } },
   { text: "Party with 3 kegs and a taco truck", from: 'negative case — "3 kegs" is not a headcount', expect: { guests: null, budget: null, venueAddress: null, date: null, type: 'Birthday' }, suspect: 'a bare "party" routes to Birthday — same as the Ryan Way "Party at …" entry.' },
   { text: "Graduation cookout, 3 kegs, 40 people", from: 'negative case — the counting noun decides which number is the headcount', expect: { type: 'Graduation', guests: 40, budget: null } },
-  { text: "Reunion in June for 30", from: 'negative case — a month with no year commits to nothing', expect: { type: 'Reunion', guests: 30, date: null, monthYear: null, endDate: null } },
+  { text: "Reunion in June for 30", from: 'negative case — a month with no year commits to nothing', expect: { type: 'Reunion', guests: 30, date: null, monthYear: null, endDate: null, venueCity: null, venueState: null } },
   { text: "Cookout for 20 people", from: 'negative case — the minimum sentence; everything else must stay null', expect: { type: 'The Cookout', guests: 20, date: null, endDate: null, monthYear: null, budget: null, startTime: null, startTimeBasis: null, venueAddress: null, venueCity: null, venueState: null, honoree: null, theme: null, kidsPolicy: null, isDestination: false, destinationBasis: null, travelMode: null, overnight: null, milestone: null, secondaryType: null, vacationArea: null } },
   { text: "Bridal shower on Saturday for 20", from: 'negative case — a bare weekday is not parsed as a date', expect: { type: 'Bridal Shower', guests: 20, date: null }, suspect: 'the host named a day and it is dropped. "on Saturday" only resolves when written "this Saturday"/"next Saturday".' },
   { text: "Zoom baby shower for 20", from: 'negative case — "Zoom" is not a town', expect: { type: 'Baby Shower', guests: 20, venueCity: null, venueState: null, isDestination: false } },
@@ -118,7 +123,12 @@ export const PARSE_CORPUS = [
   { text: "Birthday for 20 on June 12-14", from: 'derived variant — same range with no year, rolled forward', expect: { type: 'Birthday', date: '2027-06-12', endDate: '2027-06-14', guests: 20 } },
   { text: "Anniversary June 14-12 for 20", from: 'negative case — a backwards range is noise, never a span', expect: { type: 'Anniversary', date: '2027-06-14', endDate: null, guests: 20 } },
   { text: "Reunion Dec 30 to Jan 2 for 40", from: 'derived variant — the year-straddling range', expect: { type: 'Reunion', date: '2026-12-30', endDate: '2027-01-02', guests: 40, overnight: true, overnightBasis: 'multi-day-span' } },
-  { text: "Reunion in Asheville Aug 3 to Aug 7 2027, 24 people", from: 'regression sentence, live probe 2026-08-03 (destination stack was dropped)', expect: { type: 'Reunion', date: '2027-08-03', endDate: '2027-08-07', guests: 24, isDestination: true, destinationBasis: 'place-named', venueCity: null } },
+  // AMENDED 2026-09-18 (CITY-SAID-1) — `venueCity: null` here was not a
+  // negative case, it was the defect: this entry asserted the dropped town as
+  // correct. Measured before: venueCity null. Measured after: "Asheville",
+  // venueState still null because she never said one. See the CITY SHE NAMED
+  // block at the foot of this file for the rule and its proof.
+  { text: "Reunion in Asheville Aug 3 to Aug 7 2027, 24 people", from: 'regression sentence, live probe 2026-08-03 (destination stack was dropped)', expect: { type: 'Reunion', date: '2027-08-03', endDate: '2027-08-07', guests: 24, isDestination: true, destinationBasis: 'place-named', venueCity: 'Asheville', venueState: null } },
   { text: "Rehearsal dinner 11/13/2026 - 11/16/2026 in Charleston SC", from: 'regression sentence, host live report 2026-07-27 (numeric range end dropped)', expect: { date: '2026-11-13', endDate: '2026-11-16', overnight: true, overnightBasis: 'multi-day-span', venueCity: 'Charleston', venueState: 'SC', type: 'Dinner Party' } },
   { text: "Wedding weekend of June 12 2027 in Charleston, SC, 18 people flying in", from: 'derived variant — "weekend of" a Saturday extends forward to the Sunday', expect: { type: 'Wedding', date: '2027-06-12', endDate: '2027-06-13', guests: 18, travelMode: 'fly', isDestination: true, destinationBasis: 'travel-language', venueCity: 'Charleston', venueState: 'SC' } },
   { text: "Wedding in June of 2028 in Savannah, Georgia", from: 'derived variant — month + year is OPTIONS, never a committed day', expect: { type: 'Wedding', date: null, monthYear: { year: 2028, month: 5, label: 'Jun 2028' }, venueCity: 'Savannah', venueState: 'GA' } },
@@ -126,12 +136,17 @@ export const PARSE_CORPUS = [
   { text: "Holiday party this winter for 60, budget $8k", from: 'derived variant — a season, plus the $Nk budget shorthand', expect: { type: 'Holiday Party', budget: 8000, guests: 60, date: null, monthYear: { year: 2026, month: 0, label: 'Winter 2026' } }, suspect: 'from 18 Sep 2026, "this winter" resolves to JANUARY 2026 — eight months in the PAST. The date options offered to the host are all dates that already happened.' },
 
   // ── Destination / travel language ─────────────────────────────────────────
-  { text: "Bachelorette weekend trip to Nashville for 10 of us, $200 a person", from: 'regression sentence, host report 2026-07-27 (per-person money read as a total)', expect: { type: 'Bachelorette Party', guests: 10, budget: 2000, isDestination: true, destinationBasis: 'travel-language', venueCity: null } },
+  // AMENDED 2026-09-18 (CITY-SAID-1) — same amendment as the Asheville entry:
+  // the recorded null was the dropped town, not a deliberate absence. Measured
+  // before: venueCity null. After: "Nashville", venueState null.
+  { text: "Bachelorette weekend trip to Nashville for 10 of us, $200 a person", from: 'regression sentence, host report 2026-07-27 (per-person money read as a total)', expect: { type: 'Bachelorette Party', guests: 10, budget: 2000, isDestination: true, destinationBasis: 'travel-language', venueCity: 'Nashville', venueState: null } },
   { text: "Destination 80th birthday celebration in Santa Fe, New Mexico, 10 of us", from: 'regression sentence, DESTINATION-1 + live drive 2026-08-04', expect: { type: 'Birthday', milestone: '80th', guests: 10, isDestination: true, destinationBasis: 'travel-language', venueCity: 'Santa Fe', venueState: 'NM' } },
   { text: "Family reunion at Deep Creek Lake for 30, 3 nights", from: 'regression sentence, host ask 2026-07-27 (a vacation AREA is not a City, ST)', expect: { type: 'Reunion', guests: 30, vacationArea: 'deep-creek', venue: 'Deep Creek Lake', venueCity: 'McHenry', venueState: 'MD', overnight: true, overnightBasis: 'said-so', isDestination: true } },
   { text: "Beach house getaway for 12, 4 nights, driving down", from: 'derived variant — a rented roof is a venue, not home', expect: { type: null, guests: 12, travelMode: 'drive', overnight: true, overnightBasis: 'said-so', isDestination: true, destinationBasis: 'travel-language', venueKind: 'venue' } },
   { text: "Retirement party for 60, out-of-town guests flying in", from: 'regression sentence, live drive 2026-08-05 ("flying in" did not match the bare stem)', expect: { type: 'Retirement Party', guests: 60, travelMode: 'fly', isDestination: true, destinationBasis: 'travel-language' } },
-  { text: "Family reunion in Asheville for 24, hotel room block", from: 'derived variant — lodging words alone say overnight', expect: { type: 'Reunion', guests: 24, overnight: true, overnightBasis: 'said-so', isDestination: true, destinationBasis: 'place-named', venueCity: null } },
+  // AMENDED 2026-09-18 (CITY-SAID-1) — third of the three. Measured before:
+  // venueCity null on an overnight event whose town was in the sentence.
+  { text: "Family reunion in Asheville for 24, hotel room block", from: 'derived variant — lodging words alone say overnight', expect: { type: 'Reunion', guests: 24, overnight: true, overnightBasis: 'said-so', isDestination: true, destinationBasis: 'place-named', venueCity: 'Asheville', venueState: null } },
   { text: "Backyard BBQ at my brother's house in Greenbelt, MD", from: 'regression sentence, live-drive find 2026-09-13 (a named private home is not a trip)', expect: { type: 'The Cookout', isDestination: false, destinationBasis: null, venue: "My brother's house", venueKind: 'home', venueCity: 'Greenbelt', venueState: 'MD' } },
   { text: "Graduation cookout in Greenbelt, MD for 35", from: 'derived variant — the same town with NO named home', expect: { type: 'Graduation', guests: 35, isDestination: true, destinationBasis: 'place-named', venueCity: 'Greenbelt', venueState: 'MD' } },
 
@@ -143,4 +158,55 @@ export const PARSE_CORPUS = [
   { text: "50th birthday and 30 year Army retirement for Wanda", from: 'regression sentence — a dual event, host report (birthday was dropped)', expect: { type: 'Retirement Party', secondaryType: 'Birthday', milestone: '50th', honoree: 'Wanda' } },
   { text: "Sweet 16 for 25 people", from: 'derived variant — a numeric type name is not a guest count', expect: { type: 'Sweet 16', guests: 25 } },
   { text: "Crab feast for 20 in the backyard", from: 'regression sentence — the oldest type-routing case in the suite', expect: { type: 'Crab Feast', secondaryType: null, guests: 20, venue: 'Backyard', venueKind: 'home' } },
+
+  // ── THE CITY SHE NAMED (CITY-SAID-1, 2026-09-18) ──────────────────────────
+  //
+  // THE DEFECT, as measured on this corpus before the fix: the parser lost the
+  // town in three of the four shapes a host actually writes. Only "City, ST"
+  // survived.
+  //
+  //   "Cookout in Greenbelt, MD for 30"            venueCity 'Greenbelt'  ✓
+  //   "Cookout in 20770 for 30"                    venueCity ''           ✗
+  //   "Reunion in Asheville Aug 3 to Aug 7 2027"   venueCity ''           ✗
+  //   "Bachelorette weekend trip to Nashville"     venueCity ''           ✗
+  //
+  // The town is not cosmetic — weather, the shopping list, lodging search and
+  // maps all anchor on it.
+  //
+  // THE FIX, IN TWO HALVES, AND WHAT EACH ONE IS ALLOWED TO CLAIM:
+  //
+  //   A BARE ZIP RESOLVES. parseVenueLocation has accepted a 5-digit ZIP since
+  //   it was written — a ZIP names exactly one place and has no state to guess
+  //   — but every pattern in the parser demanded a "City, ST" shape, so it was
+  //   never handed one. Now it is, after a locative preposition only, and never
+  //   a number the street parser already claimed as a house number.
+  //
+  //   A BARE CITY RESOLVES TO A CITY AND NEVER TO A STATE. The name must be in
+  //   the curated lib/usCities.js whitelist (the ~240 largest metros, the state
+  //   capitals, the popular event destinations) — a whitelist, not a looser
+  //   regex, so a non-place word still cannot become a town. The state stays
+  //   null ALWAYS, even when the name is unique in that list, because unique in
+  //   a 240-row list is not unique in America: see the Arlington entry below,
+  //   which is the proof and the reason this is not "solved" further.
+  //
+  // WHAT IS DELIBERATELY STILL MISSED, and why that is the right answer, is
+  // recorded in the Greenbelt entry below. Understating is recoverable;
+  // inventing a state is not.
+  { text: "Cookout in Greenbelt, MD for 30", from: 'CITY-SAID-1 measurement set, 2026-09-18 — the control: the one shape that always worked', expect: { type: 'The Cookout', guests: 30, venueCity: 'Greenbelt', venueState: 'MD', isDestination: true, destinationBasis: 'place-named' } },
+  { text: "Cookout in 20770 for 30", from: 'CITY-SAID-1 measurement set, 2026-09-18 — a bare ZIP resolved to nothing', expect: { type: 'The Cookout', guests: 30, venueCity: '20770', venueState: null, venueAddress: null, isDestination: false, destinationBasis: null } },
+  { text: "Reunion in Asheville Aug 3 to Aug 7 2027", from: 'CITY-SAID-1 measurement set, 2026-09-18 — a bare city with no state', expect: { type: 'Reunion', date: '2027-08-03', endDate: '2027-08-07', venueCity: 'Asheville', venueState: null, isDestination: true, overnight: true } },
+  { text: "Bachelorette weekend trip to Nashville", from: 'CITY-SAID-1 measurement set, 2026-09-18 — the town after a travel verb', expect: { type: 'Bachelorette Party', venueCity: 'Nashville', venueState: null, isDestination: true, destinationBasis: 'travel-language' } },
+  { text: "Cookout in Greenbelt for 30", from: 'CITY-SAID-1 — a DELIBERATE MISS, recorded rather than fixed', expect: { type: 'The Cookout', guests: 30, venueCity: null, venueState: null, isDestination: true, destinationBasis: 'place-named' }, note: 'NOT A DEFECT — a decision. Greenbelt MD is a real town of 24k and the host named it, but it is not in the curated usCities whitelist, and the whitelist is the ONLY thing standing between "a word after in" and "a town this app will geocode". Widening it to the 29,738-row usCitiesFull would admit Vida, Linda, May and Friday (all real US places, all person/word-shaped) and would also be dynamic-import-only, unreadable from a sync parser. So a mid-size town with no state stays unheard, and the host types the state — a recoverable miss, unlike a fabricated one. The destination flag still fires, so nothing else is lost.' },
+
+  // ── NEGATIVE: the words that must NEVER become a town ─────────────────────
+  // Every one of these sits in the same "in <Capitalised Word>" slot the fix
+  // reads from. If a future loosening lets any of them through, these fail.
+  { text: "Party in Arlington for 40", from: 'CITY-SAID-1 negative — THE proof that a state is never inferred', expect: { guests: 40, venueCity: 'Arlington', venueState: null, type: 'Birthday' }, note: 'the venueState null here is the load-bearing assertion, not an omission. "Arlington" appears exactly ONCE in the curated list — Arlington, TX — because Arlington, VA (pop ~238k, and the likelier one for this app\'s Washington-area hosts) is not in it. Resolving "unique in the list" to a state would therefore have written TX onto a Virginia event with no way for the host to see it happen. The city is her word; the state would be our guess, so there is no state. (The "Birthday" type is the separate bare-"party" routing defect already recorded on the Ryan Way entry.)' },
+  { text: "Cookout in Springfield for 30", from: 'CITY-SAID-1 negative — the textbook ambiguous name', expect: { type: 'The Cookout', guests: 30, venueCity: 'Springfield', venueState: null }, note: 'three Springfields (MO, MA, IL) are in the curated list alone. The town is still recorded because it is exactly what she typed and the create screen shows it back to her editable; what is NOT recorded is which one — that stays hers to say. cityText.js parseVenueLocation still refuses "Springfield" outright at every seam that COMMITS a location.' },
+  { text: "Reunion in Vida for 20", from: 'CITY-SAID-1 negative — a person\'s name that is also a real US place', expect: { type: 'Reunion', guests: 20, venueCity: null, venueState: null } },
+  { text: "Reception in Grand Ballroom for 60", from: 'CITY-SAID-1 negative — a venue name is not a town', expect: { guests: 60, venueCity: null, venueState: null } },
+  { text: "Reunion in Memory of Dad for 40", from: 'CITY-SAID-1 negative — a capitalised noun that is not a place', expect: { type: 'Reunion', guests: 40, venueCity: null, venueState: null } },
+  { text: "Baby shower in Aisha's honor for 25", from: 'CITY-SAID-1 negative — a possessive first name in the town slot', expect: { type: 'Baby Shower', guests: 25, honoree: 'Aisha', venueCity: null, venueState: null } },
+  { text: "Retirement party in Honor of Wanda for 60", from: 'CITY-SAID-1 negative — an abstract noun in the town slot', expect: { type: 'Retirement Party', guests: 60, venueCity: null, venueState: null } },
+  { text: "Cookout at 20770 Main St for 30", from: 'CITY-SAID-1 negative — a house number is not a ZIP', expect: { type: 'The Cookout', guests: 30, venueAddress: '20770 Main St', venueCity: null, venueState: null } },
 ];
