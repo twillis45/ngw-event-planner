@@ -6,6 +6,7 @@
 import { getVendorPlaybook, normalizeCategory, UNIVERSAL_VENDOR_QUESTIONS } from './playbooks.js';
 import { makePromise, PROMISE_STATUS_SEVERITY } from './promiseModel.js';
 import { daysUntil } from '../dates.js';
+import { isVendorBooked } from '../workstreams.js';
 
 // Internal accountability tier (machine-internal). UI maps to display labels.
 export const ACCOUNTABILITY_TIERS = Object.freeze([
@@ -374,10 +375,32 @@ export function inferPromisesFromVendor(vendor, event) {
     return 'none';
   }
 
-  // Broad signal: a vendor whose status is "Confirmed" / "Contracted" /
-  // "Deposit Paid" is at least scope-confirmed.
-  const SCOPE_CONFIRMED_STATUSES = new Set(['Confirmed', 'Contracted', 'Deposit Paid']);
-  const scopeConfirmedByStatus = vendor.status && SCOPE_CONFIRMED_STATUSES.has(vendor.status);
+  // Broad signal: a vendor whose status says the engagement is real is at least
+  // scope-confirmed.
+  //
+  // ── 2026-09-18: NOT LATENT, AS THE AUDIT BRIEF ASSUMED ──────────────────────
+  // This was a private `new Set(['Confirmed', 'Contracted', 'Deposit Paid'])` —
+  // a fifth copy of a predicate that lives canonically in workstreams.js — and
+  // it omitted 'Booked' and 'Paid', the two legacy synonyms HostShellV2's
+  // cycleVendorStatus still reads and writes.
+  //
+  // I was told this one was inert ("Catering carries no scope_confirmed
+  // promise"). I measured instead of taking it, and it is NOT inert. Running the
+  // real inferPromisesFromVendor over 8 categories × 7 statuses: the
+  // scope_confirmed promise is declared by exactly ONE playbook, the OTHER
+  // fallback (playbooks.js:746) — so the Catering half of the claim is right,
+  // and every specialised category is unaffected. But a vendor whose category is
+  // BLANK, or is any category that does not resolve to a specialised playbook
+  // (measured with 'Balloon Artist', a category the picker does not carry), gets
+  // the OTHER playbook and therefore the promise. MEASURED before this change,
+  // category undefined, no contract fields:
+  //     Contracted / Deposit Paid / Confirmed → scope_confirmed 'confirmed'
+  //     Booked / Paid                         → 'not_requested'
+  //     Considering / Quoted                  → 'not_requested' (correct)
+  // A blank category is the app's own default on a quick vendor add, so this was
+  // reachable, not theoretical. Reading isVendorBooked also stops the drift
+  // returning the next time the ladder gains a word.
+  const scopeConfirmedByStatus = isVendorBooked(vendor);
 
   // Planner override (2026-06-12): `vendor.promiseEvidence` is a studio-scoped
   // map { promiseKey: 'attached' } the planner sets via "Mark proof on file".
@@ -404,9 +427,9 @@ export function inferPromisesFromVendor(vendor, event) {
         sourceType: 'system',
       };
     }
-    // A status dropdown is not a contract. "Confirmed" / "Contracted" / "Deposit
-    // Paid" tells us the SCOPE is agreed — it does not conjure a document. Evidence
-    // stays open until a file exists or the planner says they have one.
+    // A status dropdown is not a contract. A committed status tells us the SCOPE
+    // is agreed — it does not conjure a document. Evidence stays open until a file
+    // exists or the planner says they have one.
     if (p.promiseKey === 'scope_confirmed' && scopeConfirmedByStatus) {
       return { ...p, status: 'confirmed', evidenceStatus: inferredEvidence(p, null), sourceType: 'system' };
     }

@@ -8,6 +8,7 @@
 //   • The only new persisted field is `event.lessons` (one short optional string).
 
 import { memoryOn, getDecisions, vendorOutcome } from './decisionMemory';
+import { isVendorBooked } from './workstreams';
 
 export { memoryOn };
 
@@ -24,9 +25,19 @@ const OUTCOME_KEYS = ['on_time', 'late', 'no_show', 'great', 'poor'];
 // Sprint 61B — when a stable bankId is present we key on it (cross-event identity
 // no longer fragments on a renamed/normalized name); otherwise fall back to the
 // normalized-name key so legacy events with no bankId still match.
-// Counts an event only when this vendor was actually committed (Confirmed/Booked) —
-// a track record is of vendors USED, not merely considered. excludeEventId lets the
-// surface read "past history" relative to the event being planned.
+// Counts an event only when this vendor was actually COMMITTED — a track record is
+// of vendors USED, not merely considered. excludeEventId lets the surface read
+// "past history" relative to the event being planned.
+//
+// 2026-09-18 — the committed test was a private `status === 'Confirmed' ||
+// status === 'Booked'`, one of six copies of a predicate whose canonical home is
+// workstreams.js (isVendorBooked). MEASURED across two past events carrying the
+// same vendor at one status each: Confirmed → timesUsed 2, rehired true; Booked →
+// 2 / true; Contracted, Deposit Paid and Paid → null (no memory at all). A
+// caterer you paid a deposit to and used on three weddings returned NOTHING, so
+// "Used 3× · rehired" never appeared and the planner's own track record forgot
+// vendors they had actually hired. Reading the canonical predicate means the
+// memory counts every status the rest of the engine already calls committed.
 export function vendorMemoryFor(allEvents, vendor, excludeEventId) {
   const isObj = vendor && typeof vendor === 'object';
   const vendorName = isObj ? (vendor.name || vendor.vendor_name) : vendor;
@@ -40,7 +51,7 @@ export function vendorMemoryFor(allEvents, vendor, excludeEventId) {
   for (const ev of events) {
     if (!ev || (excludeEventId && ev.id === excludeEventId)) continue;
     const used = (ev.vendors || []).find(
-      (v) => (bankId ? v.bankId === bankId : vendorKey(v.name) === key) && (v.status === 'Confirmed' || v.status === 'Booked'),
+      (v) => (bankId ? v.bankId === bankId : vendorKey(v.name) === key) && isVendorBooked(v),
     );
     if (!used) continue;
     timesUsed += 1;

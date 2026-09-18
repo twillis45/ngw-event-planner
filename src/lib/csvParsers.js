@@ -346,7 +346,78 @@ export function applyMerge(existing, incoming, mode, batchId) {
 
 // ─── vendor transform / validate / merge ─────────────────────────────────────
 
-const VALID_VENDOR_STATUS   = new Set(['Considering', 'Quoted', 'Contracted', 'Deposit Paid', 'Confirmed', '']);
+// ─── vendor status intake vocabulary ─────────────────────────────────────────
+//
+// This is NOT another readiness predicate. It is the app's ONE off-ramp from an
+// outside file into the vendor store, and the only writer in the repo that can
+// put a status into storage that no reader understands. That is a different
+// failure mode from a drifting predicate, so it gets a different answer.
+//
+// Two defects, both MEASURED against the real transformVendorRows:
+//
+//   input          stored (before)  warning (before)
+//   'Booked'       'Booked'         Status "Booked" kept as-is — verify it's valid
+//   'booked'       'booked'         Status "booked" kept as-is — verify it's valid
+//   'Paid'         'Paid'           Status "Paid" kept as-is — verify it's valid
+//   'paid'         'paid'           Status "paid" kept as-is — verify it's valid
+//   'Partial'      'Partial'        Status "Partial" kept as-is — verify it's valid
+//   'Pencilled in' 'Pencilled in'   Status "Pencilled in" kept as-is — verify it's valid
+//
+// 1. 'Booked' and 'Paid' are REAL. workstreams.js's canonical sets both contain
+//    them and hostv2's cycleVendorStatus treats them as synonyms of 'Confirmed'.
+//    Omitting them here meant a true status was flagged as suspect, and — worse —
+//    its lowercase form was NOT case-normalized (only members of this set are),
+//    so 'booked' landed in the store as 'booked', which isVendorBooked answers
+//    FALSE for. The import produced a vendor that read as never-contacted.
+//
+// 2. An unrecognised status was kept VERBATIM with a warning, and warnings do
+//    not block: _valid only checks name and email, so applyVendorMerge wrote
+//    'Pencilled in' straight into the store. Measured end to end, twelve rows in:
+//    ["Considering","Quoted","Contracted","Deposit Paid","Confirmed","Booked",
+//     "booked","Paid","paid","Partial","Pencilled in","Considering"] — six of
+//    those are statuses no predicate in the repo recognises.
+//
+// The decision — COERCE, not reject, not accept-and-warn:
+//
+//   * REJECT (mark the row invalid) is disproportionate. Status is an OPTIONAL
+//     column; a blank one already defaults to 'Considering'. Throwing away a
+//     vendor's name, contact, cost and tags over one cell the planner may not
+//     control (it came out of another tool's export) loses far more than it
+//     protects, and the required-field contract here is name + email.
+//   * ACCEPT-AND-WARN is what we had, and it does not preserve the planner's
+//     information the way it appears to. An off-vocabulary status does not
+//     degrade gracefully — it falls to the most negative branch of every
+//     predicate and badge ladder, so the vendor reads not-started everywhere
+//     while the pill still shows the planner their own word. That disagreement
+//     IS the bug class this pass exists to close, and it is exactly how a
+//     legacy 'Paid' got into a store in the first place.
+//   * COERCE to 'Considering' — the same value a blank cell already produces,
+//     the BOTTOM of the ladder — is the only direction that cannot invent
+//     readiness. The original text is not thrown away: it goes into _warnings,
+//     which VendorImportWizard renders per row in the preview BEFORE the merge
+//     is applied, so the planner sees it and can set the real status.
+//   * COERCE is already THIS FILE'S HOUSE PATTERN on the guest side, which is
+//     the higher-traffic surface: an unrecognised RSVP becomes 'Pending' with
+//     `RSVP "x" mapped to Pending`, an unrecognised meal becomes '—' with
+//     `Meal "x" mapped to —`. Neither is written through. Vendor status was the
+//     one intake field that behaved differently, and it is the one whose
+//     vocabulary the readiness engines read.
+//
+// Kept as an explicit list rather than derived, because workstreams.js exports
+// the predicates and not the sets — exporting them would be the stronger fix.
+// vendorStatusReadersReadOneVocabulary.test.js locks this list against
+// isVendorBooked/isVendorConfirmed in BOTH directions, so adding a status to
+// either side without the other fails a test instead of shipping.
+const VENDOR_STATUS_COERCE_FALLBACK = 'Considering';
+const VALID_VENDOR_STATUS   = new Set([
+  // pre-commitment rungs of the host ladder
+  'Considering', 'Quoted',
+  // everything isVendorBooked answers true for (workstreams BOOKED_STATUSES),
+  // which is a superset of isVendorConfirmed's CONFIRMED_STATUSES
+  'Contracted', 'Deposit Paid', 'Confirmed', 'Booked', 'Paid',
+  // blank — handled before the lookup, defaults to Considering
+  '',
+]);
 const VALID_PREFERRED_TIER  = new Set(['Standard', 'Preferred', 'Certified', '']);
 const VENDOR_MAX_ROWS = 500;
 
@@ -371,15 +442,24 @@ export function transformVendorRows(rawRows) {
     const get = (key) => String(raw[key] ?? '').trim();
     const _warnings = [];
 
+    // Case-insensitive match against the intake vocabulary above, returning the
+    // canonical casing the readers expect. An unrecognised status is COERCED to
+    // the bottom of the ladder rather than written through — see the long note
+    // on VALID_VENDOR_STATUS for why coerce and not reject or accept-as-is. The
+    // planner's original text survives in _warnings, which the import wizard
+    // shows per row before the merge is applied.
     const status = get('Status');
-    const normStatus = status
-      ? Object.keys(Object.fromEntries([...VALID_VENDOR_STATUS].filter(Boolean).map(s => [s.toLowerCase(), s])))
-          .reduce((found, k) => found || (k === status.toLowerCase() ? [...VALID_VENDOR_STATUS].find(s => s.toLowerCase() === k) : null), null) || status
-      : 'Considering';
+    const matched = status
+      ? [...VALID_VENDOR_STATUS].find(s => s && s.toLowerCase() === status.toLowerCase()) || null
+      : VENDOR_STATUS_COERCE_FALLBACK;
 
-    if (status && !VALID_VENDOR_STATUS.has(normStatus)) {
-      _warnings.push(`Status "${status}" kept as-is — verify it's valid`);
+    if (status && !matched) {
+      _warnings.push(
+        `Status "${status}" isn't a status this app tracks — imported as ${VENDOR_STATUS_COERCE_FALLBACK}. ` +
+        `Set the real status on the vendor card.`
+      );
     }
+    const normStatus = matched || VENDOR_STATUS_COERCE_FALLBACK;
 
     const preferredTier = get('Preferred Tier');
     if (preferredTier && !VALID_PREFERRED_TIER.has(preferredTier)) {

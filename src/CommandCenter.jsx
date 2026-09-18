@@ -377,9 +377,21 @@ export function deriveCommandCenterData(event, foodPP = null) {
   // Contracted / Deposit Paid / Confirmed) so visual model stays Figma-true
   // while data model stays unchanged. Payment-overdue still flags AT RISK
   // (Figma page B treats overdue payments as a top-priority risk).
+  // SSOT: the badge ladder reads the canonical predicates (lib/workstreams), not
+  // its own word lists. MEASURED before this change, one Catering vendor, no
+  // headcount drift: status 'Paid' — which isVendorBooked AND isVendorConfirmed
+  // both answer true for — rendered 'NOT STARTED'. A vendor paid in full read as
+  // a vendor never contacted.
+  // 'Partial' removed from the second rung: NOTHING in the repo writes that
+  // status (host ladder is Considering/Quoted/Contracted/Deposit Paid/Confirmed,
+  // no seed or sample event uses it, no engine emits it). Its ONE route into a
+  // store was csvParsers accepting an unrecognised status verbatim — closed in
+  // the same pass. While that route was open it produced a live contradiction:
+  // an amber PARTIAL badge here beside isVendorBooked===false in every readiness
+  // rollup. It is a phantom, not a rung the canonical set is missing.
   const figmaBadge = (v) => {
-    if (v.status === 'Confirmed' || v.status === 'Booked')                       return { label: 'CONFIRMED',    color: P.green };
-    if (v.status === 'Deposit Paid' || v.status === 'Contracted' || v.status === 'Partial') return { label: 'PARTIAL',     color: P.amber };
+    if (isVendorConfirmed(v))                                                    return { label: 'CONFIRMED',    color: P.green };
+    if (isVendorBooked(v))                                                       return { label: 'PARTIAL',     color: P.amber };
     if (v.status === 'Quoted' || v.status === 'Pending')                          return { label: 'PENDING',     color: P.amber };
     if (v.status === 'Considering' || v.status === 'Not Started' || !v.status)    return { label: 'NOT STARTED', color: P.textTertiary };
     if (v.status === 'Unconfirmed' || v.status === 'Needs Action' || v.flagged)   return { label: 'UNCONFIRMED', color: P.amber }; // Red audit: unconfirmed is pending (amber), not blocking (red).
@@ -391,10 +403,14 @@ export function deriveCommandCenterData(event, foodPP = null) {
   // it on the catering vendor's row in Command Center as a HEADCOUNT MISMATCH
   // signal. Doesn't duplicate the Vendors workspace — it routes there.
   const yesGuestsCount = guests.filter(g => g.rsvp === 'Yes').length;
-  const cateringVendor = vendors.find(v =>
-    v.category === 'Catering' &&
-    ['Confirmed','Booked','Deposit Paid','Contracted','Partial'].includes(v.status)
-  );
+  // isVendorBooked, not a private 5-value list: "the caterer is committed" is
+  // exactly the canonical booked question. The old list omitted 'Paid' and
+  // carried the phantom 'Partial'. MEASURED: with catererCount 10 and 2 yes
+  // RSVPs, a 'Paid' caterer produced catererDrift === false — no headcount
+  // mismatch raised for a caterer the host had already paid. This one is HOST
+  // REACHABLE: eventPlan() -> _selectEventNextActionInner reads d.catererDrift
+  // and emits the mismatch as a next action in hostv2.
+  const cateringVendor = vendors.find(v => v.category === 'Catering' && isVendorBooked(v));
   const catererDrift = !!cateringVendor
     && event.catererCount !== undefined
     && event.catererCount !== null
@@ -860,8 +876,12 @@ export function getCrossEventAttentionItems(events = []) {
     // becomes a day-of fire.
     if (eventDays !== null && eventDays >= 0 && eventDays <= 60) {
       for (const v of vendors) {
-        const isCommitted = ['Confirmed', 'Booked', 'Deposit Paid', 'Contracted'].includes(v.status);
-        if (!isCommitted) continue;
+        // isVendorBooked, not a private 4-value list that omitted 'Paid'.
+        // MEASURED: event 30 days out, last log entry 40 days old — statuses
+        // Contracted/Deposit Paid/Confirmed/Booked each raised 1 stale item,
+        // 'Paid' raised 0. A vendor you had paid could go quiet for 40 days
+        // before the event and never be surfaced.
+        if (!isVendorBooked(v)) continue;
         const log = Array.isArray(v.log) ? v.log : [];
         if (log.length === 0) continue;
         const lastEntry = [...log].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
@@ -941,9 +961,16 @@ export function getCrossEventAttentionItems(events = []) {
         owner: v.name || '—',
         // Sprint 49: Figma F vocabulary — overdue payment escalates to AT RISK,
         // otherwise pick the Figma badge state appropriate to the stored stage.
+        // MEASURED, one DJ vendor, event 30 days out, no payment due: this ladder
+        // is reached ONLY after `if (booked) continue` above, so 'Deposit Paid'
+        // and 'Contracted' produce ZERO attention items here — the PARTIAL arm
+        // never fired for either. The only status that could reach it was the
+        // phantom 'Partial' (nothing in the repo writes it; see figmaBadge
+        // above). The arm is deleted rather than rewritten against
+        // isVendorBooked, because isVendorBooked is false for everything that
+        // gets this far by construction.
         statusLabel: overdueP
           ? 'AT RISK'
-          : (v.status === 'Deposit Paid' || v.status === 'Contracted' || v.status === 'Partial') ? 'PARTIAL'
           : (v.status === 'Quoted' || v.status === 'Pending')                                    ? 'PENDING'
           : (v.status === 'Considering' || v.status === 'Not Started' || !v.status)              ? 'NOT STARTED'
           : (v.status === 'Unconfirmed' || v.status === 'Needs Action')                           ? 'UNCONFIRMED'

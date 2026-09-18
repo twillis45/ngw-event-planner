@@ -47,6 +47,10 @@ import {
 } from './vendorIntelligence';
 import { getVendorRequiredQuestions, getVendorCategoryKey } from './vendorQuestions';
 import { daysUntil } from './dates';
+// SSOT: the ONE "secured for the day" vendor-status predicate (workstreams.js,
+// BOOKED_STATUSES = {Confirmed, Booked, Paid, Deposit Paid, Contracted}). The
+// `committed` gate below was a private 4-value list that omitted 'Paid'.
+import { isVendorBooked } from './workstreams';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Context builder — assembles the grounded "facts" object passed to BOTH
@@ -144,7 +148,12 @@ export function getRuleBasedPreview(context) {
     if (row.status === 'missing') missing.push(`${row.label}: ${row.value}`);
   }
   // Surface "Not tracked yet" items as missing only if vendor is committed + near event
-  const committed = ['Confirmed', 'Booked', 'Deposit Paid', 'Contracted'].includes(vendor.status);
+  // MEASURED before the fix, event 10 days out, uncategorised-field vendor:
+  // 'Contracted'/'Deposit Paid'/'Confirmed'/'Booked' surfaced 5–6 "missing"
+  // lines (arrival, contract, deposit, final payment); 'Paid' surfaced 2 — and
+  // the first of those two was "Vendor selected: Paid", i.e. the copilot told
+  // the planner they had not picked a vendor yet for a vendor paid in full.
+  const committed = isVendorBooked(vendor);
   if (committed && event.daysAway !== null && event.daysAway >= 0 && event.daysAway <= 30) {
     for (const row of planning) {
       if (row.status === 'not_tracked' && row.consequence) {

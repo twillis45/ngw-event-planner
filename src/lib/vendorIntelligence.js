@@ -16,7 +16,9 @@
 //   challenge categories: 9 categories from the brief
 //
 // Field-model reality (per inspection report):
-//   - vendor.status: 'Considering' | 'Quoted' | 'Contracted' | 'Deposit Paid' | 'Confirmed' (+ legacy 'Booked')
+//   - vendor.status: 'Considering' | 'Quoted' | 'Contracted' | 'Deposit Paid' | 'Confirmed'
+//     (+ legacy synonyms 'Booked' and 'Paid'). This file no longer spells that
+//     vocabulary out itself — see the isVendorBooked / isVendorConfirmed import below.
 //   - vendor.contractSigned (bool — camelCase). Some legacy code reads contract_signed (snake_case).
 //   - vendor.depositPaid, vendor.balancePaid (bools). vendor.payDueDate (ISO).
 //   - vendor.arrivalTime (HH:MM). vendor.contactName, vendor.contact (email), vendor.phone.
@@ -27,6 +29,21 @@
 
 import { getVendorRequiredQuestions } from './vendorQuestions';
 import { daysUntil } from './dates';
+// SSOT: the ONE vendor-status vocabulary lives in workstreams.js.
+//   isVendorBooked    — BOOKED_STATUSES    {Confirmed, Booked, Paid, Deposit Paid, Contracted}
+//   isVendorConfirmed — CONFIRMED_STATUSES {Confirmed, Booked, Paid}
+// This file carried three private spellings of those sets (an `isCommitted`
+// missing 'Paid', an `isConfirmed` missing 'Paid', and a bare
+// `status !== 'Confirmed' && status !== 'Booked'`). MEASURED consequence of the
+// gap, vendor status 'Paid', category DJ, event 2026-12-01:
+//   challenge.booking  'attention' / "Status: Paid."  (not the confirmed branch)
+//   nextAction         "Follow up with Acme."         (not "Get the signed contract")
+//   planning.contract  'pending'                      (not 'missing')
+// i.e. a vendor the rest of the app calls fully locked in read here as a
+// stranger. workstreams.js imports getVendorCOIState from this module, so this
+// is a module cycle — safe because neither side calls the other at module-eval
+// time, only inside functions. Do not move a call to top level.
+import { isVendorBooked, isVendorConfirmed } from './workstreams';
 
 // ── Tiny date utils (deliberately self-contained — no import from elsewhere) ──
 // daysFrom() used to compute this itself, subtracting a wall-clock instant from a
@@ -270,16 +287,27 @@ export function getVendorLifecycleStage(vendor, event) {
     case 'Quoted':      return 'Lead · quoted';
     case 'Contracted':  return 'Booking';
     case 'Deposit Paid': return 'Booked';
-    case 'Booked':       return 'Booked';
-    case 'Confirmed': {
-      if (eventSoon) return 'Locked in · final check';
-      return 'Locked in';
-    }
     case 'Not Started':
     case '':
     case undefined:
       return 'Lead';
     default:
+      // 'Confirmed' and its canonical synonyms ('Booked', 'Paid') are the
+      // LOCKED IN rung. This used to be `case 'Confirmed'` plus a separate
+      // `case 'Booked'` returning the lesser 'Booked' stage, with 'Paid'
+      // falling through to the default — MEASURED: a 'Paid' vendor (booked AND
+      // confirmed by the canonical predicate) rendered 'Booked', one rung below
+      // the 'Confirmed' vendor it is defined to be equivalent to.
+      if (isVendorConfirmed(vendor)) {
+        return eventSoon ? 'Locked in · final check' : 'Locked in';
+      }
+      // Anything left is off-vocabulary. DELIBERATELY UNCHANGED: this branch
+      // still answers 'Booked', which over-claims for a status no predicate in
+      // the repo recognises. It is left alone because (a) after the csvParsers
+      // intake fix in this same pass nothing can mint such a status any more,
+      // and (b) re-labelling it would re-stage vendors already sitting on a
+      // legacy value in a real store, which is a data call, not a code call.
+      // Locked by test so the over-claim is on the record, not a surprise.
       return 'Booked';
   }
 }
@@ -296,8 +324,8 @@ export function getVendorLifecycleStage(vendor, event) {
 export function getVendorChallengeSummary(vendor, event) {
   if (!vendor) return {};
   const status = vendor.status || '';
-  const isCommitted = status === 'Confirmed' || status === 'Booked' || status === 'Deposit Paid' || status === 'Contracted';
-  const isConfirmed = status === 'Confirmed' || status === 'Booked';
+  const isCommitted = isVendorBooked(vendor);   // was a private 4-value list — omitted 'Paid'
+  const isConfirmed = isVendorConfirmed(vendor); // was Confirmed|Booked — omitted 'Paid'
   const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
   const depositPaid = vendor.depositPaid === true;
   const balancePaid = vendor.balancePaid === true;
@@ -313,7 +341,10 @@ export function getVendorChallengeSummary(vendor, event) {
   let booking;
   if (isConfirmed && contractSigned) booking = { level: 'safe', note: 'Booked and contract signed.' };
   else if (isConfirmed && !contractSigned) booking = { level: 'attention', note: 'Confirmed but no contract on file.' };
-  else if (status === 'Deposit Paid' || status === 'Contracted') booking = { level: 'attention', note: 'Booking in progress — not yet confirmed.' };
+  // Reached only when NOT confirmed (the two branches above), so "booked but not
+  // confirmed" is exactly isCommitted here — the canonical middle rung, rather
+  // than a third private spelling of {Deposit Paid, Contracted}.
+  else if (isCommitted) booking = { level: 'attention', note: 'Booking in progress — not yet confirmed.' };
   else if (status === 'Quoted') booking = { level: 'attention', note: 'Quoted — needs decision before booking.' };
   else if (status === 'Considering' || !status) booking = { level: 'not_started', note: 'Not booked yet.' };
   else booking = { level: 'attention', note: `Status: ${status}.` };
@@ -549,8 +580,8 @@ export function getVendorReadiness(vendor, event) {
 export function getVendorNextAction(vendor, event) {
   if (!vendor) return null;
   const status = vendor.status || '';
-  const isConfirmed = status === 'Confirmed' || status === 'Booked';
-  const isCommitted = isConfirmed || status === 'Deposit Paid' || status === 'Contracted';
+  const isConfirmed = isVendorConfirmed(vendor); // was Confirmed|Booked — omitted 'Paid'
+  const isCommitted = isVendorBooked(vendor);    // same set, one source
   const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
   const depositPaid = vendor.depositPaid === true;
   const balancePaid = vendor.balancePaid === true;
@@ -837,7 +868,11 @@ export function getActionableNextStep(nextAction, vendor) {
   }
 
   // ── Booking: vendor unconfirmed and event close — one-click confirm ──
-  if (cat === 'booking' && vendor.status !== 'Confirmed' && vendor.status !== 'Booked') {
+  // isVendorConfirmed, not a bare two-value comparison: this is a WRITE CTA. The
+  // old test omitted 'Paid', so the cockpit offered "Mark confirmed" (patching
+  // status to 'Confirmed') on a vendor the canonical predicate already calls
+  // confirmed — an action whose work was already done.
+  if (cat === 'booking' && !isVendorConfirmed(vendor)) {
     return {
       kind: 'patch',
       ctaLabel: 'Mark confirmed',
@@ -902,8 +937,8 @@ export function getActionableNextStep(nextAction, vendor) {
 export function getVendorPlanningState(vendor, event) {
   if (!vendor) return [];
   const status = vendor.status || '';
-  const isConfirmed = status === 'Confirmed' || status === 'Booked';
-  const isCommitted = isConfirmed || status === 'Deposit Paid' || status === 'Contracted';
+  const isConfirmed = isVendorConfirmed(vendor); // was Confirmed|Booked — omitted 'Paid'
+  const isCommitted = isVendorBooked(vendor);    // same set, one source
   const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
   const depositPaid = vendor.depositPaid === true;
   const balancePaid = vendor.balancePaid === true;

@@ -22,6 +22,14 @@
 //
 // 'unknown' renders as "Not tracked yet" in the UI. 'missing' renders red.
 
+// SSOT: the ONE "fully locked in" vendor-status predicate (workstreams.js,
+// CONFIRMED_STATUSES = {Confirmed, Booked, Paid}). The generic-fallback scope
+// question below spelled this as `status === 'Confirmed' || status === 'Booked'`,
+// which omitted 'Paid'. MEASURED, uncategorised vendor: 'Paid' → scope 'unknown'
+// ("Not tracked yet") while 'Booked' → 'answered', for two statuses the engine
+// treats as identical.
+import { isVendorConfirmed } from './workstreams';
+
 // ── Category normalization ───────────────────────────────────────────────────
 // vendor.category strings vary in seed data ("Catering", "Photography", "DJ",
 // "Florals", "Venue", "Rentals", "Videography"). Map to the brief's canonical
@@ -592,7 +600,7 @@ export function getVendorRequiredQuestions(vendor, event) {
       {
         key: 'scope',
         question: 'Scope of work confirmed?',
-        status: vendor.status === 'Confirmed' || vendor.status === 'Booked' ? 'answered' : 'unknown',
+        status: isVendorConfirmed(vendor) ? 'answered' : 'unknown',
         value: vendor.category || 'Not categorized',
       },
     ];

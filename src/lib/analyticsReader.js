@@ -17,6 +17,7 @@ import { eventCulturalMeta, isAtHome, placePhrase } from './doItForMe';
 import { getLesson } from './eventMemory';
 import { hostIntel } from './hostIntel';
 import { evaluationStats } from './intelEval';
+import { isVendorBooked } from './workstreams';
 
 // ── Seed / sample filtering ───────────────────────────────────────────────────
 // App.js owns the canonical SEED_EVENT_IDS set; we do NOT import from there (it
@@ -41,11 +42,20 @@ const guestCountOf = (e) =>
 
 const hasOutcomes = (e) => Boolean(e && e.outcomes && e.outcomes.capturedAt);
 
-// Vendors actually committed (Confirmed / Booked) — mirrors eventMemory's "used".
-const confirmedVendors = (e) =>
-  arr(e && e.vendors).filter(
-    (v) => v && (v.status === 'Confirmed' || v.status === 'Booked'),
-  );
+// Vendors actually COMMITTED — mirrors eventMemory's "used", and now literally
+// reads the same predicate rather than a third private spelling of it.
+//
+// 2026-09-18 — this was `status === 'Confirmed' || status === 'Booked'`: a third
+// vocabulary for one question, next to eventMemory's identical pair and
+// phaseProgress's /confirmed|booked|contracted/i regex, none of which agreed with
+// workstreams.js's canonical BOOKED_STATUSES. MEASURED on two events each holding
+// the same vendor at one status: Confirmed → vendorsTracked 2, rehiredVendors 1;
+// Booked → 2 / 1; Contracted, Deposit Paid and Paid → 0 / 0. An admin reading
+// "memory depth" saw zero tracked vendors for a book full of vendors under
+// contract. Renamed from `confirmedVendors` because "confirmed" was never what it
+// meant — Contracted and Deposit Paid are committed, not confirmed — and the name
+// is half of why the drift was invisible.
+const committedVendors = (e) => arr(e && e.vendors).filter((v) => v && isVendorBooked(v));
 
 // ── playbookCoverage(events) ──────────────────────────────────────────────────
 // Which event TYPES in this book have a registered playbook, and which real types
@@ -105,7 +115,7 @@ export function locationSpread(events) {
 
 // ── memoryDepth(events) ───────────────────────────────────────────────────────
 // How much compounding signal the book carries: captured outcomes, written lessons,
-// confirmed vendors tracked, and vendors rehired across ≥2 events.
+// committed vendors tracked, and vendors rehired across ≥2 events.
 export function memoryDepth(events) {
   const evs = realEvents(events);
   let eventsWithOutcomes = 0;
@@ -115,7 +125,7 @@ export function memoryDepth(events) {
   for (const e of evs) {
     if (hasOutcomes(e)) eventsWithOutcomes += 1;
     if (getLesson(e)) eventsWithLessons += 1;
-    const used = confirmedVendors(e);
+    const used = committedVendors(e);
     vendorsTracked += used.length;
     const seenThisEvent = new Set();
     for (const v of used) {

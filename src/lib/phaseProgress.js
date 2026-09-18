@@ -26,6 +26,7 @@ import { spanNights } from './dates';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
+import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd } from './dates';
 import { venueFor } from './venueFor';
@@ -538,7 +539,45 @@ function liveProgress(ev, now) {
 function postProgress(ev) {
   const items = [];
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && String(v.name || '').trim());
-  const unpaid = vendors.find(v => num(v.cost) > 0 && v.balancePaid !== true && (v.depositPaid === true || v.contractSigned === true || /confirmed|booked|contracted/i.test(String(v.status || ''))));
+  // ── A STATUS WORD IS NOT A RECEIPT (2026-09-18) ─────────────────────────────
+  // This line used to decide whether the host still owes a vendor with a private
+  // regex, /confirmed|booked|contracted/i, over vendor.status. Two things were
+  // wrong with it, and only the first is about vocabulary.
+  //
+  // 1. THE VOCABULARY. The regex is a sixth private copy of a predicate that has
+  //    ONE canonical home (workstreams.js BOOKED_STATUSES / isVendorBooked, read
+  //    through vendorMoney.vendorIsCommitted). It omitted 'Deposit Paid' and
+  //    'Paid'. MEASURED on an event 5 days past with one vendor, cost 6000,
+  //    balancePaid false, no depositPaid/contractSigned:
+  //      Contracted / Confirmed / Booked → handled:false, "Settle up with X",
+  //                                         summary "1 thing left"
+  //      Deposit Paid / Paid             → handled:TRUE, cueLabel null,
+  //                                         summary "ALL WRAPPED UP"
+  //    'Deposit Paid' is ONE pill tap away in hostv2 (cycleVendorStatus patches
+  //    {status} alone, touching no money field), so a host could tap a pill and
+  //    have the app tell them they were finished with 6000 outstanding.
+  //
+  // 2. THE BIGGER ONE: A STATUS SHOULD NOT DECIDE WHETHER MONEY IS SETTLED AT
+  //    ALL. Even a regex with a perfect word list is answering the wrong
+  //    question. "Is the word in this set?" is a proxy; "is there a balance
+  //    outstanding?" is the fact, and vendorMoney.js already owns it —
+  //    vendorBalance = cost - (balancePaid ? cost : depositPaid ? depositAmt : 0),
+  //    the same math hostSpending and vendorOutstanding report to the host. If
+  //    the wrap-up ledger and the budget read the same number, they cannot
+  //    contradict each other; if the ledger reads a word instead, they can, and
+  //    did. So the predicate is now MONEY, with status used only where it
+  //    belongs — vendorIsCommitted, to answer "is the host on the hook for this
+  //    cost at all", which is exactly the question a status CAN answer.
+  //
+  // The `depositPaid || contractSigned` legs are KEPT as an extra commitment
+  // signal rather than folded away: a host who paid a deposit to a vendor still
+  // parked on 'Considering' has real money out the door, and dropping that leg
+  // would have made this fix lose a row the old code caught. This predicate is
+  // therefore a strict superset of the old one.
+  const owesMoney = (v) =>
+    vendorBalance(v) > 0 &&
+    (vendorIsCommitted(v) || v.depositPaid === true || v.contractSigned === true);
+  const unpaid = vendors.find(owesMoney);
   if (vendors.some(v => num(v.cost) > 0)) {
     items.push({ id: 'payments', handled: !unpaid, cueLabel: unpaid ? `Settle up with ${unpaid.name}` : null, route: unpaid ? { tab: 'Vendors', vendorId: unpaid.id } : null, priority: 1 });
   }

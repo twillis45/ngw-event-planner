@@ -27,10 +27,25 @@
 // opened a mail client is a lie. Every function here is written to keep that
 // distinction: `source` is recorded, and an unknown source is never upgraded.
 
+import { isVendorBooked } from './workstreams';
+
 /** How long silence is allowed to run before it is worth the host's attention.
  *  Matches the 21-day staleness line derive.js already scores against, so the
  *  surface and the score cannot disagree about what "stale" means. */
 export const SILENCE_DAYS = 21;
+
+// ── WHICH STATUSES ARE EVIDENCE OF A REPLY (2026-09-18) ──────────────────────
+// Read through workstreams.js's isVendorBooked rather than re-listed here. This
+// file used to test `status.toLowerCase() === 'confirmed'` — its own private
+// seventh copy of a predicate with one canonical home — and every other
+// committed status fell through as no reply at all. See contactState below for
+// the measurement. The canonical set is case-sensitive on the stored casing, and
+// this module has always accepted a lowercase 'confirmed' (a contract its own
+// tests lock), so the status is normalised to the stored casing before it is
+// asked, instead of the set being copied here in a looser form.
+const titleCase = (s) =>
+  String(s || '').trim().toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+const statusIsCommitted = (status) => isVendorBooked({ status: titleCase(status) });
 
 /** Sources we accept for a contact stamp. `sent` is deliberately absent — the
  *  app cannot send, so nothing may claim it did. Add it the day that changes. */
@@ -93,9 +108,31 @@ export function contactState(vendor, now = new Date()) {
     // 'pending' / '' is not an answer. Anything else is — including "no", which
     // is a reply: a guest who declined has come back to you.
     ? Boolean(rsvp && rsvp !== 'pending' && rsvp !== 'no-reply' && rsvp !== 'none')
+    // ── SIX OF SEVEN STATUSES READ AS SILENCE (audit finding, 2026-09-18) ──
+    // This was `status.toLowerCase() === 'confirmed'`. MEASURED with outreach
+    // logged 25 days ago (SILENCE_DAYS = 21) and no money flags set, one vendor
+    // per status: Considering, Quoted, Contracted, Deposit Paid, Booked and Paid
+    // ALL returned silent:true / awaitingReply:true — 6 of 7 — and silentVendors
+    // returned all six. Only 'Confirmed' was spared.
+    //
+    // For the four COMMITTED words that is a straight falsehood about a fact the
+    // app already holds: a vendor does not reach Contracted, Deposit Paid, Booked
+    // or Paid without having come back to you. The hostv2 vendor card showed an
+    // amber "Silent 25 days" chip on a vendor the SAME screen labelled "Locked
+    // in", and surfaceRegistry raised "Chase N people who haven't come back to
+    // you" about people who had. That contradiction is precisely what the
+    // honesty line at the top of this file exists to prevent, so the fix belongs
+    // here rather than in the chip.
+    //
+    // 'Considering' and 'Quoted' stay silent-eligible and that is CORRECT, not
+    // an oversight: those mean the host is still shopping, nothing has come back,
+    // and 25 days of nothing is exactly the state worth naming.
+    //
+    // The evidence fields stay ahead of the status word deliberately — a signed
+    // contract or a paid deposit is a reply whatever the dropdown says.
     : Boolean(
       v.contractSigned || v.depositPaid || v.balancePaid ||
-      String(v.status || '').toLowerCase() === 'confirmed'
+      statusIsCommitted(v.status)
     );
   const daysSince = Math.max(0, dayDiff(at, asOf));
 
