@@ -88,19 +88,100 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `31bc9df3` |
-| Jest | **6,930 passed**, 1 skipped, **0 failed**, **471 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `c8daab5` |
+| Jest | **6,950 passed**, 1 skipped, **0 failed**, **472 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
-| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean |
+| e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **+4 tests 2026-09-18** (`dietaryHoldsTwo.spec.mjs`, self-pinned to 390px so it runs once, not seven times) — passing locally and red-proofed; the next full-matrix run is what confirms the new total |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (tenth entry, same day) — the second allergy erased the first
+
+Commit `c8daab5`. **472 suites / 6,950 tests.** `verify:push` green on all five.
+Plus **4 new e2e tests at 390px**, red-proofed.
+
+### The defect
+
+MEASURED against the running engine, then driven in Chromium:
+
+```
+host picks "Vegetarian"   -> foodChoices.dietary = "Vegetarian"
+host picks "Nut allergy"  -> foodChoices.dietary = "Nut allergy"
+is the vegetarian still recorded?  NO
+```
+
+Dinner Party's `dietary` offers TEN options; Bridal Shower's and Crab Feast's
+offer nine. They are not alternatives to choose between — they are independent
+facts about DIFFERENT GUESTS. A real table has a vegetarian and someone with a
+nut allergy, and the app held exactly one. For allergens that is a safety
+defect, not a preference.
+
+`decisionType` had sat in the schema spec since 2026-07-15, authored on 0 of 260
+decisions and read by nothing. Seven of its neighbours were deleted from the
+spec rather than filled, on the rule that a field with no reader is not a gap.
+This one earned the opposite treatment because the missing type costs a host
+something measurable.
+
+### What shipped
+
+| File | What |
+|---|---|
+| `src/lib/decisionType.js` (new) | The one answer to "what kind of answer does this decision take". Authored type wins; otherwise a deliberately narrow derivation catches a restriction LIST and nothing else |
+| `settleChoicePatch(…, decision)` | Optional 5th argument. A multi decision TOGGLES into a list; every existing 3- and 4-argument caller is byte-identical |
+| `choiceShown` / `agendaShown` | A list answer matches on intersection |
+| `playbookBoard` `because` | `answerText`, not `String` — `String([a,b])` is `"a,b"` with no space |
+| `HostShellV2` (both pickers) | Press by membership, the list stays OPEN while the host is still in it, the folded line prints "Vegetarian, Nut allergy" |
+
+### Carry forward: TWO defects the unit tests could not see
+
+Both found only by driving the built app in Chromium. This is the third time in
+one day that a green jest run covered a surface that had not moved.
+
+1. **The engine was right and the SCREEN had closed over it.** Tapping
+   "Vegetarian" folded the row to "Vegetarian · Change", so the nut allergy had
+   nowhere to go. The store already held `["Vegetarian"]` at that moment. The
+   auto-collapse is correct for a pick-one — one tap IS the answer — and on a
+   restriction list it was the same defect restated as layout.
+2. **An emptied list stored as `[]`, which is TRUTHY.** That value is read at
+   ~80 `if (foodChoices[id])` sites across the tree, so a host who took their
+   only restriction back off would have read as ANSWERED at every one of them.
+   It stores as `''` now, and `choiceStateFor` already reads `''` as unsettled,
+   so provenance agrees rather than claiming "your call" over an empty value.
+
+`hostv2/e2e/dietaryHoldsTwo.spec.mjs` exists because of (1): jest cannot execute
+hostv2, so the guard has to live there or it does not exist. **Red-proofed** —
+reverting the fold guard fails 3 of its 4 tests and leaves the pick-one negative
+control green.
+
+### What this deliberately does NOT do
+
+It does not type all 260 decisions. The default stays `pick-one` and is correct
+for the overwhelming majority. For at least one case the band-string that LOOKS
+like a workaround is deliberate care: Repast's `headcount` offers "Close family
++ a few (~20)", and its authored `why` says *"No one needs an exact count on a
+day like this — an honest estimate is enough."* Asking a grieving family to type
+47 would be worse than the bands. It stays pick-one on purpose, asserted by a
+negative control.
+
+The `whenChoice` hardening is a trap closed before it is sprung and is recorded
+that way: MEASURED, no `whenChoice` in the corpus targets any of the three multi
+decisions. `['Vegan'] !== 'Vegan'`, so the day someone authors one the row would
+silently never appear.
+
+### One test overturned
+
+`choiceProvenance.test.js` pinned `settleChoicePatch(event, r.id, opt, source)`
+exactly. The builder cannot know a decision's type without being handed the
+decision, so the pattern was WIDENED to accept the optional argument rather than
+rewritten — the gate still pins the shell to the one builder, which is what it
+exists for. Reasoning is in the test body.
 
 ## FIXED 2026-09-18 (ninth entry, same day) — two more agent lanes, and three measurements that were asking the wrong question
 
