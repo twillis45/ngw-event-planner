@@ -88,7 +88,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `da7f2373` |
+| Branch / HEAD | `main` @ `2c289525` |
 | Jest | **6,251 passed**, 1 skipped, **0 failed**, **443 suites** (re-measured 2026-09-17, seventh entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -101,6 +101,81 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## ADDED 2026-09-18 (fourth entry, same day) — a parser corpus, the venue verdict ratchet, and three audit fixes
+
+Three parallel tracks, plus the fixes the audit turned up.
+
+**PARSER — there is a corpus now.** `src/lib/__tests__/fixtures/parseCorpus.mjs`
+holds **67 entries**, each with the text, its provenance, and only the fields
+that sentence actually supports. `parseCorpusGolden.test.js` diffs the full
+parse and names the sentence and field on failure. Meta tests keep the corpus
+honest: `PARSER_FIELDS` must equal the parser's real output keys, and no entry
+may expect a field that does not exist (a typo would otherwise pass forever
+comparing `undefined`). A host sentence is never spent once again.
+
+**It records EIGHT suspected parser defects** as `suspect` notes, asserting
+today's behavior so the suite stays honest about what ships. Not fixed — the
+owner's call, and several are load-bearing:
+
+| | |
+|---|---|
+| `"4400 Massachusetts Avenue NW, Washington DC"` | → venueCity `"Massachusetts Avenue NW"`, venueState `"WA"` (Washington the STATE) |
+| `"Saturday"` | routes the TYPE to Day Party — "day" inside "Saturday" |
+| a bare weekday | never parses as a date at all |
+| `"this winter"` | resolves to January 2026 — eight months past |
+| a bare `"party"` | commits to Birthday |
+| `"Birthday brunch"` | comes back Get-Together |
+| DC quadrants (`SE`/`NW`) | stripped from the address — and current behavior is blessed by an existing test, so fixing it moves that too |
+| the owner's own seed | parses `isDestination: true` on a 5-person watch party at a street address, blending the budget band |
+
+**VENUE — the verdict ratchet, relocated and widened.** `venueSourceProof` gains
+**PART D**: scans every file under `src/lib` and `hostv2/src` that calls
+`venueFor(` (20 today) instead of a hand-listed set, resolves venue bindings per
+file, strips block AND line comments, non-global regexes. Red-proofed twice.
+**PART B2** adds the address-only fixtures PART B never had — precisely why the
+earlier bug got through — across four readers including `phaseProgress`, which
+carries the board's production layer.
+
+**AUDIT FIXES — 1, 2 and 3 of eleven findings.** The other eight are reported
+and untouched, pending a call.
+
+1. **`surfaceRegistry` answered "does this event have a venue?" from
+   `venueFor(event).name`** — an eighth copy. The Ryan Way event was told *"No
+   venue booked yet — Book your venue"* and routed to Vendors, while the blocker
+   engine correctly said nothing. Same event, same day, opposite answers.
+   Fixed by **publishing** the verdict rather than patching the caller:
+   `venueFor` now returns **`addressSettled`** (a name OR a street, never a bare
+   town). Three places had each built that answer themselves; one was wrong.
+   `LodgingCockpit`'s hand-built copy now has somewhere to read from.
+2. **The "add the address" row never looked at the address** — it tested the
+   venue NAME for a digit. Venue "Backyard", add "12 Elm St", save, and the row
+   re-renders *"add the address for backyard"*. Answerable an unlimited number
+   of times.
+3. **Confirming the DATE stamped `startTimeSource: 'host'`** onto an hour the
+   app derived and the host had never seen. That flag is the **outward gate** —
+   `eventWhen` releases the hour to the guest invite on it, `vendorBrief` nulls
+   every run-of-show clock without it. A tap about the *date* published our
+   guessed hour (tier 3, "most events of this kind", `grounded:false`) to her
+   guests and her caterer, as hers. The hour has its own confirmation one row
+   below, under copy promising her in writing: *"We set this one, not you… your
+   invite and your vendor briefs won't name an hour until you say it's right."*
+   This broke that promise from a different button — and because the time block
+   only renders once a date exists, the stamp fired on the very tap that
+   revealed the time UI, so the disclosure and the "that's right" button never
+   rendered at all. It did not skip her confirmation; it removed the chance to
+   give one. Deleted.
+
+**A number corrected:** the pre-change baseline was **6,302**, not the 6,295 I
+had been repeating — that figure was measured before a concurrent change landed.
+
+**Verified:** `verify:push` all 5 pass — jest **448 suites / 6,395 passed**;
+`ryanWay.spec.mjs` 3/3 at mobile-390 after the change.
+
+**Known gap, stated rather than papered over:** finding 3's regression guard is
+a unit test plus a source assertion that the handler does not re-acquire the
+write. jest cannot execute hostv2, so the host-visible claim — confirming a date
+does not publish the hour to the invite — wants an e2e it does not yet have.
 
 ## FIXED 2026-09-18 (third entry, same day) — testing the venue fix found it incomplete: the verdict had SIX copies
 
