@@ -52,6 +52,8 @@ const reunion = {
       label: 'How is food handled?',
       options: ['Potluck (assigned by household)', 'Host-cooked BBQ', 'BBQ catered / food truck'],
       default: 'Potluck (assigned by household)',
+      defaultWhy:
+        'Potluck is the default because it is the cheapest way to feed a multi-household reunion and it spreads the cooking across the family instead of onto you. Change it if people are travelling too far to bring a dish, or if you would rather buy the day back with a caterer.',
       when: 'T-60d',
       blocks: ['food-purchases', 'catering-vendor', 'potluck-signup'],
       weight: 'high',
@@ -67,6 +69,8 @@ const reunion = {
       label: 'If potluck — how do you assign dishes?',
       options: ['By category (apps/sides/mains/dessert/drinks)', 'By last-name letter', 'Free-for-all'],
       default: 'By category (apps/sides/mains/dessert/drinks)',
+      defaultWhy:
+        'Assigning by category is the default because it is the only one of these that guarantees a hot entree, sides and a dessert all actually arrive — a free-for-all is how you get four pasta salads and no main. Change it to last-name letter if that is the system your family already recognizes.',
       when: 'T-45d',
       dependsOn: ['food-model'],
       // Coherence (audit F1): this ask only exists while the food IS a potluck —
@@ -101,6 +105,8 @@ const reunion = {
       label: 'Group photo — who shoots it and when?',
       options: ['Assign a family member + set a time', 'Hire a photographer for 1 hour', 'Skip / candids only'],
       default: 'Assign a family member + set a time',
+      defaultWhy:
+        'A named person at a fixed time is the default because this photo is lost to drift, not to camera quality — once the family starts leaving there is no retake. Change it to a hired photographer for a milestone year, or if you would rather be in the picture than behind it.',
       when: 'T-14d',
       blocks: ['photo-slot'],
       weight: 'med',
@@ -117,6 +123,8 @@ const reunion = {
       label: 'What do the kids do?',
       options: ['Lawn games + open play', 'Hired entertainer / bounce house', 'No dedicated kids plan'],
       default: 'Lawn games + open play',
+      defaultWhy:
+        'Lawn games and open grass are the default because they cover most of the afternoon cheaply and need nobody to run them. Change it if the venue has no open space, or if you want the adults to get a calm hour — that is what a bounce house or a hired entertainer buys.',
       when: 'T-30d',
       blocks: ['kids-purchases'],
       weight: 'low',

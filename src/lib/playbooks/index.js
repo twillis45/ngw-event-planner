@@ -105,6 +105,50 @@ import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
 // failed on 2026-09-18 while jest and both gates stayed green.
 const cookDecisionsFor = (pb) => { const d = cookDecisionFor(pb); return d ? [d] : []; };
 
+// ─── ONE REGISTRY FOR ENGINE-INJECTED DECISIONS ──────────────────────────────
+//
+// Not every decision is authored in a playbook file. Three engines inject their
+// own, and until now each was named BY HAND at every call site — three
+// injectors, three different wiring idioms, four call sites, and each site
+// carrying a different subset:
+//
+//   choicePickFor (~620)       cook via a special-cased early return, then
+//                              destination and military through a find() chain
+//   playbookDecisionBoard      all three, spread
+//   playbookDecisionOptions    all three, spread
+//   playbookFoodPlan (~3765)   cook ONLY — under a comment claiming it "reads
+//                              the SAME combined list every other surface
+//                              reads", which it did not
+//
+// That last one is the shape of the bug this registry prevents: a surface
+// silently seeing fewer decisions than the board, which is precisely the
+// board-vs-food-plan divergence this file already has a name for. And a fourth
+// injector would have meant finding four sites and matching three idioms.
+//
+// So the list lives here, once. Adding an injector is ONE entry. Every consumer
+// asks for `injectedDecisionsFor(event, pb)` and cannot accidentally ask for
+// less. decisionInjectorRegistry.test.js fails the build if a call site starts
+// naming an individual injector again.
+//
+// Each entry takes (event, pb) whether it needs both or not, so the registry has
+// one shape — an injector that ignores an argument is not a special case.
+const DECISION_INJECTORS = [
+  (event, pb) => destinationDecisionsFor(event, pb),
+  (event, pb) => cookDecisionsFor(pb),
+  (event) => militaryDecisionsFor(event),
+];
+
+/** Every engine-injected decision for this event, in registry order. */
+export function injectedDecisionsFor(event, pb) {
+  const out = [];
+  for (const fn of DECISION_INJECTORS) {
+    // One injector throwing must not blank the others — a decision board that
+    // silently loses a row is the failure this whole file guards against.
+    try { const r = fn(event, pb); if (Array.isArray(r)) out.push(...r); } catch (_e) { /* skip */ }
+  }
+  return out;
+}
+
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
 // playbooks. backyardBbq is registered under the canonical 'Get-Together' type
@@ -617,11 +661,11 @@ export function choicePickFor(event, id) {
   // overnight event (a staycation), this branch would have returned null for it
   // and any whenChoice hanging off it would read "unanswered" — the row visible
   // on the board, its dependent item gated on a default that never resolved.
-  const cd = cookDecisionFor(pb);
-  if (cd && cd.id === id) return picks[id] || cd.default || null;
-  const dd = destinationDecisionsFor(event, pb).find((d) => d.id === id)
-    || militaryDecisionsFor(event).find((d) => d.id === id) || null;
-  return (dd && dd.default) || null;
+  // Through the registry, so this resolver can never know about fewer injectors
+  // than the board does. The cook lever used to need its own early return here;
+  // it does not any more.
+  const dd = injectedDecisionsFor(event, pb).find((d) => d.id === id) || null;
+  return (dd && (picks[dd.id] || dd.default)) || null;
 }
 export function choiceShown(event, whenChoice) {
   if (!whenChoice) return true;
@@ -2850,9 +2894,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
   // modifier (same architecture as kids/diet elsewhere in this file).
   const decisions = [
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
-    ...destinationDecisionsFor(event, pb),
-    ...cookDecisionsFor(pb),
-    ...militaryDecisionsFor(event),
+    ...injectedDecisionsFor(event, pb),
   ];
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
   const isDietaryDecision = (d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || '');
@@ -3484,9 +3526,7 @@ export function playbookDecisionOptions(event, id) {
   // options the host could never actually pick from on the board.)
   const decisions = [
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
-    ...destinationDecisionsFor(event, pb),
-    ...cookDecisionsFor(pb),
-    ...militaryDecisionsFor(event),
+    ...injectedDecisionsFor(event, pb),
   ];
   const d = decisions.find((x) => x && x.id === id);
   // HOST-AUDIT-1: ANY playbook decision with authored options settles inline on
@@ -3528,7 +3568,19 @@ export function playbookDecisionOptions(event, id) {
     // + a real "why this pick" — never invented at render time. Absent ⇒ names only.
     optionNotes: (d.optionNotes && typeof d.optionNotes === 'object') ? d.optionNotes : null,
     default: d.default || null,
-    defaultWhy: d.defaultWhy || d.why || '',
+    // NO FALLBACK TO `why` (2026-09-18). The comment four lines up already says
+    // what this should do — "never invented at render time. Absent ⇒ names only"
+    // — and the `|| d.why` contradicted it. `why` answers "why does this DECISION
+    // matter"; defaultWhy answers "why is THIS OPTION our pick". Substituting one
+    // for the other put the first sentence under a badge that reads "our pick",
+    // on 127 of 129 can-derive decisions. One line, one place, 127 hosts.
+    //
+    // Empty is the honest degradation: the surface shows the option with no
+    // claim about why it was chosen, which is the Unknown Rule. A missing
+    // defaultWhy is now VISIBLE as missing instead of silently wearing `why`'s
+    // clothes — and decisionContract.test.js fails the build if a can-derive
+    // decision ships without one.
+    defaultWhy: d.defaultWhy || '',
   };
 }
 
@@ -3750,7 +3802,7 @@ export function playbookFoodPlan(event, opts = {}) {
   // Reads the SAME combined list every other surface reads — authored decisions
   // plus the engine-injected cook lever. A local `playbook.decisions` here was
   // how this list and the Decisions board came to disagree in the first place.
-  const choices = [...(playbook.decisions || []), ...cookDecisionsFor(playbook)]
+  const choices = [...(playbook.decisions || []), ...injectedDecisionsFor(event, playbook)]
     .filter(isMenuDecision)
     .filter((d) => choiceShown(event, d.whenChoice))
     .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));

@@ -47,7 +47,7 @@ const genderReveal = {
   ],
 
   decisions: [
-    { id: 'food_style', label: 'How is the food handled?', options: ['Host makes finger food', 'Catering / platters', 'Potluck', 'Order trays'], default: 'Host makes finger food', when: 'T-14d', blocks: ['food', 'vendors'], costFactors: { 'Catering / platters': 1.3, 'Potluck': 0.55, 'Order trays': 1.1 }, costFactorProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'researched', sources: ['catering-perperson-2026'], note: 'Grounded against 2026 US catering per-person data (full-service $75-150 vs drop-off $15-35 vs buffet-with-servers $45-85; the difference between drop-off and staffed is labor, not food). The service-level hierarchy follows directly; the per-menu percentages calibrate that structure.', claim: 'Catering or platters cost ~30% more than host-made finger food; potluck cuts cost by ~45%; ordered trays cost ~10% more', sufficientWhen: '≥2 caterer or platter quotes vs. host-made grocery cost confirm the relative cost factors for a gender reveal snack spread' }, affects: ['p_snacks'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'The reveal is the point, not the food — a casual snack spread the app can default and the host can swap freely.', tier: 'reasoned' }, why: 'Reveals are short and casual — finger food the host can make, or platters ordered in.' },
+    { id: 'food_style', label: 'How is the food handled?', options: ['Host makes finger food', 'Catering / platters', 'Potluck', 'Order trays'], default: 'Host makes finger food', defaultWhy: 'Host-made finger food is the default because a reveal is short and casual, and the food is not what anyone came for. Change it if you are also the one staging the reveal and the morning is already full — ordered platters cost more and buy that morning back.', when: 'T-14d', blocks: ['food', 'vendors'], costFactors: { 'Catering / platters': 1.3, 'Potluck': 0.55, 'Order trays': 1.1 }, costFactorProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'researched', sources: ['catering-perperson-2026'], note: 'Grounded against 2026 US catering per-person data (full-service $75-150 vs drop-off $15-35 vs buffet-with-servers $45-85; the difference between drop-off and staffed is labor, not food). The service-level hierarchy follows directly; the per-menu percentages calibrate that structure.', claim: 'Catering or platters cost ~30% more than host-made finger food; potluck cuts cost by ~45%; ordered trays cost ~10% more', sufficientWhen: '≥2 caterer or platter quotes vs. host-made grocery cost confirm the relative cost factors for a gender reveal snack spread' }, affects: ['p_snacks'], weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'The reveal is the point, not the food — a casual snack spread the app can default and the host can swap freely.', tier: 'reasoned' }, why: 'Reveals are short and casual — finger food the host can make, or platters ordered in.' },
     {
       id: 'reveal_method',
       label: 'Reveal method (the hero moment)',
@@ -115,6 +115,7 @@ const genderReveal = {
       label: 'Guessing game / activity',
       options: ['Team Pink vs Team Blue guessing board', 'Guess-the-date + sex cards', 'Low-key mingling only'],
       default: 'Team Pink vs Team Blue guessing board',
+      defaultWhy: 'The guessing board is the default because it gives guests something to do while everyone waits on the reveal, and it costs a board and some markers. Change it to low-key mingling if this crowd already knows each other well enough to just talk — that option is a real answer and it needs nothing set up.',
       when: 'T-14d',
       blocks: ['game_supplies'],
       weight: 'low',
@@ -129,6 +130,7 @@ const genderReveal = {
       label: 'Drinks (mocktails for the parent-to-be)',
       options: ['Mocktails + soft drinks only', 'Mocktails + soft drinks + beer/wine', 'Pink/blue punch bar'],
       default: 'Mocktails + soft drinks + beer/wine',
+      defaultWhy: 'Mocktails with beer and wine alongside is the default because the pregnant guest of honor needs a genuinely good zero-proof pour, and making the mocktail the centerpiece does that whether or not anyone else is drinking. Change it to soft drinks only if alcohol is not right for this family or this room.',
       when: 'T-7d',
       blocks: ['beverage_purchases'],
       weight: 'low',

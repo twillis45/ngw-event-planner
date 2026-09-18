@@ -80,6 +80,8 @@ const theCookout = {
       label: 'Drinks — family + grown folks',
       options: ['Red drink + soda + water (family-friendly)', 'Add a grown-folks section (brown liquor + mixers, beer)', 'Full bar + punch'],
       default: 'Add a grown-folks section (brown liquor + mixers, beer)',
+      defaultWhy:
+        'The grown-folks section is the default because keeping the adults\' drinks clearly separate from the red drink, soda and water is what lets a cookout be family-safe and still be a grown folks\' day. Change it to the family-friendly setup if this one belongs to the kids, or if nobody at your cookout drinks.',
       when: 'T-10d',
       blocks: ['beverage'],
       costFactors: { 'Red drink + soda + water (family-friendly)': 0.2, 'Full bar + punch': 1.4 },
@@ -93,6 +95,8 @@ const theCookout = {
       label: 'Music — DJ or playlist',
       options: ['Curated playlist + good speaker', 'Hire a DJ', 'Designate a family DJ on the aux'],
       default: 'Curated playlist + good speaker',
+      defaultWhy:
+        'A curated playlist is the default because it costs nothing, runs all day without anybody minding it, and lets you decide in advance what plays instead of fighting over the aux. Change it if you want a DJ or a live band — in the DMV a Go-Go set is the homegrown heartbeat of the day.',
       when: 'T-10d',
       blocks: ['logistics'],
       why: 'Music is not optional — it is half of what makes it a cookout. Old-school R&B and soul (Frankie Beverly & Maze is practically required), the line dances (Electric Slide, Cupid Shuffle, Cha Cha Slide), and grown-folks slow jams. In the DMV (DC/Maryland/Virginia), a Go-Go set or a live band — Chuck Brown, "the pocket," call-and-response — is the homegrown heartbeat and reads the cookout better than a DJ. Decide whether you are renting a DJ/band or building a real playlist now, and protect the aux.',
@@ -103,6 +107,8 @@ const theCookout = {
       label: 'Is this cookout also a watch party?',
       options: ['No — cookout only', 'Yes — TV/screen for the game', 'Yes — TV inside + speaker outside so nobody misses either'],
       default: 'No — cookout only',
+      defaultWhy:
+        'Cookout only is the default because whether a game is on is something you know and the app does not, so it assumes nothing. Change it the moment there is one, and plan the screen and the sound alongside the music so the two never end up fighting over the same speaker.',
       when: 'T-10d',
       blocks: ['logistics'],
       why: 'A screen people can actually see from the yard turns the cookout into the game-day spread too. Set the TV/streaming and sound plan at the same time as the music so the two never end up fighting over the same speaker — this is a logistics call, not a food one, so it does not resize the protein order on its own; if you want wings for the game, add them from the chicken alternatives below.',

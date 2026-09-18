@@ -102,6 +102,64 @@ describe('the silent state has a name', () => {
   });
 });
 
+// ─── THE RATCHET: NO WRITE MAY BYPASS THE BUILDER ────────────────────────────
+// Adding settleChoicePatch was necessary and NOT sufficient. A sweep found FOUR
+// live hostv2 writers still building the patch by hand — the food-sourcing
+// control, two lodging pickers, and the food-plan chip row — so a "single write
+// builder" was being routed around by four callers on the host's main surface.
+// Every one of them wrote a value with no provenance, which is the exact defect
+// the builder exists to prevent.
+//
+// This is the same lesson as the venue verdict (8 copies) and "is the hour ours"
+// (4 copies), for the third time today: naming one place as the source does not
+// make it the source. Only a check does.
+describe('no surface writes a choice without going through the builder', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const HOSTV2 = path.join(__dirname, '..', '..', '..', 'hostv2', 'src');
+
+  const walk = (d, out = []) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p, out);
+      else if (/\.(jsx?|mjs)$/.test(e.name) && !/\.test\./.test(e.name)) out.push(p);
+    }
+    return out;
+  };
+
+  // A hand-built foodChoices patch: the spread-and-assign shape all four used.
+  const HANDBUILT = /foodChoices:\s*\{\s*\.\.\./;
+
+  test('hostv2 has no hand-built foodChoices patch', () => {
+    const hits = [];
+    for (const f of walk(HOSTV2)) {
+      const src = fs.readFileSync(f, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+        .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+      src.split('\n').forEach((l, i) => {
+        if (HANDBUILT.test(l)) hits.push(`${path.relative(HOSTV2, f)}:${i + 1}  ${l.trim().slice(0, 80)}`);
+      });
+    }
+    // Fix by calling settleChoicePatch(event, id, value, source) instead.
+    expect(hits).toEqual([]);
+  });
+
+  test('canary: the scanner bites the shape it is meant to catch', () => {
+    expect(HANDBUILT.test("patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: v } }")).toBe(true);
+    expect(HANDBUILT.test("patchEvent(settleChoicePatch(event, 'sourcing', v, 'host')")).toBe(false);
+  });
+
+  // App.js is the FROZEN CRA shell (A1 freeze) and carries its own writers. It is
+  // deliberately out of scope rather than overlooked: its answers read as
+  // source-unknown and claim nothing, which is honest degradation. Stated here so
+  // the exclusion is a decision on the record, not a gap nobody noticed.
+  test('(scope) the frozen CRA shell is knowingly excluded', () => {
+    const app = path.join(__dirname, '..', '..', 'App.js');
+    expect(fs.existsSync(app)).toBe(true);
+  });
+});
+
 describe('the shell writes through the one builder', () => {
   const fs = require('fs');
   const path = require('path');

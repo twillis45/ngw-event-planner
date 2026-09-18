@@ -34,7 +34,11 @@ export function boardDecisionND(event, dec) {
   return {
     id: dec.id,
     options: dopts.options.map(o => ({ value: o, label: o, note: notes[o] || null })),
-    proposed: proposed ? { value: proposed, why: dopts.defaultWhy || dopts.why || null } : null,
+    // Same removal as playbooks/index.js:3531 — the SECOND reader carried its own
+    // copy of the fallback, so fixing one would have left this one lying.
+    // `why` here stays available on the row below; it is only barred from
+    // standing in as the reason for the PROPOSAL.
+    proposed: proposed ? { value: proposed, why: dopts.defaultWhy || null } : null,
     why: dopts.why || null,
   };
 }

@@ -2240,7 +2240,8 @@ export default function HostShellV2() {
     if (!nd) return;
     if (nd.id === 'phase:food') {
       const label = (FOOD_SOURCING_OPTIONS.find(([, val]) => val === v) || ['it'])[0];
-      patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: v } },
+      // Through the builder — a host tap on the food-sourcing control.
+      patchEvent(settleChoicePatch(event, 'sourcing', v, 'host'),
         'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.');
       return;
     }
@@ -12691,7 +12692,7 @@ export default function HostShellV2() {
                                 <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-3)', flexWrap: 'wrap' }}>
                                   {kc.answers.map((a) => (
                                     <button key={a.id} className="mini" onClick={() => patchEvent(
-                                      { foodChoices: { ...(event.foodChoices || {}), dest_lodging: a.pick } },
+                                      settleChoicePatch(event, 'dest_lodging', a.pick, 'host'),
                                       a.kitchen
                                         ? 'A kitchen — the food plan is a grocery run.'
                                         : 'No kitchen — the food plan is reservations.')}>{a.label}</button>
@@ -17043,9 +17044,10 @@ export default function HostShellV2() {
                             {(d.options || []).map(opt => (
                               <button key={opt} className="chip" aria-pressed={(d.chosen || d.default) === opt}
                                 onClick={() => {
-                                  const nextChoices = { ...(event.foodChoices || {}), [d.id]: opt };
+                                  const patch = settleChoicePatch(event, d.id, opt, 'host');
+                                  const nextChoices = patch.foodChoices;
                                   const stillOpen = (foodPlan.choices || []).filter(c => !nextChoices[c.id]).length;
-                                  patchEvent({ foodChoices: nextChoices },
+                                  patchEvent(patch,
                                     stillOpen === 0
                                       ? d.label + ': ' + opt + ' — that was the last call. The spread is fully priced.'
                                       : d.label + ': ' + opt + ' — the spread just re-sized.');

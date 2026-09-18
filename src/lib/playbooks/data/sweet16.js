@@ -31,7 +31,7 @@ const sweet16 = {
   ],
 
   decisions: [
-    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', when: 'T-21d', blocks: ['food', 'vendors'], costViaApproach: true, weight: 'med', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Feeding a crowd of hungry teens matters, but trays or a drop-off are a safe default and easy to arrange.', tier: 'reasoned' }, why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
+    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', defaultWhy: 'Ordering pizza or trays is the default because it takes cooking for a crowd of hungry teens off your day-of list, which is where this party is most likely to come apart. Change it if family genuinely wants to cook and someone other than the host is running that kitchen.', when: 'T-21d', blocks: ['food', 'vendors'], costViaApproach: true, weight: 'med', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Feeding a crowd of hungry teens matters, but trays or a drop-off are a safe default and easy to arrange.', tier: 'reasoned' }, why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
     {
       id: 'venue_type',
       label: 'Where is the party?',
@@ -94,6 +94,7 @@ const sweet16 = {
       label: 'What food are you serving?',
       options: ['Pizza + sides', 'Slider/burger bar', 'Taco / build-your-own bar', 'Light bites + dessert table only'],
       default: 'Pizza + sides',
+      defaultWhy: 'Pizza and sides is the default because it matches the ordering path above, it is food teens actually eat, and the adults eat the same thing so you plan one menu instead of two. Change it if you want a bar guests build themselves — sliders or tacos do that, with more setup and more to hold hot across a four-hour window.',
       when: 'T-30d',
       dependsOn: ['food_style'],
       blocks: ['purchases', 'rentals', 'catering_style'],
@@ -145,6 +146,7 @@ const sweet16 = {
         'A designated photographer, guests asked to stay off phones',
       ],
       default: 'Open — guests post live all night',
+      defaultWhy: 'Open is the default because teens will be on their phones either way, and a night built for posting is easier to run than one you have to police. Change it if the entrance is the moment you want the room watching instead of filming.',
       when: 'T-14d',
       blocks: ['photobooth_props'],
       weight: 'low',

@@ -33,6 +33,7 @@ import { normalizeCvbContact } from '@app/lib/cvbIntel';
 import { draftLodgingNote } from '@app/lib/doItForMe';
 import { saveCustomEvents } from '@app/lib/customEventStore';
 import { venueFor } from '@app/lib/venueFor';
+import { settleChoicePatch } from '@app/lib/choiceProvenance';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
 
@@ -1347,7 +1348,7 @@ function Weighing({ event, intel, patch }) {
           <div className="lc-ctas lc-ctas-wrap">
             {kc.answers.map((a) => (
               <button key={a.id} className="cta soft"
-                onClick={() => patch({ foodChoices: { ...(event.foodChoices || {}), dest_lodging: a.pick } })}>
+                onClick={() => patch(settleChoicePatch(event, 'dest_lodging', a.pick, 'host'))}>
                 {a.label}
               </button>
             ))}
