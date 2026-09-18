@@ -2340,6 +2340,75 @@ export function eventPlan(event, ctx = null) {
         // lead = earliest close); snoozing the bundle sets aside ALL children
         // (see lib/snooze.js bundle semantics).
         leadDays: leads.length ? Math.min(...leads) : null,
+        // ── THE CONSEQUENCE SIGNALS MUST CROSS THIS BOUNDARY TOO ────────────
+        // Measured 2026-09-18: the bundle carried the tightest child's DATES
+        // and dropped everything actionConsequence reads, so a bundle scored
+        // 0.000 while its own children scored 2.0-3.1. Crab Feast, one horizon
+        // apart: T-8 with 1 overdue row → single, consequence 2.025; T-6 with 3
+        // overdue → BUNDLE, consequence 0.000. Three or more overdue decisions
+        // is the ORDINARY state of a real event from a few months out, so on
+        // almost every live plan the entire 260-decision authoring effort
+        // arrived here as zero.
+        //
+        // What ranked instead was latenessBoost, which saturates at 4.9 — and on
+        // a wedding at T-150 the top TWO actions tied at exactly 4.9000, which
+        // compareBandedActions resolves to 0, leaving a stable sort to order the
+        // host's single most important instruction by producer push order.
+        //
+        // Same rule as the dates above: the bundle inherits its children's
+        // strongest claim, because that is what it is standing in for.
+        //   priorityScore  MAX — the bundle is at least as urgent as its worst row
+        //   gateHolder     SOME — if any child frees other work, settling here does
+        //   unlocks        MAX, not SUM — see below
+        //
+        // WHY MAX AND NOT SUM. Summing is the obvious move and it overcounts:
+        // each child's `unlocks` is ITS OWN dependent count, and two decisions
+        // routinely gate the same downstream work. A row freeing [food, vendors]
+        // beside one freeing [food, timeline] sums to 4 against a true union of
+        // 3. The 2026-08-17 ruling that removed the clip said "count what was
+        // counted" — summing separately-counted overlapping sets is not that; it
+        // is a bigger number than anyone counted. MAX claims only what a single
+        // child can evidence, which the bundle can always honour.
+        // (A true union would be better still; the children do not carry their
+        // dependent IDENTITIES here, only counts, so it is not available without
+        // widening the surface contract. Noted rather than faked.)
+        priorityScore: (() => {
+          const ps = group.map((a) => a.priorityScore).filter((n) => Number.isFinite(n));
+          return ps.length ? Math.max(...ps) : null;
+        })(),
+        gateHolder: group.some((a) => a.gateHolder === true),
+        unlocks: (() => {
+          const u = group.map((a) => a.unlocks).filter((n) => Number.isFinite(n) && n > 0);
+          return u.length ? Math.max(...u) : null;
+        })(),
+        // ── AND THE AUTHORED QUESTION, OR THE HOST LOSES IT AT POSITION ONE ──
+        // Measured immediately after the signals above started counting: with a
+        // real consequence the decisions bundle now WINS position one on a
+        // wedding at T-180 through T-7, and `heroAskFor` had no `ask` to read
+        // from it — so it fell to its prose branch and said "Settle your
+        // decisions." over six consecutive stages where the authored question
+        // "What kind of ceremony are you having?" had been reaching the host.
+        //
+        // That is the generic-hero defect heroAskNeverPlaceholder.test.js exists
+        // to prevent, arriving by a new route. `ask` is carried for the same
+        // reason the dates and the scores are: THE BUNDLE STANDS IN FOR ITS
+        // CHILDREN, so it must be able to say what they would have said.
+        //
+        // It takes the LEAD child's ask — the most consequential one, the same
+        // child the priorityScore above claims — not a merged or invented
+        // phrasing. So the card reads "Resolve 6 decisions — they're past their
+        // easy window" while the hero asks the first one by name, which is
+        // exactly the relation the single-decision ladder already has
+        // ("N decisions are past their easy window — this one first").
+        // Null when no child authored one; nothing is manufactured here.
+        ask: (() => {
+          let lead = null, best = -Infinity;
+          for (const a of group) {                       // stable: first of a tie wins
+            const c = actionConsequence(a);
+            if (c > best) { best = c; lead = a; }
+          }
+          return (lead && lead.ask) || null;
+        })(),
       });
     }
     for (const action of merged) {

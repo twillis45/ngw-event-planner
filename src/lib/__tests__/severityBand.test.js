@@ -170,21 +170,48 @@ describe('F6 — severity is a computed band, not a splice position', () => {
     if (firstNonCritical !== -1) expect(lastCritical).toBeLessThan(firstNonCritical);
   });
 
-  test('the 60-day-overdue decision IS the top action — at ATTENTION, not critical (wave-5 demotion)', () => {
-    const top = eventPlan(evOverdueDecisions()).nextActions[0];
-    expect(top.level).toBe('attention'); // was 'critical' before 2026-07-15 — a late chore, not an emergency
-    expect(String(top.title)).toMatch(/crabs/i);
+  // AMENDED 2026-09-18 (bundle consequence). This test used to read "the
+  // 60-day-overdue decision IS the top action". It is no longer the top action,
+  // and the reason is the point of the amendment rather than an exception to it.
+  //
+  // MEASURED on this exact fixture, before and after the bundle-consequence fix:
+  //   before   0. crabs row        consequence 0.000 + lateness 4.900 = 4.900
+  //   after    0. decisions bundle consequence 3.070 + lateness 4.514 = 7.584
+  //            1. crabs row        unchanged at 4.900
+  // A bundle used to drop priorityScore, gateHolder and unlocks at its boundary
+  // and therefore always scored exactly 0.000, so any single overdue row beat it
+  // on saturated lateness alone. That is the failure the 2026-08-17 ranking-floor
+  // ruling named — "age alone can never hold position one" — surviving inside the
+  // one construction the ruling never reached.
+  //
+  // What F6 ACTUALLY pins — that severity is a computed band, and that an overdue
+  // self-authored decision is demoted to 'attention' — is untouched, and is now
+  // asserted on the row itself rather than on its position.
+  test('the 60-day-overdue decision is ATTENTION, not critical (wave-5 demotion)', () => {
+    const list = eventPlan(evOverdueDecisions()).nextActions;
+    const row = list.find((a) => /crabs/i.test(String(a.title)));
+    expect(row).toBeTruthy();
+    expect(row.level).toBe('attention'); // was 'critical' before 2026-07-15 — a late chore, not an emergency
+    // And the reranking promoted nothing past 'attention': a bundle of late
+    // chores is still a set of late chores.
+    expect(list[0].level).toBe('attention');
   });
 });
 
-describe('F7 — the top action finally carries its lead, so the snooze cap can bind', () => {
-  test("the overdue-decision top action carries the source task's numeric leadDays", () => {
-    const top = eventPlan(evOverdueDecisions()).nextActions[0];
+describe('F7 — the overdue action carries its lead, so the snooze cap can bind', () => {
+  test("the overdue-decision action carries the source task's numeric leadDays", () => {
+    const list = eventPlan(evOverdueDecisions()).nextActions;
+    const row = list.find((a) => /crabs/i.test(String(a.title)));
     // UPDATED (wave-5, 2026-07-15): 'attention' now — which is exactly what lets the
     // cap matter: at 'critical' canSnooze() short-circuited and leadDays was moot.
-    expect(top.level).toBe('attention');
-    // -60 is 'bad''s authored lead — proposedSnoozeDays(event, { leadDays: top.leadDays })
+    expect(row.level).toBe('attention');
+    // -60 is 'bad''s authored lead — proposedSnoozeDays(event, { leadDays: row.leadDays })
     // reads exactly this number; before F7 it was always undefined (dead cap).
-    expect(top.leadDays).toBe(-60);
+    expect(row.leadDays).toBe(-60);
+    // AMENDED 2026-09-18: F7's claim is that the RENDERED top carries a usable
+    // lead, and the top is now a bundle — so assert it there too. A bundle takes
+    // its tightest child's lead, so the cap still has a real number to work on
+    // and the guard cannot be lost to a reordering.
+    expect(Number.isFinite(list[0].leadDays)).toBe(true);
   });
 });

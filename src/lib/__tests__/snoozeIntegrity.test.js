@@ -161,20 +161,38 @@ describe('the top action snooze id is per ITEM, never per category', () => {
 
 // ── 2. The demotion + the lead cap ────────────────────────────────────────────
 
-describe("the overdue-decision top: 'attention', snoozeable in principle, capped in fact", () => {
+// AMENDED 2026-09-18 — the bundle-consequence fix (CommandCenter.jsx, bundle
+// construction) moved the crabs row off position one on this fixture. Measured:
+// the decisions bundle went from consequence 0.000 (it dropped priorityScore,
+// gateHolder and unlocks at its boundary) to 3.070, so 7.584 with lateness now
+// beats the crabs row's 4.900 — which had been holding position one on saturated
+// lateness over a consequence of exactly zero.
+//
+// Neither claim in this block was about the ranking. The demotion doctrine and
+// the window-closed cap are properties of the ACTION, so they are asserted on it
+// wherever it sits — and the cap is asserted on the rendered top as well, so a
+// future reordering cannot hand position one to something the host can hide.
+describe("the overdue decision: 'attention', snoozeable in principle, capped in fact", () => {
+  const crabsRow = (ev) => eventPlan(ev).nextActions.find((a) => /crabs/i.test(String(a.title)));
+
   test("demoted to 'attention' — a late chore, not an emergency (doctrine)", () => {
-    const top = eventPlan(overdueDecisions()).nextActions[0];
-    expect(String(top.title)).toMatch(/crabs/i);
-    expect(top.level).toBe('attention');
-    expect(canSnooze(top)).toBe(true);           // was hard-blocked at 'critical'
+    const row = crabsRow(overdueDecisions());
+    expect(row).toBeTruthy();
+    expect(row.level).toBe('attention');
+    expect(canSnooze(row)).toBe(true);           // was hard-blocked at 'critical'
   });
 
   test('…and the cap finally binds: the window is closed, so NO snooze is proposed', () => {
     const ev = overdueDecisions();
-    const top = eventPlan(ev).nextActions[0];
-    expect(top.leadDays).toBe(-60);              // the authored lead reaches the action
+    const row = crabsRow(ev);
+    expect(row.leadDays).toBe(-60);              // the authored lead reaches the action
     // The refuse-when-window-closed branch (snooze.js:40): a task already past its
     // window must never be hidden — the shell renders no "not now" without a date.
+    expect(proposedSnoozeUntil(ev, { leadDays: row.leadDays })).toBeNull();
+    // The same must hold for whatever is rendered first. A bundle carries its
+    // tightest child's lead, so a bundle of past-window rows is refused too.
+    const top = eventPlan(ev).nextActions[0];
+    expect(top.leadDays).toBeLessThan(0);
     expect(proposedSnoozeUntil(ev, { leadDays: top.leadDays })).toBeNull();
   });
 

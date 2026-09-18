@@ -68,11 +68,36 @@ describe('the hero always asks something real', () => {
     expect(heads().filter((r) => r.ask === 'THREW')).toEqual([]);
   });
 
-  test('the wedding — six broken stages — asks the authored question', () => {
+  // AMENDED 2026-09-18 — THE AUTHORED QUESTION IS STILL THERE; IT IS NO LONGER
+  // AT POSITION ONE, AND THE REASON IS AN AUTHORING GAP WORTH NAMING.
+  //
+  // The bundle-consequence fix (CommandCenter.jsx, bundle construction) gave the
+  // decisions bundle a real score, and on a wedding it now leads: consequence
+  // 10.121 against 3.140 for the single "Ceremony type + officiant" row that used
+  // to hold position one. The bundle's own children are why — "Venue + date"
+  // (8.121) and "Total budget + who pays" (10.112) both outrank the ceremony
+  // question, and at T-180 with neither settled they should.
+  //
+  // The bundle now inherits its LEAD child's authored ask for exactly this case.
+  // It comes back empty here, and THAT is the finding: measured across all
+  // playbooks x 3 horizons, 362 of 594 board rows (60.9%) carry an authored ask
+  // and 114 distinct decisions carry none — including both of the wedding's two
+  // most consequential overdue calls. So the hero falls to heroAskFor's prose
+  // branch and says "Settle your decisions." General, not false, and not the
+  // placeholder this file exists to keep off the screen. The fix is to author the
+  // missing questions, not to re-rank the board around the ones that have one;
+  // tracked as its own item rather than absorbed here.
+  //
+  // What this test pins is unchanged: the authored question still REACHES the
+  // host at every one of the six stages. It is asserted on the action that
+  // carries it instead of on an index a ranking change can move.
+  test('the wedding — six broken stages — still carries the authored question', () => {
     for (const d of [180, 120, 60, 30, 14, 7]) {
-      const plan = eventPlan(EV('Wedding', d));
-      const ask = heroAskFor((plan.nextActions || [])[0]);
-      expect(ask).toMatch(/what kind of ceremony/i);
+      const actions = eventPlan(EV('Wedding', d)).nextActions || [];
+      const asks = actions.map((a) => heroAskFor(a) || '');
+      expect(asks.some((s) => /what kind of ceremony/i.test(s))).toBe(true);
+      // …and the head never regresses to the placeholder on the way.
+      expect(asks[0]).not.toMatch(/your next step/i);
     }
   });
 

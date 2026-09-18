@@ -33,17 +33,47 @@ describe('F1 — the reactive top action carries its level; a critical is never 
   // it from being buried is no longer the critical short-circuit but the snooze
   // cap's window-closed branch: proposedSnoozeUntil refuses (null), so the shell
   // never offers or writes a "not now" for it.
-  test('the overdue-decision top action reaches the list WITH its level (attention since wave-5)', () => {
-    const top = eventPlan(ev()).nextActions[0];
-    expect(top.level).toBe('attention');
+  // AMENDED 2026-09-18 — ANCHORED ON THE ACTION, NOT ON INDEX 0.
+  //
+  // The bundle-consequence fix (CommandCenter.jsx, bundle construction) changed
+  // which action holds position one on this fixture. Measured, same event:
+  //   before   0. crabs row          consequence 0.000 + latenessBoost 4.900 = 4.900
+  //   after    0. decisions bundle   consequence 3.070 + latenessBoost 4.514 = 7.584
+  //            1. crabs row          unchanged at 4.900
+  // The crabs row scored ZERO because the ladder tier that raises it carries no
+  // priorityScore, gateHolder or unlocks — so it held position one on saturated
+  // lateness alone, which is precisely what the 2026-08-17 ranking-floor ruling
+  // set out to stop ("age alone can never hold position one"). The bundle was
+  // exempt from that ruling only because it dropped every signal the comparator
+  // reads. It no longer does.
+  //
+  // F1's FINDING IS UNCHANGED, and both halves of it are still proven — they are
+  // just pinned on the crabs ACTION wherever it sits, rather than on an index a
+  // ranking change can move. The cap is additionally asserted on whatever DOES
+  // lead, so no future reordering can quietly hand position one to an action that
+  // can be snoozed away from a host.
+  const crabsRow = (list) => list.find((a) => /crabs/i.test(String(a.title)));
+
+  test('the overdue-decision action reaches the list WITH its level (attention since wave-5)', () => {
+    const row = crabsRow(eventPlan(ev()).nextActions);
+    expect(row).toBeTruthy();
+    expect(row.level).toBe('attention');
   });
 
   test('its window is closed, so the cap refuses to propose a snooze at all', () => {
-    const top = eventPlan(ev()).nextActions[0];
-    expect(canSnooze(top)).toBe(true);                 // no longer critical-blocked…
-    expect(top.leadDays).toBe(-60);                    // …but it carries its real lead…
     const { proposedSnoozeUntil } = require('../snooze');
-    expect(proposedSnoozeUntil(ev(), { leadDays: top.leadDays })).toBeNull(); // …and the cap says no.
+    const list = eventPlan(ev()).nextActions;
+    const row = crabsRow(list);
+    expect(canSnooze(row)).toBe(true);                 // no longer critical-blocked…
+    expect(row.leadDays).toBe(-60);                    // …but it carries its real lead…
+    expect(proposedSnoozeUntil(ev(), { leadDays: row.leadDays })).toBeNull(); // …and the cap says no.
+    // The guard generalised: the action actually at position one is past its
+    // window too, so it is equally un-hideable. A bundle's lead is its tightest
+    // child's, which is what makes this hold.
+    const top = list[0];
+    expect(Number.isFinite(top.leadDays)).toBe(true);
+    expect(top.leadDays).toBeLessThan(0);
+    expect(proposedSnoozeUntil(ev(), { leadDays: top.leadDays })).toBeNull();
   });
 
   test('a REAL critical (payment overdue to a vendor) still cannot be snoozed', () => {
