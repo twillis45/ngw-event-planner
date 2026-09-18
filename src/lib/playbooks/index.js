@@ -10,6 +10,7 @@
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
+import { buildFacts, proposedPickFor } from './recommendedPick';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
 import { attendanceAdjustment } from '../hostIntel';
@@ -137,6 +138,38 @@ const DECISION_INJECTORS = [
   (event, pb) => cookDecisionsFor(pb),
   (event) => militaryDecisionsFor(event),
 ];
+
+// ─── THE FACT BAG A RECOMMENDATION MAY READ ──────────────────────────────────
+// Gathered HERE because this is where the engines live, and handed to the pure
+// evaluator in recommendedPick.js — which imports nothing, so there is no cycle.
+//
+// `guests` is sizingGuests, the same number the food plan and the budget size
+// against, NOT event.guestCount. That is what makes a recommendation a
+// derivation rather than a second opinion. And `known` is strict: a roster of
+// nothing but pending RSVPs is not a headcount, so a guest-count rule refuses
+// to fire rather than recommend the small-party option to someone who never
+// gave a number.
+export function decisionFactsFor(event, playbook, asOf) {
+  const ev = event || {};
+  const gcr = (() => { try { return guestCountResolved(ev); } catch (_e) { return { resolved: false }; } })();
+  const band = (() => { try { return attendanceBand(ev); } catch (_e) { return { applicable: false }; } })();
+  const vf = (() => { try { return venueFor(ev); } catch (_e) { return null; } })();
+  return buildFacts({
+    guests: (() => { try { return sizingGuests(ev, playbook); } catch (_e) { return null; } })(),
+    guestsKnown: !!(gcr && gcr.resolved) || !!(band && band.applicable && band.planning > 0),
+    budget: ev.totalBudget,
+    daysOut: daysToEvent(ev.date, asOf),
+    venueKind: vf ? (vf.isHome ? 'home' : 'venue') : null,
+    venueKnown: !!(vf && vf.isSet),
+    isDestination: ev.isDestination,
+    overnight: ev.overnight,
+  });
+}
+
+/** What this decision should propose on THIS event, and on what basis. */
+export function decisionProposal(event, playbook, decision, asOf) {
+  return proposedPickFor(decision, decisionFactsFor(event, playbook, asOf));
+}
 
 /** Every engine-injected decision for this event, in registry order. */
 export function injectedDecisionsFor(event, pb) {
@@ -650,7 +683,17 @@ export function choicePickFor(event, id) {
   if (picks[id]) return picks[id];
   const pb = getPlaybook(event.type);
   const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d.id === id) : null;
-  if (dec) return dec.default || null;
+  if (dec) {
+    // A RECOMMENDATION OUTRANKS THE AUTHORED LITERAL (2026-09-18). This used to
+    // return `dec.default` flat, which is why difmCapable:'can-derive' derived
+    // nothing: the same string on a 4-guest event and a 400-guest one.
+    // proposedPickFor falls back to that same default whenever no rule applies
+    // OR the facts are unknown, so this can only ever be MORE grounded, never
+    // a guess. The plan runs on whatever this returns, so that guarantee is the
+    // load-bearing part.
+    const prop = proposedPickFor(dec, decisionFactsFor(event, pb));
+    return (prop && prop.pick) || null;
+  }
   // DESTINATION-4: destination decisions live OUTSIDE the playbook (they're the
   // isDestination modifier's own table, not any type's decisions[]), so the
   // authored-default fallback must look there too — otherwise a whenChoice gate
@@ -665,7 +708,13 @@ export function choicePickFor(event, id) {
   // than the board does. The cook lever used to need its own early return here;
   // it does not any more.
   const dd = injectedDecisionsFor(event, pb).find((d) => d.id === id) || null;
-  return (dd && (picks[dd.id] || dd.default)) || null;
+  if (!dd) return null;
+  if (picks[dd.id]) return picks[dd.id];
+  // A recommendation supersedes the authored literal when one fires — that IS
+  // the derivation. `proposedPickFor` falls back to the default when no rule
+  // applies or the facts are unknown, so this is never a guess.
+  const prop = proposedPickFor(dd, decisionFactsFor(event, pb));
+  return (prop && prop.pick) || null;
 }
 export function choiceShown(event, whenChoice) {
   if (!whenChoice) return true;
