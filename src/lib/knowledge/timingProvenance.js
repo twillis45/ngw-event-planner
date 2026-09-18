@@ -195,8 +195,20 @@ const TIMING_CATEGORIES = [
     // final list ~1–2 weeks out. Placed after invitation so an "Invite + dietary ask"
     // decision grounds on invitation-SEND timing; a pure "Collect dietary restrictions" call
     // falls through to here. antiPattern vetoes the menu-lock and food-style CHOICE calls.
+    //
+    // `ask … guests about` JOINED THE VERB SET 2026-09-18. Crab Feast's dietary
+    // decision is this exact act — collect the guests' restrictions before the
+    // crabs are ordered, `when: 'T-10d'`, squarely inside this window — and it
+    // grounded on NOTHING because its label says "Ask your guests about
+    // shellfish allergies" instead of "Collect". A verb synonym was deciding
+    // whether the app knew its own deadline was sourced.
+    //
+    // Deliberately narrow: it requires "guests" between the ask and the
+    // dietary word, so it catches the act of asking THE GUESTS and not a label
+    // that merely contains both words. MEASURED over all 45 playbooks — exactly
+    // one decision changes, Crab Feast/dietary, and nothing else moves.
     category: 'dietary_collection',
-    pattern: /collect.*(dietar|allerg|restriction)|(dietar|allerg|restriction).*(collect|gather|from rsvp)|gather.*(dietar|allerg)/i,
+    pattern: /collect.*(dietar|allerg|restriction)|(dietar|allerg|restriction).*(collect|gather|from rsvp)|gather.*(dietar|allerg)|ask\s+\w*\s*guests?\s+about\s+.*(dietar|allerg|restriction)/i,
     antiPattern: /\bmenu\b|food[ _]?style|who (handles|provides)/i,
     leadDays: [5, 45], // collect over the RSVP window; final list to caterer ~7–14 days out
     sources: ['withjoy-dietary'],
