@@ -89,7 +89,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `5e235b37` |
-| Jest | **6,498 passed**, 1 skipped, **0 failed**, **456 suites** (re-measured 2026-09-18, fifth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **6,520 passed**, 1 skipped, **0 failed**, **457 suites** (re-measured 2026-09-18, sixth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -101,6 +101,75 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-18 (sixth entry, same day) — six readers disagreed on "is the budget set", and the shipped demo made them all speak at once
+
+The seeded demo wedding carries budget **rows** totalling $18,900 and **no
+`totalBudget` field**. On that event, on one screen, the app said all of this
+simultaneously:
+
+| Surface | What it said |
+|---|---|
+| money bar | "$3,113 of **$18,900** left" |
+| budget editor (200 lines below it) | "A number to plan around… Use $X" — *asking for one* |
+| hero cue | "**Set your budget**" |
+| checklist | "Set the budget" — **DONE** |
+| Reveal card | "**$0** allocated across 6 categories. Budget is set and live." |
+
+Six readers, three different rules. The Reveal is the sharpest: its **gate** read
+the rows sum, then it packed only `totalBudget` into its data and printed
+`Number(undefined) || 0`. A wrong dollar figure and a false readiness claim in
+one sentence, on the surface whose entire job is to earn trust.
+
+**The readers were not all wrong.** They were answering TWO questions that had no
+names, so each site picked one by accident:
+
+1. **Is there a number to plan against?** — `hostSpending`, the Reveal, the
+   checklist, the readiness ledger. A host who filled in six categories HAS a
+   number, whatever field it lives in.
+2. **Did the host give an OVERALL figure?** — the budget editor (that is the
+   field the control writes) and `budgetSwap` (is the ceiling fixed, or does it
+   move when a row is dropped).
+
+`src/lib/budgetFor.js` names both, and names the **basis** so a surface can say
+which fact it is standing on instead of implying one it does not have. The
+planning rule is `hostSpending`'s — an explicit total wins, else the rows' sum —
+unchanged and now shared. `total` is **null** when there is none, never 0: a
+reader handed 0 cannot tell "no budget" from "a budget of $0", and that is
+precisely how the $0 got printed.
+
+**Behaviour changed, not just plumbing:**
+
+- The Reveal prints **$18,900** and stops claiming "set and live" over a budget
+  nobody set — it says the categories add up and offers the ceiling. A host who
+  *did* set a total still gets the confident line.
+- The readiness ledger stops asking for a budget it already has, and its
+  over-budget arithmetic — **dead** for rows-only hosts, since `over` could not
+  be non-zero without a `totalBudget` — now works for them.
+- The hostv2 editor, reached with rows and no total, names them and offers the
+  sum: *"Your categories already add up to $18,900 across 6 lines — use that if
+  it is the ceiling you mean."* It previously asked from scratch on a sheet
+  already counting against that figure.
+- The money sheet's fold and the editor it folds now read one accessor; they had
+  asked the same question 200 lines apart in different words.
+
+A source sweep pins that no engine keeps a private copy, with a canary. Text-gate
+ratchet **40 → 41**, reasoned in place — and this one is not the shell-write case
+the other four were: 21 of the 22 tests are executed behaviour with negative
+controls on both directions, and only the copy sweep reads source, whose claim
+*is* about source.
+
+**Files:** `src/lib/budgetFor.js` (new), `src/lib/__tests__/budgetIsSetOnce.test.js`
+(new, 22 tests), and six readers rewired — `hostSpending`, `phaseProgress`,
+`taskEngine`, `budgetSwap`, `assembleRevealEngines`, `hostv2/src/HostShellV2.jsx`.
+**QA:** 457 suites / 6,520 passed. `verify:push` green on all five steps.
+**NOT runtime-verified:** the hostv2 rows-only branch needs a legacy-shaped event
+to reach (hostv2's own editor always writes `totalBudget`), so it is covered by
+the release build and the source sweep, not by a drive. Said plainly rather than
+folded into "QA performed".
+**Next:** the closeout "All wrapped up" over a `Deposit Paid` vendor with an
+outstanding balance (`phaseProgress.js:528`) — the other host-reachable money
+lie, and one pill tap away in hostv2.
 
 ## FIXED 2026-09-18 (fifth entry, same day) — the board's whole ranking died at one boundary: a bundle scored exactly 0.000
 
