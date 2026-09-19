@@ -269,8 +269,13 @@ describe('moneyDisclosure — what a surface gets back before it renders a figur
     const d = moneyDisclosure(VENDOR_RANGE_FACTOR_KEYS);
     expect(d.grounded).toBe(false);
     expect(d.mustMark).toBe(true);
+    // The BASE range joined the two factors on 2026-09-19. Before that this list
+    // held only the multipliers, above a comment claiming the base "carries the
+    // playbook's own provenance" — measured, 224 of 224 playbook vendor rows
+    // carry none, so there was nothing to defer to and the base was the one
+    // contributor nobody could ask about.
     expect(d.contributors.map((c) => c.key).sort())
-      .toEqual(['vendor.metroMarkets', 'vendor.rushFactor']);
+      .toEqual(['vendor.metroMarkets', 'vendor.playbookCostRange', 'vendor.rushFactor']);
   });
 
   test('contributors come back weakest-first, so a surface can take [0] for one word', () => {

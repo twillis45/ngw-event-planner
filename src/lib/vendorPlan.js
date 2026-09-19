@@ -143,6 +143,22 @@ export function buildVendorPlan(event, opts = {}) {
       vendorId: match ? match.id : null,
       vendorName: match ? match.name : null,
       factorsApplied,
+      // WHAT THIS ROW'S MONEY STANDS ON. Added 2026-09-19 with the finding that
+      // 224 of 224 playbook vendor rows author a costRange and NONE of them
+      // author provenance — while the money registry's own comment said the
+      // base range "carries the playbook's own provenance". A surface could not
+      // ask, so it could not say.
+      //
+      // The authored record WINS when a row has one: the floor key exists so a
+      // figure never reaches a host with no record at all, not to hold down a
+      // band that answered for itself. Nothing is invented here — a row with no
+      // authored provenance reports null and the floor key, which is the true
+      // state.
+      costProvenance: (cat.costProvenance || cat.provenance) || null,
+      provenanceKeys: [
+        ...((cat.costProvenance || cat.provenance) ? [] : ['vendor.playbookCostRange']),
+        ...factorsApplied.map((f) => (f.key === 'metro' ? 'vendor.metroMarkets' : 'vendor.rushFactor')),
+      ],
     };
   });
 
@@ -153,5 +169,9 @@ export function buildVendorPlan(event, opts = {}) {
     metroLabel,
     rushLabel: rush.label || null,
     rushExplanation: rush.explanation || null,
+    // Every key any row on this plan stands on, deduped — what a surface asks
+    // moneyDisclosure() about when it describes the estimates as a group, which
+    // is how they are presented (one factors line above the whole list).
+    provenanceKeys: [...new Set(rows.flatMap((r) => r.provenanceKeys))],
   };
 }

@@ -53,10 +53,14 @@ export const MONEY_PROVENANCE_META = {
   // The honest headline, kept in the data so a console or a test can read it
   // rather than trusting a comment.
   groundedCount: 1,
-  note: 'One research pass done (2026-09-18). 1 of 17 records is researched: factors.serviceCharge. '
+  note: 'One research pass done (2026-09-18). 1 of 18 records is researched: factors.serviceCharge. '
       + '8 more now CITE real retrieved sources without being grounded by them — read each note for '
       + 'what the source actually says and how the shipped number differs. Everything else is still '
-      + 'unsourced and must be presented marked.',
+      + 'unsourced and must be presented marked. '
+      + 'The 18th record, vendor.playbookCostRange, was added 2026-09-19 and is NOT research: it '
+      + 'registers a figure that had NO record at all (224 playbook vendor cost ranges, zero with '
+      + 'provenance) at the floor, with empty sources. The research pass\'s own counts are unchanged '
+      + 'by it — 1 grounded, 9 citing.',
 };
 
 // ─── What the 2026-09-18 research pass found, in one place ──────────────────
@@ -791,6 +795,33 @@ export const MONEY_PROVENANCE = {
     sufficientWhen: 'Someone finds a dated page that states lead-time premiums ON A VENDOR QUOTE rather than a planning fee, for US vendors, from a party that is not advising its members to raise prices — and reconciles the 30/60/120-day windows against it. The WPIC citation is a floor for this record, not a finish line: it is the difference between an uncheckable memory and a checkable disagreement.',
     hostExplanation: true,
   },
+  'vendor.playbookCostRange': {
+    tier: 'estimate',
+    confidence: 'low',
+    verificationStatus: 'unverified',
+    sources: [],
+    count: 224,
+    appliesTo: 'playbooks/data/*.js#vendors[].costRange (224 rows, read by vendorPlan.js)',
+    claim: 'The BASE cost range a vendor row starts from, authored per event type on the playbook.',
+    note: 'REGISTERED BECAUSE THE NUMBER HAD NO RECORD AT ALL, and because this file said otherwise. '
+        + 'VENDOR_RANGE_FACTOR_KEYS below carried the line "the BASE cost range a vendor row starts '
+        + 'from is authored in the playbook and carries the playbook\'s own provenance, which this '
+        + 'module cannot speak for". MEASURED 2026-09-19 across ALL_PLAYBOOKS: 224 vendor rows carry '
+        + 'a costRange and ZERO of them carry `provenance` or `costProvenance` of any kind. There was '
+        + 'nothing for this module to defer to. The verdict that sentence reached — a vendor row is '
+        + 'ungrounded — was right; its reason was not, and a wrong reason is how a gap survives an '
+        + 'audit. '
+        + 'THE CONTRAST SITS INSIDE ONE FILE. In playbooks/data/wedding.js, `p_bar_alcohol` authors '
+        + 'unitCostRange [2, 6] with a dated costProvenance naming two sources and stating what it '
+        + 'excludes; eleven lines later the `Venue` vendor row authors costRange [3000, 30000] — a '
+        + '10x band, the largest single figure the app shows a host — with no field at all. The food '
+        + 'knowledge system grew provenance machinery; the vendor rows next to it did not. '
+        + 'REGISTERED AT THE FLOOR, same reasoning as budget.playbookPerGuestCost: the band is '
+        + 'authored on the playbook, not here, so this record is the floor a row falls to and not a '
+        + 'verdict on any individual range. A row that authors its OWN costProvenance is read '
+        + 'directly by vendorPlan.js and this record steps aside for it.',
+    sufficientWhen: 'A vendor row authors its own dated costProvenance — then vendorPlan reports that record instead of this one, per row. Promotion HERE would mean researching all 224 bands, which is pricing work, not a provenance fix.',
+  },
 
   // ── Sourcing ─────────────────────────────────────────────────────────────
   'sourcing.tiers': {
@@ -927,12 +958,20 @@ export const BUDGET_TOTAL_FACTOR_KEYS = [
   'vendor.metroMarkets',
 ];
 
-// VENDOR: only the factors these files own. The BASE cost range a vendor row
-// starts from is authored in the playbook and carries the playbook's own
-// provenance, which this module cannot speak for and does not claim to — a
-// vendor row is therefore ungrounded even if every key here were grounded,
-// until the base range answers for itself too.
+// VENDOR: the base range plus the factors that move it.
+//
+// This list used to hold only the two factors, above a comment reading "the
+// BASE cost range ... carries the playbook's own provenance, which this module
+// cannot speak for". MEASURED 2026-09-19: of the 224 playbook vendor rows that
+// author a costRange, ZERO carry provenance of any kind. There was nothing to
+// defer to, so the base is registered here (`vendor.playbookCostRange`) at the
+// floor — and a row that authors its own costProvenance is still read directly
+// by vendorPlan.js, which reports that record in place of this key.
+//
+// A vendor row remains ungrounded while any of these is ungrounded, and today
+// all three are.
 export const VENDOR_RANGE_FACTOR_KEYS = [
+  'vendor.playbookCostRange',
   'vendor.metroMarkets',
   'vendor.rushFactor',
 ];

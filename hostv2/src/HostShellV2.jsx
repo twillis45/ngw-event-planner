@@ -1910,6 +1910,15 @@ export default function HostShellV2() {
       });
     } catch { return { relevant: false, categories: [] }; }
   }, [event, rushFactor, metroMkt]);
+  // What every estimate on that plan stands on. The plan reports the keys it
+  // ACTUALLY used, so this narrows when a factor is absent and never claims a
+  // factor the host's event did not trigger.
+  const vendorDisclosure = useMemo(() => {
+    try {
+      const keys = vendorPlan && vendorPlan.provenanceKeys;
+      return keys && keys.length ? moneyDisclosure(keys) : null;
+    } catch { return null; }
+  }, [vendorPlan]);
   // Captain White's July 2026 reference ladder — from the playbook's verified
   // knowledge. Shown as REFERENCE; a price only counts when the host taps it
   // in (CRAB-PRICING-1 hard rule: no fake market prices).
@@ -19004,6 +19013,27 @@ export default function HostShellV2() {
                       adjustment, identical for every category — it was rendering
                       once per row, repeating the same two sentences 6-9 times in a
                       row. Shown once here instead. */}
+                  {/* WHAT THE RANGES STAND ON, said once, whether or not a factor
+                      moved them. Before 2026-09-19 this block spoke ONLY when a
+                      metro or rush factor applied — so a host with no market set
+                      read "$4,350–$43,500" for a venue with no basis stated at
+                      all, and a host WITH one read a confident "+45%" over a
+                      factor the money registry grades tier 'estimate',
+                      confidence 'low', on a researched note that ends "NO FACTOR
+                      MOVED". moneyDisclosure's contract is mustMark = the figure
+                      may not be rendered bare; these were bare.
+
+                      MEASURED the same day: 224 playbook vendor rows author a
+                      costRange and ZERO author provenance, so the basis line is
+                      the true state and not a hedge — see
+                      moneyProvenance.js#vendor.playbookCostRange. It sits ABOVE
+                      the factor sentences rather than replacing them: the
+                      factors say what moved, this says what it moved. */}
+                  {vendorPlan.provenanceKeys && vendorDisclosure && vendorDisclosure.mustMark && (
+                    <p className="grounding" style={{ margin: '0 0 6px', opacity: .75 }}>
+                      Planning ranges for this kind of event — not quotes, and not live market rates.
+                    </p>
+                  )}
                   {unbookedSuggestions[0] && unbookedSuggestions[0].factorsApplied.length > 0 && (
                     <p className="grounding" style={{ margin: '0 0 10px', opacity: .75 }}>
                       Estimates below: {unbookedSuggestions[0].factorsApplied.map(f => f.explanation).join(' ')}

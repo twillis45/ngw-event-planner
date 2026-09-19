@@ -80,8 +80,22 @@ describe('the census — before 1 of 17 records cited anything, and none was gro
     expect(citingButUngrounded.length).toBe(8);
   });
 
-  test('the count of records did not change — research adds evidence, not entries', () => {
-    expect(Object.keys(MONEY_PROVENANCE).length).toBe(17);
+  test('the RESEARCH PASS added no entries — research adds evidence, not entries', () => {
+    // The pass this file audits registered 17 records and left that count where
+    // it found it. One record has been added SINCE (vendor.playbookCostRange,
+    // 2026-09-19), and it is not research: 224 playbook vendor cost ranges were
+    // reaching hosts with no provenance record of any kind, so the base is now
+    // registered at the FLOOR with empty sources. The guard this test exists to
+    // be is that a research pass must not inflate the registry — so what it
+    // asserts is that the pass's own numbers did not move, which is stricter
+    // than a raw count and survives an honest addition.
+    expect(Object.keys(MONEY_PROVENANCE).length).toBe(18);
+    expect(groundedKeys()).toEqual(['factors.serviceCharge']);
+    expect(citingKeys().length).toBe(9);
+    // …and the entry that moved the count contributes NO evidence, which is the
+    // whole reason it does not count as research.
+    expect(MONEY_PROVENANCE['vendor.playbookCostRange'].sources).toEqual([]);
+    expect(isGroundedMoneyFactor(MONEY_PROVENANCE['vendor.playbookCostRange'])).toBe(false);
   });
 
   test('every id any record cites resolves — including all eight new ones', () => {
