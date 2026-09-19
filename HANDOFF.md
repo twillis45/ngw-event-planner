@@ -1,6 +1,16 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-18 (the pre-push routine
+**Measured reality, not intentions.** Updated 2026-09-19 (four open audit items,
+each one a fact its own consumer unqualified: a synthesized cost multiplier
+wearing a "Directly sourced" badge; one metro market written under two field
+names, so three engines never heard the host's choice; 224 vendor cost ranges
+with zero provenance under a registry comment claiming they carried their own;
+and a parsed "at 5" sent to the caterer as a confirmed 5:00 PM. Three of the four
+had a correct engine and a wrong screen, so all four were driven in Chromium at
+390px. Worth carrying forward: a WRONG REASON is how a gap survives an audit —
+the vendor registry reached the right verdict on a false premise, and the verdict
+being right is why nobody re-checked the premise. See the dated entry below.)
+Before that, on 2026-09-18 (the pre-push routine
 now runs what the deploy runs. Two deploys — 310 and 311 — died at "Build
 release artifact" while jest and both gates were green, and both were reported
 as verified; production sat two commits stale for two and a half hours. The
@@ -88,8 +98,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `f1871a9` |
-| Jest | **6,996 passed**, 1 skipped, **0 failed**, **479 suites** (re-measured 2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `f4bb60bd` |
+| Jest | **7,026 passed**, 1 skipped, **0 failed**, **483 suites** (re-measured 2026-09-19, after the four audit fixes below). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -101,6 +111,109 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-19 (fifteenth entry) — four open audit items, each one a fact its own consumer unqualified
+
+Commits `61f13e0` `a5c523b` `5c78a78` `f4bb60b`. **483 suites / 7,026 tests.**
+`verify:push` green on all five. Every fix red-proofed; every one driven in
+Chromium at 390px, because in three of the four the engine was already right and
+the screen was the half that was wrong.
+
+**One defect class, four surfaces.** A producer qualifies a fact carefully — a
+provenance tier, a field name, a parser grade — and the consumer next to it drops
+the qualification. That is the same shape as the whole 2026-09-18 run and it is
+still finding things.
+
+### 1 — "Directly sourced" over a number nobody checked (`61f13e0`)
+
+51 decisions carry `costFactors`; **36 are `tier: 'synthesized'`** with the
+authors' own note "Cost factor heuristics need verification against actual
+pricing." 70 affected rows render a claim badge. MEASURED on The Cookout's
+`p_grown_folks` — one row, three picks, **identical badge and identical detail**:
+
+    no pick                      $147-$368   Directly sourced
+    "Red drink + soda + water"   $11-$28     Directly sourced   (x0.2)
+    "Full bar + punch"           $206-$515   Directly sourced   (x1.4)
+
+The citation grounds the DRINK RATE. It says nothing about 0.2 or 1.4. Root
+cause: `choiceFactorFor` returned a bare number, discarding provenance at the
+moment of application. It now returns `{ factor, unverified, note }`, and
+`classifyClaim` degrades a sourced label to **`Sourced base, adjusted`** when an
+unverified factor moved the figure. A factor of exactly 1, or one whose own
+provenance is researched (Repast's `food_source`), leaves the label untouched.
+
+### 2 — one market under two names (`a5c523b`)
+
+`event.market` (CRA create flow) and `event.metroMarket` (hostv2's picker), both
+from the same `METRO_MARKETS` list. Every reader in `lib/` chose `market`:
+
+| reader | `market: 'dc'` | `metroMarket: 'dc'` |
+|---|---|---|
+| `playbooks/index.js:4227` | + `p_halfsmokes`, `p_mumbo` | *(nothing)* |
+| `eventGeoQuery.js:60` | `"Washington, DC, US"` | `""` |
+| `analyticsReader.js:102` | `{ dc: 1 }` | `{ Unspecified: 1 }` |
+
+And the other way, on screen: `Which market · National baseline ›` over a market
+the host had picked — which sits above a metro price factor, so the whole vendor
+plan priced at the national factor. `lib/marketFor.js` reads either field; the
+hostv2 picker now writes the canonical `market` and clears the old name.
+**An accessor, not a rename** — events are already persisted under both names.
+
+### 3 — 224 vendor cost ranges, 0 with provenance (`5c78a78`)
+
+MEASURED across `ALL_PLAYBOOKS`: **224** vendor rows author a `costRange`,
+**zero** author provenance. The contrast is inside one file — `wedding.js`
+authors `p_bar_alcohol` `[2, 6]` with a dated `costProvenance` naming two
+sources, and eleven lines later authors `Venue` `[3000, 30000]` with no field at
+all. And `VENDOR_RANGE_FACTOR_KEYS` carried the line "the BASE cost range …
+carries the playbook's own provenance". There was nothing to defer to.
+
+On screen, 390px, Wedding / 80 guests: with **no market set** the ranges rendered
+with no basis stated anywhere (the factors line only rendered when a factor
+applied); with `market: dc`, a confident **+45%** over a factor the registry
+itself grades `tier: 'estimate'`, on a note whose last three words are "NO FACTOR
+MOVED". `moneyDisclosure`'s contract is `mustMark` = may not be rendered bare.
+
+Registered `vendor.playbookCostRange` at the floor, threaded `provenanceKeys`
+through `buildVendorPlan`, and the shell now says, in both states:
+*"Planning ranges for this kind of event — not quotes, and not live market
+rates."* — above the factor sentence, so it reads what-they-are then what-moved-them.
+
+**Two existing gates fired and both were updated rather than bypassed.** The
+census guard ("research adds evidence, not entries") now asserts what it was
+built to protect — that the 2026-09-18 pass's own numbers did not move (1
+grounded, 9 citing) — which is stricter than a raw count and survives an honest
+addition.
+
+### 4 — "Cookout at 5" went to the caterer as a confirmed 5:00 PM (`f4bb60b`)
+
+`smartParseEvent` grades a spoken clock three ways and marks `said-hour-only` the
+weakest *"because the NUMBER is hers, the half of the day is a reading of it."*
+The creation seam wrote `startTimeSource: 'host'` for **all three** and dropped
+the grade — and `startTimeIsConfirmed` gates the invite, the vendor brief and the
+run-of-show clock.
+
+    "…on Nov 14 at 5pm"  ->  5:00 PM  src=host     basis=said-exact      (no ask)
+    "…on Nov 14 at 5"    ->  5:00 PM  src=derived  basis=said-hour-only  (asks)
+
+The number is still hers — dropping it is the defect this feature was built to
+fix. `lib/startTimeFieldsToPersist.js` holds the rule, and the day screen says
+*"You said 5 — we read it as PM. Confirm it, or set the time yourself."* rather
+than the standing "We pencilled in 5:00 PM — not you", which would be false here.
+
+### Worth carrying forward
+
+- **A wrong reason is how a gap survives an audit.** Item 3's registry comment
+  reached the RIGHT verdict (a vendor row is ungrounded) on a FALSE premise (it
+  defers to a playbook provenance that does not exist). The verdict being right
+  is exactly why nobody re-checked the premise.
+- **A measurement on the wrong fixture disproves nothing.** Item 2's region probe
+  first ran against The Cookout, which carries no `whenRegion` items, and
+  returned `[]` for every input — reading as "no consequence". Re-run on
+  Juneteenth Cookout it returned `[p_halfsmokes, p_mumbo]` immediately.
+- **When a gate fires, fix what it protects, not its number.** Two gates fired in
+  item 3. Both were updated to assert the invariant more tightly than the
+  baseline they had been carrying.
 
 ## FIXED 2026-09-18 (fourteenth entry, same day) — e2e: 27 minutes to 14, and the fix's own first run caught the rest
 
