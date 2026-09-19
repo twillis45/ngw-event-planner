@@ -86,6 +86,7 @@ import { tweenNumber } from '@app/lib/tweenNumber';
 import { recordTold, clearTold, isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
 import { addDay, dropDay, dayCount, rowsOn } from '@app/lib/spanEdit';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
+import { startTimeFieldsToPersist, startTimeReading } from '@app/lib/startTimeFieldsToPersist';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
@@ -6620,7 +6621,13 @@ export default function HostShellV2() {
       // gates the invite, the vendor brief and the ROS clock on NOT being
       // 'derived', and this hour is hers, not ours. The 15:00 bug was the app
       // inventing a time; writing down the one she gave is the opposite of it.
-      ...(parsed.startTime ? { startTime: parsed.startTime, startTimeSource: 'host' } : {}),
+      // 2026-09-19: …FOR THE TWO GRADES WHERE SHE ACTUALLY SAID IT. This line
+      // wrote startTimeSource:'host' for all THREE parser grades and dropped
+      // `startTimeBasis` entirely — so "cookout at 5", which the parser marks
+      // `said-hour-only` because IT chose the PM, was sent to her guests and
+      // her caterer as a confirmed 5:00 PM. The rule now lives in
+      // lib/startTimeFieldsToPersist.js where jest can run it.
+      ...startTimeFieldsToPersist(parsed),
       // The street line she already typed, instead of asking for it again in a
       // separate field. venueAddress already feeds the invite and the rain note.
       ...(parsed.venueAddress ? { venueAddress: parsed.venueAddress } : {}),
@@ -11025,10 +11032,19 @@ export default function HostShellV2() {
                     // "no clock" — wrong. Say what is actually true: we set it, here's why,
                     // one tap makes it yours and puts the whole day on the clock.
                     const derived = String(event.startTimeSource || '') === 'derived' && String(event.startTime || '').trim();
+                    const reading = derived ? startTimeReading(event) : null;
                     return (
                       <div className="later-row" style={{ margin: '0 0 var(--sp-3)', background: 'var(--card)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px' }}>
                         <p className="grounding" style={{ margin: 0 }}>
-                          {derived
+                          {/* "We pencilled it — not you" is true of a time the app
+                              built from a bucket, and FALSE of one the host typed
+                              the NUMBER of ("cookout at 5"). Saying it there would
+                              trade one inaccuracy for another, so a read time gets
+                              its own sentence naming what she said and what we made
+                              of it — lib/startTimeFieldsToPersist.js#startTimeReading. */}
+                          {derived && reading
+                            ? <><b>{reading.line}</b> Every line below reads from it.</>
+                            : derived
                             ? <><b>We pencilled in {(() => { const [h, m] = String(event.startTime).split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ap}`; })()} — not you.</b> Confirm it and every line below becomes a real clock time.</>
                             : <>These moments are in order but not on a clock — set a start time and every line below becomes a real one.</>}
                         </p>
@@ -11138,15 +11154,20 @@ export default function HostShellV2() {
                   {!isPast && !ros.some(r => r && r.time) && (() => {
                     let prop = null; try { prop = proposeStartTime(event, wx); } catch (_e) { prop = null; }
                     const derived = String(event.startTimeSource || '') === 'derived' && String(event.startTime || '').trim();
+                    const reading = derived ? startTimeReading(event) : null;
                     if (!prop && !derived) return null;
                     // Composed from the parity kit at COMPACT density — same propose atoms as
                     // budget B1, tighter card rhythm. The eyebrow/why/accept shape is the
                     // shared Propose-Don't-Ask primitive (day-of 331:61 + budget 344:61).
                     return (
                       <div className="now-card" style={{ marginBottom: 'var(--sp-3)', borderColor: 'var(--steel-muted)' }}>
-                        <Eyebrow tone="steel">{derived ? 'We pencilled the times — not you' : 'Want me to pencil in times?'}</Eyebrow>
+                        {/* Same distinction as the run-of-show row above: a time
+                            the host gave the number for was not pencilled by us. */}
+                        <Eyebrow tone="steel">{derived ? (reading ? 'We read the half of the day' : 'We pencilled the times — not you') : 'Want me to pencil in times?'}</Eyebrow>
                         <Grounding gap={ASK_COMPACT.eyebrowToValue}>
-                          {derived
+                          {derived && reading
+                            ? <>{reading.line} Every moment then reads from it.</>
+                            : derived
                             ? <>Confirm and every moment becomes a real clock. {event.startTimeWhy || ''}</>
                             : <>I’ll work back from a {prop.label} start so the whole day has a clock — nothing’s locked, nudge anything. {prop.why}</>}
                         </Grounding>
@@ -11155,7 +11176,7 @@ export default function HostShellV2() {
                             onClick={() => derived
                               ? patchEvent({ startTimeSource: 'host' }, 'Start time confirmed — the whole day reads from it now.')
                               : patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' }, 'Penciled the day from your ' + prop.label + ' start — nudge any time you like.')}>
-                            {derived ? 'That’s right — pencil them in' : 'Yes, pencil them in'}
+                            {derived ? (reading ? 'That’s right — pencil the day from it' : 'That’s right — pencil them in') : 'Yes, pencil them in'}
                           </button>
                         </CtaRow>
                       </div>
