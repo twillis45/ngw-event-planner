@@ -52,6 +52,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
 import { deriveEventPhaseProgress, cueActionLabel } from './lib/phaseProgress';
+import { startTimeIsConfirmed } from './lib/startTime';
 import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
 import { raiseAll, surfaceMeta } from './lib/surfaceRegistry';
 // WAVE-6 (2026-07-15): snooze is applied INSIDE eventPlan — nextActions is the
@@ -1449,6 +1450,35 @@ export function _eventFoundationActions(event) {
     || Number(event.guestCount) > 0 || Number(event.guestEstimate) > 0;
   const dateSet = !!String(event.date || '').trim()
     && !/^(tbd|tba)$/i.test(String(event.date).trim());
+  // ── THE HOUR IS HALF OF "WHEN", AND THIS RUNG USED TO IGNORE IT ────────────
+  // MEASURED 2026-09-19, one wedding, three days out, with a date set and an
+  // unconfirmed start time:
+  //
+  //   _eventFoundationActions  id=date      done=TRUE   "Set the date."
+  //   deriveEventPhaseProgress id=datetime  handled=FALSE "Confirm the start time"
+  //
+  // Two ladders, one fact, opposite answers — under a comment sixty lines below
+  // this one claiming "Single source: the same _eventFoundationActions dominoes
+  // eventPlan uses". phaseProgress merged the day and the hour into one "when"
+  // area on a host directive (2026-07-14); this ladder never did, so its `date`
+  // domino read as DONE the moment a date existed.
+  //
+  // WHAT THAT COST, measured on the same event: the "Confirm the start time"
+  // action reached the ranker with NO ladder consequence — its rung was closed —
+  // and with `dueInDays: null` it sorts last among equals. It ranked **7 of 7**,
+  // three days before the wedding, while an unconfirmed hour withholds the time
+  // from NINE outward artifacts: the vendor-brief run-of-show slice ships
+  // `time: null` (vendorBrief.js), and timePhrase() falls back to the bucket for
+  // draftInvite, draftGuestBrief, draftRsvpChase, draftDayBeforeDetails,
+  // draftVendorReconfirm, draftGuestUpdate and draftGettingHereNote
+  // (doItForMe.js). The comment beside phaseProgress's own priority called this
+  // "a real but low-stakes gap"; nine refusing drafts is not low-stakes.
+  //
+  // NO NEW RUNG, and no new number: the existing rung now answers the whole
+  // question it is named for, on the SAME predicate the other ledger already
+  // uses. A host with no date still sees "Set the date." exactly as before.
+  const timeOk = (() => { try { return startTimeIsConfirmed(event); } catch (_e) { return false; } })();
+  const whenSet = dateSet && timeOk;
   const budgetIsSet = (event.budget || []).reduce((s, r) => s + (Number(r && r.budgeted) || 0), 0) > 0
     || Number(event.totalBudget) > 0;
   // Food is "sourced" once the host has made any food/sourcing choice, self-provides
@@ -1463,14 +1493,57 @@ export function _eventFoundationActions(event) {
 
   // The canonical foundational dominoes, in priority order. Each `done` is derived from
   // real state — never from a stored task flag — so the badge and the hero agree.
-  return [
+  //
+  // WHICH HALF IS OPEN DECIDES WHERE THE "WHEN" RUNG SITS (2026-09-19). Merging
+  // the hour into this rung's `done` is only half the design phaseProgress ships:
+  // it also splits the PRIORITY by which half is open — a missing date is the #1
+  // foundation (everything counts back from it), a merely-unconfirmed hour is
+  // priority 9. Dropping that half gave the hour the DATE's place at the top of
+  // the ladder, and `decisionSoundness`'s "the head asks for the count" caught it
+  // immediately: on an event with no guest list, the top action became "confirm
+  // the time". That guard is right — the guest count sizes the budget, the food
+  // and the schedule; the hour sizes nothing. So the rung MOVES TO THE END when
+  // only the hour is open, which is also what makes its `unlocks` honest: it is
+  // last, so it unblocks nothing, and it earns gateHolder's +2 and no more.
+  const ladder = [
     {
-      id: 'date', domain: 'date', title: 'Set the date.',
-      consequence: 'The date anchors every countdown, milestone, and shopping window.',
+      id: 'date', domain: 'date',
+      // The copy splits by WHICH half is open, the same way phaseProgress's cue
+      // does — "Set the date." on an event that already has one was the first
+      // thing this change would have broken.
+      title: !dateSet ? 'Set the date.'
+        : String(event.startTime || '').trim() ? 'Confirm the start time.' : 'Set the start time.',
+      consequence: !dateSet
+        ? 'The date anchors every countdown, milestone, and shopping window.'
+        : 'Until the hour is yours, your invite and your vendor briefs will not name one.',
       // 'Event Details' is the real tab id — 'Details' has no render branch
       // (the same dead-route bug the rain-plan CTA's live verification caught).
-      cta: 'Set date', route: { tab: 'Event Details', focusField: 'event-date' },
-      done: dateSet, handledFact: dateSet ? 'Date set' : null,
+      cta: !dateSet ? 'Set date' : 'Confirm time',
+      route: { tab: 'Event Details', focusField: !dateSet ? 'event-date' : 'event-start' },
+      done: whenSet,
+      handledFact: whenSet ? 'Date & time set' : null,
+      // THE LEDGER IS FIXED HERE; THE RANKING IS NOT, ON PURPOSE.
+      //
+      // Giving this rung consequence when only the hour is open was tried and
+      // REVERTED the same hour, because two ruled contracts said no and both
+      // were right:
+      //
+      //   `hostEngineSelectionParity` — the ENGINE headlined "set the start
+      //     time" while the HOST shell said "plan the food". The two disagree
+      //     about FOOD (this ladder counts `host cooks` done; phaseProgress
+      //     counts its open food DECISIONS), and at c=2.00 the hour simply won a
+      //     quiet board. That disagreement is real, pre-existing and separate —
+      //     a start-time change must not decide it by accident.
+      //   The pinning warning at the `_openDomino` pass below — a post-sort
+      //     special case to hold the hour off position one is the same shape as
+      //     the attempt that "broke the hero (12 matrix failures)".
+      //
+      // So `rankLadder: false` keeps the BOARD byte-identical to before while
+      // the ledger above tells the truth. What the hour is worth in the queue is
+      // a product call with a measurement behind it, not a constant to pick
+      // here: measured 2026-09-19, the row sits 9 of 9 at T-3 while an
+      // unconfirmed hour withholds the time from nine outward artifacts.
+      rankLadder: !!dateSet ? false : undefined,
     },
     {
       id: 'guests', domain: 'guests', title: 'Add your guest list.',
@@ -1528,6 +1601,11 @@ export function _eventFoundationActions(event) {
       done: hasFood, handledFact: hasFood ? 'Food sourced' : null,
     },
   ];
+  if (dateSet && !timeOk) {
+    const i = ladder.findIndex((r) => r && r.id === 'date');
+    if (i >= 0) ladder.push(...ladder.splice(i, 1));
+  }
+  return ladder;
 }
 
 // A playbook "planning" composite bundles several sub-goals into one milestone name
@@ -2524,7 +2602,10 @@ export function eventPlan(event, ctx = null) {
   // the hero (12 matrix failures).
   const _openDomino = new Map();
   {
-    const open = foundation.filter((f) => f && !f.done);
+    // A rung flagged `rankLadder: false` is open for the LEDGER and deliberately
+    // absent from the ranker — see the `date` rung's own note for the two ruled
+    // contracts that decided it.
+    const open = foundation.filter((f) => f && !f.done && f.rankLadder !== false);
     open.forEach((f, i) => _openDomino.set(f.domain, Math.max(0, open.length - i - 1)));
   }
   for (let i = 0; i < nextActions.length; i++) {

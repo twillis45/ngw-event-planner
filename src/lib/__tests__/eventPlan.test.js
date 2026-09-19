@@ -84,13 +84,26 @@ describe('eventPlan — shape & progress', () => {
   });
 
   test('a fully-founded event has every foundation domino done', () => {
-    const plan = eventPlan(baseBBQ({
+    // "When" is the DAY AND THE HOUR (host directive 2026-07-14, the merge
+    // phaseProgress has always implemented). The `date` rung answers the whole
+    // question as of 2026-09-19, so this fixture needs the hour to deserve its
+    // own name — before that it claimed "fully founded" over an event whose
+    // invite and vendor briefs would still refuse to name a time.
+    const founded = {
       date: future(40),
+      startTime: '4:00 PM',
+      startTimeSource: 'host',
       guests: [{ rsvp: 'Yes' }],
       totalBudget: 1500,
       foodChoices: { sourcing: 'host cooks' },
-    }));
+    };
+    const plan = eventPlan(baseBBQ(founded));
     expect(plan.progress.done).toBe(plan.progress.total);
+
+    // …and the complement, which is what actually makes this a guard: the SAME
+    // event with the app's own unconfirmed guess is NOT fully founded.
+    const guessed = eventPlan(baseBBQ({ ...founded, startTimeSource: 'derived' }));
+    expect(guessed.progress.done).toBe(guessed.progress.total - 1);
   });
 });
 
