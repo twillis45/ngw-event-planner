@@ -155,6 +155,7 @@ import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
+import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
@@ -2624,18 +2625,31 @@ export default function HostShellV2() {
   useEffect(() => {
     try { setWxNotify(localStorage.getItem('ngw-hostv2-wxnotify-' + event.id) === 'on'); } catch { setWxNotify(false); }
   }, [event.id]);
-  const setWxNotifyPref = (on) => {
+  // The quiet write. Turning the watch off because the CHANNEL is dead is not
+  // the host standing down, and must not be narrated as if they chose it.
+  const writeWxNotifyPref = (on) => {
     setWxNotify(on);
     try { on ? localStorage.setItem('ngw-hostv2-wxnotify-' + event.id, 'on') : localStorage.removeItem('ngw-hostv2-wxnotify-' + event.id); } catch { /* private mode */ }
+  };
+  const setWxNotifyPref = (on) => {
+    writeWxNotifyPref(on);
     if (!on) toast('Standing down — the sky is yours to watch again.');
   };
   const askWxNotify = async () => {
-    if (typeof Notification === 'undefined') { toast('This browser can’t send notifications — the pill above stays your watch.'); return; }
+    if (!notificationApiPresent()) { toast(deliveryExcuse(DELIVERY.NO_API)); return; }
     try {
       const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
       setNotifGranted(perm === 'granted');
-      if (perm === 'granted') { setWxNotifyPref(true); toast('Watching the sky — you’ll get a ping the moment the forecast moves.'); }
-      else toast('Notifications are blocked for this site — the weather pill still keeps watch here.');
+      if (perm !== 'granted') { toast(deliveryExcuse(DELIVERY.NOT_PERMITTED)); return; }
+      setWxNotifyPref(true);
+      // PERMISSION IS NOT DELIVERY. Granting only means the browser will let us
+      // try; on every mobile browser `new Notification()` throws and the only
+      // working path is a service worker, which this app does not register. The
+      // old copy promised "you'll get a ping the moment the forecast moves" on
+      // the strength of a granted permission alone — a promise it could not keep
+      // on the surface this product calls its flagship. It now says what it can
+      // honestly say, and the first real forecast move proves the rest.
+      toast('Watching the sky. If your browser takes the alert, it lands here and on your phone.');
     } catch { toast('Couldn’t ask for notification permission.'); }
   };
   useEffect(() => {
@@ -2646,14 +2660,33 @@ export default function HostShellV2() {
     if (last === bucket) return;
     try { localStorage.setItem(seenKey, bucket); } catch { /* private mode */ }
     if (last == null) return; // baseline, not news
-    try {
-      new Notification('The sky moved — ' + (event.name || 'your event'), {
+    // A FAILED PING MUST NOT BE SILENT EITHER (2026-09-19) ────────────────────
+    // The bare catch here read "notification construction can throw on some
+    // platforms". It throws on EVERY mobile platform — iOS exposes no
+    // `Notification` in a Safari tab at all, and Chrome/Samsung/Opera Android
+    // and an installed iOS web app all throw from the constructor, where the
+    // only working path is a service worker this app does not register. So the
+    // host opted in, was told they were covered, and the one alert they asked
+    // for was dropped into a comment. Same lesson as the failed save thirty
+    // lines below: most bare catches in this file are correct, and the ones
+    // wrapping a promise made to the host are not.
+    //
+    // The body still reaches them — it is written into the in-app weather line
+    // — so this degrades to the pill rather than losing the news.
+    (async () => {
+      const r = await deliverNotification('The sky moved — ' + (event.name || 'your event'), {
         tag: 'ngw-wx-' + event.id,
         body: (liveWx.summary || 'The forecast changed.')
           + (liveWx.rainWindow && liveWx.rainWindow.label ? ' Most likely ' + liveWx.rainWindow.label + '.' : '')
           + (String(event.rainPlan || '').trim() ? ' Your backup: ' + event.rainPlan + '.' : ' No backup named yet — worth picking one.'),
       });
-    } catch { /* notification construction can throw on some platforms */ }
+      if (r.delivered) return;
+      // Tell them once, then stop claiming to watch. A toggle left reading "on"
+      // over a channel that cannot carry anything is the fake-behaviour case.
+      const why = deliveryExcuse(r.outcome);
+      if (why) toast(why);
+      writeWxNotifyPref(false);
+    })();
   }, [liveWx, wxNotify, notifGranted, event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [wxOpen, setWxOpen] = useState(false);
 
