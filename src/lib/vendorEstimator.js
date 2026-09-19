@@ -77,14 +77,21 @@ export const getMetroFactor = (marketId) => {
 
 // getRushFactor(eventDate) — timeline-compression premium for vendor estimates.
 //
-// PROVENANCE WARNING — read RUSH_FACTOR_PROVENANCE before trusting the line
-// below. "planner surveys + Wedding Wire / The Knot patterns" names two real
-// publishers but records no page, no date and no figure from either. It reads
-// like a citation and cannot be followed like one. The premiums are registered
-// as a trade-heuristic with EMPTY sources; the publishers are deliberately not
-// written into the record's `sources` until someone actually fetches a page.
+// PROVENANCE WARNING — read RUSH_FACTOR_PROVENANCE before trusting the ladder
+// below. Until 2026-09-19 the line under this block attributed these premiums to
+// unnamed planner surveys plus two named publishers — Wedding Wire and The Knot —
+// while recording no page, no date and no figure from either. It read like a
+// citation and could not be followed like one, so the attribution has been
+// withdrawn rather than dressed up. RESEARCHED 2026-09-18 — neither publisher
+// was found publishing a lead-time premium schedule at all, and The Knot's only
+// statement about short timelines points the OPPOSITE way. The premiums stay
+// registered as a trade-heuristic; the record's one real citation (WPIC's published
+// rush-fee structure) sources their DIRECTION and not their magnitude — it prices a
+// PLANNER'S FEE rather than a vendor quote, uses different windows, and every rung
+// of it sits above every rung of ours. No premium below was changed by any of this.
 //
-// Industry-typical premiums (planner surveys + Wedding Wire / The Knot patterns):
+// Industry-typical premiums — TRADE HEURISTIC, NOT A CITATION. No page states
+// these four windows or these three percentages:
 //   <30 days  → ~25% (heavy rush — limited vendor pool, last-minute booking
 //                     fees, catering minimums often scale up)
 //   30-60 d   → ~12% (compressed — moderate premium for fast turnaround)

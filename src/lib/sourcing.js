@@ -2,11 +2,13 @@ import { moneyProvenanceFor } from './budgetEstimator/moneyProvenance.js';
 
 // ─── Provenance markers ─────────────────────────────────────────────────────
 // SOURCING_TIERS re-prices every protein line in the app and had no provenance
-// field. Its record carries a MEASURED finding: the file states the grocery
-// premium is "honestly backed by the raw per-channel data below", and computing
-// the channel ratios from CANONICAL_PROTEIN_PRICES gives means of 0.706 (costco)
-// and 1.064 (grocery) against the shipped 0.85 and 1.18. The data corroborates
-// the direction of both factors and the magnitude of neither.
+// field. Its record carries a MEASURED finding: this file USED TO STATE that the
+// grocery premium was "honestly backed by the raw per-channel data below", and
+// computing the channel ratios from CANONICAL_PROTEIN_PRICES gives means of 0.706
+// (costco) and 1.064 (grocery) against the shipped 0.85 and 1.18. The data
+// corroborates the direction of both factors and the magnitude of neither, so the
+// claim of backing was withdrawn 2026-09-19 (see the block above SOURCING_TIERS
+// for the five bases measured and why no factor moved). No number changed.
 //
 // NONPROTEIN_CHANNEL_FACTOR is the one constant in these files that cites a
 // real dated source — and it is still ungrounded, because it deliberately
@@ -33,10 +35,40 @@ export const PRICE_TABLE_META = {
 // "pre-made" grocery; both were dropped because a product form doesn't fit every item
 // the tier touches (host feedback) and collided with the per-item "Grocery" store chip.
 // factor scales the PROTEIN lines' unit cost (like beverageFactor scales the bar) so
-// the budget moves with the choice; the grocery premium (+18%) is honestly backed by
-// the raw per-channel data below (grocery runs pricier per lb than butcher/Costco in
-// CANONICAL_PROTEIN_PRICES) and the card shows the live "~$X more" delta, so the note
-// names the convenience trade, not a static price claim. Default tier = 'butcher'.
+// the budget moves with the choice.
+//
+// THESE FACTORS ARE EDITORIAL, NOT DERIVED — read this before quoting them.
+// This comment used to say the grocery premium (+18%) was backed by the raw per-channel
+// data below. MEASURED 2026-09-19 against CANONICAL_PROTEIN_PRICES (n=10, every line
+// carrying its own retail-guide URLs), midpoint to midpoint:
+//
+//     basis                       costco   grocery
+//     mean of per-item ratios      0.706    1.064
+//     ratio of the channel means   0.733    1.059
+//     median of per-item ratios    0.690    1.048
+//     ratio of the low bounds      0.740    1.083
+//     ratio of the high bounds     0.730    1.046
+//     SHIPPED                      0.85     1.18
+//
+// Every basis agrees on the DIRECTION of both factors and not one reproduces either
+// MAGNITUDE: the shipped Costco discount is ~20% shallower than this file's own
+// arithmetic and the shipped grocery premium ~11% steeper. The numbers are NOT moved to
+// match, for two reasons kept separate on purpose.
+//   (1) THE TABLE DOES NOT DETERMINE ONE NUMBER. The five defensible bases above span
+//       0.69-0.74 and 1.05-1.08, and the sentence that claimed backing never named a
+//       basis. Picking one now and re-pricing every protein line behind it would be a
+//       product decision wearing a research finding's clothes.
+//   (2) POPULATION. `srcFactorFor` (playbooks/index.js) applies this factor ONLY to a
+//       protein line that resolves NO per-tier range — i.e. exactly the lines
+//       CANONICAL_PROTEIN_PRICES does not price. Measured across ALL_PLAYBOOKS on a
+//       non-default tier: 6 protein lines use authored `sourcingPrices`, 32 resolve in
+//       the canonical table, and 0 fall through to this factor. What it really prices is
+//       host-authored protein the table misses. The table is the COMPLEMENT of this
+//       factor's population, so its arithmetic is an analogy for these numbers and never
+//       a derivation of them.
+// So the record stays `estimate` (SOURCING_TIERS_PROVENANCE), and the card shows the
+// live "~$X more" delta, so the note names the convenience trade, not a static price
+// claim. Default tier = 'butcher'.
 export const SOURCING_TIERS = [
   { id: 'butcher', label: 'Fresh butcher',   note: 'Best flavor · pickup day-before', factor: 1.0 },
   { id: 'costco',  label: 'Costco / bulk',   note: 'Lowest cost · buy in advance',     factor: 0.85 },
