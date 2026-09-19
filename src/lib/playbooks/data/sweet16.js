@@ -48,6 +48,7 @@ const sweet16 = {
     },
     {
       id: 'guest_count',
+      ask: 'Close friends only, a normal crowd, or a big bash?',
       label: 'How many guests (and how many are adults)?',
       options: ['~30 (close friends)', '~45 (typical)', '~60 (big bash)'],
       default: '~45 (typical)',

@@ -38,12 +38,36 @@ const STAGES = [180, 60, 30];
 // makes this a test of the seam and not of a field in isolation.
 const asAction = (row) => ({ title: row.label, ask: row.ask, domain: row.domain, route: row.route });
 
+// A GATED DECISION WAS INVISIBLE TO THIS SWEEP (2026-09-19). Four decisions in
+// the corpus carry a `whenChoice`, and the fixture above never sets one — so a
+// gated decision could author an ask, ship it, and never be checked here. Found
+// by authoring the first such ask (Watch Party's `ppv_cost`, gated on
+// `major_event: 'UFC / Boxing'`), which failed this file rather than passing
+// unseen. The fix is to OPEN the gates, not to exempt the row.
+//
+// The choices are read off the corpus itself — each gate's own first accepted
+// value — so a new gate is covered the day it is authored, with no list here to
+// keep in step.
+const gateChoices = (pb) => {
+  const picks = {};
+  for (const d of (pb.decisions || [])) {
+    const w = d && d.whenChoice;
+    if (w && w.id && Array.isArray(w.in) && w.in.length) picks[w.id] = w.in[0];
+  }
+  return picks;
+};
+
 const allRows = () => {
   const out = [];
   for (const pb of ALL_PLAYBOOKS) {
+    const picks = gateChoices(pb);
+    const variants = Object.keys(picks).length ? [null, picks] : [null];
     for (const d of STAGES) {
-      const b = playbookDecisionBoard(EV(pb.type, d));
-      for (const r of [...b.open, ...b.locked, ...b.deferred]) out.push({ type: pb.type, row: r });
+      for (const foodChoices of variants) {
+        const ev = foodChoices ? { ...EV(pb.type, d), foodChoices } : EV(pb.type, d);
+        const b = playbookDecisionBoard(ev);
+        for (const r of [...b.open, ...b.locked, ...b.deferred]) out.push({ type: pb.type, row: r });
+      }
     }
   }
   return out;

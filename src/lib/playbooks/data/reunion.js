@@ -395,7 +395,7 @@ const reunion = {
     { id: 't-photographer', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Name the group-photo shooter and put the photo on the schedule at a fixed time', when: 'T-14d' },
     { id: 't-runofshow', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write the run-of-show: arrival, photo, meal, games, cleanup — assign each to a volunteer', when: 'T-13d' },
     { id: 't-nametags', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Prep name tags, markers, and a sign-in / contact-update sheet for the registration table', when: 'T-12d' },
-    { id: 't-weather-check', milestoneId: 'confirm-weather-plan', phase: 'planning', label: 'Check the 7-day forecast; confirm the rain backup (indoor space or tent on hold)', when: 'T-7d', whenChoice: { id: 'venue-setting', in: ['Outdoor park pavilion', 'Backyard', 'Outdoor with indoor backup'] } },
+    { id: 't-weather-check', milestoneId: 'confirm-weather-plan', phase: 'planning', label: 'Check the 7-day forecast; confirm the rain backup (indoor space or tent on hold)', when: 'T-7d', whenChoice: { id: 'venue-setting', ask: 'Outside, inside, or outside with somewhere to move to?', in: ['Outdoor park pavilion', 'Backyard', 'Outdoor with indoor backup'] } },
     { id: 't-shop-dry', milestoneId: 'shop-nonperishables', phase: 'purchasing', label: 'Buy drinks, water, paper goods, trash bags, sunscreen, bug spray, games', when: 'T-3d' },
     { id: 't-shop-fresh', milestoneId: 'shop-perishables-ice', phase: 'purchasing', label: 'Buy protein, perishables, and ice (day before or morning of)', when: 'T-1d' },
     { id: 't-load-coolers', milestoneId: 'setup-day', phase: 'setup', label: 'Ice the coolers, set up drink stations, light the grill', when: 'T0' },
