@@ -127,6 +127,59 @@ this file is the short answer to "where is it, is it green, what's next."
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
+## Loop costs — MEASURED 2026-09-19, and the cheaper path
+
+Added because a whole session's slack lived here and nobody had timed it.
+
+| loop | measured | use it for |
+|---|---|---|
+| `npm run test:one -- "<pattern>"` | **1.6–1.8s** | every iteration, every red-proof |
+| same, 3 patterns `"a\|b\|c"` | **2.1s** | batching is ~free — startup dominates |
+| full `react-scripts test` | **31.6s** | ONCE, after targeted is green |
+| `node scripts/verify-all.mjs handoff` | **0.25s** | a HANDOFF-only commit |
+| `npm run verify:push` | **70–100s** | ONCE, at the commit boundary |
+| `E2E_BASE=1 npx vite build` | ~6.5s | ONLY when the claim is about the rendered surface |
+
+**Full is 18x targeted, and three patterns cost the same as one.** The 2026-09-19
+run spent it the wrong way round: ~9 full runs and ~7 `verify:push` where roughly
+3 and 4 were load-bearing. The order that works is **targeted → red-proof →
+full → verify:push**, once each.
+
+### The probe loop, which cost more than any of the above
+
+Fifteen-odd throwaway probes were written this session, and several were re-run
+2–3 times only to get READABLE OUTPUT — jest reformats and truncates
+`console.log`, so multi-line probe output arrives mangled and needs
+`sed -n '/MARKER/,/END/p'` gymnastics.
+
+**Write the probe's result to a file instead.** Measured at 1.85s, exact, no
+formatting to fight:
+
+```js
+import fs from 'fs';
+test('probe', () => {
+  fs.writeFileSync('/tmp/probe/out.json', JSON.stringify(result, null, 2));
+});
+```
+
+…then read it with the Read tool. One run, no retries, and the output is
+structured enough to diff between two probes.
+
+### PROVE THE PROBE BEFORE BELIEVING ITS ZERO
+
+The expensive failures of 2026-09-19 were not slow commands, they were **four
+probes that returned a confident wrong answer** and had to be redone:
+
+- the region probe ran against The Cookout, which has no `whenRegion` items → `[]`
+- the ladder probe read `deriveEventPhaseProgress`, but the ranker reads `_eventFoundationActions`
+- the containment probe tested `foodFloor > bandCeiling` → 0 violations (wrong inequality)
+- a discriminator was nearly wired on "all-flat vendors ⇒ no per-head cost" → wrong on 14 of 45
+
+Every shipped guard here carries a `(premise)` test for exactly this reason. **A
+throwaway probe needs the same thing**: before believing a negative, make it
+report a case you already know is positive. A probe that cannot find the known
+defect has not measured the corpus — it has measured itself.
+
 ## FIXED 2026-09-19 (seventeenth entry, same day) — three findings that moved no number, and four claims that did not survive measurement
 
 Commits `0611fae` `0ff388c`. **488 suites / 7,070 tests.** CI run **670** green
