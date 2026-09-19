@@ -1,6 +1,13 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-19 (second run, same day:
+**Measured reality, not intentions.** Updated 2026-09-19 (third run, same day:
+three findings that moved NO number — the 2026-08-17 ranking ruling's own bar is
+provably unreachable by retuning, eight playbooks price food above the whole
+event it belongs to, and D3's obvious discriminator was measured and found wrong
+before it was written. Worth carrying forward: recording IS a result when the fix
+is not yours, and a lane's finding is a lead rather than a fact — two of five
+carried forward did not survive checking. See the seventeenth entry.)
+Before that, on 2026-09-19 (second run, same day:
 four measurement lanes run with subagents, and three of the four audit counts
 came back wrong — deadlines 4 -> 13, money 5 -> 11, and the "139 missing asks"
 right in its number and wrong in its conclusion, since 138 of them already ask
@@ -106,8 +113,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `edc51304` |
-| Jest | **7,058 passed**, 1 skipped, **0 failed**, **486 suites** (re-measured 2026-09-19, after the sixteenth entry). Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `0ff388c4` |
+| Jest | **7,070 passed**, 1 skipped, **0 failed**, **488 suites** (re-measured 2026-09-19, after the seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -119,6 +126,82 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-19 (seventeenth entry, same day) — three findings that moved no number, and four claims that did not survive measurement
+
+Commits `0611fae` `0ff388c`. **488 suites / 7,070 tests.** CI run **670** green
+through e2e. Both commits RECORD rather than change, and both say so in their
+first line — the pattern `deadlinesThatContradictTheirSource.test.js` set: "a
+FACT about them, not a change to them."
+
+### 1 — The 2026-08-17 ranking ruling's own bar is unmet (`0611fae`)
+
+The ruling closed with "Bar for done: the re-derived case inverts … Both
+directions, or the fix is half a fix." **The second holds; the first does not.**
+Its own case, on the shipping board at T-3:
+
+    3. Ask Ironwood about insurance.   c=0.00 l=4.90 tot=4.90  due=-27
+    6. Reconfirm Ironwood for the day  c=0.00 l=0.00 tot=0.00  due=+3
+
+The ruling's arithmetic assumed the reconfirm scored **7.0**; the shipping raise
+emits no consequence signal at all, so it scores **0.00**. Calibrated against a
+row the corpus does not produce.
+
+**And it is provably unreachable by retuning.** Measured candidate by candidate,
+every route to the first direction breaks the SAME FOUR guards — and each of
+those four IS the second direction, including one named "both directions, or it
+is half a fix". The model is missing a term, not mis-tuned, and the missing term
+is the one Rafanelli named from the ruling seat: "Rank the closing window."
+`latenessBoost` pays for being PAST a window; nothing pays for one CLOSING.
+
+Board packet at `docs/audits/2026-09-19_CLOSING_WINDOW_BOARD_PACKET.md` — three
+shapes, each costed in guards. The guard **fails on any implementation of the
+axis**, deliberately, so whoever adds it goes through the packet rather than past.
+
+### 2 — Eight playbooks price food above the whole event (`0ff388c`)
+
+Food is a subset, so its per-guest ceiling cannot exceed the whole-event per-head
+ceiling. Eight do — Card Party worst at **1.87x** ($14–30/head band over a food
+list itemizing $26–56/guest, both in the same shell). Second contributor,
+separated because it is not a pricing question: the two engines size the same
+event to different headcounts (food plan → `eventSizing().ceiling`, estimator →
+raw `guestCount`; The Cookout 46 vs 40). Both readings are defensible, which is
+why neither moved.
+
+### 3 — D3 verified, and the obvious discriminator was WRONG
+
+Two rows where required vendors exceed the whole budget ceiling: **Surprise
+Proposal 5.83x** (required floor $1,750 against a $300 ceiling; all seven vendor
+rows are `flat` — a photographer and a ring) and **Conference 2.35x**.
+
+The tempting fix — "refuse a per-head estimate when a playbook's vendor rows are
+all flat" — was measured before being written and is wrong: **14 of 45** playbooks
+are all-flat, including Quinceañera at 150 guests and a PTA fundraiser at 250.
+All-flat vendors does not mean no per-head cost. Not built.
+
+### Four claims that did not survive measurement
+
+Worth listing together, because three came from this run's own work and one from
+a measurement lane:
+
+| claim | what measurement said |
+|---|---|
+| food containment, first probe | tested `foodFloor > bandCeiling` → 0 violations. **Wrong inequality**; it is ceiling-over-ceiling, and it is 8 rows not 7 |
+| `fp.bandLow/bandHigh` are the cost band | they are the **guest-count** band (32–46). The cost is `perGuestLow/perGuestHigh` |
+| "all-flat vendors ⇒ no per-head cost" | 14 of 45 playbooks are all-flat, including 150- and 250-guest events |
+| Crab Feast's `where_buy` names a stale vendor (lane) | `crabServing.js` carries a dated record: Captain White's left Maine Ave in Nov 2021 and **Jessie Taylor is the vendor there now**. The option is correct — a misreading of the adjacent `why`. Nothing to fix |
+| `playbookPerHeadBudget.test.js` "locks the disagreement in" (lane) | true but honest — the file states the scope and why ("reconciling those is a pricing-research call, not this bug"). Not a guard that cannot fail |
+
+### Worth carrying forward
+
+- **Recording is a result.** Three of this run's findings were real and none was
+  this pass's to fix. A commit whose first line is "NO NUMBER MOVED" with the
+  measurement behind it converts an open question into one decision.
+- **Measure the discriminator before you wire it.** The all-flat predicate looked
+  obviously right and was wrong on 14 rows. One probe, thirty seconds.
+- **A lane's finding is a lead, not a fact.** Two of five carried forward from
+  the measurement lanes did not survive checking. Both were plausible readings of
+  real code.
 
 ## FIXED 2026-09-19 (sixteenth entry, same day) — four measurement lanes, and three of the four audit counts were wrong
 
