@@ -9,6 +9,7 @@
 // unknown — never a fabricated location.
 import { isPlausibleCityText } from './cityText';
 import { METRO_MARKETS } from './vendorEstimator';
+import { marketFor } from './marketFor';
 
 export const METRO_GEO = {
   nyc: { city: 'New York', state: 'NY' },     sf:  { city: 'San Francisco', state: 'CA' },
@@ -57,12 +58,16 @@ export function eventGeoQuery(event, profile) {
   // room name ("Grand Ballroom") still falls through to the metro.
   const vEarly = String(event.venue || '').trim();
   if (vEarly && /[\d,—-]/.test(vEarly) && !/^(host'?s home|our (place|home|backyard)|home)$/i.test(vEarly)) return vEarly;
-  const g = event.market && METRO_GEO[event.market];
+  // The market id under EITHER field name. Events saved by hostv2 before
+  // 2026-09-19 carry `metroMarket`; reading only `market` returned "" for every
+  // one of them, and an empty geo anchor kills the weather outlook outright.
+  const mktId = marketFor(event);
+  const g = mktId && METRO_GEO[mktId];
   if (g) return `${g.city}, ${g.state}, US`;
   // METRO_GEO covers fewer metros than the create-flow dropdown (METRO_MARKETS) — so a
   // host who picked e.g. Miami/SF/Boston set event.market but METRO_GEO missed it. Resolve
   // the picked market through the CANONICAL dropdown list so every choice yields a city.
-  const mk = event.market && METRO_MARKETS.find((m) => m.id === event.market);
+  const mk = mktId && METRO_MARKETS.find((m) => m.id === mktId);
   if (mk && mk.label) return mk.label.split(/[/(]/)[0].trim(); // "San Francisco / Bay Area" → "San Francisco"
   if (city) return st ? `${city}, ${st}` : city;
   const v = String(event.venue || '').trim();

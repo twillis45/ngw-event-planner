@@ -19,6 +19,7 @@ import { geoItemForPurchase } from '../knowledge/geoItemMap';
 // The one display form for an answer that may be a string OR a list. `decisionType`
 // is a leaf (no imports of its own), so this cannot create a cycle.
 import { answerText, answerList } from '../decisionType';
+import { marketFor } from '../marketFor';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -4224,7 +4225,7 @@ export function playbookFoodPlan(event, opts = {}) {
   // prompt. Region resolves from the metro/state; untagged items always show.
   const eventRegion = (() => {
     const st = String(event.state || '').trim().toUpperCase();
-    const mkt = String(event.market || '').trim().toLowerCase();
+    const mkt = marketFor(event).toLowerCase();
     if (['DC', 'MD', 'VA'].includes(st) || ['dc', 'dmv'].includes(mkt)) return 'DMV';
     return null;
   })();

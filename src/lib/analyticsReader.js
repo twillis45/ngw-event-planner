@@ -13,6 +13,7 @@
 // ESM-only (per the prod-bundle lesson — no CJS module.exports in src/).
 
 import { getPlaybook } from './playbooks';
+import { marketFor } from './marketFor';
 import { eventCulturalMeta, isAtHome, placePhrase } from './doItForMe';
 import { getLesson } from './eventMemory';
 import { hostIntel } from './hostIntel';
@@ -99,7 +100,7 @@ export function locationSpread(events) {
   let atHome = 0;
   let missingVenue = 0;
   for (const e of evs) {
-    const market = String((e && e.market) || '').trim() || 'Unspecified';
+    const market = marketFor(e) || 'Unspecified';
     byMarket[market] = (byMarket[market] || 0) + 1;
     if (isAtHome(e)) atHome += 1;
     if (!placePhrase(e)) missingVenue += 1;

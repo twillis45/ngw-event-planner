@@ -120,6 +120,7 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { budgetFor } from '@app/lib/budgetFor';
+import { marketFor } from '@app/lib/marketFor';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
@@ -1894,11 +1895,16 @@ export default function HostShellV2() {
     catch { return { enabled: false, hasRoster: false, tableCount: 0, tables: [], confirmed: [], unassigned: [], dietChips: [], totals: { confirmed: 0, seated: 0, unassigned: 0, tableCount: 0, avgPerTable: null, tablesEven: false, allSeated: false } }; }
   }, [event]);
   const rushFactor = useMemo(() => { try { return getRushFactor(event.date); } catch { return { multiplier: 1, label: null, explanation: null }; } }, [event.date]);
-  const metroMkt = event.metroMarket ? METRO_MARKETS.find(m => m.id === event.metroMarket) : null;
+  // The market id under EITHER field name. This shell used to write `metroMarket`
+  // while the CRA create flow wrote `market`, so an event created in one shell
+  // showed "National baseline" — and priced at the national factor — over a
+  // market the host had already picked in the other.
+  const metroId = marketFor(event);
+  const metroMkt = metroId ? METRO_MARKETS.find(m => m.id === metroId) : null;
   const vendorPlan = useMemo(() => {
     try {
       return buildVendorPlan(event, {
-        metroFactor: getMetroFactor(event.metroMarket),
+        metroFactor: getMetroFactor(metroId),
         metroLabel: metroMkt ? metroMkt.label : null,
         rush: rushFactor,
       });
@@ -18137,11 +18143,15 @@ export default function HostShellV2() {
                       <span>Which market are you in?</span>
                       <button className="mini" onClick={() => setSheet(s => ({ ...s, marketOpen: false }))}>Done</button>
                     </label>
-                    <select id="metro-market-pick" className="field" value={event.metroMarket || ''}
+                    <select id="metro-market-pick" className="field" value={marketFor(event)}
                       onChange={e => {
                         const id = e.target.value;
                         const m = id ? METRO_MARKETS.find(x => x.id === id) : null;
-                        patchEvent({ metroMarket: id || null },
+                        // Write the CANONICAL `market` and CLEAR the old name. Both
+                        // shells' pickers are the same METRO_MARKETS list, so these were
+                        // always one fact; writing both would let them diverge on the
+                        // next edit, and `market` is the field marketFor() prefers.
+                        patchEvent({ market: id || null, metroMarket: null },
                           m ? `Estimates now use ${m.label} typical rates.` : 'Back to a national baseline — no market set.');
                       }}>
                       <option value="">National baseline — no market set</option>
