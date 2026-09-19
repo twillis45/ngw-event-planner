@@ -105,6 +105,30 @@ export const HOST_LABELS = Object.freeze({
   PRACTITIONER_GUIDANCE: 'Practitioner guidance',
   PLANNING_BASELINE:    'Planning baseline',
   NEEDS_CONFIRMATION:   'Needs confirmation',
+  // ── THE BADGE MUST DESCRIBE THE NUMBER ON SCREEN (2026-09-19) ─────────────
+  // The same defect the two labels above were split for, one layer along. A
+  // purchase line's price can be MOVED after it is sourced: a decision declares
+  // `costFactors: { '<option>': <mult> }` and the chosen option re-prices the
+  // row. 36 of the corpus's 51 cost factors carry `tier: 'synthesized'` and a
+  // note that reads, in the authors' own words, "Cost factor heuristics need
+  // verification against actual pricing."
+  //
+  // MEASURED on The Cookout's `p_grown_folks` — one row, three picks, IDENTICAL
+  // badge and identical detail string:
+  //
+  //   no pick                      $147-$368   Directly sourced
+  //   "Red drink + soda + water"   $11-$28     Directly sourced   (x0.2)
+  //   "Full bar + punch"           $206-$515   Directly sourced   (x1.4)
+  //
+  // The citation grounds the DRINK RATE (~1 alcoholic drink/guest/hour) and says
+  // nothing about 0.2 or 1.4. A host reading $206-$515 under "Directly sourced"
+  // is being vouched a number nobody checked.
+  //
+  // NOTHING IS DOWNGRADED THAT WAS EARNED. The base rate is still sourced and
+  // still says so in the detail; this label states the true scope of the claim
+  // about the figure actually displayed. A factor of exactly 1, or one whose own
+  // provenance IS researched, leaves the label untouched.
+  SOURCED_THEN_ADJUSTED: 'Sourced base, adjusted',
 });
 
 // The three labels that mean "a real source backs this". `Directly sourced` used to
@@ -171,7 +195,7 @@ function readProvenance(prov) {
  * consensus, cultural tradition and primary evidence, which is how 485 lines came to
  * render as silence.
  */
-export function classifyClaim(prov, costProv) {
+export function classifyClaim(prov, costProv, applied) {
   const p = readProvenance(prov);
 
   // NO BASIS VOCABULARY DECLARED — 368 lines with no provenance at all, 13 carrying
@@ -213,6 +237,10 @@ export function classifyClaim(prov, costProv) {
       verificationLabel: verDef ? verDef.label : null,
       rationale: p ? (p.rationale || null) : null,
       hostLabel: HOST_LABELS.PLANNING_BASELINE,
+      // Shape parity with the main return. A planning baseline never claimed the
+      // figure was checked, so an unverified factor cannot degrade it — but the
+      // field exists on both paths so no caller has to branch on which it got.
+      adjustedUnverified: false,
       directCitationEligible: false,
       recommendationEligible: true,  // the app stays decisive; it just names what it is
       offLadder: false,
@@ -303,7 +331,27 @@ export function classifyClaim(prov, costProv) {
     hostLabel = HOST_LABELS.PLANNING_BASELINE;
   }
 
+  // ── AND THEN THE PRICE MOVED (2026-09-19) ──────────────────────────────────
+  // `applied` is the cost factor the food plan actually put on this line —
+  // `{ factor, unverified }`, or absent. OPTIONAL BY DESIGN: every existing
+  // two-argument caller is byte-identical to before, which is why the corpus
+  // proofs below this file keep passing unchanged.
+  //
+  // Only a SOURCED label degrades. A line already reading "Planning baseline"
+  // never claimed the number was checked, so an unverified multiplier tells the
+  // host nothing new; "Cultural tradition" is a claim about where the dish comes
+  // from, which a price factor does not touch. The three labels that vouch for a
+  // FIGURE are the three that must stop vouching when the figure changes.
+  const movedUnverified = !!(applied && applied.unverified && Number(applied.factor) !== 1);
+  if (movedUnverified && SOURCED_LABELS.includes(hostLabel)) {
+    hostLabel = HOST_LABELS.SOURCED_THEN_ADJUSTED;
+  }
+
   return {
+    // True when an unverified multiplier moved the figure — so a caller that
+    // wants to say more than the label can (the factor itself, the author's own
+    // "needs verification" note) has the fact rather than having to re-derive it.
+    adjustedUnverified: movedUnverified,
     // `pq` throughout — a migrated cost-only line has no quantity provenance, and
     // reports that honestly as a null basis rather than borrowing the price's.
     basis: pq.tier || null,

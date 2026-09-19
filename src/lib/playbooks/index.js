@@ -4123,15 +4123,46 @@ export function playbookFoodPlan(event, opts = {}) {
   // This replaces the beverage/sourcing one-offs conceptually and works for every playbook that opts in.
   const _choices = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
   const _decisions = Array.isArray(playbook && playbook.decisions) ? playbook.decisions : [];
+  //
+  // ── THE FACTOR'S PROVENANCE IS RETURNED WITH IT (2026-09-19) ───────────────
+  // This returned a bare number, so the fact that a SYNTHESIZED multiplier had
+  // moved the price was discarded at the moment it was applied — and the badge
+  // downstream went on describing the base rate.
+  //
+  // MEASURED on The Cookout's `p_grown_folks`, same row, same badge, same detail
+  // string at every pick:
+  //
+  //   no pick                        $147-$368   "Directly sourced"
+  //   "Red drink + soda + water"     $11-$28     "Directly sourced"   (x0.2)
+  //   "Full bar + punch"             $206-$515   "Directly sourced"   (x1.4)
+  //
+  // The cited source grounds the DRINK RATE (~1 alcoholic drink/guest/hour). It
+  // says nothing about 0.2 or 1.4 — those come from a `costFactorProvenance`
+  // whose own note reads "Cost factor heuristics need verification against
+  // actual pricing." 36 of 51 cost factors in the corpus are `synthesized`.
+  //
+  // Same defect the badge was fixed for on 2026-08-15, one layer along: it
+  // answered for a number it had not proved. So the basis travels with the
+  // factor and the label degrades where it must.
   const choiceFactorFor = (p) => {
     let f = 1;
+    let unverified = false;
+    let note = '';
     for (const d of _decisions) {
       if (!d || !d.costFactors || !Array.isArray(d.affects) || !d.affects.includes(p.id)) continue;
       const picked = _choices[d.id] != null ? _choices[d.id] : d.default;
       const mult = Number(d.costFactors[picked]);
-      if (Number.isFinite(mult) && mult > 0) f *= mult;
+      if (!Number.isFinite(mult) || mult <= 0) continue;
+      f *= mult;
+      // A factor of exactly 1 moves nothing, so it cannot mislead about anything.
+      if (mult === 1) continue;
+      const cp = d.costFactorProvenance || null;
+      if (!cp || cp.verificationStatus !== 'researched' || cp.tier !== 'researched') {
+        unverified = true;
+        if (!note && cp && cp.note) note = String(cp.note);
+      }
     }
-    return f;
+    return { factor: f, unverified: unverified && f !== 1, note };
   };
 
   // Protein SOURCING tier (1597-2) — reshapes the PROTEIN lines' cost (butcher baseline,
@@ -4371,7 +4402,8 @@ export function playbookFoodPlan(event, opts = {}) {
       if (_src !== 1) { uLow *= _src; uHigh *= _src; }
       // General data-driven choice→cost factor — any playbook decision with costFactors/affects re-prices
       // its line here (single source of truth; no per-playbook hardcoding). Default option ⇒ 1.0.
-      const _choiceF = choiceFactorFor(p);
+      const _choiceBasis = choiceFactorFor(p);
+      const _choiceF = _choiceBasis.factor;
       // The ONE regional multiplier this line will take: its own commodity
       // factor when geoItemMap maps it, otherwise the basket mean. Never both.
       const ppf = factorFor(p);
@@ -4496,6 +4528,12 @@ export function playbookFoodPlan(event, opts = {}) {
         // names which numbers came from a published KCR rather than the authored file.
         provenance: purchaseProvenance(playbook, p0) || null,
         costProvenance: purchaseCostProvenance(playbook, p0) || null,
+        // What MOVED this price, carried out with it. `classifyClaim` reads it so
+        // a sourced badge cannot go on vouching for a base rate after an
+        // unverified multiplier has changed the number on screen.
+        costFactorApplied: _choiceBasis.factor !== 1
+          ? { factor: _choiceBasis.factor, unverified: _choiceBasis.unverified, note: _choiceBasis.note || '' }
+          : null,
         qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
         governedFields: p._governed || [],
       };
