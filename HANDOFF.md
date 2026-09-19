@@ -1,6 +1,14 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-19 (four open audit items,
+**Measured reality, not intentions.** Updated 2026-09-19 (second run, same day:
+four measurement lanes run with subagents, and three of the four audit counts
+came back wrong — deadlines 4 -> 13, money 5 -> 11, and the "139 missing asks"
+right in its number and wrong in its conclusion, since 138 of them already ask
+the host a question through their own label. Worth carrying forward: the right
+detector on the WRONG POPULATION is still a wrong answer — that happened three
+times in two days — and a guard that cannot fail is worse than none, which
+caught two of this run's own guards. See the sixteenth entry below.)
+Before that, on 2026-09-19 (four open audit items,
 each one a fact its own consumer unqualified: a synthesized cost multiplier
 wearing a "Directly sourced" badge; one metro market written under two field
 names, so three engines never heard the host's choice; 224 vendor cost ranges
@@ -98,8 +106,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `f4bb60bd` |
-| Jest | **7,026 passed**, 1 skipped, **0 failed**, **483 suites** (re-measured 2026-09-19, after the four audit fixes below). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `edc51304` |
+| Jest | **7,058 passed**, 1 skipped, **0 failed**, **486 suites** (re-measured 2026-09-19, after the sixteenth entry). Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -111,6 +119,98 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-19 (sixteenth entry, same day) — four measurement lanes, and three of the four audit counts were wrong
+
+Commits `7bfa0fd` `6a0fd04` `24ab49f` `edc5130`. **486 suites / 7,058 tests.**
+Run with subagents on the measurement lanes, integration and adjudication here.
+**Every lane came back with a different number than the audit claimed, and in
+three of four the audit was UNDER-counting.**
+
+| lane | audit said | measured | what the gap was |
+|---|---|---|---|
+| deadlines vs source | 4 | **13** | the audit's tool only reads `decisions[]` that match a timing category, and never reads authored prose at all |
+| money divergences | 5 | **11** | 5 same-unit source disagreements, 3 internal, 3 unit-mismatched |
+| `ask` authoring | 139 missing | **12 thin** | the count was right and the conclusion was wrong — see below |
+| board aging | "frozen 5 months" | **confirmed, and worse** | the 2026-08-17 ruling's own bar is measurably unmet on the shipping path |
+
+### 1 — Two ladders, one "when" (`7bfa0fd`)
+
+    _eventFoundationActions   id=date      done=TRUE     "Set the date."
+    deriveEventPhaseProgress  id=datetime  handled=FALSE "Confirm the start time"
+
+Same event, same moment, under a comment claiming "Single source: the same
+`_eventFoundationActions` dominoes eventPlan uses". An unconfirmed hour withholds
+the time from NINE outward artifacts (the vendor-brief run-of-show ships
+`time: null`; `timePhrase()` falls back to the bucket for seven drafts).
+
+**The ledger was fixed and the ranking deliberately was not.** Giving the rung
+consequence was tried and reverted the same hour — three ruled guards said no and
+all three were right, including `hostEngineSelectionParity`, which caught the
+engine headlining the start time while the host shell said food. **And the commit
+records that nothing a host sees changed**, because an e2e guard was written for
+it and then DELETED for failing to fail.
+
+### 2 — Nine cards that argued with themselves (`6a0fd04`)
+
+`buyAt` drives a task title; the `note` drives the line under it. Five cake rows
+said "buy today" over a note saying "order 3–5 days ahead"; Birthday's own `cake`
+DECISION says "if you are already inside the 3 to 5 days a bakery needs". Two
+decision rows had the same shape, and Wedding compounded it into a sequencing
+inversion — SIGN the band sixty days before being asked to CHOOSE one.
+
+Every move is to the playbook's **own authored prose**; three rows disagreeing
+only with a commercial source stay pinned. The sweep written to guard the five
+found a **sixth** the manual pass missed.
+
+### 3 — "Honestly backed by the raw data below" (`24ab49f`) — and NO number moved
+
+`sourcing.js` claimed its +18% grocery premium was backed by the table beneath
+it. That table supports **five** answers (grocery 1.05–1.08 against shipped
+1.18), and a second measurement settled it: `srcFactorFor` returns 1.0 for any
+line the canonical table prices, so **zero** lines across ALL_PLAYBOOKS reach the
+factor. The table is the complement of the factor's own population. The claim was
+withdrawn; 0.85 / 1.18 / 1.0 are untouched, and the record stays ungrounded.
+
+### 4 — Twelve terse questions (`edc5130`)
+
+The "139 missing asks" count is right and its conclusion was wrong: 138 of the
+139 have a question-shaped label, and the board already asks it. `isCircularAsk`
+flags all 138 — a false positive on that population, since it exists to catch an
+ask restating a NON-question title. What is actually thin is the tail: median
+label-question is 5 words, thirteen are ≤3 against option lists they cannot cover
+("Alcohol?" over four options). Twelve now author a real question.
+
+### Worth carrying forward
+
+- **The right detector on the wrong population is still a wrong answer.** This is
+  the third time in two days: The Cookout for the region probe, `phaseProgress`
+  for the ladder, and `isCircularAsk` over the label-as-question path. Each
+  produced a confident number that meant nothing.
+- **A finding can be real and its remedy still not yours.** Item 1's ranking half
+  and the metro/rush factors both stopped at a ruled constant. Stopping is a
+  result; retuning the guard would not have been.
+- **A guard that cannot fail is worse than none.** Two were caught this run — the
+  e2e count guard that passed with the fix reverted (deleted), and a flat
+  three-day tolerance that swallowed the very Birthday cake it was written for
+  (made proportional).
+- **Authoring the first instance of something finds the hole.** Watch Party's
+  `ppv_cost` is the corpus's first gated decision with an authored ask, and it
+  failed `authoredAskReachesTheHero` — whose fixture had never set a `whenChoice`.
+  Four gated decisions had been invisible to that sweep the whole time.
+
+### Still open, and why
+
+- **Board proximity** — `actionConsequence` reads only static properties and
+  `latenessBoost` saturates, so the board cannot respond to the event closing.
+  MEASURED: identical top three T-150 → T-1 on both an empty and a worked plan,
+  and the 2026-08-17 ruling's bar ("the re-derived case inverts") is unmet — the
+  dead insurance COI at −27 days still outranks the vendor reconfirm closing in 3,
+  because that reconfirm row ships `c=0.00` where the ruling's arithmetic assumed
+  7.0. **Re-ruling, not a constant to pick.**
+- **Six money divergences** need pricing research, not code.
+- **Four deadlines** disagree only with a commercially-interested source.
+- **Vendor Detail Cockpit** still CRA-only, blocked on the post-Sprint-2 deletion.
 
 ## FIXED 2026-09-19 (fifteenth entry) — four open audit items, each one a fact its own consumer unqualified
 
