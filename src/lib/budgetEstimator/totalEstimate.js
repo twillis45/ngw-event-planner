@@ -23,6 +23,48 @@ import { moneyProvenanceFor } from './moneyProvenance.js';
 // own playbook that disagrees with the curated table — reconciling those is
 // a real pricing-research call, not a missing-data bug, and out of scope
 // here. This only fills the actual gap.
+// ─── WHAT THE PLAYBOOK'S OWN ROSTER SAYS THIS CANNOT COST LESS THAN ──────────
+//
+// A per-head model multiplies a band by a headcount. That is the wrong shape for
+// an event whose costs are FLAT and whose guest count is one or two. MEASURED
+// 2026-09-19 — Surprise Proposal's own vendor roster declares two REQUIRED rows,
+// both `costUnit: 'flat'`: a hidden photographer ($250-800) and a jeweller
+// ($1,500-8,000, "ring + resize + insurance"). Required floor $1,750. The
+// estimate for its own typical headcount of one guest: **$100-300**.
+//
+//   Surprise Proposal @1    required floor $1,750   estimate ceiling $300    5.8x
+//   Conference @50          required floor $47,000  estimate ceiling $20,000 2.4x
+//
+// The playbook contradicts its own estimate, using nothing but data it authored.
+//
+// THIS REPORTS THE CONTRADICTION AND DOES NOT RESOLVE IT, deliberately. The two
+// available remedies are both product calls: REFUSE (return null, which this
+// function already does for a missing type or count, and which matches the
+// house rule that a figure nobody can stand behind is withheld rather than
+// repaired) or FLOOR the estimate at the roster sum (which gives the host a
+// number, but one built from vendor ranges that carry no provenance of their
+// own — see moneyProvenance.js#vendor.playbookCostRange). Picking between them
+// changes what a host sees, so it is named on the result instead, the same way
+// `costFactorApplied` carries a factor's basis out to whoever renders it.
+//
+// COUNTED FROM `required: true` ONLY, and at the caller's real headcount, so an
+// optional videographer never inflates the floor and a per-guest row scales the
+// way the vendor plan scales it.
+function requiredVendorFloor(type, guests) {
+  try {
+    const pb = getPlaybook(type);
+    const rows = (pb && Array.isArray(pb.vendors) ? pb.vendors : [])
+      .filter((v) => v && v.required === true && Array.isArray(v.costRange) && v.costRange.length === 2);
+    if (!rows.length) return null;
+    const sum = rows.reduce((acc, v) => {
+      const perGuest = String(v.costUnit || '').trim().toLowerCase() === 'per guest';
+      const n = Number(v.costRange[0]);
+      return acc + (Number.isFinite(n) ? n * (perGuest ? Math.max(1, guests) : 1) : 0);
+    }, 0);
+    return sum > 0 ? Math.round(sum) : null;
+  } catch (_e) { return null; }
+}
+
 function playbookPerHead(type) {
   try {
     const pb = getPlaybook(type);
@@ -196,14 +238,22 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
       cite('budget.categoryShares');
     }
   }
+  const lowTotal = Math.round(low / 100) * 100;
+  const highTotal = Math.round(high / 100) * 100;
+  // The playbook's own required-vendor floor, and whether this estimate sits
+  // below it. Reported, never applied — see requiredVendorFloor's own note for
+  // why the remedy is a product call and not a constant to pick here.
+  const vendorFloor = requiredVendorFloor(type, guests);
   return {
-    lowTotal:  Math.round(low  / 100) * 100,
-    highTotal: Math.round(high / 100) * 100,
+    lowTotal,
+    highTotal,
     destinationAdjusted,
     nightsAdjusted,
     // The constants this particular figure was built from. Pass straight to
     // `moneyDisclosure` — today it always answers mustMark:true, because not
     // one of them is grounded.
     provenanceKeys,
+    requiredVendorFloor: vendorFloor,
+    belowRequiredVendors: vendorFloor != null && highTotal < vendorFloor,
   };
 }
