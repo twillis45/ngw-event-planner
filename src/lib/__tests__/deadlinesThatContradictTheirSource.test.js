@@ -59,12 +59,24 @@ describe('a deadline that contradicts its source is now visible', () => {
     .map(({ pb, d }) => ({ pb, id: d.id, c: timingConflict(d) }))
     .filter((x) => x.c);
 
-  test('THE FINDING: four decisions tell the host to act too LATE', () => {
+  test('THE FINDING: three decisions tell the host to act too LATE', () => {
+    // WAS FOUR. Holiday Party's venue left this list on 2026-09-19 — and it left
+    // for the one reason this file's closing guard allows. Its own `why` reads
+    // "the good rooms book out months ahead in December" and its own
+    // `priorityBasis.rationale` says "December rooms book out well ahead", while
+    // the row shipped T-35d: the playbook contradicted ITSELF, in two authored
+    // fields, and the source merely agreed. It moved to T-75d on its own prose.
+    //
+    // The three below are untouched and stay untouched: each disagrees ONLY with
+    // a commercially-interested third party, and timingProvenance.js:314 records
+    // the house answer — such a source does not move a host-facing date by
+    // itself. Two of them are probably over-matched categories anyway (a
+    // backyard is not the "weekend party space" the source prices; a 20-minute
+    // proposal shoot is not wedding photography), which is a different fix.
     const late = conflicts().filter((x) => x.c.direction === 'late')
       .map((x) => `${x.pb}/${x.id}`).sort();
     expect(late).toEqual([
       'Day Party/venue',
-      'Holiday Party/venue',
       'Retirement Party/venue',
       'Surprise Proposal/photographer_hidden',
     ]);
@@ -120,11 +132,13 @@ describe('the two nulls stay distinguishable', () => {
 });
 
 describe('nothing was silently moved', () => {
-  test('the four late deadlines still ship their authored values', () => {
-    // This commit adds a FACT about the deadlines, not a change to them. If a
-    // future pass decides to move them, it should fail here first and say so.
+  test('the three remaining late deadlines still ship their authored values', () => {
+    // The original commit added a FACT about the deadlines, not a change to
+    // them: "If a future pass decides to move them, it should fail here first
+    // and say so." It did, on 2026-09-19, and this is the saying-so — Holiday
+    // Party moved to 75 days on its OWN prose and is asserted separately below,
+    // because a row that no longer conflicts has no conflict to read a lead from.
     const want = {
-      'Holiday Party/venue': 35,
       'Retirement Party/venue': 35,
       'Day Party/venue': 28,
       'Surprise Proposal/photographer_hidden': 30,
@@ -135,5 +149,16 @@ describe('nothing was silently moved', () => {
       if (k in want) got[k] = timingConflict(d).ourLeadDays;
     }
     expect(got).toEqual(want);
+  });
+
+  test('Holiday Party moved, and moved far enough to stop conflicting', () => {
+    // A move that left the row still short would be the worst outcome: the
+    // number changed, the contradiction survived, and the pin above no longer
+    // watches it.
+    const { d } = allDecisions().find((x) => x.pb === 'Holiday Party' && x.d.id === 'venue');
+    expect(d.when).toBe('T-75d');
+    expect(timingConflict(d)).toBe(null);
+    // …and it is still the playbook's own words that justify it.
+    expect(String(d.why)).toMatch(/months ahead/i);
   });
 });

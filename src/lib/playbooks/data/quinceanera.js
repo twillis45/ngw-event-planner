@@ -371,7 +371,7 @@ const quinceanera = {
       where: ['Quinceañera boutique', 'Online', 'Party store'],
       unitCostRange: [80, 300],
       essential: true,
-      buyAt: 'T-3d',
+      buyAt: 'T-14d',
       note: 'COMMONLY FORGOTTEN under the bigger vendor decisions. The heels for the changing of the shoes, the last doll, the crown and scepter, the toast glasses, and any candles or roses are small purchases that carry the most meaningful moments — gather them in one kit at 2 weeks out and assign who hands off each.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
