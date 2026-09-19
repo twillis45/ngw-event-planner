@@ -1,5 +1,45 @@
 # Where We Are -- live status board
 
+## 2026-09-19 — the weather ping could not arrive on a phone, and the PWA that would fix it is parked
+
+`main` @ `9960d42`. 490 suites / 7,088 tests. CI run 674, Deploy Pages 351.
+
+The board's one alert channel was desktop-only. `HostShellV2` gated its weather
+notification on `typeof Notification !== 'undefined'` and then called
+`new Notification()` inside a bare catch — but that constructor throws on every
+mobile browser (Chrome, Samsung and Opera on Android all raise `TypeError`; an
+installed iOS web app the same; an iOS Safari tab never exposes `Notification`
+at all). The only path a phone accepts is
+`ServiceWorkerRegistration.showNotification()`, and hostv2 registers no service
+worker and ships no manifest. So a host on the product's declared flagship
+viewport opted in, was told *"you'll get a ping the moment the forecast moves"*,
+and the alert was dropped into a comment.
+
+`src/lib/notifyDelivery.js` now owns the real question — *will a ping arrive*,
+not *is the symbol defined* — tries the service-worker path first, falls back to
+the constructor for desktop, and returns the outcome instead of swallowing it.
+The opt-in no longer promises delivery on a granted permission, and an
+undeliverable alert tells the host once and turns the watch off. The news still
+reaches them through the in-app weather line, so it degrades to the pill.
+
+**Decision recorded (Todd, 2026-09-19): the PWA track is PARKED.** Manifest +
+service worker + push is what would make mobile notifications work, and it is
+simultaneously the entire Apple Watch / Wear OS answer — Apple states push from
+a Home Screen web app appears on a paired Apple Watch automatically, so no watch
+app is needed and none should be built (watchOS has no WebView; it would be a
+second Swift codebase, and copyable besides). It is parked because push
+subscriptions are user data that pull in stage 5's open Supabase RLS row, and
+because the product has ~0 measured events. Revisit when stage 5 closes **and**
+real events are flowing — not before.
+
+Three things worth keeping. A capability check must test the capability, not the
+symbol. The first ORDER test passed its own red-proof, because it paired a
+throwing constructor with a working worker and the code fell through either way
+— pinning an order needs a case where both paths would succeed. And the obvious
+fix ("detect iOS, show an Add to Home Screen hint") was false for this build:
+with no manifest iOS saves a bookmark, and even installed the constructor throws
+with no worker behind it.
+
 ## 2026-09-17 — the board's readiness pills had no opener on the phone
 
 A Playwright click on the "Checklist" pill at 390x844 failed with

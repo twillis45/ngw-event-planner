@@ -113,8 +113,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `0ff388c4` |
-| Jest | **7,070 passed**, 1 skipped, **0 failed**, **488 suites** (re-measured 2026-09-19, after the seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `9960d42` |
+| Jest | **7,088 passed**, 1 skipped, **0 failed**, **490 suites** (re-measured 2026-09-19, after the eighteenth entry; CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -126,6 +126,72 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-19 (eighteenth entry, same day) — the one alert channel was desktop-only, and the PWA that would fix it is PARKED
+
+**`9960d42`.** 490 suites / 7,088 tests (from 489 / 7,077). CI run 674, Deploy
+Pages 351 green.
+
+**The defect.** hostv2's weather opt-in told the host *"you'll get a ping the
+moment the forecast moves"* and then called `new Notification()` inside a bare
+catch commented *"notification construction can throw on some platforms."* True,
+and the whole bug — it throws on every platform this product calls its flagship:
+
+| surface | `Notification` exposed | `new Notification()` |
+|---|---|---|
+| iOS Safari tab | **no** | — |
+| iOS Home Screen web app | yes (16.4+) | **throws** |
+| Chrome / Samsung / Opera Android | yes | **throws TypeError** |
+| desktop | yes | works |
+
+The only mobile path is a service worker, and hostv2 registers none (no
+`manifest.json`, no worker — measured). A 390px-first product's one alert
+channel was desktop-only and said so nowhere. `notifyDelivery.js` now answers
+*"will a ping arrive"* rather than *"is the API exposed"*, tries the worker
+first, and **returns** the outcome instead of swallowing it; the opt-in stops
+promising delivery on a granted permission, and an undeliverable alert tells the
+host once and turns the watch off rather than leaving a toggle reading "on" over
+a dead channel.
+
+### THE DECISION, so it is not re-opened cold: the PWA track is PARKED (Todd, 2026-09-19)
+
+Asked directly whether to do it. Answer: **nothing now.** Manifest + service
+worker + push is what would make mobile notifications work — and it is also the
+entire Apple Watch / Wear OS answer, since Apple states push from a Home Screen
+web app appears *"on the Lock Screen, in Notification Center, and on a paired
+Apple Watch."* No watch app, no App Store, no second codebase. It is parked
+anyway because push subscriptions are user data and drag in stage 5's open
+Supabase RLS row, and because the product has ~0 measured events — day-of wrist
+tooling ahead of any real event is building ahead of evidence.
+
+**Revisit when** stage 5's four open rows are closed AND real events are running
+through the product. Not before. A native watch app stays out regardless:
+watchOS has no WebView, so it is a second codebase in Swift, and by Sprint 56G's
+own framework it is copyable Product Excellence, not a moat.
+
+### Worth carrying forward
+
+**A CAPABILITY CHECK MUST TEST THE CAPABILITY, NOT THE SYMBOL.** `typeof
+Notification !== 'undefined'` and "will the host get a ping" are different
+questions, and the gap between them is where a promise dies. Same shape as this
+week's other findings: a fact owned by one accessor, re-derived or unqualified
+by the consumer next to it.
+
+**THE FIRST ORDER TEST PASSED ITS OWN RED-PROOF.** It paired a *throwing*
+constructor with a working worker, so the code fell through and reported the
+worker whichever order it tried. Flipping the order left it green. Pinning an
+ORDER needs a case where **both** paths would succeed — a working constructor
+*and* a working worker — so that "which one ran" carries information. Rewritten
+that way, it fails when the order flips. Third instance this week of a guard
+that could not fail for the thing it named.
+
+**THE OBVIOUS FIX WAS THE WRONG FIX, TWICE OVER.** The first plan was "detect
+iOS, show an Add to Home Screen hint." Research killed it: without a manifest
+iOS saves a *bookmark* that reopens in the browser, and even installed the
+constructor throws with no worker behind it. The hint would have been false. A
+test now asserts none of the copy says it. Checking the platform record before
+writing code also widened the defect from "broken on iPhone" to "broken on every
+mobile browser."
 
 ## Loop costs — MEASURED 2026-09-19, and the cheaper path
 
