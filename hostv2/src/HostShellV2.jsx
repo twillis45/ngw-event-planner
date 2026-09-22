@@ -3242,7 +3242,30 @@ export default function HostShellV2() {
   const guests = guestNumber(event);
   // lib/attendanceModel — likely turnout, WITH the playbook's own attendance
   // overrides (a crab feast's turnout curve isn't a wedding's).
-  const expect = expectedFromPlanned(guests, event.type, (() => { try { return getPlaybook(event.type); } catch { return null; } })());
+  //
+  // ── AND NOT ON A DESTINATION (2026-09-22) ─────────────────────────────────
+  // This called `expectedFromPlanned` DIRECTLY, around `attendanceBand`, so the
+  // destination refusal added to that accessor never reached this tile: a host
+  // who entered 10 for Santa Fe still read "planned around · likely 9–11 on the
+  // day (usually ~10–15% no-shows, a few plus-ones)" — measured in Chromium on
+  // the seeded 80th, after the engine fix had shipped.
+  //
+  // Fourth instance this week of one shape: a fact fixed in the accessor and
+  // re-derived by the consumer beside it. The comment two lines down already
+  // records the previous round of exactly this — "the home tile was the one
+  // surface that ignored it" — for RSVPs, and left this call in place.
+  //
+  // `attendanceBand` owns the question, handles roster / locked / destination /
+  // estimate in one place, and is already computed below as `gBand`. The band is
+  // null-shaped when it does not apply, and a flat band (low === high) has no
+  // spread to narrate, so both collapse to "planned around" on their own.
+  const expect = (() => {
+    try {
+      const b = attendanceBand(event);
+      if (!b || !b.applicable || !b.band) return null;
+      return { low: b.low, high: b.high, note: b.note || (b.shift && b.shift.note) || '' };
+    } catch (_e) { return null; }
+  })();
   // The RSVP truth for this event, when the host keeps a roster. Same engine the
   // food + budget sheets read — the home tile was the one surface that ignored it.
   const gBand = useMemo(() => { try { return attendanceBand(event); } catch { return null; } }, [event]);
@@ -17530,6 +17553,34 @@ export default function HostShellV2() {
                   // 2026-07-11 food-plan audit). Cost/progress math still excludes
                   // skipped lines — the engine's own itemCount/boughtCount already do
                   // (lib/playbooks/index.js:2374) — this just stops hiding the row.
+                  // ── A SHOPPING LIST ASSUMES SOMEWHERE TO PUT THE SHOPPING ──
+                  // `foodSpanNote` has computed `listApplies` since the day it
+                  // was written — three-valued, false ONLY when we know there is
+                  // no kitchen — and until now nothing in this app read it. On a
+                  // destination stay at a hotel the sheet still offered a
+                  // grocery run: proteins from a butcher, ice from a gas
+                  // station, a veggie tray from a deli, for a host with a mini
+                  // fridge and no counter.
+                  //
+                  // FALSE means KNOWN-no-kitchen, so the list is withheld and
+                  // the reason is named. NULL means untold, and the list still
+                  // ships — withholding on an unanswered question would punish
+                  // every host who simply has not been asked yet, and the scope
+                  // note above already discloses what the number covers. That
+                  // asymmetry is deliberate and is the same one foodSpan.js
+                  // draws for itself.
+                  const _span = (() => { try { return foodSpanNote(event); } catch (_e) { return null; } })();
+                  if (_span && _span.listApplies === false) {
+                    return (
+                      <div style={{ padding: '2px 0 14px' }}>
+                        <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>{_span.text}</p>
+                        <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>
+                          No shopping list here — there is no kitchen to cook in. What the day needs is a
+                          caterer, a restaurant, or a room that feeds people.
+                        </p>
+                      </div>
+                    );
+                  }
                   const allItems = (foodPlan.list || []).filter(Boolean);
                   // ── Shopping-run mode: "I'm at X" — the list collapses to THIS
                   // store's unbought lines with a walk-in total. Store truth =
