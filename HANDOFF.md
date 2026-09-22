@@ -113,8 +113,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `9960d42` |
-| Jest | **7,088 passed**, 1 skipped, **0 failed**, **490 suites** (re-measured 2026-09-19, after the eighteenth entry; CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `d9b1deca` |
+| Jest | **7,130 passed**, 1 skipped, **0 failed**, **495 suites** (re-measured 2026-09-22, after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -126,6 +126,63 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-22 (nineteenth entry) — the Santa Fe 80th ran on a backyard party's plan
+
+Four commits. 495 suites / 7,130 tests (from 490 / 7,088).
+
+Host-driven QA on the repo's own destination fixture — Linda Stewart's 80th,
+Santa Fe NM, 2027-06-17→21, 10 adults, resort spa. The root finding: **flipping
+`isDestination` left milestones, decisions, purchases and tasks byte-identical.**
+The only thing it changed was `nextActions`, 1 row → 5. Ten people flying to New
+Mexico got a document whose own first line reads "a host-run birthday party at
+home, a backyard, or a small rented room."
+
+| # | Commit | What |
+|---|---|---|
+| `e54cea8` | Where and how, before food | The ladder re-derived "lodging settled" as `hotelName` non-empty, one import from `lodgingIsHeld`, which knows STAY_FROM_PLAN ("the plan, not booked yet") is NOT held and a bare booking code IS. So a host who typed the inn she was *considering* unblocked the menu. Food is now HELD (not hidden) with `heldBy` naming what unlocks it |
+| `75d5da0` | Intake hears a rental | STAY_STYLE knew every way to say hotel and no way to say airbnb. 12 caught / 13 missed → 23 of 24, zero false positives across "house band", "open house", "house wine" |
+| `d9b1dec` | The rooms cost more than the event | `lodgingFloor` + `belowLodgingFloor`, reported never applied. The cheapest real listing the app shows this host is $218/head against a $200–600 band meant to include airfare |
+| (this) | Ten who booked flights are ten | `rsvp_social` applied to travellers made 10 into a 9–11 band and food sized to 11 |
+
+### Worth carrying forward
+
+**A CORRECTION THAT REACHED A DOCUMENT.** The first budget measurement reported
+"`destinationAdjusted: false` — the adjustment never fires" and it was published
+in a spec artifact and in chat. Wrong: the probe called `estimateTotalRange({type,
+guestCount, date})` and never passed `isDestination` or `nights`, so the flags
+were correctly false. The shipping caller passes both; the real figure is
+$2,000–6,000 with the blend applied. **Fourth wrong-input measurement this week
+and the first to reach a deliverable.** The guard now asserts the REAL call shape
+as its premise — and that the blind call really does return the smaller number —
+so the same mistake fails there first.
+
+**THE FIX FOR A MISSING NUMBER IS OFTEN A REFUSAL.** Both §2 and the lodging
+floor resolved by declining rather than authoring. Destination attrition has no
+corpus — every source behind `CLASS` is a local-party or wedding-RSVP study — so
+a destination takes the path a LOCKED count already takes: the host's number,
+honoured exactly, with a sentence saying why the band went flat.
+
+**A HOLD HAS TO BE APPLIED OVER EVERY PRODUCER.** Holding the food foundation
+rung only moved the ask — the phaseProgress splice re-offered the same concern
+under its own wording and took the vacated slot.
+
+**MY OWN TIME BOMB, THREE DAYS OLD.** `theRosterContradictsTheEstimate` used
+`date: iso(60)` under absolute dollar assertions and went red with no code change
+when today+60 landed on a Saturday. Found a real thing doing it: the estimator
+carries a day-of-week multiplier (Sun/Mon 7500 · Fri 8300 · Sat 9000 ·
+Thanksgiving Sat 10100) and reports `costFactorApplied: null` for all of them.
+Second instance of the shape HANDOFF already records once.
+
+### Still open on the Santa Fe 80th
+
+Spec: https://claude.ai/artifact/GXhbdC76hZz8DZPrMrzikz — **§1 needs correcting,
+see above.** §3 timeline (T-18d invites for a trip needing flights; no arrival or
+departure day) needs a destination lead-time basis from Todd. §4 the food list
+itself ships while `kitchen` is null. And `onePlacePastedPullsNothing.test.js`
+records the lodging paste gap: a single listing yields `linksOnly` with no name,
+photo or price, and `abnb.me`, VRBO's real URL, booking.com and hotels.com all
+resolve to zero candidates.
 
 ## FIXED 2026-09-19 (eighteenth entry, same day) — the one alert channel was desktop-only, and the PWA that would fix it is PARKED
 

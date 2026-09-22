@@ -640,14 +640,42 @@ export function attendanceBand(event) {
   const _highNote = implausibleGuestNote(n, event.type, getPlaybook(event.type));
   // A LOCKED final count the host has committed isn't an estimate — honor it exactly
   // (no modeled spread on a number they've finalized).
-  const locked = event.guestCountLocked === true || event.headcountLocked === true;
+  //
+  // ── AND NEITHER IS A COUNT OF PEOPLE WHO BOUGHT PLANE TICKETS (2026-09-22) ──
+  // MEASURED on the Santa Fe 80th: the host entered 10, and this returned a 9–11
+  // band from `rsvp_social` — "usually ~10–15% no-shows, a few plus-ones". The
+  // food plan then sized to ELEVEN, a number she never typed.
+  //
+  // Neither half of that shift describes a destination trip. Nobody turns up to
+  // New Mexico as an unannounced plus-one, and a guest holding a non-refundable
+  // fare and four nights' lodging is not a 10–15% no-show. The shift class is
+  // keyword-matched on TYPE alone — `attendanceClass(type, playbook)` takes no
+  // event — so `isDestination` could never reach it.
+  //
+  // THE FIX IS A REFUSAL, NOT A NEW BAND. Authoring destination attrition would
+  // need a corpus; every source behind CLASS is a local-party or wedding-RSVP
+  // study, and this module's own header already says it does no no-show
+  // prediction "(that needs a corpus we don't have yet)". Applying a local-party
+  // spread to travellers is the over-application the file guards against
+  // everywhere else, so a destination takes the SAME path a locked count takes:
+  // the host's number, honoured exactly, with no modelled spread.
+  //
+  // Real RSVPs still trump this entirely — the roster branch above returns long
+  // before here, so a destination event with actual replies bands on those.
+  const travelCommitted = event.isDestination === true;
+  const locked = event.guestCountLocked === true || event.headcountLocked === true || travelCommitted;
   const exp = locked ? null : expectedFromPlanned(n, event.type, getPlaybook(event.type));
   if (!exp || exp.low >= exp.high) {
     return {
       applicable: true, basis: 'count', band: false,
       low: n, high: n, planning: n,
       confirmed: n, maybe: 0, pending: 0, declined: 0, kids: 0, invited: n,
-      planned: n, because: _highNote,
+      planned: n,
+      // Say WHY the number is flat, or a host reads the missing band as a bug.
+      because: travelCommitted
+        ? `Planned for ${n} · everyone travelling is counted${_highNote ? ' ' + _highNote : ''}`
+        : _highNote,
+      ...(travelCommitted ? { noShiftReason: 'destination' } : {}),
     };
   }
   return {
