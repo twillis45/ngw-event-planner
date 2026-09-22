@@ -5081,6 +5081,20 @@ export default function HostShellV2() {
     try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor, itemFactors: foodPP.itemFactors }); } catch { return null; }
   }, [event, foodPP.priceFactor]); // same missing-dependency bug as `spend` above
 
+  // ── ONE PLACE ANSWERS "IS THERE ANYWHERE TO PUT THE SHOPPING" ────────────
+  // `foodSpanNote` owns it. The first cut of the kitchen gate read it inside
+  // the list renderer alone, so the list was correctly withheld while the
+  // sheet's own hero two inches above went on counting "Bought so far 0 of 4"
+  // and advising "one good store run covers all of it" — for a hotel stay
+  // with no kitchen. That is this session's recurring defect exactly: a fact
+  // owned by one accessor, re-derived or ignored by the consumer beside it.
+  // So the fact is computed once here and every consumer on the food sheet
+  // reads THIS, never its own copy.
+  const foodSpan = useMemo(() => {
+    try { return foodSpanNote(event); } catch (_e) { return null; }
+  }, [event]);
+  const noKitchen = !!(foodSpan && foodSpan.listApplies === false);
+
   // ROW-LEVEL CTA RULE, single source (was duplicated only inside the Budget
   // sheet's render — the After tab's own money summary showed the identical
   // rows as inert, cursor:default divs). Every allocation row lands on the
@@ -17013,13 +17027,35 @@ export default function HostShellV2() {
                 {/* PRINCIPLES REDESIGN: summary before detail — the bought count
                     leads (the host's real question: "how much is left to do?"),
                     one grounding line carries the rest of the engine's math. */}
-                {foodPlan.hasRealCount ? (() => {
+                {noKitchen ? (
+                  /* THE HERO OBEYS THE GATE. With no kitchen the list below is
+                     withheld, so a "Bought so far 0 of 4" count and a "one good
+                     store run covers all of it" instruction are both about a
+                     shop that is not happening — the sheet contradicting itself
+                     in two adjacent blocks.
+
+                     AND NO REPLACEMENT NUMBER IS INVENTED. The obvious move is
+                     to keep the money and relabel it "eating out", but every
+                     priced line in the corpus is a GROCERY band — 226 cost
+                     citations, all of them ingredients — and a restaurant bill
+                     for the same ten people is a different number nobody here
+                     has researched. So the dollars, the per-head figure and the
+                     price-vintage stamp all go, rather than being re-badged as
+                     something they were never measured as. The scope sentence
+                     stays, because it is the one thing still true. */
+                  <div style={{ padding: '2px 0 14px' }}>
+                    <Eyebrow>Food for the trip</Eyebrow>
+                    <BigValue>Eaten out</BigValue>
+                    <GuideLine>Nothing to shop for, so there is no bought count to keep.</GuideLine>
+                    {foodSpan ? <Grounding gap={ASK_RHYTHM.valueToWhy}>{foodSpan.text}</Grounding> : null}
+                  </div>
+                ) : foodPlan.hasRealCount ? (() => {
                   const fBand = (() => { try { return attendanceBand(event); } catch { return null; } })();
                   const fBandLbl = (() => { try { return attendanceBandLabel(fBand); } catch { return null; } })();
                   const fGuestPhrase = (fBand && fBand.applicable && fBand.band && fBandLbl) ? fBandLbl : `${foodPlan.bandLow}–${foodPlan.bandHigh}`;
                   const left = foodPlan.itemCount - foodPlan.boughtCount;
                   const done = foodPlan.boughtCount >= foodPlan.itemCount && foodPlan.itemCount > 0;
-                  const fSpan = (() => { try { return foodSpanNote(event); } catch { return null; } })();
+                  const fSpan = foodSpan;
                   return (
                   <div style={{ padding: '2px 0 14px' }}>
                     {/* Figma 378:60 parity — the hero composes the parity kit
@@ -17072,12 +17108,9 @@ export default function HostShellV2() {
                     </p>
                     {/* The span disclosure is independent of the head count —
                         it is true whether or not the guests are locked. */}
-                    {(() => {
-                      const fSpan2 = (() => { try { return foodSpanNote(event); } catch { return null; } })();
-                      return fSpan2
-                        ? <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>{fSpan2.text}</p>
-                        : null;
-                    })()}
+                    {foodSpan
+                      ? <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>{foodSpan.text}</p>
+                      : null}
                   </>
                 )}
                 {/* Meal tally (guests parity gap #5): what guests actually picked —
@@ -17404,7 +17437,7 @@ export default function HostShellV2() {
                     (full-width), plus the contextual tip. Both hidden while a
                     drill-in panel is open. The "Dietary note" drafter now lives
                     inside the Dietary-needs drill-in where it belongs. */}
-                {!(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && (
+                {!(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && !noKitchen && (
                   <>
                     <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-2)' }} onClick={() => {
                       // foodShopItems/eventGeoQuery are the same shared engines legacy's
@@ -17497,7 +17530,7 @@ export default function HostShellV2() {
                     (foodShopItems + eventGeoQuery), so all three produce the
                     identical list — a second list that disagreed would be worse
                     than no second entry point. */}
-                {foodSect.list && (
+                {foodSect.list && !noKitchen && (
                   <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-3)' }} onClick={() => {
                     let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
                     let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
@@ -17511,7 +17544,7 @@ export default function HostShellV2() {
                     (added) items, skipped lines, and anything already locked or
                     unpriced (no low/high at all) — same gate as legacy, so both
                     apps agree on which lines qualify. */}
-                {foodSect.list && (() => {
+                {foodSect.list && !noKitchen && (() => {
                   const supplGroup = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
                   const unpriced = (foodPlan.list || []).filter(it => it && !it.skipped && it.group !== supplGroup && it.locked == null && !it.added && (Number(it.low) || Number(it.high)));
                   if (bulkPriced && bulkPriced.length > 0) {
@@ -17569,12 +17602,15 @@ export default function HostShellV2() {
                   // note above already discloses what the number covers. That
                   // asymmetry is deliberate and is the same one foodSpan.js
                   // draws for itself.
-                  const _span = (() => { try { return foodSpanNote(event); } catch (_e) { return null; } })();
-                  if (_span && _span.listApplies === false) {
+                  //
+                  // The scope sentence is NOT repeated here: the hero above
+                  // already prints `foodSpan.text`, and the first cut of this
+                  // block printed it a second time — the same sentence twice on
+                  // one screen, measured in the drive.
+                  if (noKitchen) {
                     return (
                       <div style={{ padding: '2px 0 14px' }}>
-                        <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>{_span.text}</p>
-                        <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>
+                        <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
                           No shopping list here — there is no kitchen to cook in. What the day needs is a
                           caterer, a restaurant, or a room that feeds people.
                         </p>
