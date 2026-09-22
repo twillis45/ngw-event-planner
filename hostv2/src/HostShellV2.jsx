@@ -17929,6 +17929,37 @@ export default function HostShellV2() {
                                 </span>
                               )}
                             </button>
+                            {/* ── SKIP, ONE LEVEL UP (host, 2026-09-22) ──────────
+                                "Skip it" lived inside the tune panel, so dropping
+                                a line you are not buying meant opening the row
+                                first, finding it past the quantity stepper and
+                                the price controls, and tapping again. Three taps
+                                to say no to one thing.
+
+                                It sits beside the row now. It cannot sit INSIDE
+                                it — `.frow` is itself a <button>, and a nested
+                                button is invalid and would swallow the row's own
+                                tap — so it is a sibling, and deliberately quiet:
+                                the row is the star, this is the small out.
+
+                                Only on a row not yet bought. Once something is
+                                checked off, "skip it" is a contradiction, and
+                                the undo for a skip is already the row itself
+                                (tapping a skipped row restores it). The copy in
+                                the tune panel stays where it is — a host who has
+                                the row open should not have to close it to find
+                                the same control. */}
+                            {!it.skipped && !got ? (
+                              <div style={{ padding: '0 var(--sp-3) var(--sp-2)', marginTop: 'calc(var(--sp-1) * -1)' }}>
+                                <button
+                                  className="mini"
+                                  onClick={() => patchEvent(
+                                    { foodSkip: { ...(event.foodSkip || {}), [it.id]: true } },
+                                    (it.short || it.item) + ' skipped — the total just dropped it.',
+                                  )}
+                                >skip it</button>
+                              </div>
+                            ) : null}
                             {tuning && (
                               // onMouseDown preventDefault (bubbles from every button/chip
                               // inside): while the cost input is focused (autoFocus in tune
