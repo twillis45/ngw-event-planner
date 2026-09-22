@@ -129,7 +129,7 @@ import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -6080,12 +6080,29 @@ export default function HostShellV2() {
             <button className="mini" onClick={() => bump(1)} aria-label="More guests">+</button>
             <span className="of">guests</span>
           </div>
-          {/* quick-pick a rough count (the stepper/field handles exact) */}
-          <div className="chips hc-row" style={{ margin: `${ASK_RHYTHM.whyToCta}px 0 0` }}>
-            {[50, 75, 100].map(n => (
-              <button key={n} className="chip" aria-pressed={guests === n} onClick={() => { setGuestDraft(''); setGuests(n); }}>{n}</button>
-            ))}
-          </div>
+          {/* Quick-pick a rough count (the stepper/field handles exact).
+              SIZED TO THIS EVENT TYPE, not to a wedding. This was hardcoded
+              `[50, 75, 100]` for every type — measured on the Santa Fe 80th,
+              where a 10-guest destination birthday was offered 50 · 75 · 100
+              beside a "Lock 10 in" button, three chips whose cheapest tap would
+              have quintupled every food, cake and tableware quantity. The band
+              is the playbook's own authored `typicalGuests` (Birthday 12/20/40,
+              Dinner Party 6/8/12, Wedding 50/120/250) — all 45 author one, so
+              nothing falls back on a guess, and a type that ever stops
+              authoring one shows no chips rather than invented numbers. */}
+          {(() => {
+            const band = (() => { try { return playbookGuestBand(event.type); } catch (_e) { return null; } })();
+            if (!band) return null;
+            const picks = band.picks;
+            if (!picks.length) return null;
+            return (
+              <div className="chips hc-row" style={{ margin: `${ASK_RHYTHM.whyToCta}px 0 0` }}>
+                {picks.map(n => (
+                  <button key={n} className="chip" aria-pressed={guests === n} onClick={() => { setGuestDraft(''); setGuests(n); }}>{n}</button>
+                ))}
+              </div>
+            );
+          })()}
           {/* SIMPLIFIED (host 2026-07-22): the editor was a wall of 13 controls mixing
               count-entry, mode, and actions. A number is enough for a headcount event;
               the ONE real branch is "do you want to track names?" — a single quiet link,

@@ -5031,3 +5031,46 @@ export function playbookTypicalGuests(type) {
   const pb = getPlaybook(type);
   return (pb && pb.meta && pb.meta.typicalGuests && pb.meta.typicalGuests.default) || null;
 }
+
+// ── THE WHOLE BAND, NOT JUST ITS MIDDLE (2026-09-22) ────────────────────────
+// `playbookTypicalGuests` returns only `.default`, so the guest-count
+// quick-picks in hostv2 could not be built from it and were hardcoded
+// `[50, 75, 100]` — one wedding-shaped triple shown to EVERY event type.
+// Measured on the Santa Fe 80th: a 10-guest destination birthday was offered
+// 50 · 75 · 100 next to a "Lock 10 in" button, three chips whose cheapest tap
+// would have quintupled every food, cake and tableware quantity on the plan.
+// Birthday authors { low: 12, default: 20, high: 40 }; all 45 playbooks author
+// a band, so nothing has to fall back on a guess.
+//
+// A SEPARATE ACCESSOR, not a widened return: `playbookTypicalGuests` has live
+// callers that expect a number, and changing its shape to serve a new reader is
+// how the "one metro market written under two field names" defect happened.
+//
+// Returns { low, default, high, picks } — the authored band REPORTED FAITHFULLY,
+// plus the subset of it that can actually be offered as a one-tap chip. Null
+// when the band is missing or malformed; a quick-pick is a convenience and there
+// is no honest fallback triple to invent.
+//
+// WHY `picks` IS NOT JUST THE THREE NUMBERS. Elopement authors
+// { low: 0, default: 2, high: 12 } and the zero is CORRECT — an elopement with
+// no guests is the couple, which is the whole point of the event. But a chip
+// that sets the headcount to 0 is not a convenience: `hasRealCount` (hostSpending
+// ~116) requires a positive count before any food money exists, so tapping it
+// would silently empty the plan. A first cut rejected the whole band over that
+// zero, which threw away a correct authored figure to avoid a bad button. The
+// band is right; only the BUTTON needs the filter, so the filter lives here
+// where jest can see it rather than in the shell where it cannot.
+export function playbookGuestBand(type) {
+  const pb = getPlaybook(type);
+  const t = pb && pb.meta && pb.meta.typicalGuests;
+  if (!t) return null;
+  const low = Number(t.low);
+  const def = Number(t.default);
+  const high = Number(t.high);
+  if (![low, def, high].every((n) => Number.isFinite(n) && n >= 0)) return null;
+  if (!(low <= def && def <= high) || high <= 0) return null;
+  // Distinct, positive, in order. A band whose three values collapse to one
+  // number yields one chip, never three identical ones.
+  const picks = [...new Set([low, def, high])].filter((n) => n > 0);
+  return { low, default: def, high, picks };
+}
