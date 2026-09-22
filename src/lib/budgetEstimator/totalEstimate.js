@@ -150,7 +150,12 @@ export const PER_HEAD_FALLBACK_PROVENANCE  = moneyProvenanceFor('budget.perHeadF
  * `destinationAdjusted` tells the surface whether the blend actually moved
  * the band, so copy can disclose it honestly.
  */
-export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1, isDestination = false, nights = 0 }) {
+// `lodgingFloor` is passed IN rather than read off an event, because this
+// function takes parameters and not an event, and because where the stay figure
+// comes from is its own question with its own honesty rules — see
+// lib/lodgingFloor.js, which owns it. Absent or null means "we do not know what
+// the stay costs", which is the ordinary case and never a zero.
+export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1, isDestination = false, nights = 0, lodgingFloor = null }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
   // PROVENANCE TRACKING (added with moneyProvenance.js). Records WHICH unsourced
@@ -244,6 +249,22 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
   // below it. Reported, never applied — see requiredVendorFloor's own note for
   // why the remedy is a product call and not a constant to pick here.
   const vendorFloor = requiredVendorFloor(type, guests);
+  // THE STAY AGAINST THE WHOLE EVENT (2026-09-22). The travel_led band is
+  // $200-600 a head and is meant to cover airfare, lodging and insurance as
+  // well as the party. On the Santa Fe 80th the CHEAPEST listing the app itself
+  // shows the host is $218 a head for the rooms alone, and three of the six are
+  // above the whole band. Reported here, applied nowhere — identical treatment
+  // to `requiredVendorFloor` above, and for the identical reason: moving a
+  // host-facing dollar band is a product call with a basis this file lacks.
+  //
+  // The comparison is against `highTotal`, not the low, so the flag fires only
+  // when the stay alone exceeds everything the estimate allows for. A softer
+  // "this already eats your low end" reading is left to the surface, which has
+  // both numbers.
+  const stayFloor = (() => {
+    const n = Number(lodgingFloor);
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+  })();
   return {
     lowTotal,
     highTotal,
@@ -255,5 +276,7 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
     provenanceKeys,
     requiredVendorFloor: vendorFloor,
     belowRequiredVendors: vendorFloor != null && highTotal < vendorFloor,
+    lodgingFloor: stayFloor,
+    belowLodgingFloor: stayFloor != null && highTotal < stayFloor,
   };
 }

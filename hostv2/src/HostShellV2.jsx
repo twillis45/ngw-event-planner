@@ -156,6 +156,7 @@ import { budgetHeroCopy } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
+import { lodgingFloorFor } from '@app/lib/lodgingFloor';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
@@ -6443,7 +6444,14 @@ export default function HostShellV2() {
   // forceChange: open straight into the CHANGE drawer (skip the AGREED read-only display and
   // the PROPOSED lead) — used by the money-sheet fold, whose whole intent is "change the number".
   const budgetEditorBlock = (forceChange = false) => {
-    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay, isDestination: !!event.isDestination, nights: spanNights(event) });
+    // `lodgingFloor` carries what the stay alone costs, when the host has
+    // shortlisted or picked one, so the estimate can say whether the rooms
+    // already exceed everything it allows for. Null whenever nothing is
+    // shortlisted — see lib/lodgingFloor.js, which refuses to guess a price.
+    const _stayFloor = (() => {
+      try { const f = lodgingFloorFor(event, guests); return f ? f.total : null; } catch (_e) { return null; }
+    })();
+    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay, isDestination: !!event.isDestination, nights: spanNights(event), lodgingFloor: _stayFloor });
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
     // request, 2026-07-08), a custom number, and the range as a hint.
