@@ -41,8 +41,27 @@
 import { estimateTotalRange, PER_HEAD_BY_TYPE } from '../budgetEstimator/totalEstimate';
 import { ALL_PLAYBOOKS, getPlaybook } from '../playbooks';
 
-const iso = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
-const est = (type, guestCount) => estimateTotalRange({ type, guestCount, date: iso(60) });
+// A FIXED DATE, AND HERE IS WHY (2026-09-22, three days after this file shipped).
+// The helper was `date: iso(60)` — today plus sixty days — under assertions that
+// pin absolute dollars. Green the day it was written, red with no code change
+// when the clock rolled: today+60 landed on 2026-11-21, a SATURDAY, and the
+// estimator carries a day-of-week multiplier. Measured:
+//
+//     2027-03-05 Fri    8300        2026-11-21 Sat (ordinary)      9000
+//     2027-03-06 Sat    9000        2026-11-28 Sat (Thanksgiving) 10100
+//     2027-03-07 Sun    7500
+//     2027-03-08 Mon    7500
+//
+// That is the time bomb HANDOFF already records once — `recordDedupStaysLive`,
+// green in CI 2026-09-14, red 2026-09-17, no commit in between. A relative date
+// under an absolute assertion is a test that schedules its own failure, and this
+// is the second instance, so it is named here rather than quietly repaired.
+//
+// The date is pinned to a plain Sunday carrying no multiplier, and the
+// day-of-week behaviour is asserted deliberately below instead of being left for
+// whoever is on call to rediscover.
+const FIXED_SUNDAY = '2027-03-07';
+const est = (type, guestCount) => estimateTotalRange({ type, guestCount, date: FIXED_SUNDAY });
 
 describe('the playbook roster against its own estimate', () => {
   test('(premise) the required rows are really there, really flat, really required', () => {
@@ -118,6 +137,25 @@ describe('the playbook roster against its own estimate', () => {
       .reduce((s, v) => s + v.costRange[0], 0);
     expect(all).toBeGreaterThan(1750);
     expect(est('Surprise Proposal', 1).requiredVendorFloor).toBe(1750);
+  });
+
+  test('THE MULTIPLIER THAT BROKE THIS FILE — measured, and reporting no basis', () => {
+    // Recorded because it is the reason this file went red on its own, and
+    // because the factor arrives UNATTRIBUTED. `costFactorApplied` exists
+    // precisely to carry a factor's basis out to whoever renders it, and
+    // whatever applies these leaves it null — so a host sees a Saturday priced
+    // 20% above a Sunday with nothing saying why.
+    const low = (d) => estimateTotalRange({ type: 'Conference', guestCount: 50, date: d }).lowTotal;
+    expect(low('2027-03-07')).toBe(7500);   // Sunday — the baseline
+    expect(low('2027-03-08')).toBe(7500);   // Monday
+    expect(low('2027-03-05')).toBe(8300);   // Friday
+    expect(low('2027-03-06')).toBe(9000);   // Saturday, +20%
+    // …and the seasonal factor STACKS on the weekend one.
+    expect(low('2026-11-28')).toBe(10100);  // Thanksgiving Saturday
+    // The basis is not reported on any of them.
+    for (const d of ['2027-03-05', '2027-03-06', '2026-11-28']) {
+      expect(estimateTotalRange({ type: 'Conference', guestCount: 50, date: d }).costFactorApplied ?? null).toBe(null);
+    }
   });
 
   test('NEGATIVE CONTROL: a per-guest required row scales with the headcount', () => {

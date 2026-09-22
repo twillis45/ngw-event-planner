@@ -84,6 +84,7 @@ import { buildExperienceContext } from './lib/experienceContext';
 import { deriveDecisionBlockers, buildBlockerStage } from './lib/assembleRevealEngines';
 // The ONE place reader — used here only to name the town in the venue ask.
 import { venueFor as venueForEvent } from './lib/venueFor';
+import { lodgingIsHeld } from './lib/lodgingIntel';
 import { daysUntil } from './lib/dates';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
@@ -1491,6 +1492,16 @@ export function _eventFoundationActions(event) {
     || (Array.isArray(event.foodAdd) && event.foodAdd.length > 0)
     || selfProvides || aNamedVendor;
 
+  // WHERE EVERYONE STAYS, ASKED ONCE. `lodgingIsHeld` owns this question —
+  // see the lodging rung below for what this file used to re-derive instead.
+  const lodgingSettled = (() => {
+    try { return lodgingIsHeld(event) === true; } catch (_e) { return false; }
+  })();
+  // Food waits on the stay, and ONLY on a destination trip. A local party's
+  // menu depends on nothing here, so the rung is untouched for every other
+  // event — this must never grow a hold an event cannot clear.
+  const foodWaitsOnLodging = !!(event && event.isDestination === true) && !lodgingSettled;
+
   // The canonical foundational dominoes, in priority order. Each `done` is derived from
   // real state — never from a stored task flag — so the badge and the hero agree.
   //
@@ -1575,14 +1586,27 @@ export function _eventFoundationActions(event) {
     // `applies` only when the host actually said destination — never inferred
     // from a city. Spliced out entirely for a local event, so no other event
     // type grows a domino it can never satisfy.
+    // A NAME IS NOT A BOOKING (2026-09-22). This rung re-derived "is lodging
+    // settled" as `lodging.hotelName is non-empty`, one import away from
+    // `lodgingIsHeld`, which owns that question and answers it differently:
+    // a name stamped STAY_FROM_PLAN ("the plan, not booked yet") or
+    // STAY_FROM_PICK is NOT held, and a booking code or a refund deadline IS
+    // even with no name at all. So a host who typed the inn they were
+    // considering had this domino marked done, and the food rung below
+    // unblocked against a room nobody had reserved.
+    //
+    // `lodgingIsHeld` already carries the out this needs — the repo authored
+    // STAY_FROM_PLAN precisely so a host can name the place they are leaning
+    // toward WITHOUT it counting as settled. Re-deriving the predicate here
+    // threw that away.
     ...(event && event.isDestination === true ? [{
       id: 'lodging', domain: 'lodging', title: 'Sort where everyone stays.',
       consequence: 'Rooms sell out and group rates expire — this one has a deadline the rest of the plan does not.',
       cta: 'Sort lodging', route: { tab: 'Travel', focusField: 'lodging' },
-      done: !!(event.lodging && typeof event.lodging === 'object'
-        && String(event.lodging.hotelName || '').trim()),
-      handledFact: (event.lodging && String(event.lodging.hotelName || '').trim())
-        ? `Staying at ${String(event.lodging.hotelName).trim()}` : null,
+      done: lodgingSettled,
+      handledFact: (lodgingSettled && event.lodging && String(event.lodging.hotelName || '').trim())
+        ? `Staying at ${String(event.lodging.hotelName).trim()}`
+        : (lodgingSettled ? 'Stay is held' : null),
     }] : []),
     {
       id: 'food', domain: 'food', title: 'Plan the food.',
@@ -1599,6 +1623,22 @@ export function _eventFoundationActions(event) {
         return { tab: 'Planning', focusField: 'food-plan' };
       })(),
       done: hasFood, handledFact: hasFood ? 'Food sourced' : null,
+      // ── WHERE AND HOW, THEN FOOD (ruling 2026-09-22) ──────────────────────
+      // On a destination trip the menu cannot be planned honestly before the
+      // stay is held: whether there is a kitchen, whether a caterer can even
+      // deliver there, and which shops are reachable are all properties of the
+      // place. `foodSpanNote` already reports `kitchen: null` on this event and
+      // offers a shopping list anyway.
+      //
+      // So the rung is HELD rather than hidden. Demotion is not deletion — the
+      // standing rule from the ranking board is that whatever moves down stays
+      // visible — and a host who cannot see the menu step coming will assume
+      // the app forgot it. `heldBy` names the rung it waits on so a surface can
+      // say WHICH answer unlocks it instead of graying something out mutely.
+      ...(foodWaitsOnLodging ? {
+        heldBy: 'lodging',
+        heldWhy: 'Where everyone stays decides the kitchen, the caterer and which shops you can reach.',
+      } : {}),
     },
   ];
   if (dateSet && !timeOk) {
@@ -2123,6 +2163,13 @@ export function eventPlan(event, ctx = null) {
   if (topAction) { nextActions.push(topAction); seenTitles.add(titleKey(topAction.title)); }
   for (const a of foundation) {
     if (a.done) continue;            // satisfied dominoes never surface as a next action
+    // A HELD DOMINO IS NOT A NEXT ACTION (2026-09-22). `heldBy` names a rung
+    // whose answer this one needs — destination food waits on the stay. It is
+    // not done, so it keeps its place in `foundation` for the ledger, the
+    // progress count and the handled whispers; it is simply not something the
+    // host can do yet, and listing it as a next action told ten people to plan
+    // a menu for a kitchen nobody had booked.
+    if (a.heldBy) continue;
     if (seen.has(a.domain)) continue; // already represented (e.g. by the engine top)
     if (seenTitles.has(titleKey(a.title))) continue;
     seen.add(a.domain); seenTitles.add(titleKey(a.title));
@@ -2600,12 +2647,37 @@ export function eventPlan(event, ctx = null) {
   // bug: on the repast state the tier picks "Set your budget." and the sort
   // rightly promotes the food decision over it. Pinning inverted that and broke
   // the hero (12 matrix failures).
+  // ── A HELD DOMAIN SPEAKS NOWHERE (2026-09-22) ───────────────────────────────
+  // Holding the foundation rung was half the job: the phaseProgress splice
+  // emits its own row for the same concern ("Decide what you're serving"), so
+  // dropping "Plan the food." only moved the ask, it did not withdraw it. One
+  // rule, applied once, over every producer — and the held set is READ OFF the
+  // foundation rather than re-derived, so there is exactly one place that
+  // decides what waits on what.
+  {
+    const heldDomains = new Set(
+      foundation.filter((f) => f && f.heldBy && !f.done).map((f) => f.domain).filter(Boolean),
+    );
+    if (heldDomains.size) {
+      for (let i = nextActions.length - 1; i >= 0; i--) {
+        const a = nextActions[i];
+        const dom = a && (a.domain || CATEGORY_TO_DOMAIN[a.category] || a.category);
+        if (dom && heldDomains.has(dom)) nextActions.splice(i, 1);
+      }
+    }
+  }
   const _openDomino = new Map();
   {
     // A rung flagged `rankLadder: false` is open for the LEDGER and deliberately
     // absent from the ranker — see the `date` rung's own note for the two ruled
     // contracts that decided it.
-    const open = foundation.filter((f) => f && !f.done && f.rankLadder !== false);
+    // A HELD RUNG IS NOT AN OPEN ONE (2026-09-22). `heldBy` means the rung is
+    // waiting on another rung's answer — destination food waits on the stay.
+    // It stays in `foundation` for the ledger and the progress count, because
+    // the host must still see the step coming, but it must not be promoted to
+    // a gate-holder here: doing so would rank "Plan the food." as the thing to
+    // do next while the answer it depends on is still open.
+    const open = foundation.filter((f) => f && !f.done && f.rankLadder !== false && !f.heldBy);
     open.forEach((f, i) => _openDomino.set(f.domain, Math.max(0, open.length - i - 1)));
   }
   for (let i = 0; i < nextActions.length; i++) {
