@@ -44,6 +44,7 @@ import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbo
 import { buildCrabPlan } from './crabPlan';
 import { vendorOutstanding } from './vendorMoney';
 import { lodgingCommitted } from './lodgingIntel';
+import { foodSpanNote } from './foodSpan';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -115,9 +116,42 @@ export function hostSpending(event, priceFactor, itemFactors) {
   const hasRealCount = num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0
     || (Array.isArray(ev.guests) && ev.guests.length > 0)
     || (() => { try { return !!guestCountResolved(ev).resolved; } catch { return false; } })();
-  const hasFood = hasRealCount && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
+  // ── THE BUDGET FOLLOWS THE LIST (2026-09-22) ──────────────────────────────
+  // `foodSpanNote` withholds the shopping list entirely when it KNOWS there is
+  // no kitchen — a room block, a hotel — and the food sheet has honoured that
+  // since the kitchen gate landed. This file did not. Measured on the Santa Fe
+  // 80th (10 guests, Jun 17-21, room block answered): foodEstimate $280 and
+  // suppliesEstimate $53 were identical whether the host had a whole house or a
+  // hotel room, so the budget carried $333 of groceries for a kitchen the app
+  // itself had just finished saying does not exist. Every OTHER item change the
+  // host makes already flows through here correctly — measured: skipping a food
+  // line moves $280 -> $105, skipping a supply $53 -> $48, locking a price
+  // $280 -> $115 — so the withheld list was the one thing the budget could not
+  // see.
+  //
+  // WHAT IS NOT DONE HERE, DELIBERATELY: no restaurant figure replaces it.
+  // People still eat on a hotel trip, and it very likely costs MORE than the
+  // groceries being removed — but all 226 cost citations in the corpus price
+  // GROCERY lines, and a restaurant band for these ten people is a number
+  // nobody researched. Inventing one, or quietly leaving the grocery one in
+  // place and calling it "food", are the same error wearing different clothes.
+  //
+  // So the term is withdrawn AND the hole is REPORTED rather than papered over
+  // — `foodUnpriced` below. That matters more than usual here: dropping $333
+  // makes `uncommitted` LARGER, and a host reading more headroom than they have
+  // is worse off than one reading the wrong basis. The flag is what lets the
+  // surface say so. Same "report, don't resolve" contract as
+  // `belowRequiredVendors` and `belowLodgingFloor` in totalEstimate.js.
+  const foodSpan = (() => { try { return foodSpanNote(ev); } catch (_e) { return null; } })();
+  const foodListApplies = foodSpan ? foodSpan.listApplies : null;   // true | false | null
+  const listWithheld = foodListApplies === false;
+
+  const hasFood = hasRealCount && !listWithheld && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
   const foodEstimate = hasFood ? mid(plan.foodLow, plan.foodHigh) : 0;
-  const _fb = hasFood ? foodBoughtFrom(ev, plan) : { total: 0, firm: 0 };
+  // Money the host ALREADY checked off is real money and survives the gate —
+  // answering "room block" after a shop does not un-buy the shopping. Only the
+  // forward-looking estimate is withdrawn.
+  const _fb = (hasRealCount && plan) ? foodBoughtFrom(ev, plan) : { total: 0, firm: 0 };
   const foodBought = _fb.total;
   const foodBoughtFirm = _fb.firm;                       // real receipts only
   const foodBoughtEstimated = Math.max(0, foodBought - foodBoughtFirm); // bought but still an estimate
@@ -128,7 +162,13 @@ export function hostSpending(event, priceFactor, itemFactors) {
   // committed exactly like food, from their own single sources (the plan's
   // supplies* fields and playbookCapacity's cost/bought totals). Same real-count
   // gate: a guessed headcount never becomes budget money.
-  const suppliesEstimate = hasRealCount && plan ? mid(plan.suppliesLow, plan.suppliesHigh) : 0;
+  // Supplies ride the SAME gate, because they ride the same list: the withheld
+  // sheet takes the Supplies group down with Food and Drinks (driven: all three
+  // section headers are gone). Budgeting for plates the host cannot see or check
+  // off is the defect this whole change is about. If supplies should one day
+  // survive a no-kitchen stay, that is a change to the GATE — and the budget
+  // follows it from here for free, which is the point of reading one accessor.
+  const suppliesEstimate = hasRealCount && plan && !listWithheld ? mid(plan.suppliesLow, plan.suppliesHigh) : 0;
   const suppliesBought = hasRealCount && plan ? mid(plan.suppliesSpentLow, plan.suppliesSpentHigh) : 0;
   let cap = null;
   try { cap = hasRealCount ? playbookCapacity(ev) : null; } catch (_e) { cap = null; }
@@ -286,7 +326,17 @@ export function hostSpending(event, priceFactor, itemFactors) {
     mixed: pf !== 1 && nationalAtPlay,
   };
 
-  return { priceBasis, total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  // REPORTED, NOT RESOLVED. `foodUnpriced` is true only when there is a real
+  // food cost this budget is deliberately NOT estimating: the host has a
+  // countable guest list and a plan that WOULD have priced food, and the
+  // no-kitchen gate withdrew it. It is false when the list applies (the estimate
+  // is there), and false when there was never a food figure to withdraw — a
+  // surface must be able to tell "we declined to price this" apart from
+  // "nothing here to price", because only the first one owes the host a sentence.
+  const foodUnpriced = listWithheld && hasRealCount
+    && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
+
+  return { priceBasis, total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;

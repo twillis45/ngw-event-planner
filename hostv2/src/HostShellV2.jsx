@@ -11547,6 +11547,15 @@ export default function HostShellV2() {
                         <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
                       </button>
                     ))}
+                    {/* Same missing-on-purpose food row as the Budget sheet — this
+                        block renders the identical hostRowsGo() and would
+                        otherwise just drop Food & drinks and Supplies silently. */}
+                    {spend.foodUnpriced ? (
+                      <p className="grounding" style={{ margin: '6px 0 0' }}>
+                        Food is not in this total — with no kitchen the meals are eaten out, and this app
+                        only has grocery prices.
+                      </p>
+                    ) : null}
                     <div className="line total">
                       <span>{isPast ? 'Spent, all in' : 'Spoken for so far'}</span>
                       <span className={'amt' + (money.planned && money.committed <= money.planned ? ' under' : '')}>
@@ -19550,6 +19559,24 @@ export default function HostShellV2() {
                           </p>
                         );
                       })()}
+                      {/* ── THE FOOD ROW THAT IS MISSING ON PURPOSE ──────────────
+                          With no kitchen, hostSpending withdraws the grocery food
+                          and supplies estimates (they priced a shop the app has
+                          already withheld), so those two rows simply vanish from
+                          the breakdown above. Vanishing quietly is not good
+                          enough: the withdrawal makes the headroom figure BIGGER,
+                          and a host reading more room than they have is worse off
+                          than one reading the wrong basis. So the hole gets a
+                          sentence. `foodUnpriced` fires only when there was a real
+                          food estimate to withdraw — never on an event that simply
+                          has no food plan. */}
+                      {spend.foodUnpriced ? (
+                        <p className="grounding" style={{ margin: '8px 0 0', borderTop: '1px solid var(--line-soft)', paddingTop: 8 }}>
+                          Food is not in this total. With no kitchen the meals are eaten out, and the only
+                          food prices this app has are grocery prices — so it would be guessing. Add what
+                          you expect to spend on meals as your own budget line and it will count here.
+                        </p>
+                      ) : null}
                     </>
                   )}
                   {recovery && recovery.status === 'recovery_available' && (
