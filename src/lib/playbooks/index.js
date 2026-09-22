@@ -973,6 +973,18 @@ export const CATERER_OPTION_RE = /cater|private chef|\bchef\b|drop-?off|order(ed
 // to potluck (Kwanzaa Karamu) author their food lines expecting to exist under
 // it — matching it here killed those lists by default (wire-proof, 2026-07-22).
 const COMMUNITY_OPTION_RE = /brought by|committee|church|neighbors?|sign.?up/i;
+// ── OPTIONS THAT NEED A STOVE ───────────────────────────────────────────────
+// Classified the same way CATERER_OPTION_RE and COMMUNITY_OPTION_RE above
+// classify authored option strings: over the playbook's OWN option list, never
+// against a hardcoded copy of it. An option matching this asks the host to cook
+// or bake, which is not something they can do from a hotel room.
+//
+// Deliberately NARROW. "Order a cake" and "Drop-off catering" involve food and
+// heat and are none of this app's business to withdraw; only an option whose
+// VERB is the host cooking qualifies. `\bbake it\b` rather than /bake/ for the
+// same reason — "Order a cake (or plan to bake)" is a milestone, handled
+// separately, and a bakery option must never be pruned by a word it contains.
+const HOST_COOKS_OPTION_RE = /\bbake it\b|cook\/grill yourself|cook it yourself|\bcook them yourself\b|grill (?:it|them) yourself/i;
 export function foodApproach(event) {
   const pb = getPlaybook(event && event.type);
   const decisions = pb && Array.isArray(pb.decisions) ? pb.decisions : [];
@@ -3846,8 +3858,23 @@ export function playbookDecisionOptions(event, id) {
   // The host's OWN chosen option is never hidden — an answer outranks a gate.
   const chosenPick = choicePickFor(event, d.id);
   const gates = (d.optionGates && typeof d.optionGates === 'object') ? d.optionGates : null;
+  // NO STOVE, NO "BAKE IT" (2026-09-22). Measured on the Santa Fe 80th with the
+  // room-block answer stored: the Calls-to-make screen offered this host "Cake:
+  // bake, order, or cupcakes?" with **Bake it** live and tappable, and
+  // `food_style` with **Cook/grill yourself**, while the food sheet two screens
+  // away said "there is no kitchen to cook in". Offering a control the host
+  // cannot act on is worse than a wrong number — they can tap it.
+  //
+  // Same shape as the gates below, and it obeys the same rule stated four lines
+  // up: the host's OWN pick is never hidden. A host who chose "Bake it" and
+  // THEN answered "room block" keeps seeing their answer — withdrawing it under
+  // them would silently rewrite a decision they made.
+  const noKitchen = (() => {
+    try { return event.isDestination === true && lodgingKitchen(event) === false; } catch (_e) { return false; }
+  })();
   const gatedOptions = (Array.isArray(d.options) ? d.options : []).filter((o) => {
     if (o === chosenPick) return true;
+    if (noKitchen && HOST_COOKS_OPTION_RE.test(String(o))) return false;
     const g = gates && gates[o];
     if (!g) return true;
     if (g.whenChoice && !choiceShown(event, g.whenChoice)) return false;
