@@ -1251,7 +1251,22 @@ const mustHaveById = (id) => LODGING_MUST_HAVES.find((m) => m.id === String(id |
 // the "wellness" variant, so a full "resort spa retreat" only matched its
 // first two words and left "retreat" as leftover text for the amenity
 // matcher to (harmlessly, but incompletely) ignore.
-const STAY_STYLE = /\b((?:all[- ]inclusive|boutique|luxury|historic|mountain|desert|beach(?:front)?|ski|golf|dude|wellness)?\s*(?:resort\s*(?:and\s*)?spa(?:\s*retreat)?|spa\s*resort|spa\s*retreat|wellness\s*retreat|resort(?:\s*retreat)?|lodge|inn|ranch|hacienda|villa|casita|bed\s*(?:and|&)\s*breakfast|b&b|guest\s*house|hotel))\b/i;
+// THE RENTAL HALF WAS MISSING ENTIRELY (host, 2026-09-22: "intake should pick
+// up if the trip is to a spa resort hotel or hotel/airbnb/vrbo types").
+// MEASURED across 25 phrasings a host plausibly types: 12 caught, 13 missed —
+// and every miss was the same family. airbnb · air bnb · vrbo · "a VRBO rental"
+// · "a vacation rental" · "renting a house" · "a big house for everyone" ·
+// cabin · condo · apartment · "short term rental". The vocabulary knew every
+// way to say hotel and no way to say the thing this product's own flagship
+// fixture is: an AIRBNB results page for the Santa Fe 80th.
+//
+// WHY THE BARE NOUNS ARE GUARDED. "house" and "apartment" are ordinary words —
+// "the house band", "open house", "house wine", "the apartment upstairs" — so
+// they count as a stay style only when a renting verb or a vacation/holiday
+// qualifier sits with them. "cabin", "condo", "airbnb" and "vrbo" carry no such
+// ambiguity in an event brief and stand alone. A style matcher that fires on
+// "house wine" would put the whole lodging stack behind a false positive.
+const STAY_STYLE = /\b((?:all[- ]inclusive|boutique|luxury|historic|mountain|desert|beach(?:front)?|ski|golf|dude|wellness)?\s*(?:resort\s*(?:and\s*)?spa(?:\s*retreat)?|spa\s*resort|spa\s*retreat|wellness\s*retreat|resort(?:\s*retreat)?|lodge|inn|ranch|hacienda|villa|casita|bed\s*(?:and|&)\s*breakfast|b&b|guest\s*house|hotel|air\s?bnb|vrbo|homeaway|(?:vacation|holiday|short[- ]term)\s*rental|(?:rental\s*)?(?:cabin|condo)|(?:rent(?:ing|ed|al)?\s*(?:a|an|the|our|one)?\s*)(?:whole\s*)?(?:house|home|apartment|place)|(?:vacation|holiday)\s*(?:house|home)))\b/i;
 
 export function heardStayStyle(text) {
   const m = String(text || '').trim().match(STAY_STYLE);
