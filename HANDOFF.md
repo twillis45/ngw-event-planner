@@ -113,8 +113,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `ee031c6f` |
-| Jest | **7,130 passed**, 1 skipped, **0 failed**, **495 suites** (re-measured 2026-09-22, after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `4b03b49e` |
+| Jest | **7,165 passed**, 1 skipped, **0 failed**, **499 suites** (re-measured 2026-09-22, after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -126,6 +126,94 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-22 (twentieth entry) — one fact, four screens, and only one of them knew it
+
+Five commits. 499 suites / 7,165 tests (from 495 / 7,130). `verify:push` 5/5 on
+each. Every host-facing claim driven in Chromium across 7 viewports; 175/175 on
+the final matrix.
+
+`foodSpanNote().listApplies` has been three-valued since the day it was written
+— FALSE only when we KNOW there is no kitchen — and it had **one consumer: its
+own unit test.** Closing that gap on the room-block Santa Fe 80th turned into
+the same finding four times over, each on a different screen, each the same
+shape: **a fact owned by one accessor, ignored by the consumer beside it.**
+
+| # | Commit | The screen, and what it was still saying |
+|---|---|---|
+| 1 | `83e34cd` | The food sheet withheld the list correctly, then went on reading **"Bought so far 0 of 4"** and **"one good store run covers all of it"** two inches above it, still offered "Copy the shopping list" and "Lock the rest to typical prices (4)", and printed the scope sentence twice |
+| 2 | `307f094` | `hostSpending` — the ONE budget source — carried **$280 food + $53 supplies** identically for HOTEL, RENTAL and UNTOLD. $333 of groceries for a kitchen the app had just finished saying does not exist |
+| 3 | `49380d8` | The Day tab: **"Cook anything to safe internal temps"** |
+| 4 | `4b03b49` | Calls to make: a live, tappable **"Bake it"** button, and `food_style` offering **"Cook/grill yourself"** |
+
+### Worth carrying forward
+
+**THE REFUSAL IS THE FIX, AND THE REPORT IS HALF OF IT.** Every one of these had
+a tempting "just relabel the number" repair — keep the grocery dollars and call
+them "eating out". All 226 cost citations price GROCERY lines; a restaurant band
+for ten people is a figure nobody researched. So the terms were withdrawn, not
+re-badged. But withdrawal has a direction: dropping $333 made the host's headroom
+**bigger** ($3,566 → $3,899), and a host reading more room than they have is
+worse off than one reading the wrong basis. `foodUnpriced` exists for exactly
+that, and both budget surfaces now say what is missing and how to fill it. Same
+report-don't-resolve contract as `belowRequiredVendors` / `belowLodgingFloor`.
+
+**AN ANSWER OUTRANKS THE GATE.** The "Bake it" prune obeys the rule
+`playbookDecisionOptions` already stated for its other gates: the host's OWN pick
+is never hidden. Someone who chose "Bake it" and THEN answered "room block" keeps
+their answer — withdrawing it would silently rewrite a decision they made.
+
+**NARROW THE VERB, NOT THE TOPIC.** The cook-step and option prunes are scoped to
+things the host physically cannot do, never to the topic. Food safety was NOT
+deleted from a catered gathering — only "cook to temps" went, and "nothing
+perishable sitting out more than ~2 hours" stayed, because dropping food safety
+because the food is catered is the more dangerous of the two errors. Same reason
+`HOST_COOKS_OPTION_RE` matches `\bbake it\b` and not `/bake/`: a bakery option
+must never be pruned by a word it contains.
+
+**THE GATE COULD NOT BE DRIVEN BECAUSE ANSWERING IT MOVES THE DOOR.** Setting
+`foodChoices.dest_lodging` REMOVES the food sheet's usual entry point: the board
+row relabels from "Decide what you're serving" to "Note dietary needs on the food
+plan" AND re-routes into the dietary panel. Two earlier attempts pinned selectors
+to the menu, found nothing, and asserted three absences against a page that never
+rendered a list — in a file written to catch exactly that. Real path:
+`board → dietary row → Done → "The list"`.
+
+**FOUR SPEC ERRORS, ALL FOUND BY CAPTURE RATHER THAN GUESSWORK.** Worth listing
+because each would have shipped a hollow green: the cake row is BLOCKED on
+`theme` and renders no options at all until it is set; its alternatives sit
+behind a collapsed **"Other ways ▸"** disclosure, so reading the card as landed
+finds no "Bake it" for ANYONE and its absence proves nothing; a selector on the
+bare words "Other ways" matches the OPEN state too, so a loop re-closed what the
+previous pass opened; and the recommended option renders as "Order a cake our
+pick", so `/^Order a cake$/` matches nothing. **Capture the screen, then write
+the assertion.** Never the reverse.
+
+**A GUARD I DID NOT WRITE CAUGHT MY REGRESSION.** The cake label read "Cake:
+bake, order, or cupcakes?" — a heading offering a button that was no longer
+there — so it became "The cake". That silently removed the host's QUESTION,
+because the row had no authored `ask` and its question WAS the label.
+`authoredAskReachesTheHero` failed on the next `verify:push`. A label that
+enumerates its own options has to be re-edited every time they change; it now
+does not, and the `ask` is authored.
+
+**RED-PROOF EACH GUARD SEPARATELY.** Every gate this session was reverted on its
+own and the suite re-run: list gate off → 1 fail; hero gate off → 2; action gates
+off → 1; budget engine off → 5 of 11 with the premises and controls correctly
+unmoved; day-of off → 2 of 7; option prune off → 2 of 10. A gate whose removal
+fails nothing is not a gate.
+
+### Open, and the next thing to do
+
+- **The Day tab's AGENDA is still identical for HOTEL and RENTAL** — 11 beats
+  that still set food + drinks stations, build a drinks station with ice, and box
+  leftovers. NOT fixed, deliberately: rewriting them means authoring a
+  destination/hotel run-of-show, which the corpus cannot ground. Needs Todd's
+  domain input, not a guess.
+- Calls to make renders **all 13 dietary rows expanded**, where the food sheet
+  shows 2 plus "+ 11 more". Same control, two treatments — a design call.
+- Guest-count quick-picks offer **50 / 75 / 100** next to "Lock 10 in".
+- Board stacks three "protect the moment" lines.
 
 ## FIXED 2026-09-22 (nineteenth entry) — the Santa Fe 80th ran on a backyard party's plan
 
