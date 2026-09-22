@@ -17635,6 +17635,47 @@ export default function HostShellV2() {
                         </div>
                         <span className="fg-chev" aria-hidden="true">›</span>
                       </button>
+                      {/* ── ALL OF THIS SHELF, IN ONE TAP (host, 2026-09-22) ──
+                          Standing in a store checking off fourteen lines one at
+                          a time is the worst moment this sheet has. The control
+                          is per SECTION and, in run mode, per STORE — `gItems`
+                          is already filtered by `shopStore`, so "I'm at Costco"
+                          means this button checks off only what Costco carries.
+                          Nothing global: a single all-at-once button would let a
+                          stray tap erase a whole shop's worth of progress.
+
+                          UNDOABLE, because a fat-fingered tap on a phone in a
+                          busy aisle has to cost one tap, not fourteen. The label
+                          says which way it will go, so it is never a guess. It
+                          writes the SAME `foodGot` flags the row taps write —
+                          one storage shape, so the money engine, the group
+                          progress and the sheet totals all move together and
+                          none of them learns a second source of truth.
+
+                          Skipped rows are left alone. A skip is a decision the
+                          host made about that line; "check off everything here"
+                          is not a reason to overturn it. */}
+                      {isOpen && gActive.length > 0 ? (
+                        <div style={{ padding: '0 var(--sp-3) var(--sp-2)' }}>
+                          <button
+                            className="mini"
+                            onClick={() => {
+                              const next = { ...(event.foodGot || {}) };
+                              for (const it of gActive) next[it.id] = !gDone;
+                              patchEvent(
+                                { foodGot: next },
+                                gDone
+                                  ? `${g} cleared — ${gActive.length} back on the list.`
+                                  : `${g} checked off — all ${gActive.length}${shopStore ? ' at ' + shopStore : ''}.`,
+                              );
+                            }}
+                          >
+                            {gDone
+                              ? `Uncheck all ${gActive.length}`
+                              : `Check off all ${gActive.length}${shopStore ? ' here' : ''}`}
+                          </button>
+                        </div>
+                      ) : null}
                       <div className="fg-items">
                       {isOpen && gItems.map((it, i) => {
                         const got = !!(event.foodGot || {})[it.id];
