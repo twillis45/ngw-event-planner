@@ -20,6 +20,9 @@ import { geoItemForPurchase } from '../knowledge/geoItemMap';
 // is a leaf (no imports of its own), so this cannot create a cycle.
 import { answerText, answerList } from '../decisionType';
 import { marketFor } from '../marketFor';
+// No cycle: lodgingIntel reads destLodgingOptions, never this module — that
+// split exists precisely so the two can refer to one option list safely.
+import { lodgingKitchen } from '../lodgingIntel';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -2518,6 +2521,27 @@ const DEFAULT_DAYOF_CHECKLIST = [
   { id: 'cleanup', label: 'Trash + cleanup ready', detail: 'Trash and recycling bags staged, paper towels out, and a spot to swap a full bag before it overflows.', severity: 'med' },
   { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit on hand; know the nearest ER; phones charged.', severity: 'low' },
 ];
+// ── THE COOK STEP FOR A HOST WITH NO STOVE (2026-09-22) ─────────────────────
+// The list above carries its own rule, three lines up: "no hazard that might
+// not apply". "Cook anything to safe internal temps" breaks it the moment we
+// KNOW there is no kitchen — measured on the Santa Fe 80th with the room-block
+// answer stored, where The Day tab told a host in a hotel to cook to temperature
+// two screens from the food sheet saying "there is no kitchen to cook in".
+//
+// THE ITEM IS NOT DELETED, because half of it is still true: catered food and
+// food carried in still cannot sit out. Only the instruction the host cannot
+// follow is withdrawn, and the surviving rule is stated in the terms that
+// actually apply to them. Dropping food safety altogether from a gathering
+// because it is catered would be the more dangerous error of the two.
+//
+// `lodgingKitchen` and not `foodSpanNote` is the right accessor HERE: the
+// question on this screen is "can they cook", not "does the shopping list
+// apply", and a single-day hotel event has no span but still has no stove.
+const DAYOF_NO_KITCHEN_FOOD = {
+  id: 'food', label: 'Food safety',
+  detail: 'Nothing perishable sitting out more than ~2 hours — the same rule whether a caterer brought it, a restaurant sent it, or you carried it in.',
+  severity: 'high',
+};
 function normalizeDayOfItems(list) {
   return (Array.isArray(list) ? list : [])
     .filter((it) => it && it.id && it.label)
@@ -2538,7 +2562,16 @@ export function playbookDayOfChecklist(event) {
   // Authored list when the type defines one; otherwise the universal default
   // (so an unknown / indoor / un-authored type still gets an honest floor).
   const authored = pb && Array.isArray(pb.dayOfChecklist) ? pb.dayOfChecklist : null;
-  const items = normalizeDayOfItems(authored && authored.length ? authored : DEFAULT_DAYOF_CHECKLIST);
+  // Known-no-kitchen swaps the cook step for the half of it the host can act on.
+  // Guarded on isDestination to match kitchenConsequence's own contract — the
+  // lodging question is only asked of a destination event, so a local event can
+  // never reach this branch even if the answer is somehow present.
+  const noKitchen = (() => {
+    try { return event.isDestination === true && lodgingKitchen(event) === false; } catch (_e) { return false; }
+  })();
+  const source = (authored && authored.length ? authored : DEFAULT_DAYOF_CHECKLIST)
+    .map((it) => (noKitchen && it && it.id === 'food' ? DAYOF_NO_KITCHEN_FOOD : it));
+  const items = normalizeDayOfItems(source);
   if (!items.length) return null;
   const isDefault = !(authored && authored.length);
   const because = isDefault
