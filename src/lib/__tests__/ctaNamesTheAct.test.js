@@ -32,7 +32,7 @@ const BANNED = [
   /^take care of (this|it)\b/i,
   /^sort (this|that) out\b/i,
   // "take me to it" AND "take me there" — the second slipped past a /^take me to/
-  // pattern and shipped live on Ask the Boss (found by clicking, 2026-07-28).
+  // pattern and shipped live on Ask No Guesswork — then called Ask the Boss (found by clicking, 2026-07-28).
   /^take me\b/i,
   /^go\b/i,
   /^continue$/i,

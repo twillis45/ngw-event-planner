@@ -130,7 +130,21 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // created it: the array reads as pure display copy at the call site, and the
 // next person sweeping the brand has no reason to think otherwise. It is deleted
 // with the CRA shell.
-const MAX_HOSTV2_TEXT_GATES = 43;
+// ── 43 -> 44 (2026-09-23) ───────────────────────────────────────────────────
+// `theDoorThatKeptTheOldName.test.js` reads hostv2/src/HostShellV2.jsx to assert
+// the product's OLD name appears nowhere in shipping code outside a comment.
+//
+// It qualifies under this file's own rule — it asserts file CONTENT, not
+// behavior — and the behavior half was written as e2e rather than bolted on
+// here: `hostv2/e2e/whatSurvivedTheRetirement.spec.mjs` opens the app and reads
+// the rendered body for "the Boss".
+//
+// WHY BOTH, rather than the e2e alone. The rename shipped with "Ask the Boss"
+// live in five host-visible places precisely because the guard that proved it
+// read `src/App.js` and matched the two-word product name only — the right check
+// against the wrong half of the product. An e2e proves the screens it opens;
+// this gate proves the SOURCE, including render sites no spec happens to visit.
+const MAX_HOSTV2_TEXT_GATES = 44;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

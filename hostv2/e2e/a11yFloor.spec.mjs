@@ -136,7 +136,7 @@ const sectionRows = async (page) => {
     const railLabels = await rail.allInnerTexts();
     return railLabels.map((t) => (t || '').split('\n')[0].trim())
       .filter(Boolean)
-      .filter((t) => !/^(New event|Ask the Boss|Close)$/.test(t));
+      .filter((t) => !/^(New event|Ask No Guesswork|Close)$/.test(t));
   }
   await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
   await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
@@ -146,7 +146,7 @@ const sectionRows = async (page) => {
   // First line only: each row renders "Label\nsub-label".
   return labels.map((t) => (t || '').split('\n')[0].trim())
     .filter(Boolean)
-    .filter((t) => !/^(New event|Ask the Boss|Close)$/.test(t));   // leave the shell / start a flow / not a section
+    .filter((t) => !/^(New event|Ask No Guesswork|Close)$/.test(t));   // leave the shell / start a flow / not a section
 };
 
 /**

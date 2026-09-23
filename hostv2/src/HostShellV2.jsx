@@ -198,7 +198,7 @@ import { parseMin } from '@app/lib/dayAlerts';
 // on the root as a data attribute rather than forking JSX at every call site:
 // layout is the stylesheet's job, and one attribute lets it do that job.
 import { useBreakpoint, useWideScreen } from '@app/lib/viewport';
-import { sectionGroups } from '@app/lib/sectionDirectory';
+import { sectionGroups, ASK_LABEL } from '@app/lib/sectionDirectory';
 import { sectionIcon } from './sectionIcons';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -11855,7 +11855,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the Boss' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -15490,7 +15490,7 @@ export default function HostShellV2() {
                   <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Have a specific question?</div>
                   <button className="cta" style={{ background: 'var(--surface-2)', color: 'var(--ink)' }}
                     onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); }}>
-                    Ask the Boss — answered from your own numbers
+                    {ASK_LABEL} — answered from your own numbers
                   </button>
                 </>
               );
@@ -15665,7 +15665,7 @@ export default function HostShellV2() {
                     <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
                   </button>
                   <button className="navrow" onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); }}>
-                    <span className="nr-l">Ask the Boss</span>
+                    <span className="nr-l">{ASK_LABEL}</span>
                     <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
                   </button>
                   <button className="navrow" onClick={() => setSheet({ kind: 'help' })}>
@@ -20892,7 +20892,7 @@ export default function HostShellV2() {
           run: () => { switchEvent(e.id); setPaletteOpen(false); },
         }));
         const dRaw = [
-          { label: 'Ask the Boss', sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
+          { label: ASK_LABEL, sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
           { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },

@@ -23,6 +23,7 @@
 // condition. Layout and nav policy scattered through a 16k-line JSX file cannot
 // be pinned by a test, and the failure mode is silent.
 
+import { BRAND } from './brand';
 import { moneyDatesFor } from './moneyDates';
 import { spanNights } from './dates';
 
@@ -39,6 +40,19 @@ import { spanNights } from './dates';
  * (travel / crab / cost-share / rain) appear only when the event actually has
  * them, because a door to an empty surface would be its own kind of lie.
  */
+// ─── THE DOOR THAT STILL CARRIED THE OLD NAME ───────────────────────────────
+// This read 'Ask the Boss' until 2026-09-23 — a leftover from Event Boss, live
+// on the rail, the sheet title, two nav rows and the command palette, in an app
+// that had already been renamed. The rename swept `Event Boss` and never saw
+// `the Boss`, because the guard that proved the sweep read src/App.js only and
+// matched the two-word string exactly: the right check against the wrong
+// population, and the wrong half of the product.
+//
+// Derived from BRAND rather than retyped, so the next rename does not have to
+// find this line again. `short` is the running-prose form, which is what a
+// button label is.
+export const ASK_LABEL = `Ask ${BRAND.short}`;
+
 export function sectionGroups(state) {
   // `state || {}` rather than a default parameter: a default only covers
   // `undefined`, so destructuring a NULL state would throw. Nav policy must
@@ -116,7 +130,7 @@ export function sectionGroups(state) {
     ] },
     { title: 'More', rows: [
       { k: 'meaning', label: 'Make it yours', sub: 'The moments that make it personal' },
-      { k: 'ask', label: 'Ask the Boss', sub: 'A question, answered from your numbers' },
+      { k: 'ask', label: ASK_LABEL, sub: 'A question, answered from your numbers' },
       { k: 'pass', label: 'The One-Event Pass', sub: '$39 · one event, no subscription' },
       // ONE NAME FOR THIS DESTINATION (host ruling, 2026-08-15). It read
       // "You & settings" on the phone row and "You & your account" everywhere
