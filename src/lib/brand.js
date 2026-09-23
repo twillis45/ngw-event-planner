@@ -40,7 +40,7 @@
 // nonsense fails to resolve. The two are distinguishable, which is what makes
 // the column below mean anything.
 //
-//   noguessworksystems.com   RESOLVES          the owner's own company — already his
+//   noguessworksystems.com   RESOLVES          OURS — confirmed by the owner
 //   noguesswork.com          RESOLVES          TAKEN, and identified: Dr Rameck
 //                                              Hunt's "The NO GUESSWORK Diet"
 //                                              (Penn Medicine Princeton Health)
@@ -64,6 +64,27 @@
 // become the brand in marketing, a wordmark, or a filing.
 //
 // This is a fact for the attorney, not a verdict from here.
+//
+// ─── WHAT IT WOULD TAKE TO SERVE THE APP FROM A DOMAIN WE OWN ───────────────
+// Owning noguessworksystems.com makes `events.noguessworksystems.com` free and
+// available today. It is NOT a cheaper change than an apex domain, though, and
+// the reason is worth writing down before someone plans around it: a subdomain
+// serves at the ROOT of its host, so either option moves the app's base path
+// from `/ngw-event-planner/` to `/`.
+//
+// Measured, that path is load-bearing in these places:
+//   hostv2/vite.config.js         the `base` option
+//   hostv2/index.html             manifest + apple-touch-icon hrefs
+//   hostv2/playwright*.mjs        baseURL and three webServer urls
+//   hostv2/e2e/, scripts/         crossDeviceSync, tabletCapture, device-preview
+//   src/App.js                    ~5 /ngw-event-planner/sample-contracts/ URLs
+//   package.json                  `homepage`, which sets PUBLIC_URL
+// plus a `public/CNAME` file, the registrar DNS record, and Pages settings.
+//
+// Order matters: DNS and Pages FIRST, code second. Flipping `homepage` before
+// the domain answers leaves the live site serving assets from a path that does
+// not exist yet. Nothing here has been changed — the app still deploys to
+// twillis45.github.io/ngw-event-planner.
 //
 // CONFIRM AT A REGISTRAR BEFORE BUYING. Nothing here is a purchase, a
 // reservation, or a clearance, and none of it is a trademark check.
