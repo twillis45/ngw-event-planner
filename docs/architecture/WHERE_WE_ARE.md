@@ -1,5 +1,43 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — the unit map, and what it refuses
+
+`main` @ pending. 520 suites / 7,378 tests. `verify:push` 5/5, exit 0.
+
+Host directive: **build the unit map** — the open item from the entry below, the
+reconciliation that lets a shelf price become a line total instead of a
+reference.
+
+**The measurement decided the design.** The corpus's `unit` field is mostly not
+a unit of measure: of 491 lines, 108 are `lbs` and the next four populations are
+`kit` (80), `drinks` (39), `servings` (25) and `bottles` (25). `unitBase` is
+worse — it holds whole sentences (`bottle per ~7 guests`, `urn (~40 cups)`). So
+arithmetic is available for mass and volume and nowhere else, and even there,
+half the pound-denominated lines are **baskets** whose quantity is a total across
+several products.
+
+**So it is an allowlist**, for the same reason `geoItemMap` is: 44 entries,
+matched on purchase id and full item text, reaching **63 of 491 lines (12.8%)**.
+Both numbers pinned. The corpus names its own baskets — "…ingredients" is the
+single most reliable refusal signal in the file.
+
+**The count bridge was refused.** "45 drinks ÷ a 12 pk" is wrong on a corpus
+where the drink lines read `Beer + wine for the adults` and `Soft drinks, juice,
+water`, and where `cups` means a serving in Drinks and a vessel in Supplies.
+
+**`soldBy` makes the rounding honest.** WEIGHT → `11.5 lbs at $4.99 per 1 lb =
+$57.39.` UNIT → `7 × 7 lb at $2.99 = $20.93 — covers 46, you take home 49 lbs.`
+The arithmetic is printed, not just the answer.
+
+**The summary counts two achievements apart:** *"5 of 22 lines priced at your
+store; the rest are averages. 2 of those convert to a line total; the rest are
+shelf references."*
+
+**Open:** `$0–$0/lb` renders on sub-dollar per-unit bands (pre-existing, `fmt`
+rounds to whole dollars); the allowlist is a floor, not a ceiling; Kroger keys
+still unset on Render.
+
+
 ## 2026-09-23 — three layers of a price, and the shell says which one it got
 
 `main` @ `3772ffc`. 519 suites / 7,359 tests. `verify:push` 5/5, exit 0.

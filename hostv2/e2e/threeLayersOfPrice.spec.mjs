@@ -210,3 +210,86 @@ test('NO STORE NEARBY: named, not a spinner that stops', async ({ page }) => {
   const t = await bodyText(page);
   expect(t).toMatch(/No store near that ZIP in this chain’s family\. The estimate stands\./);
 });
+
+// ─── THE UNIT MAP, ON THE SCREEN ─────────────────────────────────────────────
+//
+// A shelf price only becomes a number a host can add up when the plan's units
+// and the store's package can be reconciled. `src/lib/knowledge/storeUnitMap.js`
+// is that reconciliation and it answers "no" for 428 of the corpus's 491 lines,
+// so BOTH outcomes have to be visible here: the total where there is one, and
+// the unchanged reference where there is not.
+test('A LINE TOTAL, WITH ITS ARITHMETIC — and a reference where the units do not reconcile', async ({ page }) => {
+  await page.route('**/api/shopping/kroger/locations**', r => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ configured: true, locations: [
+      { locationId: '01400943', name: 'Harris Teeter — Bel Air', address: '5 Bel Air S Pkwy' },
+    ] }),
+  }));
+  await page.route('**/api/shopping/kroger/search-list', async (r) => {
+    const sent = JSON.parse(r.request().postData() || '{}');
+    // Priced BY NAME, matching whatever the plan actually sent, so this stub
+    // cannot quietly invent a line the corpus does not contain.
+    const results = (sent.items || []).map((i) => {
+      const n = String(i.name || '');
+      // On the unit map, sold by the bag: 4.29 bags rounds up to 5, and the
+      // rounding is the part a host most needs to see.
+      if (/^ice\b/i.test(n)) return { name: n, matched: true, price: 2.99, size: '7 lb', soldBy: 'UNIT' };
+      // On the map, sold by weight: no rounding, you pay for what you need.
+      if (/\brib/i.test(n)) return { name: n, matched: true, price: 4.99, size: '1 lb', soldBy: 'WEIGHT' };
+      // A real price on a line the map refuses. "…ingredients" is the corpus's
+      // own word for a basket — 9.2 lbs of "Baked mac & cheese ingredients" is
+      // pasta AND cheese AND milk AND butter — and it is the single most
+      // reliable refusal signal in the allowlist. Must stay a reference.
+      if (/ingredients$/i.test(n)) return { name: n, matched: true, price: 9.99, size: '8 oz', soldBy: 'UNIT' };
+      return { name: n, matched: false };
+    });
+    await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ configured: true, results }) });
+  });
+  await openList(page, '21014');
+  test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle');
+  await tapText(page, 'Price this list at a store near you');
+  await page.waitForTimeout(300);
+  await tapText(page, 'Find stores');
+  await page.waitForTimeout(800);
+  await tapText(page, 'Harris Teeter');
+  await page.waitForTimeout(1200);
+  // Open every shelf — Ice is in Supplies, the proteins are in Food, and a
+  // collapsed group renders no rows at all. The first run of the happy-path
+  // test above asserted over a closed list and failed on the row while the
+  // summary passed, which is the right way round.
+  const shelves = await page.evaluate(() => {
+    const heads = [...document.querySelectorAll('.fg-head')];
+    heads.forEach((h) => h.click());
+    return heads.map((h) => (h.innerText || '').replace(/\s+/g, ' ').slice(0, 40));
+  });
+  console.log('SHELVES OPENED:', JSON.stringify(shelves));
+  await page.waitForTimeout(900);
+  const t = await bodyText(page);
+
+  // THE ROUNDING, DISCLOSED. You cannot buy 4.29 bags of ice.
+  const ice = /(\d+) × 7 lb at \$2\.99 = \$[\d.]+ — covers ([\d.]+), you take home ([\d.]+) lbs/.exec(t);
+  console.log('ICE MATH:', ice && ice[0]);
+  expect(ice).toBeTruthy();
+  expect(Number(ice[3])).toBeGreaterThanOrEqual(Number(ice[2]));   // enough, and it says by how much
+  expect(Number(ice[3])).toBe(Number(ice[1]) * 7);                 // the stated maths reproduces itself
+
+  // SOLD BY WEIGHT: no rounding clause at all, because nothing was rounded.
+  const ribs = /([\d.]+) lbs at \$4\.99 per 1 lb = \$([\d.]+)\./.exec(t);
+  console.log('RIBS MATH:', ribs && ribs[0]);
+  expect(ribs).toBeTruthy();
+  expect(Number(ribs[2])).toBeCloseTo(Number(ribs[1]) * 4.99, 1);
+  expect(ribs[0]).not.toMatch(/covers/);
+
+  // AND THE REFUSAL, which is the common case: a real $9.99 shelf price on a
+  // basket line, shown as a reference and never multiplied into a total.
+  expect(t).toMatch(/ingredients[\s\S]{0,120}\$9\.99 · 8 oz/);
+  expect(t).not.toMatch(/× 8 oz at \$9\.99/);
+
+  // The summary counts the two achievements apart.
+  const note = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('.grounding')].find(x => /priced at your store/i.test(x.innerText || ''));
+    return el ? (el.innerText || '').replace(/\s+/g, ' ') : 'NO NOTE';
+  });
+  console.log('COVERAGE NOTE:', note);
+  expect(note).toMatch(/convert to a line total/);
+});

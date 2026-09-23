@@ -217,6 +217,33 @@ describe('the engine carries which layer priced each line', () => {
     expect(r.size).toBe('12 pk');
   });
 
+  test('THE UNIT MAP TURNS A SHELF PRICE INTO A LINE TOTAL — where it can', () => {
+    // End to end through the layer the shell actually calls. `p_ice` is on the
+    // unit-map allowlist and `lbs` is a real unit, so 30 lbs against 10 lb bags
+    // is three bags. This is the whole point of the map existing.
+    const ICE = { id: 'p_ice', item: 'Ice', unit: 'lbs', units: 30 };
+    const idx = storePriceIndex([{ name: 'Ice', matched: true, price: 3.49, size: '10 lb', soldBy: 'UNIT' }]);
+    const r = layerForLine({ purchase: ICE, geoBasis: null, storeIndex: idx });
+    expect(r.layer).toBe('store');
+    expect(r.total).toBe(10.47);
+    expect(r.packs).toBe(3);
+    // The arithmetic is printed, because a total a host cannot check against
+    // the shelf is one they have to take on faith.
+    expect(r.math).toMatch(/3 × 10 lb at \$3\.49 = \$10\.47/);
+  });
+
+  test('…AND LEAVES IT A REFERENCE WHERE IT CANNOT — which is most lines', () => {
+    // Same store, same call, a line the map refuses. The shelf price is still
+    // real and still shown; it just does not become a number in the budget.
+    // Nothing degrades: this is exactly what the store layer did before the map.
+    const idx = storePriceIndex([{ name: 'Beer', matched: true, price: 18.49, size: '12 pk', soldBy: 'UNIT' }]);
+    const r = layerForLine({ purchase: { ...BEER, unit: 'drinks', units: 42 }, geoBasis: null, storeIndex: idx });
+    expect(r.layer).toBe('store');
+    expect(r.exact).toBe(18.49);      // the reference survives
+    expect(r.total).toBe(null);       // the total does not exist
+    expect(r.math).toBe(null);
+  });
+
   test('…and an UNMATCHED line keeps the regional label it earned', () => {
     // The ordering only ever replaces the lines the better layer can speak to.
     const idx = storePriceIndex([{ name: 'Beer', matched: true, price: 18.49 }]);
@@ -229,11 +256,28 @@ describe('the engine carries which layer priced each line', () => {
 describe('the sheet never claims more coverage than it has', () => {
   test('COUNTED, not estimated', () => {
     const cov = layerCoverage([
-      { layer: 'store' }, { layer: 'store' },
+      // Two store matches, and only ONE of them has units the map could
+      // reconcile — which is the normal case, not an edge one.
+      { layer: 'store', total: 57.39 }, { layer: 'store', total: null },
       { layer: 'regional', scope: 'item' }, { layer: 'regional', scope: 'basket' },
       { layer: 'national' },
     ]);
-    expect(cov).toEqual({ store: 2, regional: 2, national: 1, regionalItem: 1, total: 5 });
+    expect(cov).toEqual({ store: 2, regional: 2, national: 1, regionalItem: 1, storeTotal: 1, total: 5 });
+  });
+
+  test('A MATCHED PRICE AND A SPENDABLE TOTAL ARE COUNTED APART', () => {
+    // The gap between them IS the feature's honest limit: a shelf price whose
+    // package the plan's units cannot be reconciled against is a reference, and
+    // a sheet that counted it as "priced" would imply a number a host can add
+    // up. 63 of 491 corpus lines can produce a total; the rest cannot.
+    expect(coverageNote({ store: 6, regional: 0, national: 2, storeTotal: 0, total: 8 }))
+      .toMatch(/None of them convert to a line total yet — they are shelf references\./);
+    expect(coverageNote({ store: 6, regional: 0, national: 2, storeTotal: 2, total: 8 }))
+      .toMatch(/2 of those convert to a line total; the rest are shelf references\./);
+    // All of them convert ⇒ no clause at all. A caveat with nothing to caveat
+    // is noise, and noise is not honesty.
+    expect(coverageNote({ store: 6, regional: 0, national: 2, storeTotal: 6, total: 8 }))
+      .toBe('6 of 8 lines priced at your store; the rest are averages.');
   });
 
   test('"adjusted for your region" is not allowed to imply a published local price', () => {
@@ -251,9 +295,9 @@ describe('the sheet never claims more coverage than it has', () => {
   test('"your store" never implies every line', () => {
     // The sentence that stops the best layer speaking for the whole sheet —
     // which is exactly how a true fact becomes a misleading one.
-    expect(coverageNote({ store: 2, regional: 1, national: 5, total: 8 }))
+    expect(coverageNote({ store: 2, regional: 1, national: 5, storeTotal: 2, total: 8 }))
       .toBe('2 of 8 lines priced at your store; the rest are averages.');
-    expect(coverageNote({ store: 4, regional: 0, national: 0, total: 4 }))
+    expect(coverageNote({ store: 4, regional: 0, national: 0, storeTotal: 4, total: 4 }))
       .toBe('Every line priced at your store.');
   });
 

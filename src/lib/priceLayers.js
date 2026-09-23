@@ -28,6 +28,7 @@
 // price is never filled in — it is reported.
 import { applyGeo } from './knowledge/geoCostIndex';
 import { geoItemForPurchase } from './knowledge/geoItemMap';
+import { storeLineTotal } from './knowledge/storeUnitMap';
 
 /** The layers, worst to best. Exported so a surface can sort or filter by rank. */
 export const PRICE_LAYERS = Object.freeze({
@@ -104,24 +105,25 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
   const hit = storeIndex instanceof Map ? storeIndex.get(storeKey(purchase)) : null;
   if (hit) {
     const p = round2(hit.effective);
+    const t = storeLineTotal({ line: purchase, price: p, size: hit.size, soldBy: hit.soldBy });
     return {
-      // ── `range` IS NULL ON PURPOSE, AND THIS IS THE LOAD-BEARING DECISION ──
+      // ── `range` IS STILL NULL, AND STILL ON PURPOSE ──────────────────────
       // A shelf price is priced per the STORE'S package — "1 gal", "12 pk",
-      // soldBy "Unit". The plan's lines are in the plan's own units
-      // (qtyPerGuest 1.5, unit 'lb'). Multiplying their number by our quantity
-      // produces a confidently wrong total, which is worse than the estimate it
-      // replaced because it looks like a fact.
+      // soldBy "Unit". The plan's lines are in the plan's own units. Multiplying
+      // their number by our quantity produces a confidently wrong total, which
+      // is worse than the estimate it replaced because it looks like a fact.
       //
-      // That reconciliation does not exist yet — it is the same commodity-vs-dish
-      // mismatch geoItemMap solved with a curated allowlist, and it needs the
-      // same deliberate treatment rather than a unit-guessing regex.
-      //
-      // So the store layer returns a REFERENCE a host can read ("your store has
-      // this at $18.49 for a 12 pk") and no band a caller could multiply by
-      // accident. When the unit map exists, this becomes a range and the
-      // callers change with it — visibly, because they will have to.
+      // `storeUnitMap` (2026-09-23) is the reconciliation, and where it can
+      // answer, `total` below is a real number. It is a POINT, not a band — a
+      // shelf price has no spread — so `range` stays null and a caller that
+      // wants the line's cost reads `total`, which is null far more often than
+      // not. Nothing here ever hands back a range a caller could multiply by
+      // accident.
       range: null,
       exact: p,
+      total: t ? t.total : null,
+      packs: t ? t.packs : null,
+      math: t ? t.because : null,
       size: hit.size || null,
       soldBy: hit.soldBy || null,
       layer: 'store',
@@ -147,6 +149,7 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
         return {
           range: g.range,
           exact: null,
+          total: null, packs: null, math: null,
           layer: 'regional',
           label: PRICE_LAYERS.regional.label,
           because: g.basis || `Adjusted for your region from BLS average prices.`,
@@ -160,6 +163,7 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
   return {
     range: band,
     exact: null,
+    total: null, packs: null, math: null,
     layer: 'national',
     label: PRICE_LAYERS.national.label,
     because: state
@@ -191,6 +195,18 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
   const hit = storeIndex instanceof Map ? storeIndex.get(storeKey(purchase)) : null;
   if (hit) {
     const p = round2(hit.effective);
+    // ── THE UNIT MAP, ASKED HERE AND NOWHERE ELSE ─────────────────────────
+    // Until 2026-09-23 this layer refused to produce a total at all, because
+    // Kroger prices their package and the plan counts plan units. `storeUnitMap`
+    // is the reconciliation, and it answers `null` far more often than not: the
+    // line must be a single product (an exact-match allowlist, because half the
+    // corpus's pound-denominated lines are baskets) AND the two sides must be
+    // in the same dimension.
+    //
+    // A null here is not a degraded state. It is the behaviour this layer
+    // shipped with — a real shelf price shown as a reference beside an
+    // estimate — and it remains correct for most lines.
+    const t = storeLineTotal({ line: purchase, price: p, size: hit.size, soldBy: hit.soldBy });
     return {
       layer: 'store',
       label: PRICE_LAYERS.store.label,
@@ -199,6 +215,15 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
       onSale: !!hit.promo,
       was: hit.promo ? round2(hit.price) : null,
       product: hit.description || null,
+      // The line's own total at this store, or null when the units cannot be
+      // reconciled. A caller that renders `total` when it is present and the
+      // estimate when it is not is behaving correctly in both cases.
+      total: t ? t.total : null,
+      packs: t ? t.packs : null,
+      // The arithmetic, written out. A total a host cannot check against the
+      // shelf is a total they have to take on faith, and this layer's whole
+      // claim is that it does not require faith.
+      math: t ? t.because : null,
       because: hit.promo
         ? `On sale at your store: $${p.toFixed(2)}${hit.size ? ` · ${hit.size}` : ''} (was $${round2(hit.price).toFixed(2)}).`
         : `Your store's shelf price: $${p.toFixed(2)}${hit.size ? ` · ${hit.size}` : ''}.`,
@@ -209,6 +234,7 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
       layer: 'regional',
       label: PRICE_LAYERS.regional.label,
       exact: null, size: null, onSale: false, was: null, product: null,
+      total: null, packs: null, math: null,
       scope: geoBasis.scope === 'item' ? 'item' : 'basket',
       // The two regional answers are NOT the same quality and are not described
       // as if they were. One is this commodity's own published series; the other
@@ -223,6 +249,7 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
     layer: 'national',
     label: PRICE_LAYERS.national.label,
     exact: null, size: null, onSale: false, was: null, product: null,
+    total: null, packs: null, math: null,
     because: 'National average — nothing local moved this line.',
   };
 }
@@ -233,11 +260,15 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
  * the feature honest when coverage is thin, which it usually is.
  */
 export function layerCoverage(lines) {
-  const out = { store: 0, regional: 0, national: 0, regionalItem: 0, total: 0 };
+  const out = { store: 0, regional: 0, national: 0, regionalItem: 0, storeTotal: 0, total: 0 };
   for (const l of Array.isArray(lines) ? lines : []) {
     if (!l || !l.layer) continue;
     out.total += 1;
     if (out[l.layer] !== undefined) out[l.layer] += 1;
+    // A matched price and a usable TOTAL are different achievements, and the
+    // gap between them is most of this feature. Counted apart so the sheet can
+    // say "priced 6, totalled 2" instead of implying the six are all spendable.
+    if (l.layer === 'store' && Number(l.total) > 0) out.storeTotal += 1;
     // Counted separately because the regional layer answers at two different
     // qualities and the summary must not average them into one claim: 12 of the
     // 491 authored lines in this corpus have their own published BLS series;
@@ -255,9 +286,16 @@ export function coverageNote(cov) {
   const c = cov || { store: 0, regional: 0, national: 0, total: 0 };
   if (!c.total) return null;
   if (c.store) {
-    return c.store === c.total
+    const head = c.store === c.total
       ? 'Every line priced at your store.'
       : `${c.store} of ${c.total} lines priced at your store; the rest are averages.`;
+    // A shelf price the units could not be reconciled against is a reference,
+    // not a spendable number. Saying so is the difference between "your store
+    // priced six lines" and six lines a host can add up.
+    if (!c.storeTotal) return `${head} None of them convert to a line total yet — they are shelf references.`;
+    return c.storeTotal === c.store
+      ? head
+      : `${head} ${c.storeTotal} of those convert to a line total; the rest are shelf references.`;
   }
   if (c.regional) {
     const head = c.regional === c.total

@@ -125,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `3772ffc8` |
-| Jest | **7,359 passed**, 1 skipped, **0 failed**, **519 suites** (re-measured 2026-09-23 after the twenty-fourth entry; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `d219953b` |
+| Jest | **7,378 passed**, 1 skipped, **0 failed**, **520 suites** (re-measured 2026-09-23 after the twenty-fifth entry; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -138,6 +138,104 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-fifth entry) — the unit map, and what it refuses
+
+Host directive: **"build the unit map."** The open item from the entry below —
+the reconciliation that would let a shelf price become a line total instead of
+a reference.
+
+520 suites / 7,378 tests. `verify:push` 5/5, exit 0. All 7 viewport projects
+green.
+
+### The measurement came first, and it decided the design
+
+The corpus's `unit` field is, for the most part, **not a unit of measure**. It
+is a noun for what the host carries out of the shop. Measured across 491 lines
+in 45 playbooks:
+
+| count | unit |
+|---|---|
+| 108 | `lbs` — the only large measurable population |
+| 80 | `kit` |
+| 39 | `drinks` |
+| 25 / 25 / 22 / 18 / 8 | `servings` · `bottles` · `sets` · `pieces` · `bites` |
+| tail | `sign package`, `book + pen`, `thermometer`, `9x13 cobbler or 2 pies`, `arch/backdrop`, `pumpkins` |
+
+`unitBase` is worse — it holds whole sentences: `bottle per ~7 guests`,
+`urn (~40 cups)`, `cake (serves ~15)`. Display strings, not units.
+
+**94 distinct lines** carry lb / gal / qt / L. And roughly half of those are
+still un-multipliable, because their quantity is a **basket total**:
+
+    "Cheese & charcuterie spread (crudite, sliders, skewers, dips)"   8 lbs
+    "Coleslaw, potato salad, hush puppy mix, fries"                   9 lbs
+    "Mixers + garnishes (juice, soda, citrus, simple syrup)"       10.5 L
+
+### So it is an allowlist, for the same reason geoItemMap is
+
+`src/lib/knowledge/storeUnitMap.js` — **44 entries**, matched on purchase id AND
+full item text, reaching **63 of 491 lines (12.8%)**. Both numbers pinned so they
+move on purpose. The exclusions are written into the file beside the group they
+belong to, so the next person does not re-derive them.
+
+The most reliable refusal signal turned out to be the corpus's own word:
+**"…ingredients"**. `Baked mac & cheese ingredients` is pasta and cheese and
+milk and butter, and it says so.
+
+### The count bridge was considered and refused
+
+"45 drinks ÷ a 12 pk = 4 packs" is tempting and wrong here. The `drinks` and
+`bottles` lines are overwhelmingly mixed — `Beer + wine for the adults`,
+`Soft drinks, juice, water`, `Wine (red + white + a sparkling)`. And `cups` is
+ambiguous in the worst way: `cups | Drinks | 92 | Red drink / Kool-Aid / punch`
+is a serving; `cups | Supplies | 84 | Disposable cups` is a vessel. Same token,
+opposite meaning, no way for code to tell.
+
+### `soldBy` is the field that makes rounding honest
+
+Kroger sends `WEIGHT` for divisible goods and `UNIT` for packages.
+
+- **WEIGHT** → `11.5 lbs at $4.99 per 1 lb = $57.39.` No rounding, because none
+  happened.
+- **UNIT** → `7 × 7 lb at $2.99 = $20.93 — covers 46, you take home 49 lbs.`
+  You cannot buy 6.57 bags of ice, and the overage is the part a host most needs
+  to see.
+
+**The arithmetic is printed, not just the answer.** A total a host cannot check
+standing in the aisle is one they have to take on faith, and this layer's whole
+claim is that it does not require faith.
+
+### The summary now counts two different achievements apart
+
+> 5 of 22 lines priced at your store; the rest are averages. **2 of those convert
+> to a line total; the rest are shelf references.**
+
+A matched price and a spendable number are not the same thing, and the gap
+between them is most of this feature. Driven in Chromium, all 7 viewports.
+
+### Worth carrying forward
+
+- **Measure the population before designing the detector.** The whole shape of
+  this module came from one histogram. Had it been built on the assumption that
+  `unit` is a unit, it would have multiplied 80 `kit` lines by a package price.
+- **A false refusal costs nothing here; a false accept reaches a budget.** That
+  asymmetry is why every judgment call in the allowlist resolves toward no, and
+  it is worth stating explicitly in any module that turns an estimate into a
+  number.
+- **The corpus names its own baskets.** "ingredients", "&", "+" and a
+  parenthetical list are the corpus telling you it is not one product.
+
+### Open
+
+- **`$0–$0/lb` on the ice row.** Not from this work — the per-unit band is
+  rounded to whole dollars by `fmt`, so a sub-dollar rate renders as free. Small,
+  visible, and a plain falsehood on screen. Not fixed here because it is outside
+  the directive; logged so it is not found twice.
+- **44 entries is a floor, not a ceiling.** Adding an entry is cheap and
+  deliberate. The refusals are the document.
+- **`KROGER_CLIENT_ID` / `KROGER_CLIENT_SECRET` still unset on Render**, so
+  every host today still takes the "not switched on" path.
 
 ## FIXED 2026-09-23 (twenty-fourth entry) — three layers of a price, and the shell now says which one it got
 

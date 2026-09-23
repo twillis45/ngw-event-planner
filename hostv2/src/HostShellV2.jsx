@@ -18169,11 +18169,32 @@ export default function HostShellV2() {
                                   const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
                                   if (L.layer !== 'store') return null;
                                   return (
-                                    <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                      {(priceStore && priceStore.name) || 'Your store'}: ${L.exact.toFixed(2)}
-                                      {L.size ? ' · ' + L.size : ''}
-                                      {L.onSale && L.was ? ` · on sale, was $${L.was.toFixed(2)}` : ''}
-                                    </span>
+                                    <>
+                                      <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
+                                        {(priceStore && priceStore.name) || 'Your store'}: ${L.exact.toFixed(2)}
+                                        {L.size ? ' · ' + L.size : ''}
+                                        {L.onSale && L.was ? ` · on sale, was $${L.was.toFixed(2)}` : ''}
+                                      </span>
+                                      {/* ── AND WHAT THE WHOLE LINE COSTS THERE ──
+                                          Only when the unit map could reconcile
+                                          the plan's quantity with the store's
+                                          package — 63 of the corpus's 491 lines.
+                                          For every other line this is absent and
+                                          the row reads exactly as it did before
+                                          the map existed: a shelf reference beside
+                                          an estimate.
+
+                                          THE ARITHMETIC IS PRINTED, not just the
+                                          answer. "5 × 7 lb at $2.99 = $14.95 —
+                                          covers 30, you take home 35 lbs" is
+                                          checkable standing in the aisle; "$14.95"
+                                          is something a host has to trust. And the
+                                          rounding is the part they most need to
+                                          see, because you cannot buy 4.29 bags. */}
+                                      {L.total != null && (
+                                        <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>{L.math}</span>
+                                      )}
+                                    </>
                                   );
                                 })()}
                                 {/* The "because" behind the quantity (it.basis, the
