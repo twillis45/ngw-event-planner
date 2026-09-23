@@ -145,6 +145,12 @@ import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs
 import { isPlausibleCityText, parseVenueLocation } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
 import { eventGeoQuery } from '@app/lib/eventGeoQuery';
+// ── SEND THE LIST TO THE STORE (ported to hostv2 2026-09-23) ────────────────
+// The CRA shell could push the shopping list to a pre-filled Instacart cart and
+// the shipping app could not — one of four host capabilities found living only
+// in a shell scheduled for deletion. The engine is unchanged and shared; only
+// the button is new here.
+import { instacartCart, INSTACART_FALLBACK } from '@app/lib/instacart';
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
@@ -1057,6 +1063,9 @@ export default function HostShellV2() {
   const [patch, setPatch] = useState(() => {
     try { return JSON.parse(localStorage.getItem(LS_PATCH(BOOT_EVENT_ID))) || {}; } catch { return {}; }
   });
+  // In-flight guard for the send-to-store button: the cart call is a network
+  // round trip, and a second tap would open two tabs.
+  const [sendingCart, setSendingCart] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   // Money-move undo (Sprint 1): a toast can carry ONE inline action — a
   // single-level snapshot restore of just the fields the write changed. Not a
@@ -17590,6 +17599,42 @@ export default function HostShellV2() {
                       let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
                       openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
                     }}>Copy the shopping list</button>
+                    {/* ── AND SEND IT TO THE STORE ─────────────────────────────
+                        Truthful by construction, and the label is the reason it
+                        reads this way. We ask the backend for a PRE-FILLED cart;
+                        the Instacart key lives server-side and may not be set.
+                        When a real cart comes back we open it. When it does not,
+                        we copy the list and open Instacart's search so the host
+                        pastes it — and we SAY that, rather than opening an empty
+                        store and letting them think the send failed.
+
+                        "Send the list to Instacart" is the act either way. A
+                        label promising a filled cart would be false exactly when
+                        the key is missing, which is today. */}
+                    <button className="food-act" disabled={sendingCart}
+                      style={{ width: '100%', marginBottom: 'var(--sp-2)' }}
+                      onClick={async () => {
+                        if (sendingCart) return;
+                        setSendingCart(true);
+                        let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                        let url = INSTACART_FALLBACK; let realCart = false;
+                        try {
+                          const r = await instacartCart(`${event.name || 'Event'} shopping list`, shopItems);
+                          if (r && r.url) { url = r.url; realCart = true; }
+                        } catch (_e) { /* the fallback below is the honest path */ }
+                        if (!realCart) {
+                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                          let text = '';
+                          try {
+                            const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                            text = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
+                          } catch (_e) { text = ''; }
+                          try { await navigator.clipboard.writeText(text); } catch (_e) { /* clipboard denied — the store still opens */ }
+                          toast('List copied. Paste it into Instacart — the one-tap cart needs a store key we do not have yet.');
+                        }
+                        setSendingCart(false);
+                        try { window.open(url, '_blank', 'noopener'); } catch (_e) { /* popup blocked */ }
+                      }}>{sendingCart ? 'Sending…' : 'Send the list to Instacart'}</button>
                     {nudgeFor('food')}
                   </>
                 )}

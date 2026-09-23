@@ -125,6 +125,26 @@ test.describe('the moved content reaches a real screen', () => {
   });
 });
 
+test.describe('the shopping list can leave the app', () => {
+  test('the host can send the list to the store, and the button says the act', async ({ page }) => {
+    // Ported from the CRA on 2026-09-23: the old shell could push the list to a
+    // pre-filled Instacart cart and the shipping app could not.
+    //
+    // The LABEL is the assertion that matters. The Instacart key lives on the
+    // server and is not set, so every host today takes the fallback — copy the
+    // list, open the store, paste. "Send the list to Instacart" is true on both
+    // paths; a label promising a filled cart would be false on the only one that
+    // currently runs.
+    await boot(page, { id: 'cart-probe', type: 'Birthday' });
+    await openSection(page, 'The spread & shopping');
+    const text = await sheetText(page);
+    expect(text).toContain('send the list to instacart');
+    // …and the copy action it sits beside is still there — this is an addition,
+    // not a replacement.
+    expect(text).toContain('copy the shopping list');
+  });
+});
+
 test.describe('the air-travel invite floor reaches the shipping shell', () => {
   test('a destination host is told to invite EARLIER than a local one', async ({ browser }) => {
     // The defect this proves fixed: the floor was built into playbookMilestones,
