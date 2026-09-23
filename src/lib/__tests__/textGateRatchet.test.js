@@ -208,7 +208,24 @@ const hostv2TextGates = () => walk(path.join(ROOT, 'src'))
   .filter((f) => f.endsWith('.test.js'))
   .filter((f) => f !== SELF)
   .filter((f) => {
-    const s = fs.readFileSync(f, 'utf8');
+    // ── COMMENTS ARE NOT GATES (2026-09-23) ────────────────────────────────
+    // The sweep asks "does this file read hostv2 SOURCE". A file that merely
+    // MENTIONS hostv2 in prose does not, and counting it inflates the number
+    // this ratchet exists to make meaningful.
+    //
+    // It surfaced on `releaseProfiles.test.js`, which reads a GitHub workflow
+    // YAML and never touches a hostv2 file — it tripped on one word in one
+    // comment. That is the same mistake this file made about ITSELF on its
+    // first run, recorded twenty lines above; the fix was an exclusion, which
+    // worked for one file and not for the class.
+    //
+    // A ratchet bumped for non-reasons stops being a signal, so the heuristic
+    // is narrowed instead: strip comments, then ask. Every genuine gate reads
+    // hostv2 in CODE, so none is lost — the premise test below is what proves
+    // the population did not collapse.
+    const s = fs.readFileSync(f, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/^\s*\/\/.*$/gm, ' ');
     return s.includes('readFileSync') && s.includes('hostv2');
   });
 

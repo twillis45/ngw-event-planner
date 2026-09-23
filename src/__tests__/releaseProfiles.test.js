@@ -154,6 +154,33 @@ describe('the deploy workflow agrees with the validator', () => {
     }
   });
 
+  test('THE UNIT SUITE RUNS WITH NO RELEASE CONFIGURATION', () => {
+    // The failure that took run 410 down, and the reason it is worth a guard
+    // rather than a fix: five suites assert the UNCONFIGURED path, and three of
+    // them do not merely fail with a real base present — they TIME OUT, because
+    // the unit suite starts making live HTTP calls to the production backend
+    // from a CI runner.
+    //
+    // Latent since the profiles were written; a `live` dispatch would have hit
+    // it identically. `services` is only what made a backend-configured release
+    // something anyone would run.
+    const step = yml.slice(yml.indexOf('- name: Unit suite'), yml.indexOf('- name: Validate release'));
+    expect(step).toMatch(/unset "\$v"/);
+    // The whole NAMESPACE, not a named list — a list rots the first time a
+    // variable is added to the job env above it.
+    expect(step).toMatch(/\^REACT_APP_\[A-Z0-9_\]\*/);
+  });
+
+  test('CONFIGURATION PARITY IS CHECKED FOR SERVICES, not only live', () => {
+    // Both profiles bake the API base into BOTH bundles, and the failure the
+    // check catches — CRA and hostv2 disagreeing about which backend they talk
+    // to — is identical on either. Gated to `live` alone, a services release
+    // would ship with the check silently skipped, which is the same shape as
+    // the gap that started this whole session.
+    const gate = yml.split('\n').find((l) => l.includes("RELEASE_PROFILE == 'live'") && l.includes('if:'));
+    expect(gate).toMatch(/services/);
+  });
+
   test('a push still defaults to demo when nothing has been set', () => {
     // The floor became a repository variable so a manual services release is
     // not reverted by the next merge — but `demo` is still what you get if you

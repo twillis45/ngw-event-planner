@@ -145,8 +145,26 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: hostv2
+      # ── THE UNIT SUITE RUNS WITH NO RELEASE CONFIGURATION ────────────────
+      # The job-level env above is for the BUILD. It was reaching this step too,
+      # and five suites assert the UNCONFIGURED path — their own comments say so
+      # ("REACT_APP_API_BASE_URL unset in test env", "API unconfigured in test
+      # env"). With a real base present they do not merely fail: `kcrStore`,
+      # `firstRealTrace` and `vendorBriefConfirm` TIME OUT at 5s, because the
+      # unit suite starts making live HTTP calls to the production backend from
+      # a CI runner.
+      #
+      # LATENT SINCE THE PROFILES WERE WRITTEN — a `live` dispatch would have hit
+      # this identically. It surfaced on 2026-09-23 because `services` made a
+      # backend-configured release something anyone would actually run.
+      #
+      # The whole REACT_APP_* namespace is stripped rather than a named list, so
+      # this cannot rot when a variable is added above. `checks.yml` solves the
+      # same problem the other way for e2e, with a reserved-TLD fake host.
       - name: Unit suite
-        run: CI=true npx react-scripts test --watchAll=false
+        run: |
+          for v in $(env | grep -o '^REACT_APP_[A-Z0-9_]*' || true); do unset "$v"; done
+          CI=true npx react-scripts test --watchAll=false
 
       # ── the public configuration contract ────────────────────────────────
       # Production mode: every required public value must be present, or this
@@ -201,8 +219,13 @@ jobs:
       # below already floors the profile to 'demo'; reading the same value here
       # is what makes the gate actually run. A gate that no-ops is worse than no
       # gate, because the workflow reads as though it ran.
+      # Runs for SERVICES as well as live (2026-09-23). Both profiles bake the
+      # API base into both bundles, and the failure this catches — CRA and
+      # hostv2 disagreeing about which backend they talk to — is identical on
+      # either. Gated to `live` alone, a services release would have shipped
+      # with the parity check silently skipped.
       - name: Verify CRA and hostv2 configuration parity
-        if: ${{ env.RELEASE_PROFILE == 'live' }}
+        if: ${{ env.RELEASE_PROFILE == 'live' || env.RELEASE_PROFILE == 'services' }}
         run: |
           set -euo pipefail
           api="${REACT_APP_API_BASE_URL}"
