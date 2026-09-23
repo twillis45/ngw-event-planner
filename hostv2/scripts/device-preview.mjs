@@ -35,6 +35,7 @@
 // behaviour, Home-indicator gestures, or real touch latency. For those, install
 // Xcode and use `xcrun simctl` (see the note printed at the end of a run).
 import { chromium, webkit, devices } from 'playwright';
+import { previewUrl } from '../deployBase.mjs';
 
 const argv = process.argv.slice(2);
 if (argv.includes('--list')) {
@@ -103,7 +104,7 @@ if (!profile) {
 }
 
 const DEV_URL = 'http://localhost:5199/';
-const BUILT_URL = 'http://127.0.0.1:5233/ngw-event-planner/hostv2/';
+const BUILT_URL = previewUrl(5233);
 const wantDev = argv.includes('--dev');
 const URL = process.env.PREVIEW_URL || (wantDev ? DEV_URL : BUILT_URL);
 const engine = useChromium ? chromium : webkit;

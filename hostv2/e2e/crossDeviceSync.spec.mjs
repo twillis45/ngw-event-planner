@@ -36,11 +36,12 @@
 // docs/audits/2026-08-16_CROSS_DEVICE_SYNC_BOARD.md for why a timestamp merge was
 // rejected outright.
 import { test, expect } from '@playwright/test';
+import { previewUrl } from '../deployBase.mjs';
 
 // 127.0.0.1, not localhost: under Node >=17 'localhost' resolves IPv6-first,
 // so the preview binds ::1 and an IPv4 probe refuses forever. The main webServer
 // in playwright.config.mjs carries the same note; I rediscovered it the slow way.
-const BASE = 'http://127.0.0.1:5244/ngw-event-planner/hostv2/';
+const BASE = previewUrl(5244);
 const PROJECT = 'https://synctest.supabase.co';
 const STUDIO = '11111111-2222-3333-4444-555555555555';
 const EVENT_ID = 'ev-sync-probe';

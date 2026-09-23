@@ -4,6 +4,7 @@
 // localStorage are never touched. Requires Node ≥ 18 on PATH (the repo default
 // shell resolves v16 first):  PATH="$(brew --prefix node)/bin:$PATH" npm run test:e2e
 import { defineConfig } from '@playwright/test';
+import { previewUrl } from './deployBase.mjs';
 
 // Specs whose every test calls setViewportSize (or a boot() helper that does).
 // See the note above `projects` for why this is per-test, not per-file.
@@ -73,7 +74,7 @@ export default defineConfig({
   reporter: process.env.PW_BLOB ? [['blob']] : [['list']],
   use: {
     // vite preview serves dist under the build base.
-    baseURL: 'http://127.0.0.1:5233/ngw-event-planner/hostv2/',
+    baseURL: previewUrl(5233),
   },
   // Two real geometries (Up-Next #3): portrait phone + the wide-but-short
   // landscape that the min-height guards exist for. Every probe runs in both.
@@ -137,7 +138,7 @@ export default defineConfig({
       // --host 127.0.0.1: under Node ≥17 'localhost' resolves IPv6-first, so a
       // bare preview binds ::1 and the IPv4 readiness probe refuses forever.
       command: 'E2E_BASE=1 npx vite preview --port 5233 --strictPort --host 127.0.0.1',
-      url: 'http://127.0.0.1:5233/ngw-event-planner/hostv2/',
+      url: previewUrl(5233),
       reuseExistingServer: false,
       timeout: 60_000,
     },
@@ -161,7 +162,7 @@ export default defineConfig({
       // that spec passes while measuring NOTHING. That is not hypothetical; it is
       // what happened on the first run.
       command: 'REACT_APP_AUTH_BYPASS=false npx vite build --mode synctest --outDir dist-synctest && E2E_BASE=1 npx vite preview --outDir dist-synctest --port 5244 --strictPort --host 127.0.0.1',
-      url: 'http://127.0.0.1:5244/ngw-event-planner/hostv2/',
+      url: previewUrl(5244),
       reuseExistingServer: false,
       timeout: 120_000,
     },

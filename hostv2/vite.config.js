@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { SITE_BASE, HOSTV2_BASE } from './deployBase.mjs';
 
 // ── __dirname, DERIVED RATHER THAN INHERITED ───────────────────────────────
 // This config is real ESM (hostv2 is "type": "module"), and Vite's planned
@@ -36,8 +37,26 @@ export default defineConfig(({ command, mode }) => {
     // preview served dist at '/' while the BUILT index references the deep
     // base — every asset 404'd and the harness saw a blank mount (Layer-2
     // debugging, 2026-07-22). Set by playwright.config's webServer only.
-    base: command === 'build' || process.env.E2E_BASE ? '/ngw-event-planner/hostv2/' : '/',
-    plugins: [react()],
+    base: command === 'build' || process.env.E2E_BASE ? HOSTV2_BASE : '/',
+    plugins: [
+      react(),
+      // index.html's manifest and touch-icon live at the SITE root, one level
+      // ABOVE this bundle's base — so vite's own %BASE_URL% is the wrong value
+      // for them and they cannot be left hardcoded either. This substitutes the
+      // one owner instead. In `serve` (no E2E_BASE) the bundle is at '/', and
+      // the site root is too, so the token resolves to '/' and the dev server
+      // keeps working.
+      {
+        name: 'ngw-site-base',
+        transformIndexHtml: {
+          order: 'pre',
+          handler: (html) => html.replaceAll(
+            '%SITE_BASE%',
+            command === 'build' || process.env.E2E_BASE ? SITE_BASE : '/',
+          ),
+        },
+      },
+    ],
     resolve: {
       alias: { '@app': path.resolve(__dirname, '../src') },
       // ONE REACT. hostv2/node_modules carried 19.2.7 while the root carried

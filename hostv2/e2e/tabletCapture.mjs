@@ -3,6 +3,7 @@
 // viewport + full-page PNGs. Run: node e2e/tabletCapture.mjs <outDir>
 // Assumes `npm run build` has produced dist/ (same contract as the matrix).
 import { chromium } from 'playwright';
+import { previewUrl } from '../deployBase.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
@@ -10,7 +11,7 @@ const OUT = process.argv[2] || 'tablet-refs';
 mkdirSync(OUT, { recursive: true });
 
 const PORT = 5234;
-const BASE = `http://127.0.0.1:${PORT}/ngw-event-planner/hostv2/`;
+const BASE = previewUrl(PORT);
 
 const COI_PATCH = {
   vendors: [
