@@ -1,5 +1,54 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — three layers of a price, and the shell says which one it got
+
+`main` @ pending. 519 suites / 7,359 tests. `verify:push` 5/5, exit 0.
+
+Host directive: **build the three layers.** Layers 1 (the national band) and 3
+(the Instacart link out) were already live. Layer 2 — a real shelf price from a
+real store — had a 231-line backend router that **nothing had ever called**.
+
+**The order lives in one module.** `src/lib/priceLayers.js` is the only thing
+that knows store > regional > national, and each layer replaces a worse one only
+for the lines it can speak to. That module exists because earlier the same day
+two surfaces gave one host opposite answers about the same numbers — with two
+layers. Three would have forked faster.
+
+**The engine knew and threw it away.** `factorFor(purchase)` decides per line
+between the item's own BLS series, the regional basket mean, and nothing at all,
+and returned a bare number. It now returns the decision with the number
+(`geoBasis` on the line). The shell **labels**; it never re-prices — the bands
+already carry the regional factor, and re-running it would apply it twice.
+
+**Measured: 12 of 491** authored lines across 45 playbooks have their own BLS
+commodity series; 11 playbooks have any at all. So the sheet's summary no longer
+lets *"every line adjusted for your region"* stand alone — it adds how many use
+a published price and how many use the mean. The 12 is pinned so it moves on
+purpose.
+
+**A shelf price is not a band.** Kroger prices their package ("12 pk"); the plan
+counts plan units. The store layer returns a reference beside the estimate and
+`range: null`, because multiplying one by the other is a confidently wrong total
+wearing a real price's credibility. The unit reconciliation is real work and is
+open.
+
+**Two guards failed on this work and both failures were right.**
+`everyBackendRouteHasACaller` refused to keep calling a now-live route dead (its
+`BUILT_NOT_WIRED` list is empty). `venueSourceProof` caught the store picker
+reading `event.venueCity` raw for a ZIP — fixed by publishing `zip` from
+`venueFor`, which also retired a pre-existing `venue-exempt:` note. Net one
+fewer raw venue read than before.
+
+**Driven in Chromium at all 7 viewport projects**, including the three honest
+failures (no keys, no store nearby, service unreachable) — none of which invents
+a price.
+
+**Open:** the unit map; `KROGER_CLIENT_ID`/`SECRET` are not set on Render, so
+every host today takes the "not switched on" path; and the shipped Pages build
+bakes no API base, so CI asserts the offer is *absent* and only a
+`--mode development` build exercises the feature.
+
+
 ## 2026-09-23 — 250 rows retired, seven moved
 
 `main` @ `0121fd0`. 513 suites / 7,282 tests. `verify:push` 5/5.

@@ -118,10 +118,15 @@ const CALLED_FROM_OUTSIDE = {
 // staleness test below, which is exactly what that test is for: this list rots
 // in both directions, and a stale "not wired" is a map that sends the next
 // person to rebuild something that already works.
-const BUILT_NOT_WIRED = {
-  '/api/shopping/kroger/search-list': 'REAL PER-STORE PRICES, and the strongest answer to "more specific than the South" — BLS food data stops at four census regions, while this matches each shopping-list line to an actual Kroger product. Needs KROGER_CLIENT_ID/SECRET and a host-visible store picker. Host decision 2026-09-23: not wired unilaterally, because it changes the prices a host is shown.',
-  '/api/shopping/kroger/locations': 'The store picker that search-list needs. Same decision.',
-};
+//
+// IT IS NOW EMPTY, AND THAT IS THE POINT OF KEEPING IT. Both Kroger routes left
+// this list on 2026-09-23 when the host shell grew a store picker and the three
+// price layers — and they left because this file's staleness test FAILED and
+// made them leave. That is the guard working in the direction nobody builds
+// for: not catching a new dead route, but refusing to keep calling a live one
+// dead. An empty object here is a claim ("nothing is built and unwired"), and
+// the two tests below are what keep it a true one.
+const BUILT_NOT_WIRED = {};
 
 describe('every backend route has someone who calls it', () => {
   test('(premise) the backend is actually being read', () => {
@@ -142,8 +147,16 @@ describe('every backend route has someone who calls it', () => {
 
   test('(premise) …and is not so eager that everything looks called', () => {
     // The opposite failure: a matcher that says yes to anything proves nothing.
+    //
+    // This used to assert on `/api/shopping/kroger/search-list`, a route that
+    // was real and genuinely uncalled — a better negative than a fabricated one,
+    // right up until the shell called it and this assertion became the thing
+    // standing between the codebase and the truth. Fabricated paths now, shaped
+    // like real ones so the matcher has to actually reject them rather than
+    // failing on something obviously malformed.
     expect(CALLED('/api/definitely/not/a/real/route')).toBe(false);
-    expect(CALLED('/api/shopping/kroger/search-list')).toBe(false);
+    expect(CALLED('/api/shopping/kroger/aisle-map')).toBe(false);
+    expect(CALLED('/api/events/{event_id}/communication/carrier-pigeon')).toBe(false);
   });
 
   test('THE GUARD: every route is called, or named as external, or named as unwired', () => {

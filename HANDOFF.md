@@ -125,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `39367f2f` |
-| Jest | **7,282 passed**, 1 skipped, **0 failed**, **513 suites** (re-measured 2026-09-23 after the twenty-third entry; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `d86a4ea8` |
+| Jest | **7,359 passed**, 1 skipped, **0 failed**, **519 suites** (re-measured 2026-09-23 after the twenty-fourth entry; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -138,6 +138,130 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-fourth entry) — three layers of a price, and the shell now says which one it got
+
+Host directive: **"build the three layers."** Layers 1 (national band) and 3
+(the Instacart link out) were already live. Layer 2 — a real shelf price from a
+real store — had a 231-line backend router that **nothing had ever called**, and
+it shipped that way because no test asked whether anything reached it.
+
+`verify:push` 5/5, exit 0, checked directly rather than through a pipe (the
+mistake that pushed a red commit earlier today).
+
+### The order, and why it lives in exactly one module
+
+`src/lib/priceLayers.js` is the only thing that knows **store > regional >
+national**. Each layer may replace a worse one only for the lines it can
+actually speak to: a store price for ribs licenses no claim about napkins.
+
+That module exists because of what happened this morning — the food sheet and
+the money readout each answered *"were these adjusted?"* for themselves and gave
+one host opposite answers about the same numbers on the same screen. That was
+**two** layers. Three would have forked faster.
+
+### The defect class again: the engine knew, then threw it away
+
+`playbookFoodPlan`'s `factorFor(purchase)` decides, per line, between the item's
+own BLS series, the regional basket mean, and no adjustment at all — and
+returned a bare number. The decision died at the call site, so every surface
+downstream had to re-derive it from the purchase, and two of them derived it
+differently.
+
+It now returns the decision with the number, and the line carries `geoBasis`.
+**The shell LABELS; it never re-prices.** `perUnitLow/High` already have the
+regional factor in them, so a surface that re-ran the regional layer would apply
+it twice — a silent ~12% error in the Northeast that never throws and never
+looks wrong.
+
+### Measured, and the number is small
+
+**12 of 491** authored lines across all 45 playbooks have their own BLS
+commodity series. Eleven playbooks have any at all; Crab Feast, Tailgate,
+Thanksgiving and 31 others have none. Everything else takes the regional basket
+mean.
+
+That is not a defect — BLS prices commodities and this corpus plans dishes — but
+it is why `coverageNote` refuses to let *"every line adjusted for your region"*
+stand alone. It now adds *"N use that item's own published price; the rest use
+the regional average."* A true sentence that implies 491 published local prices
+is still a misleading one.
+
+The 12 is pinned in `threeLayersOfPrice.test.js` so it moves **on purpose**.
+
+### What a host sees (driven in Chromium, all 7 viewport projects)
+
+Inside **The list**, when a backend is configured:
+
+- `Price this list at a store near you` + what it will and will not do
+- ZIP field, **prefilled from the venue** — never geolocated, never guessed
+- the nearby stores as cards; picking one fetches prices for every line
+- the sheet hero and the list both print `2 of 22 lines priced at your store;
+  the rest are averages` — **the same object**, composed once in `priceNote()`
+- the row reads `Harris Teeter — Bel Air: $14.99 · 12 pk · on sale, was $18.49`
+  **beside** `11.5 lbs · $4–$7/lb`, never instead of it
+
+**The shelf price is deliberately not a band.** Kroger prices *their* package
+("12 pk"); the plan counts plan units. Multiplying one by the other produces a
+confidently wrong total, which is worse than the estimate it replaced because it
+looks like a fact. `priceForLine` returns `range: null` for the store layer and
+the tests say so in as many words. That reconciliation is real work and has not
+been done.
+
+### Three honest failures, each named rather than spun
+
+No keys · no store near that ZIP · service unreachable. All three drive green,
+and none of them invents a price — the estimate stands and says so.
+
+### The guards that made this happen, and one that had to be retired
+
+- `everyBackendRouteHasACaller` **failed on this work**, correctly: the two
+  Kroger routes were listed as `BUILT_NOT_WIRED` and are now called. That list
+  is **empty**, which is the guard working in the direction nobody builds for —
+  refusing to keep calling a live route dead.
+- Its `(premise) not so eager` test asserted on `kroger/search-list`, a real
+  uncalled route — a better negative than a fabricated one, right up until it
+  became the thing standing between the file and the truth. Fabricated paths now.
+- `venueSourceProof` **failed on this work**, correctly: the store picker read
+  `event.venueCity` raw to find a ZIP. The fix was not an exemption — `venueFor`
+  now publishes `zip`, and the geocoder's pre-existing `venue-exempt:` note is
+  **gone**. Net: one fewer raw read than before this change.
+
+### Coverage, measured not assumed
+
+Kroger is the only self-serve grocery API returning real prices, and one API
+serves **every banner**: Kroger, Fred Meyer, Ralphs, Harris Teeter, Fry's, QFC,
+Smith's, Dillons, Pick 'n Save, Ruler — `locationId` picks the store. Walmart's
+developer portal is sellers/suppliers only. Instacart gives breadth and returns
+no prices, and production keys need a **30–40 day review**.
+
+### Worth carrying forward
+
+- **A fact that one accessor decides and the next one re-derives will fork.**
+  Third time today. The fix is always the same: return the decision with the
+  number.
+- **A guard that fails on your own work is the guard earning its keep.** Two did
+  here. Both failures were right and both fixes were structural, not exemptions.
+- **A premise test can go stale in the direction of being right.** The negative
+  case that was real is the one that rots first.
+- **"Adjusted for your region" and "12 of 491 lines have a published local
+  price" are the same fact at two honesty levels.** Only the second one is safe
+  to leave alone on a screen.
+
+### Open
+
+- **The unit map.** Until a plan line's units reconcile with a store's package,
+  the store layer is a reference, not a total. Same commodity-vs-dish mismatch
+  `geoItemMap` solved with a curated allowlist; it needs the same deliberate
+  treatment, not a unit-guessing regex.
+- **Layer 2 is invisible in the shipped build.** `npm run build` bakes no
+  `REACT_APP_API_BASE_URL`, so Pages ships with the offer correctly absent. The
+  e2e spec asserts *that* in CI and drives the full feature only on a
+  `--mode development` build. Naming it here because a green CI run does **not**
+  mean the store layer was exercised.
+- **`KROGER_CLIENT_ID` / `KROGER_CLIENT_SECRET` are not set on Render.** Free
+  self-serve keys from developer.kroger.com. Until they are, every host takes
+  the "not switched on" path — which is why that path was driven first.
 
 ## FIXED 2026-09-23 (twenty-third entry) — 250 rows retired, seven moved
 

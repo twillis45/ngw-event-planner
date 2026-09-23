@@ -4297,12 +4297,31 @@ export function playbookFoodPlan(event, opts = {}) {
   // Absent, malformed, or unmapped all resolve to the mean, which is a real
   // answer rather than a guessed one.
   const itemFactors = (opts.itemFactors && typeof opts.itemFactors === 'object') ? opts.itemFactors : {};
+  //
+  // ── AND IT NOW SAYS WHICH ONE IT PICKED ──────────────────────────────────
+  // This returned a bare number, and the decision — own commodity series, or
+  // basket mean, or nothing moved it at all — died right here. Every surface
+  // downstream then had to RE-DERIVE it from the purchase, and earlier today
+  // two of them derived it differently about the same numbers on the same
+  // screen. So the decision travels with the price instead.
+  //
+  // `basis: null` means the band was NOT moved, which is a real answer rather
+  // than a missing one — it is what lets a sheet say "national average"
+  // without guessing, and what the store layer above it can outrank.
   const factorFor = (purchase) => {
     let key = null;
     try { key = geoItemForPurchase(purchase); } catch { key = null; }
-    if (!key) return pf;
-    const f = Number(itemFactors[key]);
-    return (f > 0.5 && f < 2) ? f : pf;
+    const f = key ? Number(itemFactors[key]) : NaN;
+    const own = !!key && f > 0.5 && f < 2;
+    const factor = own ? f : pf;
+    return {
+      factor,
+      // `scope` is the SPECIFICITY of the regional claim, and the two are not
+      // the same quality of answer: 'item' is this commodity's own BLS series
+      // for the region; 'basket' is the region's whole-basket mean standing in
+      // for a line BLS publishes no series for.
+      basis: factor === 1 ? null : { factor, item: own ? key : null, scope: own ? 'item' : 'basket' },
+    };
   };
   const playbook = getPlaybook(event.type);
   if (!playbook || !Array.isArray(playbook.purchases)) return null;
@@ -4687,7 +4706,10 @@ export function playbookFoodPlan(event, opts = {}) {
       const _choiceF = _choiceBasis.factor;
       // The ONE regional multiplier this line will take: its own commodity
       // factor when geoItemMap maps it, otherwise the basket mean. Never both.
-      const ppf = factorFor(p);
+      // `_geo.basis` is the same decision, kept rather than re-derived — it is
+      // carried onto the line below as `geoBasis`.
+      const _geo = factorFor(p);
+      const ppf = _geo.factor;
       if (_choiceF !== 1) { uLow *= _choiceF; uHigh *= _choiceF; }
       // Global buyable-unit guardrail — if an author left this in a non-buyable
       // serving unit (e.g. "40 slices" of cake), convert to whole purchasable units
@@ -4782,6 +4804,12 @@ export function playbookFoodPlan(event, opts = {}) {
         units, unitBase: buyable ? buyable.unit : (p.unit || ''),
         perUnitLow: Math.round(uLow * ppf * 100) / 100,
         perUnitHigh: Math.round(uHigh * ppf * 100) / 100,
+        // WHICH LAYER PRICED THIS LINE — the factor decision above, carried out
+        // with the number it produced instead of being thrown away. null means
+        // nothing moved the band (a national average), and a sheet may say so.
+        // A store price, when one exists, outranks this; the ordering lives in
+        // lib/priceLayers.js, which is the only place that knows it.
+        geoBasis: _geo.basis,
         skipped: !!skip[p.id],
         locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),

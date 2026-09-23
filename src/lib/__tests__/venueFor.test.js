@@ -46,4 +46,33 @@ describe('venueFor', () => {
     expect(venueFor({ recordKind: 'host_event' }).isHome).toBe(true);
     expect(venueFor({}).isHome).toBe(false);
   });
+
+  // ── THE ZIP THE HOST TYPED, WHEREVER IT LANDED ────────────────────────────
+  // `setVenue` writes a bare ZIP into venueCity, because the city gate rejects
+  // digits. Two consumers had each learned that quirk and carried their own
+  // five-digit test against the raw field — one with a `venue-exempt:` note
+  // admitting it. Published here instead, so neither has to know.
+  describe('zip', () => {
+    test('a bare ZIP typed as the location is found — and is NOT a city', () => {
+      const v = venueFor({ venueCity: '21014' });
+      expect(v.zip).toBe('21014');
+      // The city gate still rejects it. Both are true and they are DIFFERENT
+      // facts; publishing one must not quietly loosen the other.
+      expect(v.city).toBe('');
+    });
+
+    test('an explicit venueZip wins', () => {
+      expect(venueFor({ venueZip: '30030', venueCity: 'Decatur' }).zip).toBe('30030');
+    });
+
+    test('no ZIP is "" — never a city, never a guess', () => {
+      expect(venueFor({ venueCity: 'Decatur', venueState: 'GA' }).zip).toBe('');
+      expect(venueFor({}).zip).toBe('');
+      // ZIP+4 and a 3-digit prefix are not ZIPs for this purpose: the store and
+      // geocoder APIs both want exactly five digits, and half a ZIP sent as a
+      // whole one comes back confident about the wrong place.
+      expect(venueFor({ venueCity: '21014-1234' }).zip).toBe('');
+      expect(venueFor({ venueZip: '210' }).zip).toBe('');
+    });
+  });
 });

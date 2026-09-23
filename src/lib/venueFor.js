@@ -158,7 +158,22 @@ export function venueFor(event) {
     : (isHome && city ? `At home in ${city}` : (address || city));
   const mapsQuery = address
     || [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', ');
-  return { name, kind, isHome, city, state, address, isSet, addressSettled, needsCityForWeather, displayLine, mapsQuery };
+  // ── THE ZIP, PUBLISHED (2026-09-23) ──────────────────────────────────────
+  // `setVenue` below stores a bare ZIP in **venueCity**, because the city gate
+  // rejects digits by design. So the ZIP a host typed sits on the record under
+  // a field named for something else, and any consumer that wants it has to
+  // know that and reach past this accessor to get it.
+  //
+  // Two already did: the geocoder query in the shell, and — today — the
+  // store-price picker. Both carried the same `/^\d{5}$/` test against the same
+  // raw field, one of them with a `venue-exempt:` note admitting it. That is
+  // precisely the fork this module exists to end, so the fact is published here
+  // once and both consumers ask for it.
+  //
+  // '' when there is no ZIP. Never inferred from a city, never geocoded.
+  const zip = /^\d{5}$/.test(String(ev.venueZip || '').trim()) ? String(ev.venueZip).trim()
+    : (/^\d{5}$/.test(String(ev.venueCity || '').trim()) ? String(ev.venueCity).trim() : '');
+  return { name, kind, isHome, city, state, zip, address, isSet, addressSettled, needsCityForWeather, displayLine, mapsQuery };
 }
 
 // ─── setVenue — THE one venue WRITE path ─────────────────────────────────────

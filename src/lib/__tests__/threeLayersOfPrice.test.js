@@ -1,0 +1,265 @@
+// ─── THREE WAYS TO PRICE A LINE, AND SAYING WHICH ONE ────────────────────────
+//
+// Host directive 2026-09-23: build the three layers.
+//
+//   STORE     a real shelf price from the store the host picked. Kroger returns
+//             one only when a locationId is supplied, and the backend discarded
+//             it until today.
+//   REGIONAL  the authored band moved by a BLS factor. Four census regions —
+//             the finest geography BLS publishes for food.
+//   NATIONAL  the band as authored.
+//
+// THE POINT IS NOT THE LAYERS, IT IS THE ORDER AND THE LABEL. Each layer may
+// only replace a worse one for the lines it can actually speak to. A store price
+// for beer licenses no claim about napkins, and every line says which layer it
+// came from — because earlier today two surfaces gave a host opposite answers
+// about the same numbers, and that was with only TWO layers.
+import { priceForLine, layerForLine, storePriceIndex, layerCoverage, coverageNote, PRICE_LAYERS } from '../priceLayers';
+import { geoItemForPurchase } from '../knowledge/geoItemMap';
+import { playbookFoodPlan, ALL_PLAYBOOKS } from '../playbooks';
+
+// A line the geo allowlist genuinely covers — taken from the allowlist itself,
+// so this test breaks if the mapping is edited rather than testing a fiction.
+const BEER = { id: 'p_beer', item: 'Beer' };
+const NAPKINS = { id: 'p_napkins', item: 'Napkins, plates and cups' };
+
+describe('a price says which of the three layers produced it', () => {
+  test('(premise) the fixtures are real — one line IS mapped, the other is NOT', () => {
+    // Without this the regional test could pass against a line nothing covers,
+    // and the national test could pass because the mapping silently broke.
+    expect(geoItemForPurchase(BEER)).toBe('beerMalt');
+    expect(geoItemForPurchase(NAPKINS)).toBe(null);
+  });
+
+  test('NATIONAL is the floor: no state, no store, the band is returned as authored', () => {
+    const r = priceForLine({ purchase: BEER, range: [40, 80] });
+    expect(r.range).toEqual([40, 80]);
+    expect(r.layer).toBe('national');
+    expect(r.because).toMatch(/add your venue state/i);
+  });
+
+  test('REGIONAL moves a mapped line, and says so', () => {
+    const r = priceForLine({ purchase: BEER, range: [40, 80], state: 'MD' });
+    expect(r.layer).toBe('regional');
+    // Maryland is the South (Census Region 3), and the South factor for malt
+    // beverages is below 1 — so the band must come DOWN, not merely change.
+    expect(r.range[0]).toBeLessThan(40);
+    expect(r.range[1]).toBeLessThan(80);
+    expect(r.because).toBeTruthy();
+  });
+
+  test('…but an UNMAPPED line stays national even with a state', () => {
+    // The curated-allowlist rule, enforced here rather than trusted: paper goods
+    // have no BLS commodity series and must not inherit beer's factor.
+    const r = priceForLine({ purchase: NAPKINS, range: [20, 30], state: 'MD' });
+    expect(r.range).toEqual([20, 30]);
+    expect(r.layer).toBe('national');
+    expect(r.because).toMatch(/no regional or store price/i);
+  });
+
+  test('STORE outranks both, and replaces the band with a POINT', () => {
+    // A shelf price is a fact, not an estimate. Scaling an authored band by it
+    // would produce a number that is neither.
+    const idx = storePriceIndex([{ name: 'Beer', matched: true, price: 18.49, size: '12 pk' }]);
+    const r = priceForLine({ purchase: BEER, range: [40, 80], state: 'MD', storeIndex: idx });
+    expect(r.layer).toBe('store');
+    expect(r.exact).toBe(18.49);
+    expect(r.because).toMatch(/shelf price/i);
+    expect(r.because).toContain('12 pk');
+    // AND IT IS NOT A BAND. Kroger prices a 12-pack; the plan counts drinks.
+    // Handing back a range would invite `units * uLow`, which is a wrong total
+    // wearing a real price's credibility. Null forces a caller to treat this as
+    // the reference it is.
+    expect(r.range).toBe(null);
+    expect(r.size).toBe('12 pk');
+  });
+
+  test('a SALE price is what the host would actually pay', () => {
+    const idx = storePriceIndex([{ name: 'Beer', matched: true, price: 18.49, promoPrice: 14.99 }]);
+    const r = priceForLine({ purchase: BEER, range: [40, 80], storeIndex: idx });
+    expect(r.exact).toBe(14.99);
+    expect(r.because).toMatch(/on sale/i);
+    expect(r.because).toContain('18.49');      // the regular price is still named
+  });
+
+  test('A MATCH WITHOUT A PRICE IS NOT A STORE PRICE', () => {
+    // Kroger returns a product match with no price when no locationId was sent.
+    // Keeping those would make "your store" mean two different things — matched,
+    // and priced — and only one of them is worth anything to a host.
+    const idx = storePriceIndex([
+      { name: 'Beer', matched: true, description: 'Some Lager 12pk' },   // no price
+      { name: 'Wine', matched: false },
+      { name: 'Ice', matched: true, price: 0 },                          // not a price
+    ]);
+    expect(idx.size).toBe(0);
+    const r = priceForLine({ purchase: BEER, range: [40, 80], storeIndex: idx });
+    expect(r.layer).toBe('national');
+  });
+
+  test('NO LAYER EVER RETURNS A BAND IT DID NOT EARN', () => {
+    // The regional and national layers DO return bands, because both are bands
+    // in the plan's own units. Only the store layer refuses, and the contrast is
+    // the point.
+    const idx = storePriceIndex([{ name: 'Beer', matched: true, price: 18.49 }]);
+    expect(priceForLine({ purchase: BEER, range: [40, 80], storeIndex: idx }).range).toBe(null);
+    expect(priceForLine({ purchase: BEER, range: [40, 80], state: 'MD' }).range).not.toBe(null);
+    expect(priceForLine({ purchase: NAPKINS, range: [20, 30] }).range).toEqual([20, 30]);
+  });
+
+  test('the layers are RANKED, so a surface can reason about better and worse', () => {
+    expect(PRICE_LAYERS.store.rank).toBeGreaterThan(PRICE_LAYERS.regional.rank);
+    expect(PRICE_LAYERS.regional.rank).toBeGreaterThan(PRICE_LAYERS.national.rank);
+  });
+});
+
+// ─── AND THE LINE THE SHELL ACTUALLY HOLDS ───────────────────────────────────
+//
+// The shell does not hold an authored band. `playbookFoodPlan` has already
+// multiplied `perUnitLow/High` by the regional factor before a row is rendered,
+// so a surface that re-ran the regional layer would apply it TWICE — a ~12%
+// silent error, the exact failure the engine's own "never both" comment guards.
+//
+// So the engine now carries the decision it made (`geoBasis`) and the shell
+// LABELS instead of re-pricing. Same module, same ordering, no second opinion.
+describe('the engine carries which layer priced each line', () => {
+  // The Cookout, because it is one of only ELEVEN playbooks with any line at
+  // all that geoItemMap maps — measured below, and the reason the store layer
+  // is worth building rather than a nicety.
+  const cookout = (opts) => playbookFoodPlan(
+    { id: 'e-3l', type: 'The Cookout', date: '2026-08-20', guestMode: 'count', guestCount: 20, guests: [] },
+    opts,
+  );
+  const chicken = (fp) => (fp.list || []).find((l) => l && l.id === 'p_chicken');
+
+  test('(premise) the fixture plan really contains the mapped line', () => {
+    // Everything below asserts about `p_chicken`. Written FIRST against a Crab
+    // Feast, which has no mapped line at all — this test caught that, and the
+    // three "scope" assertions below would otherwise have passed as `basket`
+    // while proving nothing about the item path.
+    const l = chicken(cookout({}));
+    expect(l).toBeTruthy();
+    expect(geoItemForPurchase(l)).toBe('chickenLegs');
+  });
+
+  test('NO FACTOR: geoBasis is null, and null means national — not "unknown"', () => {
+    expect(chicken(cookout({})).geoBasis).toBe(null);
+    expect(layerForLine({ purchase: chicken(cookout({})), geoBasis: null }).layer).toBe('national');
+  });
+
+  test('ITEM SCOPE: a mapped line records that it used its OWN series', () => {
+    const l = chicken(cookout({ priceFactor: 1.1, itemFactors: { chickenLegs: 1.24 } }));
+    expect(l.geoBasis).toEqual({ factor: 1.24, item: 'chickenLegs', scope: 'item' });
+    // …and the factor it recorded is the one actually in the number beside it.
+    expect(l.geoBasis.factor).not.toBe(1.1);
+  });
+
+  test('BASKET SCOPE: no series for this line, so the mean stood in — and says so', () => {
+    const l = chicken(cookout({ priceFactor: 1.1, itemFactors: {} }));
+    expect(l.geoBasis).toEqual({ factor: 1.1, item: null, scope: 'basket' });
+    const why = layerForLine({ purchase: l, geoBasis: l.geoBasis }).because;
+    expect(why).toMatch(/no published price for this line itself/i);
+  });
+
+  test('HOW THIN THE ITEM LAYER ACTUALLY IS — measured, so nobody oversells it', () => {
+    // 12 of 491 authored lines across all 45 playbooks carry their own BLS
+    // series. Every other line takes the basket mean. That is not a defect —
+    // BLS publishes average prices for commodities, and this corpus plans
+    // dishes — but it IS the reason the summary note below refuses to let
+    // "adjusted for your region" imply 491 published prices.
+    //
+    // This number is allowed to move. It is pinned so that it moves ON PURPOSE.
+    let total = 0; let mapped = 0;
+    for (const pb of ALL_PLAYBOOKS) {
+      const fp = playbookFoodPlan({ id: 'x', type: pb.type, date: '2026-08-20', guestMode: 'count', guestCount: 20, guests: [] });
+      if (!fp) continue;
+      for (const l of (fp.list || [])) {
+        total += 1;
+        let k = null; try { k = geoItemForPurchase(l); } catch { k = null; }
+        if (k) mapped += 1;
+      }
+    }
+    expect(total).toBeGreaterThan(400);
+    expect(mapped).toBe(12);
+  });
+
+  test('the two regional answers do NOT read the same, because they are not', () => {
+    // A host who is told "regional" for both cannot tell whether they got beer's
+    // own published price or a whole-basket average wearing beer's name.
+    const own = layerForLine({ geoBasis: { factor: 1.24, item: 'beerMalt', scope: 'item' } });
+    const mean = layerForLine({ geoBasis: { factor: 1.1, item: null, scope: 'basket' } });
+    expect(own.layer).toBe('regional');
+    expect(mean.layer).toBe('regional');
+    expect(own.because).not.toBe(mean.because);
+    expect(own.because).toMatch(/own BLS average price/i);
+  });
+
+  test('LABELLING NEVER RETURNS A BAND — that is the whole reason it exists', () => {
+    // If this ever returns a range, a caller will render it, and the regional
+    // factor lands on the number a second time.
+    const idx = storePriceIndex([{ name: 'Beer', matched: true, price: 18.49 }]);
+    for (const r of [
+      layerForLine({ purchase: BEER, geoBasis: null }),
+      layerForLine({ purchase: BEER, geoBasis: { factor: 1.2, item: 'beerMalt', scope: 'item' } }),
+      layerForLine({ purchase: BEER, geoBasis: { factor: 1.2, item: null, scope: 'basket' }, storeIndex: idx }),
+    ]) {
+      expect(r.range).toBeUndefined();
+      expect('range' in r).toBe(false);
+    }
+  });
+
+  test('a STORE price still outranks a regional one here too', () => {
+    const idx = storePriceIndex([{ name: 'Beer', matched: true, price: 18.49, promoPrice: 14.99, size: '12 pk' }]);
+    const r = layerForLine({ purchase: BEER, geoBasis: { factor: 1.24, item: 'beerMalt', scope: 'item' }, storeIndex: idx });
+    expect(r.layer).toBe('store');
+    expect(r.exact).toBe(14.99);
+    expect(r.onSale).toBe(true);
+    expect(r.was).toBe(18.49);
+    expect(r.size).toBe('12 pk');
+  });
+
+  test('…and an UNMATCHED line keeps the regional label it earned', () => {
+    // The ordering only ever replaces the lines the better layer can speak to.
+    const idx = storePriceIndex([{ name: 'Beer', matched: true, price: 18.49 }]);
+    const r = layerForLine({ purchase: NAPKINS, geoBasis: { factor: 1.1, item: null, scope: 'basket' }, storeIndex: idx });
+    expect(r.layer).toBe('regional');
+    expect(r.exact).toBe(null);
+  });
+});
+
+describe('the sheet never claims more coverage than it has', () => {
+  test('COUNTED, not estimated', () => {
+    const cov = layerCoverage([
+      { layer: 'store' }, { layer: 'store' },
+      { layer: 'regional', scope: 'item' }, { layer: 'regional', scope: 'basket' },
+      { layer: 'national' },
+    ]);
+    expect(cov).toEqual({ store: 2, regional: 2, national: 1, regionalItem: 1, total: 5 });
+  });
+
+  test('"adjusted for your region" is not allowed to imply a published local price', () => {
+    // The regional layer answers at two qualities, and 12 of 491 authored lines
+    // in this corpus get the better one. A note that said only "every line
+    // adjusted for your region" would be true and would mislead — which is the
+    // failure mode this whole module exists to stop.
+    expect(coverageNote({ store: 0, regional: 20, national: 0, regionalItem: 1, total: 20 }))
+      .toBe('Every line adjusted for your region. 1 use that item’s own published price; the rest use the regional average.');
+    // No item-scope line ⇒ no claim about published prices at all.
+    expect(coverageNote({ store: 0, regional: 20, national: 0, regionalItem: 0, total: 20 }))
+      .toBe('Every line adjusted for your region.');
+  });
+
+  test('"your store" never implies every line', () => {
+    // The sentence that stops the best layer speaking for the whole sheet —
+    // which is exactly how a true fact becomes a misleading one.
+    expect(coverageNote({ store: 2, regional: 1, national: 5, total: 8 }))
+      .toBe('2 of 8 lines priced at your store; the rest are averages.');
+    expect(coverageNote({ store: 4, regional: 0, national: 0, total: 4 }))
+      .toBe('Every line priced at your store.');
+  });
+
+  test('…and it falls back through the layers, naming the best one that reached anything', () => {
+    expect(coverageNote({ store: 0, regional: 3, national: 5, total: 8 })).toMatch(/3 of 8 lines adjusted/);
+    expect(coverageNote({ store: 0, regional: 0, national: 8, total: 8 })).toMatch(/^National averages/);
+    expect(coverageNote({ total: 0 })).toBe(null);
+  });
+});

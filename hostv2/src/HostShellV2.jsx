@@ -154,6 +154,15 @@ import { instacartCart, INSTACART_FALLBACK } from '@app/lib/instacart';
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
+// ── THE THREE LAYERS OF A PRICE (2026-09-23) ───────────────────────────────
+// store > regional > national, with exactly ONE module knowing that order.
+// The shell LABELS; it never re-prices. `playbookFoodPlan` has already applied
+// the regional factor to every band it hands over, so running the regional
+// layer again here would multiply it twice — a silent ~12% error in the
+// Northeast that never throws and never looks wrong. `layerForLine` reads the
+// decision the engine recorded (`geoBasis`) instead of re-deriving it.
+import { layerForLine, storePriceIndex, layerCoverage, coverageNote } from '@app/lib/priceLayers';
+import { isStorePricesConfigured, nearbyStores, storePrices } from '@app/lib/storePrices';
 import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
@@ -2481,6 +2490,15 @@ export default function HostShellV2() {
   const [placeNoteDraft, setPlaceNoteDraft] = useState(''); // controlled draft for the place-note editor (address field autocompletes)
   const PLACE_NOTE_FIELD = { venue: 'venue', arrival: 'venueAddress', parking: 'parkingNotes', loadIn: 'loadInNotes', contact: 'venueContact', rules: 'houseRules' };
   const [shopStore, setShopStore] = useState(null); // shopping-run mode: 'I'm at X' filter (session-only)
+  // ── LAYER 2: A REAL STORE ────────────────────────────────────────────────
+  // SESSION-ONLY, on purpose. A shelf price is true for about a day; writing a
+  // picked store and a set of prices into the event would let a host open the
+  // plan next month and read last month's prices as current. The layer is worth
+  // having and it is not worth persisting — so it is re-asked for, or it is not
+  // claimed at all.
+  const [priceStore, setPriceStore] = useState(null);   // { locationId, name, address } once picked
+  const [priceIdx, setPriceIdx] = useState(null);       // Map from storePriceIndex — null until a fetch lands
+  const [storePicker, setStorePicker] = useState(null); // { zip, stores, busy, reason } while choosing
   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   const [showMoreDiets, setShowMoreDiets] = useState(false); // dietary "other" fold (parity: App.js:10850)
@@ -2610,8 +2628,11 @@ export default function HostShellV2() {
         // city in another state; venueState/profile.state disambiguate it.
         // A ZIP is already unambiguous on its own, no state suffix needed.
         const withState = (city, state) => (city && !/^\d{5}$/.test(city) && state) ? `${city}, ${state}, US` : city;
-        const zipRaw = String(event.venueCity || '').trim(); // venue-exempt: ZIP passthrough — the city gate rejects digits by design, but the geocoder accepts a bare ZIP
-        const q = withState(/^\d{5}$/.test(zipRaw) ? zipRaw : vf.city, vf.state)
+        // ZIP passthrough: the city gate rejects digits by design, but the
+        // geocoder accepts a bare ZIP. This read the raw field under a
+        // `venue-exempt:` note; venueFor publishes `zip` now, so the exemption
+        // is gone and the store-price picker asks the same accessor.
+        const q = withState(vf.zip || vf.city, vf.state)
           || (!homeish ? vf.name : '')
           || withState(String((profile && profile.city) || '').trim(), String((profile && profile.state) || '').trim()); // your usual area backs up a bare backyard
         if (!q) return;
@@ -5151,6 +5172,39 @@ export default function HostShellV2() {
     try { return foodSpanNote(event); } catch (_e) { return null; }
   }, [event]);
   const noKitchen = !!(foodSpan && foodSpan.listApplies === false);
+
+  // ── ONE PLACE ANSWERS "WHAT PRICED THESE NUMBERS" ────────────────────────
+  // Same rule as foodSpanNote above, applied to the thing that broke this
+  // morning: the sheet and the money readout each answered "were these
+  // adjusted?" for themselves and gave one host opposite answers about the
+  // same numbers. `geoPlanNote` fixed that for two layers. Adding a store
+  // layer would have re-opened it immediately — the list drill-in would say
+  // "2 of 22 lines priced at your store" two inches under a hero still
+  // reading "these are national average prices", both true, together
+  // misleading.
+  //
+  // So the whole sentence is composed HERE, once, and every consumer prints
+  // this. The layer order lives in lib/priceLayers; this only asks.
+  //
+  // NOTHING IS RE-PRICED. `playbookFoodPlan` already multiplied every band by
+  // the regional factor; these rows read the decision it recorded (`geoBasis`)
+  // and add only what the shell actually has that the engine does not — a
+  // store index, when a host picked a store.
+  const priceLayerRows = useMemo(() => {
+    if (!foodPlan) return [];
+    return (foodPlan.list || [])
+      .filter(it => it && !it.skipped && it.item)
+      .map(it => layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx }));
+  }, [foodPlan, priceIdx]);
+  const priceCoverage = useMemo(() => layerCoverage(priceLayerRows), [priceLayerRows]);
+  const priceNote = () => {
+    const base = geoPlanNote(venueFor(event).state, foodPP.priceContext);
+    // The store sentence only appears when a store actually reached something.
+    // A picked store that matched nothing must not change what the sheet says.
+    if (!priceIdx || !priceIdx.size) return base;
+    const n = coverageNote(priceCoverage);
+    return n ? `${base} ${n}` : base;
+  };
 
   // ROW-LEVEL CTA RULE, single source (was duplicated only inside the Budget
   // sheet's render — the After tab's own money summary showed the identical
@@ -17247,7 +17301,7 @@ export default function HostShellV2() {
                         built. What IS honest is telling the host which kind of number
                         they are reading. Sheet-level on purpose: the same sentence on
                         every row would be noise, and noise is not honesty. */}
-                    <Grounding gap={3}>{geoPlanNote(venueFor(event).state, foodPP.priceContext)}</Grounding>
+                    <Grounding gap={3}>{priceNote()}</Grounding>
                     {PRICE_VINTAGE ? <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>est. prices · {PRICE_VINTAGE}</p> : null}
                   </div>
                   );
@@ -17699,6 +17753,128 @@ export default function HostShellV2() {
                     <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>Done</button>
                   </div>
                 )}
+                {/* ── LAYER 2: PRICE THIS LIST AT A REAL STORE ───────────────
+                    The plan's numbers are a national band moved by a regional
+                    factor. A store price is the only number on this screen a
+                    host could walk in and pay, and the backend that fetches one
+                    has existed, uncalled, since it was written.
+
+                    IT IS OPT-IN AND IT ASKS. Nothing fetches on mount: a price
+                    lookup costs a request per line, and a host who never opens
+                    the list never wanted one. The ZIP is prefilled only when the
+                    host already typed one as their venue — never geolocated,
+                    never guessed from the city.
+
+                    WHAT IT DOES NOT DO, stated where the host decides: Kroger
+                    prices THEIR package ("$18.49 · 12 pk") and this plan counts
+                    plan units, so a shelf price appears BESIDE the band as a
+                    reference and never replaces the estimate. Multiplying one by
+                    the other would produce a confidently wrong total, which is
+                    worse than the estimate because it looks like a fact.
+
+                    COVERAGE, ONE BANNER FAMILY. Kroger's API serves Fred Meyer,
+                    Ralphs, Harris Teeter, Fry's, QFC, Smith's, Dillons, Pick 'n
+                    Save and Ruler through the same endpoint. Wide, and not
+                    everywhere — which is why this is a layer over the regional
+                    band and not a replacement for it. */}
+                {foodSect.list && !noKitchen && isStorePricesConfigured() && (() => {
+                  const lines = (foodPlan.list || []).filter(it => it && !it.skipped && it.item);
+                  // ── PICKED: the store, and what it actually reached ────────
+                  if (priceStore) {
+                    // `priceCoverage`, not a local recount — the sheet hero two
+                    // inches above prints the same object through priceNote(),
+                    // and two counts of one list is exactly how they would come
+                    // to disagree.
+                    const cov = priceCoverage;
+                    return (
+                      <div style={{ margin: '0 0 var(--sp-3)' }}>
+                        <div className="actions-row" style={{ margin: 0, alignItems: 'center' }}>
+                          <span className="of" style={{ fontWeight: 700 }}>{priceStore.name}</span>
+                          <button className="mini" onClick={() => {
+                            setPriceStore(null); setPriceIdx(null); setStorePicker(null);
+                          }}>Change</button>
+                        </div>
+                        {/* The sentence that stops the best layer speaking for the
+                            whole sheet. Counted from the rows above, never
+                            estimated — when a store matched two of forty lines it
+                            says two, which is the number that keeps this honest. */}
+                        <Grounding gap={3}>{coverageNote(cov)}</Grounding>
+                        {cov.store > 0 && (
+                          <GuideLine gap={0} style={{ margin: '6px 0 0' }}>
+                            Shelf prices are shown beside the estimate, not instead of it — the store prices its own package, and your list counts your own units.
+                          </GuideLine>
+                        )}
+                      </div>
+                    );
+                  }
+                  // ── CHOOSING ──────────────────────────────────────────────
+                  if (storePicker) {
+                    const p = storePicker;
+                    return (
+                      <div style={{ margin: '0 0 var(--sp-3)' }}>
+                        <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
+                          <input className="field" inputMode="numeric" maxLength={5} placeholder="ZIP code"
+                            aria-label="ZIP code to find a store near"
+                            style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                            value={p.zip}
+                            onChange={e => setStorePicker(m => ({ ...m, zip: e.target.value.replace(/\D/g, '').slice(0, 5), reason: null }))} />
+                          <button className="mini" disabled={p.busy || !/^\d{5}$/.test(p.zip)} onClick={async () => {
+                            setStorePicker(m => ({ ...m, busy: true, reason: null, stores: [] }));
+                            const r = await nearbyStores(p.zip);
+                            setStorePicker(m => ({ ...m, busy: false, stores: r.stores, reason: r.reason }));
+                          }}>{p.busy ? 'Looking…' : 'Find stores'}</button>
+                          <button className="mini" onClick={() => setStorePicker(null)}>Cancel</button>
+                        </div>
+                        {p.stores.length > 0 && (
+                          <div className="srctier-list">
+                            {p.stores.map(s => (
+                              <button key={s.locationId} className="srctier" onClick={async () => {
+                                setStorePicker(m => ({ ...m, busy: true }));
+                                // Sent as `{ name: it.item }` — the same string
+                                // priceLayers keys the index on, so the round trip
+                                // cannot drift into matching nothing.
+                                const r = await storePrices(lines.map(it => ({ name: it.item })), s.locationId);
+                                const idx = storePriceIndex(r.results);
+                                setPriceStore(s); setPriceIdx(idx); setStorePicker(null);
+                                toast(idx.size
+                                  ? `${s.name}: ${idx.size} of ${lines.length} line${lines.length === 1 ? '' : 's'} priced.`
+                                  : `${s.name} had no prices for these lines — the estimate stands.`);
+                              }}>
+                                <span className="srctier-top">
+                                  <span className="srctier-name">{s.name}</span>
+                                  <span className="srctier-badge">use</span>
+                                </span>
+                                {s.address && <span className="srctier-sub">{s.address}</span>}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {/* Every failure reads the same from here — no store, no
+                            keys, network down — so each one is NAMED rather than
+                            collapsed into a spinner that stops. */}
+                        {!p.busy && p.reason && (
+                          <Grounding gap={3}>{
+                            p.reason === 'none-nearby' ? 'No store near that ZIP in this chain’s family. The estimate stands.'
+                              : p.reason === 'no-keys' ? 'Store pricing is not switched on for this deployment.'
+                                : p.reason === 'no-zip' ? 'That ZIP does not look right — five digits.'
+                                  : 'Could not reach the store service just now. The estimate stands.'
+                          }</Grounding>
+                        )}
+                      </div>
+                    );
+                  }
+                  // ── THE OFFER ─────────────────────────────────────────────
+                  return (
+                    <div style={{ margin: '0 0 var(--sp-3)' }}>
+                      <button className="mini" onClick={() => setStorePicker({ zip: venueFor(event).zip, stores: [], busy: false, reason: null })}>
+                        Price this list at a store near you
+                      </button>
+                      <GuideLine gap={0} style={{ margin: '6px 0 0' }}>
+                        Checks a Kroger-family store for a real shelf price on each line. Whatever it finds sits beside your estimate, never instead of it.
+                      </GuideLine>
+                    </div>
+                  );
+                })()}
                 {/* ── TAKE IT WITH YOU, FROM INSIDE THE LIST ─────────────────
                     "Copy the shopping list" already existed, as a full-width
                     action on the food summary — and it is HIDDEN the moment any
@@ -17974,6 +18150,32 @@ export default function HostShellV2() {
                                     (event.foodWhere || {})[it.id] ? 'your pick: ' + (event.foodWhere || {})[it.id] : (Array.isArray(it.where) ? it.where.join(',') : it.where),
                                   ].filter(Boolean).join(' · ')}
                                 </span>
+                                {/* ── THE SHELF PRICE, BESIDE THE ESTIMATE ─────
+                                    Its own line, not folded into the meta above,
+                                    because it is a different KIND of number: the
+                                    band is what this line should cost, this is
+                                    what one package costs at one store today.
+
+                                    NOT ROUNDED. `fmt` rounds to whole dollars,
+                                    which is right for an estimate and wrong here
+                                    — $18.49 shown as $18 throws away the precision
+                                    that is the entire reason a shelf price beats
+                                    the band.
+
+                                    The size travels with it, always. "$18.49"
+                                    alone invites a host to read it as the cost of
+                                    this LINE; "$18.49 · 12 pk" cannot be. */}
+                                {priceIdx && (() => {
+                                  const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
+                                  if (L.layer !== 'store') return null;
+                                  return (
+                                    <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
+                                      {(priceStore && priceStore.name) || 'Your store'}: ${L.exact.toFixed(2)}
+                                      {L.size ? ' · ' + L.size : ''}
+                                      {L.onSale && L.was ? ` · on sale, was $${L.was.toFixed(2)}` : ''}
+                                    </span>
+                                  );
+                                })()}
                                 {/* The "because" behind the quantity (it.basis, the
                                     shared engine's already-formatted rate string —
                                     lib/quantities/quantityBasis.js) and the "often
@@ -19688,7 +19890,7 @@ export default function HostShellV2() {
                                     adjusted for the South" — about the same numbers, on
                                     the same event, where one host can see both.
                                     Both now ask geoPlanNote, so they cannot drift again. */}
-                                {' '}{geoPlanNote(venueFor(event).state, foodPP.priceContext)}
+                                {' '}{priceNote()}
                               </div>
                             )}
                             {/* #39 POST-HOC PRICE NUDGE — only when the budget is

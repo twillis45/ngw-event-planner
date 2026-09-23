@@ -166,13 +166,46 @@ async def kroger_search_list(req: SearchListRequest):
                     results.append({"name": name, "matched": False})
                     continue
                 p = products[0]
-                results.append({
+                # ── THE PRICE WAS ALWAYS IN THIS RESPONSE ────────────────────
+                # Kroger returns price ONLY when filter.locationId is supplied
+                # ("To return the product price and aisle location, you must
+                # include the filter.locationId query parameter" — Kroger's own
+                # API reference). We already pass it when the caller sends one,
+                # and then discarded the price, so this endpoint matched products
+                # and answered nothing about cost.
+                #
+                # Shape, verified against Kroger's published reference:
+                #   data[].items[].price.regular | .promo   (promo is 0, not null,
+                #                                            when there is no sale)
+                #   data[].items[].size, .soldBy
+                # `nationalPrice` is deliberately NOT read: a national figure from
+                # a store API is the same national band the plan already has, and
+                # passing it off as a local price is the one thing this layer
+                # exists to avoid.
+                item = (p.get("items") or [{}])[0]
+                price = item.get("price") or {}
+                regular = price.get("regular")
+                promo = price.get("promo")
+                row = {
                     "name": name,
                     "matched": True,
                     "productId": p.get("productId"),
                     "description": p.get("description"),
                     "brand": p.get("brand"),
-                })
+                }
+                # Only claim a price when a location was asked for AND a number
+                # came back. No location means Kroger sends none, and a missing
+                # price must stay missing rather than becoming zero.
+                if req.locationId and isinstance(regular, (int, float)) and regular > 0:
+                    row["price"] = round(float(regular), 2)
+                    # promo 0 means "no sale", not "free".
+                    if isinstance(promo, (int, float)) and promo > 0:
+                        row["promoPrice"] = round(float(promo), 2)
+                    if item.get("size"):
+                        row["size"] = item.get("size")
+                    if item.get("soldBy"):
+                        row["soldBy"] = item.get("soldBy")
+                results.append(row)
         return {"configured": True, "results": results}
     except Exception as e:  # network/timeout — degrade, never 500 the host
         log.warning("Kroger search-list failed: %s", e)
