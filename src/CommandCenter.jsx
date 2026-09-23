@@ -1839,10 +1839,53 @@ const _rankOverdue = (a) => Number.isFinite(a.dueInDays) && a.dueInDays < 0;
 // Consequence from signals the raisers already declare — no new scores, and no
 // invented precision. An action that unblocks others, or that the decision
 // board itself ranked highly, is more consequential than one that does not.
+// ── THE CLOSING WINDOW (board decision 2026-09-23, owner's standing delegation) ─
+//
+// `latenessBoost` pays for being PAST a window. Nothing paid for a window ABOUT
+// TO CLOSE AND NOT REOPEN — the exact half of Rafanelli's sentence that decided
+// the 2026-08-17 Ranking floor ruling and was never implemented:
+//
+//   "A certificate 29 days late is a known, chronic problem the host has
+//    probably already worked around. A vendor reconfirm due tomorrow closes a
+//    window that will not reopen. RANK THE CLOSING WINDOW."
+//
+// See docs/audits/2026-09-19_CLOSING_WINDOW_BOARD_PACKET.md for the three shapes
+// the packet put to the board, and the ruling doc dated 2026-09-23 beside it.
+//
+// IT IS DECLARED, NOT INFERRED, and that is the whole design. The packet's own
+// objection to this option was that a date predicate "does not know the
+// difference between 'this cannot be done later' and 'this happens to be due
+// soon'" — a trial `leadDays === 0 && 0 <= dueInDays <= 3` turned the recording
+// guard's negative control red, because a synthetic scheduled gate-holder sits
+// in the same date window and would have been lifted with it.
+//
+// A raise knows whether its window reopens; the scorer cannot see it from two
+// dates. So the raise says so. The synthetic gate-holder declares nothing and is
+// untouched, which is why that control still passes — the objection dissolves
+// rather than being overridden.
+//
+// SIZED AGAINST THE TWO GATES IT SITS BETWEEN, like the lateness ceiling above:
+//   · 3.5 is BELOW the lateness floor of 4, so a genuinely late item still leads
+//     a closing window that declares nothing else — the ruling's other direction.
+//   · with the reconfirm's own `gateHolder: true, unlocks: 0` it totals 5.50,
+//     which clears the dead certificate's 4.90 and inverts the re-derived case.
+// That 5.50 also passes a scheduled multi-dependency gate (5.0), and the board
+// is ruling that deliberately: a venue blocker that is neither late nor closing
+// can wait a day; a reconfirm window cannot be reopened. A LATE venue blocker
+// still leads it comfortably (5.0 + 4.9).
+const CLOSING_WINDOW_BOOST = 3.5;
+const CLOSING_WINDOW_DAYS = 7;   // declared AND actually closing — not any future row
+
 export function actionConsequence(a) {
   if (!a) return 0;
   let c = 0;
   if (a.gateHolder === true) c += 2;                                              // settling it frees other work
+  // Declared closing window, and only while it is genuinely closing. Past due the
+  // lateness term takes over; before the window it is an ordinary scheduled row.
+  if (a.closingWindow === true
+      && Number.isFinite(a.dueInDays) && a.dueInDays >= 0 && a.dueInDays <= CLOSING_WINDOW_DAYS) {
+    c += CLOSING_WINDOW_BOOST;
+  }
   // UNCLIPPED (board ruling 2026-08-17). This was `Math.min(2, a.unlocks)`, which
   // threw away a measurement the engine had deliberately taken: a blocker gating
   // vendors, timeline AND logistics scored identically to one gating two. Tufte's

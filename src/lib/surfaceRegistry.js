@@ -251,6 +251,25 @@ export const SURFACES = [
           // (days-to-event is the raiser's own gate, 0..3), lead 0 by definition.
           dueInDays: days,
           leadDays: 0,
+          // ── THE WINDOW THIS RAISE HAS ALWAYS KNOWN ABOUT ────────────────
+          // Board decision 2026-09-23. This raise emitted the two dates and no
+          // consequence signal at all, so it scored ZERO on both axes and the
+          // 2026-08-17 ruling's own re-derived case never inverted — the fix
+          // had been calibrated against a row the corpus does not produce.
+          //
+          // `closingWindow` is DECLARED here rather than inferred from the two
+          // dates below it, because this raise is the only thing that knows the
+          // window does not reopen: you cannot reconfirm a vendor after the
+          // event. A scorer reading `leadDays === 0 && dueInDays <= 3` would
+          // catch every ordinary day-of chore with it.
+          //
+          // `gateHolder: true, unlocks: 0` extends the sibling ruling's own
+          // reasoning (2026-08-17_VENDOR_CONSEQUENCE_RULING.md) — the plan
+          // cannot proceed as written if a booked vendor does not arrive, and
+          // `unlocks` would be a lie because reconfirming frees nothing.
+          closingWindow: true,
+          gateHolder: true,
+          unlocks: 0,
         }));
     },
   },

@@ -1,65 +1,49 @@
-// ─── THE 2026-08-17 RULING'S BAR FOR DONE IS NOT MET ON THE SHIPPING PATH ────
+// ─── THE 2026-08-17 RULING'S BAR FOR DONE IS NOW MET ─────────────────────────
 //
-// THIS FILE CHANGES NOTHING. It records a measured fact about the ranking
-// constants, the way deadlinesThatContradictTheirSource.test.js records one
-// about the deadlines: "a FACT about them, not a change to them. If a future
-// pass decides to move them, it should fail here first and say so."
+// THIS FILE USED TO RECORD A FAILURE. From 2026-09-19 to 2026-09-23 it asserted,
+// as a measured fact, that the Ranking floor ruling's own bar was unmet on the
+// shipping path: a dead certificate 27 days late (4.90) outranked a vendor
+// reconfirm whose window closed in three days (0.00), which was the ruling's own
+// re-derived case, and it did not invert.
 //
-// THE RULING (docs/audits/2026-08-17_RANKING_FLOOR_BOARD.md) closed with a bar:
+// It was written to fail the moment anyone implemented the missing axis — "so
+// whoever adds it is forced through the packet rather than past it." That is
+// what happened on 2026-09-23. The file now records the decision instead, and
+// keeps every negative control it had, because those are what prove the fix did
+// not buy the first direction by selling the second.
 //
-//   "Bar for done: the re-derived case inverts (reconfirm above the dead COI),
-//    AND a late critical item still outranks a scheduled one of higher raw
-//    consequence. Both directions, or the fix is half a fix."
+// ── WHAT WAS MISSING, AND WHY IT WAS NOT A TUNING PROBLEM ───────────────────
 //
-// The second direction holds. THE FIRST DOES NOT. MEASURED on a wedding three
-// days out, everything booked, the shipping board:
+// `latenessBoost` pays for being PAST a window. Nothing paid for a window ABOUT
+// TO CLOSE AND NOT REOPEN — the half of Rafanelli's ruling sentence that was
+// never implemented:
 //
-//   3. Ask Ironwood about insurance.     c=0.00  l=4.90  tot=4.90  due=-27
-//   6. Reconfirm Ironwood for the day    c=0.00  l=0.00  tot=0.00  due=+3
+//   "A certificate 29 days late is a known, chronic problem the host has
+//    probably already worked around. A vendor reconfirm due tomorrow closes a
+//    window that will not reopen. RANK THE CLOSING WINDOW."
 //
-// That IS the ruling's own re-derived case — a dead certificate against a vendor
-// reconfirm whose window closes — and it did not invert. The ruling's arithmetic
-// assumed the reconfirm scored 7.0 ("gate-holder, unlocks 3, score 300"). The
-// shipping `vendor-reconfirm` raise (surfaceRegistry.js#vendor-reconfirm) emits
-// severity, title, why, route, key, dueInDays and leadDays — and NO consequence
-// signal at all, so `actionConsequence` returns 0.00. The fix was calibrated
-// against a row the corpus does not produce.
+// Every retuning candidate was measured and every one failed: option A alone
+// (2.00) still lost to 4.90, and dropping the lateness floor bought the
+// inversion only by breaking FOUR ruled guards — each of which IS the ruling's
+// other direction. The model was missing a term.
 //
-// AND IT CANNOT BE REACHED BY RETUNING. Measured, candidate by candidate:
+// ── THE DECISION (2026-09-23, owner's standing delegation) ──────────────────
 //
-//   A  gateHolder:true, unlocks:0 on the reconfirm   -> 2.00  still loses to 4.90
-//   B  drop latenessBoost's floor 4 -> 2.5 / 1.5     -> breaks FOUR ruled guards
-//   A+B at floor 1.5                                  -> 2.00 vs 2.40, still loses
-//   A+B at floor 1.0                                  -> 2.00 vs 1.90, INVERTS —
-//                                                        and breaks the same four
+// Packet option 2 — add the axis — with the packet's own objection to it fixed
+// rather than overridden. That objection was real:
 //
-// The four, by name, and every one of them is the ruling's other direction:
-//   · "both directions, or it is half a fix › a barely-late trivial item still
-//      leads a scheduled gate-holder"
-//   · "lateness is bounded BELOW a real gate › but a 6-day-late trifle STILL
-//      outranks an ordinary scheduled gate-holder"
-//   · "lateness is bounded BELOW a real gate › the boost ceiling sits in the gap
-//      between those two gates"
-//   · "rule 4 — ranked for consequence › genuine lateness still leads"
+//   "The predicate as written is a DATE window, not a closing-window predicate;
+//    it does not know the difference between 'this cannot be done later' and
+//    'this happens to be due soon.'"
 //
-// SO THE MODEL IS MISSING A TERM, NOT MIS-TUNED. `latenessBoost` rewards being
-// PAST a window. Nothing in the scoreboard rewards a window that is ABOUT TO
-// CLOSE AND WILL NOT REOPEN — which is the thing the ruling's own event bench
-// named in the sentence that decided its direction:
+// A trial `leadDays === 0 && 0 <= dueInDays <= 3` turned this file's own
+// negative control red, because a synthetic scheduled gate-holder sits in the
+// same date window. So the term is paid on a DECLARED `closingWindow`, not an
+// inferred one: a raise knows whether its window reopens, and the scorer cannot
+// see that from two dates. The synthetic gate-holder declares nothing and is
+// untouched — the control below still passes on its own terms.
 //
-//   Rafanelli, ruling seat: "A certificate 29 days late is a known, chronic
-//   problem the host has probably already worked around. A vendor reconfirm due
-//   tomorrow closes a window that will not reopen. RANK THE CLOSING WINDOW."
-//
-// The lateness half of that sentence was implemented. The closing-window half
-// was not, and a reconfirm at due=+3 with leadDays=0 scores zero on both axes.
-//
-// WHY THIS IS NOT FIXED HERE. Adding an axis to a boarded scoreboard is a board
-// decision, and the sibling ruling that would be the obvious precedent
-// (2026-08-17_VENDOR_CONSEQUENCE_RULING.md, which let the unbooked-vendor raise
-// declare `gateHolder: true, unlocks: 0`) bounds itself in rule 3 to "required:
-// true, past `when`, genuinely unmatched" — and a reconfirm vendor is BOOKED.
-// Extending a ruling's scope is the board's to do, not this pass's.
+// See docs/audits/2026-09-23_CLOSING_WINDOW_RULING.md.
 import { eventPlan, actionConsequence, latenessBoost } from '../../CommandCenter';
 import { SURFACES } from '../surfaceRegistry';
 
@@ -93,63 +77,94 @@ describe('the ranking ruling’s bar for done, measured', () => {
     expect(find(/Reconfirm/i)).toBeTruthy();
   });
 
-  test('THE FACT: the re-derived case still does not invert', () => {
+  test('THE BAR: the re-derived case now inverts', () => {
     const coi = find(/insurance/i);
     const reconfirm = find(/Reconfirm/i);
-    // The ruling asked for the reconfirm to lead. It does not, and by a margin
-    // that no single constant closes.
-    expect(coi.total).toBeGreaterThan(reconfirm.total);
-    expect(coi.rank).toBeLessThan(reconfirm.rank);
-    // The exact numbers, so a change to either side fails here and says so.
-    expect(`coi ${coi.total.toFixed(2)} / reconfirm ${reconfirm.total.toFixed(2)}`)
-      .toBe('coi 4.90 / reconfirm 0.00');
+    expect(reconfirm.total).toBeGreaterThan(coi.total);
+    expect(reconfirm.rank).toBeLessThan(coi.rank);
+    // The exact numbers, so a change to either side fails here and says so —
+    // the same pinning this file did when it recorded the failure.
+    expect(`reconfirm ${reconfirm.total.toFixed(2)} / coi ${coi.total.toFixed(2)}`)
+      .toBe('reconfirm 5.50 / coi 4.90');
   });
 
-  test('WHY: the reconfirm raise declares no consequence at all', () => {
-    // The ruling's arithmetic assumed 7.0 for this row. The raise that produces
-    // it emits no consequence field, so actionConsequence returns 0.
-    expect(find(/Reconfirm/i).c).toBe(0);
+  test('WHY IT NOW SCORES: the raise declares the window it has always known', () => {
+    // The gap was never the dates — the raise emitted both of them all along.
+    // It emitted no CONSEQUENCE, so actionConsequence returned 0.
     const raise = (SURFACES || []).find((s) => s && s.id === 'vendor-reconfirm');
     expect(raise).toBeTruthy();
     const emitted = raise.raise(EV())[0];
-    expect(emitted).toBeTruthy();
-    expect(emitted.gateHolder).toBeUndefined();
-    expect(emitted.unlocks).toBeUndefined();
-    expect(emitted.priorityScore).toBeUndefined();
-    // …while it DOES know the window it is in, which is the signal nothing reads.
     expect(emitted.dueInDays).toBe(3);
     expect(emitted.leadDays).toBe(0);
+    // Declared, not inferred. This is the whole design.
+    expect(emitted.closingWindow).toBe(true);
+    expect(emitted.gateHolder).toBe(true);
+    expect(emitted.unlocks).toBe(0);
+    // 2 (gate-holder) + 0 (unlocks) + 3.5 (closing window) = 5.50
+    expect(find(/Reconfirm/i).c).toBeCloseTo(5.5, 5);
   });
 
-  test('the closing window scores zero on BOTH axes, which is the gap', () => {
-    // latenessBoost pays for being PAST a window; a window about to close and
-    // not reopen earns nothing from either term. That is the missing axis, and
-    // naming it is the point of this file.
-    const reconfirm = (eventPlan(EV()).nextActions || []).find((a) => /Reconfirm/i.test(a.title || ''));
-    expect(latenessBoost(reconfirm)).toBe(0);
-    expect(actionConsequence(reconfirm)).toBe(0);
-    expect(reconfirm.dueInDays).toBeGreaterThan(0);   // not late — closing
-    expect(reconfirm.leadDays).toBe(0);               // and it closes AT the event
+  test('IT IS DECLARED, NOT A DATE WINDOW — the packet’s own objection, answered', () => {
+    // A date predicate would have swept up every ordinary day-of chore sitting
+    // in the same window. "Buy day-of emergency kit" is due TODAY, leadDays 0,
+    // and declares nothing — so it earns nothing. If this ever changes, the
+    // term has stopped being a closing-window term and become a due-soon term.
+    const kit = find(/emergency kit/i);
+    expect(kit).toBeTruthy();
+    expect(kit.due).toBe(0);
+    expect(kit.c).toBe(0);
   });
 
-  test('NEGATIVE CONTROL: the ruling’s OTHER direction does hold', () => {
+  test('the term is bounded BELOW the lateness floor, on purpose', () => {
+    // 3.5 against a floor of 4. A closing window that declares nothing else
+    // still loses to a genuinely late item — the ruling's other direction, held
+    // by arithmetic rather than by hope.
+    const closingOnly = { dueInDays: 2, leadDays: 0, closingWindow: true };
+    const barelyLate = { dueInDays: -1, leadDays: 0 };
+    expect(actionConsequence(closingOnly)).toBeCloseTo(3.5, 5);
+    expect(actionConsequence(barelyLate) + latenessBoost(barelyLate))
+      .toBeGreaterThan(actionConsequence(closingOnly) + latenessBoost(closingOnly));
+  });
+
+  test('and it only pays while the window is ACTUALLY closing', () => {
+    // Declared but far out earns nothing — a reconfirm-shaped row 40 days away
+    // is an ordinary scheduled row. Past due, the lateness term takes over and
+    // this one stops, so the two never stack.
+    expect(actionConsequence({ dueInDays: 40, leadDays: 0, closingWindow: true })).toBe(0);
+    expect(actionConsequence({ dueInDays: -1, leadDays: 0, closingWindow: true })).toBe(0);
+    expect(actionConsequence({ dueInDays: 7, leadDays: 0, closingWindow: true })).toBeCloseTo(3.5, 5);
+  });
+
+  test('NEGATIVE CONTROL: the ruling’s OTHER direction still holds', () => {
     // "a late critical item still outranks a scheduled one of higher raw
-    // consequence." If this ever fails, the scoreboard has a second problem and
-    // the one recorded above is no longer the whole story.
+    // consequence." This is the control the date-predicate trial turned red —
+    // the synthetic gate-holder sits at dueInDays 3, leadDays 0, in the same
+    // window, and declares no closing window. It must stay untouched.
     const lateTrifle = { dueInDays: -6, leadDays: 0 };
     const scheduledGate = { dueInDays: 3, leadDays: 0, gateHolder: true, unlocks: 2 };
+    expect(actionConsequence(scheduledGate)).toBe(4);          // NOT 7.5
     expect(actionConsequence(lateTrifle) + latenessBoost(lateTrifle))
       .toBeGreaterThan(actionConsequence(scheduledGate) + latenessBoost(scheduledGate));
   });
 
-  test('NEGATIVE CONTROL: nothing in this file changed a constant', () => {
-    // A recording test that quietly retunes what it measures is worthless. The
-    // two numbers the ruling fixed are asserted here so this file cannot become
-    // the place a change hides.
+  test('NEGATIVE CONTROL: the lateness constants the ruling fixed did NOT move', () => {
+    // The whole argument for adding a term rather than retuning is that the
+    // retunes broke four ruled guards. If this fix quietly moved a lateness
+    // constant after all, it bought the bar the way the packet said it must not.
     const barelyLate = { dueInDays: -1, leadDays: 0 };
     const veryLate = { dueInDays: -365, leadDays: 0 };
     expect(latenessBoost(barelyLate)).toBeCloseTo(4 + (1 / 14) * 0.9, 5);  // floor 4
     expect(latenessBoost(veryLate)).toBeCloseTo(4.9, 5);                    // ceiling 4.9
     expect(latenessBoost({ dueInDays: 1, leadDays: 0 })).toBe(0);           // not late, no boost
+  });
+
+  test('NEGATIVE CONTROL: the late certificate is still VISIBLE as late', () => {
+    // Both the Liability & Trust Reviewer and "Grandmother" ruled that whatever
+    // moves down must still read as late. Demotion is not permission to stop
+    // saying so — it is rank 5 now, and it still carries its own lateness.
+    const coi = find(/insurance/i);
+    expect(coi).toBeTruthy();
+    expect(coi.due).toBeLessThan(0);
+    expect(latenessBoost({ dueInDays: coi.due, leadDays: 0 })).toBeCloseTo(4.9, 1);
   });
 });
