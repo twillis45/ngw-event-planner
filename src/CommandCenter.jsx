@@ -2001,6 +2001,24 @@ export function compareNextActions(a, b) {
   return 0;
 }
 
+// The horizon a risk names in its own prose, or null. Deliberately narrow: it
+// matches the one authored family that carries a horizon (10 of 324 risks,
+// swept 2026-09-23) and nothing else. A risk with no stated horizon is not
+// dated and is never gated.
+const RISK_HORIZON = /\b(\d+)\s*days?\s+(?:out|before|ahead|prior)\b/i;
+export const RISK_REACH_DAYS = 30;   // == vendorIntelligence's eventClose
+
+export function _datedRiskNotYetInReach(action, daysToEvent) {
+  if (!Number.isFinite(daysToEvent)) return false;      // no date, no gate
+  if (daysToEvent <= RISK_REACH_DAYS) return false;     // close enough to act
+  const text = String((action && (action.title || action.trigger)) || '');
+  const m = text.match(RISK_HORIZON);
+  if (!m) return false;                                  // undated risks always show
+  // Withheld only while the event is further out than BOTH the reach window
+  // and the horizon the row itself names.
+  return daysToEvent > Math.max(RISK_REACH_DAYS, Number(m[1]) || 0);
+}
+
 export function eventPlan(event, ctx = null) {
   if (!event) return {
     nextActions: [], setAside: [], worries: [], progress: { done: 0, total: 0 }, handled: [],
@@ -2607,6 +2625,26 @@ export function eventPlan(event, ctx = null) {
       });
     }
     for (const action of merged) {
+      // ── A DATED RISK IS NOT NEWS UNTIL ITS DATE IS IN REACH ─────────────────
+      //
+      // Found driving an 80th birthday at 264 days out (2026-09-23): the lane's
+      // first row read "Final headcount still not locked 3 days out" on a screen
+      // whose own header said 264 DAYS. The row is not false — it names a real
+      // risk — but rendered as a present state it is wrong for 261 of those
+      // days, in the most prominent warning block on the plan.
+      //
+      // MEASURED BEFORE TRUSTING THE PATTERN: 10 of 324 authored risks name a
+      // horizon in prose, and all ten are ONE family, consistently worded —
+      // "Final headcount still not locked/confirmed N days out", N in {3,4,5}.
+      // A narrow regex over that family is safe; a broad one over 324 strings
+      // would not be.
+      //
+      // It only ever WITHHOLDS a row early. No date moves, no text changes, and
+      // nothing new is invented. The window is 30 days because that is already
+      // this codebase's definition of "the event is close"
+      // (vendorIntelligence's eventClose) — a fresh number here would be a
+      // second definition of one idea.
+      if (action.surface === 'risks' && _datedRiskNotYetInReach(action, _dte)) continue;
       // WAVE-7 worry split (see the lane header above): an attention-level raise
       // from the risks surface — single or bundle — files as a worry, not work.
       // A critical from risks (none exists in-repo today) stays in the list.

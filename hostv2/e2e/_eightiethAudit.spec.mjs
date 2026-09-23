@@ -10,18 +10,23 @@ import { test, expect, settled } from './fixtures.mjs';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 
-const OUT = process.env.AUDIT_OUT || '/tmp/audit80';
-fs.mkdirSync(OUT, { recursive: true });
+const BASE = process.env.AUDIT_OUT || '/tmp/audit80';
 
 // A capture that photographs an unchanged screen is worse than no capture: the
 // first run produced two byte-identical files under different names and would
 // have been audited as two surfaces. Every shot is fingerprinted, and a repeat
 // is recorded as a repeat.
+let RUN_KEY = 'local';
+const OUT = () => {
+  const d = `${BASE}/${RUN_KEY}`;
+  fs.mkdirSync(d, { recursive: true });
+  return d;
+};
 const seenHashes = new Map();
 const shot = async (page, name) => {
-  await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${OUT()}/${name}.png`, fullPage: true });
   const txt = await page.evaluate(() => (document.body.innerText || '').replace(/\n{3,}/g, '\n\n'));
-  fs.writeFileSync(`${OUT}/${name}.txt`, txt);
+  fs.writeFileSync(`${OUT()}/${name}.txt`, txt);
   const h = crypto.createHash('md5').update(txt).digest('hex');
   if (seenHashes.has(h)) console.log(`DUPLICATE SCREEN: ${name} === ${seenHashes.get(h)} (navigation did not move)`);
   else seenHashes.set(h, name);
@@ -46,10 +51,31 @@ const metrics = (page) => page.evaluate(() => {
   });
   const tap = vis.filter((el) => /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)
     || el.getAttribute('role') === 'button');
-  const small = tap.filter((el) => {
+  // A RECT IS NOT A HIT AREA. The first run flagged `.sheet-back` at 65x15 and
+  // it was wrong: that control carries a 44px ::after precisely so the header
+  // layout stays untouched — a technique this stylesheet uses deliberately and
+  // documents. Measuring the box alone reports the design's own solution as the
+  // defect. The pseudo-elements are measured too now.
+  const effective = (el) => {
     const r = el.getBoundingClientRect();
-    return r.height < 44 || r.width < 44;
-  }).map((el) => `${el.tagName}.${(el.className || '').toString().split(' ')[0]} ${Math.round(el.getBoundingClientRect().width)}x${Math.round(el.getBoundingClientRect().height)} "${(el.innerText || '').trim().slice(0, 28)}"`);
+    let h = r.height, w = r.width;
+    for (const pseudo of ['::after', '::before']) {
+      const cs = getComputedStyle(el, pseudo);
+      if (!cs || cs.content === 'none') continue;
+      const ph = parseFloat(cs.height), pw = parseFloat(cs.width);
+      if (cs.position === 'absolute') {
+        if (Number.isFinite(ph)) h = Math.max(h, ph);
+        if (Number.isFinite(pw)) w = Math.max(w, pw);
+        // left:0;right:0 stretches to the parent's width
+        if (cs.left === '0px' && cs.right === '0px') w = Math.max(w, r.width);
+      }
+    }
+    return { w, h };
+  };
+  const small = tap.filter((el) => {
+    const e = effective(el);
+    return e.h < 44 || e.w < 44;
+  }).map((el) => { const e = effective(el); return `${el.tagName}.${(el.className || '').toString().split(' ')[0]} ${Math.round(e.w)}x${Math.round(e.h)} "${(el.innerText || '').trim().slice(0, 28)}"`; });
   // Repeated visible strings — the duplication signal.
   const seen = {};
   for (const el of vis) {
@@ -85,8 +111,22 @@ const tapText = (page, src) => page.evaluate((s) => {
   return (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 50);
 }, src);
 
-test('drive an 80th birthday from creation and photograph everything', async ({ page }) => {
+// Two runs of one drive. The local 80th is the baseline; the Santa Fe one is
+// the SAME milestone taken out of town, which is where the destination lane —
+// travel, lodging, a market that is not the host's own — has to hold up.
+const RUNS = [
+  { key: 'local', sentence: "Mom's 80th birthday party on June 14 2027, about 45 people, "
+      + 'at the church hall in Baltimore, sit-down lunch, she uses a walker' },
+  { key: 'santafe', sentence: "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
+      + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard, '
+      + 'she uses a walker and the altitude is hard on her' },
+];
+
+for (const RUN of RUNS)
+test(`drive the ${RUN.key} 80th from creation and photograph everything`, async ({ page }) => {
   test.setTimeout(240000);
+  RUN_KEY = RUN.key;
+  seenHashes.clear();
   const report = {};
   await page.setViewportSize({ width: 390, height: 844 });
 
@@ -110,8 +150,7 @@ test('drive an 80th birthday from creation and photograph everything', async ({ 
   // A real sentence a host would actually type. Deliberately NOT tidy — it
   // carries a date, a headcount, a venue hint and a constraint in one breath,
   // which is how people write and is what the parser has to survive.
-  const SENTENCE = "Mom's 80th birthday party on June 14 2027, about 45 people, "
-    + 'at the church hall in Baltimore, sit-down lunch, she uses a walker';
+  const SENTENCE = RUN.sentence;
   const box = page.getByPlaceholder(/crab feast/i).first();
   await box.fill(SENTENCE);
   await page.waitForTimeout(300);
@@ -159,7 +198,7 @@ test('drive an 80th birthday from creation and photograph everything', async ({ 
     report[`07-tab-${t.toLowerCase().replace(/\s+/g, '-')}`] = await metrics(page);
   }
 
-  fs.writeFileSync(`${OUT}/metrics.json`, JSON.stringify(report, null, 2));
-  console.log('WROTE:', fs.readdirSync(OUT).length, 'files to', OUT);
+  fs.writeFileSync(`${OUT()}/metrics.json`, JSON.stringify(report, null, 2));
+  console.log(`WROTE [${RUN.key}]:`, fs.readdirSync(OUT()).length, 'files to', OUT());
   expect(Object.keys(report).length).toBeGreaterThan(3);
 });

@@ -165,7 +165,7 @@ import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 // in a shell scheduled for deletion. The engine is unchanged and shared; only
 // the button is new here.
 import { instacartCart, INSTACART_FALLBACK } from '@app/lib/instacart';
-import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
+import { parseSmartEventText, unusedClauses, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
 // ── THE THREE LAYERS OF A PRICE (2026-09-23) ───────────────────────────────
@@ -7996,6 +7996,39 @@ export default function HostShellV2() {
                           </div>
                         );
                       })()}
+                      {/* ── WHAT WE DID NOT USE ───────────────────────────────────
+                          Found driving an 80th birthday from the cold open: the
+                          host typed "…sit-down lunch, she uses a walker" and BOTH
+                          vanished without a word — for an 80th, mobility is the
+                          constraint that decides venue access, seating and where
+                          the cake table goes.
+
+                          This is not an apology and not a promise. It hands the
+                          fact back so the host carries it themselves, instead of
+                          assuming the app has it. `unusedClauses` decides by
+                          re-parsing without each clause and keeping only the ones
+                          that change NOTHING — the parser's own behaviour as the
+                          measurement, so this can never tell a host their
+                          headcount was missed when it was read. */}
+                      {(() => {
+                        let dropped = [];
+                        try { dropped = unusedClauses(smartText, {}); } catch { dropped = []; }
+                        if (!dropped.length) return null;
+                        return (
+                          <div className="line" style={{ display: 'block', marginTop: 18, padding: 'var(--sp-2) 0',
+                            borderTop: '1px solid var(--line)' }}>
+                            <div className="shelf-label" style={{ marginBottom: 4 }}>Didn’t make it into the plan</div>
+                            <p className="grounding" style={{ margin: 0 }}>
+                              {dropped.map((d, i) => (
+                                <span key={d}>{i ? ' · ' : ''}“{d}”</span>
+                              ))}
+                            </p>
+                            <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--faint)' }}>
+                              Worth keeping in mind yourself — the plan won’t know about {dropped.length === 1 ? 'it' : 'them'}.
+                            </p>
+                          </div>
+                        );
+                      })()}
                       {effType && (
                         <div style={{ marginTop: 26 }}>
                           <button className="cta big" onClick={assemble}
@@ -10172,7 +10205,7 @@ export default function HostShellV2() {
                           vocabulary as `spent` right beside it: "(est.)" when the
                           whole figure is a guess, "· $N est." when only part is.
                           Never a second vocabulary (UX_08). */}
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</> : 'no number yet — tap to set one'}
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</> : 'you haven’t set one yet — tap to lock a number in'}
                     </div>
                   </div>
                 </button>

@@ -157,11 +157,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `3716b24c` |
+| Branch / HEAD | `main` @ `cc72a8bc` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,478 passed**, 1 skipped, **0 failed**, **525 suites** (re-measured 2026-09-23 after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,508 passed**, 1 skipped, **0 failed**, **528 suites** (re-measured 2026-09-23 after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -173,6 +173,77 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 — four defects found by driving an 80th birthday, twice
+
+An audit drive, not a test run: create the event through the REAL creation flow
+(seeding skips the screens the friction lives on), photograph every surface at
+390px, and count rather than eyeball. Run twice — a local 80th and the same
+milestone taken to Santa Fe. `hostv2/e2e/_eightiethAudit.spec.mjs`.
+
+**The instrument was wrong twice before it measured anything**, and both are
+recorded in it: it reported every screen as exactly 1.00 viewports tall (the
+shell scrolls an inner container, not the document), and it wrote two
+byte-identical captures under different names that would have been read as two
+surfaces. It also flagged `.sheet-back` at 65x15 — **a false positive**: that
+control carries a 44px `::after` on purpose, so the probe was reporting the
+design's own solution as the defect. Pseudo-element hit areas are measured now.
+
+### 1. Three facts eaten in silence
+
+The host typed *"…at the church hall in Baltimore, sit-down lunch, she uses a
+walker"*. The walker, the lunch and the hall's kind never appeared on any of 21
+screens. For an 80th, mobility decides venue access, seating and where the cake
+table goes.
+
+**The fix is not a walker parser** — that leaves the NEXT dropped fact just as
+silent. `unusedClauses()` re-parses the sentence with each clause removed; a
+clause whose absence changes none of the 25 fields provably contributed nothing.
+The parser's own behaviour is the measurement, so this can never tell a host
+their headcount was missed when it was read — the failure that would be worse
+than the bug. Shown as **"Didn't make it into the plan"**, handing the fact back
+rather than apologising for it.
+
+### 2. A dated risk shown 261 days early
+
+The plan's most prominent warning block led with *"Final headcount still not
+locked 3 days out"* on a screen whose header said **264 DAYS**.
+
+Measured before trusting the pattern: **10 of 324 risks name a horizon in
+prose**, all one consistently-worded family. The gate only ever WITHHOLDS a row
+early — no date moves, no text changes. The window is 30 days because that is
+already this codebase's definition of "close" (`vendorIntelligence`'s
+`eventClose`); a fresh number would be a second definition of one idea.
+
+### 3. "Which town?" for a town she had named
+
+Santa Fe surfaced it, and it was never about Santa Fe: the parser accepted
+`Santa Fe, NM` and `Santa Fe NM` but **not `Santa Fe New Mexico`** — and
+`Austin Texas` and `Baltimore Maryland` failed identically. Spelled-out state
+names now resolve, narrowly: they require a locative preposition, because
+"Georgia" and "Washington" are ordinary words where a two-letter abbreviation
+glued to a town is not.
+
+### 4. A budget that both existed and didn't
+
+The hero offered **$7,000** with a `Use $7,000` button while the block below read
+**"no number yet"**. Both true — an estimate is not a set budget — and on one
+scroll it reads as the app contradicting itself. Now *"you haven't set one yet —
+tap to lock a number in"*, which distinguishes SET from ESTIMATED instead of
+denying a number on the same screen.
+
+### Still open, recorded not fixed
+
+- **"Kid food allergies not collected" on an 80th birthday.** Undated, so
+  correctly not caught by the risk gate. It needs a `whenChoice` gate in the
+  playbook — authoring, not engineering.
+- **The plan screen's void.** ~35% of the first screen is empty while the guest
+  sheet below is dense and well composed. A design call, not a bug.
+- **The self-explaining paragraph.** The plan ships prose explaining why two of
+  its own counters disagree. When a design needs a paragraph of defence, the
+  design is what should change.
+- **`Lean $2,700` / `All-out $11,300` at 79x16 and 98x16.** Real, below the 44px
+  floor, and unlike `.sheet-back` they carry no hit-area technique.
 
 ## Vendor cockpit port — scoped 2026-09-23, after two owner rulings
 

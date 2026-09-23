@@ -13,7 +13,7 @@
 import { ALL_PLAYBOOKS } from './playbooks';
 import { matchVacationArea } from './vacationAreas';
 import { resolveCanonicalType } from './eventTaxonomyAdapter';
-import { parseVenueLocation, resolveSpokenCity } from './cityText';
+import { parseVenueLocation, resolveSpokenCity, US_STATE_NAME_TO_ABBR } from './cityText';
 
 // Occasion choices = the REAL playbook catalog: every type the engine ships a
 // full playbook for, minus the business types a host never plans.
@@ -421,7 +421,32 @@ export function parseSmartEventText(text, opts = {}) {
   // never a number the street parser already claimed as a HOUSE NUMBER — "at
   // 20770 Main St" is an address, not a ZIP, and venueAddress (computed right
   // above) is what says so.
-  const locZip = locBare || (() => {
+  // ── THE STATE SPELLED OUT, WITH NO COMMA (drive 2026-09-23) ──────────────
+  // The 2026-08-05 drive above fixed "Santa Fe NM". It did not fix "Santa Fe
+  // New Mexico", and people write it that way constantly. MEASURED on the
+  // Santa Fe 80th: the host typed "in Santa Fe New Mexico" and the parse screen
+  // asked "Which town?" — the one thing she had been most explicit about.
+  // "Austin Texas" and "Baltimore Maryland" failed identically, so this was
+  // never about Santa Fe.
+  //
+  // NARROWER than locBare on purpose: it requires a locative preposition. A
+  // bare two-letter abbreviation is unambiguous glued to a town; a spelled-out
+  // name is a common word ("...in Washington", "New York") and needs the
+  // preposition to be a location claim rather than a coincidence. Longest names
+  // first so "New Mexico" is never read as "Mexico" or "New".
+  const locName = locBare || (() => {
+    const names = Object.keys(US_STATE_NAME_TO_ABBR)
+      .sort((a, b) => b.length - a.length)
+      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const re = new RegExp(
+      `\\b(?:in|at|near|around)\\s+([A-Z][a-zA-Z.'\u2019-]+(?:\\s+[A-Z][a-zA-Z.'\u2019-]+){0,2}?)\\s+(${names.join('|')})\\b`,
+      'i');
+    const m = t.match(re);
+    if (!m) return null;
+    return tryLoc(m[1].trim(), m[2].trim());
+  })();
+
+  const locZip = locName || (() => {
     const m = t.match(/\b(?:in|at|near|around|zip|zipcode)\s+(\d{5})(?:-\d{4})?\b/i);
     if (!m) return null;
     if (venueAddress && venueAddress.includes(m[1])) return null;
@@ -757,4 +782,55 @@ export function parseSmartEventText(text, opts = {}) {
     kidsPolicy: /\bno\s+(?:kids|children)\b|\badults?[\s-]only\b/i.test(t) ? 'adults_only'
       : /\bkids?\s+(?:are\s+)?welcome\b|\bfamily[\s-]friendly\b/i.test(t) ? 'kids_welcome' : null,
   };
+}
+
+// ─── WHAT THE APP DID NOT USE ───────────────────────────────────────────────
+//
+// Found driving an 80th birthday from the cold open, 2026-09-23. The host typed:
+//
+//   "Mom's 80th birthday party on June 14 2027, about 45 people, at the church
+//    hall in Baltimore, sit-down lunch, she uses a walker"
+//
+// and THREE of those facts vanished without a word: the walker, the sit-down
+// lunch, and the church hall. Not misparsed — dropped in silence. For an 80th
+// birthday, mobility is the constraint that decides venue access, seating and
+// where the cake table goes, and the plan never mentioned it.
+//
+// The fix is NOT a walker parser. Adding one extractor leaves the next dropped
+// fact just as silent. The fix is for the app to say what it did not use, so
+// the host can carry it themselves instead of assuming the app has it.
+//
+// ── HOW "DID NOT USE" IS DECIDED: EXACTLY, NOT BY GUESSING ──────────────────
+//
+// Re-parse the sentence with one clause removed. If all 25 fields come back
+// IDENTICAL, that clause provably contributed nothing — no heuristic about
+// which words "look like" a venue, no keyword list to fall behind the parser.
+// It is the parser's own behaviour used as the measurement.
+//
+// This matters because an over-eager version of this feature would be worse
+// than the bug: telling a host "I didn't catch 'about 45 people'" when it did
+// would destroy the trust the disclosure exists to protect.
+const _CLAUSE_SPLIT = /\s*(?:,|\band\b|;)\s*/i;
+
+export function unusedClauses(text, opts = {}) {
+  const t = String(text || '').trim();
+  if (t.length < 12) return [];
+  const clauses = t.split(_CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length > 2);
+  if (clauses.length < 2) return [];          // one clause: nothing to compare against
+  let full;
+  try { full = parseSmartEventText(t, opts); } catch { return []; }
+  const same = (a, b) => {
+    const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+    for (const k of keys) if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) return false;
+    return true;
+  };
+  const out = [];
+  for (const c of clauses) {
+    const without = t.split(c).join(' ').replace(/\s{2,}/g, ' ').trim();
+    if (!without || without === t) continue;
+    let p;
+    try { p = parseSmartEventText(without, opts); } catch { continue; }
+    if (same(p, full)) out.push(c);
+  }
+  return out;
 }
