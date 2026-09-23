@@ -8010,6 +8010,24 @@ export default function HostShellV2() {
                           that change NOTHING — the parser's own behaviour as the
                           measurement, so this can never tell a host their
                           headcount was missed when it was read. */}
+                      {/* ── AND SAY SO WHEN THE TYPE WAS A GUESS ────────────────
+                          MEASURED 2026-09-23: delete ONE character from the type
+                          word and 35 of 45 playbook types resolve to Birthday —
+                          "Graduaton party", "Bridl Shower", "Retiement Party" all
+                          land on a birthday playbook, with a birthday checklist,
+                          birthday risks and birthday food, stated with no hedge.
+
+                          The catch-all that does it ("party" → Birthday) is
+                          reasonable for a host who genuinely just says "a party".
+                          It is not a reasonable silent answer to a typo. The rule
+                          stays; the guess is declared and one tap from correction. */}
+                      {parsed && parsed.typeBasis === 'generic' && effType && (
+                        <p className="grounding" style={{ margin: '12px 0 0', color: 'var(--warn)' }}>
+                          Reading this as a <strong>{String(effType).toLowerCase()}</strong> because you said
+                          “party” — nothing named the kind of event. If that’s not it, change it above:
+                          the checklist, the risks and the food all follow from it.
+                        </p>
+                      )}
                       {(() => {
                         let dropped = [];
                         try { dropped = unusedClauses(smartText, {}); } catch { dropped = []; }

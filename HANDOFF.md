@@ -157,11 +157,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `cc72a8bc` |
+| Branch / HEAD | `main` @ `9ae267f6` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,508 passed**, 1 skipped, **0 failed**, **528 suites** (re-measured 2026-09-23 after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,514 passed**, 1 skipped, **0 failed**, **529 suites** (re-measured 2026-09-23 after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -231,6 +231,59 @@ The hero offered **$7,000** with a `Use $7,000` button while the block below rea
 scroll it reads as the app contradicting itself. Now *"you haven't set one yet —
 tap to lock a number in"*, which distinguishes SET from ESTIMATED instead of
 denying a number on the same screen.
+
+### 5. One typo bought a birthday playbook
+
+Asked how misspellings are handled. Measured: delete ONE character from the type
+word and **35 of 45 playbook types resolve to Birthday** — "Graduaton party",
+"Bridl Shower", "Retiement Party", "Gendr Reveal". Not "no type": a CONFIDENT
+wrong one, carrying a birthday checklist, birthday risks, birthday food and
+birthday vendors, stated with no hedge anywhere.
+
+The cause is a deliberate last-resort rule — any text holding "party" (or
+celebration / bash / soiree / fiesta / shindig) maps to Birthday. Fair for a host
+who genuinely just says "a party"; not a fair silent answer to a typo.
+
+**The rule stays and the guess is declared.** `typeBasis` is decided the same way
+`unusedClauses` decides — strip the generic words, re-resolve, see whether
+anything specific was holding the answer up. The parse screen now says so and
+the host is one tap from correcting it.
+
+**My first version of that check was wrong twice**, both caught by its own
+control: it compared against `resolveCanonicalType` alone while the parser uses a
+TWO-step resolution, so it hedged "Pupusa Gathering", "Ethiopian Coffee Ceremony"
+and "Repast" — three types a host had named exactly. One resolver is used for
+both now.
+
+**And the control found a defect that has nothing to do with typos.** `Card
+Party` and `Day Party` are real playbooks the resolver cannot name — both fall
+to the catch-all, so a host typing "Card Party in Austin" gets a BIRTHDAY plan
+and the playbook they asked for by name is unreachable from free text. Pinned in
+the test so the list can only shrink.
+
+### What the $7,000 actually is, and the divergence nobody sees
+
+Asked for the breakdown. **There is no breakdown.** `estimateTotalRange` returns
+`lowTotal`, `highTotal` and a provenance key — no line items at all. The number
+is one multiplication:
+
+    Birthday per-head band  $60 – $250      (PER_HEAD_BY_TYPE)
+    45 guests x $60  = $2,700   low
+    45 guests x $250 = $11,300  high
+    "typical"        = the arithmetic MIDPOINT = $7,000   ($155/head)
+
+`budget.perHeadByType` is `tier: 'estimate'`, `confidence: 'low'`, and **1 of its
+17 rows has a source**. Birthday's $60–$250 has none — it was searched and no
+dated per-head figure was found.
+
+**The one row that CAN be checked fails the check, and the failure is bigger on
+screen than in the record.** The provenance note flags that Wedding's band
+midpoint ($350) sits 19.9% above The Knot's published $292 mean. Measured on the
+shipping path at 100 guests: **the host is shown $350/head with no date, and
+$375/head for a June wedding — 28.3% above the only published figure the system
+has.** The seasonal premium stacks on top of an already-high midpoint, and the
+recorded 19.9% understates what a host reads. Recorded, not moved: changing the
+first number a host sees is a product decision.
 
 ### Still open, recorded not fixed
 

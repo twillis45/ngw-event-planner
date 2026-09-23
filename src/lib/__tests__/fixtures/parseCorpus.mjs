@@ -61,7 +61,11 @@ export function corpusNow() {
 // a typo'd field name in an `expect` block — an expectation on a field that
 // does not exist would otherwise pass forever by comparing undefined.
 export const PARSER_FIELDS = [
-  'type', 'secondaryType', 'theme', 'guests', 'budget', 'date', 'endDate', 'monthYear',
+  // `typeBasis` added 2026-09-23: 'named' when something in the sentence named
+  // the event type, 'generic' when only the "party" catch-all held it up. It
+  // exists because deleting ONE character from the type word lands 35 of 45
+  // playbook types on Birthday, silently — see oneTypoBoughtABirthday.test.js.
+  'type', 'typeBasis', 'secondaryType', 'theme', 'guests', 'budget', 'date', 'endDate', 'monthYear',
   'milestone', 'isDestination', 'destinationBasis', 'travelMode', 'overnight', 'overnightBasis',
   'timeOfDay', 'startTime', 'startTimeBasis', 'venueAddress', 'honoree', 'venueKind', 'venue',
   'venueCity', 'venueState', 'vacationArea', 'kidsPolicy',

@@ -33,11 +33,44 @@ export function parseSmartEventText(text, opts = {}) {
   const now = opts.now instanceof Date && !isNaN(opts.now) ? opts.now : new Date();
 
   // ── Type ────────────────────────────────────────────────────────────────
-  let type = null;
-  try { const c = resolveCanonicalType(t); if (c && HOST_TYPES.includes(c)) type = c; } catch { type = null; }
-  if (!type) {
-    const hit = HOST_TYPES.find(ht => t.toLowerCase().includes(ht.toLowerCase().replace(' party', '')));
-    if (hit && hit.length > 3) type = hit;
+  // ONE resolver, used for the real parse AND for the "was this a guess?"
+  // re-run below. The first version of typeBasis called resolveCanonicalType
+  // alone and marked "Pupusa Gathering", "Ethiopian Coffee Ceremony" and
+  // "Repast" as guesses — all three are found by the SECOND step, so comparing
+  // against only the first said "guess" about types the host had named exactly.
+  const _resolveType = (text) => {
+    let out = null;
+    try { const c = resolveCanonicalType(text); if (c && HOST_TYPES.includes(c)) out = c; } catch { out = null; }
+    if (!out) {
+      const hit = HOST_TYPES.find(ht => text.toLowerCase().includes(ht.toLowerCase().replace(' party', '')));
+      if (hit && hit.length > 3) out = hit;
+    }
+    return out;
+  };
+  const type = _resolveType(t);
+
+  // ── WAS THAT TYPE A GUESS? ───────────────────────────────────────────────
+  //
+  // MEASURED 2026-09-23: delete ONE character from the type word and 35 of 45
+  // playbook types resolve to Birthday. "Graduaton party", "Bridl Shower",
+  // "Retiement Party" — every one lands on a birthday playbook with a birthday
+  // checklist, birthday risks and birthday food, stated with no hedge at all.
+  //
+  // The cause is a deliberate last-resort rule: any text containing "party" (or
+  // celebration / bash / soiree / fiesta / shindig) maps to Birthday. That is a
+  // reasonable catch-all for a host who genuinely just says "a party". It is
+  // not reasonable as a silent answer to a typo.
+  //
+  // So the rule stays and the GUESS IS DECLARED. Decided by the same technique
+  // unusedClauses uses: strip the generic words and re-resolve. If the type
+  // survives, something specific named it; if it evaporates, the catch-all is
+  // the only thing holding it up.
+  const _GENERIC_PARTY_WORDS = /\b(?:part(?:y|ies)|celebrations?|bash|soiree|fiesta|shindig)\b/gi;
+  let typeBasis = null;
+  if (type) {
+    let specific = null;
+    try { specific = _resolveType(t.replace(_GENERIC_PARTY_WORDS, ' ')); } catch { specific = null; }
+    typeBasis = specific === type ? 'named' : 'generic';
   }
 
   // ── Guests ──────────────────────────────────────────────────────────────
@@ -764,7 +797,7 @@ export function parseSmartEventText(text, opts = {}) {
   const lodging = /\b(airbnb|vrbo|lake\s*house|beach\s*house|cabin|rental\s+(?:house|home|condo)|rent(?:ed|ing)?\s+(?:an?\s+)?(?:airbnb|vrbo|house|cabin|condo))\b/i.test(t);
 
   return {
-    type, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    type, typeBasis, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
     venueAddress: venueAddress || null,
