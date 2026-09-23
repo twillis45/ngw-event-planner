@@ -159,7 +159,19 @@ const housewarming = {
     cleanup: [
       { when: 'during', what: 'Quietly clear stray cups into the staged tub, top up the board + ice, blot any spills immediately — do NOT do a full wash mid-party' },
       { when: 'T0 +3:30', what: 'Leftovers covered, glasses to the dishwasher, bottles/cans to recycling, trash out, gift spot tidied' },
-      { when: 'T+1 morning', what: 'Finish dishes, wipe surfaces, run a vacuum, return borrowed chairs/platters, send thank-yous for gifts' },
+      // SPELLED IN THE CORPUS'S OWN DIALECT, 2026-09-23. This was authored
+      // `T+1 morning` — the only `when` token in 30 playbooks that no rule in
+      // rosWhenOffset recognized. It returned null and was dropped, which LOOKS
+      // identical to the fourteen other day-after rows (`T0 +1d` … `T0 +7d`) but
+      // is not the same thing: those are excluded by an explicit rule that says
+      // post-event follow-ups belong on the checklist, and this one fell off the
+      // end of the parser as an unknown string. Same outcome today, different
+      // reason, and only one of them survives someone adding a fallback.
+      //
+      // The meaning is unchanged — the morning after — and the row still does
+      // not appear on the day-of board. It is now excluded BY RULE and shares
+      // whatever surface the rest of the day-after rows reach.
+      { when: 'T0 +1d morning', what: 'Finish dishes, wipe surfaces, run a vacuum, return borrowed chairs/platters, send thank-yous for gifts' },
     ],
   },
 
