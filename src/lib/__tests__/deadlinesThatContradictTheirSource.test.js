@@ -11,18 +11,41 @@
 // Case 2 was filed as case 1, so the app's own deadline could contradict its own
 // registry in silence.
 //
-// MEASURED across all 45 playbooks / 260 decisions: 31 decisions match a timing
-// category, 27 ground, SIX are case 2 — and four of those tell the host to act
-// LATER than the source supports. A Holiday Party venue at T-35d against a
-// 2-3 month party-space lead is the sharpest: December venues are the most
-// contested booking of the year, and five weeks is where a host finds that out.
+// ── AND THEN EVERY "LATE" ONE TURNED OUT TO BE FALSE (2026-09-23) ──────────
 //
-// NO AUTHORED DEADLINE WAS CHANGED. Every source in this registry is a
-// commercial practitioner, and "a wedding blog says 2-3 months" is not grounds
-// to move a Day Party's backyard deadline — the source's "weekend party space"
-// may not be the same thing. Moving a host-facing date on that evidence is the
-// over-application the registry's own header exists to prevent. What was missing
-// is that the disagreement was invisible.
+// This file recorded FOUR, then three, decisions telling a host to act LATER
+// than a source supports. On 2026-09-23 the detector was finally wired to the
+// decision card — and the first thing it did on a real board was warn a Day
+// Party host that "Where (daytime outdoor)" was four weeks out against a
+// two-month booking floor.
+//
+// Its options are Backyard / Rooftop / Patio / Rented outdoor space. THREE OF
+// FOUR REQUIRE NO BOOKING AT ALL. Reading the three flagged decisions instead
+// of trusting the count, all three were the same thing:
+//
+//   Day Party         "Where (daytime outdoor)"                  a setting choice
+//   Retirement Party  "At home, a restaurant, or the workplace?"  a setting choice
+//   Surprise Proposal "Photographer hidden or known to your partner?"
+//                       — which decides what the photographer PRETENDS TO BE,
+//                         not whether or when to hire one
+//
+// That is the exact failure the registry's own header warns about, committed by
+// the registry: "a T-18d 'indoor or outdoor' setting call whose id happens to
+// contain 'venue' must NOT cite a source about booking a wedding venue." The
+// lead-window gate caught the GROUNDING case and let the CONTRADICTION case
+// through, because a contradiction is what you get when the window rejects a
+// match the pattern should never have made.
+//
+// So the count is now ZERO late conflicts, and that is a correction, not a
+// success. Two vetoes did it — a structural one (a decision offering a place
+// the host already has is not a booking, unless its label says it is) and a
+// pattern one (a concealment decision is not a hiring decision). The machinery
+// that surfaces a conflict to a host stays, guarded and correct; it simply has
+// no true case in this corpus today.
+//
+// NO AUTHORED DEADLINE WAS EVER CHANGED, in either direction. Every source in
+// this registry is a commercial practitioner, and the dates were never the
+// problem — the matching was.
 import { ALL_PLAYBOOKS } from '../playbooks';
 import {
   timingConflict, detectTimingCategory, effectiveTimingProvenance, isGroundedTiming,
@@ -59,27 +82,52 @@ describe('a deadline that contradicts its source is now visible', () => {
     .map(({ pb, d }) => ({ pb, id: d.id, c: timingConflict(d) }))
     .filter((x) => x.c);
 
-  test('THE FINDING: three decisions tell the host to act too LATE', () => {
-    // WAS FOUR. Holiday Party's venue left this list on 2026-09-19 — and it left
-    // for the one reason this file's closing guard allows. Its own `why` reads
-    // "the good rooms book out months ahead in December" and its own
-    // `priorityBasis.rationale` says "December rooms book out well ahead", while
-    // the row shipped T-35d: the playbook contradicted ITSELF, in two authored
-    // fields, and the source merely agreed. It moved to T-75d on its own prose.
-    //
-    // The three below are untouched and stay untouched: each disagrees ONLY with
-    // a commercially-interested third party, and timingProvenance.js:314 records
-    // the house answer — such a source does not move a host-facing date by
-    // itself. Two of them are probably over-matched categories anyway (a
-    // backyard is not the "weekend party space" the source prices; a 20-minute
-    // proposal shoot is not wedding photography), which is a different fix.
+  test('THE CORRECTION: there are no late conflicts, because none was real', () => {
+    // This assertion used to list three decisions. Every one was an over-match,
+    // found by reading them rather than counting them — see the header. A future
+    // pass that authors a genuine booking decision with a too-late date SHOULD
+    // fail here, which is the point of keeping the assertion rather than
+    // deleting the file.
     const late = conflicts().filter((x) => x.c.direction === 'late')
       .map((x) => `${x.pb}/${x.id}`).sort();
-    expect(late).toEqual([
+    expect(late).toEqual([]);
+  });
+
+  test('(premise) THE DETECTOR STILL WORKS — it is empty, not broken', () => {
+    // An empty list is exactly what a silently-disabled detector produces, so
+    // the detector is exercised directly on a decision that IS a booking and IS
+    // too late. Without this, deleting the whole mechanism would pass the test
+    // above.
+    const realBooking = { id: 'venue', label: 'Book the venue and sign the contract', when: 'T-3d' };
+    const c = timingConflict(realBooking);
+    expect(c).toBeTruthy();
+    expect(c.direction).toBe('late');
+    expect(c.sourceWindowDays[0]).toBeGreaterThan(3);
+  });
+
+  test('the four venue decisions vetoed are SETTING choices, named', () => {
+    // Pinned so the veto cannot quietly widen. Each offers somewhere the host
+    // already has, and none of their labels claims to be a booking.
+    const vetoed = allDecisions()
+      .filter(({ d }) => !detectTimingCategory(d) && detectTimingCategory({ ...d, options: [] }))
+      .map(({ pb, d }) => `${pb}/${d.id}`).sort();
+    expect(vetoed).toEqual([
       'Day Party/venue',
+      'Holiday Party/venue',
       'Retirement Party/venue',
-      'Surprise Proposal/photographer_hidden',
+      'Vow Renewal/venue',
     ]);
+  });
+
+  test('…and the one venue decision that DECLARES a booking is untouched', () => {
+    // Wedding's "Venue + date (book FIRST)" at T-365d offers "Private estate /
+    // backyard" and was caught by the first version of the structural veto.
+    // Un-grounding the clearest venue booking in the corpus to fix three that
+    // are not bookings would have been a worse trade than the bug.
+    const wed = allDecisions().find(({ pb, d }) => pb === 'Wedding' && d.id === 'venue');
+    expect(wed).toBeTruthy();
+    expect(detectTimingCategory(wed.d).category).toBe('venue');
+    expect(isGroundedTiming(effectiveTimingProvenance(wed.d))).toBe(true);
   });
 
   test('each late one names our number, the window, and the source', () => {
@@ -132,21 +180,22 @@ describe('the two nulls stay distinguishable', () => {
 });
 
 describe('nothing was silently moved', () => {
-  test('the three remaining late deadlines still ship their authored values', () => {
-    // The original commit added a FACT about the deadlines, not a change to
-    // them: "If a future pass decides to move them, it should fail here first
-    // and say so." It did, on 2026-09-19, and this is the saying-so — Holiday
-    // Party moved to 75 days on its OWN prose and is asserted separately below,
-    // because a row that no longer conflicts has no conflict to read a lead from.
+  test('THE DATES NEVER MOVED — in either direction, and that is the point', () => {
+    // This file's original promise was to add a FACT about these deadlines, not
+    // a change to them. The fix on 2026-09-23 changed the MATCHING, not a single
+    // authored date, so every one still ships exactly the value it always had.
+    // If a future pass "resolves" a conflict by editing a date, it fails here.
     const want = {
-      'Retirement Party/venue': 35,
-      'Day Party/venue': 28,
-      'Surprise Proposal/photographer_hidden': 30,
+      'Retirement Party/venue': 'T-35d',
+      'Day Party/venue': 'T-28d',
+      'Surprise Proposal/photographer_hidden': 'T-30d',
+      'Holiday Party/venue': 'T-75d',
+      'Wedding/venue': 'T-365d',
     };
     const got = {};
     for (const { pb, d } of allDecisions()) {
       const k = `${pb}/${d.id}`;
-      if (k in want) got[k] = timingConflict(d).ourLeadDays;
+      if (k in want) got[k] = d.when;
     }
     expect(got).toEqual(want);
   });

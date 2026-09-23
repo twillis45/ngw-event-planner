@@ -148,29 +148,46 @@ describe('a timing disagreement reaches the row a host actually reads', () => {
     expect(rows.some((r) => typeof r.daysOut === 'number')).toBe(true);
   });
 
-  test('THE THREE LATE CONFLICTS IN THE CORPUS REACH A ROW', () => {
-    // Measured 2026-09-23. The 2026-09-18 audit recorded FOUR; Holiday Party's
-    // venue has since been authored to T-75d, inside the source's window, so it
-    // is correctly no longer a conflict. Three remain, and each is a decision
-    // whose deadline tells a host to start later than a real dated source says.
-    const cases = [
-      ['Day Party', '2026-11-14', 'venue', 28],
-      ['Retirement Party', '2026-11-14', 'venue', 35],
-      ['Surprise Proposal', '2026-11-14', 'photographer_hidden', 30],
-    ];
-    for (const [type, date, id, ourLead] of cases) {
-      const hit = disagreeing(type, date).find((r) => r.id === id);
-      expect(hit).toBeTruthy();
-      expect(hit.timingDisagreement.direction).toBe('late');
-      expect(hit.timingDisagreement.ourLeadDays).toBe(ourLead);
-      expect(hit.timingDisagreement.sourceWindowDays[0]).toBeGreaterThan(ourLead);
+  test('THE THREE I WIRED THIS MORNING WERE ALL FALSE, and none reaches a row', () => {
+    // Written hours earlier the same day asserting these three DID reach a card.
+    // They did — and they should not have. Reading the decisions instead of
+    // counting them: Day Party's "Where (daytime outdoor)" offers Backyard /
+    // Rooftop / Patio / Rented outdoor space, three of which need no booking;
+    // Retirement Party's offers Host home and Workplace; and Surprise Proposal's
+    // "Photographer hidden or known to your partner?" decides what the
+    // photographer PRETENDS TO BE, not whether to hire one.
+    //
+    // The wiring was right and its population was not. Correcting the population
+    // is the fix; the note below is still guarded, and still fires on a decision
+    // that genuinely is a late booking.
+    for (const [type, date, id] of [
+      ['Day Party', '2026-11-14', 'venue'],
+      ['Retirement Party', '2026-11-14', 'venue'],
+      ['Surprise Proposal', '2026-11-14', 'photographer_hidden'],
+    ]) {
+      const hit = board(type, date).find((r) => r.id === id);
+      expect(hit).toBeTruthy();                       // the row is still there
+      expect(hit.timingDisagreement).toBeFalsy();     // it just no longer accuses it
     }
   });
 
-  test('HOLIDAY PARTY IS NOT ONE — the authored deadline moved inside the window', () => {
-    // The audit's fourth case, re-measured rather than carried forward. A stale
-    // finding asserted as current is its own kind of invented data.
-    expect(disagreeing('Holiday Party', '2026-12-12')).toEqual([]);
+  test('NO ROW IN THE WHOLE CORPUS CARRIES A LATE DISAGREEMENT TODAY', () => {
+    // Zero is the honest count, and it is a correction rather than a success.
+    const all = [];
+    for (const [type, date] of [
+      ['Day Party', '2026-11-14'], ['Retirement Party', '2026-11-14'],
+      ['Surprise Proposal', '2026-11-14'], ['Holiday Party', '2026-12-12'],
+      ['Wedding', '2027-09-23'], ['Vow Renewal', '2027-06-12'],
+    ]) all.push(...disagreeing(type, date));
+    expect(all).toEqual([]);
+  });
+
+  test('(premise) THE CARRY STILL WORKS — empty is not the same as removed', () => {
+    // An empty result is exactly what deleting the mechanism would produce. The
+    // board must still carry a disagreement when there genuinely is one.
+    expect(timingDisagreementNote(timingConflict({
+      id: 'venue', label: 'Book the venue and sign the contract', when: 'T-3d',
+    }))).toBeTruthy();
   });
 
   test('AN EARLY DEADLINE IS NEVER CARRIED — it is not a harm', () => {

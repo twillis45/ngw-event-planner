@@ -173,6 +173,9 @@ const TIMING_CATEGORIES = [
     // setting call can't cite a 2–18-month booking source).
     pattern: /\bvenue\b|reception (hall|site)|banquet hall|event space/i,
     antiPattern: /buy|steam|cater the food|indoor or outdoor|at home or|home vs|backyard or|which room|inside or out/i,
+    // A BOOKING lead, so it is vetoed on a decision that offers a place the host
+    // already has — see offersAPlaceTheHostAlreadyHas above.
+    bookingLead: true,
     leadDays: [60, 600], // party space 2–3 months → wedding venue 12–18 months
     sources: ['theknot-vendors', 'partyguides-venue'],
     claim: 'Book the venue early — 2–3 months for a weekend party space, 12–18 months for a wedding-scale venue; it anchors the date and most other vendors.',
@@ -213,6 +216,14 @@ const TIMING_CATEGORIES = [
   {
     category: 'photography',
     pattern: /photographer|videographer|photo ?booth|hire.*(photo|video)|book.*(photo|video)/i,
+    // NOT EVERY DECISION MENTIONING A PHOTOGRAPHER IS ABOUT BOOKING ONE.
+    // Surprise Proposal asks "Photographer hidden or known to your partner?" —
+    // Hidden / Posing as a free mini-shoot / Known. That decides what the
+    // photographer PRETENDS TO BE, not whether or when to hire one, and citing
+    // a 12-18-month wedding booking lead against it produced a contradiction
+    // out of nothing. Found 2026-09-23 by reading the three flagged decisions
+    // instead of trusting the count.
+    antiPattern: /\bhidden\b|known to (your|the) partner|posing as|disguis|in on (it|the)|\bsecret\b/i,
     leadDays: [60, 600], // photographers book 12–18 months out; solo shooters, one/day
     sources: ['theknot-vendors'],
     claim: 'Book a photographer/videographer early — 12–18 months out for a wedding-scale event; most work solo and take one booking per date.',
@@ -274,6 +285,52 @@ function parseLeadDays(when) {
 // Detect a decision's timing category from its id + label (text match only). Returns the
 // category object or null. Conservative: an antiPattern hit vetoes the match. This is the
 // TEXT gate; resolveTimingProvenance adds the lead-window consistency gate.
+// ── A CHOICE AMONG PLACES YOU ALREADY HAVE IS NOT A BOOKING ────────────────
+//
+// Added 2026-09-23, and it REMOVES a warning that shipped hours earlier the
+// same day. `timingDisagreementNote` reached the decision card that afternoon,
+// and the first thing it did on a real board was tell a Day Party host that
+// "Where (daytime outdoor)" was four weeks out against a two-month booking
+// floor. Its options are Backyard / Rooftop / Patio / Rented outdoor space —
+// THREE OF FOUR REQUIRE NO BOOKING AT ALL.
+//
+// That is the exact failure this file's own header warns about, committed by
+// this file: "a T-18d 'indoor or outdoor' setting call whose id happens to
+// contain 'venue' must NOT cite a source about booking a wedding venue 12-18
+// MONTHS out." The lead-window gate caught the grounding case and let the
+// CONTRADICTION case through, because a contradiction is what you get when the
+// window rejects a match the pattern should never have made.
+//
+// THE PREDICATE IS STRUCTURAL, NOT A WORD. A decision that offers even one
+// option the host already controls is a SETTING choice: for that pick there is
+// nothing to book, so a booking-lead source cannot govern its deadline. It does
+// not matter that a sibling option ("Rented outdoor space") would be a booking
+// — one date covers all the options, and a source that speaks to one of four
+// cannot convict the date.
+//
+// Judged against the real decisions rather than imagined ones:
+//   Day Party        Backyard · Rooftop · Patio/deck · Rented outdoor space
+//   Retirement Party Host home · Restaurant · Workplace · Banquet hall · Backyard
+// Both are "where shall we have it", not "when must we book it".
+const ALREADY_HAVE_IT = /\b(host )?home\b|\bbackyard\b|\bpatio\b|\bdeck\b|\brooftop\b|workplace|office common|\byour (own )?place\b|someone'?s (house|place)/i;
+
+// …UNLESS THE DECISION SAYS IT IS A BOOKING. Found by listing what the veto
+// actually removed instead of trusting that it removed the right things:
+// Wedding's "Venue + date (book FIRST)" at T-365d was caught, because one of
+// its five options is "Private estate / backyard". That decision declares
+// itself a booking in its own label and its deadline IS a booking deadline —
+// vetoing it would have un-grounded the most clear-cut venue booking in the
+// corpus to fix three that are not bookings at all.
+//
+// So an author who means "this is when you book" says so, and is believed.
+const DECLARES_A_BOOKING = /\bbook(ing|ed)?\b|\breserve\b|\bsign\b|\bcontract\b|\bdeposit\b|\block (in|down) the (venue|space|room)\b/i;
+
+function offersAPlaceTheHostAlreadyHas(decision) {
+  if (DECLARES_A_BOOKING.test(String((decision && decision.label) || ''))) return false;
+  const opts = Array.isArray(decision && decision.options) ? decision.options : [];
+  return opts.some((o) => ALREADY_HAVE_IT.test(String((o && (o.label || o.value)) || o || '')));
+}
+
 export function detectTimingCategory(decision) {
   if (!decision) return null;
   // ── AN AUTHORED CATEGORY WINS, SO A LABEL CAN BE COPY AGAIN (2026-09-18) ──
@@ -295,6 +352,10 @@ export function detectTimingCategory(decision) {
   const hay = `${decision.id || ''} ${decision.label || ''}`;
   for (const cat of TIMING_CATEGORIES) {
     if (cat.pattern.test(hay) && !(cat.antiPattern && cat.antiPattern.test(hay))) {
+      // A booking-lead category cannot speak to a decision whose own options
+      // include somewhere the host already has. See above — this is a setting
+      // choice wearing a venue id.
+      if (cat.bookingLead && offersAPlaceTheHostAlreadyHas(decision)) continue;
       return cat;
     }
   }

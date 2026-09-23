@@ -105,52 +105,58 @@ const couplingMap = () => {
 
 // Measured 2026-09-18. Changing a label is allowed — it just has to land here
 // deliberately, with the cost named in the commit.
+// ── RE-PINNED 2026-09-23 ────────────────────────────────────────────────────
+// The map moved because the `venue` category gained a STRUCTURAL veto — a
+// decision offering somewhere the host already has (backyard, host home,
+// workplace) is a setting choice, not a booking, unless its own label says
+// otherwise. Four venue decisions left the timing categories entirely, so their
+// labels stopped being load-bearing for timing; Wedding/venue gained grounding
+// it should always have had; and Surprise Proposal's ring and photographer rows
+// moved for the `rings` category registered the same day.
+//
+// The count is what it is — this is a map, not a target. What matters is that
+// every entry is REACHED by neutralising that decision's own label, and the
+// clean result below still holds: no label decides a type, a status or a weight.
 const PINNED = {
-  'Anniversary/beverage': ['knowledge-context'],
-  'Anniversary/guestlist': ['knowledge-context', 'route'],
-  'Anniversary/menu': ['knowledge-context', 'timing-category', 'timing-grounding'],
-  'Anniversary/venue': ['timing-category', 'timing-conflict'],
-  'Bachelorette Party/dinner': ['knowledge-context', 'route'],
-  'Bachelorette Party/drinkers': ['knowledge-context'],
-  'Conference/sponsor_model': ['knowledge-context'],
-  'Day Party/venue': ['knowledge-context'],
-  'Dinner Party/menu': ['knowledge-context', 'timing-category', 'timing-grounding'],
-  'Dinner Party/seating': ['knowledge-context'],
-  'Elopement/photography': ['knowledge-context', 'timing-category', 'timing-grounding'],
-  'Engagement Party/invite': ['knowledge-context', 'route'],
-  'Engagement Party/venue': ['timing-category', 'timing-conflict'],
-  'Ethiopian Coffee Ceremony/fasting_spread': ['knowledge-context'],
-  'Gender Reveal/venue': ['knowledge-context', 'timing-category', 'timing-conflict'],
-  'Get-Together/shade': ['knowledge-context'],
-  'Halloween Party/drinks': ['knowledge-context'],
-  'Holiday Party/alcohol_service': ['knowledge-context'],
-  'Holiday Party/signature': ['knowledge-context'],
-  'Housewarming/drinks': ['knowledge-context'],
-  'Juneteenth Cookout/drinks': ['knowledge-context'],
-  'Juneteenth Cookout/shade': ['knowledge-context'],
-  'Quinceañera/court_size': ['knowledge-context'],
-  'Quinceañera/dress': ['knowledge-context', 'timing-category', 'timing-grounding'],
-  'Quinceañera/vals_song': ['knowledge-context'],
-  // 2026-09-23 — GAINED, not lost. The `rings` timing category was registered
-  // for Elopement's order act, and this decision ("Ring: in-stock, custom, or
-  // family ring?") is genuinely about sourcing a ring at T-45d, inside the
-  // jewellers' 6-week floor. So its deadline now cites two dated sources where
-  // it cited none. It is load-bearing because the CATEGORY is detected from the
-  // label: neutralise the copy and the grounding goes with it.
-  'Surprise Proposal/ring_path': ['knowledge-context', 'timing-category', 'timing-grounding'],
-  'Retirement Party/invite': ['knowledge-context', 'route'],
-  'Retirement Party/surprise': ['knowledge-context'],
-  'Reunion/kids-plan': ['knowledge-context'],
-  'Reunion/venue-setting': ['knowledge-context', 'timing-category', 'timing-grounding'],
-  'The Cookout/game_day': ['route'],
-  'The Cookout/shade_seating': ['knowledge-context'],
-  'Vow Renewal/beverage': ['knowledge-context'],
-  'Vow Renewal/guestlist': ['knowledge-context', 'route'],
-  'Vow Renewal/menu': ['knowledge-context', 'timing-category', 'timing-grounding'],
-  'Watch Party/screen': ['knowledge-context'],
-  'Wedding/guestcount': ['knowledge-context'],
-  'Wedding/music': ['knowledge-context', 'timing-category', 'timing-grounding'],
-  'Wedding/vendor_team': ['knowledge-context'],
+  'Anniversary/beverage': ["knowledge-context"],
+  'Anniversary/guestlist': ["knowledge-context","route"],
+  'Anniversary/menu': ["knowledge-context","timing-category","timing-grounding"],
+  'Bachelorette Party/dinner': ["knowledge-context","route"],
+  'Bachelorette Party/drinkers': ["knowledge-context"],
+  'Conference/sponsor_model': ["knowledge-context"],
+  'Day Party/venue': ["knowledge-context"],
+  'Dinner Party/menu': ["knowledge-context","timing-category","timing-grounding"],
+  'Dinner Party/seating': ["knowledge-context"],
+  'Elopement/photography': ["knowledge-context","timing-category","timing-grounding"],
+  'Engagement Party/invite': ["knowledge-context","route"],
+  'Ethiopian Coffee Ceremony/fasting_spread': ["knowledge-context"],
+  'Gender Reveal/venue': ["knowledge-context"],
+  'Get-Together/shade': ["knowledge-context"],
+  'Halloween Party/drinks': ["knowledge-context"],
+  'Holiday Party/alcohol_service': ["knowledge-context"],
+  'Holiday Party/signature': ["knowledge-context"],
+  'Housewarming/drinks': ["knowledge-context"],
+  'Juneteenth Cookout/drinks': ["knowledge-context"],
+  'Juneteenth Cookout/shade': ["knowledge-context"],
+  'Quinceañera/court_size': ["knowledge-context"],
+  'Quinceañera/dress': ["knowledge-context","timing-category","timing-grounding"],
+  'Quinceañera/vals_song': ["knowledge-context"],
+  'Retirement Party/invite': ["knowledge-context","route"],
+  'Retirement Party/surprise': ["knowledge-context"],
+  'Reunion/kids-plan': ["knowledge-context"],
+  'Reunion/venue-setting': ["knowledge-context"],
+  'Surprise Proposal/photographer_hidden': ["timing-category","timing-conflict"],
+  'Surprise Proposal/ring_path': ["knowledge-context","timing-category","timing-grounding"],
+  'The Cookout/game_day': ["route"],
+  'The Cookout/shade_seating': ["knowledge-context"],
+  'Vow Renewal/beverage': ["knowledge-context"],
+  'Vow Renewal/guestlist': ["knowledge-context","route"],
+  'Vow Renewal/menu': ["knowledge-context","timing-category","timing-grounding"],
+  'Watch Party/screen': ["knowledge-context"],
+  'Wedding/guestcount': ["knowledge-context"],
+  'Wedding/music': ["knowledge-context","timing-category","timing-grounding"],
+  'Wedding/vendor_team': ["knowledge-context"],
+  'Wedding/venue': ["knowledge-context","timing-category","timing-grounding"],
 };
 
 describe('which labels are load-bearing', () => {
@@ -199,19 +205,29 @@ describe('which labels are load-bearing', () => {
     }
   });
 
-  test('the three venue vetoes are the label doing CORRECT work', () => {
-    // Neutralising these labels does not lose a grounding — it ADDS a wrong
-    // one. "Indoor or outdoor?" is not a venue-booking call, and the
-    // antiPattern reads the label to say so. Converting these to declarations
-    // would throw information away.
-    for (const k of ['Anniversary/venue', 'Engagement Party/venue', 'Gender Reveal/venue']) {
-      expect(`${k}: ${PINNED[k].includes('timing-conflict')}`).toBe(`${k}: true`);
-    }
+  test('THE VENUE VETOES STOPPED DEPENDING ON THEIR LABELS (2026-09-23)', () => {
+    // This test used to assert the opposite, and the change is an improvement
+    // worth naming. These setting-choice decisions were held out of the venue
+    // category by an antiPattern reading their LABEL — so the copy was doing
+    // load-bearing work, and rewording "Indoor or outdoor?" would have ADDED a
+    // wrong grounding.
+    //
+    // They are now held out STRUCTURALLY: a decision offering somewhere the host
+    // already has is not a booking, whatever its label says. Neutralising the
+    // label no longer changes the verdict, which is exactly the direction this
+    // file wants — one fewer string that is secretly a function.
     const eng = ALL_PLAYBOOKS.find((p) => p.type === 'Engagement Party');
     const venue = (eng.decisions || []).find((d) => d.id === 'venue');
     expect(detectTimingCategory(venue)).toBe(null);
     expect(timingConflict(venue)).toBe(null);
-    expect(timingConflict({ ...venue, label: NEUTRAL }).direction).toBe('late');
+    // THE POINT: neutral label, same answer. It was `.direction === 'late'`.
+    expect(detectTimingCategory({ ...venue, label: NEUTRAL })).toBe(null);
+    expect(timingConflict({ ...venue, label: NEUTRAL })).toBe(null);
+    // …and none of the three carries a timing coupling any more.
+    for (const k of ['Anniversary/venue', 'Engagement Party/venue', 'Gender Reveal/venue']) {
+      const axes = PINNED[k] || [];
+      expect(`${k}: ${axes.filter((a) => a.startsWith('timing')).join(',') || 'none'}`).toBe(`${k}: none`);
+    }
   });
 
   test('a declared fact survives any rewording — the escape hatch works', () => {

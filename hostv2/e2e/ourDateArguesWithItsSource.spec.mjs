@@ -7,18 +7,26 @@
 // was gone before any caller could ask. Every call returned null and read as
 // "no conflict".
 //
-// Three decisions in the corpus put a host LATER than a real dated source
-// supports. Day Party's venue is one: our deadline is four weeks out, and the
-// booking guidance behind it says two months. A host who follows our date may
-// find nothing available.
+// ── AND THEN ALL THREE TURNED OUT TO BE FALSE, THE SAME DAY ────────────────
 //
-// IT DOES NOT MOVE THE DEADLINE. Every timing source in the registry is a
-// commercial practitioner, and a booking guide is not grounds to overrule an
-// authored date. What it does is stop the disagreement being invisible.
+// This spec originally asserted that Day Party's venue card SHOWED the warning.
+// It did — and it should not have. "Where (daytime outdoor)" offers Backyard /
+// Rooftop / Patio / Rented outdoor space: three of four require no booking at
+// all, so a party-space booking lead cannot convict its date. The same was true
+// of the other two flagged decisions.
+//
+// The wiring was right and its population was false. The spec now drives the
+// CORRECTION — no card in the corpus accuses its own deadline today — and keeps
+// the premise that proves the machinery is empty rather than removed.
+//
+// NO DEADLINE MOVED, in either direction. Every timing source in the registry
+// is a commercial practitioner, and a booking guide is not grounds to overrule
+// an authored date — but the dates were never the problem here. The MATCHING
+// was, and that is what changed.
 //
 // DRIVEN, BECAUSE JEST CANNOT EXECUTE hostv2. The unit tests in
-// src/lib/knowledge/timingProvenance.test.js prove the carry and the sentence;
-// only a browser proves a host reads it.
+// src/lib/knowledge/timingProvenance.test.js prove the carry, the sentence and
+// the empty population; only a browser proves a host is no longer shown it.
 import { test, expect, settled } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
@@ -90,38 +98,32 @@ test('(premise) the venue card really opens, with its why-stack expanded', async
   expect(card).toMatch(/Daytime outdoor is the whole point/);
 });
 
-test('THE DISAGREEMENT IS ON THE CARD — four weeks against a two-month floor', async ({ page }) => {
+test('THE CARD NO LONGER ACCUSES A SETTING CHOICE', async ({ page }) => {
+  // This is the correction. Three of this decision's four options are places
+  // the host already has; a booking source has nothing to say about the date.
   await openDecisionCard(page, 'Day Party', '^Where\\b');
   const card = await openCard(page);
-  expect(card).toMatch(/We put this 4 weeks before the date\./);
-  expect(card).toMatch(/booking guidance behind it says 2 months at least/);
-  expect(card).toMatch(/start it sooner/);
+  expect(card).not.toMatch(/We put this .* before the date\./);
+  expect(card).not.toMatch(/booking guidance behind it/);
 });
 
-test('IT NEVER SAYS OUR DATE IS WRONG, and the row keeps its own deadline', async ({ page }) => {
-  // The registry's own rule: every timing source is a commercial practitioner,
-  // so this discloses a disagreement and does not overrule an authored date.
+test('THE AUTHORED DEADLINE IS UNTOUCHED — the matching changed, not the date', async ({ page }) => {
+  // The correction removed a warning. It must not have removed, moved or
+  // softened the deadline itself, which the row still leads with.
   await openDecisionCard(page, 'Day Party', '^Where\\b');
   const card = await openCard(page);
-  // The sentence must EXIST before its wording can be judged. `slice` on a
-  // missing needle returns text that trivially satisfies the absence below —
-  // the vacuous-guard shape this repo has already been caught by twice, and it
-  // showed up here on the first red-proof run.
-  const at = card.indexOf('We put this');
-  expect(at).toBeGreaterThan(-1);
-  const line = card.slice(at, card.indexOf('start it sooner') + 20);
-  expect(line).not.toMatch(/wrong|too late|mistake|should be|overdue/i);
-  // …and the authored deadline is still what the row leads with.
   expect(card).toMatch(/Good to lock/);
+  expect(card).toMatch(/Daytime outdoor is the whole point/);
 });
 
-test('A DECISION WITH NO DISAGREEMENT SAYS NOTHING — the negative control', async ({ page }) => {
-  // Holiday Party's venue was one of the four the 2026-09-18 audit listed, and
-  // has since been authored to T-75d, inside the source's window. If this ever
-  // prints the sentence, the detector has started firing on agreement.
+test('NO CARD IN THE CORPUS ACCUSES ITS OWN DEADLINE TODAY', async ({ page }) => {
+  // Holiday Party's venue was one of the audit's original four. It is a setting
+  // choice too — Host at home / Office / Restaurant / Rented event space — and
+  // is vetoed structurally now rather than by its date.
   const opened = await openDecisionCard(page, 'Holiday Party', '^Home, office');
   expect(opened).toBeTruthy();
   const card = await openCard(page);
-  console.log('CONTROL CARD >>>', card);
   expect(card).not.toMatch(/We put this .* before the date\./);
+  // …and its why-stack is genuinely populated, so this is not an empty card.
+  expect(card).toMatch(/Venue sets capacity/);
 });
