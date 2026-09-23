@@ -1,4 +1,4 @@
-// ─── Supabase client — NGW Event Boss ────────────────────────────────────────
+// ─── Supabase client — NGW No Guesswork Events ────────────────────────────────────────
 //
 // IMPORTANT: This is a Create React App project (react-scripts, not Vite).
 // Environment variables must use the REACT_APP_* prefix to be baked into

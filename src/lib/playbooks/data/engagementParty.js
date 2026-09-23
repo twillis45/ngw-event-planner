@@ -1,4 +1,4 @@
-// Engagement Party — Event Boss host playbook data.
+// Engagement Party — No Guesswork Events host playbook data.
 //
 // A celebratory cocktail-and-appetizers party for a newly-engaged couple:
 // heavy passed/stationed hors d'oeuvres (NOT a seated meal), a real bar with a

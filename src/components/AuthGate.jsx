@@ -1,4 +1,4 @@
-// ─── Auth gate — NGW Event Boss ──────────────────────────────────────────────
+// ─── Auth gate — NGW No Guesswork Events ──────────────────────────────────────────────
 // Handles session resolution, login screen, and splash.
 // Extracted from App.js to a standalone file so App.js can import it without
 // circular-dependency issues. ThemeCtx lives in App.js, so this file must NOT
@@ -8,7 +8,7 @@ import { supabase, isSupabaseConfigured, authRedirectUrl } from '../lib/supabase
 import { AuthCtx } from '../contexts/AuthContext';
 import { carbonBody, carbonPanel, carbonBorder } from '../theme/palette';
 
-// Sprint 61.M — palette aligned to Studio Matte + Event Boss steel-blue.
+// Sprint 61.M — palette aligned to Studio Matte + No Guesswork Events steel-blue.
 // Login is the first surface a new user sees; bright SaaS blue + neon teal
 // (the prior accent/accent2 values) read as generic SaaS and conflict with
 // the locked product voice. Switched to Mid Carbon + steel-blue.
@@ -127,7 +127,7 @@ function LoginScreen() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: D.bg }}>
       <div style={{ ...ls.card, maxWidth: 380, width: '100%', padding: 28 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: D.accent, textTransform: 'uppercase', marginBottom: 8 }}>NGW Event Boss</div>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: D.accent, textTransform: 'uppercase', marginBottom: 8 }}>NGW No Guesswork Events</div>
 
         {status === 'sent' ? (
           <>

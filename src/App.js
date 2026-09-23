@@ -2605,7 +2605,15 @@ const attrsForVendorCategory = (cat) => {
 };
 
 // Client-intake structured options — RSVP method + accessibility + dietary.
+// ─── THE ONE BRAND STRING THAT IS ALSO A STORED VALUE ────────────────────────
+// These render as `<option key={m}>{m}</option>` with NO value attribute, so the
+// visible label IS what lands in `client.rsvpMethod` on every saved record.
+// Renaming 'In-app (Event Boss)' would leave every client who already picked it
+// matching no option at all — the select would read blank and the answer would be
+// lost on the next save. So the VALUE is frozen at the old wording and only the
+// LABEL is renamed, one line down. Delete both when the CRA shell goes.
 const RSVP_METHODS = ['Online form / event website', 'Mailed RSVP cards', 'Text message', 'Email', 'Phone call', 'In-app (Event Boss)', 'Verbal / in person', 'Other'];
+const RSVP_METHOD_LABEL = (m) => (m === 'In-app (Event Boss)' ? 'In-app (No Guesswork Events)' : m);
 const ACCESSIBILITY_OPTIONS = ['Wheelchair access', 'Step-free / ramp entry', 'ADA restrooms', 'Reserved / priority seating', 'Hearing assistance', 'Large-print materials', 'Service animals welcome', 'Sensory-friendly space', 'Gender-neutral restrooms', 'Designated parking'];
 const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Nut allergy', 'Dairy-free', 'Shellfish allergy', 'Kosher', 'Halal', 'Pescatarian', 'Diabetic-friendly', 'Alcohol-free'];
 const EVT_CATEGORIES = {
@@ -2662,7 +2670,7 @@ const INTAKE_FAMILIES = {
     // chrome (board home-host demo): a host has no clients, no sales funnel.
     recordKind: 'event', pipeline: false, discovery: false, commsChecklist: false, clientPortal: false, communication: false,
     vocab: {
-      createTitle: 'Plan your get-together', createSub: 'Add the basics — Event Boss sets up your event, suggests a budget, and starts your checklist so you can enjoy the party.',
+      createTitle: 'Plan your get-together', createSub: 'Add the basics — No Guesswork Events sets up your event, suggests a budget, and starts your checklist so you can enjoy the party.',
       nameLabel: 'Who’s it for? (hosts)', namePlaceholder: 'e.g. Imani & Marcus',
       createCta: 'Create event', createIntakeCta: 'Create & plan', recordWord: 'event',
       guestLabel: 'How many guests', budgetLabel: 'Rough budget',
@@ -6227,7 +6235,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
   const doMarkBalancePaid = () => {
     setConfirmKind(null);
     const entryId = uid();
-    const entry = { id: entryId, date: today8601(), text: `Balance of ${fmtD(balance)} recorded as paid in Event Boss.` };
+    const entry = { id: entryId, date: today8601(), text: `Balance of ${fmtD(balance)} recorded as paid in No Guesswork Events.` };
     const prior = { balancePaid: vendor.balancePaid, log: vendor.log || [] };
     onSave({ ...vendor, balancePaid: true, log: [...(vendor.log || []), entry] });
     showUndoToast({
@@ -6246,7 +6254,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
   const doMarkDepositPaid = () => {
     setConfirmKind(null);
     const entryId = uid();
-    const entry = { id: entryId, date: today8601(), text: `Deposit of ${fmtD(vendor.depositAmt || 0)} recorded as paid in Event Boss.` };
+    const entry = { id: entryId, date: today8601(), text: `Deposit of ${fmtD(vendor.depositAmt || 0)} recorded as paid in No Guesswork Events.` };
     const prior = { depositPaid: vendor.depositPaid, log: vendor.log || [] };
     onSave({ ...vendor, depositPaid: true, log: [...(vendor.log || []), entry] });
     showUndoToast({
@@ -6349,7 +6357,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           </div>
           {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. Replaces the bare truth
               line. Stays compact (the modal is dense) but earns its space by
-              explaining what Event Boss is autosaving + tracking so the
+              explaining what No Guesswork Events is autosaving + tracking so the
               planner doesn't have to think about it. */}
           {(() => {
             const steelTopV = C.accentTopGrad || C.accent;
@@ -6371,7 +6379,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopV }}>NO GUESSWORK</div>
                   <div style={{ fontSize: T.caption, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
-                    Edits autosave. Event Boss tracks payment status, deposit/balance, and decision log.
+                    Edits autosave. No Guesswork Events tracks payment status, deposit/balance, and decision log.
                   </div>
                 </div>
               </div>
@@ -7691,9 +7699,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           C={C} s={s}
           testId="bp-confirm-mark-balance-paid"
           title={`Record ${fmtD(balance)} balance as paid`}
-          summary={`${vendor.name || 'This vendor'} — Event Boss will update the vendor record only. Use Undo if you tap by mistake.`}
+          summary={`${vendor.name || 'This vendor'} — No Guesswork Events will update the vendor record only. Use Undo if you tap by mistake.`}
           trustLines={[
-            'This records the payment in Event Boss',
+            'This records the payment in No Guesswork Events',
             'It does not charge a card or move money',
             'Vendor will not be notified',
             'Client will not be notified',
@@ -7709,9 +7717,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           C={C} s={s}
           testId="bp-confirm-mark-deposit-paid"
           title={`Record ${fmtD(vendor.depositAmt || 0)} deposit as paid`}
-          summary={`${vendor.name || 'This vendor'} — Event Boss will update the vendor record only.`}
+          summary={`${vendor.name || 'This vendor'} — No Guesswork Events will update the vendor record only.`}
           trustLines={[
-            'This records the payment in Event Boss',
+            'This records the payment in No Guesswork Events',
             'It does not charge a card or move money',
             'Vendor will not be notified',
             'Client will not be notified',
@@ -7729,7 +7737,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           title="Reverse the deposit-paid record"
           summary={`${vendor.name || 'This vendor'} — the deposit will show as unpaid again on the vendor record.`}
           trustLines={[
-            'This only updates Event Boss',
+            'This only updates No Guesswork Events',
             'No money is refunded',
             'No notifications sent',
             'Undo is available for 5 seconds',
@@ -7799,7 +7807,7 @@ function ClientProposalView({ proposal }) {
             <button onClick={() => respond('changes')} style={{ background: 'transparent', color: LC.text, border: `1px solid ${LC.border}`, borderRadius: 12, padding: '15px 16px', fontSize: T.secondary, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Request changes</button>
           </div>
         )}
-        <div style={{ textAlign: 'center', fontSize: T.caption, color: LC.muted, marginTop: 24 }}>Proposal from {proposal.businessName || 'your planner'} · powered by Event Boss</div>
+        <div style={{ textAlign: 'center', fontSize: T.caption, color: LC.muted, marginTop: 24 }}>Proposal from {proposal.businessName || 'your planner'} · powered by No Guesswork Events</div>
       </div>
     </div>
   );
@@ -8463,7 +8471,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopG }}>NO GUESSWORK</div>
                   <div style={{ fontSize: T.caption, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
-                    Edits autosave. No emails or texts are sent — Event Boss only records the RSVP.
+                    Edits autosave. No emails or texts are sent — No Guesswork Events only records the RSVP.
                   </div>
                 </div>
               </div>
@@ -8720,7 +8728,7 @@ function TaskModal({ task, eventDate, foodChoices, onClose, onChange, onDelete }
           </div>
           {task.done && <div style={{ fontSize: T.caption, color: C.success, fontWeight: FW.semibold, paddingLeft: 34 }}>Completed ✓</div>}
           {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. Replaces the bare truth
-              line. Explains what Event Boss auto-tracks for this task. */}
+              line. Explains what No Guesswork Events auto-tracks for this task. */}
           {(() => {
             const steelTopT = C.accentTopGrad || C.accent;
             return (
@@ -8741,7 +8749,7 @@ function TaskModal({ task, eventDate, foodChoices, onClose, onChange, onDelete }
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopT }}>NO GUESSWORK</div>
                   <div style={{ fontSize: T.caption, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
-                    Edits autosave to this event's planning timeline. Event Boss tracks owner, due date, and phase.
+                    Edits autosave to this event's planning timeline. No Guesswork Events tracks owner, due date, and phase.
                   </div>
                 </div>
               </div>
@@ -8965,8 +8973,8 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
                   <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopB }}>NO GUESSWORK</div>
                   <div style={{ fontSize: T.caption, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
                     {isVendorLinked
-                      ? 'Edits autosave. Payment status is owned by the vendor record — Event Boss keeps them in sync.'
-                      : 'Edits autosave to this budget line. Event Boss tracks budget vs. actual.'}
+                      ? 'Edits autosave. Payment status is owned by the vendor record — No Guesswork Events keeps them in sync.'
+                      : 'Edits autosave to this budget line. No Guesswork Events tracks budget vs. actual.'}
                   </div>
                 </div>
               </div>
@@ -9206,7 +9214,7 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopR }}>NO GUESSWORK</div>
                   <div style={{ fontSize: T.caption, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
-                    Edits autosave to the event day schedule. Event Boss orders segments and flags conflicts.
+                    Edits autosave to the event day schedule. No Guesswork Events orders segments and flags conflicts.
                   </div>
                 </div>
               </div>
@@ -10101,7 +10109,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
     const need = items.filter((it) => !checked[it.key] && !it.owned && !it.skipped);
     const src = need.length ? need : items.filter((it) => !it.skipped);
     const lines = src.map((it) => `[ ] ${it.qty} — ${it.name}`).join('\n');
-    const body = `Seating & supplies for ${event.name || 'the event'} — sized for ${capGuestLabel} guests:\n\n${lines}\n\n${cap.sizingWhy ? `How it's sized: ${cap.sizingWhy}.\n\n` : ''}— from Event Boss`;
+    const body = `Seating & supplies for ${event.name || 'the event'} — sized for ${capGuestLabel} guests:\n\n${lines}\n\n${cap.sizingWhy ? `How it's sized: ${cap.sizingWhy}.\n\n` : ''}— from No Guesswork Events`;
     setSupplySheet({ title: 'Your supply checklist', intro: 'Everything to gather, sized to your count. Send it to whoever’s helping, or check it off as it lands.', draft: { subject: `Supplies for ${event.name || 'the event'}`, body }, shareTitle: `Supplies for ${event.name || 'the event'}`, kind: 'thankyou' });
   };
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 20, maxWidth: 760, margin: '0 auto 16px' };
@@ -10654,7 +10662,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {attAdj.applied && (
         <div style={{ ...card, borderLeft: `3px solid ${steel}`, marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', gridColumn: isWide ? '1 / -1' : undefined }}>
           <div style={{ flex: 1, minWidth: 190 }}>
-            <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: steel }}>From what Event Boss remembers</div>
+            <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: steel }}>From what No Guesswork Events remembers</div>
             <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{attAdj.because}</div>
             <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Sized for {attAdj.suggested} instead of {attAdj.planned}. Your plan, your call.</div>
           </div>
@@ -11814,7 +11822,7 @@ function EventTypeBrowse({ value, onChange, onClose, excludeValue }) {
 
         {matches ? (
           matches.length === 0
-            ? <div style={{ fontSize: T.secondary, color: C.muted, padding: '14px 4px', lineHeight: 1.5 }}>No match — pick the closest type and Event Boss adapts the plan.</div>
+            ? <div style={{ fontSize: T.secondary, color: C.muted, padding: '14px 4px', lineHeight: 1.5 }}>No match — pick the closest type and No Guesswork Events adapts the plan.</div>
             : <div>{matches.map(t => <TypeRow key={t} t={t} />)}</div>
         ) : (
           cats.map(([cat, types]) => {
@@ -12139,7 +12147,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
   // Sprint 60.U.3 — Success payoff copy. The "Created for you" checklist
   // beneath this line is the same array Step 2's selected card showed.
-  const createdSummary = 'Event Boss created your starting structure. Open it now or add another event.';
+  const createdSummary = 'No Guesswork Events created your starting structure. Open it now or add another event.';
 
   // Body scroll lock while the modal is mounted.
   useEffect(() => {
@@ -12187,9 +12195,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   const stepCopy =
     step === 1 ? (hostMode
                    ? { title: '', sub: '' }  // host gets the breathing splash; header stays a clean top bar
-                   : { title: 'Create a new event', sub: 'Name, date, type. Event Boss builds the planning structure next.' }) :
-    step === 2 ? { title: 'Create a new event', sub: 'Pick a starting point — Event Boss shows exactly what it will create.' } :
-    step === 3 ? { title: 'Review and create', sub: 'Confirm what Event Boss will set up. Nothing has been created yet.' } :
+                   : { title: 'Create a new event', sub: 'Name, date, type. No Guesswork Events builds the planning structure next.' }) :
+    step === 2 ? { title: 'Create a new event', sub: 'Pick a starting point — No Guesswork Events shows exactly what it will create.' } :
+    step === 3 ? { title: 'Review and create', sub: 'Confirm what No Guesswork Events will set up. Nothing has been created yet.' } :
                  { title: 'Event created', sub: '' };
 
   const PROGRESS_LABELS = ['Basics', 'Setup', 'Review'];
@@ -12256,7 +12264,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
           {step === 1 && hostMode && hostScreen === 1 && coldOpen && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: isMobile ? '32px 6px 8px' : '48px 8px 16px', animation: 'ceFadeIn 520ms cubic-bezier(.22,1,.36,1) both' }}>
               <div style={{ animation: 'ceMarkResolve 420ms cubic-bezier(.22,1,.36,1) both' }}><InviteDome icon="sparkles" hue="#9aa6b2" size={96} /></div>
-              <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.muted, marginTop: 30 }}>Event Boss</div>
+              <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.muted, marginTop: 30 }}>No Guesswork Events</div>
               <div style={{ fontFamily: FF_SERIF, fontSize: Math.round((T.display || 30) * 1.02), fontWeight: 800, color: C.text, lineHeight: 1.14, marginTop: 12, letterSpacing: '-0.01em', animation: 'ceRise 300ms cubic-bezier(.22,1,.36,1) 120ms both' }}>What are we planning?</div>
               <div style={{ fontSize: T.body, color: C.muted, marginTop: 12, lineHeight: 1.5, maxWidth: 320, animation: 'ceRise 300ms cubic-bezier(.22,1,.36,1) 200ms both' }}>Tell me the occasion. I’ll take it from there.</div>
               <div style={{ width: '100%', marginTop: 30, animation: 'ceRise 300ms cubic-bezier(.22,1,.36,1) 300ms both' }}>
@@ -12389,7 +12397,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                         eventType={form.type}
                       />
                       {!dateDone && <div style={sub}>{leadTimeHintForType(form.type) || 'Your date sets the countdown and every deadline.'}</div>}
-                      {(showErr || touched.date) && reqDate && <div style={ui.hint}>Add the date so Event Boss can build the countdown.</div>}
+                      {(showErr || touched.date) && reqDate && <div style={ui.hint}>Add the date so No Guesswork Events can build the countdown.</div>}
                     </div>
                     </div>
                   </div>
@@ -12523,7 +12531,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     Name it, date it, pick the type.
                   </div>
                   <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.6 }}>
-                    Event Boss suggests a setup structure next — timeline, vendor categories, budget, checkpoints — based on your event type. You can change it before creating.
+                    No Guesswork Events suggests a setup structure next — timeline, vendor categories, budget, checkpoints — based on your event type. You can change it before creating.
                   </div>
                 </div>
               </div>
@@ -12688,7 +12696,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
           {step === 2 && (
             <>
-              <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginBottom: 4 }}>What should Event Boss set up for you?</div>
+              <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginBottom: 4 }}>What should No Guesswork Events set up for you?</div>
               {/* Intelligence Gap PR #1 — truthful "Suggested for X" /
                   "You picked X" copy. Switches state-by-state on
                   whether the planner has manually clicked a card. */}
@@ -12697,7 +12705,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   ? <>You picked <strong style={{ color: C.text, fontWeight: FW.bold }}>{kitCfg.title}</strong>. Tap a different card to change.</>
                   : <>Suggested for <strong style={{ color: C.text, fontWeight: FW.bold }}>{form.type}</strong>: <strong style={{ color: C.text, fontWeight: FW.bold }}>{kitCfg.title}</strong>. Tap a different card to change.</>}
               </div>
-              <div style={{ ...ui.truth, marginBottom: 16, fontSize: T.caption, color: C.muted }}>The selected card shows exactly what Event Boss will create. You can add or remove anything afterward.</div>
+              <div style={{ ...ui.truth, marginBottom: 16, fontSize: T.caption, color: C.muted }}>The selected card shows exactly what No Guesswork Events will create. You can add or remove anything afterward.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {KITS.map(k => {
                   const on = kit === k.id;
@@ -12771,7 +12779,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     ? new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
                     : '—';
                   const willCreate = (label, predicate) => ({ label, value: predicate ? 'Yes' : 'No' });
-                  // The vendor categories Event Boss will seed (the same on-trend,
+                  // The vendor categories No Guesswork Events will seed (the same on-trend,
                   // type-matched roster used at creation) — surfaced so the planner
                   // SEES them here instead of a bare "Yes".
                   const vTypes = [form.type, form.secondaryType].filter(t => t && EVT_PARENT[t]);
@@ -12806,7 +12814,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
               {/* Vendor categories — broken OUT of the dense "Will happen" list into
                   a tidy, evenly-aligned grid so the planner can scan exactly what
-                  Event Boss seeds. (board feedback: "not neat and tidy" as inline chips.) */}
+                  No Guesswork Events seeds. (board feedback: "not neat and tidy" as inline chips.) */}
               {(() => {
                 const vTypes = [form.type, form.secondaryType].filter(t => t && EVT_PARENT[t]);
                 const proposedCats = kitCfg.v ? (vTypes.length ? mergeVendorStubs(...vTypes) : proposedVendorCategories('Other')) : [];
@@ -14474,7 +14482,7 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [], profile
             <CMField C={C} label="RSVP method">
               <select style={{ ...s.input, fontSize: T.secondary }} value={client.rsvpMethod || ''} onChange={e => onChange('rsvpMethod', e.target.value)}>
                 <option value="">Not decided yet</option>
-                {RSVP_METHODS.map(m => <option key={m}>{m}</option>)}
+                {RSVP_METHODS.map(m => <option key={m} value={m}>{RSVP_METHOD_LABEL(m)}</option>)}
               </select>
             </CMField>
             <CMField C={C} label="Accessibility needs (select all that apply)">
@@ -14905,9 +14913,9 @@ function ClientPortalPublicView({ token, events }) {
     return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
-  // Sprint 61.E — palette aligned to Studio Matte + Event Boss steel-blue.
+  // Sprint 61.E — palette aligned to Studio Matte + No Guesswork Events steel-blue.
   // Accent shifts from bright #1a6fba to steel-blue #4E6877 so the portal
-  // reads as part of the Event Boss product, not generic SaaS.
+  // reads as part of the No Guesswork Events product, not generic SaaS.
   const bg     = carbonBody;   // tokenized canvas — follows ACTIVE_MODE
   const card   = carbonPanel;  // tokenized card surface
   const border = carbonBorder; // tokenized hairline
@@ -14988,11 +14996,11 @@ function ClientPortalPublicView({ token, events }) {
 
   return (
     <div style={{ minHeight: '100vh', background: bg, fontFamily: FF, color: text }}>
-      {/* Header — Sprint 61.E: Event Boss branding, steel-blue accent */}
+      {/* Header — Sprint 61.E: No Guesswork Events branding, steel-blue accent */}
       <div style={{ background: card, borderBottom: `1px solid ${border}`, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(180deg, ${accent} 0%, #3F5B6A 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: T.body, color: '#fff', flexShrink: 0, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)' }}>✓</div>
         <div>
-          <div style={{ fontSize: T.caption, fontWeight: FW.heavy, color: accent, textTransform: 'uppercase', letterSpacing: '0.16em' }}>Event Boss · Client Portal</div>
+          <div style={{ fontSize: T.caption, fontWeight: FW.heavy, color: accent, textTransform: 'uppercase', letterSpacing: '0.16em' }}>No Guesswork Events · Client Portal</div>
           <div style={{ fontSize: T.body, fontWeight: FW.bold, color: text }}>{event.name}</div>
         </div>
       </div>
@@ -15150,7 +15158,7 @@ function ClientPortalPublicView({ token, events }) {
 
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: 40, paddingTop: 24, borderTop: `1px solid ${border}` }}>
-          <div style={{ fontSize: T.caption, color: muted }}>Powered by NGW Event Boss · This link is private — do not share</div>
+          <div style={{ fontSize: T.caption, color: muted }}>Powered by NGW No Guesswork Events · This link is private — do not share</div>
         </div>
       </div>
     </div>
@@ -15236,7 +15244,7 @@ function PublicIntakeForm({ token }) {
           <div style={{ fontSize: T.body, color: C.muted, lineHeight: 1.6, marginBottom: isEmbed ? 0 : 32 }}>
             Thanks, {form.name.split(' ')[0]}! We'll be in touch shortly to discuss your {form.eventType || 'event'}.
           </div>
-          {!isEmbed && <div style={{ fontSize: T.secondary, color: C.muted, borderTop: `1px solid ${C.border}`, paddingTop: 20, marginTop: 32 }}>Powered by NGW Event Boss</div>}
+          {!isEmbed && <div style={{ fontSize: T.secondary, color: C.muted, borderTop: `1px solid ${C.border}`, paddingTop: 20, marginTop: 32 }}>Powered by NGW No Guesswork Events</div>}
         </div>
       </div>
     );
@@ -15333,7 +15341,7 @@ function PublicIntakeForm({ token }) {
           </button>
         </div>
 
-        {!isEmbed && <div style={{ textAlign: 'center', marginTop: 24, fontSize: T.secondary, color: C.muted }}>Powered by NGW Event Boss</div>}
+        {!isEmbed && <div style={{ textAlign: 'center', marginTop: 24, fontSize: T.secondary, color: C.muted }}>Powered by NGW No Guesswork Events</div>}
       </div>
     </div>
   );
@@ -15998,7 +16006,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               </h2>
               {!submitted && (
                 <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5 }}>
-                  {isHostEvent ? 'Add the basics — Event Boss sets up your event, sketches a rough budget, and starts the countdown.' : 'Add the basics. Event Boss saves the contact, fee schedule, and opens a planner log.'}
+                  {isHostEvent ? 'Add the basics — No Guesswork Events sets up your event, sketches a rough budget, and starts the countdown.' : 'Add the basics. No Guesswork Events saves the contact, fee schedule, and opens a planner log.'}
                 </div>
               )}
             </div>
@@ -16014,7 +16022,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${C.success}22`, border: `1px solid ${C.success}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color: C.success, fontSize: T.display }}>✓</div>
                 <div style={{ fontSize: T.secondary, color: C.muted, maxWidth: 400, margin: '0 auto' }}>
-                  Event Boss saved the contact and opened a planner log. Add another or close to keep working.
+                  No Guesswork Events saved the contact and opened a planner log. Add another or close to keep working.
                 </div>
               </div>
               <div style={{
@@ -16069,7 +16077,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTop, marginBottom: 4 }}>NO GUESSWORK</div>
               <div style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.5, fontWeight: FW.semibold, marginBottom: 6 }}>
-                Add the basics. Event Boss handles the rest.
+                Add the basics. No Guesswork Events handles the rest.
               </div>
               <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.6 }}>
                 {isHostEvent ? 'We set up your event, suggest a budget from real per-guest costs, and start your planning checklist — so you can focus on the party.' : 'We open the planner log, draft a fee schedule, and prep the intake — so you can move on instead of writing boilerplate.'}
@@ -16211,7 +16219,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                   {(form.eventDate || form.eventLocation) && (
                     <div style={{ gridColumn: '1 / -1', fontSize: T.caption, color: steelTop, fontWeight: FW.semibold, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span aria-hidden>✓</span>
-                      Event Boss will create {form.name.trim() ? `${form.name.trim()}'s` : 'their'} event{form.eventDate ? ' and start the countdown' : ''}.
+                      No Guesswork Events will create {form.name.trim() ? `${form.name.trim()}'s` : 'their'} event{form.eventDate ? ' and start the countdown' : ''}.
                     </div>
                   )}
                 </div>
@@ -17412,22 +17420,22 @@ function HostSettings({ profile, onChange, onClose, events = [], onClearSample }
                 <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Read-only</div></>
             : <div style={{ fontSize: T.secondary, color: C.muted }}>Not signed in.</div>}
           {auth?.signOut && (
-            <button type="button" onClick={() => { if (window.confirm('Sign out of Event Boss?')) { auth.signOut(); onClose(); } }}
+            <button type="button" onClick={() => { if (window.confirm('Sign out of No Guesswork Events?')) { auth.signOut(); onClose(); } }}
               style={{ marginTop: 16, width: '100%', minHeight: 48, borderRadius: 12, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: T.body, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Sign out</button>
           )}
         </div>
 
-        {/* WHAT EVENT BOSS REMEMBERS — INTEL-1 P3. A deliberate inspect + clear surface for the
+        {/* WHAT NO GUESSWORK EVENTS REMEMBERS — INTEL-1 P3. A deliberate inspect + clear surface for the
             host's own learned memory. Plain language, no recommendations, no read-forward, no
             "we remembered…" surfacing — just what's been learned + the ability to clear it. */}
         {(() => {
           const mem = summarizeHostIntel(profile);
           return (
             <div style={sectionWrap}>
-              <div style={eyebrow}>What Event Boss remembers</div>
+              <div style={eyebrow}>What No Guesswork Events remembers</div>
               {!mem.present ? (
                 <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5 }}>
-                  Nothing yet. As you close out events — how many came, what was left over — what Event Boss learns shows up here, in plain language. It only ever remembers your own events, never guest details.
+                  Nothing yet. As you close out events — how many came, what was left over — what No Guesswork Events learns shows up here, in plain language. It only ever remembers your own events, never guest details.
                 </div>
               ) : (
                 <>
@@ -17445,8 +17453,8 @@ function HostSettings({ profile, onChange, onClose, events = [], onClearSample }
                       {g.note && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 6 }}>{g.note}</div>}
                     </div>
                   ))}
-                  <button type="button" onClick={() => { if (window.confirm('Clear everything Event Boss has learned from your events? This can’t be undone.')) onChange('hostIntelligence', emptyHostIntelligence()); }}
-                    style={{ marginTop: 18, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.danger || C.steel?.blue400 || C.accent }}>Clear everything Event Boss remembers</button>
+                  <button type="button" onClick={() => { if (window.confirm('Clear everything No Guesswork Events has learned from your events? This can’t be undone.')) onChange('hostIntelligence', emptyHostIntelligence()); }}
+                    style={{ marginTop: 18, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.danger || C.steel?.blue400 || C.accent }}>Clear everything No Guesswork Events remembers</button>
                 </>
               )}
             </div>
@@ -17966,7 +17974,7 @@ function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], 
         <div style={{ padding: isNarrow ? '10px 20px 12px' : '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 3 }}>
-              Event Boss
+              No Guesswork Events
             </div>
             <div style={{ fontSize: T.title, fontWeight: FW.bold, letterSpacing: '-0.01em' }}>Studio Settings</div>
             {/* Board re-review (2026-06-12): the scope-chip explainer subtitle was cut
@@ -18226,7 +18234,7 @@ function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], 
                 );
               })()}
               {onOpenMembers && <button onClick={() => { onOpenMembers(); onClose(); }} style={{ ...s.btn('ghost'), fontSize: T.secondary, padding: '6px 12px', flexShrink: 0 }}>Members</button>}
-              <button onClick={() => { if (window.confirm('Sign out of NGW Event Boss?')) { auth.signOut(); onClose(); } }} style={{ ...s.btn('ghost'), fontSize: T.secondary, padding: '6px 12px', flexShrink: 0 }}>Sign out</button>
+              <button onClick={() => { if (window.confirm('Sign out of NGW No Guesswork Events?')) { auth.signOut(); onClose(); } }} style={{ ...s.btn('ghost'), fontSize: T.secondary, padding: '6px 12px', flexShrink: 0 }}>Sign out</button>
             </div>
           )}
 
@@ -18346,7 +18354,7 @@ function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], 
               front door: 'host' ⇒ Host Home; 'planner'/'operator' ⇒ full cockpit.
               Auto-detect = host unless you have real clients. */}
           <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3 }}>How you use Event Boss</label>
+            <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3 }}>How you use No Guesswork Events</label>
             <select style={s.input} value={profile?.accountType || ''}
               onChange={e => { const v = e.target.value; onChange('accountType', v); try { track(EVENTS.ACCOUNT_TYPE_SELECTED, { account_type: v || 'auto' }); } catch {} }}>
               <option value="">Auto-detect (host unless you have clients)</option>
@@ -19016,7 +19024,7 @@ function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], 
                 <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>
                   {hasSample
                     ? 'A sample workspace is loaded — events, clients, vendors, and payments, all clearly marked SAMPLE. It never touches your real data.'
-                    : 'Explore Event Boss with a full sample workspace — events, clients, vendors, and payments. Clear it anytime; your real data is never touched.'}
+                    : 'Explore No Guesswork Events with a full sample workspace — events, clients, vendors, and payments. Clear it anytime; your real data is never touched.'}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {hasSample ? (
@@ -19077,7 +19085,7 @@ function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], 
               <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>NGW Event Boss</div>
+                    <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>NGW No Guesswork Events</div>
                     <div data-testid="plan-current" style={{ fontSize: T.caption, color: C.muted, marginTop: 1 }}>{PLANS.find(p => p.id === current)?.name || 'Essentials'}</div>
                   </div>
                   <div style={{ padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44`, fontSize: T.caption, fontWeight: FW.bold, color: C.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Current plan</div>
@@ -19109,7 +19117,7 @@ function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], 
                                 if (url) { window.location.href = url; return; }
                                 throw new Error('no-url');
                               } catch (e) {
-                                window.location.href = `mailto:info@noguessworksystems.com?subject=${encodeURIComponent('Upgrade to ' + p.name)}&body=${encodeURIComponent("I'd like to upgrade my NGW Event Boss plan to " + p.name + '.')}`;
+                                window.location.href = `mailto:info@noguessworksystems.com?subject=${encodeURIComponent('Upgrade to ' + p.name)}&body=${encodeURIComponent("I'd like to upgrade my NGW No Guesswork Events plan to " + p.name + '.')}`;
                               }
                             }}
                             style={{ flexShrink: 0, fontSize: T.caption, fontWeight: FW.bold, padding: '5px 11px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.04em', border: `1px solid ${C.accent}`, background: C.accent + '18', color: C.accent }}>
@@ -19553,7 +19561,7 @@ function SetupBanner({ profile, onOpenProfile }) {
     );
   }
 
-  // Sprint 60.U.3 10+ — Event Boss eyebrow on the setup banner. Lands
+  // Sprint 60.U.3 10+ — No Guesswork Events eyebrow on the setup banner. Lands
   // product personality in the first thing a new planner sees.
   const steelTopSB = C.accentTopGrad || C.accent;
   return (
@@ -19561,7 +19569,7 @@ function SetupBanner({ profile, onOpenProfile }) {
       <div style={{ flex: 1, minWidth: 200 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
           <span style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopSB }}>
-            Event Boss
+            No Guesswork Events
           </span>
           <span style={{ width: 3, height: 3, borderRadius: '50%', background: C.border }} />
           <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.text }}>
@@ -20421,9 +20429,9 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
   }
   const actionable = need > 0 && firstItem && typeof onSelectEvent === 'function' && command?.level !== 'neutral';
 
-  // Sprint 60.U.3 10+ — Event Boss Pulse eyebrow. Anchors the page in
+  // Sprint 60.U.3 10+ — No Guesswork Events Pulse eyebrow. Anchors the page in
   // product personality at first glance. Steel-blue + steady ✓ glyph =
-  // "Event Boss is watching your pipeline; you don't have to think about
+  // "No Guesswork Events is watching your pipeline; you don't have to think about
   // everything at once."
   const steelTopH = C.accentTopGrad || C.accent;
   return (
@@ -20531,7 +20539,7 @@ function DailyBriefing({ events, onSelectEvent }) {
     setLoading(true); setText(''); setUsedAI(true);
     const { lines } = buildData();
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    const prompt = `You are Event Boss, a calm event-planning copilot. Write a SHORT 3-sentence morning standup for the planner: what needs attention across their events today. Specific, warm, plainspoken. No greeting, no fluff, no markdown, no bullet points.\n\nToday: ${today}\nEvents:\n${lines.join('\n') || '(no upcoming events)'}\n\nStandup:`;
+    const prompt = `You are No Guesswork Events, a calm event-planning copilot. Write a SHORT 3-sentence morning standup for the planner: what needs attention across their events today. Specific, warm, plainspoken. No greeting, no fluff, no markdown, no bullet points.\n\nToday: ${today}\nEvents:\n${lines.join('\n') || '(no upcoming events)'}\n\nStandup:`;
     try {
       if (proxyOn) {
         const r = await callAiFeature('event_brief', prompt, { today });
@@ -21900,7 +21908,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
 const GETTING_STARTED_STEPS = [
   ['Set up your studio', 'Open Settings (your avatar, top-right) and add your studio name, your name, contact info, and your market. This personalizes client briefs and makes budget estimates accurate for your area.', 'studio'],
   ['Add your first client', 'Go to Clients → New Client and enter their name, email, and phone. A client can be linked to one or more events — now or later.', 'client'],
-  ['Create an event', 'Tap New Event. Pick a type, set a date, and add a guest count. Event Boss builds the planning structure for you — timeline, budget categories, and vendor slots.', 'event'],
+  ['Create an event', 'Tap New Event. Pick a type, set a date, and add a guest count. No Guesswork Events builds the planning structure for you — timeline, budget categories, and vendor slots.', 'event'],
   ['Estimate the budget', 'On New Event step 3 (or later in the Budget tab), open “Estimate my budget” and choose Good / Better / Best for each category — mix and match — then apply it to seed your budget.', 'budget'],
   ['Add your vendors', 'Inside the event → Vendors. Track each vendor’s contract, payments, and readiness. Save the ones you trust to your Vendor Bank (in Settings) to reuse across events.', 'vendors'],
   ['Assign your crew', 'Event → Crew. Add teammates, give each a role and call time, and mark who has confirmed. Solo events can skip this.', 'crew'],
@@ -23349,7 +23357,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
 
   const Header = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${C.border}` }}>
-      <div style={{ fontSize: T.body, fontWeight: FW.heavy, letterSpacing: '-0.01em', color: C.text }}>Event Boss</div>
+      <div style={{ fontSize: T.body, fontWeight: FW.heavy, letterSpacing: '-0.01em', color: C.text }}>No Guesswork Events</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button onClick={onNew} style={{ fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>+ New event</button>
         <button onClick={onProfile} title="Settings" style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer' }}>⚙</button>
@@ -23389,7 +23397,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
         {/* Host width parity (board ruling 760) — same column as every host surface. */}
         <div style={{ maxWidth: 760, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
           <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, marginBottom: 8 }}>Let’s plan your event.</div>
-          <div style={{ fontSize: T.body, color: C.muted, marginBottom: 24, lineHeight: 1.5 }}>Tell us what you’re hosting and when — Event Boss builds the plan, the schedule, and what to do next.</div>
+          <div style={{ fontSize: T.body, color: C.muted, marginBottom: 24, lineHeight: 1.5 }}>Tell us what you’re hosting and when — No Guesswork Events builds the plan, the schedule, and what to do next.</div>
           <button onClick={onNew} style={{ fontSize: T.body, fontWeight: FW.bold, padding: '12px 22px', borderRadius: 11, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Start your event →</button>
         </div>
       </div>
@@ -24775,7 +24783,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           </button>
         )}
       </div>
-      {!collapsed && <div style={{ fontSize: T.caption, color: C.border, marginTop: 10, letterSpacing: '0.04em' }}>NGW Event Boss v{APP_VERSION}</div>}
+      {!collapsed && <div style={{ fontSize: T.caption, color: C.border, marginTop: 10, letterSpacing: '0.04em' }}>NGW No Guesswork Events v{APP_VERSION}</div>}
     </div>
   );
 
@@ -24788,7 +24796,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       {isWide && (
         <div style={{ width: sidebarCollapsed ? 66 : 218, flexShrink: 0, borderRight: `1px solid ${C.border}`, background: C.bg, padding: '18px 12px', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box', transition: 'width 0.16s ease', overflowY: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', gap: 8, marginBottom: 18, minHeight: 30 }}>
-            {!sidebarCollapsed && <div style={{ fontWeight: FW.heavy, fontSize: T.body, letterSpacing: '-0.02em' }}>NGW Event Boss</div>}
+            {!sidebarCollapsed && <div style={{ fontWeight: FW.heavy, fontSize: T.body, letterSpacing: '-0.02em' }}>NGW No Guesswork Events</div>}
             <button onClick={() => setSidebarCollapsed(c => !c)} title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'} aria-label={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
               style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name={sidebarCollapsed ? 'chevronRight' : 'chevronLeft'} size={15} /></button>
           </div>
@@ -24808,7 +24816,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <button onClick={() => setDrawerOpen(true)} title="Menu" aria-label="Menu"
             style={{ width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="menu" size={20} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>{profile?.businessName || 'NGW Event Boss'}</div>
+            <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>{profile?.businessName || 'NGW No Guesswork Events'}</div>
             <div style={{ fontSize: T.title, fontWeight: FW.heavy, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pageMeta.title}</div>
           </div>
           {onProfile && (
@@ -25364,7 +25372,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div style={{ maxWidth: 560, margin: '0 auto', padding: bp === 'mobile' ? '32px 0 24px' : '52px 0 36px' }}>
             <div style={{ marginBottom: 26 }}>
               <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>
-                Welcome to NGW Event Boss
+                Welcome to NGW No Guesswork Events
               </div>
               <div style={{ fontSize: T.display, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 12 }}>
                 A calm place to plan your event
@@ -25825,7 +25833,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginBottom: 6 }}>{hostMode ? 'Plan your first get-together' : 'Add your first client'}</div>
               <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
                 {hostMode
-                  ? 'Start an event for the party you’re hosting — Event Boss sets up a budget, a countdown, and your planning checklist so you can enjoy it.'
+                  ? 'Start an event for the party you’re hosting — No Guesswork Events sets up a budget, a countdown, and your planning checklist so you can enjoy it.'
                   : 'Clients connect your fee collection, event roster, and planning history in one place. Create one now to get started.'}
               </div>
               <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: T.secondary }} onClick={onNewClient}>{hostMode ? 'New event' : 'New Client'}</button>
@@ -26833,7 +26841,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div onClick={() => setDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
           <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 'min(284px, 84vw)', background: C.surface, borderRight: `1px solid ${C.border}`, zIndex: 61, padding: '18px 14px', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,0,0,0.45)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div style={{ fontWeight: FW.heavy, fontSize: T.body, letterSpacing: '-0.02em' }}>NGW Event Boss</div>
+              <div style={{ fontWeight: FW.heavy, fontSize: T.body, letterSpacing: '-0.02em' }}>NGW No Guesswork Events</div>
               <button onClick={() => setDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={15} /></button>
             </div>
             {navLinks(false)}
@@ -28818,7 +28826,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 ['Estimate',     'A planning guide. Not committed money. Comes from the budget estimator or your manual entry.'],
                 ['Planned',      'The budgeted amount for a category. What you intend to spend.'],
                 ['Committed',    'Vendor cost on confirmed/contracted vendors. Money you have agreed to spend.'],
-                ['Paid',         'Recorded payment in Event Boss. We do not move money — this is your record.'],
+                ['Paid',         'Recorded payment in No Guesswork Events. We do not move money — this is your record.'],
                 ['Due',          'Remaining balance on a vendor or installment. Committed minus paid.'],
                 ['Stripe link',  'A hosted payment URL. Creating it does NOT charge the client; only when they pay through it.'],
               ].map(([term, def]) => (
@@ -29272,14 +29280,14 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                                 <button
                                   data-testid={`bp-stripe-remove-${f.id}`}
                                   style={{ ...s.btn('ghost'), fontSize: T.secondary, padding: '8px 12px', minHeight: 44, color: C.muted, flexShrink: 0 }}
-                                  title="Remove the link from Event Boss. Does not cancel the link on Stripe."
+                                  title="Remove the link from No Guesswork Events. Does not cancel the link on Stripe."
                                   onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, stripeSessionId: undefined, stripeUrl: undefined } : x) }))}>
                                   Remove
                                 </button>
                               </div>
                               {/* Honest explanation of what "Link created" means. */}
                               <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5 }}>
-                                Payment status updates only after Stripe confirms a payment. Tap <span style={{ color: C.text, fontWeight: FW.semibold }}>Check on Stripe</span> to query now — Event Boss does not auto-poll Stripe.
+                                Payment status updates only after Stripe confirms a payment. Tap <span style={{ color: C.text, fontWeight: FW.semibold }}>Check on Stripe</span> to query now — No Guesswork Events does not auto-poll Stripe.
                               </div>
                             </div>
                           )}
@@ -29291,7 +29299,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                               {f.paymentMethod === 'Stripe' ? (
                                 <span>✓ <span style={{ color: C.success, fontWeight: FW.semibold }}>Stripe-confirmed paid</span> — verified via Stripe session.</span>
                               ) : (
-                                <span>✓ <span style={{ color: C.text, fontWeight: FW.semibold }}>Manually recorded paid</span> in Event Boss — not verified by Stripe.</span>
+                                <span>✓ <span style={{ color: C.text, fontWeight: FW.semibold }}>Manually recorded paid</span> in No Guesswork Events — not verified by Stripe.</span>
                               )}
                             </div>
                           )}
@@ -29313,9 +29321,9 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
           C={C} s={s}
           testId="bp-confirm-mark-fee-paid"
           title={`Record ${fmtD(pendingConfirm.fee.amount || 0)} as paid`}
-          summary={`${pendingConfirm.fee.label || 'Installment'} — Event Boss will update your fee schedule only.`}
+          summary={`${pendingConfirm.fee.label || 'Installment'} — No Guesswork Events will update your fee schedule only.`}
           trustLines={[
-            'This records the payment in Event Boss',
+            'This records the payment in No Guesswork Events',
             'It does not charge a card or move money',
             'Client will not be notified',
             'Stripe link (if any) will remain available',
@@ -29333,7 +29341,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
           title="Reverse the paid record"
           summary={`${pendingConfirm.fee.label || 'Installment'} — the installment will show as unpaid again.`}
           trustLines={[
-            'This only updates Event Boss',
+            'This only updates No Guesswork Events',
             'No money is refunded',
             'No notifications sent',
             'Undo is available for 5 seconds',
@@ -29688,7 +29696,7 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventN
       )}
       {/* Masthead */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <span style={meta}>Event Boss</span>
+        <span style={meta}>No Guesswork Events</span>
         <span style={meta}>No. {String(Math.max(1, eventNumber)).padStart(2, '0')}</span>
       </div>
       <div style={rule} />
@@ -30535,7 +30543,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
     const esc = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
     const stamp = (() => { const d = new Date(); return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`; })();
     const desc = [`You're invited to ${event.name || 'our event'}.`, inviteUrlNow ? `RSVP / details: ${inviteUrlNow}` : ''].filter(Boolean).join('\\n');
-    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//NGW Event Boss//Guest Invite//EN', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', `UID:invite-${event.id || ymd}-${event.rsvpCode || 'guest'}@ngw-events`, `DTSTAMP:${stamp}`];
+    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//NGW No Guesswork Events//Guest Invite//EN', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', `UID:invite-${event.id || ymd}-${event.rsvpCode || 'guest'}@ngw-events`, `DTSTAMP:${stamp}`];
     if (startHM) {
       const endH = (startHM.h + 2) % 24;
       // Prefer a true UTC instant in the event's zone (robust across all clients).
@@ -31338,7 +31346,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
               <a
                 href={typeof window !== 'undefined' ? window.location.pathname : '/'}
                 onClick={() => { try { track(EVENTS.PLAN_YOURS_TAPPED, { event_type: event.type }); } catch {} }}
-                aria-label="Make an invite like this with Event Boss — free"
+                aria-label="Make an invite like this with No Guesswork Events — free"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, marginTop: 18,
                   padding: '13px 16px', borderRadius: 14, textDecoration: 'none',
@@ -31639,7 +31647,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
               <a href={`${window.location.origin}${window.location.pathname}`}
                 onClick={() => { try { track(EVENTS.PLAN_YOURS_TAPPED, { event_type: event.type, surface: 'pre_submit_footer' }); } catch {} }}
                 style={{ color: LC.accent, fontWeight: FW.bold, textDecoration: 'none' }}>
-                Planning something of your own? Make it with Event Boss →
+                Planning something of your own? Make it with No Guesswork Events →
               </a>
             </div>
           )}
@@ -35567,7 +35575,7 @@ function buildICS({ eventDate, eventName, vendors, ros, timeline }) {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//NGW Event Boss//Event Calendar//EN',
+    'PRODID:-//NGW No Guesswork Events//Event Calendar//EN',
     'CALSCALE:GREGORIAN',
   ];
   const push = (uid, summary, start, end, allDay, description) => {
@@ -37191,7 +37199,7 @@ async function exportEventToSheets(event, client) {
   const vConf       = vendors.filter(v => v.status === 'Confirmed').length;
 
   const wsOverview = XLSX.utils.aoa_to_sheet([
-    ['NGW Event Boss — Event Export'],
+    ['NGW No Guesswork Events — Event Export'],
     ['Generated', new Date().toLocaleDateString()],
     [],
     ['EVENT DETAILS'],
@@ -39103,7 +39111,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
           </div>
           <div style={{ fontSize: T.title, fontWeight: FW.bold, color: C.text, lineHeight: 1.25, marginBottom: 10 }}>
             {step === 1 && <>Who is this vendor?</>}
-            {step === 2 && <>What should Event Boss track?</>}
+            {step === 2 && <>What should No Guesswork Events track?</>}
             {step === 3 && <>Review and create</>}
           </div>
           <StepDots />
@@ -39249,7 +39257,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
               {playbook && (
                 <>
                   <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.55, marginBottom: 10 }}>
-                    For a <span style={{ color: C.text, fontWeight: FW.bold }}>{playbook.displayName}</span>, Event Boss usually tracks these. Uncheck anything that doesn't fit — <span style={{ color: C.text, fontWeight: FW.semibold }}>you can change this any time later</span>.
+                    For a <span style={{ color: C.text, fontWeight: FW.bold }}>{playbook.displayName}</span>, No Guesswork Events usually tracks these. Uncheck anything that doesn't fit — <span style={{ color: C.text, fontWeight: FW.semibold }}>you can change this any time later</span>.
                   </div>
                   {/* PT-7: select-all / clear-all so the planner isn't toggling 10 boxes by hand. */}
                   <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
@@ -39393,7 +39401,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                 ))}
               </div>
               <div style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.55 }}>
-                Tapping Create saves this vendor to the event. You can still edit anything later — and Event Boss only sends messages when you explicitly ask it to.
+                Tapping Create saves this vendor to the event. You can still edit anything later — and No Guesswork Events only sends messages when you explicitly ask it to.
               </div>
             </>
           )}
@@ -39463,7 +39471,7 @@ function AddVendorIntro({ C, s, eventName, onCancel, onContinue }) {
           Add a vendor to <span style={{ color: steelTop }}>{eventName}</span>
         </div>
         <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.55, marginBottom: 16 }}>
-          You'll set a name and category. Event Boss will draft a few category-based things to track (deposit, contract, arrival window) — nothing is sent and nothing is shared.
+          You'll set a name and category. No Guesswork Events will draft a few category-based things to track (deposit, contract, arrival window) — nothing is sent and nothing is shared.
         </div>
 
         <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
@@ -39583,7 +39591,7 @@ function VendorCreatedSuccess({ C, s, vendor, eventName, savedToBank, promiseCou
           <button type="button" data-testid="vcs-done" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: T.secondary, padding: '8px 14px', marginLeft: 'auto' }}>Done</button>
         </div>
         <div style={{ fontSize: T.caption, color: C.muted, marginTop: 10, lineHeight: 1.5 }}>
-          "Draft follow-up" prepares a category-aware draft in your mail client (when an email is set) and copies the same text to your clipboard. Sending stays manual — Event Boss never reaches out to a vendor without you.
+          "Draft follow-up" prepares a category-aware draft in your mail client (when an email is set) and copies the same text to your clipboard. Sending stays manual — No Guesswork Events never reaches out to a vendor without you.
         </div>
       </div>
     </>
@@ -39785,7 +39793,7 @@ function EventCommTab({ event, setEvent, client, setClient, openId, isMobile, on
       return `${mine ? 'Planner' : (m.senderName || thread.name || 'Them')}: ${txt}`;
     }).filter(l => l.split(': ')[1]).join('\n');
     const who = `${thread.name || 'the recipient'}${thread.tab ? ` (${String(thread.tab).toLowerCase()})` : ''}`;
-    const prompt = `You are Event Boss, helping a planner write a message. Write a SHORT, warm, professional message FROM the planner TO ${who} about this event. Plainspoken and specific; no subject line, no markdown, no sign-off block. If it reads like a reply, skip the greeting. Return ONLY the message body.\n\nEvent: ${event.name || 'event'} · ${eventTypeLabel(event) || event.type || ''} · ${event.date ? fmtDate(event.date) : 'date TBD'}${event.venue ? ` · ${event.venue}` : ''}\nPlanner: ${profile?.name || 'the planner'}${profile?.businessName ? `, ${profile.businessName}` : ''}\nRecipient: ${who}\n${recent ? `Recent conversation:\n${recent}\n` : ''}\nMessage:`;
+    const prompt = `You are No Guesswork Events, helping a planner write a message. Write a SHORT, warm, professional message FROM the planner TO ${who} about this event. Plainspoken and specific; no subject line, no markdown, no sign-off block. If it reads like a reply, skip the greeting. Return ONLY the message body.\n\nEvent: ${event.name || 'event'} · ${eventTypeLabel(event) || event.type || ''} · ${event.date ? fmtDate(event.date) : 'date TBD'}${event.venue ? ` · ${event.venue}` : ''}\nPlanner: ${profile?.name || 'the planner'}${profile?.businessName ? `, ${profile.businessName}` : ''}\nRecipient: ${who}\n${recent ? `Recent conversation:\n${recent}\n` : ''}\nMessage:`;
     let out;
     if (draftViaOpenAI) {
       // OpenAI GPT-4o via the backend proxy. No client-side streaming — deliver
@@ -40671,7 +40679,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopPT, textTransform: 'uppercase' }}>No Guesswork</div>
               <div style={{ fontSize: T.caption, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
-                Edits autosave. Event Boss tracks owner, deadline, and phase across List, Timeline, and Checklist.
+                Edits autosave. No Guesswork Events tracks owner, deadline, and phase across List, Timeline, and Checklist.
               </div>
             </div>
           </div>
@@ -44412,7 +44420,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     // 6-cell thumb lane (~57px/cell on a 390px phone) — "Your event"/"The Day" were
     // two-word and clipped. Budget goes STRAIGHT to Budget (the money sheet was a
     // planner pattern; a host taps "Budget" and expects the number, not a chooser —
-    // Documents stays in "More" for hosts). 'zap' = the Event Boss Pulse, kept.
+    // Documents stays in "More" for hosts). 'zap' = the No Guesswork Events Pulse, kept.
     { id: 'Command',            icon: 'zap',       label: 'Event',  target: 'Command' },
     { id: 'Planning',           icon: 'check',     label: 'Plan',   target: 'Planning' },
     { id: 'Event Day Schedule', icon: 'clipboard', label: 'Day',    target: 'Event Day Schedule' },
@@ -45611,7 +45619,7 @@ function WelcomeOnboarding({ onChoose }) {
   return (
     <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg, display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center', justifyContent: 'center', padding: isNarrow ? 'max(72px, 14vh) 20px 40px' : '40px 20px' }}>
       <div style={{ maxWidth: 540, width: '100%' }}>
-        <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Welcome to Event Boss</div>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Welcome to No Guesswork Events</div>
         <div style={{ fontSize: T.display, fontWeight: FW.heavy, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15, marginBottom: 8 }}>What are you planning?</div>
         <div style={{ fontSize: T.body, color: C.muted, lineHeight: 1.5, marginBottom: 24 }}>We’ll set things up to match. You can change it anytime.</div>
         {choice('My own event', "A dinner, cookout, shower, birthday, wedding — I'm hosting it. I'll build the whole plan around it.", () => onChoose('host'), C.accent)}
@@ -46214,7 +46222,7 @@ export default function App() {
             : diffDays === 0 ? 'due TODAY' : `due in ${diffDays}d`;
           alerts.push({
             title: `Payment ${urgency} — ${v.name}`,
-            body: `${ev.name}: $${balance.toLocaleString()} balance ${urgency}. Open NGW Event Boss to action it.`,
+            body: `${ev.name}: $${balance.toLocaleString()} balance ${urgency}. Open NGW No Guesswork Events to action it.`,
           });
         }
       });

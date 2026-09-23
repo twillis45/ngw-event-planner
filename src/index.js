@@ -74,7 +74,7 @@ class RootErrorBoundary extends React.Component {
     return (
       <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', background: '#0d0e12', color: '#e8edf2', minHeight: '100vh', padding: '32px 20px', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6F8794', marginBottom: 8 }}>NGW Event Boss</div>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6F8794', marginBottom: 8 }}>NGW No Guesswork Events</div>
           <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Something went wrong loading the app</div>
           <div style={{ fontSize: 14, color: '#849eb8', lineHeight: 1.6, marginBottom: 16 }}>Please reload. If it keeps happening, this detail helps us fix it:</div>
           <pre style={{ fontSize: 12, color: '#e0a93f', background: '#181b20', border: '1px solid #2e353d', borderRadius: 8, padding: '12px 14px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflow: 'auto' }}>{msg}</pre>

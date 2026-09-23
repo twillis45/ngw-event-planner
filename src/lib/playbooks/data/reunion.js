@@ -1,4 +1,4 @@
-// NGW Event Boss — Host Playbook: Reunion
+// NGW No Guesswork Events — Host Playbook: Reunion
 // Big casual, outdoor-leaning gathering (family or class reunion).
 // Synthesized from US norms; no fabricated citations (sources: [], verificationStatus: 'synthesized').
 //

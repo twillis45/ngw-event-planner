@@ -1,4 +1,4 @@
-// NGW Event Boss — Studio Matte Locked Palette (Hybrid Token Source)
+// NGW No Guesswork Events — Studio Matte Locked Palette (Hybrid Token Source)
 //
 // Sprint Profile Settings Review · Hybrid Token Strategy
 // ------------------------------------------------------------

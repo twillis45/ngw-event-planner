@@ -111,7 +111,26 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // One of the four is a claim about what the fix did NOT do — no `snoozedUntil` is
 // written onto a task row — and that one can only ever be a source assertion: it
 // pins the absence of the easier, dishonest fix.
-const MAX_HOSTV2_TEXT_GATES = 42;
+// 42 -> 43 on 2026-09-23 for theBrandStringThatIsAlsoAStoredValue.test.js, with
+// the reason this ratchet asks for. The product rename swept 17 files, and one
+// string could not be renamed: `RSVP_METHODS` renders as an <option> whose text
+// IS the value written to `client.rsvpMethod`, so changing it orphans every
+// record already saved. The value is now frozen at the old wording and only the
+// LABEL is renamed.
+//
+// The claim is that a specific literal in the source has NOT drifted — an
+// absence, and absences are source by nature. An e2e could drive the select and
+// read the rendered value attribute, but that proves the option currently
+// offered, not that the stored constant is unchanged, and it is the constant
+// that existing records match against. The CRA planner shell is also outside the
+// hostv2 e2e harness entirely, so standing one up for a frozen surface scheduled
+// for deletion would cost more than the claim is worth.
+//
+// It is a tripwire on a find-and-replace, which is exactly the failure that
+// created it: the array reads as pure display copy at the call site, and the
+// next person sweeping the brand has no reason to think otherwise. It is deleted
+// with the CRA shell.
+const MAX_HOSTV2_TEXT_GATES = 43;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

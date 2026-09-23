@@ -199,7 +199,7 @@ function ScreenRegister({ profile, setProfile, onContinue }) {
   return (
     <div style={S.overlay}>
       <div style={S.card}>
-        <div style={S.tag}>NGW EVENT BOSS · ALPHA TEST</div>
+        <div style={S.tag}>NGW NO GUESSWORK EVENTS · ALPHA TEST</div>
         <h1 style={S.h1}>Before we begin</h1>
         <p style={S.body}>
           You're testing an early-stage coordination environment designed for live event management.
@@ -285,7 +285,7 @@ function ScreenConsent({ profile, onBegin }) {
 
         <label style={S.consentBox}>
           By continuing you confirm your screen is being recorded and consent to your
-          interaction data being used to improve NGW Event Boss.
+          interaction data being used to improve NGW No Guesswork Events.
           Your name and email will not be shared publicly.
           Data is used solely for product research.
         </label>

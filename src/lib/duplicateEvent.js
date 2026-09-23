@@ -1,7 +1,7 @@
 // ─── DUPLICATE AN EVENT — COPY THE PLAN, NEVER THE STATE ──────────────────────
 //
 // From the competitive read (2026-07-30). Three independent products ship this and
-// Event Boss had none of it: Partiful ("Duplicating an event"), Linear (issue and
+// No Guesswork Events had none of it: Partiful ("Duplicating an event"), Linear (issue and
 // document templates), Blink ("template reuse for future events"). For the repeat
 // host — the annual crab feast, the yearly birthday, the reunion that rotates
 // hosts — starting from nothing every year is the single largest avoidable setup

@@ -1,4 +1,4 @@
-// Quinceañera host playbook — NGW Event Boss
+// Quinceañera host playbook — NGW No Guesswork Events
 // Family: quinceanera (Latino milestone — a girl's 15th birthday / coming-of-age).
 // Full-service and vendor-led: a salón/venue, a caterer, a DJ or banda, a
 // photographer/videographer, a baker, a florist, the ballgown and the court's

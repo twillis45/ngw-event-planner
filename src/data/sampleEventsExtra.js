@@ -6162,35 +6162,35 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "week": "2026-04",
         "task": "Site-visit and select lodge; negotiate group room block rate",
         "done": true,
-        "owner": "Event Boss"
+        "owner": "No Guesswork Events"
       },
       {
         "id": "ev-x-team-retreat-t3",
         "week": "2026-05",
         "task": "Sign venue + catering contracts and pay deposits",
         "done": true,
-        "owner": "Event Boss"
+        "owner": "No Guesswork Events"
       },
       {
         "id": "ev-x-team-retreat-t4",
         "week": "2026-05",
         "task": "Book group air block and ground shuttle; confirm facilitator",
         "done": true,
-        "owner": "Event Boss"
+        "owner": "No Guesswork Events"
       },
       {
         "id": "ev-x-team-retreat-t5",
         "week": "2026-06",
         "task": "Send save-the-dates and collect RSVPs + dietary/accessibility needs",
         "done": true,
-        "owner": "Event Boss"
+        "owner": "No Guesswork Events"
       },
       {
         "id": "ev-x-team-retreat-t6",
         "week": "2026-06",
         "task": "Build dietary matrix and submit to caterer (vegan, GF/celiac, nut allergy)",
         "done": true,
-        "owner": "Event Boss"
+        "owner": "No Guesswork Events"
       },
       {
         "id": "ev-x-team-retreat-t7",
@@ -6204,21 +6204,21 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "week": "2026-07",
         "task": "Close RSVPs and finalize swag/jacket sizing order",
         "done": false,
-        "owner": "Event Boss"
+        "owner": "No Guesswork Events"
       },
       {
         "id": "ev-x-team-retreat-t9",
         "week": "2026-09",
         "task": "Submit rooming list and travel manifest to venue + shuttle",
         "done": false,
-        "owner": "Event Boss"
+        "owner": "No Guesswork Events"
       },
       {
         "id": "ev-x-team-retreat-t10",
         "week": "2026-10",
         "task": "Confirm final headcount with caterer and pay balances",
         "done": false,
-        "owner": "Event Boss"
+        "owner": "No Guesswork Events"
       },
       {
         "id": "ev-x-team-retreat-t11",
@@ -6246,7 +6246,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "segment": "Group check-in & room key distribution",
         "location": "Lodge Front Desk",
         "type": "prep",
-        "owner": "Event Boss",
+        "owner": "No Guesswork Events",
         "confirmed": true,
         "vendorName": "",
         "notes": "Rooming list pre-loaded. Ground-floor room flagged for Priya; private midday room arranged for Aaliyah."
@@ -6345,7 +6345,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "segment": "Checkout & venue balance settlement",
         "location": "Lodge Front Desk",
         "type": "prep",
-        "owner": "Event Boss",
+        "owner": "No Guesswork Events",
         "confirmed": false,
         "vendorName": "",
         "notes": "Reconcile incidentals; settle venue balance on departure."

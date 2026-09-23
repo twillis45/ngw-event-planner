@@ -1,4 +1,4 @@
-// Sweet 16 host playbook — NGW Event Boss
+// Sweet 16 host playbook — NGW No Guesswork Events
 // Family: sweet16 (milestone teen birthday). Teen-driven: DJ + dance floor + lighting
 // is the hero. NO alcohol for teens (mocktail/soda bar). Chaperone/supervision plan,
 // grand-entrance spotlight, themed decor, cake, photo booth, favors, social moment.

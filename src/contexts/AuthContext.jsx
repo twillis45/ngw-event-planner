@@ -1,4 +1,4 @@
-// ─── Auth context — NGW Event Boss ───────────────────────────────────────────
+// ─── Auth context — NGW No Guesswork Events ───────────────────────────────────────────
 // Provides the shared AuthCtx and the useAuth convenience hook.
 // The session management logic lives in AuthGate.jsx (src/components/AuthGate.jsx).
 // UI components should consume auth state via useAuth() — never read AuthCtx directly.

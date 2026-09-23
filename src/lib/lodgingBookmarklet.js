@@ -1,4 +1,4 @@
-// ─── "SEND TO EVENT BOSS" — the zero-paste return trip ───────────────────────
+// ─── "SEND TO NO GUESSWORK EVENTS" — the zero-paste return trip ───────────────────────
 //
 // Host, 2026-07-28: "if you initially tested by creating a search on the vrbo and
 // airbnb platforms to create a list … why does the host have to pull a url?"

@@ -1,4 +1,4 @@
-// Retirement Party — Event Boss host playbook data.
+// Retirement Party — No Guesswork Events host playbook data.
 //
 // A celebration honoring someone's career: heavy appetizers OR a buffet/dinner
 // plus a real bar, a toast and a speeches/tribute moment, a memory/photo

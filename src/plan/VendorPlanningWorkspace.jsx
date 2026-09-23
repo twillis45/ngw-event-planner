@@ -3474,7 +3474,7 @@ function PromiseTrackerSection({ vendor, event, isOpen, onToggle, onAddressRow, 
   return (
     <CollapsibleSection label="What this vendor will deliver" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
       <div style={{ fontSize: type.size['sm'], color: P.textTertiary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
-        What this vendor agreed to deliver, and whether you have it in hand. Drafts are copy-only — Event Boss never sends or emails on its own.
+        What this vendor agreed to deliver, and whether you have it in hand. Drafts are copy-only — No Guesswork Events never sends or emails on its own.
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: space[2] }}>
         {sorted.map(p => {

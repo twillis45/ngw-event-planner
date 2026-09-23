@@ -2994,7 +2994,7 @@ export function _selectEventNextActionInner(event) {
       level: 'attention',
       category: 'readiness',
       title: 'Set your budget.',
-      consequence: 'With your headcount in, a budget frames every food and vendor choice — Event Boss can size a starting point for you.',
+      consequence: 'With your headcount in, a budget frames every food and vendor choice — No Guesswork Events can size a starting point for you.',
       primaryCta: 'Set budget',
       // focusField deep-links to the budget $ input so the host lands on it, not the tab top.
       primaryRoute: { tab: 'Budget', focusField: 'hsp-budget' },
@@ -4473,7 +4473,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         fontFamily: FF,
       }}>
         {/* Event banner — intimate, not corporate */}
-        {/* UNIFIED HEADER FRAME (board): the EVENT BOSS PULSE eyebrow is removed so Your Event's
+        {/* UNIFIED HEADER FRAME (board): the NO GUESSWORK EVENTS PULSE eyebrow is removed so Your Event's
             hero leads bare, identical to Plan/Budget/Guests/The Day. The app-header + ReadinessTrack
             are the only chrome above the hero. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -4630,7 +4630,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
           unfinished void (board punch list). Reinforces the "I've got the rest" voice. */}
       <div style={{ textAlign: 'center', padding: '30px 0 10px' }}>
         <div aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: P.steelBlue, margin: '0 auto 9px', boxShadow: `0 0 8px ${P.steelBlue}99` }} />
-        <div style={{ fontSize: type.size.caption, color: P.textTertiary, letterSpacing: '0.02em' }}>Event Boss is watching the rest — enjoy this.</div>
+        <div style={{ fontSize: type.size.caption, color: P.textTertiary, letterSpacing: '0.02em' }}>No Guesswork Events is watching the rest — enjoy this.</div>
       </div>
     </div>
   );
@@ -4690,7 +4690,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
       <div style={{ padding: '28px 0', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* Event banner */}
-        {/* UNIFIED HEADER FRAME (board): EVENT BOSS PULSE eyebrow removed — Your Event's hero
+        {/* UNIFIED HEADER FRAME (board): NO GUESSWORK EVENTS PULSE eyebrow removed — Your Event's hero
             leads bare like every other host tab. The app-header + ReadinessTrack are the chrome. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {/* Option A: name + countdown + date live in the persistent header now. */}
@@ -4839,7 +4839,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             reads as CALM + complete, not unfinished. */}
         <div style={{ textAlign: 'center', padding: '30px 0 10px' }}>
           <div aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: P.steelBlue, margin: '0 auto 9px', boxShadow: `0 0 8px ${P.steelBlue}99` }} />
-          <div style={{ fontSize: type.size.caption, color: P.textTertiary, letterSpacing: '0.02em' }}>Event Boss is watching the rest — enjoy this.</div>
+          <div style={{ fontSize: type.size.caption, color: P.textTertiary, letterSpacing: '0.02em' }}>No Guesswork Events is watching the rest — enjoy this.</div>
         </div>
       </div>
     </div>
