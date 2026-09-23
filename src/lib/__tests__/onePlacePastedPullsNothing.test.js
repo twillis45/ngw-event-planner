@@ -83,10 +83,18 @@ describe('a single listing, pasted the way a host actually pastes it', () => {
     expect(r.candidates[0].priceShown ?? null).toBe(null);
   });
 
-  test('Airbnb’s OWN share link resolves to nothing', () => {
-    // `abnb.me` is what the share sheet hands a host on a phone. On a product
-    // whose flagship viewport is 390px, this is the most likely paste there is.
-    expect(n('https://abnb.me/xYz123')).toBe(0);
+  test('CLOSED 2026-09-23 — Airbnb’s OWN share link now resolves', () => {
+    // This assertion used to read `.toBe(0)`, recording the gap. `abnb.me` is
+    // what the share sheet hands a host on a phone, so on a product whose
+    // flagship viewport is 390px it was the most likely paste there is — and it
+    // was refused before anything was attempted.
+    //
+    // THE RECORD IS WHAT CAUGHT THE FIX. Closing the gap turned this file red,
+    // which is a recorded defect working exactly as intended: the gap could not
+    // be closed quietly, and it could not stay recorded once it was closed.
+    // Sources and the rest of the reasoning are in
+    // __tests__/theLinkThePhoneActuallyGivesYou.test.js.
+    expect(n('https://abnb.me/xYz123')).toBe(1);
   });
 
   test('VRBO’s real listing URL resolves to nothing; only the bare-digits form works', () => {

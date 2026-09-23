@@ -23,6 +23,7 @@ import { marketFor } from '../marketFor';
 // No cycle: lodgingIntel reads destLodgingOptions, never this module — that
 // split exists precisely so the two can refer to one option list safely.
 import { lodgingKitchen } from '../lodgingIntel';
+import { airTravelInviteFloor } from '../knowledge/travelLeadTime';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -2603,9 +2604,28 @@ export function playbookMilestones(event, asOf) {
   const pb = getPlaybook(event.type);
   if (!pb || !Array.isArray(pb.milestones)) return [];
   const dte = daysToEvent(event.date, asOf);
+  // ── AN INVITE THAT LANDS AFTER THE CHEAP SEATS ARE GONE ───────────────────
+  // Birthday authors `bd_invite` at 18 days. On a LOCAL party that is right. On
+  // a destination event it is past the point where fares reliably step up:
+  // CheapAir's 2024 study (917M airfares) puts the domestic prime booking
+  // window at 74-21 days and says "the fare spikes start right around 21 days".
+  // An 18-day notice cannot be acted on inside that window at all — the window
+  // has closed. See knowledge/travelLeadTime.js for the sources and for which
+  // part of the floor is cited and which part is reasoned.
+  //
+  // PULLED EARLIER ONLY, NEVER PUSHED LATER. `Math.max` means a playbook that
+  // already invites further out than the floor keeps its own timing — the floor
+  // is a minimum for events that fly, not a schedule that overrides authoring.
+  const _airFloor = (() => {
+    try { return airTravelInviteFloor(event); } catch (_e) { return null; }
+  })();
+  const _isInviteish = (m) => m && (m.category === 'guest' || /invit|save.the.date|rsvp/i.test(String(m.name || '')));
   return pb.milestones
     .filter((m) => m && m.category !== 'event' && typeof m.offsetDays === 'number')
-    .map((m) => {
+    .map((m0) => {
+      const m = (_airFloor && _isInviteish(m0) && m0.offsetDays < _airFloor.floorDays)
+        ? { ...m0, offsetDays: _airFloor.floorDays, _airFloorApplied: true }
+        : m0;
       // 2026-07-15: LOCAL-format the due date (decisionDueDate), not toISOString —
       // the UTC slice emitted the previous day east of Greenwich, the same day-shift
       // class the daysUntil convergence killed. decisionDueDate takes a negative
@@ -2616,6 +2636,14 @@ export function playbookMilestones(event, asOf) {
         category: m.category || 'planning', offsetDays: m.offsetDays,
         daysOut: dte === null ? null : (dte - m.offsetDays),
         dueDate, critical: !!(m.risk && (m.risk.severity === 'high' || m.risk.severity === 'critical')),
+        // Named so a surface can say WHY this moved, rather than silently
+        // showing a date the playbook does not contain.
+        ...(m._airFloorApplied ? {
+          airFloorApplied: true,
+          airFloorBecause: _airFloor.because,
+          airFloorSources: _airFloor.sources,
+          airFloorTier: _airFloor.tier,
+        } : {}),
       };
     })
     .sort((a, b) => b.offsetDays - a.offsetDays); // chronological — furthest-out first

@@ -70,7 +70,14 @@ export const niceDay = (iso) => {
 export function lodgingPlatformFor(url) {
   try {
     const h = new URL(String(url || '')).hostname.toLowerCase();
-    if (/(^|\.)airbnb\./.test(h)) return 'airbnb';
+    // abnb.me is Airbnb's OWN share domain — what the mobile app's Share button
+    // produces. Recognising it here rather than only at the URL gate matters:
+    // this is the one accessor that answers "which platform is this", and
+    // `kitchenSignal` reads it to infer a whole-home kitchen from an Airbnb
+    // link. A short link classified as 'other' therefore lost the kitchen
+    // inference too, silently — one gap, two consequences.
+    // Anchored with `$` so abnb.me.evil.com is not Airbnb.
+    if (/(^|\.)airbnb\./.test(h) || /(^|\.)abnb\.me$/.test(h)) return 'airbnb';
     if (/(^|\.)vrbo\.com$/.test(h) || /(^|\.)homeaway\./.test(h)) return 'vrbo';
     if (/(^|\.)booking\.com$/.test(h)) return 'booking';
     return h ? 'other' : null;
@@ -819,8 +826,56 @@ function listingUrl(href, hint) {
   if (!/^https:\/\//i.test(clean)) return '';
   // Booking.com removed 2026-07-28 (review board): its terms uniquely name
   // browser-based assistants, and this gate feeds the same collector path.
-  return /(^|\.)airbnb\.[a-z.]+\/rooms\/\d/i.test(clean)
-    || /(^|\.)vrbo\.com\/\d/i.test(clean)
+  //
+  // ── THE LINK THE PHONE ACTUALLY GIVES YOU (host report, 2026-09-22) ───────
+  // "I pasted an airbnb but it didn't pull the property and images." Measured:
+  // the paste was rejected HERE, before anything was attempted, because this
+  // gate only knew the DESKTOP shape.
+  //
+  //   desktop  https://www.airbnb.com/rooms/47074377        accepted
+  //   the app  https://abnb.me/YEO24YyMisb                  rejected
+  //
+  // abnb.me is Airbnb's own share domain and is what the mobile app's Share
+  // button produces — "often what people share from mobile devices"
+  // (stackoverflow.com/questions/73268819, and the Airbnb community thread
+  // confirming it is app-only; both read 2026-09-23). On a product whose
+  // declared flagship is a 390px phone, the one link shape a phone produces was
+  // the one shape it would not take.
+  //
+  // NO NEW PLATFORM IS ADDED. This widens the FORMS of a platform the doctrine
+  // already sanctions; adding a new host is the decision the review board made
+  // for Booking.com, and it needs the same terms read, not a regex.
+  //
+  // A short link carries no room id, and the client cannot follow the redirect
+  // cross-origin. It does not need to: the link is kept and shareable either
+  // way, and the server-side unfurl follows redirects. If that cannot resolve
+  // it, `unfurlListing`'s existing fallback already says so in the host's own
+  // words. Keeping a link we cannot expand beats discarding one we could.
+  // ── THE HOST IS PARSED, NOT PATTERN-MATCHED ───────────────────────────────
+  // These were regexes over the WHOLE url (`/(^|\.)airbnb\.[a-z.]+\/rooms\/\d/`),
+  // and that shape has two faults, both older than this change and both found
+  // by this file's own negative controls rather than by reading it.
+  //
+  //   · `(^|\.)` needs a dot BEFORE the host, which `www.` was quietly
+  //     supplying. A bare `https://airbnb.com/rooms/123` — what some browsers
+  //     hand a host — matched neither branch and was silently refused.
+  //   · A hostname in the PATH matched just as well, so
+  //     `https://evil.com/www.airbnb.com/rooms/1` was accepted as an Airbnb
+  //     listing and would have been handed to the unfurl.
+  //
+  // Parsing the hostname removes the class rather than patching either case —
+  // the same thing lodgingPlatformFor above already does correctly.
+  let host = '';
+  let pathname = '';
+  try { const u = new URL(clean); host = u.hostname.toLowerCase(); pathname = u.pathname; }
+  catch (_e) { return ''; }
+  const isAirbnbHost = /(^|\.)airbnb\.[a-z.]+$/.test(host);
+  const isShortHost = /(^|\.)abnb\.me$/.test(host);
+  const isVrboHost = /(^|\.)vrbo\.com$/.test(host);
+  return (isAirbnbHost && /^\/rooms\/\d/i.test(pathname))
+    || (isAirbnbHost && /^\/l\/[A-Za-z0-9]{6,}$/.test(pathname))
+    || (isShortHost && /^\/[A-Za-z0-9]{6,}$/.test(pathname))
+    || (isVrboHost && /^\/\d/.test(pathname))
     ? clean : '';
 }
 
