@@ -28,6 +28,10 @@ const SELF_PINNED = [
   '**/_boardCapture.spec.mjs',
   '**/_riskLaneCapture.spec.mjs',
   '**/_venueReaderCapture.spec.mjs',
+  // Self-pinned to 390px: it drives the creation flow as a phone host meets it
+  // and photographs it. Running the same capture at six geometries would write
+  // six sets of screenshots to one path.
+  '**/_eightiethAudit.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,
