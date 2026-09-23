@@ -38,6 +38,10 @@ import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach } from '@app/lib/doItForMe';
+// A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
+// dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
+// per-unit lines. One definition, shared with the CRA food sheet.
+import { perUnitBand } from '@app/lib/perUnitText';
 
 // Wave-2a decision-engine consumers (shared shape with App.js HostDecisionsPanel).
 // rankReasonForV2 — the rank's "work": the board's own rankReason, else a host-voiced
@@ -18158,7 +18162,7 @@ export default function HostShellV2() {
                                 <span className="v-meta">
                                   {[
                                     it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
-                                    foodPlan.hasRealCount && it.unitBase && it.perUnitLow ? `${fmt(it.perUnitLow)}–${fmt(it.perUnitHigh)}/${it.unitBase}` : null,
+                                    foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null,
                                     (event.foodWhere || {})[it.id] ? 'your pick: ' + (event.foodWhere || {})[it.id] : (Array.isArray(it.where) ? it.where.join(',') : it.where),
                                   ].filter(Boolean).join(' · ')}
                                 </span>
