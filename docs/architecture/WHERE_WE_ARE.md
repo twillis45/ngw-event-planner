@@ -2,7 +2,10 @@
 
 ## 2026-09-23 — all four open board calls, and two of them reversed a same-day finding
 
-`main` @ `2845d38`. 524 suites / 7,470 tests. `verify:push` 5/5.
+`main` @ `2845d38` (last code commit; docs follow). 524 suites / 7,470 tests.
+`verify:push` 5/5. **No board call is open** — all six are closed, and the only
+carried-forward audit row still open is the Vendor Detail Cockpit, which waits on
+the CRA retirement decision rather than on work.
 
 **#1 Rank the closing window.** The 2026-08-17 ruling's bar had been unmet for
 five weeks — a certificate 27 days dead scored 4.90 against a vendor reconfirm
@@ -42,6 +45,11 @@ this removed a wrong number without adding a sentence.
 **Also:** three bars on the coverage chart were wrong — `options` is 260/260 not
 251, `blocks` is 250 not "247 each", and timing-category matched was 33 not 32
 because of this session's own work an hour earlier.
+
+**The Decision Layer page is at v12** (https://claude.ai/artifact/YCYiVBhiqXfybotWygeojv)
+carrying all four calls, their cost, and 23 guards. Its HTML is **not in the
+repo** — see the "Published status pages" section of `HANDOFF.md` for why that
+matters before anyone tries to republish it from a later session.
 
 **Worth carrying forward:** a detector's population is a separate claim from the
 detector. Declare, do not infer. List what a veto removes before trusting it —

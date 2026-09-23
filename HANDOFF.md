@@ -157,7 +157,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `2845d382` |
+| Branch / HEAD | `main` @ `adfe7e9f` — last CODE commit is `2845d382`; `adfe7e9` and everything after it on this line are this file and `WHERE_WE_ARE.md` only |
+| Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`). The one carried-forward audit row still open is the Vendor Detail Cockpit, which waits on the CRA retirement decision post-Sprint-2, not on work |
 | Jest | **7,470 passed**, 1 skipped, **0 failed**, **524 suites** (re-measured 2026-09-23 after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
@@ -4837,6 +4838,25 @@ does not prove an event arrived. That needs the dashboards — yours.
 
 Republish that same file path to keep the URL stable. Its `Recorded` date must
 equal the newest gate record's date, or it is stale by definition.
+
+## Published status pages
+
+| Page | URL | Source |
+|---|---|---|
+| Decision Layer Remediation | https://claude.ai/artifact/YCYiVBhiqXfybotWygeojv | **not in the repo** — session scratchpad only |
+| How The Plan Gets Made | https://claude.ai/artifact/Y4ArfQB1ztTevLUz8TXWCC | **not in the repo** — session scratchpad only |
+
+The Decision Layer page is the outward record of the September programme: every
+audit finding, what shipped for it, and what each board call cost to close. **At
+v12 (2026-09-23) it shows all six calls closed** and carries the measured figures
+(524 / 7,470, backend 360, 75 commits since `3b9e87b`).
+
+**The trap:** neither page's HTML is committed. The source lives in the session
+scratchpad, which is reclaimed when the container is. Republishing either one
+from a later session means passing its URL to the Artifact tool and editing the
+version it returns — publishing without the URL creates a SEPARATE artifact and
+the link above goes stale silently. Committing the source is the real fix and is
+not done.
 
 ## What shipped 2026-08-29
 
