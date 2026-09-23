@@ -7,6 +7,7 @@
 export {
   EVENT_TAXONOMY,
   resolveCanonicalType,
+  GENERIC_GATHERING_WORDS,
   intakeFamilyFor,
   budgetFamilyFor,
   solveFamilyFor,

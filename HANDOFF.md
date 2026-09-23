@@ -157,11 +157,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `9ae267f6` |
+| Branch / HEAD | `main` @ `0c39b0bc` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,514 passed**, 1 skipped, **0 failed**, **529 suites** (re-measured 2026-09-23 after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,531 passed**, 1 skipped, **0 failed**, **530 suites** (re-measured 2026-09-23 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -284,6 +284,66 @@ $375/head for a June wedding — 28.3% above the only published figure the syste
 has.** The seasonal premium stacks on top of an already-high midpoint, and the
 recorded 19.9% understates what a host reads. Recorded, not moved: changing the
 first number a host sees is a product decision.
+
+### 6. The parser, against how people actually write
+
+Measured against a corpus of real phrasings rather than the tidy sentences a
+regex expects. Everything below FAILED before this pass.
+`src/lib/__tests__/howPeopleActuallyWriteIt.test.js`.
+
+| Was | Now |
+|---|---|
+| `budget 1.5k` → **$1** | $1,500 |
+| `spend about 2k` / `under 3 grand` / `3 grand` | $2,000 / $3,000 / $3,000 |
+| `card party` → Birthday | **Card Party** |
+| `day party` → Birthday | **Day Party** |
+| `spades night`, `bid whist` | Card Party |
+| `grown folks party`, `grown and sexy` | Day Party |
+| `the function`, `pull up`, `linkup` → no type at all | a type, marked `generic` |
+| `20ish`, `20 or so` → no count | 20 |
+| `a dozen` / `half a dozen` / `a couple dozen` | 12 / 6 / 24 |
+| `the 14th of June 2027` → no date | 2027-06-14 |
+
+**The worst one was a WRONG number, not a missing one.** `budget 1.5k` parsed as
+**$1** — the capture had no decimal point, so it took the "1" and the `k` could
+never match past the ".". Every downstream sizing read one dollar.
+
+**The slang is the playbooks' own vocabulary, not invention.** Card Party's
+header defines it around Spades and Bid Whist; Day Party's calls it the African
+American afternoon "grown folks" social. A host reaching for those words is
+naming the playbook.
+
+**Three guards that had to exist before the features could:**
+- A headcount is never money. The verb forms require a currency marker, so
+  "about 45 people" cannot become a budget of 45.
+- A bare `5k` is NOT money — "the 5k" is a road race. Only `grand` stands alone.
+- A digit always beats a dozen: "20 people and a dozen chairs" is 20.
+
+**A false hedge the mechanism committed against itself.** `get-together` reads
+generic and is a REAL playbook type, so listing it among the generic words made
+the parser hedge a type the host had named exactly.
+
+**And the generic word list is now ONE list with one owner.** A private copy in
+`smartParseEvent` drifted within a single commit of being written — the day "the
+function" and "pull up" were added to the taxonomy, they started reporting
+`named`. Exported through the documented adapter chain rather than imported
+directly, because this repo has a production guard about that.
+
+### A fix written, measured, and thrown away
+
+"baltimore md" in lower case resolves to nothing while "Baltimore MD" works, and
+people text in lower case constantly. It looks like a one-character fix (`/i`).
+It is not. Measured with the relaxation in place:
+
+    "cookout june 14, 20 people, food is on me"   -> city "food is on", state ME
+    "bday party 6/14/27 abt 45 ppl baltimore md"  -> city "ppl baltimore"
+
+A dozen state codes are ordinary English words (ok, hi, me, in, or, la, pa, id,
+oh, de, co). A wrong town moves weather, market, venue and the whole travel lane.
+**Reverted, with the measurement recorded in the code so the next person does not
+spend the afternoon rediscovering it.** Same for the spelled-out state, which
+requires a locative preposition because "Virginia Washington" is a person as
+easily as a place.
 
 ### Still open, recorded not fixed
 

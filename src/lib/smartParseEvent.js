@@ -12,7 +12,7 @@
 
 import { ALL_PLAYBOOKS } from './playbooks';
 import { matchVacationArea } from './vacationAreas';
-import { resolveCanonicalType } from './eventTaxonomyAdapter';
+import { resolveCanonicalType, GENERIC_GATHERING_WORDS } from './eventTaxonomyAdapter';
 import { parseVenueLocation, resolveSpokenCity, US_STATE_NAME_TO_ABBR } from './cityText';
 
 // Occasion choices = the REAL playbook catalog: every type the engine ships a
@@ -65,7 +65,9 @@ export function parseSmartEventText(text, opts = {}) {
   // unusedClauses uses: strip the generic words and re-resolve. If the type
   // survives, something specific named it; if it evaporates, the catch-all is
   // the only thing holding it up.
-  const _GENERIC_PARTY_WORDS = /\b(?:part(?:y|ies)|celebrations?|bash|soiree|fiesta|shindig)\b/gi;
+  // The SAME list the taxonomy's fallback rule uses — imported, never copied.
+  // A private copy drifted within one commit of being written.
+  const _GENERIC_PARTY_WORDS = new RegExp(GENERIC_GATHERING_WORDS.source + '|\\bparties\\b', 'gi');
   let typeBasis = null;
   if (type) {
     let specific = null;
@@ -95,8 +97,32 @@ export function parseSmartEventText(text, opts = {}) {
   const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i)
     || t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
     // "12 of us", "20 of them" — the count with no noun at all.
-    || t.match(/\b(\d{1,3})\s+of\s+(?:us|them)\b/i);
+    || t.match(/\b(\d{1,3})\s+of\s+(?:us|them)\b/i)
+    // HOW PEOPLE ACTUALLY HEDGE A NUMBER (measured 2026-09-23 against a corpus
+    // of real phrasings). "20ish" and "20 or so" are a count with an
+    // approximation marker glued on, and both returned NOTHING — the host said
+    // a number out loud and the plan sized itself to the playbook typical
+    // instead. The marker does not change the number; it is already an
+    // estimate, and the app already shows a likely-attendance band around it.
+    || t.match(/\b(\d{1,3})\s*(?:ish|-ish)\b/i)
+    || t.match(/\b(\d{1,3})\s+or\s+so\b/i);
   if (gm) guests = parseInt(gm[1], 10);
+
+  // ── DOZENS ────────────────────────────────────────────────────────────────
+  // "a dozen", "half a dozen", "a couple dozen" are counts, not slang for
+  // "some" — a host who writes them has a number in mind and it is exact.
+  // Only consulted when no digit form matched, so "20 people, a dozen chairs"
+  // can never be read as twelve guests.
+  if (guests === null) {
+    // "half a dozen" — the quantifier can sit TWO words out, and an earlier
+    // version matched the trailing "a dozen" and returned 12 for six people.
+    const dz = t.match(/\b(?:(half|a|one|two|three|couple|few)\s+(?:of\s+)?(?:a\s+)?)?dozen\b/i);
+    if (dz) {
+      const word = (dz[1] || 'a').toLowerCase();
+      const mult = { half: 0.5, a: 1, one: 1, two: 2, couple: 2, few: 3, three: 3 }[word];
+      if (mult) guests = Math.round(12 * mult);
+    }
+  }
 
   // ── Budget — "$3,000", "$3k budget", "budget of $5000", "2500 budget" ────
   // Only ever the first real number found; never averaged from a range, never
@@ -110,12 +136,36 @@ export function parseSmartEventText(text, opts = {}) {
   // (\d[\d,]*) — a budget number must START with a digit, never a bare comma; otherwise the
   // budget-first pattern matched "budget," in "5000 budget, 40 people" (comma-only capture →
   // NaN) and short-circuited the number-first pattern.
-  const bm = t.match(/\$\s*(\d[\d,]*)\s*(k)?\b/i)
-    || t.match(/budget\s*(?:of|:)?\s*\$?\s*(\d[\d,]*)\s*(k)?\b/i)
-    || t.match(/\b(\d[\d,]*)\s*(k)?\s*budget\b/i);
+  //
+  // "1.5k" USED TO PARSE AS $1 (found 2026-09-23 auditing how people really
+  // write). The capture was (\d[\d,]*) — no decimal point — so it took the "1",
+  // then the (k)? could not match because a "." stood in the way, and a host who
+  // said fifteen hundred dollars was recorded as having one dollar. A WRONG
+  // number, not a missing one, which is the worse failure.
+  //
+  // Money words added with it: "grand" is unambiguous in this position, and so
+  // is "k". A bare "g" is NOT added — "5G" is a phone network as often as it is
+  // five thousand dollars, and a wrong budget is what this whole comment is
+  // about. The verb forms ("spend about 2k", "under 3 grand", "up to $4000")
+  // REQUIRE a money marker — a currency sign, k, or grand — so that "about 45
+  // people" can never be read as a budget of 45.
+  const _NUM = '(\\d[\\d,]*(?:\\.\\d+)?)';
+  const _MULT = '(k|grand)?';
+  const bm = t.match(new RegExp(`\\$\\s*${_NUM}\\s*${_MULT}\\b`, 'i'))
+    || t.match(new RegExp(`budget\\s*(?:of|:)?\\s*\\$?\\s*${_NUM}\\s*${_MULT}\\b`, 'i'))
+    || t.match(new RegExp(`\\b${_NUM}\\s*${_MULT}\\s*budget\\b`, 'i'))
+    || t.match(new RegExp(
+      `\\b(?:spend(?:ing)?|under|up\\s+to|max(?:imum)?|around|about|no\\s+more\\s+than)\\s*`
+      + `\\$?\\s*${_NUM}\\s*(k|grand)\\b`, 'i'))
+    // A bare "3 grand" with no verb at all. "grand" is money and nothing else
+    // in this context, so it needs no framing. A bare "5k" deliberately does
+    // NOT get the same treatment — "the 5k" is a road race, and this parser has
+    // already shipped one wrong budget.
+    || t.match(new RegExp(`\\b${_NUM}\\s*(grand)\\b`, 'i'));
   if (bm) {
-    let n = parseInt(bm[1].replace(/,/g, ''), 10);
+    let n = parseFloat(bm[1].replace(/,/g, ''));
     if (bm[2]) n *= 1000;
+    n = Math.round(n);
     if (Number.isFinite(n) && n > 0) budget = n;
   }
 
@@ -205,6 +255,25 @@ export function parseSmartEventText(text, opts = {}) {
   // failed the past check, and was bumped to 2027 — replacing a date the host
   // stated correctly with a wrong one. Four digits only, so "June 12, 20
   // cousins" can never read the headcount as a year.
+  // ── "THE 14TH OF JUNE" — DAY BEFORE MONTH ────────────────────────────────
+  // Measured 2026-09-23 against how people actually write: this returned NO
+  // DATE. It is an ordinary English way to say a date, and it is the dominant
+  // way in most of the world. The month-first matcher below cannot see it
+  // because the number comes first.
+  //
+  // Requires the ordinal or the word "of" — a bare "14 June" is admitted, but
+  // "20 people June 14" must never read the 20 as a day, so the day half is
+  // capped at 31 and an intervening word is not allowed.
+  const dmOf = date ? null : t.match(
+    /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s*(\d{4}))?\b/i);
+  if (dmOf && Number(dmOf[1]) >= 1 && Number(dmOf[1]) <= 31) {
+    const saidY = dmOf[3] ? parseInt(dmOf[3], 10) : null;
+    const cand = new Date(saidY || now.getFullYear(),
+      MONTHS.indexOf(dmOf[2].slice(0, 3).toLowerCase()), parseInt(dmOf[1], 10), 12);
+    if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
+    date = cand.toISOString().slice(0, 10);
+  }
+
   const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
   if (dm) {
     const saidY = dm[3] ? parseInt(dm[3], 10) : null;
@@ -404,6 +473,25 @@ export function parseSmartEventText(text, opts = {}) {
   // abbreviation glued straight onto the city is unambiguous on its own (it
   // still goes through parseVenueLocation's real state gate), so try it only
   // after the comma-bearing forms have had their chance.
+  //
+  // ── LOWER CASE IS A KNOWN LIMIT, AND THE FIX WAS TRIED AND REJECTED ──────
+  // "baltimore md" resolves to NOTHING while "Baltimore MD" resolves fine, and
+  // people text in lower case constantly — the 2026-09-23 drive corpus hit it
+  // twice. It looks like a one-character fix (/i) and is not.
+  //
+  // A dozen state codes are also ordinary English words — ok, hi, me, in, or,
+  // la, pa, id, oh, de, co. MEASURED with the relaxation in place, gated to
+  // inputs carrying no capitals at all:
+  //
+  //     "cookout june 14, 20 people, food is on me"
+  //        -> city "food is on", state ME
+  //     "bday party 6/14/27 abt 45 ppl baltimore md"
+  //        -> city "ppl baltimore"
+  //
+  // A wrong city moves weather, market, venue and the whole travel lane. This
+  // parser has already shipped one wrong budget today; it is not shipping a
+  // wrong town to save a host the shift key. The strict form stands, the limit
+  // is recorded, and the host is asked for the town instead of guessed at.
   const locBare = locLoose || (() => {
     const re = /\b([A-Z][a-zA-Z.'’-]+(?:\s+[A-Z][a-zA-Z.'’-]+){0,2})\s+([A-Z]{2})\b(?!\.\w)/g;
     let m;

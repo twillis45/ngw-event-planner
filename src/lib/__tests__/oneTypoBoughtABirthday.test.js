@@ -61,24 +61,26 @@ describe('a guessed type declares itself', () => {
     expect(basis('Wedding in Austin Texas on June 14 2027, 120 people')).toBe('named');
   });
 
-  test('TWO PLAYBOOKS ARE UNREACHABLE BY THEIR OWN NAME — found by this test', () => {
+  test('EVERY PLAYBOOK IS NOW REACHABLE BY ITS OWN NAME', () => {
     // The strongest control: spell a type correctly and it should never be
     // hedged. Running it surfaced a defect with nothing to do with typos.
     //
-    // `Card Party` and `Day Party` are real playbooks in the corpus and the
-    // resolver cannot name either — both fall through to the "party" catch-all.
-    // So a host who types "Card Party in Austin" gets a BIRTHDAY plan, and the
-    // playbook they asked for by name is unreachable from free text entirely.
+    // WHEN THIS TEST WAS WRITTEN IT FAILED, and the list it printed was the
+    // finding: `Card Party` and `Day Party` were real playbooks in the corpus
+    // that the resolver could not name. Both fell through to the "party"
+    // catch-all, so a host typing "Card Party in Austin" got a BIRTHDAY plan and
+    // the playbook they asked for by name was unreachable from free text.
     //
-    // The hedge is CORRECT for them: the type genuinely was a guess. This pins
-    // the list rather than asserting it away, so it can only shrink — add the
-    // missing keyword rules and this test tells you it worked.
+    // Both were given keyword rules on 2026-09-23, in the playbooks' OWN
+    // vocabulary — Card Party's header defines it around Spades and Bid Whist,
+    // Day Party's around the "grown folks" afternoon social. The list is empty
+    // now, and this test is what says so if a new playbook ships unreachable.
     const hedged = [];
     for (const pb of ALL_PLAYBOOKS) {
       const p = parseSmartEventText(`${pb.type} in Austin Texas on June 14 2027, 30 people`);
       if (p.type && p.typeBasis === 'generic') hedged.push(`${pb.type} -> ${p.type}`);
     }
-    expect(hedged.sort()).toEqual(['Card Party -> Birthday', 'Day Party -> Birthday']);
+    expect(hedged).toEqual([]);
   });
 
   test('no type at all carries no basis', () => {

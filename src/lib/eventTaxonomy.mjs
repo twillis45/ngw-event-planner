@@ -168,6 +168,22 @@ const TYPE_ALIASES = {
 // lower-cased raw string. Each entry resolves to a canonical type; family/shares/solve/
 // roster all derive from that single decision. NEVER routes to the maximal family —
 // the most generic tails land on Conference (corporate) or Birthday (host_driven).
+// THE WORDS THAT SAY "AN EVENT" WITHOUT SAYING WHICH KIND.
+//
+// `get-together` is deliberately NOT here even though it reads generic: it is a
+// REAL playbook type ("Get-Together"), so listing it made the parser hedge a
+// type the host had named exactly — the same false hedge this mechanism exists
+// to prevent, committed by the mechanism itself.
+//
+// Exported because smartParseEvent must strip exactly these to decide whether a
+// resolved type was NAMED or merely caught by the fallback below. It kept its
+// own private copy for one commit and immediately drifted: the day "the
+// function" and "pull up" were added here, they started reporting `named` — the
+// disclosure said a host had named their event type when the catch-all was the
+// only thing holding it up. One list, one owner.
+export const GENERIC_GATHERING_WORDS =
+  /party|celebration|\bbash\b|soiree|fiesta|shindig|\bthe\s+function\b|\bkick\s*back\b|\bpull\s*up\b|\blink\s*-?\s*up\b/;
+
 const KEYWORDS = [
   // ── Cultural / religious ceremonies (resolve to the nearest host model, flagged) ──
   [/bar\s*mitzvah|bat\s*mitzvah|b['’]?nai\s*mitzvah/, 'Sweet 16'],
@@ -279,8 +295,33 @@ const KEYWORDS = [
   [/birthday|\bb.?day\b|milestone\s*birthday/, 'Birthday'],
   // ── Generic corporate fallback (clearly-corporate language) ──
   [/corporate|meeting|company|business|\bpanel\b|\bclient\b/, 'Conference'],
+  // ── TWO PLAYBOOKS THAT COULD NOT BE REACHED BY THEIR OWN NAME ────────────
+  // Found 2026-09-23 by a control asserting every playbook type resolves to
+  // itself: "Card Party in Austin" and "Day Party in Austin" both fell through
+  // to the generic catch below and came back BIRTHDAY. Both playbooks shipped;
+  // neither could be asked for in the words a host would use.
+  //
+  // `\bday\s*party` is safe against the Sunday collision this file already
+  // documents — "Sunday" has no word boundary before its "day", so \bday only
+  // matches the standalone word. Must sit above the generic line, which would
+  // otherwise swallow both on the word "party".
+  //
+  // The extra terms are the playbooks' OWN vocabulary, not invention. Card
+  // Party's header defines it as "the African American card-table social built
+  // around Spades and Bid Whist"; Day Party's calls it "the African American
+  // afternoon 'grown folks' social". A host reaching for those words is naming
+  // the playbook, not guessing at it.
+  [/\bcard\s*party\b|\bspades\b|\bbid\s*whist\b/, 'Card Party'],
+  [/\bday\s*party\b|\bgrown\s*folks?\b|\bgrown\s*(?:and|n|&)\s*sexy\b/, 'Day Party'],
   // ── Generic party fallback (host-driven, NOT maximal) ──
-  [/party|celebration|\bbash\b|soiree|fiesta|shindig/, 'Birthday'],
+  //
+  // "the function", "pull up", "linkup" and "get together" name that an event
+  // IS happening without naming what KIND — which is exactly this line's job,
+  // and exactly why smartParseEvent marks anything resolved here as
+  // `typeBasis: 'generic'`. Before this they returned NO type at all, so a host
+  // who wrote the way people actually text got an empty plan instead of a
+  // correctable one.
+  [GENERIC_GATHERING_WORDS, 'Birthday'],
 ];
 
 // Cultural flag resolver — forward-looking metadata (Task 8). Keyed first off the
