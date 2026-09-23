@@ -129,6 +129,7 @@ import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
+import { rosBasisNote } from '@app/lib/rosBasis';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
@@ -6970,6 +6971,7 @@ export default function HostShellV2() {
 
   // Run of show — the app's single source: playbook-derived (tracks the event's
   // time of day), a stored ros only when the host has taken ownership.
+  const rosBasis = useMemo(() => { try { return rosBasisNote(event); } catch (_e) { return null; } }, [event]);
   const ros = useMemo(() => {
     try {
       const all = effectiveRos(event) || [];
@@ -11130,6 +11132,26 @@ export default function HostShellV2() {
                 <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', color: 'var(--carbon-muted)' }}>
                   These moments don’t have times yet — the live clock takes over once times are set. Walking through by hand still records what’s done.
                 </p>
+              )}
+              {/* ── WHOSE DAY THIS RUN-OF-SHOW IS WRITTEN FOR (host ask 2026-09-23)
+                  The agenda is byte-identical for a host cooking in a rented
+                  house and a host in a room block with a caterer dropping the
+                  food off — measured with `food_style` answered both ways:
+                  eleven rows, same text, every one stamped `Host`.
+
+                  This does NOT rewrite or re-own the beats. Audited: schedule
+                  entries author four fields and `owner` is not one of them, so
+                  the `Host` on each row is an engine literal, not a discarded
+                  authored value — there is no signal saying which beats a
+                  caterer performs. Deciding that would be authoring a
+                  run-of-show nobody researched, and `Order pizza/trays` resolves
+                  to the same `usesCaterer` as drop-off catering while plainly
+                  leaving the host to put the food out. So the basis is STATED
+                  and the beats are left alone. lib/rosBasis owns the rule; the
+                  real fix is per-playbook `copyByAnswer` on the food beats,
+                  which the engine already supports. */}
+              {ros.length > 0 && rosBasis && (
+                <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>{rosBasis.text}</p>
               )}
               {ros.length > 0 && (
                 <div className="picker" style={{ margin: 'var(--sp-3) 0' }}>
