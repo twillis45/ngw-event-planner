@@ -462,7 +462,11 @@ describe('behaviour lock — provenance is metadata, and metadata costs nothing'
     ['Birthday',          30, null,         'afternoon', 1,    true,  0,   6000,  18000],
     ['Gala',             400, '2026-12-31', 'late',      1.65, false, 0, 268100, 643500],
     ['Reunion',           30, null,         'afternoon', 1,    false, 2,   2700,  10800],
-    ['The Cookout',       12, null,         'afternoon', 1,    false, 0,    200,    400],
+    // The Cookout's whole-event ceiling was raised 35 -> 52 on 2026-09-23 (host
+    // ruling) so it clears its own itemized food ceiling — food is a subset of
+    // the event and was priced above it. This lock moved because a PRICING
+    // decision moved it, which is the one reason it is allowed to.
+    ['The Cookout',       12, null,         'afternoon', 1,    false, 0,    200,    600],
     ['Fish Fry',          12, null,         'afternoon', 1,    false, 0,    100,    200],
     ['Not A Real Type',   75, null,         'afternoon', 1,    false, 0,   4500,  18800],
     ['Holiday Party',     75, '2026-11-26', 'evening',   0.8,  false, 0,   2700,   8300],

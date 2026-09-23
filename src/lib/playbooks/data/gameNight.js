@@ -21,7 +21,7 @@ const gameNight = {
     typicalDurationHours: 3,
     leadTimeDays: 7,
     hostDifficulty: 'easy',
-    perGuestCost: { low: 8, high: 18, currency: 'USD' },
+    perGuestCost: { low: 8, high: 31, currency: 'USD' },
     scaleBy: 'guestCount',
   },
 

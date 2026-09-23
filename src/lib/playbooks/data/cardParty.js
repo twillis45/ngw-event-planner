@@ -31,7 +31,7 @@ const cardParty = {
     typicalDurationHours: 4,
     leadTimeDays: 10,
     hostDifficulty: 'moderate',
-    perGuestCost: { low: 14, high: 30, currency: 'USD' },
+    perGuestCost: { low: 14, high: 64, currency: 'USD' },
     scaleBy: 'guestCount',
   },
 

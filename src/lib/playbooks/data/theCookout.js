@@ -34,7 +34,7 @@ const theCookout = {
     typicalDurationHours: 7,
     leadTimeDays: 21,
     hostDifficulty: 'moderate',
-    perGuestCost: { low: 15, high: 35, currency: 'USD' },
+    perGuestCost: { low: 15, high: 52, currency: 'USD' },
     scaleBy: 'guestCount',
   },
 

@@ -23,9 +23,17 @@ describe('estimateTotalRange — playbook-specific per-head cost fills the real 
 
   test('The Cookout uses its OWN playbook band, not the generic home_hosted default', () => {
     const r = estimateTotalRange({ type: 'The Cookout', guestCount: 15, ...neutral });
-    // theCookout.js meta.perGuestCost: { low: 15, high: 35 }
+    // theCookout.js meta.perGuestCost: { low: 15, high: 52 }
+    //
+    // The ceiling was 35 until 2026-09-23, when the eight playbooks whose
+    // whole-event ceiling sat BELOW their own itemized food ceiling were raised
+    // (host ruling). Food is a subset of the event, so pricing it above the
+    // event was impossible on its face. This lock moved because a pricing
+    // decision moved it — the one reason it is allowed to — and it still asserts
+    // the point it was written for: the band comes from THIS playbook, not from
+    // the generic home_hosted default.
     expect(r.lowTotal).toBe(round100(15 * 15));   // $200, was round100(15*30)=$500 pre-fix
-    expect(r.highTotal).toBe(round100(15 * 35));  // $500, was round100(15*120)=$1,800 pre-fix
+    expect(r.highTotal).toBe(round100(15 * 52));  // was 15*35; the old generic default gave 15*120=$1,800
   });
 
   test('Fish Fry — the widest gap from the old generic default (was up to 6x too high)', () => {

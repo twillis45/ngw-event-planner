@@ -25,7 +25,7 @@ const crawfishBoil = {
     typicalDurationHours: 5,
     leadTimeDays: 14,
     hostDifficulty: 'moderate',
-    perGuestCost: { low: 18, high: 38, currency: 'USD' },
+    perGuestCost: { low: 18, high: 43, currency: 'USD' },
     scaleBy: 'guestCount',
   },
 

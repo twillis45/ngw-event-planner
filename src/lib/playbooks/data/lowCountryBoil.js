@@ -25,7 +25,7 @@ const lowCountryBoil = {
     typicalDurationHours: 4,
     leadTimeDays: 10,
     hostDifficulty: 'moderate',
-    perGuestCost: { low: 12, high: 22, currency: 'USD' },
+    perGuestCost: { low: 12, high: 23, currency: 'USD' },
     scaleBy: 'guestCount',
   },
 

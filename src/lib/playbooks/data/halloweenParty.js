@@ -45,7 +45,7 @@ const halloweenParty = {
     typicalDurationHours: 4,
     leadTimeDays: 42,
     hostDifficulty: 'moderate',
-    perGuestCost: { low: 8, high: 25, currency: 'USD' },
+    perGuestCost: { low: 8, high: 26, currency: 'USD' },
     scaleBy: 'guestCount',
   },
 

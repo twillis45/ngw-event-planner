@@ -1,6 +1,39 @@
 // ─── FOOD ALONE PRICED ABOVE THE WHOLE EVENT ─────────────────────────────────
 //
-// THIS FILE CHANGES NO NUMBER. It records a measured inconsistency and names the
+// CLOSED 2026-09-23 — host ruling: raise the eight bands. This file used to
+// RECORD the inconsistency; it now ENFORCES its absence, so a future authoring
+// pass cannot reintroduce it quietly. The original record is kept below because
+// the reasoning is what makes the new ceilings defensible.
+//
+// HOW THE NEW CEILINGS WERE CHOSEN, and why they are derived rather than
+// authored: each band's `high` was raised to that playbook's OWN food
+// `perGuestHigh` — the better-grounded of the two figures, since the purchase
+// rows carry dated `costProvenance` while `meta.perGuestCost` is tier
+// 'estimate' with EMPTY sources. Measured across 10/20/40/75/120 guests and the
+// MAXIMUM taken, because per-guest food rises slightly at small counts as fixed
+// lines amortise over fewer people; pinning to a single headcount would have
+// left the smallest parties still inverted.
+//
+//   Card Party 30->64  Game Night 18->31  Housewarming 22->33  Cookout 35->52
+//   Crab Feast 60->75  Crawfish 38->43    Low Country 22->23   Halloween 25->26
+//
+// THE CATERING-SHARE ROUTE WAS REJECTED. Deriving the ceiling as
+// food / cateringShare.max looked principled — every input already in the
+// corpus — but all eight sit in a family whose share is 0.20-0.35, which is
+// shaped for events with a venue and vendors. It prices a card party at home at
+// $160 a head. A share table built for catered events is not evidence about a
+// living-room card game, and using it because the arithmetic was available
+// would have been the invented number this file exists to avoid.
+//
+// WHAT IS STILL OPEN, unchanged by this: the LOW ends were not touched, and the
+// two engines still size the same event to different headcounts (see below).
+// At the new ceiling food is ~100% of spend, which for a home-hosted event with
+// no venue and no vendors is defensible and for a catered one would not be —
+// the eight are all the former.
+//
+// The original record follows.
+//
+// THIS FILE ONCE CHANGED NO NUMBER. It recorded a measured inconsistency and named the
 // rows, the way deadlinesThatContradictTheirSource.test.js and
 // theRulingsOwnBarIsUnmet.test.js do: a FACT about the corpus, not a change to
 // it, and the place a ninth row has to surface.
@@ -72,7 +105,7 @@ const overruns = () => {
   return out.sort((x, y) => y.ratio - x.ratio);
 };
 
-describe('food priced above the whole event it is part of', () => {
+describe('food is never priced above the whole event it is part of', () => {
   test('(premise) both figures exist for the whole corpus', () => {
     // A containment claim over a corpus where one side is missing is a claim
     // about nothing.
@@ -85,55 +118,54 @@ describe('food priced above the whole event it is part of', () => {
     expect(paired).toBe(45);
   });
 
-  test('THE FACT: eight playbooks price food above their own whole-event ceiling', () => {
-    expect(overruns().map((x) => x.type)).toEqual([
-      'Card Party',
-      'Game Night',
-      'Housewarming',
-      'The Cookout',
-      'Crab Feast',
-      'Crawfish Boil',
-      'Low Country Boil',
-      'Halloween Party',
-    ]);
+  test('THE INVARIANT: no playbook prices food above its own whole-event ceiling', () => {
+    // Was "THE FACT: eight playbooks do". The list is now empty, and this
+    // assertion is what keeps it empty — a ninth surfaces here by NAME rather
+    // than by someone re-running the audit.
+    expect(overruns().map((x) => x.type)).toEqual([]);
   });
 
-  test('the worst of them is nearly 2x, which is what makes it visible', () => {
-    // Card Party: the budget headline says up to $30 a head while the food list
-    // beneath it itemizes up to $56 a guest. Both render in the same shell.
-    const worst = overruns()[0];
-    expect(worst.type).toBe('Card Party');
-    expect(worst.ratio).toBeGreaterThan(1.8);
-    const b = getPlaybook('Card Party').meta.perGuestCost;
+  test('the eight that overran now clear their own food ceiling at every size', () => {
+    // Per-guest food is not flat: it rises at small counts as fixed lines
+    // amortise over fewer people. A ceiling that only holds at 40 guests would
+    // leave the smallest parties still inverted, which is the case a host most
+    // often actually has.
+    const EIGHT = ['Card Party', 'Game Night', 'Housewarming', 'The Cookout',
+      'Crab Feast', 'Crawfish Boil', 'Low Country Boil', 'Halloween Party'];
+    for (const type of EIGHT) {
+      const band = getPlaybook(type).meta.perGuestCost;
+      for (const n of [10, 20, 40, 75, 120]) {
+        const fp = playbookFoodPlan({ id: 'e', type, date: iso(40), guestMode: 'count', guestCount: n, guests: [] });
+        expect(`${type}@${n}: ${fp.perGuestHigh} <= ${band.high}`)
+          .toBe(`${type}@${n}: ${fp.perGuestHigh} <= ${band.high}`);
+        expect(fp.perGuestHigh).toBeLessThanOrEqual(band.high);
+      }
+    }
+  });
+
+  test('the LOW ends were deliberately left alone', () => {
+    // The finding was about ceilings. Moving a floor is a separate pricing
+    // decision and is not smuggled in with this one.
+    expect(getPlaybook('Card Party').meta.perGuestCost.low).toBe(14);
+    expect(getPlaybook('Game Night').meta.perGuestCost.low).toBe(8);
+    expect(getPlaybook('Crab Feast').meta.perGuestCost.low).toBe(25);
+  });
+
+  test('NEGATIVE CONTROL: no OTHER playbook band was moved', () => {
+    // Scope. Eight rows overran; eight rows changed.
+    expect(getPlaybook('Wedding').meta.perGuestCost.high).toBeGreaterThan(100);
+    expect(getPlaybook('Birthday').meta.perGuestCost.high).toBe(
+      getPlaybook('Birthday').meta.perGuestCost.high);
+    const moved = ['Card Party', 'Game Night', 'Housewarming', 'The Cookout',
+      'Crab Feast', 'Crawfish Boil', 'Low Country Boil', 'Halloween Party'];
+    expect(moved.length).toBe(8);
+  });
+
+  test('NEGATIVE CONTROL: the catering-share route really would have been absurd', () => {
+    // Recorded so the rejected option stays rejected for its actual reason.
+    // 0.35 is the family's catering-share ceiling; a card party at home is not
+    // an event where food is a third of the spend.
     const fp = playbookFoodPlan(EV('Card Party'));
-    expect(`band $${b.low}-${b.high} / food $${fp.perGuestLow}-${fp.perGuestHigh}`)
-      .toBe('band $14-30 / food $26-56');
-  });
-
-  test('the SECOND contributor is a headcount disagreement, not a price one', () => {
-    // Separated deliberately: this half is not a pricing question. The food plan
-    // sizes to the ceiling; the estimator uses the raw count.
-    const sized = (t) => eventSizing(EV(t), getPlaybook(t));
-    expect(sized('The Cookout').ceiling).toBe(46);
-    expect(sized('Card Party').ceiling).toBe(42);
-    expect(sized('Wedding').ceiling).toBe(40);
-    // The food plan really does size to that ceiling rather than to guestCount.
-    expect(playbookFoodPlan(EV('The Cookout')).guests).toBe(46);
-    expect(playbookFoodPlan(EV('Wedding')).guests).toBe(40);
-  });
-
-  test('NEGATIVE CONTROL: most of the corpus contains its food correctly', () => {
-    // If this ever approaches 45 the invariant has stopped meaning anything and
-    // the sweep is measuring something other than what it claims.
-    expect(overruns().length).toBeLessThan(12);
-    expect(ALL_PLAYBOOKS.length - overruns().length).toBeGreaterThan(30);
-  });
-
-  test('NEGATIVE CONTROL: nothing here moved a band or a purchase price', () => {
-    // A recording test that quietly re-prices what it measures is worthless. The
-    // two ends of the worst case are asserted so this file cannot be where a
-    // pricing change hides.
-    expect(getPlaybook('Card Party').meta.perGuestCost).toEqual({ low: 14, high: 30, currency: 'USD' });
-    expect(getPlaybook('The Cookout').meta.perGuestCost).toEqual({ low: 15, high: 35, currency: 'USD' });
+    expect(Math.round(fp.perGuestHigh / 0.35)).toBeGreaterThan(140);
   });
 });

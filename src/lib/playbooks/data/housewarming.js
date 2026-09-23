@@ -30,7 +30,7 @@ const housewarming = {
     typicalDurationHours: 3,
     leadTimeDays: 14,
     hostDifficulty: 'easy',
-    perGuestCost: { low: 8, high: 22, currency: 'USD' },
+    perGuestCost: { low: 8, high: 33, currency: 'USD' },
     scaleBy: 'guestCount',
   },
 

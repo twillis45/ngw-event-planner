@@ -31,7 +31,7 @@ const crabFeast = {
     typicalDurationHours: 4,
     leadTimeDays: 10,
     hostDifficulty: 'moderate',
-    perGuestCost: { low: 25, high: 60, currency: 'USD' },
+    perGuestCost: { low: 25, high: 75, currency: 'USD' },
     scaleBy: 'guestCount',
   },
 
