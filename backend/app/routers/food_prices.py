@@ -17,7 +17,9 @@ HONESTY:
 import datetime
 import logging
 import os
+import re
 import statistics
+import time
 from typing import Optional
 
 import httpx
@@ -72,8 +74,21 @@ _STATE_REGION = {
 
 _REGION_LABEL = {"ne": "Northeast", "mw": "Midwest", "south": "South", "west": "West", "us": "U.S."}
 
-# In-memory cache: {(region, "YYYY-MM"): result}. Monthly data ⇒ tiny volume.
+# ── IN-MEMORY CACHE: {(region, "YYYY-MM"): (expires_at, result)} ────────────
+#
+# IT NOW CACHES FAILURES TOO, and that is the point of the rewrite. Before this
+# it stored successes only, so a BLS outage cost EVERY request the full 20s
+# httpx timeout — one host loading the food sheet three times waited a minute
+# to be told three times that prices are unavailable. The failure is exactly
+# the case where repeating the work is most expensive and least useful.
+#
+# Two TTLs, because the two answers go stale at very different rates. A real
+# factor is monthly data and is good for hours; a failure should be retried
+# soon, because an outage ends and nobody wants a stale "unavailable" for the
+# rest of the month.
 _CACHE: dict = {}
+_SUCCESS_TTL = 6 * 3600     # BLS publishes monthly; 6h keeps it fresh cheaply
+_FAIL_TTL = 300             # an outage must not cost every host 20 seconds
 
 _BLS_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
 
@@ -82,8 +97,35 @@ def _series(area: str, item: str) -> str:
     return f"APU{area}{item}"
 
 
-async def _fetch_latest(series_ids: list) -> dict:
-    """Return {series_id: latest float value} from BLS (v2, latest=true)."""
+def _data_month(point: dict):
+    """The month BLS STAMPED ON THE DATA, as "YYYY-MM", or None.
+
+    Not the month we asked in. BLS Average Price publishes with a lag of a few
+    weeks, so a request today routinely returns last month's figure — and this
+    endpoint used to report `datetime.date.today()` as the data month, which
+    told a host their prices were current when they were one or two months old.
+    The value was always read from the point; the point's own date was thrown
+    away one line later.
+
+    `M13` is BLS's ANNUAL AVERAGE and is deliberately refused: it is not a
+    month, and labelling it as one would be the same defect in a new place.
+    """
+    y = str(point.get("year") or "").strip()
+    m = re.fullmatch(r"M(0[1-9]|1[0-2])", str(point.get("period") or "").strip().upper())
+    if not (len(y) == 4 and y.isdigit() and m):
+        return None
+    return f"{y}-{m.group(1)}"
+
+
+async def _fetch_latest(series_ids: list):
+    """Return ({series_id: latest float value}, data_month) from BLS (v2, latest=true).
+
+    The month comes back with the prices because it belongs to them. When the
+    series disagree — they can, BLS does not publish every commodity on the same
+    day — the OLDEST is reported: this factor is a ratio across all of them, so
+    it is only as current as its stalest input. None when no point carries a
+    readable period.
+    """
     body = {"seriesid": series_ids, "latest": True}
     if BLS_API_KEY:
         body["registrationkey"] = BLS_API_KEY
@@ -94,6 +136,7 @@ async def _fetch_latest(series_ids: list) -> dict:
     if data.get("status") != "REQUEST_SUCCEEDED":
         raise RuntimeError(f"BLS status {data.get('status')}: {data.get('message')}")
     out = {}
+    months = set()
     for s in data.get("Results", {}).get("series", []):
         sid = s.get("seriesID")
         pts = s.get("data") or []
@@ -101,8 +144,11 @@ async def _fetch_latest(series_ids: list) -> dict:
             try:
                 out[sid] = float(pts[0]["value"])
             except (KeyError, ValueError):
-                pass
-    return out
+                continue
+            mk = _data_month(pts[0])
+            if mk:
+                months.add(mk)
+    return out, (min(months) if months else None)
 
 
 @router.get("")
@@ -121,16 +167,19 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
         return {"region": "us", "region_label": "U.S.", "factor": 1.0,
                 "month": None, "source": src, "note": "National baseline — no regional adjustment."}
 
+    # The cache KEY still uses today's month — that is a refetch cadence, and it
+    # is the one thing today's date is legitimately for here. What gets REPORTED
+    # as the data month comes from BLS's own stamp, below.
     month_key = datetime.date.today().strftime("%Y-%m")
-    cached = _CACHE.get((reg, month_key))
-    if cached is not None:
-        return cached
+    hit = _CACHE.get((reg, month_key))
+    if hit is not None and hit[0] > time.time():
+        return hit[1]
 
     try:
         codes = list(_BASKET) + [c for c in _PER_ITEM if c not in _BASKET]
         ids = ([_series(_AREA[reg], it) for it in codes]
                + [_series(_AREA["us"], it) for it in codes])
-        prices = await _fetch_latest(ids)
+        prices, data_month = await _fetch_latest(ids)
 
         def _ratio(code):
             r = prices.get(_series(_AREA[reg], code))
@@ -157,14 +206,20 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
 
         result = {
             "region": reg, "region_label": _REGION_LABEL[reg], "factor": factor,
-            "month": month_key, "source": src, "basket": list(_BASKET.values()),
+            # BLS's own stamp, never today's date. None when no series carried a
+            # readable period — an absent month is honest; a wrong one is not.
+            "month": data_month, "source": src, "basket": list(_BASKET.values()),
             "items_used": len(ratios),
             "item_factors": item_factors,
         }
-        _CACHE[(reg, month_key)] = result
+        _CACHE[(reg, month_key)] = (time.time() + _SUCCESS_TTL, result)
         return result
     except Exception as e:  # noqa: BLE001 — never break the food plan on a price miss
         log.error("food_price_factor %s failed: %s", reg, e)
-        return {"region": reg, "region_label": _REGION_LABEL.get(reg, reg), "factor": 1.0,
-                "month": None, "source": src,
-                "note": "Current prices unavailable right now — showing national estimate."}
+        fallback = {"region": reg, "region_label": _REGION_LABEL.get(reg, reg), "factor": 1.0,
+                    "month": None, "source": src,
+                    "note": "Current prices unavailable right now — showing national estimate."}
+        # CACHED, on a short leash. Without this every request during an outage
+        # pays the full 20s timeout to learn the same thing.
+        _CACHE[(reg, month_key)] = (time.time() + _FAIL_TTL, fallback)
+        return fallback
