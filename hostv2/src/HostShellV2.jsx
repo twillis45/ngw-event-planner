@@ -2467,6 +2467,7 @@ export default function HostShellV2() {
   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   const [showMoreDiets, setShowMoreDiets] = useState(false); // dietary "other" fold (parity: App.js:10850)
+  const [showMoreMoments, setShowMoreMoments] = useState(false); // heart-moments fold — the board leads with one
   const [dietOtherOpen, setDietOtherOpen] = useState(false); // "+ Other" custom-diet name entry
   const [dietOtherName, setDietOtherName] = useState('');
   // MEANING CAPTURE — the raw fields the engines already read (single truth:
@@ -10280,16 +10281,46 @@ export default function HostShellV2() {
                       ))}
                     </>
                   )}
-                  {heartMoments.length > 0 && (
-                    <div style={{ marginTop: 10 }}>
-                      {heartMoments.slice(0, 3).map((m, i) => (
-                        <p key={i} className="grounding" style={{ margin: i ? '4px 0 0' : 0 }}>
-                          {i === 0 ? 'Protect the moment: ' : 'Also worth protecting: '}
-                          {String((m && (m.label || m.title || m.moment)) || m)}
+                  {/* ── ONE MOMENT, AND A DOOR TO THE REST (host ask 2026-09-22)
+                      This stacked THREE `grounding` paragraphs on the operations
+                      board. Measured on the Santa Fe 80th, the first two were the
+                      same moment said twice — "The song starts and everyone turns
+                      to them at once." then "The candles are lit and the room goes
+                      quiet before the song." — under a label that is SINGULAR.
+
+                      Two things were wrong and they pulled opposite ways. The
+                      block was too loud for a board whose job is what needs doing
+                      today; and `.slice(0, 3)` silently dropped authored content —
+                      Birthday writes FIVE moments and this is their only consumer
+                      anywhere in hostv2, so two of them appeared nowhere in the
+                      app at all. Cutting to one alone would have deepened that.
+
+                      So: one leads, the rest are one tap away with a real count.
+                      The singular label now tells the truth, the board quietens,
+                      and nothing an author wrote is unreachable. Resolved counts
+                      run 4-6 across all 45 playbooks (Watch Party's 36 raw entries
+                      collapse through copyByAnswer), so the open state is bounded. */}
+                  {heartMoments.length > 0 && (() => {
+                    const text = (m) => String((m && (m.label || m.title || m.moment)) || m);
+                    const rest = heartMoments.slice(1);
+                    return (
+                      <div style={{ marginTop: 10 }}>
+                        <p className="grounding" style={{ margin: 0 }}>
+                          Protect the moment: {text(heartMoments[0])}
                         </p>
-                      ))}
-                    </div>
-                  )}
+                        {rest.length > 0 && !showMoreMoments && (
+                          <button className="mini" style={{ marginTop: 6 }} onClick={() => setShowMoreMoments(true)}>
+                            + {rest.length} more worth protecting
+                          </button>
+                        )}
+                        {showMoreMoments && rest.map((m, i) => (
+                          <p key={i} className="grounding" style={{ margin: '4px 0 0' }}>
+                            Also worth protecting: {text(m)}
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   {(() => {
                     if (!readiness) return null;
                     // Host-leakage gate is now applied upstream, per-axis, by
