@@ -41,6 +41,28 @@
 // region rather than the state or city is therefore the honest ceiling - not a
 // shortcut that a later pass should "improve" by guessing a metro factor.
 //
+// CONFIRMED FROM THE RULE, NOT JUST THE PROBES (2026-09-23, host question:
+// "doesn't bls have metros too, more specific than south"). The four misses above
+// are inductive — four series that happen not to exist. BLS states the rule
+// itself on the CPI Average Price Data fact sheet:
+//
+//   "If the sample size is sufficient, all average prices are also published at
+//    the four major geographic regions--Northeast, Midwest, South, and West. In
+//    addition to national and regional levels, UTILITY GAS, ELECTRICITY, AND
+//    AUTOMOTIVE FUEL average prices are published for population class sizes,
+//    city size by region (regional/size cross classifications), divisions, and
+//    published areas."
+//   — https://www.bls.gov/cpi/factsheets/average-prices.htm, read 2026-09-23
+//
+// So the finer geography is real and is enumerated for ENERGY ONLY, by name. Food
+// stops at the four regions, and the "if the sample size is sufficient" clause is
+// why some food items lack even a regional series — which is the same reason the
+// beer and wine notes below record series that stop.
+//
+// Region is therefore the ceiling for groceries as a matter of what BLS
+// publishes, not as a limit of this pass. A metro grocery factor cannot be
+// obtained by trying harder; it can only be invented.
+//
 // If this corpus ever prices utilities or fuel for a venue, the metro series are
 // there and should be used at that resolution.
 //
