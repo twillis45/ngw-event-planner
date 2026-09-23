@@ -22,8 +22,13 @@
 //
 //   T-Nd .......... 84   day-before rows; the day-of board is T0-relative and
 //                        nothing else reads schedules.preparation
-//   unparsed ...... 25   'halftime', 'after the toast', 'End', 'End+30m',
+//   unparsed ...... 21   'halftime', 'after the toast', 'after the cake',
 //                        'T+1 morning', 'T0 +1d'…'T0 +7d', 'T0+1d' (no space)
+//
+// The four 'End'-anchored rows were supported on 2026-09-23 — see
+// aBeatAnchoredToTheEnd.test.js. What remains needs an anchor this engine does
+// not have: a program MOMENT ('after the toast'), a sporting event's structure
+// ('halftime'), or a different DAY.
 //
 // TWO OF THE 27 WERE TYPOS AND ARE FIXED (2026-09-23, host ruling): Low Country
 // Boil authored 'T-3h' / 'T-1h' for its two preparation rows, and the missing
@@ -134,6 +139,6 @@ describe('the prep row reads the host’s own food answer', () => {
     }
     // A ratchet, not a target: this must not get WORSE without someone noticing.
     expect(authored).toBeGreaterThan(700);
-    expect(authored - rendered).toBeLessThanOrEqual(109);
+    expect(authored - rendered).toBeLessThanOrEqual(105);
   });
 });

@@ -1790,6 +1790,42 @@ const ROS_SCHEDULE_KINDS = [
 
 // A day-of `when` token → minutes offset from the anchor. null for pre-day /
 // non-clock tokens (T-1d, T-3d, 'during', 'ongoing') so they're skipped.
+// ─── "End+30m" — A BEAT ANCHORED TO THE END, NOT THE START ───────────────────
+// Four authored rows across Sweet 16 and Quinceanera are teardown work written
+// against the END of the party: 'End', 'End+30m', 'End+1h', 'End +1h'. Every one
+// was dropped in silence, because rosWhenOffset only knows T0 (the START).
+//
+// THE END IS NOT A STORED FACT. `eventWhen` models a start only, and
+// vendorQuestions already says so out loud — "End time confirmed?" carries
+// value 'Not tracked yet' and the consequence "Hard stop needs to be reflected
+// in the run of show". So the anchor is DERIVED, from the same file's own
+// authored data: the END IS THE LAST `program` BEAT. `program` is defined in
+// ROS_SCHEDULE_KINDS as "THE EVENT ITSELF", and in both playbooks that last beat
+// is literally the send-off — Sweet 16's "Last song, favours out, and check
+// every ride before anyone leaves" (T0 +4h), Quinceanera's "Last song, send-off"
+// (T0 +6:05).
+//
+// THE LAST BEAT OF ANY KIND WOULD HAVE BEEN WRONG, and Quinceanera proves it:
+// its cleanup carries a T0 +6h row that lands BEFORE that T0 +6:05 send-off, so
+// a naive "latest row" anchor would put the end of the party before its own last
+// song. Reading `program` alone is what makes this derivation rather than a guess.
+//
+// Returns the DELTA in minutes for an End-anchored token, or null when the token
+// is not End-anchored. A playbook with no program block cannot resolve an End
+// row at all, and it stays dropped rather than being pinned to something else.
+export function rosEndDelta(when) {
+  const w = String(when || '').trim();
+  const m = /^End\s*(?:([+-])\s*(\d+(?:\.\d+)?)\s*(?::(\d{1,2}))?\s*([hm])?)?$/i.exec(w);
+  if (!m) return null;
+  if (!m[1]) return 0;                      // bare 'End'
+  const sign = m[1] === '-' ? -1 : 1;
+  const n = parseFloat(m[2]);
+  const mins = m[3] != null
+    ? (Math.trunc(n) * 60 + Number(m[3]))   // 'End+1:30'
+    : (String(m[4] || '').toLowerCase() === 'm' ? n : n * 60);
+  return sign * Math.round(mins);
+}
+
 export function rosWhenOffset(when) {
   const w = String(when || '').trim();
   if (/^T-\d+d/i.test(w)) return null;          // pre-day shopping/prep
@@ -1993,10 +2029,43 @@ export function playbookRunOfShow(event) {
   const dropCatererCue = foodApproach(event).usesCaterer === false;
   const rows = [];
   let seq = 0;
+  // ── THE END, DERIVED BEFORE ANYTHING IS PLACED ────────────────────────────
+  // An 'End+30m' row cannot be resolved in the same pass that places it, so the
+  // anchor is computed first: the latest `program` beat, which ROS_SCHEDULE_KINDS
+  // defines as "the event itself". See rosEndDelta for why `program` alone and
+  // not the latest row of any kind — Quinceanera's cleanup has a T0 +6h row that
+  // precedes its own T0 +6:05 send-off.
+  //
+  // `whenChoice` is applied here too, so a program beat the host's answers have
+  // gated OUT cannot be the end of their party.
+  const _programEnd = (() => {
+    const list = Array.isArray(playbook.schedules.program) ? playbook.schedules.program : [];
+    let max = null;
+    for (const entry of list) {
+      if (!choiceShown(event, entry.whenChoice)) continue;
+      const o = rosWhenOffset(entry.when);
+      if (o === null) continue;
+      if (max === null || o > max) max = o;
+    }
+    return max;
+  })();
   for (const kind of ROS_SCHEDULE_KINDS) {
     const list = Array.isArray(playbook.schedules[kind.key]) ? playbook.schedules[kind.key] : [];
     for (const entry of list) {
-      const off = rosWhenOffset(entry.when);
+      // An End-anchored row resolves only when this playbook HAS a program to
+      // end. Without one there is nothing to measure from, and it stays dropped
+      // rather than pinned to the start.
+      // A BARE 'End' SITS ON THE BEAT IT IS ANCHORED TO, which is correct and
+      // unrenderable: the board reads equal starts as an OVERLAP, so Sweet 16's
+      // "confirm every teen is picked up" would warn about clashing with the
+      // last song it is meant to follow. It follows by the corpus's own
+      // five-minute sequencing step instead (the same idiom Birthday uses for
+      // preparation -> setup). Five minutes is a sequencing choice, not a claim
+      // about the day; a delta the author WROTE is never adjusted.
+      const _endDelta = rosEndDelta(entry.when);
+      const off = _endDelta !== null
+        ? (_programEnd === null ? null : _programEnd + (_endDelta === 0 ? 5 : _endDelta))
+        : rosWhenOffset(entry.when);
       if (off === null) continue;
       // Same whenChoice vocabulary tasks/purchases/agenda already use (choiceShown
       // returns true for an absent gate, so every existing playbook — none of
