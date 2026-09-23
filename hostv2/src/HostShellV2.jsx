@@ -127,6 +127,7 @@ import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
+import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
@@ -1217,6 +1218,39 @@ export default function HostShellV2() {
         </div>
       )}
       {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
+      {/* ── "AM I EVEN PICKING THE VENUE HERE?" (host ruling 2026-09-22) ──────
+          The venue blocker is the most privileged item on the board: it reaches
+          the hero at EVERY urgency where every other blocker needs `critical`,
+          and it reports vendors, timeline and logistics as waiting on it. Right
+          for a host who is choosing a venue; wrong for the host who already has
+          one, or is booking through a resort or a travel agent. They got "Pick
+          the place in Santa Fe." on every open, with no way to say "not through
+          you".
+
+          PARKING IS NOT ANSWERING — no venue field is written, so the parts
+          meter still shows the address as unhandled. The app does not learn
+          where the event is; it stops being the one asked to find out. The
+          parked state stays VISIBLE here and is one tap to undo, because a
+          stand-down nobody can see is how a host loses a step for good. */}
+      {venueParked(event) ? (
+        <div style={{ marginTop: 'var(--sp-2)' }}>
+          <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}>
+            Parked — you’re sorting the venue yourself, so the plan has stopped leading with it.
+            It still shows as unanswered above, because we don’t know the place yet.
+          </p>
+          <button className="mini" onClick={() => patchEvent(
+            unparkVenuePatch(event),
+            'Back on the list — the plan will help you find a place again.')}
+          >Actually, help me find one</button>
+        </div>
+      ) : (
+        <div style={{ marginTop: 'var(--sp-2)' }}>
+          <button className="mini" onClick={() => patchEvent(
+            parkVenuePatch(event),
+            'Parked — the plan will stop leading with the venue.')}
+          >I’m handling the venue myself</button>
+        </div>
+      )}
     </>
   );
 
