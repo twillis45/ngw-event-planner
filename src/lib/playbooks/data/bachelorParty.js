@@ -63,6 +63,12 @@ const bachelorParty = {
     { id: 't_collect', milestoneId: 'bp_rsvp', phase: 'guest', label: 'Lock headcount; collect each person\'s share (cover the groom)', when: 'T-5d' },
     { id: 't_nonperish_shop', milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Beer, whiskey, mixers, WATER, disposables, snacks', when: 'T-3d' },
     { id: 't_fresh_shop', milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Proteins / wings / pizza order, fresh food', when: 'T-1d' },
+    // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
+    // T-1d. `t_fresh_shop` buys the proteins and `bp_shop_fresh` is the milestone
+    // for buying them; nothing marinated them. Charging phones and confirming
+    // rides, which shared that dead row, are NOT repeated here — both already
+    // have live carriers (`T0 -3h` in the setup block, and `t_rides`).
+    { id: 't_prep_protein', milestoneId: 'bp_shop_fresh', phase: 'food', label: 'Prep or marinate the proteins the night before, or place the pizza order so it only needs a phone call on the day', when: 'T-1d' },
     { id: 't_setup', milestoneId: 'bp_setup', phase: 'setup', label: 'Stock the base, build the bar + a visible water/food station, confirm rides', when: 'T0 -2h' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Get the groom home/to bed safe, headcount the crew, pack leftovers, bag bottles/cans, settle the split', when: 'T0 +8:00' },
   ],
@@ -114,13 +120,7 @@ const bachelorParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Beer, whiskey, mixers, WATER + electrolytes, N/A options, snacks, disposables, decor, aftercare, cleanup kit' },
-      { when: 'T-1d', what: 'Proteins / wings / confirm the pizza order, fresh food' },
-      { when: 'T0', what: 'Ice (lots) + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Prep/marinate proteins or stage the pizza order; charge phones + speaker; confirm rides + reservations' },
       { when: 'T0 -2h', what: 'Chill the beer, set up coolers + ice, lay out food + water station, confirm the DD/rides one more time' },
     ],
     setup: [

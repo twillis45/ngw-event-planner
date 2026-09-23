@@ -230,14 +230,7 @@ const retirementParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Alcohol, the honoree\'s favorite drink, beer/seltzer, coffee/tea, non-alcoholic, paper goods, decor, memory-display materials, the signing card, cleanup kit' },
-      { when: 'T-1d', what: 'Buffet proteins + sides, produce, cake, flowers, cold apps' },
-      { when: 'T0', what: 'Ice (1.5 lb/guest) + any last fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Print photos and finalize/export the slideshow to the play device; charge it; assemble the memory-wall layout' },
-      { when: 'T-1d evening', what: 'Make-ahead food (reheatable mains, assembled cold items), prep buffet pans, build any cheese/charcuterie base' },
       { when: 'T0 -4h', what: 'Chill all wine/beer/favorite-drink; reheat or stage anything that warms fast for the buffet' },
       { when: 'T0 -1h', what: 'Final plating; fill the chafing dishes; light candles; cue the slideshow' },
     ],

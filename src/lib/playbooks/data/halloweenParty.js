@@ -224,13 +224,7 @@ const halloweenParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-10d', what: 'Decor, walkway lighting, LED candles, prizes, non-food treats, craft supplies, tableware, first-aid restock' },
-      { when: 'T-4d', what: 'Pumpkins — close to the party so carved faces survive to the night' },
-      { when: 'T-3d', what: 'Candy, party food, drinks; batch the themed cocktail the same day' },
-    ],
     preparation: [
-      { when: 'T-1d evening', what: 'Carve and LED-light the pumpkins, decorate with paths kept clear, hang the walkway lights, walk the whole guest route in the dark as the final check' },
     ],
     setup: [
       { when: 'T0 -4h', what: 'Food prep: the warm anchor dish on, themed bites assembled, treat trays built' },

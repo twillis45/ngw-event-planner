@@ -25,9 +25,18 @@
 // look identical from the outside. One is a decision with a comment explaining
 // it. The other is a typo nobody has noticed yet.
 //
-// WHAT THIS DOES NOT CLAIM. An empty bin does not mean every row reaches a
-// host — the BY RULE bin is large and where those rows surface is a separate
-// question. It means no row is being dropped for a reason nobody chose.
+// WHAT THIS DID NOT CLAIM, AND WHAT THEN HAPPENED. As first written this guard
+// was careful to say that an empty UNKNOWN bin does not mean every row reaches a
+// host: the BY RULE bin held 98 rows, and where those surfaced was a separate
+// question. Asking it turned out to be the bigger finding — they surfaced
+// nowhere, along with 152 rows in a `purchasing` block no function read. All 250
+// were retired on 2026-09-23 once it was established that `tasks[]` and
+// `purchases[]` already carried their content, in better form.
+//
+// So the BY RULE bins for `T-Nd` and `T0 +Nd` are now asserted EMPTY rather than
+// populated, and the calibration test is what keeps that honest — it proves the
+// classifier still recognises those tokens, so an empty bin is a fact about the
+// corpus rather than a broken predicate.
 import { ALL_PLAYBOOKS, rosWhenOffset, rosEndDelta, rosAfterMoment } from '../playbooks';
 
 // The tokens the parser recognizes and deliberately keeps off the day-of board.
@@ -66,7 +75,8 @@ describe('no schedule row is dropped for a reason nobody chose', () => {
   test('(premise) the sweep actually reaches the corpus, not an empty list', () => {
     // An assertion over nothing passes. This is the guard on the guard.
     const rows = everyRow();
-    expect(rows.length).toBeGreaterThan(700);
+    // Was >700 before the 2026-09-23 retirement took 250 rows out; 674 now.
+    expect(rows.length).toBeGreaterThan(600);
     expect(new Set(rows.map((r) => r.type)).size).toBeGreaterThan(25);
     expect(new Set(rows.map((r) => r.key))).toContain('cleanup');
   });
@@ -100,21 +110,40 @@ describe('no schedule row is dropped for a reason nobody chose', () => {
     expect(everyRow().filter((r) => classify(r.when) === 'blank')).toEqual([]);
   });
 
-  test('the day-after rows really are a POPULATED bin, not an empty rule', () => {
-    // If `T0 +Nd` ever stopped matching, the guard above would go quiet and
-    // fourteen rows would move into a bin this test says is empty. This holds
-    // the rule itself honest.
-    const after = everyRow().filter((r) => /^T0\s*[+-]\s*\d+\s*d\b/i.test(r.when));
-    expect(after.length).toBeGreaterThanOrEqual(14);
-    for (const r of after) expect(classify(r.when)).toBe('by-rule');
-    // Housewarming's morning-after row was the corpus's only dialect spelling
-    // (`T+1 morning`) and is now in this bin with the rest.
-    expect(after.some((r) => r.type === 'Housewarming')).toBe(true);
+  test('THE BY-RULE BINS ARE NOW EMPTY TOO, because those rows were retired', () => {
+    // These two bins held 98 rows when this guard was written, and the guard
+    // asserted them POPULATED so a regex that stopped matching could not empty
+    // the UNKNOWN bin by accident. That reasoning is now inverted: the rows were
+    // retired (2026-09-23) once it was established they reached no host and that
+    // `tasks[]` and `purchases[]` already carried their content, better.
+    //
+    // So the assertion flips to zero — and the calibration test above is what
+    // keeps it honest, because it proves `classify` still RECOGNISES these
+    // tokens. An empty bin because nothing is authored is a fact; an empty bin
+    // because the classifier broke would fail there, not here.
+    expect(everyRow().filter((r) => /^T-\d+d/i.test(r.when))).toEqual([]);
+    expect(everyRow().filter((r) => /^T0\s*[+-]\s*\d+\s*d\b/i.test(r.when))).toEqual([]);
   });
 
-  test('and so is the pre-day bin — much the largest of the three', () => {
-    const before = everyRow().filter((r) => /^T-\d+d/i.test(r.when));
-    expect(before.length).toBeGreaterThanOrEqual(70);
-    for (const r of before) expect(classify(r.when)).toBe('by-rule');
+  test('…and `purchasing`, the block nothing read, is gone from every playbook', () => {
+    // 152 rows across 45 playbooks, in a key that was not in ROS_SCHEDULE_KINDS
+    // and that no other function named. Asserted by ABSENCE OF THE KEY, not by a
+    // row count, so re-adding an empty block to "keep the shape" also fails.
+    const withBlock = ALL_PLAYBOOKS
+      .filter((pb) => pb.schedules && 'purchasing' in pb.schedules)
+      .map((pb) => pb.type);
+    expect(withBlock).toEqual([]);
+  });
+
+  test('what REMAINS is a day sheet that renders almost all of itself', () => {
+    // The end state the retirement bought, stated as a fact rather than implied:
+    // every schedule row left in the corpus either lands on the day board, runs
+    // all through the day, or is gated to a choice this bare event has not made.
+    const rows = everyRow();
+    expect(rows.length).toBeGreaterThan(600);
+    for (const r of rows) expect(['resolves', 'anchored', 'by-rule']).toContain(classify(r.when));
+    // `Day N` is the one by-rule form still authored — the multi-day agendas.
+    const byRule = rows.filter((r) => classify(r.when) === 'by-rule');
+    for (const r of byRule) expect(r.when).toMatch(/^(Day\s+\d|during|ongoing)/i);
   });
 });

@@ -456,20 +456,7 @@ const quinceanera = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-240d', what: 'Order the ballgown and court attire' },
-      { when: 'T-180d', what: 'Book and deposit caterer, photographer/video, DJ/banda, and baker' },
-      { when: 'T-90d', what: 'Book florist and decor; send invitations' },
-      { when: 'T-14d', what: 'Buy ceremonial items: heels, last doll, crown/scepter, toast glasses, candles/roses, favors' },
-      { when: 'T-3d', what: 'Decor, beverages, cleanup supplies, any tableware the venue does not supply' },
-      { when: 'T-1d', what: 'Cake and flower pickup/delivery confirmation; appetizers' },
-      { when: 'T0', what: 'Ice (day-of so it does not melt) and any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-60d', what: 'Weekly vals and surprise-dance rehearsals; court attire fittings' },
-      { when: 'T-30d', what: 'Final gown fitting; lock headcount; give the caterer the final count' },
-      { when: 'T-7d', what: 'Final full rehearsal; brief the MC; confirm every vendor and court member by phone' },
-      { when: 'T-1d', what: 'Stage all ceremonial items; confirm hair/makeup call time and transportation' },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Hair and makeup for the quinceañera and court; photographer for getting-ready shots' },

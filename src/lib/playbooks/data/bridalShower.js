@@ -117,13 +117,7 @@ const bridalShower = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Decor, favors, prizes, bubbly, mixers, games, gift log, tableware, cleanup kit' },
-      { when: 'T-1d', what: 'Fresh food, cake/desserts, juice, flowers' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Make-ahead bites + dessert; assemble favors; set up games; prep the gift log' },
       { when: 'T0 -3h', what: 'Plate food, build the coffee/mimosa bar, chill bubbly + juice' },
     ],
     setup: [

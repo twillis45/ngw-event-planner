@@ -118,11 +118,6 @@ const lowCountryBoil = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Old Bay/crab boil, smoked sausage, red potatoes, corn, butter, lemons, cocktail/hot sauce, drinks, propane, safety kit, newspaper/kraft paper, tableware, cleanup kit' },
-      { when: 'T-1d', what: 'Fresh shrimp (and crab/crawfish/clams if doing add-ins)' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     // ── TWO ROWS THAT FELL OFF THE DAY SHEET OVER A MISSING PREFIX ────────
     // Authored 'T-3h' / 'T-1h'; `rosWhenOffset` parses 'T0 -3h' and returns
     // null for these, so both were skipped in silence and neither ever reached

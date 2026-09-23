@@ -129,13 +129,7 @@ const dayParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Spirits, punch base, mixers, beer/wine, lots of water, cups + disposables, decor + photo wall, cleanup kit, speaker rental if needed' },
-      { when: 'T-1d', what: 'Fresh garnish + punch fruit, light-bite ingredients' },
-      { when: 'T0', what: 'Ice (lots — ~2 lb/guest) + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Batch the punch (dilute ~10% water), prep cold bites, chill all drinks overnight, download the backup playlist' },
       { when: 'T0 -3h', what: 'Final garnish prep; stage food on the grazing table; charge the backup speaker' },
     ],
     setup: [

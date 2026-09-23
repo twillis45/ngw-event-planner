@@ -119,17 +119,7 @@ const surpriseProposal = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T0', what: 'Flowers if you’re bringing them, collected on the way' },
-      { when: 'T-42d', what: 'Order the ring (custom 4-6 wk); set financing + insurance' },
-      { when: 'T-5d', what: 'Pick up the ring; verify fit + insurance rider' },
-      { when: 'T-3d', what: 'LED candles, "Marry Me" sign, slim ring box, keepsake' },
-      { when: 'T-1d', what: 'Fresh flowers, petals (if allowed), champagne for the toast' },
-    ],
     preparation: [
-      { when: 'T-7d', what: 'Scout + walk the spot with the photographer; mark positions, gates, parking, closing times' },
-      { when: 'T-2d', what: 'Brief the ring-bearer/helper on the cue + handoff; stage décor; finalize the cover story' },
-      { when: 'T-1d', what: 'Confirm forecast + Plan B; confirm photographer 48h out; confirm reservation / family reveal' },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Ring on your person; check the setting once more in today’s weather' },

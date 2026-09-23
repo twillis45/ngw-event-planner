@@ -18,12 +18,13 @@
 
 // ─── food.ice.event_supply ───────────────────────────────────────────────────
 //
-// SEMANTIC AUDIT (all 29 `p_ice` lines, measured not assumed):
-//   unit         'lb'      — all 29, no exceptions
-//   category     'beverage'— all 29
-//   essential    true      — all 29
-//   buyAt        'T0'      — all 29 (day-of, because it melts)
-//   qtyFlat      absent    — all 29 are strictly per-guest
+// SEMANTIC AUDIT (all `p_ice` lines, measured not assumed — 29 at the audit,
+// 30 since 2026-09-23; the added line is noted at its entry below):
+//   unit         'lb'      — all of them, no exceptions
+//   category     'beverage'— all of them
+//   essential    true      — all of them
+//   buyAt        'T0'      — all of them (day-of, because it melts)
+//   qtyFlat      absent    — all of them are strictly per-guest
 //   meaning      chilling beverages + filling coolers + cups, per every authored note
 //
 // Hidden subtypes were ruled OUT rather than assumed absent. Specifically checked:
@@ -34,7 +35,8 @@
 // Quinceanera notes the venue MAY supply it — a sourcing caveat on the same claim,
 // not a different claim.
 //
-// So: one family, 29 members, five authored variants preserved.
+// So: one family, 30 members, five authored variants preserved — the variants
+// have NOT changed since the audit; the new line reuses 1.5.
 export const ICE_FAMILY = Object.freeze({
   id: 'food.ice.event_supply',
   label: 'Ice for drinks and coolers',
@@ -59,7 +61,7 @@ export const CONDITION_EVIDENCE = Object.freeze({
 });
 
 /**
- * The 29 members, transcribed from the authored `note` of each line by a human read.
+ * The members, transcribed from the authored `note` of each line by a human read.
  *
  * `authoredCondition` is a HUMAN READING of what the note says, recorded here so it
  * is reviewable, not parsed from prose at runtime. Regex over a display string would
@@ -86,6 +88,16 @@ export const ICE_MEMBERS = Object.freeze([
   { assetId: 'Fish Fry', value: 1.5, condition: 'cold drinks', evidence: 'authored_condition' },
   { assetId: 'Holiday Party', value: 1.5, condition: 'full bar plus chilling tubs', evidence: 'authored_condition' },
   { assetId: 'Low Country Boil', value: 1.5, condition: 'keeping beer and tea cold all afternoon', evidence: 'authored_condition' },
+  // ADDED 2026-09-23 — the 30th member. This playbook sold bottled drinks from an
+  // outdoor stand and carried no ice line at all; the only mention of any lived in
+  // `schedules.purchasing`, a block nothing in the codebase reads. It joins THIS
+  // family on the family's own boundary rule — same unit, same category, same
+  // day-of buy, same meaning (chilling beverages) — and it takes an EXISTING
+  // authored variant rather than introducing a new one.
+  //
+  // Its condition records why it sits at the FLOOR of the outdoor range: the tubs
+  // hold sealed bottles, so the cup half of the job every source measures is absent.
+  { assetId: 'PTA / Booster Fundraiser', value: 1.5, condition: 'outdoor stand chilling sealed bottled drinks in tubs; floor of the 1.5-2 outdoor range because nothing is poured over ice', evidence: 'authored_condition' },
   { assetId: 'Quinceañera', value: 1.5, condition: 'long event with a bar; venue or caterer may supply it', evidence: 'authored_condition' },
   { assetId: 'Retirement Party', value: 1.5, condition: 'chilling bottles and drink ice; author states add 15-20% for melt', evidence: 'authored_rule' },
   { assetId: 'Vow Renewal', value: 1.5, condition: 'chilling and drinks; author states more in heat', evidence: 'authored_rule' },

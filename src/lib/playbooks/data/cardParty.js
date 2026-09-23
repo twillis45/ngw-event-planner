@@ -127,13 +127,7 @@ const cardParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Cards + score pads + pens (count decks now), non-perishables: chips, party mix, soda/water, napkins, cups/plates, trash bags' },
-      { when: 'T-1d', what: 'Main shop: pot ingredients, wings/meatballs, deviled-egg + charcuterie makings, dips, sweets, liquor/mixers/wine/beer, punch base' },
-      { when: 'T0', what: 'Pick up ice last so it does not melt' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Boil + fill deviled eggs, build the charcuterie, portion dips, season/marinate proteins, mix the punch base, start chilling all drinks' },
       { when: 'T0 -3h', what: 'Pot on low and slow; bake/fry wings + meatballs to hit warm at start; plate the cold spread' },
     ],
     setup: [

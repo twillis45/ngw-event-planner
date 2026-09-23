@@ -161,15 +161,7 @@ const clientDinner = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Client gift, thank-you cards and stamps, and the bottle for the table if corkage is allowed' },
-      { when: 'T-1d', what: 'Place cards, written to the final seating plan' },
-    ],
     preparation: [
-      { when: 'T-14d', what: 'Per-head cap agreed, card left on file, room noise and accessibility confirmed' },
-      { when: 'T-10d', what: 'Dietary list to the restaurant in writing; set menu or ordering approach agreed' },
-      { when: 'T-5d', what: 'Talking points written; your own side briefed; screen and power confirmed if there is a program' },
-      { when: 'T-2d', what: 'Reservation, headcount, dietary list and arrival time reconfirmed; logistics sent to guests' },
     ],
     setup: [
       { when: 'T0 -4h', what: 'Reconfirm the table, the headcount and the dietary list with the restaurant one last time' },
@@ -191,8 +183,6 @@ const clientDinner = {
     cleanup: [
       { when: 'during', what: 'Keep the check away from the table; note every promise as it is made' },
       { when: 'T0 +1h', what: 'Write up what you learned and what you promised, while it is still exact' },
-      { when: 'T0 +1d', what: 'Thank-you note and every promised follow-up sent' },
-      { when: 'T0 +2d', what: 'Expense report filed with the itemized receipt and the attendee list; outcome logged against the account' },
     ],
   },
 

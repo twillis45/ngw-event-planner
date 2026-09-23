@@ -122,12 +122,6 @@ const crawfishBoil = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-10d', what: 'Reserve the live crawfish sacks with a supplier (spring, while they\'re running)' },
-      { when: 'T-3d', what: 'Boil seasoning + cayenne + salt, lemons, potatoes, corn, sausage, onions/garlic/mushrooms, drinks, paper/newspaper, propane (full + backup), napkins/cleanup' },
-      { when: 'T-1d / T0 morning', what: 'Pick up the LIVE crawfish; grab last fresh fixings' },
-      { when: 'T0', what: 'Ice (a lot) + any last-minute drinks' },
-    ],
     preparation: [
       { when: 'T0 -2h', what: 'Purge and rinse the live crawfish in clean water until clear; cull the dead; cut potatoes/corn/sausage/onions; mix the seasoning' },
       { when: 'T0 -1h', what: 'Stage the basket, paddle, long tools, gloves, and the timing order (potatoes → corn/sausage → crawfish → soak)' },

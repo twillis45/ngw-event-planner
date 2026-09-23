@@ -636,16 +636,7 @@ const watchParty = {
   ],
 
   schedules: {
-    purchasing: [
-      // Same rule as the two shopping TASKS above: the purchasing schedule was
-      // a second hand-kept copy of the shopping list, naming chili and wings a
-      // host may have removed. It defers to the list instead of restating it.
-      { when: 'T-3d', what: 'The non-perishables on your list — everything that keeps' },
-      { when: 'T-1d', what: 'The fresh items on your list — the last run before the day' },
-      { when: 'T0', what: 'Ice (and pizza delivery / fresh pickup)' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Make chili + dips ahead; thaw wings; clear fridge space for drinks' },
       // Twinned with t_cook. Before cook_method existed this row and the task said
       // the same single thing; now that the task branches, an unbranched row would
       // hand a slow-cooker host a day board reading T0-1:30 against a checklist

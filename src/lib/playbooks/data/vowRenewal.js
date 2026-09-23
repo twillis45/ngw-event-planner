@@ -178,14 +178,7 @@ const vowRenewal = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Alcohol + champagne, non-perishables, decor, the arch/backdrop, guest book + pen, music kit, signage, paper + cleanup goods' },
-      { when: 'T-1d', what: 'Fresh food, florals, garnish; pick up the cake' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-7d', what: 'Rehearse the ceremony (processional, vows order, ring/keepsake handoff, toast cue); confirm the officiant + reader' },
-      { when: 'T-1d evening', what: 'Make-ahead food, prep platters, label serving dishes; assemble + test the arch/backdrop; write the run-of-show' },
       { when: 'T0 -4h', what: 'Finish cooking/assembly; dress the arch with florals; lay out the guest-book table and program cards' },
       { when: 'T0 -1h', what: 'Bring food to serving temp; final music + speaker check; brief the reader/officiant on the cue order' },
     ],

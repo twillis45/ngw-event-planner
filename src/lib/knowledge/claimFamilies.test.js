@@ -20,10 +20,13 @@ describe('the family is complete and semantically coherent', () => {
     const corpus = iceLines().map((r) => r.pb.type).sort();
     const members = ICE_MEMBERS.map((m) => m.assetId).sort();
     expect(members).toEqual(corpus);
-    expect(members.length).toBe(29);
+    // 29 at the 5G-C1 audit; 30 since 2026-09-23, when PTA / Booster Fundraiser
+    // gained the ice line it had always lacked. Raise this ONLY alongside a new
+    // member entry that states its condition.
+    expect(members.length).toBe(30);
   });
 
-  test('all 29 share unit, category, essentiality and buy timing', () => {
+  test('all of them share unit, category, essentiality and buy timing', () => {
     // The audit that justified one family rather than several. Measured, not assumed.
     for (const { p } of iceLines()) {
       expect(p.unit).toBe('lb');

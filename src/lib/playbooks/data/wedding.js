@@ -169,22 +169,12 @@ const wedding = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T0', what: 'Ice, and any last fresh items the florist or caterer didn’t bring' },
-      { when: 'T-180d', what: 'Pay design-vendor deposits (florist, baker, rentals, stationery); order attire if not already' },
-      { when: 'T-14d', what: 'Final vendor balances paid; tip envelopes prepped; favors/welcome-bag/signage materials in hand' },
-      { when: 'T-3d', what: 'Buy/assemble favors, welcome bags, emergency kit, signage, guest book; toast champagne + bar alcohol IF self-supplied' },
-    ],
     preparation: [
-      { when: 'T-60d', what: 'Menu tasting, hair/makeup trial, build the run-of-show, draft the seating chart' },
-      { when: 'T-7d', what: 'Distribute run-of-show to every vendor; confirm arrival windows; DECIDE the rain plan' },
-      { when: 'T-1d', what: 'Rehearsal + dinner; pack the emergency kit; assemble welcome bags; brief the wedding party' },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Party dressed and photographed getting ready; someone brings them food they can eat in a robe' },
       { when: 'T0 -4h', what: 'Ceremony chairs, aisle and arch set; sound check the officiant’s mic and the processional music' },
       { when: 'T0 -3h', what: 'Escort cards, seating chart, guest book and favours placed; the emergency kit staged where the party is' },
-      { when: 'T-1d', what: 'Drop welcome bags at the hotel; deliver décor/signage/seating cards to the venue; stage the emergency kit' },
       { when: 'T0 -6h', what: 'Hair + makeup begins (start early; ~45 min/face + bride buffer); vendors load in; florist + rentals dress the room' },
       { when: 'T0 -2h', what: 'Final venue walk-through; place escort cards, favors, signage, guest book; sound check; first look + portraits' },
     ],
@@ -200,7 +190,6 @@ const wedding = {
     ],
     cleanup: [
       { when: 'during', what: 'Coordinator distributes tip envelopes; collects gifts/cards to a secured spot; tracks rental counts' },
-      { when: 'T0 +1d', what: 'Vendors strike + load out; rentals returned/collected; gifts and personal items retrieved; final balances/tips reconciled' },
     ],
   },
 

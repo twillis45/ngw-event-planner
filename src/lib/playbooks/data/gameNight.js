@@ -106,13 +106,7 @@ const gameNight = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Any new game + non-perishables (chips, crackers, soda, napkins/hand wipes, cups, trash bags, scorepad)' },
-      { when: 'T-1d', what: 'Main shop: perishable snacks, charcuterie, dessert, beer/wine, batch-drink ingredients' },
-      { when: 'T0', what: 'Pick up ice last so it does not melt' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Pre-portion dips, assemble the snack/charcuterie board, start chilling all drinks' },
       { when: 'T0 -2h', what: 'Plate snacks, mix the batch drink, final fridge check' },
     ],
     setup: [

@@ -451,6 +451,12 @@ const reunion = {
     { id: 't-settle-receipts', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Collect every receipt — pavilion fee, meat, ice, paper goods, shirts, rentals — and total what the day actually cost against what came in', when: 'T0 +7d' },
     { id: 't-settle-reimburse', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Pay back everyone who fronted money, by name and in full, before anyone has to ask', when: 'T0 +7d' },
     { id: 't-settle-share', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Send the family the plain final tally — what came in, what went out, and what is left in the pot for next time', when: 'T0 +7d' },
+    // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
+    // T-7d. The playbook BOOKS caterers and rentals at T-40d/T-38d and then never
+    // touched them again — a reconfirmation pass a week out is a different step
+    // from booking, and it is the one that catches a van that was never actually
+    // reserved.
+    { id: 't-reconfirm-vendors', milestoneId: 'confirm-weather-plan', phase: 'vendor', label: 'Reconfirm every booked vendor and rental a week out: date, delivery window, headcount, and who they call on the day', when: 'T-7d' },
     { id: 't-update-roster', milestoneId: 'carry-the-next-one', phase: 'guest', label: 'Type the sign-in sheet into the family contact list while the handwriting is fresh — new addresses, new phone numbers, new babies, and who moved', when: 'T0 +14d' },
     { id: 't-next-date', milestoneId: 'carry-the-next-one', phase: 'planning', label: 'Ask the family for the next reunion year and month now, while everyone is still saying "we should do this more often"', when: 'T0 +14d' },
     { id: 't-next-committee', milestoneId: 'carry-the-next-one', phase: 'planning', label: 'Name who is carrying the next one — a host or a committee, out loud and in writing — so it is not one person\'s job by default again', when: 'T0 +14d' },
@@ -515,15 +521,7 @@ const reunion = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', do: 'Buy non-perishables: drinks, water, paper goods, trash bags, name tags, sign-in sheet, games, sunscreen.' },
-      { when: 'T-1d', do: 'Buy perishables and protein; pre-chill drinks overnight.' },
-      { when: 'T0', do: 'Buy ice the morning of (~2 lb/guest) so it doesn’t melt before the event.' },
-    ],
     preparation: [
-      { when: 'T-14d', do: 'Finalize run-of-show, name the photographer, and assign volunteer jobs.' },
-      { when: 'T-7d', do: 'Confirm the weather/rain plan and shade; reconfirm any vendors and rentals.' },
-      { when: 'T-1d', do: 'Prep name tags and sign-in sheet; pre-make any host dishes; load the car.' },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Collect the rentals, the ice and anything the host staples list still needs' },
@@ -548,7 +546,6 @@ const reunion = {
       { when: 'T0+4h', do: 'Start consolidating food, send leftovers home in guests’ own containers.' },
       { when: 'T0+4.5h', do: 'Bag all trash and recycling; collect coolers, rentals, and shared supplies.' },
       { when: 'T0+5h', do: 'Walk the entire site for litter and left-behind items; return the space cleaner than found.' },
-      { when: 'T0+1d', do: 'Return rentals; share the group photo and updated contact list with all households.' },
     ],
     // ── W1.3: the weekend agenda — the arc the reunion research documents
     // (arrival evening / the big day / farewell morning, same shape as

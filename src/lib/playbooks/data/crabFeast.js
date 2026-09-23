@@ -253,14 +253,7 @@ const crabFeast = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-5d', what: 'Pre-order the crabs by size and count; lock a steamed pickup time if ordering steamed; reserve tables/canopy if renting' },
-      { when: 'T-3d', what: 'Old Bay/J.O., apple-cider vinegar, sides, beer/soda/water/tea, paper table cover, mallets & knives, paper towels, tableware, trash bags & shell bucket' },
-      { when: 'T-1d', what: 'Butter, corn, and any fresh side produce' },
-      { when: 'T0', what: 'Pick up the hot steamed crabs and steamed shrimp; buy ice last' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Make coleslaw and potato salad; set out mallets, crab knives, bibs, and the butter/vinegar dishes' },
       { when: 'T0 -1:30', what: 'Steam/boil the corn and shrimp; melt butter; pour vinegar into dipping bowls; if steaming your own crabs, get the pot and liquid ready' },
     ],
     setup: [

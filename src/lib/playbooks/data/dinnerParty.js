@@ -116,13 +116,7 @@ const dinnerParty = {
   // Day-of run-of-show schedules (brought into src from the canonical
   // dinner-party.playbook.json so the runtime can surface them — Sprint 55H-B1).
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Pantry, alcohol, paper goods, candles, non-perishables, dish/cleanup kit' },
-      { when: 'T-1d', what: 'Proteins, produce, bread, dairy, dessert ingredients, flowers' },
-      { when: 'T0', what: 'Ice + any last-minute fresh herbs/garnish' },
-    ],
     cooking: [
-      { when: 'T-1d evening', what: 'Braises/sauces/soup, dessert, full mise en place, marinate proteins' },
       { when: 'T0 -4h', what: 'Slow-cook/roast items; prep salad components (dress later)' },
       { when: 'T0 -1h', what: 'Reheat make-ahead; bring proteins to room temp' },
       { when: 'guests arrive', what: 'Plate appetizer; finish/plate mains; dress salad' },

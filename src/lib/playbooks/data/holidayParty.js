@@ -112,6 +112,12 @@ const holidayParty = {
     { id: 't_rental_count', milestoneId: 'hp_rental_return', phase: 'cleanup', label: 'Count the rentals back against the packing slip and note anything broken yourself — a chipped glass you report costs less than one they find', when: 'T0 +1d' },
     { id: 't_final_invoices', milestoneId: 'hp_settle', phase: 'payment', label: 'Pay the caterer and bartender their final balance and settle the gratuity you promised — staff worked a December night for you', when: 'T0 +3d' },
     { id: 't_thanks_bar', milestoneId: 'hp_settle', phase: 'guest', label: 'Thank the bartender and anyone who stayed to help by name — the same people are who you want back next December', when: 'T0 +3d' },
+    // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
+    // `T-1d evening`. The BATCHED cocktail is this playbook's whole drinks
+    // strategy — `p_signature`'s own note says "Batch ahead so no one mixes to
+    // order" — and the only thing that ever performed the batching was a row no
+    // host could see. Buying the base is not making the punch.
+    { id: 't_batch_drink', milestoneId: 'hp_setup', phase: 'beverage', label: 'Batch the signature cocktail and prep the garnish caddy the night before, so nobody is mixing to order', when: 'T-1d' },
     { id: 't_expense', milestoneId: 'hp_settle', phase: 'payment', label: 'File the expense report while the receipts are still in one pile: venue, catering, bar, rentals, decor — company reimbursement windows close hard at year end', when: 'T0 +3d', whenChoice: { id: 'corporate_layer', in: ['Yes — corporate / mixed teams'] } },
     { id: 't_decor_down', milestoneId: 'hp_decor_down', phase: 'decor', label: 'Take the lights, greenery, and table accents down and box them by room, labeled — the hour you spend now is the hour you save next December', when: 'T0 +7d' },
     { id: 't_decor_notes', milestoneId: 'hp_decor_down', phase: 'planning', label: 'Write down what ran out, what nobody touched, and what you would move — three lines now is next year\'s plan', when: 'T0 +7d' },
@@ -182,13 +188,7 @@ const holidayParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Alcohol, mixers, non-alc, decor, candles, name tags, paper/serve goods, cleanup kit, coffee/tea' },
-      { when: 'T-1d', what: 'Fresh food/garnish, flowers; pick up rentals; pre-stage name tags' },
-      { when: 'T0', what: 'Ice (~1.5 lb/guest) + any last-minute fresh garnish' },
-    ],
     preparation: [
-      { when: 'T-1d evening', what: 'Batch the signature cocktail, prep garnish caddy, assemble cold boards, label dietary signage' },
       { when: 'T0 -4h', what: 'Set up chafers; portion/plate cold stations; chill beer/wine/sparkling' },
       { when: 'T0 -1h', what: 'Warm hot apps; fill water + coffee stations; final bar mise en place' },
     ],

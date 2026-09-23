@@ -210,12 +210,7 @@ const newYearsEveParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Sparkling wine and the zero-proof sparkler to the bottle-per-five math, both food waves, flutes, poppers, decor, cleanup kit' },
-      { when: 'T-1d', what: 'Fresh garnish and bread; anything the wave-prep list turned up short; the bubbles into the refrigerator tonight' },
-    ],
     preparation: [
-      { when: 'T-1d evening', what: 'Prep both food waves; stage the midnight station — flutes counted, bottles chilling, poppers in a bowl; make up the couches if guests are staying' },
     ],
     setup: [
       { when: 'T0 -3h', what: 'The evening spread assembled and covered; the bar built; water station out' },

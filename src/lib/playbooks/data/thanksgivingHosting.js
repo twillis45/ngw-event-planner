@@ -234,13 +234,7 @@ const thanksgivingHosting = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-7d', what: 'Thermometer, roasting pan check, foil and twine — the equipment run, while stores still have them' },
-      { when: 'T-3d', what: 'The big grocery run: everything but the last fresh items; leftover containers and the cleanup kit' },
-      { when: 'T-1d', what: 'Fresh herbs, bakery rolls or pies, flowers for the table, and anything the line-by-line menu check turned up missing' },
-    ],
     preparation: [
-      { when: 'T-1d evening', what: 'Make-ahead cooking: pies, cranberry sauce, casseroles to ready-to-bake, gravy base from stock; set the table; stage the refrigerator' },
     ],
     cooking: [
       { when: 'T0 -6h', what: 'Turkey prepped and into the oven on the map\'s schedule; timer set for the first check' },

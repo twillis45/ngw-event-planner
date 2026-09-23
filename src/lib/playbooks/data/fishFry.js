@@ -116,13 +116,7 @@ const fishFry = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Oil (large qty), cornmeal/breading, seasoning, hot sauce, lemons, starch, drinks, propane, extinguisher, to-go containers, tableware, cleanup kit' },
-      { when: 'T-1d', what: 'Fresh fish + slaw/potato/sides produce + white bread' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Season/soak the fish; make slaw, potato salad, and spaghetti sauce ahead; set up the seasoned-cornmeal dredge' },
       { when: 'T0 -2h', what: 'Cut fish to size, pat dry, stage the dredge station and hot-hold racks' },
     ],
     setup: [

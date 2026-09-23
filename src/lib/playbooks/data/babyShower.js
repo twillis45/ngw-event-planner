@@ -104,13 +104,7 @@ const babyShower = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Decor, favors, mocktail mixers, games, paper goods, tableware, cleanup kit' },
-      { when: 'T-1d', what: 'Fresh food, cake/desserts, flowers' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Make-ahead bites + dessert; assemble favors; set up games' },
       { when: 'T0 -3h', what: 'Plate food, set mocktail station' },
     ],
     setup: [

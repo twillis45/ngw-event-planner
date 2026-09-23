@@ -131,14 +131,7 @@ const kwanzaaGathering = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-14d', what: 'Confirm/borrow the Seven Symbols; order or buy the kinara, mkeka, and unity cup if needed; book caterer/baker if going that route; start zawadi' },
-      { when: 'T-3d', what: 'Mishumaa saba candles (1 black/3 red/3 green), red/black/green decor, drinks, disposables, cleanup + to-go kit' },
-      { when: 'T-1d', what: 'Karamu mains, black-eyed peas, greens, sides, dessert, mazao (fruit/crops), muhindi (corn), juice/cider/wine for the libation' },
-      { when: 'T0', what: 'Any last-minute fresh items + ice for drinks' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Cook stews/one-pot dishes ahead (they reheat well); make cold sides; arrange the mazao basket; chill drinks' },
       { when: 'T0 -3h', what: 'Reheat mains; finish sides; lay out the program/reading near the kinara' },
     ],
     setup: [

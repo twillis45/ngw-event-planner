@@ -70,6 +70,36 @@ const birthday = {
     { id: 't_rsvp', milestoneId: 'bd_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-3d' },
     { id: 't_decor_shop', milestoneId: 'bd_shop_nonperish', phase: 'shopping', label: 'Decor, balloons, drinks, paper goods, favors run', when: 'T-3d' },
     { id: 't_food_shop', milestoneId: 'bd_shop_fresh', phase: 'shopping', label: 'Food + pick up the cake', when: 'T-1d' },
+    // ── MOVED OFF A DEAD SURFACE, 2026-09-23 ─────────────────────────────────
+    // This was a `schedules.preparation` row at T-1d. It carried the conditional
+    // copy below — authored the same week — and reached NO HOST, because the day
+    // board drops every `T-Nd` row by rule and nothing else reads that block.
+    // Retiring those 250 dead rows would have deleted this outright, so it moved
+    // here instead: `playbookChecklist` resolves `copyByAnswer` on tasks, so the
+    // conditional survives intact and now actually renders.
+    //
+    // THE ORIGINAL RULING, PRESERVED. All eleven day-of beats were audited
+    // against `food_style`; only this one is false when the host is not cooking,
+    // because you do not prep make-ahead sides for food someone else is making.
+    // DROP-OFF CATERING AND ORDERED TRAYS BOTH LEAVE THE HOST SERVING — the
+    // caterer drops the food and goes — so the rest of the beats survive, and
+    // rewording them would have invented a caterer who is not there.
+    //
+    // Potluck deliberately keeps the base text: a potluck host still usually
+    // makes something, so dropping the prep would be a different guess.
+    //
+    // "Charge the speaker" is the reason this row was worth saving rather than
+    // dropping. It is the only mention of the speaker anywhere in this playbook,
+    // and a flat battery at the cake moment is the kind of thing nobody plans for.
+    { id: 't_prep_ahead',
+      milestoneId: 'bd_shop_fresh',
+      phase: 'food',
+      label: 'Prep the make-ahead sides; assemble the favor bags; charge the speaker',
+      when: 'T-1d',
+      copyByAnswer: { food_style: {
+        'Order pizza/trays': 'Assemble the favor bags and charge the speaker — no sides to prep, the food is being brought in',
+        'Drop-off catering': 'Assemble the favor bags and charge the speaker — no sides to prep, the food is being brought in',
+      } } },
     { id: 't_decorate', milestoneId: 'bd_setup', phase: 'setup', label: 'Hang decor, blow up balloons, set the table + food station', when: 'T0 -3h' },
     { id: 't_chill', milestoneId: 'bd_setup', phase: 'beverage', label: 'Chill drinks; set up the drinks station + ice', when: 'T0 -2h' },
     { id: 't_cake', milestoneId: 'event', phase: 'food', label: 'Cake + candles moment; cut + serve', when: 'T0 +1:30' },
@@ -129,31 +159,7 @@ const birthday = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Decor, drinks, paper goods, favors, tableware, cleanup kit' },
-      { when: 'T-1d', what: 'Food, cake pickup, candles' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     preparation: [
-      // ── THE ONE BEAT THE HOST'S OWN ANSWER MAKES WRONG ────────────────────
-      // Audited all eleven day-of beats against `food_style` (2026-09-23). Only
-      // this one is false when the host is not cooking: you do not prep
-      // make-ahead sides for food someone else is making. The rest survive, and
-      // the reason is worth recording because it is counter-intuitive —
-      // DROP-OFF CATERING AND ORDERED TRAYS BOTH LEAVE THE HOST SERVING. The
-      // caterer drops the food and goes, so "set food + drinks stations",
-      // "food out while everyone's still arriving" and "leftovers to
-      // containers" are all still the host's, and rewording them would have
-      // invented a caterer who is not there.
-      //
-      // Potluck deliberately keeps the base text: a potluck host still usually
-      // makes something, so dropping the prep would be a different guess.
-      { when: 'T-1d',
-        what: 'Prep make-ahead sides; assemble favors; charge speaker',
-        copyByAnswer: { food_style: {
-          'Order pizza/trays': 'Assemble favors; charge speaker — no sides to prep, the food is being brought in',
-          'Drop-off catering': 'Assemble favors; charge speaker — no sides to prep, the food is being brought in',
-        } } },
       { when: 'T0 -3h', what: 'Decorate, blow up balloons, set food + drinks stations' },
     ],
     setup: [

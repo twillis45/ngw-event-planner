@@ -109,15 +109,7 @@ const pupusaGathering = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T0', what: 'Any last fresh items — cheese, cream, plantain — and ice for drinks' },
-      { when: 'T-5d', what: 'Latin market: masa, quesillo, chicharrón, beans, loroco/ayote; reserve pupusería order if hybrid' },
-      { when: 'T-3d', what: 'Curtido + salsa veg, horchata/tamarindo, beer/sodas, oil, tableware, cleanup kit' },
-      { when: 'T-1d', what: 'Any fresh masa from the tortillería + last produce' },
-    ],
     preparation: [
-      { when: 'T-4d', what: 'Make the curtido and jar it so it can ferment in the fridge' },
-      { when: 'T-1d', what: 'Make salsa roja + refried beans; mix revueltas; portion quesillo; check the comal + oil' },
       { when: 'T0 -1h', what: 'Heat the comal; set the masa bowl, water dish, and fillings on the shaping table' },
     ],
     setup: [

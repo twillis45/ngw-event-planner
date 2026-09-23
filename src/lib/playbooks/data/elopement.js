@@ -110,14 +110,7 @@ const elopement = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Rings, vow books + license folder, toast glasses, ring box' },
-      { when: 'T-1d', what: 'Champagne, the celebratory meal (or confirm reservation), bouquet/florals, pack-out kit' },
-      { when: 'T0', what: 'Ice for the cooler; any last fresh items for the picnic' },
-    ],
     preparation: [
-      { when: 'T-7d', what: 'Obtain the marriage license in person; pack the rings + license folder' },
-      { when: 'T-1d', what: 'Confirm vendors + forecast; practice vows; lay out attire; chill champagne' },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Collect the licence, the rings and the flowers; put them in one bag you carry' },

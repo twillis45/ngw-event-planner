@@ -129,24 +129,13 @@ const conference = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T0', what: 'Day-of catering delivery received and checked against the order' },
-      { when: 'T-30d', what: 'Order badges + lanyards, signage/wayfinding package, swag, printed programs (mind print lead times)' },
-      { when: 'T-3d', what: 'Pick up signage + badges; assemble swag bags; stage the registration desk kit' },
-      { when: 'T-1d', what: 'Registration supplies (printers, scanners, power), stage/speaker water, name tents' },
-    ],
     preparation: [
-      { when: 'T-45d', what: 'Finalize BEOs: break refreshes (~1 gal coffee/20 over a morning, refresh ~every 90 min), lunches, reception bar' },
-      { when: 'T-14d', what: 'Publish attendee app + agenda; send know-before-you-go; confirm shuttle schedule' },
-      { when: 'T-7d', what: 'Submit final headcount guarantee + per-function counts; confirm room sets + turnovers with venue' },
     ],
     setup: [
       { when: 'T0 -6h', what: 'Registration desk built: badges alphabetised, signage placed, wifi card at every seat' },
       { when: 'T0 -5h', what: 'AV check in every room — mic, slides, dial-in, and the recording' },
       { when: 'T0 -4h', what: 'Walk every track room: seating set, water out, room monitors briefed' },
       { when: 'T0 -3h', what: 'Catering confirms delivery windows; dietary tables labelled' },
-      { when: 'T-1d', what: 'Load-in AV; build general-session stage + screens; set breakout rooms; build registration desk + expo floor; place signage' },
-      { when: 'T-1d PM', what: 'Speaker rehearsals + full tech check / dry run; producer walks the run-of-show cues end to end' },
       { when: 'T0 -2h', what: 'Open registration/check-in desk; sound check; verify break stations + first F&B; brief staff + volunteers' },
     ],
     program: [
@@ -161,7 +150,6 @@ const conference = {
     cleanup: [
       { when: 'during', what: 'Run the run-of-show: show-call general session, manage track turnovers, breaks, expo, and reception each day' },
       { when: 'T0 +5m', what: 'Tear down AV + expo; return rentals; collect lost-and-found; reconcile on-site badge/registration data' },
-      { when: 'T0 +2d', what: 'Send post-event survey; reconcile vendor invoices; verify sponsor deliverables; debrief + capture lessons for next year' },
     ],
   },
 

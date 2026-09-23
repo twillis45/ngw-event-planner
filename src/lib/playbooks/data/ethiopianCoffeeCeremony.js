@@ -116,14 +116,7 @@ const ethiopianCoffeeCeremony = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-7d', what: 'Source/borrow the jebena, cini cups, brazier, mortar/grinder' },
-      { when: 'T-3d', what: 'Green coffee, frankincense, berbere, niter kibbeh, charcoal, sugar, cleanup kit; reserve injera' },
-      { when: 'T-1d', what: 'Wat ingredients (meat + vegan), popcorn, himbasha' },
-      { when: 'T0', what: 'Pick up fresh injera; cut fresh grass (ketema)' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Cook the wats — doro wat and the vegan shiro/misir/gomen spread; they deepen overnight' },
       { when: 'T0 morning', what: 'Pop the popcorn; gather and trim the fresh grass; wash the green beans' },
     ],
     setup: [

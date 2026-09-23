@@ -460,16 +460,7 @@ const sweet16 = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-30d', what: 'Order decor, backdrop, favors, and lighting' },
-      { when: 'T-14d', what: 'Place food/catering order and cake order' },
-      { when: 'T-3d', what: 'Buy tableware, decor, cleanup supplies, photo-booth props' },
-      { when: 'T-1d', what: 'Buy perishables, soda, mocktail mixers, cake pickup' },
-      { when: 'T0', what: 'Buy ice (day-of so it does not melt)' },
-    ],
     preparation: [
-      { when: 'T-7d', what: 'Write run-of-show; confirm DJ, chaperones, and headcount' },
-      { when: 'T-1d', what: 'Prep make-ahead food; pre-batch mocktail syrups; charge backup playlist device' },
       { when: 'T0 +5m', what: 'Set out food at serving time; fill ice tubs and drink dispensers' },
     ],
     setup: [

@@ -209,6 +209,35 @@ const ptaBoosterFundraiser = {
     { id: 'p_raffle_tickets', item: 'Raffle ticket roll (double stub)', category: 'logistics', qtyFlat: 1, unit: 'roll', where: ['Party store', 'Office supply', 'Amazon'], unitCostRange: [8, 20], essential: false, buyAt: 'T-14d', dependsOnDecision: 'raffle', note: 'Only after the permit check clears. If the state requires drawing rules printed on the ticket, that changes the order — check first, print second.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     { id: 'p_concession_food', item: 'Stand food (pizza order, popcorn, bake-sale trays, candy)', category: 'food', qtyPerGuest: 1.5, unit: 'servings', where: ['Costco', 'Grocery', 'Local pizza shop'], unitCostRange: [0.75, 2], essential: true, buyAt: 'T-3d', dependsOnDecision: 'concessions', note: 'Cheap, high-margin, kid-friendly. Size the pizza order to presale, staged in two waves so the last hour is not sold out. Label ingredients and keep one clearly nut-free option.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     { id: 'p_drinks', item: 'Bottled water, juice boxes, and soda for the stand', category: 'beverage', qtyPerGuest: 1.5, unit: 'drinks', where: ['Costco', 'Grocery'], unitCostRange: [0.25, 0.6], essential: true, buyAt: 'T-3d', dependsOnDecision: 'concessions', note: 'Water and juice boxes outsell soda at a kid-heavy event. No alcohol — school grounds, full stop.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+    // ── THE DRINKS HAD NOTHING TO KEEP THEM COLD (added 2026-09-23) ──────────
+    // This playbook sold bottled water, juice boxes and soda from an outdoor
+    // stand and carried NO ice, no tubs and no coolers anywhere. The only
+    // mention was a `schedules.purchasing` row — "Ice for the drink tubs" — in a
+    // block no function in the codebase reads, so it reached nobody. Found while
+    // retiring those dead rows: of 250 of them, this was the single clause whose
+    // content existed on no live surface. Deleting the row did not create the
+    // gap; it made it visible.
+    //
+    // 1.5 lb/guest, WHICH IS THE LOW END OF WHAT THE SOURCES SAY FOR OUTDOORS,
+    // and the reason is the job this ice actually does. `ice-party-2026` (two
+    // independent publishers) puts a cookout at 1.5 lb and a WARM OUTDOOR party
+    // at 2; `reddy-ice-2026` says 1-2 with an outdoor worked example computing to
+    // 2.1, and the registry discloses that that publisher manufactures ice and
+    // profits from a higher multiplier. So the honest range for an outdoor event
+    // is 1.5-2, and 1.5 is the floor of it.
+    //
+    // The floor is taken because a concession stand chills SEALED BOTTLES in
+    // tubs. Every one of these sources measures ice for drinks that get POURED —
+    // cooler plus cup — and the cup half does not exist here. No source prices
+    // chilling-only separately, which is what `sufficientWhen` says out loud
+    // rather than letting 1.5 read as measured. A committee running tubs in July
+    // should buy 2.
+    //
+    // The cost band spans CHANNELS, not a disagreement: 10-12c/lb at a warehouse
+    // club against 23-31c at a grocery shelf, both cited. A PTA buying for a
+    // school field is a warehouse-club shopper, so the floor is the realistic
+    // number and the ceiling is the gas-station mistake.
+    { id: 'p_ice', item: 'Ice for the drink tubs', category: 'beverage', qtyPerGuest: 1.5, unit: 'lb', where: ['Warehouse club', 'Grocery'], unitCostRange: [0.11, 0.31], essential: true, buyAt: 'T0', dependsOnDecision: 'concessions', note: 'COMMONLY FORGOTTEN — the stand sells drinks and nothing chills them. Buy it the morning of, not the day before: it melts. The real driver is how many tubs you run, so count the tubs and add a spare bag for a hot afternoon.', provenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['ice-party-2026', 'reddy-ice-2026'], lastVerified: '2026-09-23', claim: 'About 1.5 lb of ice per guest for an outdoor school fundraiser chilling bottled drinks in tubs. Two independent party-planning publishers (ice-party-2026) put a cookout at 1.5 lb and a warm outdoor party at 2; Reddy Ice states 1-2 lb per person with an outdoor worked example computing to 2.1. 1.5 is the FLOOR of the corroborated outdoor range, taken because this stand chills sealed bottles rather than pouring drinks over ice.', sufficientWhen: 'NOT SETTLED: no registered source prices chilling-only ice for sealed bottles in tubs. Every figure above measures cooler PLUS cup for poured drinks, and the cup half does not exist at a bottled-drink stand. A hot-weather committee should read this as a floor, not a forecast.', limitations: ['commercial_interest_disclosed'] }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['ice-retail-2026', 'ice-warehouse-2026'], lastVerified: '2026-08-16', claim: 'Bagged ice 2026: warehouse clubs run 10-12c per pound (a 20lb bag is $1.75-2.50 at Sams Club, $1.80-2.50 at Costco); grocery bags cluster 23-31c/lb (BJs 20lb $4.49, Giant 20lb $4.99, Publix 16lb $4.99). The band spans those two channels rather than picking one.', sufficientWhen: 'Current shelf prices for one 20lb bag at a warehouse club and one at a grocery store confirm the per-pound spread.' } },
     { id: 'p_prizes', item: 'Game-booth prize wall (small toys, novelty prizes)', category: 'logistics', qtyPerGuest: 2, unit: 'prizes', where: ['Oriental Trading', 'Dollar store', 'Amazon'], unitCostRange: [0.1, 0.5], essential: false, buyAt: 'T-14d', dependsOnDecision: 'event_format', note: 'Bulk novelty prizes are pennies apiece; a tiered wall — many small, a few big — keeps kids playing. Order two weeks out so shipping is not a gamble.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     { id: 'p_cashboxes', item: 'Cash boxes and the float (small bills and coin)', category: 'logistics', qtyFlat: 1, unit: 'set', where: ['Office supply', 'Bank'], unitCostRange: [40, 120], essential: true, buyAt: 'T-2d', note: 'One lockable box per selling station, each with a logged starting float from the bank. The float comes back — the box cost is the real spend.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     { id: 'p_signage', item: 'Signage: pricing, wayfinding, and the sponsor thank-you banner', category: 'decor', qtyFlat: 1, unit: 'sign package', where: ['Print shop', 'Office supply'], unitCostRange: [75, 300], essential: true, buyAt: 'T-14d', note: 'The banner is a promise you sold — proof every sponsor name against what they gave you. Whole-dollar pricing signs keep every line moving.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
@@ -258,17 +287,7 @@ const ptaBoosterFundraiser = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-14d', what: 'Order wristbands, prizes, signage and the sponsor banner — shipping and print lead times are real' },
-      { when: 'T-3d', what: 'Buy the stand food, drinks, allergy labels, and the cleanup kit to the presale-informed count' },
-      { when: 'T-2d', what: 'Bank run: the float in small bills and coin, split and logged per cash box' },
-      { when: 'T0', what: 'Ice for the drink tubs, and the pizza order confirmed for its delivery window' },
-    ],
     preparation: [
-      { when: 'T-14d', what: 'Shifts chased by name; night roles named — gate, stand lead, floaters, lost-child point person' },
-      { when: 'T-10d', what: 'Pickup plan written: the collection spot, the doors in use, who sweeps the building' },
-      { when: 'T-7d', what: 'Counters named; allergy labels prepped; first-aid kit staged with the gate box' },
-      { when: 'T-1d', what: 'Presale list printed for the gate; floats logged; signage and banner loaded for the morning' },
     ],
     setup: [
       { when: 'T0 -4h', what: 'Meet the custodian, walk the site, place tables and booths, rope off the areas the crowd stays out of' },
@@ -290,9 +309,6 @@ const ptaBoosterFundraiser = {
       { when: 'during', what: 'Floaters keep bins from overflowing and cash boxes emptied to the locked room; the lost-child point person stays findable all night' },
       { when: 'T0 +3h', what: 'Pickup plan runs: kids matched to their adults at the spot, booths struck, borrowed tables back where the custodian wants them' },
       { when: 'T0 +3:30', what: 'The count: both counters, door closed, floats subtracted, both signatures on the total — then the site walked with the custodian' },
-      { when: 'T0 +1d', what: 'Deposit made within the policy window; receipts to the treasurer’s ledger' },
-      { when: 'T0 +3d', what: 'Sponsors, volunteers, and the custodian thanked by name; sponsors get the banner photo' },
-      { when: 'T0 +7d', what: 'Total reported against the goal to families and the school; the what-to-change list written for next year' },
     ],
   },
 

@@ -108,15 +108,7 @@ const boardMeeting = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'AV consumables kit (adapters, clicker, cords), notepads/pens, cleanup + shredding supplies' },
-      { when: 'T-1d', what: 'Coffee/catering confirmation, printed packets (if any), name cards + agenda printouts' },
-      { when: 'T0', what: 'Day-of catering delivery + any last-minute printouts' },
-    ],
     preparation: [
-      { when: 'T-7d', what: 'Assemble + distribute the board packet via the secure portal' },
-      { when: 'T-3d', what: 'Confirm quorum/RSVPs; send roll-call + dial-in details and pre-reads' },
-      { when: 'T-1d', what: 'End-to-end AV/hybrid dry run; confirm catering, parking, and badges' },
     ],
     setup: [
       { when: 'T0 -4h', what: 'Confirm quorum by reply; chase anyone who hasn’t answered' },
@@ -136,7 +128,6 @@ const boardMeeting = {
     cleanup: [
       { when: 'during', what: 'Minute-taker logs motions, votes (roll call), and action items live; coordinator monitors the remote feed' },
       { when: 'T0 +1h', what: 'Collect + secure/shred printed packets, revoke portal access as needed, clear catering' },
-      { when: 'T0 +1d', what: 'Distribute draft minutes + action-item tracker within 48h for review and next-meeting approval' },
     ],
   },
 

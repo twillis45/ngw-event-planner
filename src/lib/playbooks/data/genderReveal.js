@@ -223,13 +223,7 @@ const genderReveal = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Decor, favors, guessing board, mocktail mixers, soft drinks, reveal balloon/confetti, tableware, cleanup kit' },
-      { when: 'T-1d', what: 'Fresh snacks; pick up the reveal cake (keep refrigerated)' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Make-ahead bites, batch the mocktail, assemble favors, set up the guessing board' },
       { when: 'T0 -2h', what: 'Plate snacks, build the drink station, confirm the reveal item is the right color and ready' },
     ],
     setup: [

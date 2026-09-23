@@ -120,13 +120,7 @@ const backyardBbq = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Drinks, fuel, disposables, condiments, bug/sun supplies, cleanup kit' },
-      { when: 'T-1d', what: 'Proteins, buns, produce, dessert' },
-      { when: 'T0', what: 'Ice (lots) + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Marinate proteins; make cold sides; check fuel + grill' },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Pull proteins from the fridge to temper; light the coals late but check you have enough fuel' },

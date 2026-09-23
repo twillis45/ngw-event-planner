@@ -15,37 +15,43 @@
 // The ONE authored row that IS false is `preparation` at T-1d — you do not prep
 // make-ahead sides for food you are not making. It now carries copyByAnswer.
 //
-// WIDER, AND THIS IS THE REAL FIND: that row renders NOWHERE. Measuring it
-// across the corpus, 111 of 759 authored day-of rows (14.6%) never reach a
-// screen at all. `rosWhenOffset` returns null for anything it cannot parse and
-// the row is skipped in silence.
+// WIDER, AND THIS IS THE REAL FIND: that row rendered NOWHERE. Measuring it
+// across the corpus, 111 of 759 authored day-of rows (14.6%) reached no screen
+// at all — `rosWhenOffset` returns null for anything it cannot parse and the row
+// is skipped in silence.
 //
-//   T-Nd .......... 84   day-before rows; the day-of board is T0-relative and
-//                        nothing else reads schedules.preparation
-//   unparsed ...... 21   'halftime', 'after the toast', 'after the cake',
-//                        'T+1 morning', 'T0 +1d'…'T0 +7d', 'T0+1d' (no space)
+// WHAT HAPPENED NEXT, over the following commits. The parseable shapes were
+// given anchors: bare `End` and `End +30m`, then rows anchored to a MOMENT in
+// the same day ("after the toast", "after the cake"), then Watch Party's
+// `halftime`. The count fell 111 -> 101. Then the remaining shapes were ASKED
+// the question nobody had asked — where do these rows surface at all? — and the
+// answer was nowhere: 98 `T-Nd`/`T0 +Nd` rows the day board drops by rule, plus
+// 152 in a `purchasing` block no function in the codebase reads. All 250 were
+// retired on 2026-09-23, because `tasks[]` and `purchases[]` already carried
+// their content in better form: per item, checkable, and editable by the host.
 //
-// The four 'End'-anchored rows were supported on 2026-09-23 — see
-// aBeatAnchoredToTheEnd.test.js. What remains needs an anchor this engine does
-// not have: a program MOMENT ('after the toast'), a sporting event's structure
-// ('halftime'), or a different DAY.
+// THE ROW THIS FILE IS NAMED FOR WAS ONE OF THEM, and it did not just get
+// deleted. Its conditional copy was the point of this file, so it moved to
+// `tasks[]` as `t_prep_ahead`, where playbookChecklist resolves the same
+// copyByAnswer — and where a host can finally see it. The assertions below are
+// unchanged in substance; they simply drive the checklist now instead of a
+// hand-rolled stand-in for a renderer that never ran.
 //
-// TWO OF THE 27 WERE TYPOS AND ARE FIXED (2026-09-23, host ruling): Low Country
-// Boil authored 'T-3h' / 'T-1h' for its two preparation rows, and the missing
-// 'T0 ' prefix dropped both off the day sheet entirely. Read as hours-before on
-// the FILE'S OWN evidence rather than on a guess — the `setup` block directly
-// below them uses T0 -5h/-4h/-3h/-1h/-0:20, and `purchasing` above writes days
-// explicitly as T-3d/T-1d, so two rows saying `h` are hours from the same author
-// in the same block. Driven: both now render at "3h before guests arrive" and
-// "1h before guests arrive", sorted alongside the setup rows at those hours, and
-// the dropped count fell 111 -> 109.
+// The corpus gap is now 3 of 661, and none of the three is a defect: two Watch
+// Party beats gated to a format this bare event has not chosen, and Retirement
+// Party's row anchored to a toast its own program does not contain.
 //
-// NOTHING IS RE-INTERPRETED HERE. Deciding that 'T-3h' meant 'T0 -3h', or that
-// 'End+30m' is thirty minutes after an event end this engine does not model, is
-// authoring content on a guess — and a wrong beat placed confidently on a day
-// sheet is worse than an absent one. This records the count and names the
-// shapes, so it is a decision rather than a discovery.
-import { ALL_PLAYBOOKS, effectiveRos, playbookDuringCues, getPlaybook } from '../playbooks';
+// NOTHING WAS RE-INTERPRETED ANYWHERE IN THIS. Deciding that 'End+30m' is thirty
+// minutes after an event end the engine does not model, or that a dead row's
+// prose should be rendered as-is, is authoring content on a guess — and a wrong
+// beat placed confidently on a day sheet is worse than an absent one.
+//
+// TWO TYPO ROWS WERE FIXED ALONG THE WAY (2026-09-23, host ruling): Low Country
+// Boil authored 'T-3h' / 'T-1h' for two preparation rows, and the missing 'T0 '
+// prefix dropped both off the day sheet. Read as hours-before on the FILE'S OWN
+// evidence rather than a guess — the `setup` block below them uses T0 -5h/-4h/
+// -3h/-1h, and the same author wrote days explicitly as T-3d/T-1d elsewhere.
+import { ALL_PLAYBOOKS, effectiveRos, playbookDuringCues, getPlaybook, playbookChecklist } from '../playbooks';
 
 const ev = (food, type = 'Birthday') => ({
   id: 'p', name: "Mom's 80th", type, date: '2027-06-17',
@@ -53,45 +59,53 @@ const ev = (food, type = 'Birthday') => ({
   ...(food ? { foodChoices: { food_style: food } } : {}),
 });
 const rosOf = (e) => { const r = effectiveRos(e); return Array.isArray(r) ? r : (r && r.items) || []; };
-const prepEntry = () => getPlaybook('Birthday').schedules.preparation.find((x) => /favors/i.test(x.what));
+// THE ROW BECAME A TASK (2026-09-23), so these now drive the REAL surface.
+// Until then this file simulated the resolver by hand — "the way
+// playbookRunOfShow would if this row were ever rendered" — because the row it
+// tested rendered nowhere. It was retired along with the other 249 dead rows and
+// re-authored as `t_prep_ahead`, where playbookChecklist resolves the same
+// copyByAnswer and a host can actually see it. The assertions below are
+// unchanged in substance; what changed is that they now exercise the checklist
+// instead of a stand-in for it.
+const prepEntry = () => getPlaybook('Birthday').tasks.find((t) => t.id === 't_prep_ahead');
 const resolvedPrep = (food) => {
-  // The authored row's own resolver, exercised the way playbookRunOfShow would
-  // if this row were ever rendered.
-  const e = prepEntry();
-  const picks = food ? { food_style: food } : {};
-  const m = e.copyByAnswer && e.copyByAnswer.food_style;
-  return (m && picks.food_style && m[picks.food_style] != null) ? m[picks.food_style] : e.what;
+  const list = playbookChecklist(ev(food), new Date('2027-06-01T12:00:00')) || [];
+  const flat = Array.isArray(list) ? list : (list.items || []);
+  const hit = flat.find((x) => /favor bags/i.test(String(x.task || x.label || '')));
+  return hit ? String(hit.task || hit.label) : '';
 };
 
 describe('the prep row reads the host’s own food answer', () => {
-  test('(premise) the row is authored with conditional copy', () => {
-    expect(prepEntry().what).toMatch(/Prep make-ahead sides/);
+  test('(premise) the task is authored with conditional copy, and is REACHABLE', () => {
+    expect(prepEntry().label).toMatch(/make-ahead sides/);
     expect(prepEntry().copyByAnswer.food_style['Drop-off catering']).toBeTruthy();
+    // The half that never held before: it is on the checklist a host opens.
+    expect(resolvedPrep(null)).toBeTruthy();
   });
 
   test('THE FIX: a host who is not cooking is not told to prep sides', () => {
     for (const answer of ['Drop-off catering', 'Order pizza/trays']) {
       const seg = resolvedPrep(answer);
-      expect(seg).not.toMatch(/Prep make-ahead sides/i);
+      expect(seg).not.toMatch(/make-ahead sides/i);
       expect(seg).toMatch(/no sides to prep/i);
       // A step is dropped; the beat is not replaced.
-      expect(seg).toMatch(/Assemble favors/);
-      expect(seg).toMatch(/charge speaker/);
+      expect(seg).toMatch(/favor bags/i);
+      expect(seg).toMatch(/charge the speaker/i);
     }
   });
 
   test('NEGATIVE CONTROL: cooking, and potluck, both keep the sides', () => {
     // A potluck host still usually makes something; dropping it there would be a
     // different guess, not the same fix.
-    expect(resolvedPrep('Cook/grill yourself')).toMatch(/Prep make-ahead sides/);
-    expect(resolvedPrep('Potluck')).toMatch(/Prep make-ahead sides/);
+    expect(resolvedPrep('Cook/grill yourself')).toMatch(/make-ahead sides/);
+    expect(resolvedPrep('Potluck')).toMatch(/make-ahead sides/);
   });
 
   test('NEGATIVE CONTROL: an UNANSWERED event keeps the base text', () => {
     // Birthday DEFAULTS food_style to "Order pizza/trays", and resolveAnsweredCopy
     // fires only on an ANSWERED pick — the same rule that caught rosBasis firing
     // at every untouched birthday.
-    expect(resolvedPrep(null)).toMatch(/Prep make-ahead sides/);
+    expect(resolvedPrep(null)).toMatch(/make-ahead sides/);
   });
 
   test('THE RENDERED BEATS ARE UNCHANGED, because none of them was wrong', () => {
@@ -120,9 +134,9 @@ describe('the prep row reads the host’s own food answer', () => {
     expect(hit(/Tables papered/i).rel).toBe('3h before guests arrive');
   });
 
-  test('RECORDED: the edited row reaches no screen today, and it is not alone', () => {
-    // Honesty about this change's own reach: the fix is correct data that fixes
-    // no screen, because T-Nd rows are dropped by the day-of board.
+  test('MEASURED: what still does not reach a screen, and why each one is fine', () => {
+    // This began as honesty about the fix's own reach — correct data that fixed
+    // no screen. The rows it counted have since been retired or anchored.
     const shown = rosOf(ev('Drop-off catering')).map((x) => x.segment).join(' | ');
     expect(shown).not.toMatch(/sides to prep|make-ahead sides/i);
 
@@ -138,23 +152,25 @@ describe('the prep row reads the host’s own food answer', () => {
       rendered += rows.filter((w) => seen.has(w.trim().toLowerCase())).length;
     }
     // A ratchet, not a target: this must not get WORSE without someone noticing.
-    // 111 → 105 (bare `End` and `End+30m` beats resolved) → 102 (three rows
-    // anchored to a MOMENT — "after the toast", "after the cake" — resolved
-    // against the program beat they name) → 101 (Watch Party's halftime cleanup
-    // lap, recorded in its own playbook as a known unfixed defect since
-    // 2026-09-13, now anchored the same way). Measured, not guessed: 759
-    // authored, 658 rendered.
+    // 111 → 105 (bare `End` and `End+30m` resolved) → 102 (rows anchored to a
+    // MOMENT) → 101 (Watch Party's halftime lap) → 3, when the 250 rows that
+    // reached no host were RETIRED rather than rendered. Measured: 661 authored,
+    // 658 rendered.
     //
-    // WHAT THIS NUMBER IS NOT. It is not a count of unreachable rows. This sweep
-    // drives a BARE event with no answers, so a row gated to a choice the host
-    // has not made — Watch Party's undercard and pre-race beats, for two — is
-    // absent here and reaches a screen perfectly well once someone picks that
-    // format. The figure is a monotone ratchet on ONE fixed path, which is what
-    // makes it comparable across commits; it is not a defect tally.
+    // `authored` fell 759 → 661 in the same commit, and that is the point rather
+    // than a side effect: the gap did not close because more rows started
+    // rendering, it closed because rows nothing could render stopped being
+    // authored. Both numbers are asserted so a future drop in `authored` cannot
+    // quietly flatter the gap.
     //
-    // Lower it whenever a batch lands; raising it means rows stopped reaching a
-    // screen, and needs the reason said out loud.
-    expect(authored).toBeGreaterThan(700);
-    expect(authored - rendered).toBeLessThanOrEqual(101);
+    // WHAT THE REMAINING 3 ARE. This sweep drives a BARE event with no answers,
+    // so a row gated to a choice the host has not made is counted absent here and
+    // reaches a screen perfectly well once someone picks that format — Watch
+    // Party's undercard and pre-race beats are two of the three. The third is
+    // Retirement Party's row anchored to a toast its program does not have, which
+    // is reported and deliberately unresolved. None of the three is a defect.
+    expect(authored).toBeGreaterThan(600);
+    expect(authored).toBeLessThan(700);
+    expect(authored - rendered).toBeLessThanOrEqual(3);
   });
 });

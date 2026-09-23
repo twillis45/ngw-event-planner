@@ -487,14 +487,7 @@ const sundayDinner = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T0', what: 'Anything fresh you didn’t get yesterday, and ice' },
-      { when: 'T-3d', what: 'Buy greens, smoked seasoning meat, and dried peas — the slow-cook items.' },
-      { when: 'T-2d', what: 'Buy mac and cheese, yams, cornbread fixings, dessert, drinks, to-go containers, and frying supplies.' },
-      { when: 'T-1d', what: 'Buy the fresh chicken or roast last so it is at its best for Sunday.' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Slow-cook the greens; bake the cobbler or pie; brine or season the chicken overnight.' },
       { when: 'T0 morning', what: 'Bake the mac and cheese and candied yams; mix and bake cornbread; reheat the greens low and slow.' },
       { when: 'T0 pre-meal', what: 'Fry or finish the main last so it lands hot, timed with the sides.' },
     ],
@@ -502,7 +495,6 @@ const sundayDinner = {
       { when: 'T0 -4h', what: 'Start whatever needs the oven longest' },
       { when: 'T0 -2h', what: 'Set the table properly — this is the part that makes it Sunday' },
       { when: 'T0 -1h', what: 'Reheat, carve, and get the sides into serving dishes' },
-      { when: 'T-1d', what: 'Count chairs against the headcount and add a leaf or kids table; set place settings.' },
       { when: 'T0 -25m', what: 'Lay out serving spoons, napkins, and drinks; clear a counter as the plating station.' },
       { when: 'T0 +5m', what: 'Gather everyone, say grace, and make plates for the elders first.' },
     ],

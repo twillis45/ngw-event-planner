@@ -145,14 +145,7 @@ const juneteenthCookout = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-14d', what: 'Book Black-owned caterer/bakery if going that route; reserve canopies/tables if renting' },
-      { when: 'T-3d', what: 'Drinks (red drink, water, tea, grown section), fuel/wood, decor, disposables, to-go containers, heat/bug supplies, cleanup kit; start scratch hibiscus "red drink"' },
-      { when: 'T-1d', what: 'Ribs, chicken, links, sides produce, watermelon, strawberries; pick up the cake' },
-      { when: 'T0', what: 'Ice (lots) + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d', what: 'Rub/marinate proteins; make cold sides + potato salad; chill the red drink + watermelon; check fuel + smoker' },
       { when: 'T0 -4h', what: 'Start the smoke/grill for ribs; stage the program/readings near the food' },
     ],
     setup: [

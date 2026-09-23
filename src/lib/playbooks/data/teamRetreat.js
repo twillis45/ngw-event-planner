@@ -120,22 +120,12 @@ const teamRetreat = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T0', what: 'Day-of catering received; snacks and coffee restocked' },
-      { when: 'T-3d', what: 'Name tags, welcome kits, session supplies, first-aid kit' },
-      { when: 'T-1d', what: 'Snacks, coffee/tea, drinks (incl. non-alcoholic), any DIY activity supplies' },
-    ],
     preparation: [
-      { when: 'T-30d', what: 'Send agenda preview, packing list, per-diem/expense rules, dietary + accessibility survey' },
-      { when: 'T-21d', what: 'Facilitator finalizes the balanced agenda; prep slides/worksheets; assign session owners' },
-      { when: 'T-14d', what: 'Reconfirm venue, lodging, transport, caterer, and the activity vendor with final counts' },
-      { when: 'T-7d', what: 'Final attendee comms: arrival times, on-site contacts, day-1 plan' },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Room set: seating in the shape the session needs, not rows by default' },
       { when: 'T0 -4h', what: 'Materials out — worksheets, markers, boards; test the screen' },
       { when: 'T0 -3h', what: 'Coffee and water in every room; confirm the catering window' },
-      { when: 'T-1d', what: 'Lay out name tags + welcome kits, test AV/Wi-Fi, set the meeting room, name a day-of point person' },
       { when: 'T0 -2h', what: 'Stage coffee/snacks, charge devices, post signage and the printed agenda' },
     ],
     program: [
@@ -150,7 +140,6 @@ const teamRetreat = {
     cleanup: [
       { when: 'during', what: 'Protect the downtime as fiercely as the sessions; keep water and coffee available in every room' },
       { when: 'T0 last day', what: 'Settle the venue/caterer bill, collect lost-and-found, coordinate departures and transfers' },
-      { when: 'T0 +5d', what: 'Send recap with decisions + owners + photos and a feedback survey so the work sticks' },
     ],
     // Daily agenda flow — deliberately balanced (work + bonding + downtime).
     // Over-scheduling is the #1 retreat mistake; the gaps below are intentional.

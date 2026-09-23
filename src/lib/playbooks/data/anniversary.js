@@ -168,14 +168,7 @@ const anniversary = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Alcohol + champagne, non-perishables, decor, signage, AV bits, paper + cleanup goods' },
-      { when: 'T-1d', what: 'Fresh food, florals, garnish; pick up the cake' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-7d', what: 'Build + test the slideshow on the real screen/speakers; write the run-of-show' },
-      { when: 'T-1d evening', what: 'Make-ahead apps/dishes, prep platters, label serving dishes' },
       { when: 'T0 -4h', what: 'Finish cooking/assembly; arrange the photo-display / memory table' },
       { when: 'T0 -1h', what: 'Bring food to serving temp; final slideshow + audio check' },
     ],

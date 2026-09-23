@@ -103,11 +103,34 @@ describe('AP-001: src does not silently drop canonical sections', () => {
       expect(dropped).toEqual([]); // canonical has these; src dropped them
 
       // Schedule phases present in canonical must be present in src.
+      //
+      // `purchasing` IS RETIRED, DELIBERATELY (2026-09-23). It is the one phase
+      // allowed to be absent, and the exception is named rather than the
+      // canonical artifact edited — the artifact's whole value is that it is an
+      // independent reference, so quietly rewriting it to agree would disarm the
+      // guard this file exists to be.
+      //
+      // Why it went: no function in the codebase ever read `schedules.purchasing`
+      // — it is not in ROS_SCHEDULE_KINDS and nothing else names the key — so all
+      // 152 rows across 45 playbooks reached no host. Proven by execution, not by
+      // grep. What they described is carried, better, by `purchases[]`, whose
+      // `buyAt` drives the real shopping list and its day-of section, per item and
+      // editable by the host.
+      //
+      // This exception covers ONE phase. Any other phase disappearing from src is
+      // still the Silent Data Subset bug this guard was written for.
+      const RETIRED_PHASES = ['purchasing'];
       if (canon.schedules && typeof canon.schedules === 'object') {
         const droppedPhases = Object.keys(canon.schedules).filter(
-          (phase) => nonEmpty(canon.schedules[phase]) && !nonEmpty((src.schedules || {})[phase]),
+          (phase) => !RETIRED_PHASES.includes(phase)
+            && nonEmpty(canon.schedules[phase]) && !nonEmpty((src.schedules || {})[phase]),
         );
         expect(droppedPhases).toEqual([]); // schedule phases dropped in src
+        // …and the retirement is REAL, not a spelling that quietly stopped
+        // matching: the canonical still carries the phase, and src must not.
+        for (const phase of RETIRED_PHASES) {
+          if (nonEmpty(canon.schedules[phase])) expect(nonEmpty((src.schedules || {})[phase])).toBe(false);
+        }
       }
 
       // Authored arrays must not SHRINK below the canonical count (no silent item drop).

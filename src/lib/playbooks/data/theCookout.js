@@ -221,14 +221,7 @@ const theCookout = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Drinks (red drink mix, soda, water, grown-folks section), fuel, condiments/seasoning, foil pans, to-go containers, tableware, cleanup kit, cards' },
-      { when: 'T-2d', what: 'Spread groceries: mac & cheese, potato salad, beans, greens, slaw' },
-      { when: 'T-1d', what: 'Proteins (ribs, chicken, burgers, dogs, links), buns, cornbread, desserts' },
-      { when: 'T0', what: 'Ice — lots of it — and any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-1d evening', what: 'Season/marinate the meat overnight; start slow-cooked greens and beans; make banana pudding and desserts' },
       { when: 'T0 morning', what: 'Bake the mac & cheese; finish potato salad and slaw; brew the red drink; pre-cook ribs if needed' },
     ],
     setup: [

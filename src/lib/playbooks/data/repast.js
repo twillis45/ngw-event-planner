@@ -150,13 +150,7 @@ const repast = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-1d', what: 'Serving ware, drinks, to-go containers, warming supplies, guest book, cleanup kit; confirm the brought dishes' },
-      { when: 'T0', what: 'Ice and any last fresh items on the way to the hall' },
-    ],
     preparation: [
-      { when: 'T-2d', what: 'Set out the guest book and a few photographs; ready a quiet corner' },
-      { when: 'T-1d', what: 'Confirm with everyone bringing a dish; gather serving utensils and linens' },
     ],
     setup: [
       { when: 'T0 -4h', what: 'Collect or receive the food; set the hall so the family walks into a room that’s ready' },

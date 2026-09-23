@@ -122,14 +122,7 @@ const bacheloretteParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Sash/banner/decor, favors + matching items, games, liquor, mixers, tableware, safety kit, cleanup kit' },
-      { when: 'T-1d', what: 'Apps/grazing, garnishes, bubbly, juice, electrolytes, and lots of water' },
-      { when: 'T0', what: 'Ice + any last-minute fresh items' },
-    ],
     preparation: [
-      { when: 'T-7d', what: 'Lock the safe-rides + buddy plan; name the sober point person; pre-load rideshare and save the address in phones' },
-      { when: 'T-1d', what: 'Batch the cocktail base, assemble the grazing board components, charge the portable chargers, pack the bride + ride-captain bags' },
       { when: 'T0 -3h', what: 'Build the board, finish the batch cocktail, chill bubbly + water, set games' },
     ],
     setup: [

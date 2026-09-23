@@ -71,6 +71,18 @@ const housewarming = {
     { id: 't_entry', milestoneId: 'hw_setup', phase: 'setup', label: 'Set the entry: shoe tray + basket, coat space (hooks or a cleared bed), a small friendly sign, and a clear gift-landing spot', when: 'T0 -2h' },
     { id: 't_station', milestoneId: 'hw_setup', phase: 'beverage', label: 'Build the self-serve drinks station: beer/wine/soda, ice tub, cups/glasses, opener, signature-cocktail batch in a pitcher', when: 'T0 -2h' },
     { id: 't_board_out', milestoneId: 'hw_setup', phase: 'food', label: 'Set the board out, scatter a couple of snack bowls along the tour path, light unscented candles', when: 'T0 -1h' },
+    // MOVED OFF A DEAD SURFACE, 2026-09-23. These were one `schedules.cleanup`
+    // row at `T0 +1d morning` — a post-event token the day board drops by rule —
+    // so nothing here ever reached a host. This playbook's own day-of reset task
+    // ends with "finish the rest in the morning" and then named none of it.
+    //
+    // Returning what you borrowed is the part that actually goes wrong: chairs
+    // and platters come from neighbours who do not chase them, and this playbook
+    // recommends borrowing over renting in two places. The thank-yous had no
+    // carrier at all — the gift contingency says to log who brought what "later
+    // for thank-yous", and no task ever wrote them.
+    { id: 't_after_returns', milestoneId: 'event', phase: 'cleanup', label: 'Get the borrowed chairs, platters and coolers back to whoever lent them, while you still remember which is whose', when: 'T0 +1d' },
+    { id: 't_after_thanks', milestoneId: 'event', phase: 'guest', label: 'Send the thank-yous for housewarming gifts off the log you made on the night', when: 'T0 +1d' },
     { id: 't_greet', milestoneId: 'event', phase: 'event', label: 'Greet at the door, take coats, point to drinks + gift spot, offer a quick tour to each cluster as they arrive', when: 'T0 +0:00' },
     { id: 't_refill', milestoneId: 'event', phase: 'food', label: 'Quietly top up the board, refill ice, and clear stray cups into the staged tub through the party', when: 'ongoing' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Quick reset: leftovers covered, glasses to the dishwasher, bottles to recycling, trash out — finish the rest in the morning', when: 'T0 +3:30' },
@@ -132,13 +144,7 @@ const housewarming = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Drinks, soda, water, ice substitutes, paper goods, napkins, cups, decor, candles, cleanup kit, entry kit, non-perishable snacks' },
-      { when: 'T-1d', what: 'Cheese, charcuterie, fruit, crudité, dips, baguette, sweet, flowers' },
-      { when: 'T0', what: 'Ice + any last-minute fresh garnish or a backup snack bag' },
-    ],
     preparation: [
-      { when: 'T-1d evening', what: 'Pre-build the grazing board on a tray (cover + fridge), portion dips into bowls, prep any cold passed bites, batch the signature cocktail' },
       { when: 'T0 -3h', what: 'Pull the board to come to room temp ~45 min before; slice baguette; fill snack bowls' },
       { when: 'T0 -1h', what: 'Final wipe of bathrooms + kitchen, take out current trash, set the playlist' },
     ],
@@ -159,19 +165,6 @@ const housewarming = {
     cleanup: [
       { when: 'during', what: 'Quietly clear stray cups into the staged tub, top up the board + ice, blot any spills immediately — do NOT do a full wash mid-party' },
       { when: 'T0 +3:30', what: 'Leftovers covered, glasses to the dishwasher, bottles/cans to recycling, trash out, gift spot tidied' },
-      // SPELLED IN THE CORPUS'S OWN DIALECT, 2026-09-23. This was authored
-      // `T+1 morning` — the only `when` token in 30 playbooks that no rule in
-      // rosWhenOffset recognized. It returned null and was dropped, which LOOKS
-      // identical to the fourteen other day-after rows (`T0 +1d` … `T0 +7d`) but
-      // is not the same thing: those are excluded by an explicit rule that says
-      // post-event follow-ups belong on the checklist, and this one fell off the
-      // end of the parser as an unknown string. Same outcome today, different
-      // reason, and only one of them survives someone adding a fallback.
-      //
-      // The meaning is unchanged — the morning after — and the row still does
-      // not appear on the day-of board. It is now excluded BY RULE and shares
-      // whatever surface the rest of the day-after rows reach.
-      { when: 'T0 +1d morning', what: 'Finish dishes, wipe surfaces, run a vacuum, return borrowed chairs/platters, send thank-yous for gifts' },
     ],
   },
 

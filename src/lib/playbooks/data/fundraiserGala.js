@@ -228,22 +228,9 @@ const fundraiserGala = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-30d', what: 'Order programs, signage, bid sheets, paddles and pledge cards — mind the print lead times' },
-      { when: 'T-3d', what: 'Collect signage and printed items; pledge cards and pens; first-aid kit; teardown kit; self-supplied bar if any' },
-      { when: 'T-1d', what: 'Place cards to the final chart, centerpieces, registration and checkout kit staged and tested' },
-      { when: 'T0', what: 'Ice and anything the caterer did not bring' },
-    ],
     preparation: [
-      { when: 'T-90d', what: 'Invitations mailed; registration open; accessibility walk done and the ask on the form' },
-      { when: 'T-60d', what: 'Run of show locked; giving moment placed; speakers confirmed with their exact ask' },
-      { when: 'T-30d', what: 'Sales closed and unsold tables called; sponsor recognition list confirmed against contracts' },
-      { when: 'T-14d', what: 'Final headcount and dietary list to the caterer; seating chart built; night roles assigned by name' },
-      { when: 'T-7d', what: 'Dry-run registration and checkout with real volunteers and real cards' },
     ],
     setup: [
-      { when: 'T-1d', what: 'Load in to the vendor sequence; set tables to the chart; stage the auction display; place sponsor signage' },
-      { when: 'T-1d PM', what: 'Rehearse the run of show on stage: mic check, slide cues, auctioneer handoff, the moment the ask begins' },
       { when: 'T0 -4h', what: 'Place cards down; pledge cards and pens at every seat; bid sheets and item cards checked against the list' },
       { when: 'T0 -3h', what: 'Registration and checkout stations built and tested on the venue network; first-aid kit staged' },
       { when: 'T0 -2h', what: 'Walk the room with the venue: accessible routes clear, fire lanes clear, stage ramp in place' },
@@ -265,9 +252,6 @@ const fundraiserGala = {
       { when: 'during', what: 'Room captain holds the run of show; auction desk logs winners live; nobody handles cash alone' },
       { when: 'T0 +4h', what: 'Auction checkout run down; items released with receipts; unsold items boxed and labeled by donor' },
       { when: 'T0 +5:30', what: 'Count and secure the takings with two people present, both signing; strike the room; rentals staged for collection' },
-      { when: 'T0 +1d', what: 'Reconcile the total by revenue line against the target; settle vendor invoices' },
-      { when: 'T0 +3d', what: 'Chase unpaid pledges; send tax receipts with the correct deductible amount; thank sponsors with proof their recognition ran' },
-      { when: 'T0 +7d', what: 'Debrief the committee and write down what to change before next year’s date is booked' },
     ],
   },
 

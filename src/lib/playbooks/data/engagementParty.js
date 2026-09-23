@@ -162,13 +162,7 @@ const engagementParty = {
   ],
 
   schedules: {
-    purchasing: [
-      { when: 'T-3d', what: 'Alcohol, champagne, signature spirits/mixers, beer/seltzer, paper goods, decor, guest book, cleanup kit' },
-      { when: 'T-1d', what: 'Cheese/charcuterie, produce, citrus + garnishes, flowers, cold apps' },
-      { when: 'T0', what: 'Ice (1.5 lb/guest) + any last fresh herbs/garnish' },
-    ],
     preparation: [
-      { when: 'T-1d evening', what: 'Make-ahead hot apps, assemble cold bites, batch the signature cocktail base, prep garnish trays, build the cheese board base' },
       { when: 'T0 -4h', what: 'Chill all champagne/wine/beer; finish-bake or stage anything that reheats fast' },
       { when: 'T0 -1h', what: 'Final garnish prep; plate the grazing station; arrange passed-app trays for batch baking' },
     ],
