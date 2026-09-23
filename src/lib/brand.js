@@ -48,20 +48,31 @@
 //   noguesswork.events       does not resolve  likely free
 //   noguessworkevents.app    does not resolve  likely free
 //
-// ─── "NO GUESSWORK" IS IN USE BY OTHERS, IN OTHER CLASSES ───────────────────
-// Found while answering "is noguesswork.com mine?" — it is not. At least two
-// unrelated US entities trade under the bare phrase:
+// ─── "NO GUESSWORK" IS IN USE BY SOMEONE ELSE, IN ANOTHER CLASS ─────────────
+// Found while answering "is noguesswork.com mine?" — it is not.
 //
-//   noguesswork.com      Dr Rameck Hunt, "The NO GUESSWORK Diet" (2020) —
-//                        health/publishing. Uses "NGW" as its own abbreviation.
-//   noguessworkprep.com  No Guesswork Test Prep & Tutoring — education.
+//   noguesswork.com   Dr Rameck Hunt, "The NO GUESSWORK Diet" (2020),
+//                     Penn Medicine Princeton Health — health/publishing.
+//                     Uses "NGW" as its own abbreviation.
 //
-// Neither is event software, and trademark rights are granted per class, so
-// coexistence is ordinary rather than a conflict. What it does mean: the BARE
-// phrase is not ownable broadly, so the identity is "No Guesswork Events" and
-// the distinctiveness lives in the full form. `short` below stays for running
-// prose inside the product — descriptive use in our own copy — and should not
-// become the brand in marketing, a wordmark, or a filing.
+// That is health and publishing, not event software, and trademark rights are
+// granted per class — so this is ordinary coexistence, not a conflict. What it
+// does mean: the BARE phrase is not ownable broadly, so the identity is
+// "No Guesswork Events" and the distinctiveness lives in the full form. `short`
+// below stays for running prose inside the product — descriptive use in our own
+// copy — and should not become the brand in marketing, a wordmark, or a filing.
+//
+// A SECOND NAME WAS LISTED HERE AND HAS BEEN REMOVED, which is worth recording
+// because the mistake is easy to repeat. noguessworkprep.com appeared in the
+// search results for noguesswork.com, and its TITLE was read and written down as
+// an established second user — jurisdiction ("US") included, which was never
+// checked at all. The site could not be fetched to confirm any of it. All that
+// is actually known is that the domain resolves.
+//
+// It also would not have mattered if it were true: tutoring is not event
+// software, and Hunt alone already establishes that the phrase has other users.
+// An unverified claim carrying no decision value is pure downside — this one was
+// headed for a conversation with an attorney, where being wrong costs something.
 //
 // This is a fact for the attorney, not a verdict from here.
 //
