@@ -18191,6 +18191,26 @@ export default function HostShellV2() {
                                         {L.size ? ' · ' + L.size : ''}
                                         {L.onSale && L.was ? ` · on sale, was $${L.was.toFixed(2)}` : ''}
                                       </span>
+                                      {/* ── AND WHAT IT PRICED ───────────────
+                                          The product's own name, because a
+                                          price with no product is unauditable.
+                                          Probed live 2026-09-23: "injera"
+                                          returns Airplus® Gel Orthotic Shoe
+                                          Inserts at $8.99 · 1 ct. The match
+                                          guard now refuses that one at the
+                                          source (priceLayers.js), but a
+                                          heuristic catches a familiar way of
+                                          being wrong, never every way — and a
+                                          host reading "Airplus® Gel Orthotic
+                                          Shoe Inserts" catches all of them.
+                                          Muted and secondary: it is evidence
+                                          for the number above, not a claim of
+                                          its own. */}
+                                      {L.product && (
+                                        <span className="v-meta" style={{ display: 'block', opacity: .8 }}>
+                                          {L.product}
+                                        </span>
+                                      )}
                                       {/* ── AND WHAT THE WHOLE LINE COSTS THERE ──
                                           Only when the unit map could reconcile
                                           the plan's quantity with the store's

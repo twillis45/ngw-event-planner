@@ -307,3 +307,70 @@ describe('the sheet never claims more coverage than it has', () => {
     expect(coverageNote({ total: 0 })).toBe(null);
   });
 });
+
+// ─── A MATCH WE DO NOT BELIEVE IS NOT A STORE PRICE ─────────────────────────
+//
+// The match-quality guard was written for `storeLineTotal` and lived only
+// there, so it decided the TOTAL and nothing else. The price itself — the line
+// a host actually reads — was rendered from the same hit without ever asking.
+// A rejected match still published its price; only the arithmetic on top of it
+// was withheld.
+//
+// Probed live at a Baltimore store on 2026-09-23, and these are that probe's
+// real returns, not invented fixtures:
+//
+//   "prosecco"      → Tuscany Candle™ Premium Satin Wax Melts - Peach Prosecco
+//   "injera"        → Airplus® Gel Women's Orthotic Insole Shoe Inserts, $8.99
+//   "espresso cups" → Private Selection® Espresso Roast Coffee Pods, $6.99
+//
+// Only the first carries a word the guard can see. The other two are why the
+// store layer must also SHOW what it priced — a heuristic catches a familiar
+// way of being wrong, never every way.
+describe('THE STORE LAYER REFUSES A MATCH IT DOES NOT BELIEVE', () => {
+  const idx = (desc) => storePriceIndex([
+    { name: 'Ribs (racks)', matched: true, price: 3.29, size: '15.5 oz', soldBy: 'UNIT', description: desc },
+  ]);
+  const RIBS = { id: 'p_ribs', item: 'Ribs (racks)', unit: 'lbs', units: 11.5 };
+
+  test('(premise) a BELIEVABLE match on the same line really does reach the store layer', () => {
+    // Without this, the refusals below would pass against a line that could
+    // never have been priced in the first place.
+    const r = layerForLine({ purchase: RIBS, storeIndex: idx('Smithfield Extra Tender Pork Back Ribs') });
+    expect(r.layer).toBe('store');
+    expect(r.exact).toBe(3.29);
+  });
+
+  test('a BBQ SAUCE matched to a rack of ribs now prices NOTHING, not just no total', () => {
+    // The live match that started this: "Ribs (racks)" → Rib Rack® Original
+    // BBQ Sauce. Before today the total was refused and the PRICE still showed.
+    const r = layerForLine({ purchase: RIBS, storeIndex: idx('Rib Rack® Original BBQ Sauce') });
+    expect(r.layer).toBe('national');
+    expect(r.exact).toBe(null);
+    expect(r.total).toBe(null);
+  });
+
+  test('it FALLS THROUGH rather than erroring — regional still gets its turn', () => {
+    // A rejected store match must leave the line exactly where a line with no
+    // match sits, which for a geo-mapped line is the regional layer.
+    const r = layerForLine({
+      purchase: RIBS,
+      geoBasis: { factor: 1.12, scope: 'item' },
+      storeIndex: idx('Rib Rack® Sea Salt Pork Rinds'),
+    });
+    expect(r.layer).toBe('regional');
+  });
+
+  test('`priceForLine` is gated identically — one rule, both entry points', () => {
+    const r = priceForLine({ purchase: RIBS, range: [48, 84], storeIndex: idx('Rib Rack® Original BBQ Sauce') });
+    expect(r.layer).toBe('national');
+    expect(r.range).toEqual([48, 84]);
+  });
+
+  test('THE PRODUCT NAME TRAVELS WITH THE PRICE, because the guard cannot catch everything', () => {
+    // The shoe-insert case has no word a blocklist could ever hold. What a host
+    // needs is to see what was priced, so `product` must be populated — the
+    // shell renders it under the price.
+    const r = layerForLine({ purchase: RIBS, storeIndex: idx('Smithfield Extra Tender Pork Back Ribs') });
+    expect(r.product).toBe('Smithfield Extra Tender Pork Back Ribs');
+  });
+});

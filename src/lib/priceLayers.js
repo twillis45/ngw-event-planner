@@ -28,7 +28,40 @@
 // price is never filled in — it is reported.
 import { applyGeo } from './knowledge/geoCostIndex';
 import { geoItemForPurchase } from './knowledge/geoItemMap';
-import { storeLineTotal } from './knowledge/storeUnitMap';
+import { storeLineTotal, matchLooksLikeTheLine, storeSearchTerm } from './knowledge/storeUnitMap';
+
+/**
+ * ── A MATCH WE DO NOT BELIEVE IS NOT A STORE PRICE ──────────────────────────
+ *
+ * The match-quality guard was written for `storeLineTotal` and lived only
+ * there, so it decided the TOTAL and nothing else. The price itself — the line
+ * the host actually reads, "Your store: $8.99 · 1 ct" — was rendered from the
+ * same `hit` without ever asking. So a rejected match still published its
+ * price; only the arithmetic on top of it was withheld.
+ *
+ * This session's recurring defect, one more time: `storeLineTotal` knew the
+ * match was wrong, and the surface beside it never asked.
+ *
+ * It is not hypothetical. Probed live at a Baltimore store on 2026-09-23:
+ *
+ *   "injera"          → Airplus® Gel Orthotic Shoe Inserts      $8.99 · 1 ct
+ *   "espresso cups"   → Private Selection® Espresso Coffee Pods $6.99 · 12 ct
+ *   "prosecco"        → Tuscany Candle™ Peach Prosecco Wax Melts $3.29
+ *
+ * Only the last carries a word the guard can see ('candle'). The first two are
+ * why the store layer must ALSO show what it priced — a heuristic cannot catch
+ * a shoe insert, and a host reading the product name can.
+ *
+ * So the gate moves here, to the one place that decides whether a line HAS a
+ * store price. `storeLineTotal` keeps its own call: it is public API with its
+ * own callers and tests, and a second gate on the more dangerous number is
+ * defence, not duplication — both ask the same single definition.
+ */
+const believable = (purchase, hit) => matchLooksLikeTheLine({
+  line: purchase,
+  term: storeSearchTerm(purchase),
+  description: hit && hit.description,
+});
 
 /** The layers, worst to best. Exported so a surface can sort or filter by rank. */
 export const PRICE_LAYERS = Object.freeze({
@@ -102,7 +135,11 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
   // A real shelf price is a POINT, not a band, and it replaces the band rather
   // than scaling it. Scaling an authored estimate by a real price would produce
   // a number that is neither.
-  const hit = storeIndex instanceof Map ? storeIndex.get(storeKey(purchase)) : null;
+  const raw = storeIndex instanceof Map ? storeIndex.get(storeKey(purchase)) : null;
+  // A match the guard rejects falls THROUGH to the regional and national
+  // layers, exactly as a line with no match does. That is the honest state:
+  // this store did not price this line.
+  const hit = raw && believable(purchase, raw) ? raw : null;
   if (hit) {
     const p = round2(hit.effective);
     const t = storeLineTotal({ line: purchase, price: p, size: hit.size, soldBy: hit.soldBy, description: hit.description });
@@ -193,7 +230,11 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
  * range: Kroger prices their package, the plan counts plan units.
  */
 export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
-  const hit = storeIndex instanceof Map ? storeIndex.get(storeKey(purchase)) : null;
+  const raw = storeIndex instanceof Map ? storeIndex.get(storeKey(purchase)) : null;
+  // Same gate as `priceForLine`, and the one that matters most: this is the
+  // function the food sheet calls, so this is where a shoe insert priced as
+  // injera would have reached a host.
+  const hit = raw && believable(purchase, raw) ? raw : null;
   if (hit) {
     const p = round2(hit.effective);
     // ── THE UNIT MAP, ASKED HERE AND NOWHERE ELSE ─────────────────────────

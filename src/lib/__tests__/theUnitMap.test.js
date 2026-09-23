@@ -9,7 +9,7 @@
 // false accept is the only failure here that reaches a host's budget.
 import {
   unitDimension, parseStoreSize, lineIsMultipliable, storeLineTotal, UNIT_MAPPED_LINES,
-  storeSearchTerm, matchLooksLikeTheLine, bandCheck,
+  storeSearchTerm, matchLooksLikeTheLine, bandCheck, SEARCH_TERM_LINES,
 } from '../knowledge/storeUnitMap';
 import { playbookFoodPlan, ALL_PLAYBOOKS } from '../playbooks';
 
@@ -400,5 +400,76 @@ describe('the turkey came off the list', () => {
       line, price: 14.99, size: '3 lbs', soldBy: 'UNIT',
       description: 'Butterball All Natural Frozen Turkey Breast Roast',
     })).toBe(null);
+  });
+});
+
+// ─── SEARCHABLE IS NOT MULTIPLIABLE ─────────────────────────────────────────
+//
+// The allowlist answers one question — may this line's quantity be multiplied
+// by a package price — and the search TERM used to ride along with it. Those
+// are different questions, and bundling them cost coverage on the one shelf
+// that had none.
+//
+// Measured live 2026-09-23 at a Baltimore store, sending each line's DISPLAY
+// TEXT as the query (what a line with no term gets): of twelve non-allowlisted
+// lines probed, ELEVEN matched nothing. "Charcoal / lump fuel for the brazier"
+// is not a query. Every term added below was probed and its return recorded in
+// the source beside it.
+//
+// The safety argument is the whole point of this block: a search-only line can
+// gain a real shelf price and can NEVER gain a line total.
+describe('a term buys a shelf reference, never a total', () => {
+  const SEARCH_ONLY_CASES = [
+    ['p_buns', 'Buns / bread', 'hamburger buns'],
+    ['p_buns', 'Burger + hot dog buns / bread', 'hamburger buns'],
+    ['p_bread', 'White bread (loaves)', 'white bread'],
+    ['p_trashbags', 'Heavy-duty trash + recycling bags', 'trash bags'],
+    ['p_charcoal', 'Charcoal / lump fuel for the brazier', 'charcoal'],
+    ['p_cups', 'Disposable cups (self-serve drinks)', 'disposable cups'],
+    ['p_napkins', 'Cloth or premium paper napkins', 'paper napkins'],
+  ];
+
+  test('(premise) every search-only line REALLY EXISTS in the corpus, exactly as written', () => {
+    // Same guard the allowlist has, for the same reason: a term for a line no
+    // playbook contains covers nothing and would pass every test below.
+    const real = new Set();
+    for (const pb of ALL_PLAYBOOKS) {
+      const fp = playbookFoodPlan({ id: 'x', type: pb.type, date: '2026-08-20', guestMode: 'count', guestCount: 20, guests: [] });
+      if (!fp) continue;
+      for (const l of (fp.list || [])) real.add(`${l.id}\u0000${String(l.item || '').trim()}`);
+    }
+    for (const [id, item] of SEARCH_ONLY_CASES) {
+      expect(real.has(`${id}\u0000${item}`)).toBe(true);
+    }
+  });
+
+  test('THEY GET A TERM — the whole point, since the display text matched nothing', () => {
+    for (const [id, item, term] of SEARCH_ONLY_CASES) {
+      expect(storeSearchTerm({ id, item })).toBe(term);
+    }
+  });
+
+  test('AND THEY ARE STILL UNMULTIPLIABLE. This is the test that matters.', () => {
+    // A term must never become a licence to price the line. If this ever goes
+    // green→red the safety argument above has quietly stopped holding.
+    for (const [id, item] of SEARCH_ONLY_CASES) {
+      expect(lineIsMultipliable({ id, item, unit: 'lbs', units: 10 })).toBe(null);
+      expect(storeLineTotal({
+        line: { id, item, unit: 'lbs', units: 10 },
+        price: 4.99, size: '1 lb', soldBy: 'WEIGHT', description: item,
+      })).toBe(null);
+    }
+  });
+
+  test('the multiply allowlist is UNCHANGED by any of it', () => {
+    // 41 entries, pinned separately above. The term map is strictly larger.
+    expect(SEARCH_TERM_LINES).toBe(UNIT_MAPPED_LINES + 11);
+    // …and an allowlisted line still gets its own term from the same accessor.
+    expect(storeSearchTerm({ id: 'p_ice', item: 'Ice' })).toBe('ice');
+  });
+
+  test('a line on NEITHER list gets no term, and the caller sends its text unchanged', () => {
+    expect(storeSearchTerm({ id: 'p_apps', item: 'Cheese & charcuterie spread (crudite, sliders, skewers, dips)' })).toBe(null);
+    expect(storeSearchTerm({ id: 'p_togo', item: 'To-go containers + foil + zip bags (everybody makes a plate)' })).toBe(null);
   });
 });

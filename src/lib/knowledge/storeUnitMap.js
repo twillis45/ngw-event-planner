@@ -252,8 +252,68 @@ const ALLOW = Object.freeze([
   // not wrong, only its state is.
 ]);
 
+/**
+ * ── SEARCHABLE, BUT NEVER MULTIPLIABLE ────────────────────────────────────
+ *
+ * The list above answers ONE question — may this line's quantity be multiplied
+ * by a package price — and until now the search TERM rode along with it. Those
+ * are different questions, and bundling them cost coverage on the one shelf
+ * that had none.
+ *
+ * Measured against a live Baltimore store on 2026-09-23, sending each line's
+ * DISPLAY TEXT as the query (which is what a line without a term gets): of
+ * twelve non-allowlisted lines probed, ELEVEN matched nothing at all. The whole
+ * Supplies shelf — trash bags, charcoal, disposable cups, napkins — priced
+ * nothing, not because a store does not sell them but because "Charcoal / lump
+ * fuel for the brazier" is not a query.
+ *
+ * A term here buys a SHELF REFERENCE and nothing more: a real price for a real
+ * product beside the estimate. `lineIsMultipliable` still refuses these lines,
+ * so none of them can ever produce a line total. That is the whole safety
+ * argument — the asymmetry that made the allowlist conservative does not apply
+ * to a number nobody adds up.
+ *
+ * THE ADMISSION RULE, same discipline as above: the line must name ONE product
+ * class. A "/" is an ALTERNATIVE the host picks between and is allowed; a "+"
+ * joining two different classes is not, because the price shown would be for
+ * one of them while sitting on the line for both.
+ *
+ * Every term below was probed live and is recorded with what it returned.
+ * REFUSED on the same probe, and why:
+ *   p_togo  "To-go containers + foil + zip bags" — "food storage containers"
+ *           returns a $14.99 Snapware PYREX GLASS container. Wrong kind, and
+ *           three product classes in the line anyway.
+ *   p_fuel  "Charcoal / propane + lighter" — charcoal matches, but the line
+ *           also carries lighter fluid. "+" across classes.
+ *   p_napkins "Cocktail napkins + hand wipes" — same, wipes are not napkins.
+ *   p_cini  "Cini / sini cups" — "espresso cups" returns COFFEE PODS.
+ *   p_injera, p_berbere, p_niterkibbeh — a US chain grocer does not carry them.
+ *           "injera" returns Airplus® Gel ORTHOTIC SHOE INSERTS at $8.99, and
+ *           no word in it a blocklist could catch. That match is why the store
+ *           layer now shows WHAT it priced (see priceLayers.js).
+ */
+const SEARCH_ONLY = Object.freeze([
+  // Bread and buns — one product class, "/" alternatives.
+  { id: 'p_buns', item: 'Buns / bread', term: 'hamburger buns' },              // HT 3.75" White Hamburger Buns $2.49 · 8 ct
+  { id: 'p_buns', item: 'Buns / rolls', term: 'hamburger buns' },              // same
+  { id: 'p_buns', item: 'Burger + hot dog buns / bread', term: 'hamburger buns' }, // burger AND hot dog buns are one class
+  { id: 'p_bread', item: 'Bread / rolls', term: 'bread' },                     // Artesano® White Bread $4.79 · 20 oz
+  { id: 'p_bread', item: 'White bread (loaves)', term: 'white bread' },        // HT Roundtop Sliced Bread $2.39 · 20 oz
+
+  // Supplies — the shelf that priced nothing at all before this.
+  { id: 'p_trashbags', item: 'Heavy-duty trash + recycling bags', term: 'trash bags' }, // HT 13 gal $8.99 · 45 ct
+  { id: 'p_trash', item: 'Trash + recycling bags', term: 'trash bags' },       // same. trash and recycling bags are one class
+  { id: 'p_charcoal', item: 'Charcoal / lump fuel for the brazier', term: 'charcoal' }, // Kingsford Briquettes $16.99 · 16 lb
+  { id: 'p_cups', item: 'Disposable cups (self-serve drinks)', term: 'disposable cups' }, // Smart Way Translucent Cups $3.79 · 80 ct
+  { id: 'p_napkins', item: 'Cloth or premium paper napkins', term: 'paper napkins' },     // Bounty White Paper Napkins $4.99 · 200 ct
+  { id: 'p_napkins', item: 'Napkins (cloth or premium paper)', term: 'paper napkins' },   // same
+]);
+
 const key = (id, item) => `${String(id || '').trim()}\u0000${String(item || '').trim()}`;
 const ALLOWED = new Map(ALLOW.map((a) => [key(a.id, a.item), a]));
+// Terms from BOTH lists. Only `ALLOWED` gates multiplication, so a line can
+// gain a searchable term without ever gaining a total.
+const TERMS = new Map([...ALLOW, ...SEARCH_ONLY].map((a) => [key(a.id, a.item), a.term]));
 
 /**
  * ── WHAT TO ACTUALLY SEARCH THE STORE FOR ─────────────────────────────────
@@ -275,9 +335,11 @@ const ALLOWED = new Map(ALLOW.map((a) => [key(a.id, a.item), a]));
  * sends the item text unchanged. The backend falls back the same way.
  */
 export function storeSearchTerm(line) {
-  const a = line ? ALLOWED.get(key(line.id, line.item)) : null;
-  return (a && a.term) || null;
+  return (line ? TERMS.get(key(line.id, line.item)) : null) || null;
 }
+
+/** How many lines carry a curated search term (multipliable ones included). */
+export const SEARCH_TERM_LINES = TERMS.size;
 
 /**
  * ── AND WHETHER THE THING THAT CAME BACK IS THE THING WE ASKED FOR ────────
