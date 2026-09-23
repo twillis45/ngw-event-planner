@@ -154,7 +154,18 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // a browser shows what one screen does, and cannot show that nothing anywhere
 // calls a function. That question is what let the air-travel invite floor ship
 // into a shell nobody uses while its own tests stayed green.
-const MAX_HOSTV2_TEXT_GATES = 45;
+// ── 45 -> 46 (2026-09-23) ───────────────────────────────────────────────────
+// `everyBackendRouteHasACaller.test.js` reads hostv2 source to find the URLs the
+// shell BUILDS, so it can tell a backend route with a caller from one without.
+//
+// An e2e cannot carry this claim for the same reason it could not carry the
+// library version: a browser shows that one screen works, and can never show
+// that NOTHING anywhere calls a route. The subject is the absence of a caller
+// across the whole product, which is a fact about source text.
+//
+// It found kroger.py — 231 lines and three endpoints that no shell has ever
+// called.
+const MAX_HOSTV2_TEXT_GATES = 46;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
