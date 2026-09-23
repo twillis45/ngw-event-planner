@@ -1,5 +1,74 @@
 # Where We Are -- live status board
 
+## 2026-09-22/23 — one fact, five screens, and only one of them knew it
+
+`main` @ `0abaa18`. 499 suites / 7,165 tests. `verify:push` 5/5 on every commit;
+245/245 driven in Chromium across 7 viewports.
+
+`foodSpanNote().listApplies` has been three-valued since the day it was written
+— FALSE only when we KNOW there is no kitchen — and its only consumer was its
+own unit test. Closing that on the room-block Santa Fe 80th turned into the same
+finding five times, each on a different screen, each the same shape: **a fact
+owned by one accessor, ignored by the consumer standing next to it.**
+
+| Commit | The screen, and what it was still saying |
+|---|---|
+| `83e34cd` | The food sheet withheld the list, then read "Bought so far 0 of 4" and "one good store run covers all of it" two inches above it |
+| `307f094` | `hostSpending` carried $280 food + $53 supplies identically for HOTEL, RENTAL and UNTOLD — $333 of groceries for a kitchen the app had just denied |
+| `49380d8` | The Day tab: "Cook anything to safe internal temps" |
+| `4b03b49` | Calls to make: a live, tappable "Bake it" button |
+| `bd55fd9` | The venue blocker had no off switch anywhere in hostv2 |
+
+Then a screen-by-screen census of the same fixture, at the host's direction
+("check that the host is only seeing what they need on each screen"), closed
+three more: guest-count chips reading 50 · 75 · 100 next to a "Lock 10 in"
+button (`ed776ed3`), thirteen dietary steppers where the food sheet showed two
+and a door (`bb9e041`), and three stacked "protect the moment" paragraphs under
+a singular label (`0abaa18`).
+
+### What this session is actually about
+
+**The refusal is the fix, and the report is half of it.** Every one of these had
+a tempting relabel-the-number repair. All 226 cost citations price GROCERY
+lines, so a restaurant band for ten people is a figure nobody researched: the
+terms were withdrawn rather than re-badged. But withdrawal has a direction —
+dropping $333 made the host's headroom BIGGER ($3,566 → $3,899), and a host
+reading more room than they have is worse off than one reading the wrong basis.
+`foodUnpriced` exists for exactly that.
+
+**Narrow the verb, not the topic.** Food safety was not deleted from a catered
+gathering; only "cook to temps" went and "nothing perishable sitting out more
+than ~2 hours" stayed. `HOST_COOKS_OPTION_RE` matches `\bbake it\b`, never
+`/bake/`, so a bakery option cannot be pruned by a word it contains.
+
+**An answer outranks the gate.** A host who picked "Bake it" and then answered
+"room block" keeps their pick. Parking the venue writes no venue field, so the
+parts meter does not move — parking is not answering.
+
+**Two guards I did not write caught two things I did.**
+`authoredAskReachesTheHero` failed when shortening a label silently removed the
+host's question (that row's `ask` WAS its label). `dietVocabularyResolves` failed
+when moving the diet vocabulary into `lib/dietRows.js` and hardening it with
+`Object.freeze` made it invisible to the sweep built to enumerate every copy —
+the gate stopped seeing the canonical one. Both times the sweep was widened
+rather than the assertion relaxed.
+
+**Capture the screen, then write the assertion — never the reverse.** Five spec
+errors this session, every one found by capturing rather than reasoning: a food
+sheet whose door MOVES once the lodging question is answered; a cake row blocked
+on `theme`; its alternatives behind a collapsed "Other ways ▸"; a selector on the
+bare words that re-closed what the previous pass opened; and a red-proof snapshot
+taken BEFORE the change, so restoring it silently reverted the feature while a
+misread summary line said 196 passed.
+
+### Open
+
+The Day tab's 11-beat agenda is still byte-identical for a hotel and a rental —
+still setting food stations, building a drinks station with ice, boxing
+leftovers. Under investigation at the close of this entry; the constraint is
+that no researched destination run-of-show exists in the corpus, so the fix
+cannot be a newly authored agenda.
+
 ## 2026-09-19 — the weather ping could not arrive on a phone, and the PWA that would fix it is parked
 
 `main` @ `9960d42`. 490 suites / 7,088 tests. CI run 674, Deploy Pages 351.
