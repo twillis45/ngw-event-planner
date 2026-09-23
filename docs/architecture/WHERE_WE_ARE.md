@@ -2,7 +2,7 @@
 
 ## 2026-09-23 — the unit map, and what it refuses
 
-`main` @ pending. 520 suites / 7,378 tests. `verify:push` 5/5, exit 0.
+`main` @ `49406cd`. 520 suites / 7,378 tests. `verify:push` 5/5, exit 0.
 
 Host directive: **build the unit map** — the open item from the entry below, the
 reconciliation that lets a shelf price become a line total instead of a
