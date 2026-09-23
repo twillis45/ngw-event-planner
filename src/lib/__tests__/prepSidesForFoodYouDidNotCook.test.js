@@ -138,12 +138,23 @@ describe('the prep row reads the host’s own food answer', () => {
       rendered += rows.filter((w) => seen.has(w.trim().toLowerCase())).length;
     }
     // A ratchet, not a target: this must not get WORSE without someone noticing.
-    // 111 → 105 (bare `End` and `End+30m` beats resolved) → 102: three rows
-    // anchored to a MOMENT in the same day ("after the toast", "after the cake")
-    // now resolve against the program beat they name. Measured, not guessed:
-    // 759 authored, 657 rendered. Lower it again whenever a batch lands; raising
-    // it means rows stopped reaching a screen, and needs the reason said out loud.
+    // 111 → 105 (bare `End` and `End+30m` beats resolved) → 102 (three rows
+    // anchored to a MOMENT — "after the toast", "after the cake" — resolved
+    // against the program beat they name) → 101 (Watch Party's halftime cleanup
+    // lap, recorded in its own playbook as a known unfixed defect since
+    // 2026-09-13, now anchored the same way). Measured, not guessed: 759
+    // authored, 658 rendered.
+    //
+    // WHAT THIS NUMBER IS NOT. It is not a count of unreachable rows. This sweep
+    // drives a BARE event with no answers, so a row gated to a choice the host
+    // has not made — Watch Party's undercard and pre-race beats, for two — is
+    // absent here and reaches a screen perfectly well once someone picks that
+    // format. The figure is a monotone ratchet on ONE fixed path, which is what
+    // makes it comparable across commits; it is not a defect tally.
+    //
+    // Lower it whenever a batch lands; raising it means rows stopped reaching a
+    // screen, and needs the reason said out loud.
     expect(authored).toBeGreaterThan(700);
-    expect(authored - rendered).toBeLessThanOrEqual(102);
+    expect(authored - rendered).toBeLessThanOrEqual(101);
   });
 });
