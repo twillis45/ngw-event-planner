@@ -128,6 +128,7 @@ import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
+import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
@@ -485,7 +486,11 @@ const TYPE_GROUPS = (() => {
 // bug, not parity worth reproducing). The tags without a DIET_KEYWORDS entry
 // (Egg/Soy allergy, Diabetic-friendly) still count toward headcount tracking
 // — same honest limit legacy has for those.
-const DIET_TAGS = ['Vegetarian', 'Vegan', 'Pescatarian', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish', 'Halal', 'Kosher', 'Alcohol-free', 'Egg allergy', 'Soy allergy', 'Diabetic-friendly'];
+// MOVED to lib/dietRows.js, together with the ordering + fold rule that reads
+// it. The 2026-07-11 audit merged this vocabulary out of three inline copies but
+// left the partition rule duplicated, so the words stayed in sync while the
+// behaviour drifted — thirteen steppers on one surface, two and a door on the
+// other. A vocabulary and the rule for showing it are one fact.
 // The four replies, as [stored value, visible label]. MODULE SCOPE ON PURPOSE:
 // the picker's key handler and its render both walk this list, and a const
 // declared inside the component is how this file produced a whole-component
@@ -6189,15 +6194,26 @@ export default function HostShellV2() {
       // The ENGINE's dietary model: dietCounts adds a real priced veg main and
       // flags related lines; dietaryNoted closes the cue (headcount events).
       const dc = event.dietCounts || {};
-      const DIETS = DIET_TAGS;
       const setD = (k, delta) => {
         const n = Math.max(0, (Number(dc[k]) || 0) + delta);
         patchEvent({ dietCounts: { ...dc, [k]: n } },
           n ? k + ' × ' + n + ' — the spread just adjusted for it.' : k + ' cleared.');
       };
+      // ── TWO AND A DOOR, NOT THIRTEEN (host ask 2026-09-22) ──────────────
+      // This mapped the whole vocabulary, so a host opening "Allergies and
+      // dietary needs" met thirteen −/+ rows — most of a phone screen spent on
+      // questions nobody asked them. The food sheet's version of this SAME
+      // control already showed the answered ones plus two, behind "+ N more";
+      // it just was not the code running here. Both now read `dietRowsFor`, so
+      // the two cannot drift again.
+      //
+      // A COUNT IS AN ANSWER and is never folded away, however many there are —
+      // the same rule playbookDecisionOptions applies to the host's own pick.
+      const _dr = dietRowsFor(event, { expanded: showMoreDiets });
+      const shown = [..._dr.active, ..._dr.quick];
       return (
         <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-          {DIETS.map(k => (
+          {shown.map(k => (
             <div className="line" key={k} style={{ padding: '5px 0' }}>
               <span>{k}</span>
               <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -6207,6 +6223,11 @@ export default function HostShellV2() {
               </span>
             </div>
           ))}
+          {_dr.rest.length > 0 && (
+            <button className="mini" style={{ alignSelf: 'flex-start' }} onClick={() => setShowMoreDiets(true)}>
+              + {_dr.rest.length} more — {_dr.rest.slice(0, 4).join(' · ')}{_dr.rest.length > 4 ? ' …' : ''}
+            </button>
+          )}
           <div className="actions-row" style={{ marginTop: 6 }}>
             <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
           </div>
@@ -17203,7 +17224,7 @@ export default function HostShellV2() {
                   // Keys must match the engine's DIET_KEYWORDS table verbatim ('Shellfish',
                   // not 'Shellfish allergy') — dietCounts keys ARE the flag lookup keys.
                   const dc = event.dietCounts || {};
-                  const anyDiet = DIET_TAGS.some(k => Number(dc[k]) > 0) || Object.keys(dc).some(k => !DIET_TAGS.includes(k) && Number(dc[k]) > 0);
+                  const anyDiet = anyDietFlagged(event);  // lib/dietRows — was hand-rolled here twice, identically
                   const setD = (k, delta) => {
                     const n = Math.max(0, (Number(dc[k]) || 0) + delta);
                     patchEvent({ dietCounts: { ...dc, [k]: n } },
@@ -17236,13 +17257,15 @@ export default function HostShellV2() {
                     Object.entries(guestDiet).forEach(([d, n]) => { next[d] = Math.max(Number(next[d]) || 0, n); });
                     patchEvent({ dietCounts: next, dietMergeUndo: dc }, 'Merged from your RSVPs.');
                   };
-                  const customDiets = Object.keys(dc).filter(d => !DIET_TAGS.includes(d) && (Number(dc[d]) || 0) > 0);
-                  const active = [...DIET_TAGS, ...customDiets].filter(d => (Number(dc[d]) || 0) > 0);
-                  const activeLower = new Set(active.map(d => d.toLowerCase()));
-                  const inactive = DIET_TAGS.filter(d => (Number(dc[d]) || 0) <= 0 && !activeLower.has(d.toLowerCase()));
-                  const otherQuick = showMoreDiets ? inactive : inactive.slice(0, 2);
-                  const rest = showMoreDiets ? [] : inactive.slice(2);
-                  const totalActive = active.reduce((s, d) => s + (Number(dc[d]) || 0), 0);
+                  // ONE RULE, BOTH SURFACES (lib/dietRows). This partition used to
+                  // live here alone, which is why the Calls editor — a second
+                  // hand-rolled copy of the same control — rendered all thirteen
+                  // steppers expanded.
+                  const _dr = dietRowsFor(event, { expanded: showMoreDiets });
+                  const active = _dr.active;
+                  const otherQuick = _dr.quick;
+                  const rest = _dr.rest;
+                  const totalActive = _dr.totalActive;
                   const addCustomDiet = () => {
                     const name = dietOtherName.trim();
                     if (!name) { setDietOtherOpen(false); return; }
@@ -17339,7 +17362,7 @@ export default function HostShellV2() {
                     same information, without the wall-of-rows drift. */}
                 {(() => {
                   const dc = event.dietCounts || {};
-                  const anyDiet = DIET_TAGS.some(k => Number(dc[k]) > 0) || Object.keys(dc).some(k => !DIET_TAGS.includes(k) && Number(dc[k]) > 0);
+                  const anyDiet = anyDietFlagged(event);  // lib/dietRows — was hand-rolled here twice, identically
                   const dietOpen = !!foodSect.diet || sheet.focus === 'diet';
                   const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
                   const choicesOpen = !!foodSect.choices;
@@ -17375,7 +17398,7 @@ export default function HostShellV2() {
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
                         <span className="fstat-l">Dietary needs</span>
                         <span className="fstat-v" style={anyDiet || event.dietaryNoted ? { color: 'var(--ok)' } : null}>
-                          {anyDiet ? 'noted · ' + DIET_TAGS.filter(k => Number(dc[k]) > 0).length + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet'}
+                          {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet'}
                           <span className="fstat-chev" aria-hidden="true">›</span>
                         </span>
                       </button>

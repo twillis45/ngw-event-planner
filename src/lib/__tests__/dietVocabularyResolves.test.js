@@ -37,8 +37,16 @@ const vocabularies = () => {
   const found = [];
   for (const file of [...walk(path.join(ROOT, 'src')), ...walk(path.join(ROOT, 'hostv2', 'src'))]) {
     const src = fs.readFileSync(file, 'utf8');
-    // Any array literal assigned to a DIET_TAGS-ish name, in any file.
-    for (const m of src.matchAll(/(?:DIET_TAGS|DIETARY_TAGS|DIET_OPTIONS)\s*=\s*\[([^\]]*)\]/g)) {
+    // Any array literal assigned to a DIET_TAGS-ish name, in any file —
+    // INCLUDING one wrapped in Object.freeze(...). That wrapper was added when
+    // the vocabulary moved to lib/dietRows.js, and the older pattern (`=\s*\[`)
+    // silently stopped seeing it: the sweep went from two files to one and this
+    // suite failed on its own premise rather than on a missing tag. Exactly the
+    // failure mode this file's header warns about — "a gate that names files is
+    // how the fifth copy survives" — except here the gate was blinded by a
+    // wrapper rather than a filename. A hardened vocabulary must not become an
+    // invisible one.
+    for (const m of src.matchAll(/(?:DIET_TAGS|DIETARY_TAGS|DIET_OPTIONS)\s*=\s*(?:Object\.freeze\(\s*)?\[([^\]]*)\]/g)) {
       const line = src.slice(0, m.index).split('\n').length;
       for (const s of m[1].matchAll(/'([^']+)'/g)) {
         found.push({ tag: s[1], where: `${path.relative(ROOT, file)}:${line}` });
