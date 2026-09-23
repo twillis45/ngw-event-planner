@@ -1,5 +1,54 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — all four open board calls, and two of them reversed a same-day finding
+
+`main` @ `2845d38`. 524 suites / 7,470 tests. `verify:push` 5/5.
+
+**#1 Rank the closing window.** The 2026-08-17 ruling's bar had been unmet for
+five weeks — a certificate 27 days dead scored 4.90 against a vendor reconfirm
+whose window shuts in three days at 0.00. The packet said a date predicate could
+not tell "cannot be done later" from "happens to be due soon", and proved it by
+turning its own control red. So the term is paid on a **declared** closing
+window: the reconfirm goes 0.00 → 5.50, the emergency kit due TODAY stays at
+0.00, and the synthetic scheduled gate stays at 4.00. No lateness constant moved.
+
+**#3 Refuse or floor: neither.** `belowRequiredVendors` had no reader, so a host
+reached a one-tap "Use $300" on a plan whose own roster needs $1,750. Refusing
+costs them the number; flooring builds their headline from vendor ranges with
+zero provenance. They get both, with the floor only ever "start around". It
+fires on 15 of 315 combinations, every one a small headcount — which is where a
+per-head model breaks down.
+
+**#5 The three late deadlines were false.** The warning shipped to cards that
+afternoon and immediately told a Day Party host that "Where (daytime outdoor)"
+was late — against options that are Backyard / Rooftop / Patio / Rented outdoor
+space. All three flagged decisions were setting or concealment choices, not
+bookings. A structural veto (a decision offering somewhere the host already has
+is not a booking, unless its label says it is) took late conflicts 3 → 0 without
+moving a single authored date.
+
+**#4 Two date premiums 3–16× the only published measurement.** A June Saturday
+wedding estimated 35% over a January Wednesday. Saturday's +20% became a flag —
+the survey on the matching unit says 1.2%, and the 63% rate card prices one
+venue's rental in one market, so anything between them was a third invented
+number. Peak season went 15% → 7%, the top of three published cuts. That wedding
+is now 7.0%, high $67,500 → $53,500, and a Conference stops paying a weekend
+premium on its cheap day.
+
+Two consequences recorded rather than hidden: the 45% date cap can no longer
+bite, so it is no longer cited; and the day-of-week flag has **no reader**, so
+this removed a wrong number without adding a sentence.
+
+**Also:** three bars on the coverage chart were wrong — `options` is 260/260 not
+251, `blocks` is 250 not "247 each", and timing-category matched was 33 not 32
+because of this session's own work an hour earlier.
+
+**Worth carrying forward:** a detector's population is a separate claim from the
+detector. Declare, do not infer. List what a veto removes before trusting it —
+the first version un-grounded the clearest venue booking in the corpus. And a
+behaviour lock going red is the system working: four of them caught the pricing
+change and made it declare itself.
+
 ## 2026-09-23 — the rings had no date, and the finding inverted on measurement
 
 `main` @ `d1cec8f`+. 523 suites / 7,451 tests. `verify:push` 5/5.

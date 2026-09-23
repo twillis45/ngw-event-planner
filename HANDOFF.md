@@ -1,6 +1,16 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-23 (thirty-first entry:
+**Measured reality, not intentions.** Updated 2026-09-23 (thirty-second entry:
+all four open board calls closed, and two of them reversed work shipped hours
+earlier. The closing-window axis landed and the 2026-08-17 bar is finally met;
+"refuse or floor" turned out to be neither; the three "late deadlines" were all
+category over-matches and the warning for them had already reached hosts; and two
+date premiums running 3-16x the only published measurement came down, taking a
+June Saturday wedding from a 35% premium to 7%. Worth carrying forward: a
+detector's POPULATION is a separate claim from the detector; declare, do not
+infer; list what a veto removes before trusting it; and a behaviour lock going
+red is the system working. See the thirty-second entry.)
+Before that, on 2026-09-23 (thirty-first entry:
 Elopement's rings had a pack-it date and no order date — a $100-$2,000 essential
 with a six-week production queue looked like a three-day errand. The brief said
 three rows needed a second row authored; the sweep found eight, of which five
@@ -147,8 +157,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `c5578cd3` |
-| Jest | **7,451 passed**, 1 skipped, **0 failed**, **523 suites** (re-measured 2026-09-23 after the thirty-first entry; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `2845d382` |
+| Jest | **7,470 passed**, 1 skipped, **0 failed**, **524 suites** (re-measured 2026-09-23 after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -160,6 +170,111 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (thirty-second entry) — all four open board calls, and two of them reversed a finding
+
+524 suites / 7,470 tests. `verify:push` 5/5. Four calls closed under the
+owner's standing delegation; two of them contradicted work shipped earlier the
+same day.
+
+### #1 — Rank the closing window. The 2026-08-17 bar is met.
+
+Its re-derived case had not inverted for five weeks: a certificate 27 days dead
+scored **4.90**, a vendor reconfirm whose window shuts in three days scored
+**0.00**, because the raise emitted no consequence signal and `latenessBoost`
+pays only for being PAST a window.
+
+The packet's objection to adding the axis was that a date predicate "does not
+know the difference between 'this cannot be done later' and 'this happens to be
+due soon'" — and it proved it, by turning its own negative control red. **So the
+term is paid on a DECLARED `closingWindow`, never an inferred one.** A raise
+knows whether its window reopens; a scorer cannot see that from two dates.
+
+    Reconfirm Ironwood            0.00 -> 5.50   declares the window
+    Ask Ironwood about insurance  4.90 -> 4.90   untouched
+    Buy day-of emergency kit      0.00 -> 0.00   due TODAY, declares nothing
+    synthetic scheduled gate      4.00 -> 4.00   declares nothing
+
+The last two are the objection, answered by measurement. No lateness constant
+moved; all four ruled guards pass unchanged.
+
+### #3 — Refuse or floor: neither.
+
+`belowRequiredVendors` had been on the estimate result since 2026-09-19 with no
+reader. Surprise Proposal's roster requires $1,750 of vendors under a $100–$500
+estimate, and the host reached a one-tap **"Use $300"** knowing none of it.
+
+Refusing costs them the number they came for; flooring builds their primary
+figure from 224 vendor ranges carrying zero provenance. **They get both, and are
+told which is which** — the floor only ever as "start around". Swept: 315
+type/guest combinations, **15 fire, every one a small headcount**, because
+per-head scales with guests and a vendor floor does not.
+
+### #5 — The three late deadlines were false, and I had shipped the warning hours earlier.
+
+`timingDisagreementNote` reached the card that afternoon. The first thing it did
+was tell a Day Party host that "Where (daytime outdoor)" was late against a
+two-month booking floor. **Its options are Backyard / Rooftop / Patio / Rented
+outdoor space — three of four require no booking at all.**
+
+All three flagged decisions were the same mistake, including Surprise Proposal's
+"Photographer hidden or known to your partner?", which decides what the
+photographer *pretends to be*, not whether to hire one. That is the failure
+`timingProvenance.js`'s own header warns about, committed by that file: the
+lead-window gate caught the GROUNDING case and let the CONTRADICTION case
+through.
+
+Two vetoes. The first is **structural, not a word**: a decision offering
+somewhere the host already has is a setting choice — unless its label says it is
+a booking, which is how Wedding's "Venue + date (book FIRST)" keeps its
+grounding. Measured: matched 33 → 28, grounded 28 → 26, late conflicts **3 → 0**.
+No authored date moved in either direction.
+
+### #4 — Two date premiums that were 3–16× the only published measurement.
+
+A 100-guest wedding on a June Saturday estimated **35% above** the same wedding
+on a January Wednesday. Both factors already had their research recorded:
+
+- **Saturday +20% → a flag with no multiplier.** The survey measuring
+  whole-event spend — the matching unit — puts Saturday 1.2% over Sunday, and
+  Saturday is not even the dearest day in it. The rate card that says 63% prices
+  one venue's rental in one market. Picking a number between 1.2% and 63% would
+  be a third figure no source states.
+- **Peak season 15% → 7%**, the top of three published cuts (4.9%, 6.3%, 6.6%),
+  taken at the top because the survey measures spend by *chosen* month and is
+  therefore a floor.
+
+That wedding goes **35.0% → 7.0%**, high **$67,500 → $53,500**. It also stops
+charging a Conference a weekend premium on what is, for it, the cheap day — the
+test that recorded that defect now records its removal.
+
+Two consequences recorded rather than hidden: the 45% date-premium cap **can no
+longer bite** (largest stack is 0.37), so it is no longer cited; and **the flag
+has no reader** — `getDatePremium`'s components reach no host surface, so this
+removed a wrong number without adding a sentence, and the code says so.
+
+### Also — the coverage chart was wrong in three places
+
+Asked to re-check the artifact's field-coverage bars: `options` read 251/260 and
+is **260/260**; `default · blocks` read "247 each" and blocks is **250**; and
+timing-category matched read 32 when this session's own `rings` work had already
+made it **33**. Everything else re-measured exactly.
+
+### Worth carrying forward
+
+- **A detector's population is a separate claim from the detector.** #5's three
+  conflicts were correct arithmetic over decisions the pattern should never have
+  matched, and the fix shipped to hosts before anyone read the three decisions.
+- **Declare, don't infer.** #1's axis works because a raise declares its closing
+  window; the same change keyed on dates broke its own control.
+- **List what a veto removes before trusting it.** #5's first version
+  un-grounded Wedding's clearest venue booking to fix three that were not
+  bookings at all.
+- **A behaviour lock going red is the system working.** Four of them caught #4
+  and forced it to declare itself as a pricing change.
+- **Do not claim a disclosure that does not exist.** The day-of-week flag has no
+  reader; saying "the host still reads it" would have been the same
+  overstatement the decision was correcting.
 
 ## FIXED 2026-09-23 (thirty-first entry) — the rings had no date, and the finding inverted on measurement
 
