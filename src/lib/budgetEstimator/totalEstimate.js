@@ -213,6 +213,10 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
   if ((tod.multiplier || 1) !== 1) cite('factors.timeOfDay');
   if ((metroFactor || 1) !== 1) cite('vendor.metroMarkets');
   for (const c of (datePrem.components || [])) {
+    // A component that moved no dollar is not a contributor to this figure.
+    // `dow` is a FLAG since 2026-09-23 — it carries premium 0 — and citing it
+    // would tell `moneyDisclosure` a factor shaped the number when it did not.
+    if (!(Number(c.premium) > 0)) continue;
     if (c.key === 'dow') cite('factors.dowPremium');
     else if (c.key === 'holiday') cite('factors.usHolidays');
     else if (c.key === 'season') cite('factors.peakWeddingSeason');

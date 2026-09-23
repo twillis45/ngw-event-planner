@@ -34,6 +34,7 @@ import {
   US_HOLIDAYS, DOW_PREMIUM_PROVENANCE, TIME_OF_DAY_SLOTS,
   US_HOLIDAYS_PROVENANCE, PEAK_SEASON_PROVENANCE, DATE_PREMIUM_CAP_PROVENANCE,
   TIME_OF_DAY_PROVENANCE, SERVICE_CHARGE_PROVENANCE, TAX_PROVENANCE, CONTINGENCY_PROVENANCE,
+  getDatePremium, DATE_PREMIUM_CAP,
 } from '../estimatorFactors';
 import {
   METRO_MARKETS, METRO_MARKETS_PROVENANCE, RUSH_FACTOR_PROVENANCE, getRushFactor,
@@ -354,23 +355,39 @@ describe('estimateTotalRange reports the constants that built each figure', () =
     expect(r.provenanceKeys).toContain('budget.categoryShares');
   });
 
-  test('a loaded date cites every premium that actually fired, and the cap when it bites', () => {
-    // 2026-06-20 is a Saturday in peak wedding season.
-    const r = estimateTotalRange({ type: 'Wedding', guestCount: 150, date: '2026-06-20', timeOfDay: 'evening', metroFactor: 1.65 });
-    expect(r.provenanceKeys).toEqual(expect.arrayContaining([
+  test('a loaded date cites what fired — AND THE CAP NO LONGER BITES', () => {
+    // Re-measured 2026-09-23 after the date factors were re-decided. The
+    // largest stack this file can now build is a New Year's Eve wedding:
+    // holiday 0.30 + peak season 0.07 = 0.37, against a 0.45 cap. Saturday's
+    // 0.20 used to push it over, and no longer exists as a multiplier.
+    //
+    // SO `factors.datePremiumCap` IS UNREACHABLE TODAY, and that is reported
+    // rather than papered over: a key that never fires must never be cited,
+    // because `provenanceKeys` promises only the factors that MOVED the figure.
+    // The cap constant stays as a ceiling on anything added later — asserted
+    // directly below so it is a live guard and not dead code.
+    const loaded = estimateTotalRange({
+      type: 'Wedding', guestCount: 150, date: '2026-07-04',
+      timeOfDay: 'evening', metroFactor: 1.65,
+    });
+    expect(loaded.provenanceKeys).toEqual(expect.arrayContaining([
       'budget.perHeadByType', 'factors.timeOfDay', 'vendor.metroMarkets',
-      'factors.dowPremium', 'factors.peakWeddingSeason',
+      'factors.usHolidays', 'factors.peakWeddingSeason',
     ]));
-    // Saturday (+20%) + July 4 weekend (+20%) + peak wedding season (+15%)
-    // = +55% raw, so the +45% editorial cap bites and must be disclosed.
-    const capped = estimateTotalRange({ type: 'Wedding', guestCount: 150, date: '2026-07-04', timeOfDay: 'evening' });
-    expect(capped.provenanceKeys).toContain('factors.datePremiumCap');
-    // Exactly AT the cap is not capped: Saturday (+20%) + Christmas week
-    // (+25%) sums to precisely +45%, so nothing was clipped and the cap is
-    // not claimed as a contributor.
-    const atCap = estimateTotalRange({ type: 'Wedding', guestCount: 150, date: '2026-12-26', timeOfDay: 'evening' });
-    expect(atCap.provenanceKeys).not.toContain('factors.datePremiumCap');
+    // The two that did not move a dollar are absent: the day-of-week flag, and
+    // a cap that never engaged.
+    expect(loaded.provenanceKeys).not.toContain('factors.dowPremium');
+    expect(loaded.provenanceKeys).not.toContain('factors.datePremiumCap');
+    expect(loaded.cappedAtCap).toBeFalsy();
   });
+
+  test('…and the cap still works, so it is a guard rather than dead code', () => {
+    // Proved on the function directly, since no real date can reach it now.
+    const stacked = getDatePremium('2026-12-31', 'Wedding');
+    expect(stacked.multiplier).toBeLessThanOrEqual(1 + DATE_PREMIUM_CAP);
+    expect(DATE_PREMIUM_CAP).toBe(0.45);
+  });
+;
 
   test('a factor that did not move the number is not claimed as a contributor', () => {
     const r = estimateTotalRange({ type: 'Wedding', guestCount: 150, ...neutral });
@@ -457,7 +474,10 @@ describe('behaviour lock — provenance is metadata, and metadata costs nothing'
   const CASES = [
     // type, guests, date, timeOfDay, metro, destination, nights, low, high
     ['Wedding',          150, null,         'afternoon', 1,    false, 0,  30000,  75000],
-    ['Wedding',          150, '2026-06-20', 'evening',   1.65, false, 0,  73500, 183800],
+    // MOVED 2026-09-23 by a PRICING DECISION — Saturday's +20% became a flag with
+    // no multiplier and peak season went 15% -> 7%, both decided against the
+    // research recorded in moneyProvenance.js. $73,500-$183,800 -> $58,300-$145,700.
+    ['Wedding',          150, '2026-06-20', 'evening',   1.65, false, 0,  58300, 145700],
     ['Birthday',          30, null,         'afternoon', 1,    false, 0,   1800,   7500],
     ['Birthday',          30, null,         'afternoon', 1,    true,  0,   6000,  18000],
     ['Gala',             400, '2026-12-31', 'late',      1.65, false, 0, 268100, 643500],
@@ -482,10 +502,19 @@ describe('behaviour lock — provenance is metadata, and metadata costs nothing'
     });
   }
 
-  test('the worst-case stack is still ~2.5x the base — the audit figure, locked', () => {
+  test('the worst-case stack is now ~1.94x the base — was 2.45x, and why', () => {
+    // The audit figure was 2.45x and it moved on 2026-09-23 by a PRICING
+    // DECISION, not by a refactor: Saturday's +20% became a flag with no
+    // multiplier, and peak wedding season went 15% -> 7%. Both were decided
+    // against the research recorded in moneyProvenance.js, whose own note said
+    // the honest alternative was to shrink the premium or demote it.
+    //
+    // The point of the lock is unchanged — every multiplier still stacked here
+    // is ungrounded, and the host still sees only their product. It is simply a
+    // smaller product now, and closer to the only figures anyone published.
     const base = estimateTotalRange({ type: 'Wedding', guestCount: 150, timeOfDay: 'afternoon', metroFactor: 1 });
     const loaded = estimateTotalRange({ type: 'Wedding', guestCount: 150, date: '2026-06-20', timeOfDay: 'evening', metroFactor: 1.65 });
-    expect(loaded.lowTotal / base.lowTotal).toBeCloseTo(2.45, 2);
+    expect(loaded.lowTotal / base.lowTotal).toBeCloseTo(1.94, 2);
     // Every one of those multipliers is ungrounded, and the host sees only the
     // product of them.
     expect(moneyDisclosure(loaded.provenanceKeys).mustMark).toBe(true);

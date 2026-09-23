@@ -580,8 +580,22 @@ export const MONEY_PROVENANCE = {
         + 'supports Sunday = Monday = Wednesday = 0. '
         + 'SCOPE, ours not theirs: both sources are wedding sources and DOW_PREMIUM is applied to a '
         + 'Board Meeting and a Conference too, where weekday demand is the opposite way round. '
-        + 'NO DOLLAR MOVED. +20%/+10% still ship. This record says what was found and leaves the '
-        + 'pricing decision to whoever owns pricing.',
+        + 'DECIDED 2026-09-23, under the owner\'s standing delegation: DEMOTED TO A FLAG. The '
+        + 'multiplier is gone — Friday and Saturday now carry premium 0 — and the undisputed '
+        + 'direction stays in the component as a flag. '
+        + 'WHAT THAT IS WORTH TODAY, STATED PLAINLY: nothing renders it. getDatePremium\'s '
+        + 'components have no consumer outside totalEstimate, which reads them only to cite keys, '
+        + 'and hostv2 never calls it. The host was never TOLD a 20% Saturday premium existed — they '
+        + 'paid it in the headline. This removes a wrong number; it does not add a sentence. '
+        + 'WHY THE FLAG AND NOT A SMALLER NUMBER. The two sources disagree because they measure '
+        + 'different bases, and neither licenses a figure on the base this factor multiplied. '
+        + 'Shrinking to something between 1.2% and 63% would have been picking a third number no '
+        + 'source states, which is exactly what the old one already was. '
+        + 'THIS RECORD\'S OWN sufficientWhen NAMED THIS OUTCOME before the decision was taken, and '
+        + 'it still stands as the way back: a source on the matching unit restores a multiplier. '
+        + 'MEASURED EFFECT: a 100-guest Saturday wedding in June went from a 35.0% date premium to '
+        + '7.0%, high estimate $67,500 -> $53,500. It also stops charging a Board Meeting and a '
+        + 'Conference a weekend premium on what is, for them, the cheap day.',
     sufficientWhen: 'A dated source publishes day-of-week differentials ON THE SAME BASE the factor multiplies — whole-event cost, not venue rental — for more than one market and for non-wedding event types. Until then the honest alternative may be to shrink the premium toward the measured whole-event spread, or to demote it to a flag ("Saturdays book up faster") with no multiplier.',
     hostExplanation: true,
   },
@@ -611,6 +625,10 @@ export const MONEY_PROVENANCE = {
         + 'selection — a January couple may be buying a smaller wedding, not the same wedding cheaper — '
         + 'so the observed 5-7% is a floor on the true price effect, not a measurement of it. It is '
         + 'still the only measured figure anyone published, and it is a third of ours. '
+        + 'DECIDED 2026-09-23, under the owner\'s standing delegation: 15% -> 7%. Three independent '
+        + 'cuts of one survey land between 4.9% and 6.6%; 7% takes the TOP of that range rather than '
+        + 'its middle, because the caveat below makes those figures a floor on the true price effect '
+        + 'rather than a measurement of it. Rounding up respects the floor without inventing headroom. '
         + 'The source explicitly declines to publish a percentage ("prices are typically higher during '
         + 'this time due to the increase in demand"), so nothing here reproduces a figure it states. '
         + 'That is why the tier does not move: one number checked out and one did not, and a record '

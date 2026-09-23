@@ -139,23 +139,29 @@ describe('the playbook roster against its own estimate', () => {
     expect(est('Surprise Proposal', 1).requiredVendorFloor).toBe(1750);
   });
 
-  test('THE MULTIPLIER THAT BROKE THIS FILE — measured, and reporting no basis', () => {
-    // Recorded because it is the reason this file went red on its own, and
-    // because the factor arrives UNATTRIBUTED. `costFactorApplied` exists
-    // precisely to carry a factor's basis out to whoever renders it, and
-    // whatever applies these leaves it null — so a host sees a Saturday priced
-    // 20% above a Sunday with nothing saying why.
+  test('THE MULTIPLIER THAT BROKE THIS FILE IS GONE (2026-09-23)', () => {
+    // This test recorded a real defect: a CONFERENCE was charged +20% for
+    // being on a Saturday, and +10% for a Friday, with nothing saying why —
+    // on an event type where weekday demand runs the OTHER way. Both figures
+    // came from wedding sources.
+    //
+    // The day-of-week premium was demoted to a flag with no multiplier on
+    // 2026-09-23, decided against the research in moneyProvenance.js: the only
+    // source measuring whole-event spend puts Saturday 1.2% over Sunday, and we
+    // were applying sixteen times that. A conference now prices the same on
+    // every day of the week, which is the honest answer when no source on the
+    // matching unit says otherwise.
     const low = (d) => estimateTotalRange({ type: 'Conference', guestCount: 50, date: d }).lowTotal;
-    expect(low('2027-03-07')).toBe(7500);   // Sunday — the baseline
+    expect(low('2027-03-07')).toBe(7500);   // Sunday
     expect(low('2027-03-08')).toBe(7500);   // Monday
-    expect(low('2027-03-05')).toBe(8300);   // Friday
-    expect(low('2027-03-06')).toBe(9000);   // Saturday, +20%
-    // …and the seasonal factor STACKS on the weekend one.
-    expect(low('2026-11-28')).toBe(10100);  // Thanksgiving Saturday
-    // The basis is not reported on any of them.
-    for (const d of ['2027-03-05', '2027-03-06', '2026-11-28']) {
-      expect(estimateTotalRange({ type: 'Conference', guestCount: 50, date: d }).costFactorApplied ?? null).toBe(null);
-    }
+    expect(low('2027-03-05')).toBe(7500);   // Friday — was 8,300
+    expect(low('2027-03-06')).toBe(7500);   // Saturday — was 9,000
+    // A HOLIDAY STILL MOVES IT, and should: that factor is about the date
+    // itself, not the weekday, and it was never the thing this test caught.
+    expect(low('2026-11-28')).toBe(8600);   // Thanksgiving Saturday — was 10,100
+    // The basis is still not reported on the holiday premium, which remains
+    // this file's open finding.
+    expect(estimateTotalRange({ type: 'Conference', guestCount: 50, date: '2026-11-28' }).costFactorApplied ?? null).toBe(null);
   });
 
   test('NEGATIVE CONTROL: a per-guest required row scales with the headcount', () => {

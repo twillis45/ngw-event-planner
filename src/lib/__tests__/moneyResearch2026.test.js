@@ -397,7 +397,13 @@ describe('budget.perHeadFallback — when the branch IS forced, it declines', ()
 describe('behaviour lock — a research pass that moved a dollar would be a pricing change', () => {
   const CASES = [
     ['Wedding',          150, null,         'afternoon', 1,    false, 0,  30000,  75000],
-    ['Wedding',          150, '2026-06-20', 'evening',   1.65, false, 0,  73500, 183800],
+    // MOVED 2026-09-23 by a PRICING DECISION, which is the one reason this lock
+    // is allowed to move. Two date factors were re-decided against the research
+    // this very file records: Saturday's +20% became a flag with no multiplier,
+    // and peak wedding season went 15% -> 7%. A June Saturday evening at 1.65
+    // metro therefore drops $73,500-$183,800 -> $58,300-$145,800.
+    // See moneyProvenance.js#factors.dowPremium and #factors.peakWeddingSeason.
+    ['Wedding',          150, '2026-06-20', 'evening',   1.65, false, 0,  58300, 145700],
     ['Birthday',          30, null,         'afternoon', 1,    false, 0,   1800,   7500],
     ['Birthday',          30, null,         'afternoon', 1,    true,  0,   6000,  18000],
     ['Gala',             400, '2026-12-31', 'late',      1.65, false, 0, 268100, 643500],

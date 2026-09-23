@@ -134,15 +134,58 @@ export const US_HOLIDAYS = [
 const PEAK_WEDDING_MONTHS_SET = new Set([4, 5, 6, 7, 8, 9]); // 0-indexed: May–Oct
 export const isPeakWeddingSeason = (d) => PEAK_WEDDING_MONTHS_SET.has(d.getMonth());
 
-// Day-of-week premiums. Saturday is the heavy hitter.
+// ── DAY OF WEEK IS NOW A FLAG, NOT A MULTIPLIER (2026-09-23) ────────────────
+//
+// It shipped Friday +10% and Saturday +20% on the WHOLE estimate. The
+// 2026-09-18 research pass measured that against two real sources and its own
+// record ends: "the honest alternative may be to shrink the premium toward the
+// measured whole-event spread, or to demote it to a flag with no multiplier."
+// This is that demotion. See moneyProvenance.js#factors.dowPremium.
+//
+// WHY THE FLAG AND NOT A SMALLER NUMBER. The two sources disagree because they
+// measure different things, and neither licenses a figure on the base this
+// factor multiplies:
+//
+//   THE SURVEY, on whole-event spend — the matching unit. Saturday over Sunday
+//   is 1.2%, the entire seven-day spread is 9.0%, and SATURDAY IS NOT THE MOST
+//   EXPENSIVE DAY IN IT: Monday and Tuesday both sit above it. We shipped 20%,
+//   roughly sixteen times the observed differential.
+//
+//   THE RATE CARD, on venue rental — one venue, one market. Saturday 63% over
+//   Sunday, which is far ABOVE 20%. But it prices the single line that moves
+//   most with the calendar, while this factor multiplies catering, florals,
+//   attire and rings too, none of which care what day it is.
+//
+// Shrinking to some number between them would be picking a third figure no
+// source states, which is what the old one already was. So the multiplier goes
+// and the TRUE part — a direction nobody disputes — stays in the component for
+// whatever renders the breakdown.
+//
+// AND BE HONEST ABOUT WHAT THAT IS WORTH TODAY: nothing renders it. `components`
+// and `explanation` have no consumer outside this file — hostv2 never calls
+// getDatePremium, and totalEstimate reads the components only to cite provenance
+// keys. So the host was never told a 20% Saturday premium existed; they just
+// paid it in the headline. Demoting it removes a wrong number and adds no new
+// sentence. Claiming otherwise would be the same overstatement this decision
+// exists to correct.
+//
+// IT ALSO FIXES A MISAPPLICATION. Both sources are wedding sources, and this
+// factor was multiplying a Board Meeting and a Conference, where weekday demand
+// runs the other way — a Saturday conference was charged a premium for being on
+// the cheap day.
+//
+// AND THE ZERO ROWS WERE A CLAIM TOO. "Sunday = Monday = Wednesday = 0" asserted
+// those days carry nothing; the survey puts Monday and Tuesday above Sunday and
+// the rate card puts Sunday 50% above a weekday. Nothing supported it either.
+// With no multiplier anywhere, the file no longer asserts it.
 const DOW_PREMIUM = {
-  0: { premium: 0.00, label: 'Sunday' },
-  1: { premium: 0.00, label: 'Monday' },
-  2: { premium: 0.00, label: 'Tuesday' },
-  3: { premium: 0.00, label: 'Wednesday' },
-  4: { premium: 0.00, label: 'Thursday' },
-  5: { premium: 0.10, label: 'Friday' },
-  6: { premium: 0.20, label: 'Saturday' },
+  0: { premium: 0.00, label: 'Sunday', flag: false },
+  1: { premium: 0.00, label: 'Monday', flag: false },
+  2: { premium: 0.00, label: 'Tuesday', flag: false },
+  3: { premium: 0.00, label: 'Wednesday', flag: false },
+  4: { premium: 0.00, label: 'Thursday', flag: false },
+  5: { premium: 0.00, label: 'Friday', flag: true },
+  6: { premium: 0.00, label: 'Saturday', flag: true },
 };
 
 // Cap on the total date-premium multiplier so an evening Saturday in
@@ -186,12 +229,15 @@ export const getDatePremium = (eventDate, eventType) => {
 
   // Day-of-week
   const dow = DOW_PREMIUM[d.getDay()];
-  if (dow && dow.premium > 0) {
+  if (dow && (dow.premium > 0 || dow.flag)) {
     components.push({
       key: 'dow',
-      label: `${dow.label} premium`,
+      // Named as what it now is. A component carrying `premium: 0` adds nothing
+      // to the multiplier below and still reaches the breakdown the host reads.
+      label: `${dow.label} demand`,
       premium: dow.premium,
-      explanation: `${dow.label}s book up faster — vendors and venues commonly charge more.`,
+      flagOnly: !(dow.premium > 0),
+      explanation: `${dow.label}s book up faster — vendors and venues commonly charge more. We do not put a number on it: the only published figures measure different things and disagree.`,
     });
   }
 
@@ -213,8 +259,20 @@ export const getDatePremium = (eventDate, eventType) => {
     components.push({
       key: 'season',
       label: 'Peak wedding season',
-      premium: 0.15,
-      explanation: 'May–October are the heaviest demand months for weddings in most US markets.',
+      // ── 15% -> 7% (2026-09-23) ──────────────────────────────────────────
+      // Three independent cuts of the largest US wedding survey put the peak
+      // premium between 4.9% and 6.6%: our own May-Oct/Nov-Apr split of its
+      // by-month figures gives 4.9%, its published quarters 6.6%, its published
+      // seasons 6.3%. We shipped 15% — more than twice the highest of them.
+      //
+      // 7% TAKES THE TOP OF THAT RANGE, NOT ITS MIDDLE, and deliberately: the
+      // survey measures spend by CHOSEN month, which conflates price with
+      // selection, so 4.9-6.6% is a FLOOR on the true price effect rather than
+      // a measurement of it. Rounding up to 7% respects that without inventing
+      // headroom the evidence does not support.
+      // See moneyProvenance.js#factors.peakWeddingSeason.
+      premium: 0.07,
+      explanation: 'May–October are the heaviest demand months for weddings in most US markets. Published survey data puts the difference near 5–7%.',
     });
   }
 
