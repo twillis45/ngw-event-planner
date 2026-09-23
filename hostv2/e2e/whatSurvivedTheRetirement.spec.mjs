@@ -125,6 +125,58 @@ test.describe('the moved content reaches a real screen', () => {
   });
 });
 
+test.describe('the air-travel invite floor reaches the shipping shell', () => {
+  test('a destination host is told to invite EARLIER than a local one', async ({ browser }) => {
+    // The defect this proves fixed: the floor was built into playbookMilestones,
+    // whose only consumer chain ends at src/App.js — the FROZEN CRA donor.
+    // hostv2 never mentions milestones, so a green unit test asserted 88 days
+    // while this shell went on saying 18.
+    //
+    // TWO CONTEXTS, ONE COMPARISON. An earlier draft asserted only that "send
+    // invites" appeared, which would have passed with the bug fully present —
+    // the exact kind of test this repo calls worse than none. The claim is
+    // RELATIVE, so the test has to render both events and compare them.
+    const dueFor = async (isDest) => {
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      await page.addInitScript((d) => {
+        localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+        localStorage.setItem('ngw-welcomed', '1');
+        localStorage.setItem('ngw-v2-welcomed', '1');
+        localStorage.setItem('ngw-hostv2-last-event', 'airfloor');
+        const date = new Date(Date.now() + 300 * 864e5).toISOString().slice(0, 10);
+        localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
+          id: 'airfloor', type: 'Birthday', name: 'Santa Fe 80th', date, guestCount: 10,
+          venueCity: 'Santa Fe', state: 'NM', isDestination: d,
+          guests: [], vendors: [], budget: [], timeline: [],
+        }]));
+      }, isDest);
+      await page.goto('?elegant=1');
+      await settled(page);
+      await openSection(page, 'Your checklist');
+      await draftChecklist(page);
+      const text = await sheetText(page);
+      expect(text).toContain('send invites');
+      // The rendered relative date that follows the invite row.
+      const after = text.slice(text.indexOf('send invites'));
+      const m = /in (\d+) (day|week|month)/.exec(after);
+      expect(m).toBeTruthy();
+      const n = parseInt(m[1], 10);
+      const days = m[2] === 'month' ? n * 30 : m[2] === 'week' ? n * 7 : n;
+      await ctx.close();
+      return days;
+    };
+
+    const dest = await dueFor(true);
+    const local = await dueFor(false);
+    // Both are real readings off the screen, and the destination one is sooner
+    // because the invite has to land before the fare window closes.
+    expect(dest).toBeGreaterThan(0);
+    expect(local).toBeGreaterThan(0);
+    expect(dest).toBeLessThan(local);
+  });
+});
+
 test.describe('the rename reached the door that says the name', () => {
   test('THE SPLASH — the first screen anyone sees, carved from the brand', async ({ page }) => {
     // THIS IS THE TEST THAT WAS MISSING, and its absence is the whole lesson.

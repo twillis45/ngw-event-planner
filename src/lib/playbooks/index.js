@@ -1310,6 +1310,17 @@ export function playbookChecklist(event, asOf) {
   // exists and isn't a caterer); null/undecided leaves every task in place.
   const fa = foodApproach(event);
   const dropCaterer = fa.usesCaterer === false;
+
+  // The milestones the air-travel floor moved, keyed by id, so a task can
+  // inherit its own milestone's date rather than a second copy of the rule.
+  // Empty for every local event, which is every event that does not fly.
+  const _airFlooredMilestones = (() => {
+    const out = new Map();
+    try {
+      for (const m of playbookMilestones(event, asOf)) if (m.airFloorApplied) out.set(m.id, m);
+    } catch (_e) { /* a floor that cannot be computed never moves a task */ }
+    return out;
+  })();
   const rows = [];
   // DESTINATION-4: kids-conditional content reads ONE predicate (eventHasKids —
   // roster kids or event.kidsCount, same sources as the food plan's portion skew).
@@ -1335,7 +1346,26 @@ export function playbookChecklist(event, asOf) {
     // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
     // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer").
     if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy)\b/i.test(t.label)) continue;
-    const offset = taskOffsetDays(t.when); // days relative to event (≤ 0 = before)
+    // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
+    // The floor was built into `playbookMilestones` and stopped there. Measured:
+    // `playbookMilestones` has exactly one consumer, `playbookAreaNextStep`,
+    // which has exactly one consumer, `src/App.js` — the FROZEN CRA donor.
+    // hostv2 contains no reference to milestones at all. So on the shell people
+    // actually use, a host flying ten guests to Santa Fe was still told to send
+    // invites 18 days out, while a green unit test asserted 88.
+    //
+    // INHERITED, NOT RE-DERIVED. The task takes the floor from the milestone it
+    // already declares with `milestoneId`, so "which row is the invite" stays a
+    // question answered in exactly one place. A second predicate here would be
+    // the duplication this whole sweep has been closing — and it is what put the
+    // floor on thank-you notes the first time.
+    const _rawOffset = taskOffsetDays(t.when); // days relative to event (≤ 0 = before)
+    const _flooredMs = t.milestoneId ? _airFlooredMilestones.get(t.milestoneId) : null;
+    // Milestones count days BEFORE as positive; tasks count them as negative.
+    // Pulled earlier only, never pushed later — same rule the milestone follows.
+    const offset = (_flooredMs && _rawOffset != null && _rawOffset > -_flooredMs.offsetDays)
+      ? -_flooredMs.offsetDays
+      : _rawOffset;
     const dueInDays = offset == null ? null : dte + offset;
     // Day-of is offset ZERO exactly. A post-event task bucketed here would sit
     // under THE DAY tab, which is the same lie in a different place.
@@ -2729,7 +2759,31 @@ export function playbookMilestones(event, asOf) {
   const _airFloor = (() => {
     try { return airTravelInviteFloor(event); } catch (_e) { return null; }
   })();
-  const _isInviteish = (m) => m && (m.category === 'guest' || /invit|save.the.date|rsvp/i.test(String(m.name || '')));
+  // WHICH MILESTONE IS "THE INVITE", AND THE TWO WAYS THIS WAS WRONG (fixed
+  // 2026-09-23, the same day it shipped). This read
+  //   `m.category === 'guest' || /invit|save.the.date|rsvp/i.test(name)`
+  // and moved 77 milestones across the corpus on a destination event. Only ~28
+  // were invites. The other two groups were both real damage:
+  //
+  //   38 HEADCOUNT CONFIRMATIONS. "Lock final headcount", "Confirm final
+  //      headcount (chase the maybes)" are `category: 'guest'`, so the bare
+  //      category test caught them — and closing the count 88 days out, before a
+  //      single RSVP is back, inverts the milestone it depends on.
+  //   11 POST-EVENT MILESTONES. `offsetDays` is NEGATIVE after the event, and
+  //      `-7 < 88` is true, so "Send the thank-yous" was pulled from a week
+  //      AFTER the party to three months BEFORE it.
+  //
+  // `rsvp` is gone from the regex on purpose: it appears in both "ask RSVP" (an
+  // invite) and "Read the RSVPs" (a close), so it cannot tell them apart. Every
+  // invite milestone in the corpus says `invit` or `save the date` in its name.
+  //
+  // FAILING SAFE. A playbook whose invite is named something this does not match
+  // simply keeps its authored timing — no floor, the state before any of this
+  // existed. That is the right direction to be wrong in.
+  const _isInviteish = (m) => m
+    && typeof m.offsetDays === 'number'
+    && m.offsetDays > 0                                   // pre-event only, never a follow-up
+    && /\binvit|save.the.date/i.test(String(m.name || ''));
   return pb.milestones
     .filter((m) => m && m.category !== 'event' && typeof m.offsetDays === 'number')
     .map((m0) => {

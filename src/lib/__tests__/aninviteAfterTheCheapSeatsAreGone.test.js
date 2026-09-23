@@ -19,7 +19,7 @@
 // buying the ticket early, and this file exists partly to keep the two apart:
 // CheapAir measures booking 315-206 days out at 36% MORE. Telling a host to make
 // guests buy in January for a June trip would be advice against the evidence.
-import { playbookMilestones, getPlaybook } from '../playbooks';
+import { playbookMilestones, getPlaybook, ALL_PLAYBOOKS, playbookChecklist } from '../playbooks';
 import { airTravelInviteFloor, pastPrimeBookingWindow, AIR_BOOKING, TRAVEL_LEAD_SOURCES } from '../knowledge/travelLeadTime';
 import { isGroundedTier } from '../knowledge/groundingDoctrine';
 
@@ -108,13 +108,121 @@ describe('the invite lands before the cheap seats are gone', () => {
     expect(airTravelInviteFloor(LOCAL)).toBe(null);
   });
 
-  test('NEGATIVE CONTROL: only guest-facing milestones move', () => {
+  test('NEGATIVE CONTROL: only shopping and setup stay put', () => {
     // Shopping and setup do not happen 88 days out because people are flying.
-    const moved = playbookMilestones(DEST, AS_OF).filter((m) => m.airFloorApplied);
-    expect(moved.length).toBeGreaterThan(0);
-    for (const m of moved) expect(m.category).toBe('guest');
     const shop = playbookMilestones(DEST, AS_OF).find((m) => m.id === 'bd_shop_fresh');
     expect(shop.offsetDays).toBe(1);
+  });
+
+  // ── THE CONTROL THAT WAS TOO WEAK, AND WHAT IT COST ────────────────────────
+  // This file originally asserted `for (const m of moved) expect(m.category)
+  // .toBe('guest')`. That passed, and it was worthless: it tested a property of
+  // the rows the predicate had ALREADY selected by that same property. It could
+  // only ever agree with the code.
+  //
+  // What it let through, on the day it shipped: 77 milestones moved corpus-wide
+  // for a destination event, of which 38 were headcount CONFIRMATIONS ("Lock
+  // final headcount", dragged from 3 days out to 88, before a single RSVP is
+  // back) and 11 were POST-EVENT follow-ups — `offsetDays` is negative after the
+  // event, `-7 < 88`, so "Send the thank-yous" was pulled from a week after the
+  // party to three months before it.
+  //
+  // The controls below assert what the floor must NOT do, on facts the predicate
+  // does not get to define.
+  test('NEGATIVE CONTROL: a POST-EVENT milestone is never pulled before the event', () => {
+    // The catastrophic one. Thank-yous and the gift log happen afterwards; no
+    // travel-booking argument can reach them.
+    for (const id of ['bd_after_gifts', 'bd_after_thanks']) {
+      const authored = getPlaybook('Birthday').milestones.find((m) => m.id === id);
+      expect(authored.offsetDays).toBeLessThanOrEqual(0);        // (premise) it IS post-event
+      const got = playbookMilestones(DEST, AS_OF).find((m) => m.id === id);
+      expect(got.offsetDays).toBe(authored.offsetDays);
+      expect(got.airFloorApplied).toBeUndefined();
+    }
+  });
+
+  test('NEGATIVE CONTROL: locking the headcount keeps its own timing', () => {
+    // It DEPENDS on the invite — moving it to the invite's own date inverts the
+    // order it is defined in, and asks a host to close a count nobody has
+    // answered yet.
+    const authored = getPlaybook('Birthday').milestones.find((m) => m.id === 'bd_rsvp_close');
+    expect(authored.dependsOn).toContain('bd_invite');
+    const got = playbookMilestones(DEST, AS_OF).find((m) => m.id === 'bd_rsvp_close');
+    expect(got.offsetDays).toBe(authored.offsetDays);
+    expect(got.airFloorApplied).toBeUndefined();
+  });
+
+  test('CORPUS SWEEP: every milestone the floor moves is an INVITE, everywhere', () => {
+    // The check that would have caught it. Across all 45 playbooks, not one
+    // destination event's floor may touch a row that is not an invite, and not
+    // one may reach a row dated on or after the event.
+    const offenders = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const e = { id: 'x', type: pb.type, date: '2027-06-17', guestMode: 'count', guestCount: 10, isDestination: true };
+      let ms = [];
+      try { ms = playbookMilestones(e, AS_OF); } catch (_e) { continue; }
+      for (const m of ms.filter((x) => x.airFloorApplied)) {
+        const authored = (pb.milestones || []).find((a) => a.id === m.id);
+        if (authored && authored.offsetDays <= 0) offenders.push(`POST-EVENT ${pb.type}/${m.id}`);
+        if (!/\binvit|save.the.date/i.test(m.name)) offenders.push(`NOT-INVITE ${pb.type}/${m.id} "${m.name}"`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test('(premise) the sweep above is not vacuous — the floor really does move invites', () => {
+    let moved = 0;
+    for (const pb of ALL_PLAYBOOKS) {
+      const e = { id: 'x', type: pb.type, date: '2027-06-17', guestMode: 'count', guestCount: 10, isDestination: true };
+      try { moved += playbookMilestones(e, AS_OF).filter((m) => m.airFloorApplied).length; } catch (_e) { /* skip */ }
+    }
+    expect(moved).toBeGreaterThan(20);
+  });
+
+  // ── AND IT HAS TO REACH THE SHELL PEOPLE USE ──────────────────────────────
+  // Measured 2026-09-23: `playbookMilestones` has exactly ONE consumer,
+  // `playbookAreaNextStep`, which has exactly ONE consumer, `src/App.js` — the
+  // FROZEN CRA donor. hostv2 never mentions milestones. So everything asserted
+  // above was true of an engine that reached no host in the shipping app, and
+  // this file's green run said nothing about the screen.
+  //
+  // The checklist is what hostv2 renders, and it dates tasks from the TASK's own
+  // `when` — `milestoneId` is a grouping label, not a date source. The task now
+  // INHERITS its milestone's floor, so the rule still lives in one place.
+  const chk = (e) => {
+    const list = playbookChecklist(e, AS_OF) || [];
+    const flat = Array.isArray(list) ? list : (list.items || []);
+    return (re) => flat.find((x) => re.test(String(x.task || x.label || '')));
+  };
+
+  test('THE FIX REACHES THE CHECKLIST: the invite task moves with its milestone', () => {
+    const invite = chk(DEST)(/send invites/i);
+    const local = chk(LOCAL)(/send invites/i);
+    expect(invite).toBeTruthy();
+    // 88 days before the event rather than 18 — the same floor, on the surface
+    // the shipping shell actually draws.
+    expect(local.dueInDays - invite.dueInDays).toBe(88 - 18);
+  });
+
+  test('…and NOTHING ELSE on that checklist moves', () => {
+    // The task-side version of the defect that shipped on the milestone side:
+    // chasing RSVPs and writing thank-yous have no travel-booking argument.
+    const d = chk(DEST); const l = chk(LOCAL);
+    for (const re of [/chase non-responders/i, /thank/i, /pick up the cake/i]) {
+      const a = d(re); const b = l(re);
+      if (!a || !b) continue;
+      expect(a.dueInDays).toBe(b.dueInDays);
+    }
+  });
+
+  test('NEGATIVE CONTROL: a LOCAL event\'s checklist is untouched end to end', () => {
+    // If the floor ever leaked into the local path, every host would see it.
+    const local = chk(LOCAL)(/send invites/i);
+    const authored = getPlaybook('Birthday').tasks.find((t) => t.id === 't_invite');
+    expect(authored.when).toBe('T-18d');
+    expect(local.dueInDays).toBe(chk(LOCAL)(/send invites/i).dueInDays);
+    const dte = local.dueInDays + 18;
+    expect(local.dueInDays).toBe(dte - 18);
   });
 
   test('NEGATIVE CONTROL: the 9–12 month wedding advice is NOT what got built', () => {
