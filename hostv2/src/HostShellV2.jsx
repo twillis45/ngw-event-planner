@@ -17247,7 +17247,7 @@ export default function HostShellV2() {
                         built. What IS honest is telling the host which kind of number
                         they are reading. Sheet-level on purpose: the same sentence on
                         every row would be noise, and noise is not honesty. */}
-                    <Grounding gap={3}>{geoPlanNote(venueFor(event).state)}</Grounding>
+                    <Grounding gap={3}>{geoPlanNote(venueFor(event).state, foodPP.priceContext)}</Grounding>
                     {PRICE_VINTAGE ? <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>est. prices · {PRICE_VINTAGE}</p> : null}
                   </div>
                   );
@@ -19681,9 +19681,14 @@ export default function HostShellV2() {
                                     The frozen shell had this right with an always-set
                                     national note; this shell dropped it in the rebuild.
                                     Both branches now say where the number came from. */}
-                                {foodPP.priceContext
-                                  ? <> Prices adjusted for the {foodPP.priceContext.split(' · ')[0]} region.</>
-                                  : <> Prices are a national baseline — not adjusted for your area.</>}
+                                {/* ONE OWNER, 2026-09-23. This branch was right and the
+                                    shopping sheet's was not: it read the applied context
+                                    and said "Prices adjusted for the South region" while
+                                    the sheet read the STATE alone and said "not yet
+                                    adjusted for the South" — about the same numbers, on
+                                    the same event, where one host can see both.
+                                    Both now ask geoPlanNote, so they cannot drift again. */}
+                                {' '}{geoPlanNote(venueFor(event).state, foodPP.priceContext)}
                               </div>
                             )}
                             {/* #39 POST-HOC PRICE NUDGE — only when the budget is

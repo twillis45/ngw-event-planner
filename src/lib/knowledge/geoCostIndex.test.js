@@ -181,3 +181,69 @@ describe('partial regional coverage degrades to national, per region', () => {
     expect(geoAdjust('potatoes', 'GA').factor).toBeGreaterThan(1);
   });
 });
+
+// ─── THE NOTE THAT DENIED WHAT THE ENGINE HAD DONE (2026-09-23) ──────────────
+//
+// hostv2 fetches a regional factor, passes it into playbookFoodPlan, and the
+// prices on screen move. Underneath them the shopping sheet printed "These are
+// national average prices — not yet adjusted for the South", because geoPlanNote
+// answered from the STATE and had no way to know what the engine did.
+//
+// The money panel on the same event read the applied context and said the
+// opposite: "Prices adjusted for the South region." One host, two surfaces, one
+// set of numbers, contradictory claims about them.
+//
+// Tests never caught it because `isFoodPricesConfigured()` is false without a
+// backend, so in the sandbox no factor is ever applied and the sheet's sentence
+// is true. The defect only appears where the feature works.
+describe('the plan note says what actually happened to the price', () => {
+  const APPLIED = 'South · May 2026 · BLS Average Price';
+
+  test('(premise) with no applied basis it still says NOT adjusted — the old contract holds', () => {
+    // Every existing caller passes one argument, and the public demo has no
+    // backend. That path must be byte-identical or this "fix" is a regression
+    // for every host on a national baseline.
+    expect(geoPlanNote('MD')).toBe('These are national average prices — not yet adjusted for the South.');
+    expect(geoPlanNote(null)).toMatch(/add your venue state/);
+  });
+
+  test('THE FIX: when a factor MOVED a price, the note says adjusted', () => {
+    const n = geoPlanNote('MD', APPLIED);
+    expect(n).toMatch(/adjusted for the South/i);
+    expect(n).not.toMatch(/not yet adjusted/i);
+    expect(n).not.toMatch(/national average/i);
+  });
+
+  test('…and it carries the basis it was adjusted ON, not just a claim', () => {
+    // "Adjusted" with no source is the same unbacked assertion in the other
+    // direction. The month and the series come through.
+    const n = geoPlanNote('MD', APPLIED);
+    expect(n).toContain('May 2026');
+    expect(n).toContain('BLS Average Price');
+  });
+
+  test('MARYLAND IS THE SOUTH, which is the case most likely to be read as a bug', () => {
+    // Census Region 3, Division 5 South Atlantic — with DE, DC, VA, WV. A
+    // Silver Spring host seeing "the South" is correct, not a mis-mapping, and
+    // this test exists so nobody "fixes" it to Northeast.
+    expect(regionForState('MD')).toBe('south');
+    expect(geoPlanNote('MD', APPLIED)).toMatch(/the South/);
+    for (const st of ['DC', 'DE', 'VA', 'WV']) expect(regionForState(st)).toBe('south');
+    for (const st of ['NJ', 'NY', 'PA']) expect(regionForState(st)).toBe('northeast');
+  });
+
+  test('the STATE names the region, not the backend label — they can disagree', () => {
+    // The backend sends its own regionLabel. When a state resolves, the
+    // state-derived label wins, because it is the one this codebase can check.
+    expect(geoPlanNote('MD', 'Northeast · May 2026')).toMatch(/the South/);
+  });
+
+  test('no state, but an applied factor: it still names where, from the basis', () => {
+    const n = geoPlanNote(null, APPLIED);
+    expect(n).toMatch(/adjusted for the South/i);
+  });
+
+  test('a basis with no detail still reads as a sentence', () => {
+    expect(geoPlanNote('MD', 'South')).toBe('Prices adjusted for the South.');
+  });
+});

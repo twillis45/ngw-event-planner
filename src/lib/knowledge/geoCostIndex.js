@@ -138,12 +138,35 @@ export function geoHonestyLine(itemKey, state) {
  * BLS series actually have; saying "not adjusted for New Mexico" would imply a
  * granularity that does not exist even once the table grows.
  */
-export function geoPlanNote(state) {
+export function geoPlanNote(state, appliedBasis) {
   const region = regionForState(state);
   const REGION_LABEL = {
     northeast: 'the Northeast', midwest: 'the Midwest',
     south: 'the South', west: 'the West',
   };
+  // ── WHAT THE ENGINE ACTUALLY DID, NOT WHAT THE STATE IMPLIES ─────────────
+  // `appliedBasis` is the caller's record of a regional factor that MOVED a
+  // price — the backend's "the South · May 2026 · BLS Average Price". It exists
+  // only when the factor was not 1, so its presence is the fact.
+  //
+  // Without it this function answered from the STATE alone, and a shell that had
+  // adjusted its prices then printed "not yet adjusted for the South" underneath
+  // them. Two surfaces in hostv2 said opposite things about the same numbers:
+  // the money panel read the applied context and said "Prices adjusted for the
+  // South region", the shopping sheet read only the state and denied it.
+  //
+  // Understating is still lying. A host who is told the figure is a national
+  // baseline discounts it exactly as much as if it were.
+  if (appliedBasis) {
+    const parts = String(appliedBasis).split('·').map((x) => x.trim()).filter(Boolean);
+    // The state-derived label is authoritative and well-formed ("the South");
+    // the backend's own label is the fallback when no state resolved.
+    const where = region ? REGION_LABEL[region] : (parts[0] ? `the ${parts[0]}` : 'your area');
+    const rest = parts.slice(1).join(' · ');
+    return rest
+      ? `Prices adjusted for ${where} — ${rest}.`
+      : `Prices adjusted for ${where}.`;
+  }
   if (!region) {
     return 'These are national average prices — add your venue state and we can start localizing them.';
   }
