@@ -25,6 +25,16 @@ services:
         sync: false                  #   /api/weather proxy so the key stays server-side.
       - key: BLS_API_KEY             # data.bls.gov/registrationEngine/ (free registration).
         sync: false                  #   Powers /api/food-prices; UNSET = anon ~25/day cap → 429s.
+      # Store prices (layer 2 of three). Self-serve, free: developer.kroger.com →
+      # register → create an application → copy its Client ID and Secret. The
+      # client-credentials scope used is `product.compact` — no partner or
+      # marketplace approval, unlike Instacart's 30–40 day production review.
+      # UNSET = every host takes the honest "not switched on" path; the shopping
+      # sheet keeps its regional estimate and says so. Never a fake price.
+      - key: KROGER_CLIENT_ID        # developer.kroger.com → your app → Client ID
+        sync: false
+      - key: KROGER_CLIENT_SECRET    # developer.kroger.com → your app → Client Secret
+        sync: false
       - key: PLANNER_DEV_TOKEN       # local-dev shorthand only; IGNORED in deployment
         sync: false                   # unless ALLOW_DEV_TOKEN=true is ALSO set (do NOT set in prod)
       # SECURITY: Do NOT add ALLOW_DEV_TOKEN here. It must remain unset in every
