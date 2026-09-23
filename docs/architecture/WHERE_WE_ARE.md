@@ -1,5 +1,38 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — rows authored into a drawer nothing opens
+
+`main` @ `864bbf7`. 512 suites / 7,269 tests. `verify:push` 5/5 on every commit.
+
+One defect class chased to the bottom: **a schedule row whose `when` token no
+rule recognizes returns null, is dropped by every reader, and reaches no host —
+and nothing fails when it is written.**
+
+| Commit | What |
+|---|---|
+| `bd5412b` | Three rows anchored to a moment ("after the toast", "after the cake") now land after the beat they name. A fourth stays dropped — Retirement Party has no toast, and attaching it to the nearest speech would be the engine deciding what a toast is |
+| `41b4a5b` | Watch Party's halftime cleanup lap, recorded in its own note as "NOT FIXED" since 2026-09-13. Anchored to its own halftime beat, so the `not: FORMAT_NO_HALFTIME` gate is **inherited, not restated** |
+| `d68818d` | The guard: every `when` token sorted RESOLVES / BY RULE / **UNKNOWN**, third bin asserted **empty**. Fixed the one it found (`T+1 morning`) |
+| `864bbf7` | The finding — **250 authored rows reach no host**, and building a surface for them would be the wrong fix |
+
+**Anniversary's anchor was wrong**, not just unresolved: "after the toast" on a
+row that boxes leftover cake, where the only toast is the welcome toast at
+T0 +30m — it would have landed 35 minutes in, ninety minutes before the cake.
+Corrected on the corpus's own evidence. *A beat placed confidently at the wrong
+hour is worse than an absent one.*
+
+**250 rows on no screen.** 152 in `schedules.purchasing`, a key **no function
+reads** (proven by execution: 68 exported functions called with a real event,
+zero hits); 98 at `T-Nd` / `T0 +Nd` in read keys, deliberately excluded. Both
+groups are superseded by live data that is strictly better — `purchases[].buyAt`
+drives the real shopping list, `tasks[]` are specific and checkable. Rendering
+them would reintroduce the chili defect: *a label that restates a list the host
+can edit can only drift out of sync with it.* **They cannot lie today only
+because nothing reads them.** Ratcheted on the way out.
+
+**Open, and it is a decision:** retiring the 250 rows is Todd's call, not an
+opportunistic sweep across 45 files. Nothing is blocked on it.
+
 ## 2026-09-23 — the app was shipping under a competitor's name
 
 `main` @ `75f1c55`. 504 suites / 7,208 tests. `verify:push` 5/5 on every commit.

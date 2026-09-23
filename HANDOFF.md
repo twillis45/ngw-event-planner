@@ -125,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `d68818d9` |
-| Jest | **7,208 passed**, 1 skipped, **0 failed**, **504 suites** (re-measured 2026-09-23, after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `864bbf76` |
+| Jest | **7,269 passed**, 1 skipped, **0 failed**, **512 suites** (re-measured 2026-09-23 after the twenty-second entry; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -138,6 +138,92 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-second entry) — rows authored into a drawer nothing opens
+
+Four commits. 512 suites / 7,269 tests (from 504 / 7,208). `verify:push` 5/5 on
+each. `bd5412b`, `41b4a5b`, `d68818d`, `864bbf7`.
+
+One defect class, chased to the bottom: **a schedule row whose `when` token no
+rule recognizes returns null, is dropped by every reader, and reaches no host.**
+Nothing fails when it is written.
+
+| # | Row | Was | Now |
+|---|---|---|---|
+| 1 | Engagement Party `after toast` | dropped | 1h 5m in |
+| 2 | Vow Renewal `after the cake` | dropped | 2h 35m in |
+| 3 | Anniversary `after the toast` | dropped | 2h 20m in — **and its anchor was wrong** |
+| 4 | Retirement Party `after the toast` | dropped | **stays dropped, correctly** |
+| 5 | Watch Party `halftime` | dropped | 1h 50m in |
+| 6 | Housewarming `T+1 morning` | dropped | still absent, now **by rule** |
+
+### The three that are worth more than the rows
+
+**An anchor beats a number.** Anniversary authored "after the toast" on a row
+that boxes leftover cake — and its only toast is the WELCOME toast at T0 +30m,
+so the row would have landed 35 minutes in, ninety minutes before the cake is
+served. Corrected to `after the cake` on the corpus's own evidence: vowRenewal
+carries a near-identical row anchored that way. **A beat placed confidently at
+the wrong hour is worse than an absent one.**
+
+**The gate should be derived, not restated.** Watch Party's halftime cleanup lap
+resolves against its own halftime program beat (T0 +1:45) rather than being
+written as `T0 +1:50`. That beat is already gated `not: FORMAT_NO_HALFTIME`, so
+for UFC, the Masters, Wimbledon, the Draft and an awards show the anchor is not
+there to find and the row drops by itself. A duplicated gate would suppress
+correctly today and drift tomorrow — a test asserts the row carries **no gate of
+its own**. The moment index reads AUTHORED text, so World Series ("the 7th-inning
+stretch") and Kentucky Derby ("mint julep refresh") keep the lap although neither
+rendered beat contains the word.
+
+**"Not fixed" sat in the file for ten days.** The halftime row was recorded in
+Watch Party's own note on 2026-09-13 as *"DISCOVERED, OUT OF SCOPE, NOT FIXED"*.
+Recording a defect is not a guard. Every one of these was found by ACCIDENT —
+reading a playbook for something else and noticing a row on no screen.
+
+So `aWhenTokenNoRuleKnows.test.js` sorts every `when` token in the corpus into
+RESOLVES / BY RULE / **UNKNOWN**, and the third bin is asserted **empty** — set
+at zero, not as a ratchet, because nothing legitimate lives there. BY RULE and
+UNKNOWN both return null and look identical from outside; one is a decision with
+a comment, the other is a typo nobody has noticed. A failure NAMES the row.
+
+### The bigger finding: 250 rows on no screen, and building for them is the wrong fix
+
+Chasing the last of these turned up, MEASURED across 45 playbooks:
+
+- **152 rows** in `schedules.purchasing` — read by **nothing**. The key is not in
+  `ROS_SCHEDULE_KINDS` and no other function names it. Even its `T0` rows, which
+  would resolve, are dead: the block is never opened. Proven by **execution** —
+  68 exported functions called with a real event, output searched for a string
+  unique to one row, zero hits.
+- **98 rows** in read keys at `T-Nd` / `T0 +Nd` — deliberately excluded.
+
+**Do not build a surface for them.** Both groups are superseded by live data that
+is strictly better: `purchases[].buyAt` drives the real shopping list, its aisle
+order and its day-of section (per item, priced, provenanced, host-editable);
+`tasks[]` are specific, checkable and milestone-attached. Client Dinner's dead
+`T-14d` row says "per-head cap agreed, room noise and accessibility confirmed"
+where three live tasks each say one of those actionably.
+
+Rendering them would reintroduce a defect already fixed here — Watch Party's
+eighth pass found the checklist telling a host to shop for chili they had
+removed, because the label hard-coded the menu. *A label that restates a list the
+host can edit can only drift out of sync with it.* 152 rows of prose shopping
+summaries would do exactly that. **They cannot lie today only because nothing
+reads them.**
+
+Ratcheted on the way OUT (may fall, never rise). The last test holds the PREMISE,
+not the prose: if `purchases[]` stopped carrying `buyAt`, or `tasks[]` thinned,
+the argument collapses and it fails.
+
+### Open, and it is a decision not a task
+
+**Retiring the 250 dead rows is Todd's call, not an opportunistic sweep across 45
+files.** The guard makes leaving them safe; nothing is blocked on it.
+
+Also still unresolvable, reported not fixed: Retirement Party's `after the toast`
+(its program has no toast — attaching it to the nearest speech would be the
+engine deciding what a toast is).
 
 ## FIXED 2026-09-23 (twenty-first entry) — the app was shipping under a competitor's name
 
