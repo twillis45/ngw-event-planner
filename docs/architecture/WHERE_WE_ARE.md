@@ -2,7 +2,7 @@
 
 ## 2026-09-23 — the keys went in, and the live store found two defects no test could
 
-`main` @ pending. 520 suites / 7,386 tests. `verify:push` 5/5, exit 0.
+`main` @ `a6cc212`. 520 suites / 7,386 tests. `verify:push` 5/5, exit 0.
 
 The Kroger keys were set on Render. The first probe against a real store found
 **two defects in code shipped four hours earlier**, both invisible to 520 green
