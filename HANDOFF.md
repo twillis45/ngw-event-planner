@@ -1,6 +1,16 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-23 (thirtieth entry: four
+**Measured reality, not intentions.** Updated 2026-09-23 (thirty-first entry:
+Elopement's rings had a pack-it date and no order date — a $100-$2,000 essential
+with a six-week production queue looked like a three-day errand. The brief said
+three rows needed a second row authored; the sweep found eight, of which five
+need nothing, two are already covered by tasks at exactly the right leads, one
+was genuinely uncovered, and one has no researched number. A whole mechanism was
+built and reverted on that measurement. Worth carrying forward: measure the gap
+before building the mechanism; build on the surface the host actually reads; and
+sweep a new pattern over the whole corpus before trusting it — one match was a
+real grounding gain and one was a false contradiction. See the thirty-first entry.)
+Before that, on 2026-09-23 (thirtieth entry: four
 numbers a host could read, and none of them said what we meant — a per-unit rate
 rounded to whole dollars so 84 of 440 lines showed a $0 bound and the ice read
 "free"; a store match the app did not believe still published its price, one
@@ -137,8 +147,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `b2d31ceb` |
-| Jest | **7,439 passed**, 1 skipped, **0 failed**, **522 suites** (re-measured 2026-09-23 after the thirtieth entry; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `d1cec8f5` |
+| Jest | **7,451 passed**, 1 skipped, **0 failed**, **523 suites** (re-measured 2026-09-23 after the thirty-first entry; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -150,6 +160,95 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (thirty-first entry) — the rings had no date, and the finding inverted on measurement
+
+523 suites / 7,451 tests. `verify:push` 5/5.
+
+### The row said it, and nothing carried it
+
+Elopement's `p_rings` has read "Order/size rings weeks ahead" since it was
+written, and NOTHING covered it. Its `buyAt: 'T-3d'` is a PACK-IT date — the
+note's own first clause is about packing them — so on the only dated surface a
+host reads, a **$100–$2,000 essential with a six-week production queue looked
+like a three-day errand.** An elopement is usually travelled to, which makes it
+worse: the rings have to be in hand before the trip, not before the ceremony.
+
+### The premise did not survive checking, and that is the entry
+
+The brief was "three split-act purchase rows need a second row authored." Swept
+across all 45 playbooks, **eight** purchase rows name a second, earlier act, and
+the finding inverts:
+
+| | |
+|---|---|
+| **Five need nothing** | Birthday, Graduation, Anniversary, Retirement and Vow Renewal all put `buyAt` AT the stated lead ("Order 3–5 days ahead", buyAt T-4d). One date, one act — the corpus's convention |
+| **Two are already covered** | Quinceañera's cake and florals. `t_vendor_book` at T-180d ("…and baker") and `t_florist` at T-90d match the rows' own authored "6 months out" and "3 months out" **exactly** |
+| **One was genuinely uncovered** | Elopement's rings — fixed |
+| **One stays uncovered** | Wedding's `p_favors` says "Order well ahead IF CUSTOM": conditional, non-essential, no researched number |
+
+**A whole mechanism was built and then reverted on that measurement.** An
+`orderAhead` purchase field with its own task emitter, 16 green tests, money
+proved not to move — all correct, and all pointed at a gap that was not there.
+Two things killed it: the acts it would have emitted already exist as checklist
+tasks at the same leads, so it would have DUPLICATED them; and it fed
+`playbookTasks`, which has no consumer outside the frozen CRA shell. hostv2
+renders `playbookChecklist`. Building on the surface a host does not read is the
+same defect as not building at all.
+
+### So the fix is a task, and its lead is researched
+
+`t_rings` at **T-56d**, sequenced between the travel booking (T-60d) and attire
+(T-30d). Eight weeks rather than six because this is a START-BY date on a
+travelled-to event.
+
+Two independent jewellers, one UK and one US, both read in full rather than
+summarised from search results, converge on **6–8 weeks** and give the same
+mechanism: 3–6 weeks production, then shipping, inspection and a possible
+resize. Registered as `wongs-rings` and `precision-rings`, and a `rings`
+category added to the timing registry — so the claim is governed the same way
+every other timing claim is, and `timingConflict` polices it.
+
+### The category swept the corpus before it was trusted, and found both things
+
+- **A GAIN.** Surprise Proposal's `ring_path` ("Ring: in-stock, custom, or
+  family ring?") at T-45d sits inside the six-week floor and cited nothing
+  before today. It now cites both jewellers. Pinned as its own claim rather
+  than left as a side effect.
+- **A FALSE POSITIVE, caught before it shipped.** Vow Renewal's "Lock the
+  ceremony moment (vows, readings, rings/keepsake, processional)" at T-35d
+  mentions rings in passing. Grounded, it would have reported a FALSE
+  contradiction against a jeweller's floor on a decision about what happens
+  during the ceremony — exactly the shape timingProvenance.js's header warns
+  about. Vetoed by antiPattern, with ceremony-content, day-of staging (ring
+  bearer/box/pillow) and the other "band" (DJ/banda) all excluded.
+
+Three pinned counts moved and each was updated with its reason rather than
+bumped: source identities 416 → 418, the load-bearing label map gained
+`ring_path`, and the late-deadline list stayed at three once the veto landed.
+
+### Verified
+
+- 12 unit tests in `theRingsHadNoTask.test.js`, including the premise that the
+  row really describes two acts and the assertion that the two quinceañera rows
+  are ALREADY covered — the test that stopped the second mechanism.
+- Driven in Chromium: `hostv2/e2e/theRingsGotADate.spec.mjs`, **28 passed across
+  all 7 viewport projects**, through the draft button, because the checklist
+  renders nothing until a host drafts it.
+- Red-proofed: removing the task leaves the premise green and fails all three
+  claims.
+
+### Worth carrying forward
+
+- **Measure the gap before building the mechanism.** A correct, tested,
+  money-safe feature was built for a gap that two authored tasks already filled.
+  The sweep that would have caught it took ten minutes.
+- **Build on the surface the host actually reads.** `playbookTasks` is engine
+  output with no hostv2 consumer; `playbookChecklist` is what renders. Same
+  lesson the air-travel floor entry recorded, in a new place.
+- **Sweep a new pattern over the whole corpus before trusting it.** One match
+  was a real gain and one was a false contradiction, and neither was visible
+  from reading the regex.
 
 ## FIXED 2026-09-23 (thirtieth entry) — four numbers a host could read, and none of them said what we meant
 

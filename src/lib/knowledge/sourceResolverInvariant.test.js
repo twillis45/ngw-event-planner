@@ -177,11 +177,16 @@ describe('1 — the source universe is what we think it is', () => {
   // retail-2026`, `strawberries-cream-retail-2026` — the one claim in that pass
   // that earned tier 'researched', for the same reason ballpark snacks did:
   // its sources price the actual home-shopping ingredients.)
-  test('20 axes, 416 source identities — verified, not assumed', () => {
+  // (418 since 2026-09-23: two TIMING_SOURCES for the new `rings` category —
+  // `wongs-rings` and `precision-rings`, one UK jeweller and one US, both read
+  // in full rather than summarised from search results. They converge on 6-8
+  // weeks and give the same mechanism, which is what let Elopement's rings
+  // finally get an order date instead of only a pack-it date.)
+  test('20 axes, 418 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(416);
-    expect(unionIds().size).toBe(416);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(418);
+    expect(unionIds().size).toBe(418);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

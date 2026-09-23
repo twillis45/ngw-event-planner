@@ -41,6 +41,22 @@ export const TIMING_SOURCES = {
     fetched: '2026-07-15',
     claim: 'Reserve party rentals (tables, chairs, tents, linens) ~3–4 months out for standard items; 6–12 months for large/peak-season; a few weeks is fine for a small backyard party.',
   },
+  // ── WEDDING RINGS (registered 2026-09-23) ─────────────────────────────────
+  // Two independent jewellers, one UK and one US, both read in full rather than
+  // summarised from search results. They converge on 6-8 weeks AND give the same
+  // mechanism: production runs 3-6 weeks, then shipping, inspection and a
+  // possible sizing adjustment on top. Commercial practitioners, like every
+  // other source in this registry — disclosed, not laundered.
+  'wongs-rings': {
+    url: 'https://www.wongsjewellers.co.uk/blogs/news/when-is-the-best-time-to-buy-wedding-rings',
+    fetched: '2026-09-23',
+    claim: 'Order wedding rings at least 6-8 weeks before the date: about six weeks to craft a made-to-order ring, plus a couple of weeks for collection and any sizing refinement. Fully bespoke commissions should begin several months out.',
+  },
+  'precision-rings': {
+    url: 'https://www.precisiondiamonds.net/wedding-bands/wedding-bands-in-reno-what-the-process-really-looks-like/',
+    fetched: '2026-09-23',
+    claim: 'Order wedding bands six to eight weeks before the date. Custom or engraved bands need 4-6 weeks minimum from a local jeweller and sizing adjustments at least a week; a named supplier runs a 3-5 week lead for standard orders, and shipping, inspection and a possible resize put the floor at six weeks.',
+  },
   'sweetery-cake': {
     url: 'https://thesweetery.com/2026/04/15/how-far-in-advance-should-you-order-a-custom-cake/',
     fetched: '2026-07-15',
@@ -120,6 +136,27 @@ const TIMING_CATEGORIES = [
     leadDays: [10, 90], // 2–8 weeks (casual → formal/travel)
     sources: ['paperlesspost-invites'],
     claim: 'Invitations go out 2–4 weeks ahead for a casual gathering, 6–8+ weeks when guests travel or the event is formal.',
+  },
+  {
+    // Registered 2026-09-23 for Elopement's rings task. Sits ABOVE headcount so a
+    // "ring" match is taken before a looser one, and carries an antiPattern
+    // because "ring bearer", "ring box" and "ring pillow" are day-of staging,
+    // not a jeweller's order lead.
+    category: 'rings',
+    pattern: /\b(wedding )?(ring|band)s?\b/i,
+    // Vetoes found by running the pattern over all 260 decisions rather than by
+    // imagining them. Three classes, and the first is the dangerous one:
+    //   CEREMONY CONTENT — Vow Renewal's "Lock the ceremony moment (vows,
+    //     readings, rings/keepsake, processional)" at T-35d mentions rings in
+    //     passing. Grounded, it would have reported a FALSE contradiction
+    //     against a jeweller's six-week floor on a decision about what happens
+    //     during the ceremony. Exactly the shape this file's header warns about.
+    //   DAY-OF STAGING — ring bearer, ring box, ring pillow take a minute.
+    //   THE OTHER BAND — a DJ/banda booking is a different category entirely.
+    antiPattern: /ceremony|\bvows?\b|reading|processional|recessional|ring ?bearer|ring box|ring pillow|rubber band|band\b.{0,12}(dj|music|play|book the)|\bbanda\b/i,
+    leadDays: [42, 270], // 6 weeks minimum → several months for fully bespoke
+    sources: ['wongs-rings', 'precision-rings'],
+    claim: 'Order wedding rings 6-8 weeks ahead: roughly 3-6 weeks of production, then shipping, inspection and a possible resize. Fully bespoke work starts several months out.',
   },
   {
     category: 'headcount_rsvp',

@@ -1,5 +1,51 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — the rings had no date, and the finding inverted on measurement
+
+`main` @ `d1cec8f`+. 523 suites / 7,451 tests. `verify:push` 5/5.
+
+Elopement's `p_rings` has read "Order/size rings weeks ahead" since it was
+written and nothing covered it. `buyAt: 'T-3d'` is a PACK-IT date, so a
+$100–$2,000 essential with a six-week production queue looked like a three-day
+errand — on an event people travel to, where the rings must be in hand before
+the trip.
+
+**The brief did not survive the sweep.** It said three split-act rows needed a
+second purchase row authored. Across all 45 playbooks eight rows name a second
+act: five already put `buyAt` at the stated lead (one date, one act — the
+corpus's convention), two are already covered by checklist tasks at exactly the
+leads their own prose states (Quinceañera's baker at T-180d, florist at T-90d),
+one was genuinely uncovered, and one is conditional with no researched number
+(Wedding's favors, "if custom").
+
+**A whole mechanism was built and reverted on that measurement** — an
+`orderAhead` purchase field with a task emitter and 16 green tests, money proved
+not to move. Two things killed it: it would have duplicated the two checklist
+tasks that already exist, and it fed `playbookTasks`, which has no consumer
+outside the frozen CRA shell. hostv2 renders `playbookChecklist`. Building on a
+surface the host does not read is the same defect as not building at all.
+
+So the fix is a task — `t_rings` at T-56d, sequenced between the travel booking
+and attire — and its lead is researched rather than chosen: two independent
+jewellers, one UK and one US, both read in full, converging on 6–8 weeks and
+giving the same mechanism (3–6 weeks production, then shipping, inspection and a
+possible resize). Registered with a `rings` category so the claim is governed
+like every other timing claim and `timingConflict` polices it.
+
+**Sweeping the new category over the corpus found both things a regex hides.** A
+gain: Surprise Proposal's "Ring: in-stock, custom, or family ring?" at T-45d now
+cites two dated sources where it cited none. And a false positive caught before
+it shipped: Vow Renewal's "Lock the ceremony moment (vows, readings,
+rings/keepsake, processional)" would have reported a false contradiction against
+a jeweller's floor on a decision about the ceremony itself. Vetoed, along with
+day-of staging (ring bearer/box/pillow) and the other "band" (DJ/banda).
+
+**Worth carrying forward:** measure the gap before building the mechanism — the
+sweep that would have saved the reverted feature took ten minutes. Build on the
+surface the host actually reads. And sweep a new pattern over the whole corpus
+before trusting it; neither the gain nor the false contradiction was visible
+from reading the regex.
+
 ## 2026-09-23 — four numbers a host could read, and none of them said what we meant
 
 `main` @ `b2d31ce`+. 522 suites / 7,439 tests, backend 360. `verify:push` 5/5.

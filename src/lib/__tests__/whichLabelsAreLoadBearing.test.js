@@ -131,6 +131,13 @@ const PINNED = {
   'Quinceañera/court_size': ['knowledge-context'],
   'Quinceañera/dress': ['knowledge-context', 'timing-category', 'timing-grounding'],
   'Quinceañera/vals_song': ['knowledge-context'],
+  // 2026-09-23 — GAINED, not lost. The `rings` timing category was registered
+  // for Elopement's order act, and this decision ("Ring: in-stock, custom, or
+  // family ring?") is genuinely about sourcing a ring at T-45d, inside the
+  // jewellers' 6-week floor. So its deadline now cites two dated sources where
+  // it cited none. It is load-bearing because the CATEGORY is detected from the
+  // label: neutralise the copy and the grounding goes with it.
+  'Surprise Proposal/ring_path': ['knowledge-context', 'timing-category', 'timing-grounding'],
   'Retirement Party/invite': ['knowledge-context', 'route'],
   'Retirement Party/surprise': ['knowledge-context'],
   'Reunion/kids-plan': ['knowledge-context'],
