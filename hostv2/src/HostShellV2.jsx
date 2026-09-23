@@ -175,7 +175,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
@@ -6728,6 +6728,19 @@ export default function HostShellV2() {
               ? 'That is a planning estimate from typical per-head bands, not a quote. '
               : ''}The plan sizes food, vendors and shopping from here — change it anytime.
           </Grounding>
+          {/* ── WHEN THIS PLAN'S OWN VENDORS COST MORE THAN THE RANGE ──────
+              `belowRequiredVendors` has been on the estimate result since
+              2026-09-19 with no reader. Surprise Proposal's own roster needs a
+              photographer and a ring — a $1,750 floor — under a $100-300
+              estimate. The open call was "refuse the headline or floor it";
+              the decision was neither. Refusing costs the host the number they
+              came for; flooring builds their primary figure out of 224 vendor
+              ranges carrying zero provenance. They get both, and are told
+              which is which. See lib/budgetCopy.js#estimateShortfallNote. */}
+          {(() => {
+            const short = (() => { try { return estimateShortfallNote(est); } catch (_e) { return null; } })();
+            return short ? <Grounding>{short}</Grounding> : null;
+          })()}
           {/* THE HOST'S OWN ROWS, SAID OUT LOUD (2026-09-18). A host who filled in
               budget categories but never named an overall figure used to reach an
               ask written as though nothing were known — on a sheet whose money bar

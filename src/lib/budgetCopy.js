@@ -84,3 +84,47 @@ export function budgetHeroCopy(event, priceFactor) {
     caveat, numbers: sp,
   };
 }
+
+// ─── WHEN THE PLAN'S OWN VENDORS COST MORE THAN THE ESTIMATE ────────────────
+//
+// `estimateTotalRange` has reported `requiredVendorFloor` and
+// `belowRequiredVendors` since 2026-09-19 and NOTHING READ THEM. Measured then:
+// Surprise Proposal's own roster requires a photographer and a ring — a $1,750
+// floor — under a budget estimate of $100-300. Conference: $47,000 required
+// against $20,000 estimated.
+//
+// THE CALL WAS "REFUSE OR FLOOR", AND IT IS NEITHER (decision 2026-09-23).
+//
+//   REFUSING the headline costs those hosts the one number they came for, and
+//   the estimate is not wrong about what a typical event of that type costs —
+//   it is silent about what THIS plan already commits to.
+//
+//   FLOORING it — raising the headline to the vendor floor — builds a host's
+//   primary number out of 224 playbook vendor cost ranges that carry ZERO
+//   provenance (moneyProvenance.js#vendor.playbookCostRange, registered at the
+//   floor with empty sources). That is laundering an unsourced figure into the
+//   most load-bearing position on the screen, which is the exact thing this
+//   programme exists to stop.
+//
+// So the host gets BOTH numbers and is told which is which. That is strictly
+// more information than either option, and it is the same answer this codebase
+// reaches everywhere else: disclose rather than invent or withhold.
+//
+// The floor itself is an estimate too, and says so. It is never presented as a
+// price — "start around" — because a range's bottom is the only honest reading
+// of a band with no sources behind it.
+
+/**
+ * One host-voiced line when the estimate does not cover the vendors this plan
+ * already requires, or null.
+ *
+ * Reads the estimate result — never re-derives the comparison, which
+ * `totalEstimate` already made and reports as `belowRequiredVendors`.
+ */
+export function estimateShortfallNote(est) {
+  if (!est || est.belowRequiredVendors !== true) return null;
+  const floor = Math.round(Number(est.requiredVendorFloor));
+  const high = Math.round(Number(est.highTotal));
+  if (!(floor > 0) || !(high > 0) || floor <= high) return null;
+  return `This range is what a typical event of this kind costs. Your own plan already calls for vendors that start around ${fmt(floor)} — more than the ${fmt(high)} top of it. Worth setting your number from the vendors, not the range.`;
+}
