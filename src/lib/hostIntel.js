@@ -268,7 +268,7 @@ export function clearAllMemory(profile) {
   return { ...p, hostIntelligence: clearAllHostIntelligence() };
 }
 
-// ── P3: plain-language summary for the "What Event Boss remembers" Settings section ──────────
+// ── P3: plain-language summary for the "What No Guesswork remembers" Settings section ──────────
 // Pure. Turns stored observations into calm, human sentences — NO recommendations, no read-forward,
 // no PII (observations only ever hold eventId/date/estimate/actual + host-typed lesson text).
 const humanize = (id) => String(id || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();

@@ -3,6 +3,7 @@
 // on the server. Degrades honestly: no backend / no key / failure → { configured:false }
 // or { url:null }, and the caller falls back to the plain Instacart search link.
 
+import { BRAND } from './brand';
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
 // Returns a URL to a pre-filled Instacart list, or null when unavailable.
@@ -15,7 +16,7 @@ export async function instacartCart(title, items) {
     const res = await fetch(`${BASE}/api/shopping/instacart-cart`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: title || 'Event Boss shopping list', items: line }),
+      body: JSON.stringify({ title: title || `${BRAND.full} shopping list`, items: line }),
     });
     if (!res.ok) return { configured: true, url: null };
     return await res.json();

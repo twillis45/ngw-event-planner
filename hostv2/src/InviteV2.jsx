@@ -10,6 +10,7 @@
 // Honest states: delivered ("Thanks!") vs queued-offline ("Saved — we'll send
 // it"). No fake AI, no invented data: everything shown comes off the event.
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { BRAND } from '@app/lib/brand';
 import PhotoStrip from './PhotoStrip.jsx';
 import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
 import { guestSafeText } from '@app/lib/guestFacing';
@@ -742,7 +743,7 @@ export default function InviteV2({ code }) {
     : null;
   const icsHref = event.date
     ? 'data:text/calendar;charset=utf-8,' + encodeURIComponent([
-      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//NGW Event Boss//Guest Invite//EN',
+      'BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//NGW ${BRAND.full}//Guest Invite//EN`,
       'BEGIN:VEVENT', `UID:invite-${event.id}-${code}@ngw-events`,
       `DTSTART;VALUE=DATE:${calDate}`, `DTEND;VALUE=DATE:${calEnd}`,
       `SUMMARY:${String(event.name || 'Event').replace(/[,;]/g, ' ')}`,
@@ -1363,14 +1364,14 @@ export default function InviteV2({ code }) {
                 href={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '/'}
                 onClick={() => { try { trackInvite(INVITE_EVENTS.PLAN_YOURS_TAPPED, { event_type: event && event.type, surface: 'invite_footer_v2' }); } catch (_e) { /* a counter never blocks a guest */ } }}
                 style={{ color: 'inherit', fontWeight: 650, textDecoration: 'none' }}>
-                Planning something of your own? Make it with Event Boss →
+                Planning something of your own? Make it with {BRAND.full} →
               </a>
             </p>
           )}
           {/* Guest-visible brand moment (build-map #6): the locked identity — the
               wordmark + machined brand period — on the one surface every guest
               touches. Tuned to the stationery's own palette, not the app steel. */}
-          <div {...rv('inv2-wordmark')}>Event Boss<span className="inv2-wm-dot" aria-hidden="true" /></div>
+          <div {...rv('inv2-wordmark')}>{BRAND.full}<span className="inv2-wm-dot" aria-hidden="true" /></div>
         </section>
       </div></div>
     </div>

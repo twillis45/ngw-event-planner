@@ -130,6 +130,7 @@ import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
+import { BRAND } from '@app/lib/brand';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
@@ -1040,7 +1041,7 @@ export default function HostShellV2() {
           <span className="sp-dot" />
         </div>
       </div>
-      <div className="sp-caps">EVENT BOSS</div>
+      <div className="sp-caps">{BRAND.caps}</div>
       <div className="sp-line">
         <span className="sp-line-1">the details are ours.</span>
         <span className="sp-line-2">the day is yours.</span>
@@ -3685,7 +3686,7 @@ export default function HostShellV2() {
   // badge's absence is itself the calm signal.
   useEffect(() => {
     try {
-      const base = 'Event Boss';
+      const base = BRAND.full;
       if (stage === 'plan' && askMode && heroAskText) document.title = heroAskText + ' — ' + base;
       else if (stage === 'plan' && listIsCalm) document.title = 'All quiet — ' + base;
       else document.title = base;
@@ -7260,7 +7261,7 @@ export default function HostShellV2() {
               starts fading, so the lines begin as it dissolves — one sequence. */}
           <div className={'content welcome' + (splash === 'up' ? ' splash-hold' : '')}>
             <section>
-              <div className="eyebrow">Welcome to Event Boss</div>
+              <div className="eyebrow">Welcome to {BRAND.full}</div>
               {/* The one serif display moment — production's hero face. The
                   sentence's own period IS the brand bead: the same mark that
                   just dropped in on the splash, landed in the headline. */}
@@ -7404,7 +7405,7 @@ export default function HostShellV2() {
           )}
           <header className={'appbar' + (elegantMode ? ' appbar-elegant' : '')}>
             <div>
-              <div className="wordmark">Event Boss<span className="wm-dot" aria-hidden="true" /></div>
+              <div className="wordmark">{BRAND.full}<span className="wm-dot" aria-hidden="true" /></div>
               <div className="appbar-note">V2 preview</div>
             </div>
             {/* Reimagined (host request: header felt crammed on mobile) — the
@@ -11755,7 +11756,7 @@ export default function HostShellV2() {
                         try {
                           const entry = { eventId: event.id, date: (event.date && String(event.date).slice(0, 10)) || undefined, attendance: { planned, actual } };
                           patchProfile({ hostIntelligence: applyReconciliation(profile && profile.hostIntelligence, entry) },
-                            'Recorded — Event Boss learns from the real number.');
+                            `Recorded — ${BRAND.short} learns from the real number.`);
                         } catch { toast('Couldn’t record it.'); }
                       }}>Record it</button>
                     </div>
@@ -13729,7 +13730,7 @@ export default function HostShellV2() {
                                   }}
                                   onClick={(e) => { e.preventDefault(); toast('Drag this up to your bookmarks bar — clicking it here does nothing.'); }}
                                   style={{ textDecoration: 'none', display: 'inline-block' }}>
-                                  Send to Event Boss
+                                  Send to {BRAND.short}
                                 </a>
                                 <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--muted)' }}>
                                   It reads only the page you click it on, and only listings. Nothing is sent to us — you can read the whole thing in the bookmark itself.
@@ -15387,7 +15388,7 @@ export default function HostShellV2() {
               const canCharge = (() => { try { return isStripeApiConfigured() && process.env.REACT_APP_BILLING_LIVE === '1'; } catch { return false; } })();
               const buyPass = async () => {
                 try {
-                  const out = await createCheckoutSession({ amountCents: 3900, label: 'Event Boss — One-Event Pass', feeId: 'one-event-pass-' + event.id, eventId: event.id, clientName: (profile && profile.name) || '' });
+                  const out = await createCheckoutSession({ amountCents: 3900, label: `${BRAND.full} — One-Event Pass`, feeId: 'one-event-pass-' + event.id, eventId: event.id, clientName: (profile && profile.name) || '' });
                   if (out && out.url) { window.location.assign(out.url); return; }
                   toast('Couldn’t open checkout just now — please try again.');
                 } catch { toast('Checkout isn’t available right now.'); }
@@ -15433,7 +15434,7 @@ export default function HostShellV2() {
                     </>
                   ) : (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
-                      <p className="f-name" style={{ margin: '0 0 2px', color: 'var(--ok)' }}>Free while Event Boss is in preview</p>
+                      <p className="f-name" style={{ margin: '0 0 2px', color: 'var(--ok)' }}>Free while {BRAND.full} is in preview</p>
                       <p className="grounding" style={{ margin: 0 }}>This event is fully unlocked right now — nothing to pay. When we launch, keeping an event is a one-time $39, and we’ll tell you before anything changes.</p>
                     </div>
                   )}
@@ -15469,7 +15470,7 @@ export default function HostShellV2() {
                       <button className="cta" onClick={() => { if (!routeSheet(nc.route)) { setStage('plan'); setSheet(null); } }}>{nc.actionLabel || ctaLabelFor(null, nc.route, event)}</button>
                     </div>
                   )}
-                  <div className="shelf-label" style={{ margin: '0 0 6px' }}>How Event Boss works</div>
+                  <div className="shelf-label" style={{ margin: '0 0 6px' }}>How {BRAND.short} works</div>
                   <p className="grounding" style={{ margin: '0 0 5px' }}><b>Plan</b> works backward from your date — it only ever asks for the next thing that matters, never the whole mountain at once.</p>
                   <p className="grounding" style={{ margin: '0 0 5px' }}>Check things off as you go and the plan keeps up — the numbers and what’s-next re-figure themselves.</p>
                   <p className="grounding" style={{ margin: '0 0 5px' }}><b>The Day</b> takes the wheel on the day itself; <b>After</b> helps you wrap up and thank people.</p>
@@ -16097,7 +16098,7 @@ export default function HostShellV2() {
                     eyebrow="You & settings"
                     star={mem && mem.present ? `${(mem.groups || []).length} remembered` : 'Nothing remembered yet'}
                     sub={mem && mem.present
-                      ? 'What Event Boss knows about how you host — yours to change or clear.'
+                      ? `What ${BRAND.short} knows about how you host — yours to change or clear.`
                       : 'Tell it how you host and it stops asking twice. Nothing is inferred.'}
                   />
                   {/* Sound lives here now (host request 2026-07-11) — the header
@@ -16236,7 +16237,7 @@ export default function HostShellV2() {
                     <span className="chev" aria-hidden="true">›</span>
                   </button>
 
-                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>What Event Boss remembers</div>
+                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>What {BRAND.short} remembers</div>
                   {mem.present && mem.groups.length ? (
                     <>
                       {mem.groups.map(g => (
@@ -16246,7 +16247,7 @@ export default function HostShellV2() {
                         </div>
                       ))}
                       <div className="actions-row" style={{ marginTop: 6 }}>
-                        <button className="mini" onClick={() => { patchProfile(clearAllMemory(profile || {}), 'Memory cleared — Event Boss starts fresh.'); }}>Clear what it remembers</button>
+                        <button className="mini" onClick={() => { patchProfile(clearAllMemory(profile || {}), `Memory cleared — ${BRAND.short} starts fresh.`); }}>Clear what it remembers</button>
                       </div>
                     </>
                   ) : (
@@ -16306,7 +16307,7 @@ export default function HostShellV2() {
                     <p className="grounding" style={{ margin: 0 }}>Everything lives on this device. Accounts turn on when the cloud is configured.</p>
                   ) : session ? (
                     <>
-                      <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what Event Boss remembers sync to your account across devices.</p>
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what {BRAND.short} remembers sync to your account across devices.</p>
                       {profile && profile.accountType === 'planner' && (
                         <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
                       )}
@@ -16316,7 +16317,7 @@ export default function HostShellV2() {
                     </>
                   ) : authSent ? (
                     <>
-                      <p className="grounding" style={{ margin: 0 }}>Check your email — the sign-in link lands you in Event Boss, and this shell picks the session up automatically.</p>
+                      <p className="grounding" style={{ margin: 0 }}>Check your email — the sign-in link lands you in {BRAND.full}, and this shell picks the session up automatically.</p>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="mini" onClick={resetAuthSent}>Use a different email</button>
                         <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Resend the link'}</button>

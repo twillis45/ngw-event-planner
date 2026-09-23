@@ -46,6 +46,7 @@ import {
   getVendorLinkedWork,
 } from './vendorIntelligence';
 import { getVendorRequiredQuestions, getVendorCategoryKey } from './vendorQuestions';
+import { BRAND } from './brand';
 import { daysUntil } from './dates';
 // SSOT: the ONE "secured for the day" vendor-status predicate (workstreams.js,
 // BOOKED_STATUSES = {Confirmed, Booked, Paid, Deposit Paid, Contracted}). The
@@ -365,7 +366,7 @@ export function buildCopilotPrompt(context, rulePreview) {
   };
 
   return [
-    `You are an event-planning copilot embedded inside the NGW Event Boss Vendor Detail view.`,
+    `You are an event-planning copilot embedded inside the NGW ${BRAND.full} Vendor Detail view.`,
     `Your job: produce a grounded readiness brief for the planner on ONE specific vendor.`,
     ``,
     `STRICT RULES:`,
