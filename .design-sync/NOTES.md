@@ -1,4 +1,4 @@
-# design-sync notes — ngw-event-boss
+# design-sync notes — no-guesswork-events
 
 ## Repo shape
 

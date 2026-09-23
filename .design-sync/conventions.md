@@ -7,7 +7,7 @@ context, and `DensityProvider` itself calls `useEscalation()` — so the nesting
 order is not optional.
 
 ```jsx
-import { EscalationProvider, DensityProvider, Surface, Text, Button } from 'ngw-event-boss';
+import { EscalationProvider, DensityProvider, Surface, Text, Button } from 'no-guesswork-events';
 
 <EscalationProvider initialLevel="nominal">
   <DensityProvider>
@@ -53,7 +53,7 @@ CSS custom properties (73 of them, defined in `styles.css`'s import closure):
 | Type | `--ngw-size-2xs` … `--ngw-size-5xl`, `--ngw-weight-regular|medium|semibold` |
 | Elevation | `--ngw-elevation-base` `-elevated` `-active` `-escalation` `-interrupt` `-card` |
 
-Or in JS: `import { color, space, radius, type, elevation } from 'ngw-event-boss'`.
+Or in JS: `import { color, space, radius, type, elevation } from 'no-guesswork-events'`.
 
 ### Rules that carry meaning, not taste
 
