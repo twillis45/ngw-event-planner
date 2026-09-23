@@ -135,7 +135,25 @@ const birthday = {
       { when: 'T0', what: 'Ice + any last-minute fresh items' },
     ],
     preparation: [
-      { when: 'T-1d', what: 'Prep make-ahead sides; assemble favors; charge speaker' },
+      // ── THE ONE BEAT THE HOST'S OWN ANSWER MAKES WRONG ────────────────────
+      // Audited all eleven day-of beats against `food_style` (2026-09-23). Only
+      // this one is false when the host is not cooking: you do not prep
+      // make-ahead sides for food someone else is making. The rest survive, and
+      // the reason is worth recording because it is counter-intuitive —
+      // DROP-OFF CATERING AND ORDERED TRAYS BOTH LEAVE THE HOST SERVING. The
+      // caterer drops the food and goes, so "set food + drinks stations",
+      // "food out while everyone's still arriving" and "leftovers to
+      // containers" are all still the host's, and rewording them would have
+      // invented a caterer who is not there.
+      //
+      // Potluck deliberately keeps the base text: a potluck host still usually
+      // makes something, so dropping the prep would be a different guess.
+      { when: 'T-1d',
+        what: 'Prep make-ahead sides; assemble favors; charge speaker',
+        copyByAnswer: { food_style: {
+          'Order pizza/trays': 'Assemble favors; charge speaker — no sides to prep, the food is being brought in',
+          'Drop-off catering': 'Assemble favors; charge speaker — no sides to prep, the food is being brought in',
+        } } },
       { when: 'T0 -3h', what: 'Decorate, blow up balloons, set food + drinks stations' },
     ],
     setup: [
