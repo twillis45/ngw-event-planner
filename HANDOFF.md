@@ -251,9 +251,10 @@ its port, not before it.
 | # | Step | Size | State |
 |---|---|---|---|
 | 1 | Next action + the kept chips, into hostv2's existing vendor detail | ~1 day | **SHIPPED** |
-| 2 | Planning + day-of state | ~1 day | open |
-| 3 | Highest-risk line above the vendor list | ~half day | open |
-| 4 | Required questions | ~half day | open |
+| 2 | **Wire the next action** (promoted by the owner ahead of 3–5) | ~1 day | **SHIPPED** |
+| 3 | Planning + day-of state | ~1 day | open |
+| 4 | Highest-risk line above the vendor list | ~half day | open |
+| 5 | Required questions | ~half day | open |
 
 Tests are written alongside each step, against only what ships — not as a
 separate up-front pass over all eleven.
@@ -301,10 +302,58 @@ back. The cut stayed at `scope`, `timeline` and `dayOf` (a duplicate of
    host reads is wrong, but a future reader summing `counts` now fails loudly
    instead of being quietly short.
 
-**No CTA shipped.** `getActionableNextStep` returns payment, contract and arrival
-flows with no wiring in this shell, and a button that cannot do what it says is
-the UX_07 defect. The next action ships as prose, and an e2e test asserts the
-block contains **zero** interactive elements until those actions are real.
+**No CTA shipped in slice 1.** `getActionableNextStep` returns payment, contract
+and arrival flows with no wiring in this shell, and a button that cannot do what
+it says is the UX_07 defect. Slice 2 wired them — see below.
+
+### Slice 2, shipped — the next action points at the control
+
+Promoted by the owner ahead of steps 3–5. 15/15 in Chromium at 390px; the five
+existing vendor specs still 15/15.
+
+**The build was refused and replaced after checking the shell.**
+`getActionableNextStep` returns seven CTA kinds, and the obvious build is seven
+buttons. hostv2 **already has a working control for every one of them** — the
+status ladder, the COI ladder, the paid toggle, the arrival field, "I reached
+out", the contract row. Seven new buttons would have put a second write path
+beside each: the duplicate-surface rule and the one-fact-two-owners defect at
+once.
+
+**So the action NAVIGATES.** "Take me there →" scrolls the real control into
+view, focuses it and pulses it. One tap, one owner of each write.
+
+| Category | Lands on |
+|---|---|
+| `booking` | the status pill — **and opens its ladder first**, so the host never lands on a folded control |
+| `coi` | the insurance status button |
+| `documents` | the contract row |
+| `financial` / `closeout` | the paid toggle |
+| `logistics` | the arrival field |
+| `communication` | "I reached out" |
+| `scope`, `timeline`, the `review` fallback | **nothing — prose, no link** |
+
+**A real gap found on the way.** The contract row was gated on a contract
+already existing in some form, so the one host who most needs the attach/paste
+affordance — the one with **nothing on file** — was the only host who could not
+see it. That is also the engine's own flagship action ("Get the signed contract
+from <vendor>"), so the headline case had nowhere to point. The row now renders
+for any paid vendor, and stays off helpers.
+
+**Two things measured rather than assumed:**
+
+1. **A vendor that looks like a booking case was not one.** The e2e used "Fired
+   Up" (status *Deposit Paid*) to test the booking path and it failed — its
+   action is actually `scope` ("Confirm: Final guest count"). Measured off the
+   engine, a *Quoted* vendor is the booking case. The spec now says so in its
+   own comment so the next reader does not repeat the guess.
+2. **`scope` deliberately gets no link.** Its action names an obligations LIST,
+   not one control, and matching the action's title to a row by string would be
+   a guess. It says the thing and offers no way through — honest. An obligations
+   anchor is a candidate for a later slice.
+
+**Red-proofed** by removing the `data-vid` scoping: the "scoped to its own
+vendor" test goes red, because a bare selector finds the first matching control
+on the sheet — which on a nine-vendor plan is somebody else's row.
 
 ## FIXED 2026-09-23 (thirty-second entry) — all four open board calls, and two of them reversed a finding
 

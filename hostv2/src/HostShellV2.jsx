@@ -3134,6 +3134,39 @@ export default function HostShellV2() {
   //
   // CONTACT_SOURCES has carried 'drafted' for exactly this since the module was
   // written, with zero call sites. This is it finally being passed.
+  // ─── TAKE THE HOST TO THE CONTROL THE NEXT ACTION IS ABOUT ─────────────────
+  //
+  // Cockpit port slice 2. The vendor card already owns a working control for
+  // every action the engine can name; this scrolls the right one into view and
+  // focuses it, rather than growing a second copy beside the readiness block.
+  //
+  // `booking` is the one that needs a state change first: its ladder is folded
+  // behind the status pill, so pointing at a pill that reveals nothing would be
+  // a dead end. The ladder is opened, then the pill is focused — the host lands
+  // on an open control, not on a closed one they must work out how to open.
+  //
+  // Everything is scoped to THIS vendor's card via data-vid. A bare
+  // querySelector would have found the first matching control on the sheet,
+  // which on a plan with nine vendors is somebody else's row.
+  const goToVendorControl = (vendorId, anchor) => {
+    if (anchor === 'booking') setStatusPickFor(vendorId);
+    // One frame, so a just-revealed control exists before we look for it.
+    setTimeout(() => {
+      try {
+        const card = document.querySelector('.vcard[data-vid="' + CSS.escape(String(vendorId)) + '"]');
+        const el = card && card.querySelector('[data-vaction="' + anchor + '"]');
+        if (!el) return;
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        // The pulse is what makes the jump legible — without it a host who is
+        // already looking at the right part of the card sees nothing happen and
+        // reads the link as broken.
+        el.classList.add('vgo-lands');
+        setTimeout(() => { try { el.classList.remove('vgo-lands'); } catch { /* gone */ } }, 1400);
+        if (typeof el.focus === 'function') el.focus({ preventScroll: true });
+      } catch { /* a card that unmounted mid-scroll is not an error */ }
+    }, 60);
+  };
+
   const logVendorContact = (id, source = 'host-logged') => {
     const v = (event.vendors || []).find(x => x && x.id === id);
     const name = (v && String(v.name || '').trim()) || 'them';
@@ -19073,7 +19106,7 @@ export default function HostShellV2() {
                     // the brief link (backend + vendor-side form already shipped).
                     const vConfirm = confirmationByVendor[String(v.id)] || null;
                     return (
-                      <div key={v.id} className={'vcard' + (isOpen ? ' open' : '')}
+                      <div key={v.id} data-vid={v.id} className={'vcard' + (isOpen ? ' open' : '')}
                         ref={el => { if (el && isOpen) el.scrollIntoView({ block: 'center' }); }}
                         onClick={() => setSheet(s => ({ ...s, focus: isOpen ? null : v.id }))}>
                         <div className="vc-head">
@@ -19112,7 +19145,7 @@ export default function HostShellV2() {
                             /* Audit #6: the pill opens an explicit status PICKER
                                (below) instead of silently cycling — the host sees
                                every state and taps the real one. */
-                            <button className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}
+                            <button data-vaction="booking" className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}
                               onClick={ev => { ev.stopPropagation(); setStatusPickFor(statusPickFor === v.id ? null : v.id); }}
                               aria-expanded={statusPickFor === v.id} aria-haspopup="true"
                               title={v.status ? (VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || vendorStatusLabel(v.status)) : 'Tap to set where this vendor stands'}
@@ -19257,12 +19290,50 @@ export default function HostShellV2() {
                                 <strong style={{ fontSize: 'var(--t-row)' }}>{rd.label}</strong>
                                 {rd.summary && <span className="grounding" style={{ margin: 0 }}>{rd.summary}</span>}
                               </div>
-                              {na && na.title && (
-                                <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>
-                                  <strong>Next:</strong> {na.title}
-                                  {na.consequence ? <span style={{ color: 'var(--faint)' }}> {na.consequence}</span> : null}
-                                </p>
-                              )}
+                              {/* ── THE NEXT ACTION POINTS AT THE CONTROL, IT DOES NOT COPY IT ──
+                                  Slice 2. `getActionableNextStep` returns seven CTA kinds
+                                  (patch / payment / contract / arrival / log / edit), and the
+                                  obvious build is seven buttons. Checked first: hostv2 ALREADY
+                                  has a working control for every one of them — the status
+                                  ladder, the COI ladder, the paid toggle, the arrival field,
+                                  "I reached out", the contract row. Building the CTAs would
+                                  have put a second write path beside each, which is the
+                                  duplicate-surface rule AND the defect this codebase keeps
+                                  finding: one fact, two owners, drifting apart.
+
+                                  So the action takes the host TO the control. One tap, the
+                                  real affordance, no second source of truth. A category with
+                                  no control to reach (the 'review' fallback, scope, timeline)
+                                  renders as prose with NO button — never a control that cannot
+                                  act, which is the UX_07 line. */}
+                              {na && na.title && (() => {
+                                const anchor = {
+                                  booking: 'booking', coi: 'coi', documents: 'contract',
+                                  financial: 'money', closeout: 'money',
+                                  logistics: 'arrival', communication: 'contact',
+                                }[na.sourceCategory] || null;
+                                const line = (
+                                  <>
+                                    <strong>Next:</strong> {na.title}
+                                    {na.consequence ? <span style={{ color: 'var(--faint)' }}> {na.consequence}</span> : null}
+                                  </>
+                                );
+                                if (!anchor) {
+                                  return <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>{line}</p>;
+                                }
+                                return (
+                                  <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>
+                                    {line}{' '}
+                                    <span role="button" tabIndex={0} className="mini rowlink"
+                                      data-vgo={anchor}
+                                      onClick={ev => { ev.stopPropagation(); goToVendorControl(v.id, anchor); }}
+                                      onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); goToVendorControl(v.id, anchor); } }}
+                                      aria-label={'Go to the control for: ' + na.title}>
+                                      Take me there →
+                                    </span>
+                                  </p>
+                                );
+                              })()}
                               <div className="fstat-list" style={{ margin: 0 }}>
                                 {axes.map(a => (
                                   <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
@@ -19307,7 +19378,7 @@ export default function HostShellV2() {
                           return (
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline',
                               gap: 8, margin: '2px 0 10px' }}>
-                              <button className="vc-pill"
+                              <button data-vaction="contact" className="vc-pill"
                                 onClick={ev => { ev.stopPropagation(); logVendorContact(v.id); }}
                                 aria-label={'Log that you reached out to ' + v.name}>
                                 {cs.known ? 'Reached out again' : 'I reached out'}
@@ -19410,7 +19481,7 @@ export default function HostShellV2() {
                               vendor by the host's own word. */}
                           <div className="actions-row" style={{ margin: '0 0 10px', flexWrap: 'wrap', alignItems: 'center' }}>
                             <label className="of" htmlFor={'v-arrive-' + v.id}>arrives</label>
-                            <input id={'v-arrive-' + v.id} className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                            <input data-vaction="arrival" id={'v-arrive-' + v.id} className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                               value={v.arrivalTime || ''} onChange={e => writeVendor(v.id, { arrivalTime: e.target.value }, null)}
                               aria-label="Arrival time on the day" />
                             {/* THE DEADLINE IS GROUNDED. THE HOUR IS NOT — SO WE ASK.
@@ -19504,7 +19575,7 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
-                              <button className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
+                              <button data-vaction="money" className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
                                 {v.balancePaid ? 'Paid in full' : 'mark paid in full'}
                               </button>
                               {/* WHEN THE MONEY IS DUE (2026-07-14). `payDueDate` is a real field in
@@ -19632,8 +19703,17 @@ export default function HostShellV2() {
                               drive; this holds a LINK to it (not an upload), which is what
                               clears the "signed but no file on record" clash. Anchored so
                               the conflict CTA lands right on it (row-level-CTA rule). */}
-                          {(v.contractSigned === true || v.contract_signed === true || v.contractUrl || v.contractFileName || v.contractStoragePath) && (
-                            <div id={'v-contract-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6 }}>
+                          {/* ALSO RENDERS WHEN THERE IS NO CONTRACT (cockpit port, slice 2).
+                              This gate was "a contract exists in some form", so the one host
+                              who most needs the attach/paste affordance — the one with NOTHING
+                              on file — was the only host who could not see it. Measured: the
+                              engine's next action for a confirmed vendor with no contract is
+                              "Get the signed contract from <vendor>", and there was no control
+                              on the card to send them to. Now it renders for any PAID vendor
+                              (cost > 0), which keeps it off helpers — they have no contract to
+                              file, per the 2026-08-07 standing rule. */}
+                          {(v.contractSigned === true || v.contract_signed === true || v.contractUrl || v.contractFileName || v.contractStoragePath || (!v.isInformal && Number(v.cost) > 0)) && (
+                            <div data-vaction="contract" id={'v-contract-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6 }}>
                               <span className="of" style={{ flexShrink: 0 }}>signed contract</span>
                               {(v.contractStoragePath || v.contractFileName || v.contractUrl) ? (
                                 // Already on file — the real stored file (or a link), with View / Remove.
@@ -19743,7 +19823,7 @@ export default function HostShellV2() {
                                     aria-label="Insurance covered through — optional" />
                                 </label>
                               )}
-                              <button className="mini" style={{ flexShrink: 0, marginLeft: 'auto' }} onClick={() => {
+                              <button data-vaction="coi" className="mini" style={{ flexShrink: 0, marginLeft: 'auto' }} onClick={() => {
                                 // The same status ladder coiNextAction reads: requested → received → verified.
                                 if (coi && coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, 'Insurance proof marked received.');
                                 else if (coi && coi.status === 'received') writeVendor(v.id, { coiVerified: true }, v.coiExpiryDate ? 'Insurance checked — covered through ' + v.coiExpiryDate + '.' : 'Insurance checked.');

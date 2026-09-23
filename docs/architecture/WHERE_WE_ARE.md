@@ -29,6 +29,20 @@ closed card. And the block silently clipped: 1252px → 1683px against a 1500px
 cap, the third time that cap has been outgrown. Raised, and this time with the
 tripwire the two earlier bumps never had.
 
+**Slice 2, the same night: the next action was wired, by pointing.** The owner
+promoted it ahead of the rest. The engine returns seven CTA kinds and the obvious
+build is seven buttons — refused, because hostv2 already has a working control
+for every one of them and seven more would have put a second write path beside
+each. "Take me there →" scrolls the real control into view, focuses and pulses
+it; `booking` opens its folded ladder first so the host never lands on a closed
+control. A category with no single control (`scope`, `timeline`, the fallback)
+gets prose and no link.
+
+That found a real gap: the contract row was gated on a contract already
+existing, so the host with **nothing on file** — the engine's own flagship
+action — was the only one with no control to reach. It now renders for any paid
+vendor. 15/15 in Chromium, and the five existing vendor specs still 15/15.
+
 ## 2026-09-23 — all four open board calls, and two of them reversed a same-day finding
 
 `main` @ `2845d38` (last code commit; docs follow). 524 suites / 7,470 tests.

@@ -5789,3 +5789,20 @@ button.vc-pill::after{
    its own author wrote. Nothing here designs a layout for it — that would be
    freestyling on a surface no board has judged at this width, and the day-of and
    vendor canvases are already booked for their own sitting. */
+
+/* ─── WHERE THE "TAKE ME THERE" LINK LANDS ────────────────────────────────────
+   Cockpit port slice 2. The next action points at the control that already
+   exists rather than growing a second copy of it, and the jump has to be
+   LEGIBLE: a host already looking at the right part of the card would otherwise
+   see nothing happen and read the link as broken. One short pulse on the
+   control itself, then it gets out of the way.
+   Honours prefers-reduced-motion: the ring still appears (that is the
+   information), it simply does not animate. */
+.vgo-lands{ outline:2px solid var(--steel-soft); outline-offset:3px; border-radius:6px;
+  animation:vgoPulse 1.4s var(--ease-standard) 1; }
+@keyframes vgoPulse{
+  0%{ outline-color:var(--steel-soft); }
+  60%{ outline-color:var(--steel-soft); }
+  100%{ outline-color:transparent; }
+}
+@media (prefers-reduced-motion: reduce){ .vgo-lands{ animation:none } }

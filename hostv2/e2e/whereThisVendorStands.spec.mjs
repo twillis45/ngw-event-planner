@@ -44,6 +44,11 @@ const seed = (page) => page.addInitScript((d) => {
         cost: 9000, depositAmt: 2000, contact: 'chef@firedup.test',
         contractSigned: true, depositPaid: true, balancePaid: false },
       { id: 'v3', name: 'Cousin Rae', category: 'Helper', isInformal: true, cost: 0 },
+      // Quoted, nothing paid: the engine's action here is the BOOKING one
+      // ("Decide on Bloom."), which is the case whose control is folded behind
+      // the status pill. Measured, not assumed — Fired Up looks like a booking
+      // case and is actually `scope`.
+      { id: 'v4', name: 'Bloom', category: 'Florist', status: 'Quoted', cost: 2000, contact: 'hello@bloom.test' },
     ],
   }]));
   localStorage.setItem('ngw-hostv2-last-event', 'e2e-stands');
@@ -149,19 +154,23 @@ test('AN INFORMAL HELPER IS NOT PUT THROUGH THE VENDOR LADDER', async ({ page })
   expect(card).not.toMatch(/Paperwork/);
 });
 
-test('THE NEXT ACTION IS A STATEMENT, NOT A BUTTON THAT CANNOT ACT', async ({ page }) => {
-  // getActionableNextStep returns payment/contract/arrival flows that are not
-  // wired in this shell yet. Shipping the label as a control would be the
-  // CTA-truthfulness defect. It renders as prose until the actions are real.
+test('THE NEXT ACTION CARRIES NO WRITE CONTROL OF ITS OWN', async ({ page }) => {
+  // SLICE 1 asserted zero interactive elements here, because no action was
+  // wired and a button that cannot act is the UX_07 defect. SLICE 2 wired them
+  // by NAVIGATION, so exactly one element is correct now — a link, never a
+  // second copy of a write control that already exists elsewhere on the card.
+  // The rule this file guards did not change; what satisfies it did.
   const card = await openVendor(page, 'Ironwood');
   expect(card).toMatch(/Next:/);
-  const looksLikeAControl = await page.evaluate(() => {
+  const inside = await page.evaluate(() => {
     const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
     if (!c) return null;
     const host = [...c.querySelectorAll('.vc-more > div')].find((d) => /Where this stands/i.test(d.innerText || ''));
-    return host ? host.querySelectorAll('button,[role="button"],a').length : null;
+    if (!host) return null;
+    return { writes: host.querySelectorAll('button, input, select, textarea').length,
+      links: host.querySelectorAll('[data-vgo]').length };
   });
-  expect(looksLikeAControl).toBe(0);
+  expect(inside).toEqual({ writes: 0, links: 1 });
 });
 
 test('THE FOLD DOES NOT CLIP IT — .vc-more is height-capped', async ({ page }) => {
@@ -179,5 +188,149 @@ test('THE FOLD DOES NOT CLIP IT — .vc-more is height-capped', async ({ page })
   expect(fit).toBeTruthy();
   expect(fit.scroll).toBeLessThanOrEqual(2400);
   // …and the cap is actually letting it all through, not just fitting by luck.
+  expect(fit.client).toBeGreaterThanOrEqual(fit.scroll - 1);
+});
+
+// ─── SLICE 2: THE NEXT ACTION POINTS AT THE CONTROL THAT ALREADY EXISTS ──────
+//
+// `getActionableNextStep` returns seven CTA kinds. Building them as buttons was
+// the obvious move and was REFUSED after checking the shell: hostv2 already has
+// a working control for every one — the status ladder, the COI ladder, the paid
+// toggle, the arrival field, "I reached out", the contract row. Seven new
+// buttons would have put a second write path beside each, which is the
+// duplicate-surface rule and the one-fact-two-owners defect at once.
+//
+// So the action NAVIGATES. These tests prove the link lands on the real control
+// and that no copy of it was grown.
+
+const goNext = async (page, name) => {
+  await openVendor(page, name);
+  return page.evaluate((n) => {
+    const card = [...document.querySelectorAll('.vcard')].find((c) => (c.innerText || '').includes(n));
+    const go = card && card.querySelector('[data-vgo]');
+    if (!go) return null;
+    const anchor = go.getAttribute('data-vgo');
+    go.click();
+    return anchor;
+  }, name);
+};
+
+const landed = (page, name) => page.evaluate((n) => {
+  const card = [...document.querySelectorAll('.vcard')].find((c) => (c.innerText || '').includes(n));
+  const el = card && card.querySelector('.vgo-lands');
+  if (!el) return null;
+  return { action: el.getAttribute('data-vaction'), focused: document.activeElement === el,
+    tag: el.tagName.toLowerCase() };
+}, name);
+
+test('(premise) the next action offers a way through, and names its anchor', async ({ page }) => {
+  // Ironwood is confirmed with no contract on file, so the engine's action is
+  // the contract one. Without this, the landing assertions below could be
+  // passing over a card that never offered a link at all.
+  const anchor = await goNext(page, 'Ironwood');
+  expect(anchor).toBe('contract');
+});
+
+test('THE LINK LANDS ON THE REAL CONTROL, FOCUSED', async ({ page }) => {
+  await goNext(page, 'Ironwood');
+  await page.waitForTimeout(400);
+  const hit = await landed(page, 'Ironwood');
+  console.log('LANDED >>>', JSON.stringify(hit));
+  expect(hit).toBeTruthy();
+  expect(hit.action).toBe('contract');
+});
+
+test('A VENDOR WITH NO CONTRACT NOW HAS A CONTRACT CONTROL AT ALL', async ({ page }) => {
+  // The gap this slice found. The contract row was gated on a contract already
+  // existing in some form, so the one host who most needs the attach/paste
+  // affordance — the one with nothing on file — was the only host who could not
+  // see it. Ironwood has contractSigned:false and no URL.
+  const card = await openVendor(page, 'Ironwood');
+  expect(card).toMatch(/signed contract/i);
+  const hasPasteField = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
+    const row = c && c.querySelector('[data-vaction="contract"]');
+    return !!(row && row.querySelector('input[placeholder*="contract" i], label'));
+  });
+  expect(hasPasteField).toBe(true);
+});
+
+test('BOOKING OPENS ITS LADDER FIRST — never a dead end', async ({ page }) => {
+  // The status ladder is folded behind the pill. Pointing at a pill that
+  // reveals nothing would land the host on a closed control they then have to
+  // work out how to open.
+  //
+  // Bloom, not Fired Up. Fired Up is "Deposit Paid" and LOOKS like a booking
+  // case; its action is actually `scope` ("Confirm: Final guest count"). That
+  // was measured off the engine rather than guessed, after this test failed on
+  // the assumption.
+  const anchor = await goNext(page, 'Bloom');
+  expect(anchor).toBe('booking');
+  await page.waitForTimeout(400);
+  const open = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Bloom'));
+    return !!(c && c.querySelector('.vc-statuspick'));
+  });
+  expect(open).toBe(true);
+});
+
+test('A CATEGORY WITH NO SINGLE CONTROL GETS PROSE AND NO LINK', async ({ page }) => {
+  // Fired Up's action is `scope` — "Confirm: Final guest count confirmed?".
+  // There is no one control on this card for it (the guest count lives in an
+  // obligations LIST), and pointing at a list by fuzzy-matching the action's
+  // title to a row would be a guess. So it says the thing and offers no way
+  // through, which is honest. A link here would be the defect.
+  const card = await openVendor(page, 'Fired Up');
+  expect(card).toMatch(/Final guest count confirmed/);
+  const links = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Fired Up'));
+    const block = [...c.querySelectorAll('.vc-more > div')].find((d) => /Where this stands/i.test(d.innerText || ''));
+    return block ? block.querySelectorAll('[data-vgo]').length : null;
+  });
+  expect(links).toBe(0);
+});
+
+test('NO SECOND WRITE PATH WAS GROWN — the block still holds one link and no controls', async ({ page }) => {
+  // The whole reason this slice navigates instead of acting. If a future pass
+  // adds a "Mark confirmed" button here, there are two owners of that write and
+  // this fails.
+  await openVendor(page, 'Ironwood');
+  const counts = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
+    const block = [...c.querySelectorAll('.vc-more > div')].find((d) => /Where this stands/i.test(d.innerText || ''));
+    if (!block) return null;
+    return {
+      links: block.querySelectorAll('[data-vgo]').length,
+      others: block.querySelectorAll('button, input, select, textarea').length,
+    };
+  });
+  console.log('BLOCK >>>', JSON.stringify(counts));
+  expect(counts).toEqual({ links: 1, others: 0 });
+});
+
+test('THE LINK IS SCOPED TO ITS OWN VENDOR, not the first match on the sheet', async ({ page }) => {
+  // Three vendors are on this sheet. A bare querySelector would have found the
+  // first matching control in the document, which is somebody else's row.
+  await goNext(page, 'Bloom');
+  await page.waitForTimeout(400);
+  const where = await page.evaluate(() => {
+    const el = document.querySelector('.vgo-lands');
+    if (!el) return null;
+    const card = el.closest('.vcard');
+    return card ? (card.innerText || '').slice(0, 40) : null;
+  });
+  expect(where).toMatch(/Bloom/);
+});
+
+test('THE FOLD STILL DOES NOT CLIP, with the contract row now always present', async ({ page }) => {
+  // Slice 1 raised this cap after adding 431px. Slice 2 adds a contract row to
+  // every paid vendor that lacked one. Same tripwire, re-measured.
+  await openVendor(page, 'Ironwood');
+  const fit = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
+    const more = c && c.querySelector('.vc-more');
+    return more ? { scroll: more.scrollHeight, client: more.clientHeight } : null;
+  });
+  console.log('FOLD2 >>>', JSON.stringify(fit));
   expect(fit.client).toBeGreaterThanOrEqual(fit.scroll - 1);
 });
