@@ -196,7 +196,15 @@ const anniversary = {
     ],
     cleanup: [
       { when: 'during', what: 'Clear courses/plates into the staged bus tub; keep trash + recycling moving; do NOT wash mid-party' },
-      { when: 'after the toast', what: 'Box leftover cake to send home; consolidate open bottles' },
+      // ANCHOR CORRECTED 2026-09-23. Authored 'after the toast', which resolves
+      // to the WELCOME toast at T0 +30m — so "box leftover cake" would have
+      // landed 35 minutes in, an hour and a half before the cake is served at
+      // T0 +2:15. Read as the cake on the corpus's own evidence: vowRenewal
+      // carries a near-identical row ("Box leftover cake to send home;
+      // consolidate open bottles…") anchored to 'after the cake', and this
+      // playbook has a cake beat. A beat placed confidently at the wrong hour is
+      // worse than an absent one.
+      { when: 'after the cake', what: 'Box leftover cake to send home; consolidate open bottles' },
       { when: 'T0 +4h', what: 'Leftovers into containers (send some home), run dishwasher, hand-wash delicates, bottles to recycling, pack the rentals/return box, AV gear away, linens to soak' },
     ],
   },

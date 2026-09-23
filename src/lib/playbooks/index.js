@@ -1790,6 +1790,22 @@ const ROS_SCHEDULE_KINDS = [
 
 // A day-of `when` token → minutes offset from the anchor. null for pre-day /
 // non-clock tokens (T-1d, T-3d, 'during', 'ongoing') so they're skipped.
+// ─── "after the toast" — A BEAT ANCHORED TO ANOTHER BEAT ─────────────────────
+// Four authored cleanup rows are written against a MOMENT rather than a clock:
+// 'after the toast', 'after toast', 'after the cake'. No clock parser can read
+// them, so all four were dropped in silence.
+//
+// The moment is not invented either — it is found in the SAME playbook's
+// `program` block, by the word the author used. The LAST matching beat wins:
+// "after the toast" means after the toasting is finished, and a playbook with
+// two toast beats ends its toasting at the later one.
+//
+// Returns the moment word, or null when the token is not moment-anchored.
+export function rosAfterMoment(when) {
+  const m = /^after\s+(?:the\s+)?([a-z][a-z' -]{1,24})$/i.exec(String(when || '').trim());
+  return m ? m[1].trim().toLowerCase() : null;
+}
+
 // ─── "End+30m" — A BEAT ANCHORED TO THE END, NOT THE START ───────────────────
 // Four authored rows across Sweet 16 and Quinceanera are teardown work written
 // against the END of the party: 'End', 'End+30m', 'End+1h', 'End +1h'. Every one
@@ -2049,6 +2065,23 @@ export function playbookRunOfShow(event) {
     }
     return max;
   })();
+  // The same scan, keyed by the words the author can anchor to. Last match wins
+  // — "after the toast" means after the toasting is done.
+  const _momentAt = (() => {
+    const list = Array.isArray(playbook.schedules.program) ? playbook.schedules.program : [];
+    const out = [];
+    for (const entry of list) {
+      if (!choiceShown(event, entry.whenChoice)) continue;
+      const o = rosWhenOffset(entry.when);
+      if (o === null) continue;
+      out.push({ o, text: String((entry.what != null ? entry.what : entry.do) || '').toLowerCase() });
+    }
+    return (word) => {
+      let best = null;
+      for (const r of out) if (r.text.includes(word) && (best === null || r.o > best)) best = r.o;
+      return best;
+    };
+  })();
   for (const kind of ROS_SCHEDULE_KINDS) {
     const list = Array.isArray(playbook.schedules[kind.key]) ? playbook.schedules[kind.key] : [];
     for (const entry of list) {
@@ -2063,9 +2096,17 @@ export function playbookRunOfShow(event) {
       // preparation -> setup). Five minutes is a sequencing choice, not a claim
       // about the day; a delta the author WROTE is never adjusted.
       const _endDelta = rosEndDelta(entry.when);
+      // A moment-anchored row resolves only when its own playbook HAS that
+      // moment. Retirement Party authors 'after the toast' and its program has
+      // no toast — that row stays dropped rather than being attached to the
+      // nearest speech, which would be this engine deciding what a toast is.
+      const _moment = _endDelta === null ? rosAfterMoment(entry.when) : null;
+      const _momentMin = _moment ? _momentAt(_moment) : null;
       const off = _endDelta !== null
         ? (_programEnd === null ? null : _programEnd + (_endDelta === 0 ? 5 : _endDelta))
-        : rosWhenOffset(entry.when);
+        : _moment !== null
+          ? (_momentMin === null ? null : _momentMin + 5)
+          : rosWhenOffset(entry.when);
       if (off === null) continue;
       // Same whenChoice vocabulary tasks/purchases/agenda already use (choiceShown
       // returns true for an absent gate, so every existing playbook — none of

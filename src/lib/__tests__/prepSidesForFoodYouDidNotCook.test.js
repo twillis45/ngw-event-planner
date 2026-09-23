@@ -138,7 +138,12 @@ describe('the prep row reads the host’s own food answer', () => {
       rendered += rows.filter((w) => seen.has(w.trim().toLowerCase())).length;
     }
     // A ratchet, not a target: this must not get WORSE without someone noticing.
+    // 111 → 105 (bare `End` and `End+30m` beats resolved) → 102: three rows
+    // anchored to a MOMENT in the same day ("after the toast", "after the cake")
+    // now resolve against the program beat they name. Measured, not guessed:
+    // 759 authored, 657 rendered. Lower it again whenever a batch lands; raising
+    // it means rows stopped reaching a screen, and needs the reason said out loud.
     expect(authored).toBeGreaterThan(700);
-    expect(authored - rendered).toBeLessThanOrEqual(105);
+    expect(authored - rendered).toBeLessThanOrEqual(102);
   });
 });
