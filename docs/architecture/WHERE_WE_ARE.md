@@ -1,9 +1,75 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — the app was shipping under a competitor's name
+
+`main` @ `75f1c55`. 504 suites / 7,208 tests. `verify:push` 5/5 on every commit.
+
+**Event Boss is a live product in this category**, not a company-name
+coincidence: listed on GetApp UK for 2026 as event-management software for
+wedding planners, venues, decorators and caterers — the same buyer's search
+results. The product is now **No Guesswork Events**, a sibling of No Guesswork
+Systems LLC, so it needs no new entity and its distinctiveness rests on a mark
+the owner already uses rather than on a phrase competitors put in their
+marketing copy.
+
+| Commit | What |
+|---|---|
+| `f028f59` | The Day tab's agenda is byte-identical whether the host answered "Cook/grill yourself" or "Drop-off catering". The basis is STATED; the beats untouched |
+| `aa69853` | The name, hand-typed 148 times with no owner. `lib/brand.js` owns it now |
+| `4386914` | The frozen CRA shell renamed too (owner waived A1), minus one string |
+| `8033945` | `ngw-event-boss` -> `no-guesswork-events`; deploy path confirmed unmoved |
+| `75f1c55` | Domain availability, measured and calibrated |
+
+### The one string that could not be renamed
+
+`RSVP_METHODS` renders as `<option key={m}>{m}</option>` with **no value
+attribute** — so in HTML the visible label IS what lands in `client.rsvpMethod`
+on every saved record. Renaming it would have left every client who already
+picked it matching no option at all: the select reads blank, and the next save
+writes that blank over their answer. A plain find-and-replace ships exactly
+that, silently. The value is frozen at the old wording; only the label is
+renamed, and a test pins the invariant because the array reads as pure display
+copy at the call site.
+
+### What this half of the session is about
+
+**A measurement whose instrument does not exist returns a uniform answer that
+looks like data.** `dig`, `host` and `nslookup` are not installed here. The
+first domain check looped over four candidates and got an identical empty result
+for every one, which reads as "no nameservers found" unless you notice the tools
+never ran. **Four identical results IS the tell.** The replacement was
+calibrated before being trusted, and the POSITIVE control is the half that
+matters: without a known-registered domain to compare against, a non-resolving
+answer is indistinguishable from the proxy simply refusing the request.
+
+**Being wrong three times about which lever applies.** The Day tab was deferred
+three times as "needs a researched destination run-of-show". `foodApproach`
+already answers it and the ROS already reads it — one-directionally. But the fix
+is still not a rewrite: a schedule entry authors four fields and `owner` is not
+one of them, so the `Host` on every row is an engine literal, not a discarded
+authored value. A "654/654 rows render Host" measurement was read as a discarded
+field and was wrong; checking before building caught it.
+
+**A default is not an answer.** `rosBasisNote` first fired at every untouched
+birthday, because Birthday DEFAULTS `food_style` to "Order pizza/trays", which
+carries `usesCaterer`. Caught by its own negative control.
+
+### Open — and only one item is code
+
+- **Trademark clearance.** None run, none implied; `lib/brand.js` says so. USPTO
+  plus an attorney, and it matters more now the name ships.
+- **The domain.** `noguessworkevents.com` looks free; `noguesswork.com` is taken.
+  A likelihood is not a registration record — confirm at a registrar.
+- **The Day tab's beats.** The seam is open (`copyByAnswer` / `whenChoice`, three
+  playbooks already use them); it is content work per playbook, needing a basis
+  the corpus lacks.
+- Destination lead-time basis; lodging paste sources; the per-head food bands.
+
 ## 2026-09-22/23 — one fact, five screens, and only one of them knew it
 
-`main` @ `0abaa18`. 499 suites / 7,165 tests. `verify:push` 5/5 on every commit;
-245/245 driven in Chromium across 7 viewports.
+`main` @ `0abaa18`. 499 suites / 7,165 tests at that point. `verify:push` 5/5 on
+every commit; 245/245 driven in Chromium across 7 viewports. (The session ran on
+— the entry above this one is where it ended.)
 
 `foodSpanNote().listApplies` has been three-valued since the day it was written
 — FALSE only when we KNOW there is no kitchen — and its only consumer was its

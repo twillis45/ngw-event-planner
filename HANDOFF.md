@@ -1,6 +1,18 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-19 (third run, same day:
+**Measured reality, not intentions.** Updated 2026-09-23 (one session across two
+days: `foodSpanNote().listApplies` had been three-valued since it was written and
+its only consumer was its own unit test — closing that found the SAME defect on
+five screens, each a fact owned by one accessor and ignored by the consumer
+standing next to it. Then a screen-by-screen census closed three more, and the
+app turned out to be shipping under a live competitor's name. Worth carrying
+forward: the refusal is the fix and the REPORT is half of it, because withdrawing
+a wrong number makes the host's headroom bigger; narrow the verb, not the topic;
+an answer outranks the gate; a default is not an answer; and a measurement whose
+instrument does not exist returns a uniform answer that looks like data — four
+identical results IS the tell. Three guards nobody wrote for this work caught
+three things it did. See the twentieth and twenty-first entries.)
+Before that, on 2026-09-19 (third run, same day:
 three findings that moved NO number — the 2026-08-17 ranking ruling's own bar is
 provably unreachable by retuning, eight playbooks price food above the whole
 event it belongs to, and D3's obvious discriminator was measured and found wrong
@@ -113,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `80339453` |
-| Jest | **7,165 passed**, 1 skipped, **0 failed**, **499 suites** (re-measured 2026-09-22, after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `75f1c555` |
+| Jest | **7,208 passed**, 1 skipped, **0 failed**, **504 suites** (re-measured 2026-09-23, after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -126,6 +138,78 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-first entry) — the app was shipping under a competitor's name
+
+Five commits. 504 suites / 7,208 tests (from 499 / 7,165). `verify:push` 5/5 on
+each.
+
+| Commit | What |
+|---|---|
+| `f028f59` | The Day tab's agenda is byte-identical whether the host answered "Cook/grill yourself" or "Drop-off catering". The basis is now STATED; the beats are untouched |
+| `aa69853` | The product name, hand-typed 148 times with no owner. `lib/brand.js` now owns it; hostv2 and the two shipping lib strings renamed |
+| `4386914` | The frozen CRA shell renamed too (owner waived A1), minus the one string that is also a saved answer |
+| `8033945` | `ngw-event-boss` → `no-guesswork-events`; deploy path confirmed unmoved |
+| `75f1c55` | Domain availability, measured and calibrated, recorded beside the naming decision |
+
+### The rename, and the one string that could not move
+
+**Event Boss is a live product in this category** — listed on GetApp UK for 2026
+as event-management software for wedding planners, venues, decorators and
+caterers. Not a company-name coincidence: the same buyer's search results.
+
+121 occurrences across 17 files, and exactly ONE could not be renamed.
+`RSVP_METHODS` renders as `<option key={m}>{m}</option>` with **no value
+attribute**, so in HTML the visible label IS what lands in `client.rsvpMethod`.
+Renaming it would have left every client who already picked it matching no
+option — the select reads blank, and the next save writes that blank over their
+answer. A plain find-and-replace ships exactly that, silently. The VALUE is now
+frozen at the old wording and only the LABEL is renamed.
+
+### Worth carrying forward
+
+**A MEASUREMENT WHOSE INSTRUMENT DOES NOT EXIST RETURNS A UNIFORM ANSWER THAT
+LOOKS LIKE DATA.** `dig`, `host` and `nslookup` are not installed here. The first
+domain check looped over four candidates and got an identical empty result for
+every one, which reads as "no nameservers found" unless you notice the tools
+never ran. **Four identical results IS the tell.** The replacement was calibrated
+before it was trusted — invented nonsense fails to resolve, a known-registered
+domain resolves and is then refused by the proxy — and the POSITIVE control is
+the half that matters: without it, a non-resolving answer is indistinguishable
+from the proxy simply saying no.
+
+**I WAS WRONG ABOUT THE DAY-TAB LEVER, THREE TIMES.** I had said it needed a
+researched destination run-of-show. `foodApproach` already answers it and the ROS
+already reads it — one-directionally, dropping rows whose TEXT says "caterer"
+when the host cooks, never the reverse. But the fix is still not a rewrite, and
+the audit is why: a schedule entry authors four fields and `owner` is not one of
+them, so the `Host` on every row is an engine literal, not a discarded authored
+value. I had measured "654/654 rows render Host" and read it as a discarded
+field — checking before building caught it. Re-owning a mixed beat ("Decorate,
+blow up balloons, set food + drinks stations") between two owners is authoring a
+run-of-show nobody researched.
+
+**A DEFAULT IS NOT AN ANSWER.** `rosBasisNote`'s first cut read `foodApproach`
+raw and fired at every untouched birthday, because Birthday DEFAULTS `food_style`
+to "Order pizza/trays", which carries `usesCaterer`. Caught by that module's own
+negative control. Same rule `vendorPlan.js` states for its stand-downs.
+
+**A THIRD GUARD I DID NOT WRITE.** The text-gate ratchet (42 → 43) caught the new
+brand test. That is three this session — `authoredAskReachesTheHero`,
+`dietVocabularyResolves`, and the ratchet — each catching something I did.
+
+### Open, and only one of them is code
+
+- **Trademark clearance.** No search was run and none is implied; `lib/brand.js`
+  says so in the file. USPTO + an attorney, and it matters more now the name
+  ships.
+- **The domain.** `noguessworkevents.com` looks free, `noguesswork.com` is taken.
+  Confirm at a registrar — a likelihood is not a registration record.
+- **The Day tab's beats themselves.** The seam is open: beats already support
+  `copyByAnswer` and `whenChoice`, three playbooks already use them. Content work
+  per playbook, needing a basis this corpus does not have.
+- Destination lead-time basis; which lodging paste sources to support; the
+  per-head food band basis.
 
 ## FIXED 2026-09-22 (twentieth entry) — one fact, four screens, and only one of them knew it
 
