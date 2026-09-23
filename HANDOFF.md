@@ -125,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `a6cc212b` |
-| Jest | **7,386 passed**, 1 skipped, **0 failed**, **520 suites** (re-measured 2026-09-23 after the twenty-sixth entry; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `3fa2de85` |
+| Jest | **7,388 passed**, 1 skipped, **0 failed**, **520 suites** (re-measured 2026-09-23 after the twenty-seventh entry; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -138,6 +138,89 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-seventh entry) — deployed, measured end to end, and the coverage limit now said out loud
+
+`autoDeploy: true`, so the previous commit shipped itself. This entry is the
+end-state measurement against the deployed router, plus the honesty change the
+measurement demanded.
+
+520 suites / 7,388 tests. `verify:push` 5/5, exit 0. 49 e2e green.
+
+### The term fix, end to end against a live store
+
+```
+name "Ribs (racks)"   ← echoed, the price index's key
+term "pork ribs"      ← searched
+→ Baby Back Pork Ribs · 1 lb · WEIGHT · $5.99 (promo $5.19)
+```
+
+**40 of 42 allowlisted lines now match, up from 7 of 44.** Only masa harina and
+green coffee beans miss, and both are honest — a Baltimore Harris Teeter does
+not stock them.
+
+**35 of those 42 convert to a real, checkable line total.** From zero this
+morning. A sample, computed through the shipped modules against the live
+response:
+
+    Ribs (racks)          11.5 lbs at $5.19 per 1 lb = $59.69.
+    Ice (coolers+drinks)  7 × 7 lb at $2.99 = $20.93 — covers 46, you take home 49 lbs.
+    Chicken leg quarters  10.4 lbs at $2.49 per 1 lb = $25.90.
+    Apple-cider vinegar   8 × 16 fl oz at $1.69 = $13.52.
+    Old Bay seasoning     4 × 6 oz at $5.79 = $23.16 — covers 1.2, you take home 1.5 lbs.
+
+The seven refusals are all correct: collards and watermelon come back as `1 ct`
+(a bunch has no stated weight), black-eyed peas as `16 fl oz` against a line in
+dry pounds.
+
+**One to watch, not a defect:** Turkey at 31.5 lbs resolves to eleven 3-lb
+Butterball breast roasts. The money is defensible (~$5/lb); the shopping advice
+is absurd. Correct arithmetic, silly packaging — logged rather than patched,
+because the fix is a bulk-purchase notion this file does not have.
+
+### And the honesty change the coverage data demanded
+
+Probed live: Baltimore City, Rockville, McLean and Richmond return three stores
+each. **Bel Air, Towson, Hagerstown and Wilmington return zero** — four of nine
+mid-Atlantic ZIPs, the host running this repo among them.
+
+The empty result was already accurate. It was accurate *after* a host typed a
+ZIP and tapped, with nothing having warned them it was possible — and an
+accurate empty result, unannounced, reads as a broken feature. So:
+
+- The **offer** now names the chain family and the regional limit before any
+  work: *"Checks Kroger and its sister stores — Harris Teeter, Fred Meyer,
+  Ralphs, QFC, King Soopers, Fry's, Smith's and the rest. Coverage is regional —
+  there may be none near you."*
+- The **empty state** names what was searched, so the answer is judgeable:
+  *"No Kroger, Harris Teeter, Fred Meyer, Ralphs and their sister stores near
+  that ZIP — coverage is regional, and plenty of the map has none."*
+
+**Named once.** `STORE_FAMILY` / `STORE_FAMILY_SHORT` are exported from
+`lib/storePrices`; the shell imports them. A new gate asserts no banner name is
+typed into hostv2's own source — and **it found a second copy immediately**, a
+JSX comment listing nine banners. Text-gate ratchet bumped 46 → 47 with that
+reason; the behaviour half of the claim stayed in e2e, where it can be driven.
+
+### Also measured
+
+- `product.compact` authorizes `/v1/locations`. Retired by call.
+- Daily ceilings: Products 10,000, Locations 1,600. One products call per line,
+  so a 22-line plan costs 22 — roughly 450 list-pricings a day.
+
+### Worth carrying forward
+
+- **A true statement delivered too late is an honesty defect.** "No store near
+  you" was never wrong. It was unannounced, and unannounced accuracy reads as
+  breakage.
+- **The gate that asserts an ABSENCE cannot be an e2e.** A browser shows the
+  sentence a host reads; it cannot show the list is not written twice.
+
+### Open
+
+- **Pages still bakes no API base**, so none of this reaches a real host. This
+  is now the only thing between the feature and a user.
+- Dry weight vs prepared weight; bulk-purchase sizing (the turkey).
 
 ## FIXED 2026-09-23 (twenty-sixth entry) — the keys went in, and the live store found two defects no test could
 

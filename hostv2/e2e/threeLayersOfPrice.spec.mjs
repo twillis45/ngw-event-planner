@@ -109,6 +109,13 @@ test('CONFIGURED BUILD OFFERS IT, and says what it will and will not do', async 
   test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle — covered by the test above');
   const t = await bodyText(page);
   expect(t).toMatch(/beside your estimate, never instead of it/i);
+  // ── THE LIMIT IS STATED BEFORE THE HOST DOES THE WORK ────────────────────
+  // Probed live 2026-09-23: four of nine mid-Atlantic ZIPs return no store at
+  // all, Bel Air among them. An accurate empty result still reads as a broken
+  // feature when nothing warned it was possible, so the offer names the chain
+  // family and the regional limit up front.
+  expect(t).toMatch(/Coverage is regional — there may be none near you/);
+  expect(t).toMatch(/Harris Teeter/);        // the family, named, not implied
 });
 
 test('PICKER: opens with the venue ZIP prefilled', async ({ page }) => {
@@ -208,7 +215,8 @@ test('NO STORE NEARBY: named, not a spinner that stops', async ({ page }) => {
   await tapText(page, 'Find stores');
   await page.waitForTimeout(900);
   const t = await bodyText(page);
-  expect(t).toMatch(/No store near that ZIP in this chain’s family\. The estimate stands\./);
+  expect(t).toMatch(/No Kroger, Harris Teeter, Fred Meyer, Ralphs and their sister stores near that ZIP/);
+  expect(t).toMatch(/coverage is regional, and plenty of the map has none\. The estimate stands\./);
 });
 
 // ─── THE UNIT MAP, ON THE SCREEN ─────────────────────────────────────────────

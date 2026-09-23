@@ -105,3 +105,43 @@ describe('the name a line is matched by makes it back', () => {
     expect(body).toMatch(/\(it\.term or it\.name or ""\)\.strip\(\)/);
   });
 });
+
+// ─── AND THE SHELL NEVER RETYPES WHOSE STORES THESE ARE ──────────────────────
+//
+// "No store near that ZIP" is not a usable answer until the host knows which
+// stores were looked for. This is ONE chain family, and coverage is regional in
+// a way that is not subtle — probed live 2026-09-23, Baltimore City, Rockville,
+// McLean and Richmond each return three stores while Bel Air, Towson,
+// Hagerstown and Wilmington return zero.
+//
+// So the family is named in the UI, and named in exactly one place. A second
+// hand-typed copy is how the offer text and the empty-state message come to
+// list different stores — the same duplication class as the brand name, the
+// diet vocabulary, and the layer order.
+describe('the chain family is named once and read everywhere', () => {
+  const SHELL = fs.readFileSync(path.join(ROOT, 'hostv2/src/HostShellV2.jsx'), 'utf8');
+
+  test('(premise) the owner really exports it', () => {
+    expect(CLIENT).toMatch(/export const STORE_FAMILY\b/);
+    expect(CLIENT).toMatch(/export const STORE_FAMILY_SHORT\b/);
+  });
+
+  test('the shell IMPORTS the names rather than spelling the stores out', () => {
+    expect(SHELL).toMatch(/STORE_FAMILY_SHORT/);
+    // The tell for a hand-typed copy: a banner name in the shell's own source.
+    // `Kroger` is allowed nowhere but an import line and a comment.
+    const code = SHELL.split('\n')
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l) && !/^import /.test(l))
+      .join('\n');
+    for (const banner of ['Harris Teeter', 'Fred Meyer', 'Ralphs', 'King Soopers']) {
+      expect(code).not.toContain(banner);
+    }
+  });
+
+  // NOT ASSERTED HERE: that the host is TOLD the limit before typing a ZIP.
+  // That is a behaviour claim — it is about what renders, and jest cannot
+  // execute hostv2. It lives in hostv2/e2e/threeLayersOfPrice.spec.mjs, which
+  // drives the offer at seven viewports and reads the sentence off the page.
+  // A source-text copy of it here would pass while the block sat behind a
+  // condition that never fires.
+});

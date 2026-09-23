@@ -30,6 +30,25 @@ import { storeSearchTerm } from './knowledge/storeUnitMap';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
+/**
+ * ── WHOSE STORES THESE ARE, IN THE HOST'S OWN WORDS ──────────────────────
+ *
+ * Named once, here, because a host has to be able to judge the answer. "No
+ * store near you" means nothing until you know which stores were looked for —
+ * and this is ONE chain family, not every grocer.
+ *
+ * COVERAGE IS REGIONAL AND IT IS NOT SUBTLE. Probed live 2026-09-23:
+ * Baltimore City, Rockville, McLean and Richmond each return three stores;
+ * Bel Air, Towson, Hagerstown and Wilmington return zero. The host running
+ * this repo is in a dead zone. So the UI says so BEFORE a host types a ZIP,
+ * rather than letting them do the work and read an empty result as a fault.
+ *
+ * Exported so the shell never retypes it — the same single-owner rule the
+ * brand name and the layer order already live under.
+ */
+export const STORE_FAMILY = 'Kroger and its sister stores — Harris Teeter, Fred Meyer, Ralphs, QFC, King Soopers, Fry\'s, Smith\'s and the rest';
+export const STORE_FAMILY_SHORT = 'Kroger, Harris Teeter, Fred Meyer, Ralphs and their sister stores';
+
 export function isStorePricesConfigured() {
   return Boolean(BASE);
 }

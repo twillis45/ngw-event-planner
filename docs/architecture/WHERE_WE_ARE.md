@@ -1,5 +1,37 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — deployed, measured end to end, and the coverage limit said out loud
+
+`main` @ pending. 520 suites / 7,388 tests. `verify:push` 5/5, exit 0.
+
+`autoDeploy: true`, so the previous commit shipped itself. Measured against the
+deployed router: **40 of 42 allowlisted lines now match (was 7 of 44)**, and
+**35 of 42 convert to a real, checkable line total** — from zero this morning.
+`Ribs (racks)` → Baby Back Pork Ribs, $5.19/lb, 11.5 lbs = $59.69. The seven
+refusals are all correct (`1 ct` bunches, `16 fl oz` against dry pounds).
+
+**Coverage is regional and it is not subtle.** Baltimore City, Rockville, McLean
+and Richmond return three stores each; Bel Air, Towson, Hagerstown and
+Wilmington return zero — four of nine mid-Atlantic ZIPs, including the one this
+repo's owner lives in.
+
+The empty result was already accurate. It was accurate AFTER a host typed a ZIP
+and tapped, with nothing having warned them — and unannounced accuracy reads as
+breakage. The offer now names the chain family and the regional limit up front;
+the empty state names what was searched so the answer is judgeable. Named once
+in `lib/storePrices` and imported, with a new gate asserting no banner name is
+typed into hostv2's source — it found a second copy immediately.
+
+**Worth carrying forward:** a true statement delivered too late is an honesty
+defect. And a gate that asserts an ABSENCE cannot be an e2e — a browser shows
+the sentence a host reads, not that the list is written twice.
+
+**Open:** Pages still bakes no API base, so none of this reaches a real host —
+now the only thing between the feature and a user. Also: dry weight vs prepared
+weight, and bulk sizing (31.5 lbs of turkey resolves to eleven 3-lb breast
+roasts — right money, absurd shopping advice).
+
+
 ## 2026-09-23 — the keys went in, and the live store found two defects no test could
 
 `main` @ `a6cc212`. 520 suites / 7,386 tests. `verify:push` 5/5, exit 0.

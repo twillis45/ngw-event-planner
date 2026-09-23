@@ -162,7 +162,7 @@ import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices'
 // Northeast that never throws and never looks wrong. `layerForLine` reads the
 // decision the engine recorded (`geoBasis`) instead of re-deriving it.
 import { layerForLine, storePriceIndex, layerCoverage, coverageNote } from '@app/lib/priceLayers';
-import { isStorePricesConfigured, nearbyStores, storePrices } from '@app/lib/storePrices';
+import { isStorePricesConfigured, nearbyStores, storePrices, STORE_FAMILY, STORE_FAMILY_SHORT } from '@app/lib/storePrices';
 import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
@@ -17772,11 +17772,15 @@ export default function HostShellV2() {
                     the other would produce a confidently wrong total, which is
                     worse than the estimate because it looks like a fact.
 
-                    COVERAGE, ONE BANNER FAMILY. Kroger's API serves Fred Meyer,
-                    Ralphs, Harris Teeter, Fry's, QFC, Smith's, Dillons, Pick 'n
-                    Save and Ruler through the same endpoint. Wide, and not
-                    everywhere — which is why this is a layer over the regional
-                    band and not a replacement for it. */}
+                    COVERAGE, ONE BANNER FAMILY, NAMED IN ITS OWNER. One Kroger
+                    endpoint serves every sister banner, and `STORE_FAMILY` in
+                    lib/storePrices is the only place the list is written — this
+                    comment used to repeat it, which is how the offer text and
+                    the empty-state message drift into naming different stores.
+                    Wide, and not everywhere: probed live 2026-09-23, four of
+                    nine mid-Atlantic ZIPs returned no store at all. Which is why
+                    this is a layer over the regional band and not a replacement
+                    for it, and why the host is told so before they type a ZIP. */}
                 {foodSect.list && !noKitchen && isStorePricesConfigured() && (() => {
                   const lines = (foodPlan.list || []).filter(it => it && !it.skipped && it.item);
                   // ── PICKED: the store, and what it actually reached ────────
@@ -17854,7 +17858,7 @@ export default function HostShellV2() {
                             collapsed into a spinner that stops. */}
                         {!p.busy && p.reason && (
                           <Grounding gap={3}>{
-                            p.reason === 'none-nearby' ? 'No store near that ZIP in this chain’s family. The estimate stands.'
+                            p.reason === 'none-nearby' ? `No ${STORE_FAMILY_SHORT} near that ZIP — coverage is regional, and plenty of the map has none. The estimate stands.`
                               : p.reason === 'no-keys' ? 'Store pricing is not switched on for this deployment.'
                                 : p.reason === 'no-zip' ? 'That ZIP does not look right — five digits.'
                                   : 'Could not reach the store service just now. The estimate stands.'
@@ -17869,8 +17873,16 @@ export default function HostShellV2() {
                       <button className="mini" onClick={() => setStorePicker({ zip: venueFor(event).zip, stores: [], busy: false, reason: null })}>
                         Price this list at a store near you
                       </button>
+                      {/* ── SAY THE LIMIT BEFORE THEY DO THE WORK ─────────
+                          Probed live 2026-09-23: Baltimore City, Rockville,
+                          McLean and Richmond each return three stores; Bel Air,
+                          Towson, Hagerstown and Wilmington return zero. This is
+                          one chain family, not every grocer, and a host who
+                          types a ZIP and gets nothing should have known that was
+                          possible before they tapped — otherwise an accurate
+                          empty result reads as a broken feature. */}
                       <GuideLine gap={0} style={{ margin: '6px 0 0' }}>
-                        Checks a Kroger-family store for a real shelf price on each line. Whatever it finds sits beside your estimate, never instead of it.
+                        Checks {STORE_FAMILY} for a real shelf price on each line. Coverage is regional — there may be none near you. What it finds sits beside your estimate, never instead of it.
                       </GuideLine>
                     </div>
                   );

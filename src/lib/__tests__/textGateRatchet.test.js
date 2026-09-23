@@ -165,7 +165,25 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 //
 // It found kroger.py — 231 lines and three endpoints that no shell has ever
 // called.
-const MAX_HOSTV2_TEXT_GATES = 46;
+// ── 46 -> 47 (2026-09-23) ───────────────────────────────────────────────────
+// `theClientAndTheRouterAgree.test.js` reads hostv2 source to assert an
+// ABSENCE: no store-banner name ("Harris Teeter", "Fred Meyer", "Ralphs") is
+// typed into the shell's own code. The family is named once, in
+// lib/storePrices, and every surface imports it.
+//
+// An e2e cannot carry this. A browser shows the sentence a host reads; it
+// cannot show that the same list is not written out a second time somewhere
+// else in the file — and a second copy is exactly how the offer text and the
+// empty-state message come to name different stores.
+//
+// It earned its keep immediately: the shell HAD a second copy, in a JSX comment
+// listing nine banners, and this gate is what found it.
+//
+// The behaviour half of the same change — that the host is told the coverage
+// limit BEFORE typing a ZIP — is deliberately NOT here. It is a claim about
+// what renders, and it is driven in hostv2/e2e/threeLayersOfPrice.spec.mjs at
+// all seven viewports.
+const MAX_HOSTV2_TEXT_GATES = 47;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
