@@ -1,5 +1,43 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — 250 rows retired, seven moved
+
+`main` @ `0121fd0`. 513 suites / 7,282 tests. `verify:push` 5/5.
+
+The open decision from the previous entry, taken: retire the 250 authored
+schedule rows that reach no host. **152** in `schedules.purchasing` — a key no
+function reads — and **98** at `T-Nd`/`T0 +Nd`, dropped by rule.
+
+**Proved safe before it was done.** Every clause of every dead row was checked
+against every live surface: tasks, purchases, milestones, decisions, risks,
+contingencies, and the schedule rows that do render. The first sweep asked a
+narrower question and came back with a long list of false "uncovered" content —
+*the right detector on the wrong population is still a wrong answer*, now the
+third time that has been recorded here. Against the full population, exactly one
+clause in 250 had no live carrier.
+
+**Seven were moved, not deleted**, each onto a surface that shows it: Birthday's
+*charge the speaker* (the only mention in the playbook, conditional copy intact),
+Graduation's cold sides, Housewarming's borrowed chairs and thank-yous, Holiday
+Party's batched cocktail, Reunion's vendor reconfirmation, Bachelor Party's
+marinade. Content that already had a live carrier was deliberately not re-added,
+and a test asserts it — the same instruction twice is how a checklist stops being
+read.
+
+**The gap it exposed:** PTA / Booster Fundraiser sold bottled drinks from an
+outdoor stand with no ice, tubs or coolers anywhere. The retirement did not
+create that; it made it visible. The new line takes 1.5 lb/guest as the **floor**
+of the corroborated outdoor range, citing two sources, with the reason stated: a
+stand chills sealed bottles, so the cup half of what every source measures is
+absent.
+
+The corpus's own governance caught four things this change got wrong — an
+unregistered claim-family member, a `cited` claim on one source where policy
+demands two, a dropped phase. Each fixed rather than suppressed.
+
+**Unrendered rows on the bare-event path: 111 → 3**, and none of the three is a
+defect.
+
 ## 2026-09-23 — rows authored into a drawer nothing opens
 
 `main` @ `864bbf7`. 512 suites / 7,269 tests. `verify:push` 5/5 on every commit.

@@ -125,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `724226c1` |
-| Jest | **7,269 passed**, 1 skipped, **0 failed**, **512 suites** (re-measured 2026-09-23 after the twenty-second entry; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `0121fd03` |
+| Jest | **7,282 passed**, 1 skipped, **0 failed**, **513 suites** (re-measured 2026-09-23 after the twenty-third entry; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -138,6 +138,68 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-third entry) — 250 rows retired, seven moved
+
+One commit, `0121fd0`. 513 suites / 7,282 tests. `verify:push` 5/5.
+
+The twenty-second entry ended with a decision left open: 250 authored schedule
+rows reach no host, and building a surface for them would be the wrong fix.
+Todd's call was to retire them. Done — but not blind.
+
+| Deleted | Where | Why it was dead |
+|---|---|---|
+| 152 rows | `schedules.purchasing` | A key **no function reads**. Not in `ROS_SCHEDULE_KINDS`, named nowhere else. Even its `T0` rows were dead — the block was never opened |
+| 98 rows | `T-Nd` / `T0 +Nd` in read keys | Dropped by rule |
+
+### Proved safe BEFORE it was done
+
+Every clause of every dead row was checked against every LIVE surface — tasks,
+purchases, milestones, decisions, risks, contingencies, and the schedule rows
+that DO render. `purchases[].buyAt` already drove the real shopping list;
+`tasks[]` already said the same things more specifically.
+
+**The first sweep was wrong, and the reason is the thing to carry forward.** It
+asked only whether `tasks/purchases/milestones/decisions` covered each clause,
+and returned a long list of "uncovered" content that risks and live schedule rows
+in fact carried — bachelorParty's "charge phones + speaker" sits in its own
+`T0 -3h` beat, sweet16's charged backup device in a risk mitigation. **The right
+detector on the WRONG POPULATION is still a wrong answer** — the third time this
+exact failure has been recorded here. Against the full population, exactly ONE
+clause in 250 had no live carrier.
+
+### Seven moved, not deleted — each onto a surface that shows it
+
+Birthday's **charge the speaker** (the only mention in the playbook, with its
+`food_style` copyByAnswer intact), Graduation's cold sides (it had no food-prep
+task at all), Housewarming's borrowed chairs and thank-yous (its reset said
+"finish the rest in the morning" and named none of it), Holiday Party's batched
+cocktail (`p_signature`'s note says "batch ahead"; nothing ever did), Reunion's
+vendor reconfirmation, Bachelor Party's marinade.
+
+Content that already had a live carrier was deliberately NOT re-added, and a test
+asserts that — the same instruction twice is how a checklist stops being read.
+
+**The one real gap the retirement exposed:** PTA / Booster Fundraiser sold
+bottled drinks from an outdoor stand and carried no ice, tubs or coolers
+anywhere. Deleting the dead row did not create that; it made it visible.
+
+### The corpus's own governance caught four things, and each was fixed
+
+The new ice line was the 30th `p_ice` and unregistered in its claim family; it
+claimed `cited` on ONE source where the pricing policy demands two; `parity`
+flagged the dropped phase. Fixed rather than suppressed — it now cites
+`ice-party-2026` alongside `reddy-ice-2026` and takes **1.5 lb as the FLOOR** of
+the corroborated outdoor range, with the reason stated out loud: a stand chills
+sealed bottles, so the cup half of what every source measures is absent. The
+parity exception is NAMED rather than the independent reference artifact edited —
+rewriting the artifact to agree would have disarmed the guard.
+
+### Measured end state
+
+Unrendered rows on the bare-event path: **111 → 3** across the day's work, and
+none of the three is a defect — two Watch Party beats gated to an unchosen
+format, and Retirement Party's row anchored to a toast its program lacks.
 
 ## FIXED 2026-09-23 (twenty-second entry) — rows authored into a drawer nothing opens
 
