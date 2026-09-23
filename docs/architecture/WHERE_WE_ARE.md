@@ -2,7 +2,7 @@
 
 ## 2026-09-23 — the release profile that was missing, and two sources that agree
 
-`main` @ pending. 521 suites / 7,407 tests. `verify:push` 5/5, exit 0.
+`main` @ `060be50`. 521 suites / 7,407 tests. `verify:push` 5/5, exit 0.
 
 **Baking the API base turned out not to be a build change.** `pages-from-source`
 has had a governed profile since 2026-07-31 — `demo` (open, localStorage-only)
