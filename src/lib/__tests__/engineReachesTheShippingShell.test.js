@@ -14,14 +14,31 @@
 // is there any import path from the shipping entry point to it? It reads the
 // real import graph rather than guessing from names.
 //
-// ── THE SURFACES, AS THE REPO ITSELF DECLARES THEM (CLAUDE.md) ──────────────
+// ── FOUR SURFACES, AND THE ONE THIS FILE FIRST GOT WRONG ────────────────────
 //   hostv2   — THE APP. public, shipping, `hostv2/src/main.jsx`.
 //   admin    — the internal console at ?admin=1. Legitimate, not dead.
+//   planner  — six components under `src/plan/`, hosted inside the CRA today:
+//              checklist generator, client intake, comms hub, decision approval,
+//              timeline builder, vendor planning workspace.
 //   frozen   — `src/App.js`, donor-only since the A1 freeze, deletion scheduled
 //              post-Sprint-2.
-// Conflating the last two is how this analysis goes wrong: an engine reached by
-// the admin console is doing its job; one reached ONLY by the frozen donor is
-// doing work no user will see, and will silently vanish when the CRA goes.
+//
+// THE CORRECTION THAT MATTERS. This file originally counted 216 exports as
+// reaching "only the frozen donor" and called them work with nowhere to land.
+// Host ruling, 2026-09-23: "there are parts of the code that will be used when
+// we develop beyond the host shell. we will do the professional shells after the
+// host for event planners, coordinators, etc."
+//
+// So that number was measuring something real and reading it backwards. With the
+// planner surface counted as its own entry, 57 of the 216 are already wired to
+// components that exist. The rest are not debt either — they are the foundation
+// of a product that has not been built yet, and a ratchet pushing that number
+// down would have ratcheted against the roadmap.
+//
+// WHAT THE REAL RISK IS, once that is straight: not that the planner code is
+// dead, but that deleting the CRA takes its only importer with it, and the next
+// "remove unused exports" pass reads a roadmap item as debt. That is what the
+// protection test below stands for.
 //
 // ── TWO WAYS THIS INSTRUMENT WAS WRONG BEFORE IT WAS RIGHT ──────────────────
 // Both were caught by printing an intermediate count instead of trusting the
@@ -39,6 +56,24 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 const HOSTV2_ENTRY = ['hostv2/src/main.jsx'];
 const ADMIN_ENTRY = ['src/admin/AdminConsole.jsx'];
 const CRA_ENTRY = ['src/index.js'];
+// ── THE FOURTH SURFACE, AND THE RULING THAT CORRECTED THIS FILE ─────────────
+// Host ruling, 2026-09-23: "there are parts of the code that will be used when
+// we develop beyond the host shell. we will do the professional shells after the
+// host for event planners, coordinators, etc."
+//
+// This file first counted 216 exports as reaching "only the frozen donor" and
+// called them work with nowhere to land. That was wrong, and wrong in a way that
+// mattered: it would have ratcheted AGAINST the roadmap, treating the planner
+// product's foundations as debt to be paid down.
+//
+// The professional surface is not hypothetical — six components already exist
+// under src/plan/, hosted inside the CRA today. Counted as their own entry, 57
+// of those 216 are already wired to them.
+const PLAN_ENTRY = [
+  'src/plan/ChecklistGenerator.jsx', 'src/plan/ClientIntakeFlow.jsx',
+  'src/plan/CommunicationHub.jsx', 'src/plan/DecisionApprovalCenter.jsx',
+  'src/plan/TimelineBuilder.jsx', 'src/plan/VendorPlanningWorkspace.jsx',
+];
 
 const files = new Map();
 const walk = (d) => {
@@ -103,6 +138,7 @@ const reachableFrom = (entries) => {
 const HOST_REACH = reachableFrom(HOSTV2_ENTRY);
 const ADMIN_REACH = reachableFrom(ADMIN_ENTRY);
 const CRA_REACH = reachableFrom(CRA_ENTRY);
+const PLAN_REACH = reachableFrom(PLAN_ENTRY);
 
 const exportsIn = (rel) => {
   const src = files.get(rel) || '';
@@ -125,6 +161,7 @@ const classify = (rel, name) => {
     inHost: external.some((f) => HOST_REACH.has(f)),
     inAdmin: external.some((f) => ADMIN_REACH.has(f)),
     inCra: external.some((f) => CRA_REACH.has(f)),
+    inPlan: external.some((f) => PLAN_REACH.has(f)),
   };
 };
 
@@ -282,21 +319,46 @@ describe('an engine that reaches no host is not a working engine', () => {
     expect(unreachable).toEqual(allowed);
   });
 
-  test('RATCHET: library exports reachable ONLY from the frozen CRA donor may not grow', () => {
-    // 216 measured 2026-09-23. Most are the planner/studio surface, which genuinely
-    // lives in the CRA — vendor intelligence, studio team, DocuSign, webhooks.
-    // They are not dead today; they are scheduled to become dead, because
-    // CLAUDE.md retires the CRA shell post-Sprint-2. Anything still in this list
-    // on that day disappears with it.
+  test('THE CENSUS: every library export is accounted to a surface', () => {
+    // Recorded rather than ratcheted, because the ratchet was the wrong shape.
+    // Measured 2026-09-23 with the planner surface counted separately:
+    //   637  reach hostv2 — the app
+    //   339  reach the admin console
+    //    57  reach the planner components under src/plan/
+    //   159  reach only src/App.js
+    //    11  reach no entry at all
     //
-    // The number may FALL — porting an engine to hostv2, or deleting one, is
-    // progress. It must not RISE: a new engine whose only route to a user runs
-    // through a shell being deleted is work with nowhere to land.
+    // The bounds below are loose on purpose. This is a census, not a budget —
+    // its job is to stay HONEST as the surfaces move, and to fail loudly if the
+    // graph collapses and starts reporting everything as dead.
     const rows = allLibRows();
-    const craOnly = rows.filter((r) => r.importers.length > 0 && !r.inHost && !r.inAdmin && r.inCra);
-    expect(craOnly.length).toBeLessThanOrEqual(216);
-    // …and the sweep is not passing by being empty.
-    expect(rows.filter((r) => r.inHost).length).toBeGreaterThan(400);
+    const inHost = rows.filter((r) => r.inHost);
+    const inPlan = rows.filter((r) => r.inPlan && !r.inHost);
+    const craOnly = rows.filter((r) => r.importers.length > 0 && !r.inHost && !r.inAdmin && !r.inPlan && r.inCra);
+    expect(inHost.length).toBeGreaterThan(400);
+    expect(inPlan.length).toBeGreaterThan(20);
+    expect(craOnly.length).toBeLessThan(400);
+  });
+
+  test('THE THING TO PROTECT: planner-surface engines must OUTLIVE the CRA shell', () => {
+    // CLAUDE.md schedules `src/App.js` for deletion post-Sprint-2. The planner
+    // components under src/plan/ are hosted inside it today and are the
+    // foundation of the professional shell that comes after the host shell.
+    //
+    // THE RISK IS NOT THAT THIS CODE IS DEAD. It is that deleting the CRA takes
+    // its only importer with it, and the next "remove unused exports" pass reads
+    // a roadmap item as debt. This test is the standing note that it is not:
+    // when App.js goes, these components need a new host, not a delete.
+    //
+    // Asserted as a live fact rather than a comment — if src/plan/ is emptied or
+    // moved, this fails and someone has to say where it went.
+    for (const entry of PLAN_ENTRY) expect(files.has(entry)).toBe(true);
+    const planEngines = allLibRows().filter((r) => r.inPlan && !r.inHost);
+    expect(planEngines.length).toBeGreaterThan(20);
+    // A sample of the domain, named so the claim is legible: these are vendor,
+    // billing and client-intake engines — planner work, not host work.
+    const modules = new Set(planEngines.map((r) => r.rel));
+    expect([...modules].some((m) => /vendor/i.test(m))).toBe(true);
   });
 
   test('NEGATIVE CONTROL: the engines this session wired DO reach the host', () => {
