@@ -123,9 +123,27 @@ const lowCountryBoil = {
       { when: 'T-1d', what: 'Fresh shrimp (and crab/crawfish/clams if doing add-ins)' },
       { when: 'T0', what: 'Ice + any last-minute fresh items' },
     ],
+    // ── TWO ROWS THAT FELL OFF THE DAY SHEET OVER A MISSING PREFIX ────────
+    // Authored 'T-3h' / 'T-1h'; `rosWhenOffset` parses 'T0 -3h' and returns
+    // null for these, so both were skipped in silence and neither ever reached
+    // a host's day sheet. Read as hours-before on the file's OWN evidence, not
+    // on a guess: the `setup` block directly below uses T0 -5h / -4h / -3h /
+    // -1h / -0:20, and `purchasing` above writes days explicitly as T-3d / T-1d
+    // — so these two saying `h` are hours, from the same author in the same
+    // block structure. Corrected 2026-09-23 (host ruling) as part of the 111
+    // unrendered rows recorded in prepSidesForFoodYouDidNotCook.
+    //
+    // AND SET FIVE MINUTES OFF THE HOUR, not on it. `setup` already holds
+    // T0 -3h and T0 -1h, and dayModelAudit forbids two moments on one minute
+    // for a stated reason: the board reads equal starts as an OVERLAP, so a
+    // stacked minute makes it warn about a clash on a day that is fine. Five
+    // minutes is the corpus's own sequencing idiom (Birthday runs preparation
+    // T0 -3h then setup T0 -2:55); placing prep just BEFORE its setup neighbour
+    // keeps the author's hour and their order without editing rows that already
+    // ship. The five minutes is a sequencing choice, not a claim about the day.
     preparation: [
-      { when: 'T-3h', what: 'Scrub potatoes, shuck and snap/halve corn, slice sausage into rounds; mix cocktail sauce, melt butter, cut lemon wedges, set out hot sauce' },
-      { when: 'T-1h', what: 'Ice down the beer/tea/water; pat shrimp dry and stage everything by cook order at the burner' },
+      { when: 'T0 -3:05', what: 'Scrub potatoes, shuck and snap/halve corn, slice sausage into rounds; mix cocktail sauce, melt butter, cut lemon wedges, set out hot sauce' },
+      { when: 'T0 -1:05', what: 'Ice down the beer/tea/water; pat shrimp dry and stage everything by cook order at the burner' },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Collect the seafood; keep it cold and damp until it goes in' },

@@ -22,10 +22,18 @@
 //
 //   T-Nd .......... 84   day-before rows; the day-of board is T0-relative and
 //                        nothing else reads schedules.preparation
-//   unparsed ...... 27   'halftime', 'after the toast', 'End', 'End+30m',
+//   unparsed ...... 25   'halftime', 'after the toast', 'End', 'End+30m',
 //                        'T+1 morning', 'T0 +1d'…'T0 +7d', 'T0+1d' (no space)
-//                        — and 'T-3h' / 'T-1h', which look like typos of the
-//                        supported 'T0 -3h' / 'T0 -1h'
+//
+// TWO OF THE 27 WERE TYPOS AND ARE FIXED (2026-09-23, host ruling): Low Country
+// Boil authored 'T-3h' / 'T-1h' for its two preparation rows, and the missing
+// 'T0 ' prefix dropped both off the day sheet entirely. Read as hours-before on
+// the FILE'S OWN evidence rather than on a guess — the `setup` block directly
+// below them uses T0 -5h/-4h/-3h/-1h/-0:20, and `purchasing` above writes days
+// explicitly as T-3d/T-1d, so two rows saying `h` are hours from the same author
+// in the same block. Driven: both now render at "3h before guests arrive" and
+// "1h before guests arrive", sorted alongside the setup rows at those hours, and
+// the dropped count fell 111 -> 109.
 //
 // NOTHING IS RE-INTERPRETED HERE. Deciding that 'T-3h' meant 'T0 -3h', or that
 // 'End+30m' is thirty minutes after an event end this engine does not model, is
@@ -91,6 +99,22 @@ describe('the prep row reads the host’s own food answer', () => {
     expect(rosOf(ev('Drop-off catering')).length).toBe(rosOf(ev('Cook/grill yourself')).length);
   });
 
+  test('the two typo rows now reach the day sheet, at the hours they name', () => {
+    // The fix, driven rather than asserted from the data: a missing 'T0 ' prefix
+    // had dropped both rows off Low Country Boil's day sheet entirely.
+    const rows = rosOf(ev(null, 'Low Country Boil'));
+    const hit = (re) => rows.find((x) => re.test(String(x.segment || '')));
+    expect(hit(/Scrub potatoes/i).rel).toBe('3h 5m before guests arrive');
+    expect(hit(/Ice down the beer/i).rel).toBe('1h 5m before guests arrive');
+    // FIVE MINUTES OFF THE HOUR, not on it. `setup` already holds T0 -3h and
+    // T0 -1h, and dayModelAudit forbids two moments on one minute because the
+    // board reads equal starts as an OVERLAP — a stacked minute makes it warn
+    // about a clash on a day that is fine. Prep sits just before its setup
+    // neighbour, which keeps the author's hour and their order without editing
+    // rows that already ship.
+    expect(hit(/Tables papered/i).rel).toBe('3h before guests arrive');
+  });
+
   test('RECORDED: the edited row reaches no screen today, and it is not alone', () => {
     // Honesty about this change's own reach: the fix is correct data that fixes
     // no screen, because T-Nd rows are dropped by the day-of board.
@@ -110,6 +134,6 @@ describe('the prep row reads the host’s own food answer', () => {
     }
     // A ratchet, not a target: this must not get WORSE without someone noticing.
     expect(authored).toBeGreaterThan(700);
-    expect(authored - rendered).toBeLessThanOrEqual(111);
+    expect(authored - rendered).toBeLessThanOrEqual(109);
   });
 });
