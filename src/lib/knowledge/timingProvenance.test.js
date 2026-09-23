@@ -2,8 +2,9 @@
 // maps a decision's category to a REAL dated source — no false positives.
 import {
   TIMING_SOURCES, resolveTimingProvenance, isGroundedTiming,
-  detectTimingCategory, effectiveTimingProvenance,
+  detectTimingCategory, effectiveTimingProvenance, timingConflict, timingDisagreementNote,
 } from './timingProvenance';
+import { playbookDecisionBoard } from '../playbooks';
 import { detectGapsInPlaybook } from './playbookSchema';
 import { ALL_PLAYBOOKS } from '../playbooks';
 
@@ -113,5 +114,105 @@ describe('gap-detector recognizes resolved timing (grounded decisions stop being
     // venue is grounded by the resolver → no timing gap; crab_size is event-specific → still flagged.
     expect(timingGaps).not.toContain('venue');
     expect(timingGaps).toContain('crab_size');
+  });
+});
+
+// ─── THE DETECTOR THAT COULD NOT FIRE ───────────────────────────────────────
+//
+// `timingConflict` was written 2026-09-18 to stop a contradiction being filed
+// as an absence. It had no consumer for five days, and not because nobody got
+// to it: it reads `decision.when`, and `playbookDecisionBoard` DROPS that field
+// when it builds a row — the row carries the derived `dueDate` and `daysOut`
+// instead. So every downstream call returned null and read as "no conflict".
+//
+// A correct detector pointed at a population that had already lost the field it
+// needs. The same defect class as the rest of this programme, one layer earlier
+// than usual, and exactly the shape a unit test of the detector alone cannot
+// see — which is why the first test below goes through the BOARD.
+describe('a timing disagreement reaches the row a host actually reads', () => {
+  const board = (type, date) => {
+    const b = playbookDecisionBoard({
+      id: 'x', type, date, guestMode: 'count', guestCount: 40,
+      guests: [], budget: [], vendors: [],
+    }, '2026-09-23');
+    return [...(b.open || []), ...(b.deferred || []), ...(b.locked || [])];
+  };
+  const disagreeing = (type, date) => board(type, date).filter((r) => r.timingDisagreement);
+
+  test('(premise) the board really does drop `when` — this is why it never fired', () => {
+    // If this ever goes false the bug fixed itself and the carry below is
+    // redundant. Asserted rather than assumed, because the whole fix rests on it.
+    const rows = board('Day Party', '2026-11-14');
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.when === undefined)).toBe(true);
+    expect(rows.some((r) => typeof r.daysOut === 'number')).toBe(true);
+  });
+
+  test('THE THREE LATE CONFLICTS IN THE CORPUS REACH A ROW', () => {
+    // Measured 2026-09-23. The 2026-09-18 audit recorded FOUR; Holiday Party's
+    // venue has since been authored to T-75d, inside the source's window, so it
+    // is correctly no longer a conflict. Three remain, and each is a decision
+    // whose deadline tells a host to start later than a real dated source says.
+    const cases = [
+      ['Day Party', '2026-11-14', 'venue', 28],
+      ['Retirement Party', '2026-11-14', 'venue', 35],
+      ['Surprise Proposal', '2026-11-14', 'photographer_hidden', 30],
+    ];
+    for (const [type, date, id, ourLead] of cases) {
+      const hit = disagreeing(type, date).find((r) => r.id === id);
+      expect(hit).toBeTruthy();
+      expect(hit.timingDisagreement.direction).toBe('late');
+      expect(hit.timingDisagreement.ourLeadDays).toBe(ourLead);
+      expect(hit.timingDisagreement.sourceWindowDays[0]).toBeGreaterThan(ourLead);
+    }
+  });
+
+  test('HOLIDAY PARTY IS NOT ONE — the authored deadline moved inside the window', () => {
+    // The audit's fourth case, re-measured rather than carried forward. A stale
+    // finding asserted as current is its own kind of invented data.
+    expect(disagreeing('Holiday Party', '2026-12-12')).toEqual([]);
+  });
+
+  test('AN EARLY DEADLINE IS NEVER CARRIED — it is not a harm', () => {
+    // The detector records both directions for completeness. Putting "you are
+    // asking sooner than required" in front of a host is noise wearing the
+    // clothes of a warning.
+    const early = { id: 'guestcount', label: 'Lock the headcount', when: 'T-365d' };
+    expect(timingConflict(early)).toBeTruthy();
+    expect(timingConflict(early).direction).toBe('early');
+    const rows = board('Wedding', '2027-09-23');
+    for (const r of rows) {
+      if (r.timingDisagreement) expect(r.timingDisagreement.direction).toBe('late');
+    }
+  });
+});
+
+describe('the sentence, written once', () => {
+  test('it says what we put and what the guidance says — and never that we are wrong', () => {
+    const note = timingDisagreementNote({
+      direction: 'late', ourLeadDays: 28, sourceWindowDays: [60, 600],
+    });
+    expect(note).toBe('We put this 4 weeks before the date. The booking guidance behind it says 2 months at least — if this one matters to you, start it sooner.');
+    // No verdict on the authored date. Every timing source here is a commercial
+    // practitioner, and overruling an authored deadline on that evidence is the
+    // over-application this module's header was written to prevent.
+    expect(note).not.toMatch(/wrong|too late|mistake|should be/i);
+  });
+
+  test('days, weeks and months as a planner says them', () => {
+    const n = (ours, lo) => timingDisagreementNote({ direction: 'late', ourLeadDays: ours, sourceWindowDays: [lo, 600] });
+    expect(n(9, 30)).toMatch(/^We put this 9 days before the date\. .*says 4 weeks at least/);
+    expect(n(30, 60)).toMatch(/^We put this 4 weeks before the date\. .*says 2 months at least/);
+    expect(n(35, 365)).toMatch(/says 12 months at least/);
+  });
+
+  test('IT REFUSES ANYTHING IT CANNOT SAY TRUTHFULLY', () => {
+    expect(timingDisagreementNote(null)).toBe(null);
+    expect(timingDisagreementNote({ direction: 'early', ourLeadDays: 365, sourceWindowDays: [60, 300] })).toBe(null);
+    // A "floor" that is not actually later than our deadline would make the
+    // sentence contradict itself.
+    expect(timingDisagreementNote({ direction: 'late', ourLeadDays: 90, sourceWindowDays: [60, 600] })).toBe(null);
+    expect(timingDisagreementNote({ direction: 'late', ourLeadDays: 0, sourceWindowDays: [60, 600] })).toBe(null);
+    expect(timingDisagreementNote({ direction: 'late', ourLeadDays: 28, sourceWindowDays: null })).toBe(null);
   });
 });

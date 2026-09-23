@@ -1,6 +1,18 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-23 (one session across two
+**Measured reality, not intentions.** Updated 2026-09-23 (thirtieth entry: four
+numbers a host could read, and none of them said what we meant — a per-unit rate
+rounded to whole dollars so 84 of 440 lines showed a $0 bound and the ice read
+"free"; a store match the app did not believe still published its price, one
+guard away from billing a shoe insert as flatbread; a BLS factor stamped with
+today's date instead of the month BLS published; and a timing-conflict detector
+that could not fire because the board dropped the field it reads. Worth carrying
+forward: a detector is not a fix until something can call it; re-measure a
+carried-forward finding before asserting it (four of seven audit rows were
+already fixed, one was wrong in its count); saturation in a scoring term is not
+automatically a defect; and a live probe finds what no fixture would. See the
+thirtieth entry.)
+Before that, on 2026-09-23 (one session across two
 days: `foodSpanNote().listApplies` had been three-valued since it was written and
 its only consumer was its own unit test — closing that found the SAME defect on
 five screens, each a fact owned by one accessor and ignored by the consumer
@@ -125,10 +137,10 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `9320a5e4` |
-| Jest | **7,409 passed**, 1 skipped, **0 failed**, **521 suites** (re-measured 2026-09-23 after the twenty-ninth entry; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `b2d31ceb` |
+| Jest | **7,439 passed**, 1 skipped, **0 failed**, **522 suites** (re-measured 2026-09-23 after the thirtieth entry; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
-| Backend pytest | **353 passed** — re-run this pass via `verify-all` |
+| Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
 | e2e (Playwright) | full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008. **SHARDED 2026-09-18 (`dffc86e` + `f1871a9`)** — two runners, `--shard=k/2`, merged with `merge-reports`. **CONFIRMED on run 659 (`f1871a9`), which prints the combined total itself:** `e2e MERGED TOTAL — 1009 passed · 207 skipped · 0 failed · 0 flaky`. Shard 1 **12m33s**, shard 2 **14m50s**, merge 26s, whole workflow **16m37s** against 29m20s unsharded (run 658, the first sharded run, measured 12m22s / 14m26s / 16m20s). The e2e step went **27.0 -> ~14.5 min, a 46% cut**. `workers: 2` is UNCHANGED — each shard runs two workers on its own machine, so the 2026-08-06 flake fix is untouched |
@@ -138,6 +150,122 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (thirtieth entry) — four numbers a host could read, and none of them said what we meant
+
+522 suites / 7,439 tests. Backend 360. `verify:push` 5/5. Four commits, each
+red-proofed by reverting its own fix.
+
+### 1. The food sheet said the ice was free
+
+hostv2 rendered the per-unit rate through its generic `fmt`, which rounds to
+whole dollars. Right for a line total, ruinous for a rate, because most of this
+corpus's rates are under a dollar. **Counted across all 440 per-unit lines:**
+
+        84  had at least one bound round to $0
+        22  collapsed to "$0-$0" outright — ice read "$0-$0/lb"
+       142  had a sub-dollar low bound, so printed "$0" or "$1"
+       186  were distorted by more than 5% on at least one bound
+
+The data was never wrong — `playbookFoodPlan` stores these to the cent. Only the
+display threw the cents away. The rule is not new either: the legacy CRA food
+sheet worked it out inline at its own call site, and hostv2 was built beside it
+and reached for the generic helper. `src/lib/perUnitText.js` is one definition.
+
+### 2. A shoe insert was one guard away from being priced as flatbread
+
+`matchLooksLikeTheLine` was written for `storeLineTotal` and lived only there,
+so it decided the TOTAL and nothing else. The price a host reads was rendered
+from the same match without ever asking. **Probed live at a Baltimore store:**
+
+    "injera"        -> Airplus(R) Gel Women's Orthotic Insole Shoe Inserts  $8.99
+    "espresso cups" -> Private Selection(R) Espresso Roast Coffee Pods      $6.99
+    "prosecco"      -> Tuscany Candle(TM) Peach Prosecco Wax Melts          $3.29
+
+Only the last carries a word the blocklist can see. So the gate moved to
+`priceLayers` — the one place that decides whether a line HAS a store price —
+and the store layer now prints WHAT it priced. A heuristic catches a familiar
+way of being wrong, never every way; a host reading the product name catches
+all of them.
+
+**The search term also stopped being the multiply licence.** Sending a line's
+display text as the query — what a line with no term gets — matched nothing for
+**eleven of twelve** non-allowlisted lines probed. `SEARCH_ONLY` adds 11 terms,
+each probed live with its return recorded in the source; all 11 stay
+unmultipliable, and a test asserts that as the block's whole safety argument.
+
+**The multiply allowlist is SATURATED at 41.** All 444 corpus lines swept: 94
+carry a mass or volume unit, 41 are on the list, and the other 53 are baskets,
+"ingredients" lines, or the three already removed on live evidence. It cannot
+honestly grow that way — recorded so the next person does not re-derive it.
+
+### 3. The food factor reported today's date as its data month
+
+BLS publishes Average Price with a few weeks' lag, so a September request
+routinely returns July's figure. The endpoint read the value off the point and
+threw the point's own date away one line later, then stamped
+`datetime.date.today()` on the result. `_data_month` now reads the point's own
+`year` + `period` and refuses `M13` (the annual average, which is not a month).
+When the series disagree the OLDEST is reported: the factor is a ratio across
+all of them, so it is only as current as its stalest input.
+
+Same file, same cache: only successes were stored, so during a BLS outage every
+request paid the full 20s httpx timeout to be told the same thing. Failures are
+now cached on a 5-minute leash against 6 hours for a success.
+
+### 4. A detector that could not fire, for five days
+
+`timingConflict` was written 2026-09-18 so a contradiction would stop being
+filed as an absence. It had no consumer since — **because
+`playbookDecisionBoard` drops the `when` it reads.** The row carries the derived
+`dueDate` and `daysOut`; the field the detector needs was gone before any caller
+could ask, so every call returned null and read as "no conflict". A correct
+detector pointed at a population that had already lost the field.
+
+Three decisions tell a host to start LATER than a real dated source supports —
+Day Party and Retirement Party venues at T-28d and T-35d against a two-month
+floor, and Surprise Proposal's hidden photographer at T-30d. **The audit
+recorded four; Holiday Party's venue has since been authored to T-75d, inside
+the window, and is correctly no longer one.** Re-measured rather than carried
+forward.
+
+No authored deadline moves. Every timing source is a commercial practitioner,
+and a booking guide is not grounds to overrule an authored date. What changed is
+that the disagreement is sayable — one sentence, written once in
+`timingDisagreementNote`, rendered in the decision card's why-stack.
+
+### The engine-audit list, re-measured rather than trusted
+
+Todd asked what was left on "What the engine audits found". Checked against the
+code, not the page — and the page was stale on four of seven:
+
+| Row | State 2026-09-23 |
+|---|---|
+| claimBasis — unverified multiplier under "Directly sourced" | **fixed** 2026-09-19; the badge takes `costFactorApplied` as a third argument |
+| totalEstimate — no provenance field | **fixed**; 18 records registered, and hostv2 renders "Typical · est." off `moneyDisclosure` |
+| creation seam — `*Basis` dropped at persist | **fixed**; `travelFieldsToPersist` carries them and the chip reads them |
+| field ledger — `market` vs `metroMarket` | **fixed**; `marketFor.js` is the single accessor, with `marketSource` |
+| timingConflict — deadlines contradicting their source | **fixed this entry** (three, not four) |
+| board scorer — aging saturates at 24 days | **true and not acted on.** `AGING_CAP 6 / AGING_PER_DAY 0.25`. Measured on a real Wedding board: all 9 open rows are 163-348 days overdue, so aging contributes a constant 6 to every one of them. But the rendered order is already consistent with age (313, 313, 223, 163 within the med tier), so **no host-visible order is frozen.** Changing the curve would be tuning a ranker with no demonstrated defect — recorded, not fixed |
+| VendorPlanning — cockpit is CRA-only | **open.** Real, and scoped to CRA deletion post-Sprint-2 |
+
+### Worth carrying forward
+
+- **A detector is not a fix until something can call it.** `timingConflict` was
+  correct, tested, and unreachable for five days because the layer between it
+  and its caller had already dropped the field it reads. The premise test that
+  asserts `when === undefined` on every board row is the one that names it.
+- **Re-measure a carried-forward finding before asserting it.** Four of seven
+  audit rows were already fixed and one was wrong in its count. A stale finding
+  restated as current is its own kind of invented data.
+- **Saturation in a scoring term is not automatically a defect.** The aging cap
+  is real and the board does not visibly freeze. Recording that is the result.
+- **A live probe finds what no fixture would.** The shoe insert, the coffee pods
+  and the wax melts are all real returns from one store on one afternoon, and
+  two of the three carry no word any blocklist could hold.
+- **The vacuous-guard shape showed up again**, in this session's own new spec: an
+  absence assertion over a `slice` of a missing needle passed under red-proof.
+  Red-proofing is what caught it.
 
 ## FIXED 2026-09-23 (twenty-ninth entry) — the unit suite was calling production from CI
 

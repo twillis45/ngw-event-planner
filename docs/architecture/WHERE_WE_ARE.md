@@ -1,5 +1,65 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — four numbers a host could read, and none of them said what we meant
+
+`main` @ `b2d31ce`+. 522 suites / 7,439 tests, backend 360. `verify:push` 5/5.
+Four fixes, each red-proofed by reverting its own change.
+
+**The food sheet said the ice was free.** hostv2 rendered the per-unit rate
+through its whole-dollar `fmt`. Counted across all 440 per-unit lines: 84 had a
+bound round to $0, 22 collapsed to "$0-$0", 142 had a sub-dollar low bound, 186
+were distorted by more than 5%. The data was always stored to the cent — only
+the display threw it away. The rule was not new either: the legacy CRA sheet had
+worked it out inline, and hostv2 was built beside it and reached for the generic
+helper. `perUnitText.js` is now the one definition.
+
+**A shoe insert was one guard away from being priced as flatbread.** The
+match-quality guard lived inside `storeLineTotal`, so it decided the TOTAL and
+nothing else; the price a host reads was rendered from the same match without
+ever asking. Probed live at a Baltimore store: "injera" returns Airplus Gel
+Orthotic Shoe Inserts at $8.99, "espresso cups" returns coffee pods, "prosecco"
+returns candle wax melts. Only the last carries a word a blocklist can see. The
+gate moved to `priceLayers`, and the store layer now prints what it priced —
+because a heuristic catches a familiar way of being wrong, never every way.
+The search term also stopped being the multiply licence: eleven of twelve
+non-allowlisted lines matched nothing when sent their own display text, so
+`SEARCH_ONLY` adds 11 live-probed terms that can never produce a total. The
+multiply allowlist is **saturated at 41** — all 444 lines swept, and the 53
+remaining measurable ones are baskets, "ingredients" lines, or already removed
+on live evidence.
+
+**The food factor reported today's date as its data month.** BLS publishes with
+a lag; the endpoint read the value off the data point and discarded the point's
+own date one line later. It now reads the point's `year` + `period`, refuses
+`M13`, and reports the OLDEST month when series disagree — the factor is only as
+current as its stalest input. Same cache: failures are now stored on a 5-minute
+leash, so a BLS outage stops costing every request a 20-second timeout.
+
+**A detector that could not fire, for five days.** `timingConflict` was written
+2026-09-18 and reached nobody, because `playbookDecisionBoard` drops the `when`
+it reads — the row carries the derived `dueDate` and `daysOut` instead. Every
+call returned null and read as "no conflict". Three decisions tell a host to
+start later than a real dated source supports; the audit recorded four, and
+Holiday Party's venue has since been authored inside the window. No authored
+deadline moves — every timing source is a commercial practitioner — but the
+disagreement is now a sentence on the decision card.
+
+**The engine-audit list was re-measured rather than trusted**, and was stale on
+four of seven rows (claimBasis, totalEstimate provenance, the `*Basis` persist
+seam and the `market`/`metroMarket` ledger are all already fixed). The board
+scorer's aging cap is real — it saturates at 24 days, and a real Wedding board
+has all nine open rows 163-348 days overdue — but the rendered order is already
+consistent with age, so nothing is visibly frozen and retuning it would be
+tuning without a defect. The Vendor Detail Cockpit remains CRA-only, scoped to
+CRA deletion post-Sprint-2.
+
+**Worth carrying forward:** a detector is not a fix until something can call it.
+Re-measure a carried-forward finding before asserting it. Saturation in a
+scoring term is not automatically a defect — recording that is the result. And
+the vacuous-guard shape appeared again in this session's own new spec, where an
+absence assertion over a `slice` of a missing needle passed under red-proof;
+red-proofing is what caught it.
+
 ## 2026-09-23 — the unit suite was calling production from CI
 
 `main` @ `9320a5e`. 521 suites / 7,409 tests. `verify:push` 5/5, exit 0.

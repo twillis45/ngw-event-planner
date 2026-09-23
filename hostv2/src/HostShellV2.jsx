@@ -191,6 +191,10 @@ import { commApi, isCommApiConfigured } from '@app/lib/commApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
+// The one wording for "our deadline disagrees with its own source" — see
+// knowledge/timingProvenance.js. Two surfaces phrasing it differently is how
+// this product ended up with six readers of "is the budget set".
+import { timingDisagreementNote } from '@app/lib/knowledge/timingProvenance';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
 import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@app/lib/eventOrientation';
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
@@ -12194,10 +12198,30 @@ export default function HostShellV2() {
                   // voice, Newsreader italic = the guide/reassurance voice. The
                   // stakes line IS the guide sentence, so it now dresses like one,
                   // and each remaining line gets real separation instead of 2px.
-                  const meta = (rankWhy || approach) ? (
+                  // ── WHEN OUR OWN DEADLINE DISAGREES WITH ITS SOURCE ────────
+                  // `timingConflict` has existed since 2026-09-18 and reached
+                  // nobody, because the board dropped the `when` it reads (see
+                  // knowledge/timingProvenance.js). Three decisions in the
+                  // corpus tell a host to start LATER than a real dated source
+                  // supports — Day Party and Retirement Party venues at T-28d
+                  // and T-35d against a 2-month floor, and Surprise Proposal's
+                  // hidden photographer at T-30d. A host who follows our date
+                  // on those calls may find nothing available.
+                  //
+                  // It does NOT move the deadline and does not say ours is
+                  // wrong: every timing source is a commercial practitioner.
+                  // It says what we put and what the guidance says, and lets
+                  // the host decide. Only the LATE direction shows — starting
+                  // earlier than a source requires is not a harm.
+                  const timingNote = (() => {
+                    try { return timingDisagreementNote(r.timingDisagreement); }
+                    catch (_e) { return null; }
+                  })();
+                  const meta = (rankWhy || approach || timingNote) ? (
                     <span style={{ flex: '1 0 100%' }}>
                       {rankWhy && <span style={{ display: 'block', fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-input)', lineHeight: 1.4, color: 'var(--ink-soft)' }}>{rankWhy}</span>}
                       {approach && <span className="v-meta" style={{ display: 'block', marginTop: rankWhy ? 8 : 0 }}>{approach.note}</span>}
+                      {timingNote && <span className="v-meta" style={{ display: 'block', marginTop: 8 }}>{timingNote}</span>}
                     </span>
                   ) : null;
                   // Label names what the control DOES (host ruling 2026-07-28: no

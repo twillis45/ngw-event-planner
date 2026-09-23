@@ -369,3 +369,51 @@ export function effectiveTimingProvenance(decision) {
   if (decision && isGroundedTiming(decision.timingProvenance)) return decision.timingProvenance;
   return resolveTimingProvenance(decision);
 }
+
+// ─── AND SAYING IT, ONCE ────────────────────────────────────────────────────
+//
+// `timingConflict` above became a value on 2026-09-18 and had no consumer until
+// 2026-09-23, for a reason worth recording: `playbookDecisionBoard` drops the
+// decision's `when` when it builds a row (it carries the DERIVED `dueDate` and
+// `daysOut` instead), so every downstream call got null and read it as "no
+// conflict". A correct detector, unreachable. The board now computes the
+// conflict where `when` still exists and carries it as `timingDisagreement`.
+//
+// This is the sentence, written once here rather than at each surface, because
+// two surfaces wording the same disagreement differently is how the product got
+// six readers of "is the budget set".
+//
+// WHAT IT MAY AND MAY NOT SAY. It may say what our deadline is and what the
+// source says. It may not say our deadline is wrong: every timing source here
+// is a commercial practitioner, and "a wedding blog says 2-3 months" is not
+// grounds to overrule an authored date. It never fires on an EARLY conflict —
+// acting sooner than a source requires costs nobody anything, and putting it in
+// front of a host would be noise wearing the clothes of a warning.
+
+/** Days as a planner would say them: "9 days", "4 weeks", "2 months". */
+function humanLead(days) {
+  const d = Math.round(Number(days));
+  if (!(d > 0)) return null;
+  if (d < 14) return `${d} ${d === 1 ? 'day' : 'days'}`;
+  if (d < 60) { const w = Math.round(d / 7); return `${w} ${w === 1 ? 'week' : 'weeks'}`; }
+  const m = Math.round(d / 30);
+  return `${m} ${m === 1 ? 'month' : 'months'}`;
+}
+
+/**
+ * One host-voiced line for a LATE timing disagreement, or null.
+ *
+ * Derived entirely from the conflict's own numbers — nothing is restated from
+ * the source's prose, so this cannot drift from what the registry actually
+ * holds. Null whenever the conflict is early, unusable, or the source's floor
+ * is not actually later than our deadline (which would make the sentence a
+ * contradiction of itself).
+ */
+export function timingDisagreementNote(conflict) {
+  if (!conflict || conflict.direction !== 'late') return null;
+  const ours = humanLead(conflict.ourLeadDays);
+  const floor = humanLead(Array.isArray(conflict.sourceWindowDays) ? conflict.sourceWindowDays[0] : null);
+  if (!ours || !floor) return null;
+  if (!(Number(conflict.sourceWindowDays[0]) > Number(conflict.ourLeadDays))) return null;
+  return `We put this ${ours} before the date. The booking guidance behind it says ${floor} at least — if this one matters to you, start it sooner.`;
+}

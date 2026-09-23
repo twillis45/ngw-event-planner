@@ -81,7 +81,7 @@ import { isVendorBooked } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
-import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timingProvenance';
+import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../knowledge/timingProvenance';
 // PHASE 5A-2 — the ONE runtime reader of governed knowledge. Purchase provenance
 // only: a published KCR may replace the authored provenance block, and nothing
 // else. Values, quantities, costs, decisions and ranking are untouched.
@@ -3483,6 +3483,27 @@ export function playbookDecisionBoard(event, asOf, profile) {
     // sourced where a planning standard applies, and a UI can show WHY / whether it's researched.
     const timingProvenance = effectiveTimingProvenance(d) || null;
     const timingGrounded = isGroundedTiming(timingProvenance);
+    // ── AND WHEN OUR OWN DEADLINE CONTRADICTS THAT SOURCE ────────────────────
+    // `timingConflict` was written 2026-09-18 to stop a contradiction being
+    // filed as an absence, and it has had NO consumer since — because it reads
+    // `decision.when` and THIS FUNCTION DROPS IT. The row carries `dueDate` and
+    // `daysOut`, both derived from `when`, and not `when` itself, so every
+    // caller downstream got null and read it as "no conflict". The detector was
+    // correct and unreachable: the same defect the rest of this programme keeps
+    // finding, one layer earlier than usual.
+    //
+    // Computed HERE, from the authored decision, where `when` still exists.
+    // Only a LATE conflict is carried: our deadline falling after the source's
+    // window closes is the one that can cost a host a venue. An early deadline
+    // is recorded by the detector for completeness and is not a harm, so it is
+    // not put in front of anybody.
+    //
+    // NO AUTHORED DEADLINE MOVES. Every timing source is a commercial
+    // practitioner, and "a wedding blog says 2-3 months" is not grounds to
+    // move a Day Party's backyard-venue date — see timingProvenance.js, which
+    // is emphatic about it. What changes is that the disagreement is sayable.
+    const _tc = timingConflict(d);
+    const timingDisagreement = _tc && _tc.direction === 'late' ? _tc : null;
     // Wave-2e + PRIO Slice-A: how many decisions depend on this one, TRANSITIVELY — the real
     // consequence signal the gate-holder bump + intra-cell tiebreak read to sequence by how
     // much a call unblocks, not just its direct dependents. Authored-edge closure only.
@@ -3531,7 +3552,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
     const budgetGrounded = isGroundedBudget(budgetContext);
     const childcareContext = effectiveChildcare(d);
     const childcareGrounded = isGroundedChildcare(childcareContext);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, militaryContext, militaryGrounded, destinationContext, destinationGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, timingDisagreement, _dependedOnCount, culturalContext, culturalGrounded, militaryContext, militaryGrounded, destinationContext, destinationGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       // `d.ask ||` — the open branch below has always honoured an authored ask
