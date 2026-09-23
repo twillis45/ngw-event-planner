@@ -9,6 +9,7 @@
 // false accept is the only failure here that reaches a host's budget.
 import {
   unitDimension, parseStoreSize, lineIsMultipliable, storeLineTotal, UNIT_MAPPED_LINES,
+  storeSearchTerm, matchLooksLikeTheLine,
 } from '../knowledge/storeUnitMap';
 import { playbookFoodPlan, ALL_PLAYBOOKS } from '../playbooks';
 
@@ -169,7 +170,7 @@ describe('how far this reaches, measured rather than hoped', () => {
     // better ones — the same ceiling geoItemMap records for its own 12.
     //
     // Allowed to move. Pinned so that it moves ON PURPOSE.
-    expect(UNIT_MAPPED_LINES).toBe(44);
+    expect(UNIT_MAPPED_LINES).toBe(42);
 
     let total = 0; let multipliable = 0;
     for (const pb of ALL_PLAYBOOKS) {
@@ -183,6 +184,130 @@ describe('how far this reaches, measured rather than hoped', () => {
     expect(total).toBeGreaterThan(400);
     // The honest headline: this is what a host can get a real TOTAL for. Every
     // other line keeps the estimate and, where a product matched, a reference.
-    expect(multipliable).toBe(63);
+    expect(multipliable).toBe(61);
+  });
+});
+
+// ─── THE UNITS WERE GUARDED. THE MATCH WAS NOT. ──────────────────────────────
+//
+// Measured against a live Harris Teeter in Baltimore on 2026-09-23, with real
+// keys, once the store layer was actually switched on. Two findings, and both
+// were invisible to every test written before the probe:
+//
+//   1. 37 of these 44 lines matched NOTHING. We were sending the plan's display
+//      text as the search query — "Ice (coolers + drinks, heat-adjusted)" —
+//      while plain "ice" returns a 7 lb bag immediately.
+//
+//   2. Two of the seven that DID match came back as the wrong product, and both
+//      parse cleanly as mass, so the unit map would have multiplied them into a
+//      confident dollar total for something the host never wanted.
+//
+// The fixtures below are that response, verbatim. Real data, not invented — a
+// made-up bad match would have been kinder than the one the store actually
+// returned.
+describe('what the live store actually sent back', () => {
+  const RIBS = { id: 'p_ribs', item: 'Ribs (racks)', unit: 'lbs', units: 11.5 };
+  const PORKRIBS = { id: 'p_ribs', item: 'Pork ribs (racks)', unit: 'lbs', units: 11.5 };
+  const ICE = { id: 'p_ice', item: 'Ice (coolers + drinks, heat-adjusted)', unit: 'lbs', units: 46 };
+  const WINGS = { id: 'p_wings', item: 'Chicken wings', unit: 'lbs', units: 12 };
+  const OLDBAY = { id: 'p_oldbay', item: 'Old Bay (or J.O.) seasoning — buy extra', unit: 'lbs', units: 1 };
+
+  test('(premise) every allowlisted line carries a search term, and it is NOT the display text', () => {
+    // The whole first finding in one assertion. If an entry is ever added
+    // without a term, it silently goes back to querying the display string.
+    expect(storeSearchTerm(ICE)).toBe('ice');
+    expect(storeSearchTerm(ICE)).not.toBe(ICE.item);
+    expect(storeSearchTerm(RIBS)).toBe('pork ribs');
+    // A line that is not on the list gets null, and the caller sends the text
+    // unchanged — the behaviour before any of this existed.
+    expect(storeSearchTerm({ id: 'p_apps', item: 'Cheese & charcuterie spread' })).toBe(null);
+  });
+
+  test('THE BBQ SAUCE. 12 bottles of it, billed as a rack of ribs.', () => {
+    // Verbatim from the live response: filter.term="Ribs (racks)" returned
+    // Rib Rack® Original BBQ Sauce, 15.5 oz, $5.39 / $4.99 promo.
+    //
+    // 11.5 lbs = 184 oz. 184 / 15.5 = 11.87 → 12 bottles × $4.99 = $59.88,
+    // presented to a host as what their ribs cost. Nothing about the units was
+    // wrong. The units were never the problem.
+    const r = storeLineTotal({
+      line: RIBS, price: 4.99, size: '15.5 oz', soldBy: 'UNIT',
+      description: 'Rib Rack® Original BBQ Sauce',
+    });
+    expect(r).toBe(null);
+  });
+
+  test('…and the pork rinds, which the second ribs line matched', () => {
+    const r = storeLineTotal({
+      line: PORKRIBS, price: 5.99, size: '4 oz', soldBy: 'UNIT',
+      description: 'Rib Rack® Sea Salt Pork Rinds',
+    });
+    expect(r).toBe(null);
+  });
+
+  test('(counter-premise) WITHOUT the description it still totals — so the guard is what stops it', () => {
+    // Red-proof, inline. If this passed regardless, the test above would prove
+    // nothing about the guard and everything about some other refusal.
+    const r = storeLineTotal({ line: RIBS, price: 4.99, size: '15.5 oz', soldBy: 'UNIT' });
+    expect(r).not.toBe(null);
+    expect(r.packs).toBe(12);
+    expect(r.total).toBe(59.88);      // the wrong number, in full
+  });
+
+  test('THE GOOD MATCHES ARE NOT COLLATERAL DAMAGE', () => {
+    // A guard that refuses everything is not a guard. These three are the real
+    // matches from the same live response and all three must survive it.
+    const ice = storeLineTotal({
+      line: ICE, price: 2.99, size: '7 lb', soldBy: 'UNIT',
+      description: 'Reddy Ice Premium Packaged Ice',
+    });
+    expect(ice.packs).toBe(7);                    // 46 lbs / 7 lb, rounded up
+    expect(ice.because).toMatch(/covers 46, you take home 49 lbs/);
+
+    const wings = storeLineTotal({
+      line: WINGS, price: 10.0, size: '3.25 lb', soldBy: 'UNIT',
+      description: 'Whole Fresh Chicken Wings',
+    });
+    expect(wings.packs).toBe(4);                  // 12 / 3.25 = 3.69 → 4
+
+    const chicken = storeLineTotal({
+      line: { id: 'p_chicken', item: 'Chicken (legs/thighs/quarters)', unit: 'lbs', units: 10.4 },
+      price: 2.49, size: '1 lb', soldBy: 'WEIGHT',
+      description: 'Smart Chicken Leg Quarters',
+    });
+    expect(chicken.byWeight).toBe(true);
+    expect(chicken.total).toBe(25.9);
+  });
+
+  test('A LINE THAT ASKS FOR A SEASONING STILL MATCHES ONE', () => {
+    // The guard is "a form word the product has and the LINE does not". Old Bay
+    // is a seasoning on purpose, so "seasoning" in the description is exactly
+    // right and must not disqualify it. A blocklist that ignored what was asked
+    // for would break the one line whose whole identity is a disqualifier word.
+    expect(matchLooksLikeTheLine({
+      line: OLDBAY, term: 'old bay seasoning', description: 'Old Bay Seasoning',
+    })).toBe(true);
+    expect(matchLooksLikeTheLine({
+      line: RIBS, term: 'pork ribs', description: 'Rib Rack® Original BBQ Sauce',
+    })).toBe(false);
+  });
+
+  test('no description ⇒ the guard abstains, and the units still decide', () => {
+    // Kroger does not always send one. Abstaining is right: this heuristic can
+    // only ever catch a familiar way of being wrong, and silence is not evidence.
+    expect(matchLooksLikeTheLine({ line: RIBS, term: 'pork ribs' })).toBe(true);
+  });
+
+  test('COLLARD GREENS: a correct match the UNITS still refuse', () => {
+    // The live store returned "Jumbo Collard Greens Bunch", 1 ct — the right
+    // product, in a unit the plan cannot use. A bunch has no stated weight, and
+    // 6.9 lbs ÷ "1 ct" is not a number. Both guards are load-bearing and they
+    // catch different things.
+    const r = storeLineTotal({
+      line: { id: 'p_greens', item: 'Collard greens', unit: 'lbs', units: 6.9 },
+      price: 2.99, size: '1 ct', soldBy: 'UNIT',
+      description: 'Jumbo Collard Greens Bunch',
+    });
+    expect(r).toBe(null);
   });
 });

@@ -1,5 +1,49 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — the keys went in, and the live store found two defects no test could
+
+`main` @ pending. 520 suites / 7,386 tests. `verify:push` 5/5, exit 0.
+
+The Kroger keys were set on Render. The first probe against a real store found
+**two defects in code shipped four hours earlier**, both invisible to 520 green
+suites because every fixture until now was one we wrote.
+
+**Defect 1 — we were searching with text written for a human to read.**
+`filter.term` was getting the plan's display string (`Ice (coolers + drinks,
+heat-adjusted)`). 37 of 44 curated grocery lines matched nothing; plain `ice`
+returns a 7 lb bag. Each allowlist entry now carries a curated search term, and
+the router SEARCHES `term` while still ECHOING `name` — the key the price index
+is built on cannot change. Re-probed: 26 of 28 terms match, and `pork ribs`
+returns Baby Back Pork Ribs at $5.99/lb.
+
+**Defect 2 — the unit map guarded the units and nothing guarded the match.**
+`Ribs (racks)` matched **Rib Rack® Original BBQ Sauce**, 15.5 oz. That parses
+cleanly as mass: 12 bottles of barbecue sauce, $59.88, billed as the cost of
+ribs. Every unit in it correct. Added a named heuristic backstop on product-form
+words (`sauce`, `rub`, `rinds`, `mix`) the description carries and the line does
+not — `Old Bay seasoning` still matches a seasoning, because the test is what
+the product has that the line did not ask for.
+
+**Two entries came off the list on evidence:** Mac & cheese (a 7.25 oz box of
+dry mix against 9.2 lbs of prepared dish) and Live crawfish (a 32 oz tub of
+cooked, against a line that says live by the sack). Same lesson both times — the
+match guard catches a product of the wrong KIND, not the right product in the
+wrong STATE. 44 → 42 entries, 63 → 61 lines reached.
+
+**Also measured:** `product.compact` authorizes Locations too (risk retired by
+call, not by reading). Kroger-family coverage in the mid-Atlantic is patchy and
+**Bel Air has none** — 21014/21015/21009/21093/21740/19801 all return zero, while
+Baltimore City, Rockville, McLean and Richmond return three each. Daily ceilings
+are Products 10,000 / Locations 1,600, and search-list costs one call per line.
+
+**Worth carrying forward:** every fixture before today was one we wrote, and they
+all passed. First contact with real data found two defects in four hours of work.
+
+**Open:** the router's `term` support is not deployed yet — the re-probe sent
+terms as names to prove match quality. Dry weight vs prepared weight remains an
+unsolved class, documented at the two removals.
+
+
 ## 2026-09-23 — the unit map, and what it refuses
 
 `main` @ `49406cd`. 520 suites / 7,378 tests. `verify:push` 5/5, exit 0.

@@ -105,7 +105,7 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
   const hit = storeIndex instanceof Map ? storeIndex.get(storeKey(purchase)) : null;
   if (hit) {
     const p = round2(hit.effective);
-    const t = storeLineTotal({ line: purchase, price: p, size: hit.size, soldBy: hit.soldBy });
+    const t = storeLineTotal({ line: purchase, price: p, size: hit.size, soldBy: hit.soldBy, description: hit.description });
     return {
       // ── `range` IS STILL NULL, AND STILL ON PURPOSE ──────────────────────
       // A shelf price is priced per the STORE'S package — "1 gal", "12 pk",
@@ -206,7 +206,7 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
     // A null here is not a degraded state. It is the behaviour this layer
     // shipped with — a real shelf price shown as a reference beside an
     // estimate — and it remains correct for most lines.
-    const t = storeLineTotal({ line: purchase, price: p, size: hit.size, soldBy: hit.soldBy });
+    const t = storeLineTotal({ line: purchase, price: p, size: hit.size, soldBy: hit.soldBy, description: hit.description });
     return {
       layer: 'store',
       label: PRICE_LAYERS.store.label,

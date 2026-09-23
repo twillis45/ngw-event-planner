@@ -86,10 +86,22 @@ describe('the name a line is matched by makes it back', () => {
     expect(layerForLine({ purchase: line, storeIndex: idx }).exact).toBe(9.99);
   });
 
-  test('…and the client sends `name`, which is the key the index is built on', () => {
-    // storePrices.js maps each item to `{ name }`. If it ever sent `item` or
-    // `short` instead, the assertion above would still pass while the running
-    // app matched nothing.
-    expect(CLIENT).toMatch(/\.map\(\(name\) => \(\{ name \}\)\)/);
+  test('…and `term` is what gets SEARCHED while `name` stays the key', () => {
+    // The two must not be conflated. `name` is the plan's item text and is what
+    // the router echoes and the index is built on; `term` is the commodity
+    // query. Measured 2026-09-23 against a live store: sending the display text
+    // as the query matched nothing for 37 of 44 curated grocery lines.
+    //
+    // If the client ever sent the term AS the name, matching would improve and
+    // every price would then fail to find its line — a silent, total loss that
+    // looks exactly like a store with no prices.
+    expect(CLIENT).toMatch(/return term \? \{ name, term \} : \{ name \};/);
+    expect(CLIENT).toMatch(/storeSearchTerm/);
+
+    // And the router must search the term while still echoing the name.
+    const body = ROUTER.slice(ROUTER.indexOf('async def kroger_search_list'),
+      ROUTER.indexOf('async def kroger_locations'));
+    expect(body).toMatch(/"filter\.term": term/);
+    expect(body).toMatch(/\(it\.term or it\.name or ""\)\.strip\(\)/);
   });
 });

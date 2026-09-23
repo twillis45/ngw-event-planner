@@ -24,6 +24,23 @@ ADDING TO A USER'S CART — THE DOCUMENTED NEXT STEP, NOT BUILT HERE:
   is exactly the basis a later "Add to Kroger cart" flow needs once the host has
   connected their account.
 
+ONE SCOPE COVERS BOTH ENDPOINTS, CHECKED RATHER THAN ASSUMED (2026-09-23):
+  `product.compact` authorizes /v1/products AND /v1/locations. Both are
+  "general data owned by the application" under the client-credentials grant,
+  and Kroger's own published material plus two independent client libraries
+  request exactly this one scope before calling locations. So the token request
+  below needs no second scope — which matters because scopes are assigned at app
+  REGISTRATION and cannot be self-expanded at runtime (a missing one returns
+  403 {"errors":{"code":"Forbidden","reason":"missing required scopes"}}).
+
+PUBLISHED DAILY CEILINGS, and the one that binds us:
+  Products 10,000/day · Locations 1,600/day.
+  `kroger_search_list` makes ONE products call per list line — a 22-line plan
+  costs 22 calls — so the products ceiling is roughly 450 list-pricings a day
+  across all hosts. Ample for now, and the first number to look at if pricing
+  ever starts failing at a predictable hour. `filter.limit=1` below keeps each
+  call to the single best match rather than a page of them.
+
 HONESTY:
   • The client id/secret live only on the server — never shipped in the client.
   • With no creds every endpoint returns {"configured": false} so the client can
@@ -58,6 +75,17 @@ def _configured() -> bool:
 
 class LineItem(BaseModel):
     name: str
+    # ── WHAT TO SEARCH FOR, WHEN THE NAME IS NOT IT ──────────────────────────
+    # `name` is the plan's DISPLAY text, written for a host to read: "Ice
+    # (coolers + drinks, heat-adjusted)", "Ribs (racks)". Sent to filter.term it
+    # is a poor query — measured 2026-09-23 against a live store, 37 of 44
+    # curated grocery lines matched NOTHING, while plain "ice" finds a bag of
+    # ice immediately.
+    #
+    # So the caller may send the commodity term separately. `name` still comes
+    # back verbatim in the response, because it is the key the client indexes
+    # prices by; only what we SEARCH changes.
+    term: Optional[str] = None
     quantity: Optional[float] = 1
     unit: Optional[str] = "each"
 
@@ -132,12 +160,13 @@ async def kroger_search_list(req: SearchListRequest):
     if not token:
         return {"configured": True, "error": "auth_failed", "results": []}
 
-    names = [
-        (it.name or "").strip()
+    # (name, term) — name is echoed back as the client's key, term is searched.
+    pairs = [
+        ((it.name or "").strip(), (it.term or it.name or "").strip())
         for it in req.items
         if it and (it.name or "").strip()
     ]
-    if not names:
+    if not pairs:
         return {"configured": True, "results": [], "error": "no_items"}
 
     base = f"{KROGER_API_BASE.rstrip('/')}/v1/products"
@@ -148,15 +177,15 @@ async def kroger_search_list(req: SearchListRequest):
     results = []
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            for name in names:
-                params = {"filter.term": name, "filter.limit": 1}
+            for name, term in pairs:
+                params = {"filter.term": term, "filter.limit": 1}
                 if req.locationId:
                     params["filter.locationId"] = req.locationId
                 resp = await client.get(base, params=params, headers=headers)
                 if resp.status_code >= 400:
                     log.warning(
                         "Kroger products %s for %r: %s",
-                        resp.status_code, name, resp.text[:200],
+                        resp.status_code, term, resp.text[:200],
                     )
                     results.append({"name": name, "matched": False})
                     continue

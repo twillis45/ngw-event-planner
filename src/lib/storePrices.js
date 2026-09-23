@@ -7,9 +7,13 @@
 //
 // COVERAGE IS A BANNER FAMILY, NOT ONE CHAIN. Kroger's product API serves every
 // banner through one endpoint, with `locationId` choosing the store: Kroger,
-// Fred Meyer, Ralphs, Harris Teeter, Fry's, QFC, Smith's, Dillons, Pick 'n Save,
-// Ruler and the rest. That is wide, and it is still not everywhere — which is
-// why this is a layer over the regional band rather than a replacement for it.
+// Fred Meyer, Ralphs, Harris Teeter, Fry's, QFC, King Soopers, Smith's, Dillons,
+// Baker's, City Market, Food 4 Less, Foods Co, Gerbes, Jay C, Mariano's, Metro
+// Market, Pay Less, Pick 'n Save and Ruler. (Corrected 2026-09-23 — the first
+// list here stopped at ten and said "and the rest", which undersold the reach of
+// the one thing this layer has going for it.) That is wide, and it is still not
+// everywhere — which is why this is a layer over the regional band rather than a
+// replacement for it.
 //
 // A PRICE NEEDS A STORE. Kroger returns prices only when a locationId is sent
 // ("Required to return additional response data like price…" — their own API
@@ -22,6 +26,8 @@
 // of it lands as an empty list, and the price layer above falls through to the
 // regional band. The distinctions are kept in `reason` for a surface that wants
 // to explain itself, never for one that wants to guess.
+import { storeSearchTerm } from './knowledge/storeUnitMap';
+
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
 export function isStorePricesConfigured() {
@@ -73,10 +79,20 @@ export async function storePrices(items, locationId) {
   // No store means Kroger sends no price. Asking anyway would spend a request to
   // learn nothing, and a match without a price is not a price.
   if (!loc) return { configured: true, results: [], reason: 'no-store' };
+  // ── NAME IS THE KEY; TERM IS THE QUERY ──────────────────────────────────
+  // `name` comes back verbatim and is what priceLayers indexes prices by, so it
+  // must stay the plan's own item text. `term` is what Kroger actually
+  // searches. Measured 2026-09-23 against a live store: sending the display
+  // text as the query matched nothing for 37 of 44 curated grocery lines, and
+  // matched the WRONG PRODUCT for two more — "Ribs (racks)" came back as Rib
+  // Rack® BBQ Sauce. The term is curated per line in knowledge/storeUnitMap.
   const line = (Array.isArray(items) ? items : [])
-    .map((i) => String((i && (i.name || i.item)) || '').trim())
-    .filter(Boolean)
-    .map((name) => ({ name }));
+    .map((i) => ({ i, name: String((i && (i.name || i.item)) || '').trim() }))
+    .filter((x) => x.name)
+    .map(({ i, name }) => {
+      const term = storeSearchTerm(i && i.line ? i.line : i);
+      return term ? { name, term } : { name };
+    });
   if (!line.length) return { configured: true, results: [], reason: 'no-items' };
   try {
     const res = await fetch(`${BASE}/api/shopping/kroger/search-list`, {

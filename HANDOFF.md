@@ -125,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `49406cdc` |
-| Jest | **7,378 passed**, 1 skipped, **0 failed**, **520 suites** (re-measured 2026-09-23 after the twenty-fifth entry; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `86c4d29b` |
+| Jest | **7,386 passed**, 1 skipped, **0 failed**, **520 suites** (re-measured 2026-09-23 after the twenty-sixth entry; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -138,6 +138,102 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-sixth entry) — the keys went in, and the live store found two defects no test could
+
+The Kroger keys were set on Render. The first probe against a real store found
+**two defects in code shipped four hours earlier**, and both were invisible to
+520 green suites because every fixture until now was one I wrote.
+
+520 suites / 7,386 tests. `verify:push` 5/5, exit 0. 49 e2e green.
+
+### What the store actually returned
+
+Probed all 44 allowlisted grocery lines against a live Harris Teeter in
+Baltimore (`locationId` 09700376):
+
+| line | Kroger matched | |
+|---|---|---|
+| Ice | Reddy Ice Premium Packaged Ice · 7 lb | ✓ |
+| Chicken (legs/thighs/quarters) | Smart Chicken Leg Quarters · 1 lb WEIGHT | ✓ |
+| Chicken wings | Whole Fresh Chicken Wings · 3.25 lb | ✓ |
+| **Ribs (racks)** | **Rib Rack® Original BBQ Sauce · 15.5 oz** | ✗ |
+| **Pork ribs (racks)** | **Rib Rack® Sea Salt Pork Rinds · 4 oz** | ✗ |
+| Potato salad | HT Fresh Foods Original Potato Salad · 16 oz | ✓ |
+| Collard greens | Jumbo Collard Greens Bunch · 1 ct | ✓ (units refused it) |
+
+**37 of 44 matched nothing at all.**
+
+### Defect 1 — we were searching with text written for a human to read
+
+`filter.term` was being sent the plan's display string: `Ice (coolers +
+drinks, heat-adjusted)`, `Green coffee beans — Ethiopian, unroasted (roasted
+live at the ceremony)`. Plain `ice` returns a 7 lb bag immediately.
+
+Fixed by giving every allowlist entry a curated `term`, and adding an optional
+`term` field to the router that is SEARCHED while `name` is still ECHOED — the
+key the price index is built on cannot change. **Re-probed live: 26 of 28
+distinct terms now match**, and `pork ribs` returns Baby Back Pork Ribs, 1 lb,
+$5.99.
+
+### Defect 2 — the unit map guarded the units and nothing guarded the match
+
+`Ribs (racks)` → Rib Rack® BBQ Sauce, 15.5 oz. That parses cleanly as mass.
+11.5 lbs ÷ 15.5 oz = 11.87 → **12 bottles of barbecue sauce, $59.88, billed to
+a host as the cost of their ribs.** Every unit in that calculation is correct.
+
+Added `matchLooksLikeTheLine` — product-FORM words (`sauce`, `rub`, `rinds`,
+`marinade`, `mix`…) that the matched description carries and the line does not.
+It is named in the code as a heuristic, because it is one: it cannot prove a
+match is right, only catch a familiar way of being wrong. The asymmetry is what
+justifies it — a false refusal leaves the shelf price on screen as a reference,
+a false accept reaches a budget.
+
+`Old Bay seasoning` still matches `OLD BAY Classic Seafood Seasoning`, because
+the test is what the product has that the LINE DID NOT ASK FOR.
+
+### And two entries came off the list, on evidence
+
+- **Mac & cheese** — `macaroni and cheese` returns a 7.25 oz box of Kraft dry
+  mix against a line that is 9.2 lbs of prepared dish. Both mass, both parse,
+  21 boxes is not the answer.
+- **Live crawfish** — the line says LIVE, by the sack; the store returns a
+  32 oz tub of cooked Cajun crawfish.
+
+Both are the same lesson and it is worth carrying: **the match guard catches a
+product of the wrong KIND. It cannot catch the right product in the wrong
+STATE.** 44 → 42 entries, 63 → 61 lines reached.
+
+### Also measured
+
+- **`product.compact` authorizes Locations too** — the scope risk flagged in
+  the last entry, retired by live call rather than by reading.
+- **Kroger-family coverage in the mid-Atlantic is patchy, and Bel Air has
+  none.** 21014 / 21015 / 21009 / 21093 / 21740 / 19801 all return zero stores;
+  Baltimore City, Rockville, McLean and Richmond return three each. The host
+  running this repo is in the dead zone, and the "No store near that ZIP in
+  this chain's family" path we drove is the one he gets.
+- **Published daily ceilings: Products 10,000, Locations 1,600.** `search-list`
+  makes one products call per line, so a 22-line plan costs 22 — roughly 450
+  list-pricings a day across all hosts.
+
+### Worth carrying forward
+
+- **Every fixture before today was one I wrote, and they all passed.** The first
+  contact with real data found two defects in four hours of work. A test suite
+  cannot tell you that your search query is wrong, because it never issues one.
+- **Guarding one dimension of a claim invites confidence in the others.** The
+  unit map was carefully right about units and silently indifferent to whether
+  the product was the same thing.
+- **Removing an entry is a result.** Two came off on evidence, and the file is
+  better for it.
+
+### Open
+
+- The router's `term` support is **not deployed** — the live re-probe sent terms
+  as names to prove match quality. Deploy before the terms take effect for hosts.
+- **Dry weight vs prepared weight** is an unsolved class, now documented at the
+  two removals.
 
 ## FIXED 2026-09-23 (twenty-fifth entry) — the unit map, and what it refuses
 

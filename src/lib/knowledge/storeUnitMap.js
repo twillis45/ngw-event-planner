@@ -151,17 +151,17 @@ const ALLOW = Object.freeze([
   // ── Ice ───────────────────────────────────────────────────────────────────
   // The cleanest case in the corpus: one commodity, sold by the bag in pounds,
   // and 11 lines of it across the playbooks.
-  { id: 'p_ice', item: 'Ice' },
-  { id: 'p_ice', item: 'Ice (bar, coolers, punch)' },
-  { id: 'p_ice', item: 'Ice (chilling + drinks)' },
-  { id: 'p_ice', item: 'Ice (coolers + drinks + red drink)' },
-  { id: 'p_ice', item: 'Ice (coolers + drinks)' },
-  { id: 'p_ice', item: 'Ice (coolers + drinks, heat-adjusted)' },
-  { id: 'p_ice', item: 'Ice (drinks + coolers)' },
-  { id: 'p_ice', item: 'Ice (for chilling + drinks)' },
-  { id: 'p_ice', item: 'Ice (≈1-1.5 lb/guest)' },
-  { id: 'p_ice', item: 'Ice for drinks and bar service' },
-  { id: 'p_ice', item: 'Ice for the drink tubs' },
+  { id: 'p_ice', item: 'Ice' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice (bar, coolers, punch)' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice (chilling + drinks)' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice (coolers + drinks + red drink)' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice (coolers + drinks)' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice (coolers + drinks, heat-adjusted)' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice (drinks + coolers)' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice (for chilling + drinks)' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice (≈1-1.5 lb/guest)' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice for drinks and bar service' , term: 'ice' },
+  { id: 'p_ice', item: 'Ice for the drink tubs' , term: 'ice' },
 
   // ── Single proteins ───────────────────────────────────────────────────────
   // Each names one animal product bought by weight. A "/" here is an
@@ -176,35 +176,40 @@ const ALLOW = Object.freeze([
   //             three different $/lb, and the line does not say the split
   //   p_greens  "Collard greens (+ smoked turkey/ham hock)" — greens + meat
   //   p_meatwat / p_veganwat — composed dishes, named as such
-  { id: 'p_chicken', item: 'Chicken (legs/thighs/quarters)' },
-  { id: 'p_chicken', item: 'BBQ chicken (bone-in pieces)' },
-  { id: 'p_chicken', item: 'Whole chicken or cut-up fryer pieces (the main)' },
-  { id: 'p_wings', item: 'Chicken wings' },
-  { id: 'p_ribs', item: 'Ribs (racks)' },
-  { id: 'p_ribs', item: 'Pork ribs (racks)' },
-  { id: 'p_turkey', item: 'Turkey (whole bird, or breast for a small table)' },
-  { id: 'p_shrimp', item: 'Fresh shrimp (shell-on / head-on)' },
-  { id: 'p_shrimp', item: 'Steamed shrimp (Old Bay)' },
-  { id: 'p_crawfish', item: 'Live crawfish (by the sack, ~30-35 lb/sack)' },
-  { id: 'p_sausage', item: 'Smoked sausage (kielbasa / andouille)' },
-  { id: 'p_sausage', item: 'Smoked sausage / andouille' },
-  { id: 'p_links', item: 'Smoked sausage / hot links' },
-  { id: 'p_chicharron', item: 'Chicharrón (ground pork) for revueltas' },
+  { id: 'p_chicken', item: 'Chicken (legs/thighs/quarters)' , term: 'chicken leg quarters' },
+  { id: 'p_chicken', item: 'BBQ chicken (bone-in pieces)' , term: 'bone-in chicken' },
+  { id: 'p_chicken', item: 'Whole chicken or cut-up fryer pieces (the main)' , term: 'whole chicken' },
+  { id: 'p_wings', item: 'Chicken wings' , term: 'chicken wings' },
+  { id: 'p_ribs', item: 'Ribs (racks)' , term: 'pork ribs' },
+  { id: 'p_ribs', item: 'Pork ribs (racks)' , term: 'pork ribs' },
+  { id: 'p_turkey', item: 'Turkey (whole bird, or breast for a small table)' , term: 'whole turkey' },
+  { id: 'p_shrimp', item: 'Fresh shrimp (shell-on / head-on)' , term: 'raw shrimp' },
+  { id: 'p_shrimp', item: 'Steamed shrimp (Old Bay)' , term: 'cooked shrimp' },
+  // REMOVED 2026-09-23, same probe: the line says LIVE, by the sack. The store
+  // returns a 32 oz tub of cooked Cajun crawfish. Fifteen tubs is not a sack,
+  // and the description carries no word a blocklist could catch.
+  //
+  // Both removals are the same lesson: the match guard catches a product of the
+  // wrong KIND. It cannot catch the right product in the wrong STATE.
+  { id: 'p_sausage', item: 'Smoked sausage (kielbasa / andouille)' , term: 'smoked sausage' },
+  { id: 'p_sausage', item: 'Smoked sausage / andouille' , term: 'smoked sausage' },
+  { id: 'p_links', item: 'Smoked sausage / hot links' , term: 'smoked sausage' },
+  { id: 'p_chicharron', item: 'Chicharrón (ground pork) for revueltas' , term: 'ground pork' },
 
   // ── Single produce ────────────────────────────────────────────────────────
   // REFUSED: p_mazao "Fresh fruit & vegetables (the mazao / harvest display) —
   // apples, oranges, bananas, gourds, nuts"; p_fruit; p_veg; p_sides_veg —
   // every one of them a basket, and the nuts in the mazao line cost several
   // times what the bananas do.
-  { id: 'p_greens', item: 'Collard greens' },
-  { id: 'p_greens', item: 'Collard greens (prosperity)' },
-  { id: 'p_greens', item: 'Collard or mustard greens' },
-  { id: 'p_potatoes', item: 'Small red potatoes' },
-  { id: 'p_potatoes', item: 'Small red potatoes (new potatoes)' },
-  { id: 'p_yams', item: 'Sweet potatoes for candied yams' },
-  { id: 'p_watermelon', item: 'Watermelon (red, symbolic + cooling)' },
-  { id: 'p_strawberries', item: 'Strawberries (red garnish / fruit)' },
-  { id: 'p_blackeyedpeas', item: 'Black-eyed peas (good fortune)' },
+  { id: 'p_greens', item: 'Collard greens' , term: 'collard greens' },
+  { id: 'p_greens', item: 'Collard greens (prosperity)' , term: 'collard greens' },
+  { id: 'p_greens', item: 'Collard or mustard greens' , term: 'collard greens' },
+  { id: 'p_potatoes', item: 'Small red potatoes' , term: 'red potatoes' },
+  { id: 'p_potatoes', item: 'Small red potatoes (new potatoes)' , term: 'red potatoes' },
+  { id: 'p_yams', item: 'Sweet potatoes for candied yams' , term: 'sweet potatoes' },
+  { id: 'p_watermelon', item: 'Watermelon (red, symbolic + cooling)' , term: 'watermelon' },
+  { id: 'p_strawberries', item: 'Strawberries (red garnish / fruit)' , term: 'strawberries' },
+  { id: 'p_blackeyedpeas', item: 'Black-eyed peas (good fortune)' , term: 'black eyed peas' },
 
   // ── Single pantry goods ───────────────────────────────────────────────────
   // REFUSED: anything whose item text says "ingredients" — p_potato_salad,
@@ -215,25 +220,93 @@ const ALLOW = Object.freeze([
   // p_butter "Butter (for melting) + dipping dishes" (+ dishes), p_season
   // (seasoning + cayenne + salt), p_cheese "Cheese (3-4 varieties for the
   // board)" — which says plural products in its own text.
-  { id: 'p_oil', item: 'Frying oil (peanut or vegetable)' },
-  { id: 'p_vinegar', item: 'Apple-cider vinegar (steam liquid + dipping)' },
-  { id: 'p_masa', item: 'Masa (instant corn masa harina or fresh masa)' },
-  { id: 'p_quesillo', item: 'Quesillo (Salvadoran melting cheese) or mozzarella blend' },
-  { id: 'p_oldbay', item: 'Old Bay (or J.O.) seasoning — buy extra' },
-  { id: 'p_greencoffee', item: 'Green coffee beans — Ethiopian, unroasted (roasted live at the ceremony)' },
-  { id: 'p_beans', item: 'Baked beans / red beans' },
-  { id: 'p_beans', item: 'Refried beans (frijoles molidos) for frijol con queso' },
+  { id: 'p_oil', item: 'Frying oil (peanut or vegetable)' , term: 'vegetable oil' },
+  { id: 'p_vinegar', item: 'Apple-cider vinegar (steam liquid + dipping)' , term: 'apple cider vinegar' },
+  { id: 'p_masa', item: 'Masa (instant corn masa harina or fresh masa)' , term: 'masa harina' },
+  { id: 'p_quesillo', item: 'Quesillo (Salvadoran melting cheese) or mozzarella blend' , term: 'mozzarella cheese' },
+  { id: 'p_oldbay', item: 'Old Bay (or J.O.) seasoning — buy extra' , term: 'old bay seasoning' },
+  { id: 'p_greencoffee', item: 'Green coffee beans — Ethiopian, unroasted (roasted live at the ceremony)' , term: 'green coffee beans' },
+  { id: 'p_beans', item: 'Baked beans / red beans' , term: 'baked beans' },
+  { id: 'p_beans', item: 'Refried beans (frijoles molidos) for frijol con queso' , term: 'refried beans' },
 
   // ── Single prepared items ────────────────────────────────────────────────
   // Deli products a store sells as one thing by weight.
   // REFUSED: p_mac "Baked mac & cheese ingredients (or pans)" — the "(or pans)"
   // makes the unit itself ambiguous before the contents even matter.
-  { id: 'p_potatosalad', item: 'Potato salad' },
-  { id: 'p_mac', item: 'Mac & cheese (the side that anchors the table)' },
+  { id: 'p_potatosalad', item: 'Potato salad' , term: 'potato salad' },
+  // REMOVED 2026-09-23 after the live probe: "macaroni and cheese" returns a
+  // 7.25 oz box of Kraft dry mix, and the line is 9.2 lbs of PREPARED dish.
+  // Both are mass, both parse, and 21 boxes is not the answer. Dry weight
+  // against served weight is a conversion this file does not have and must not
+  // guess at — a whole class the match guard cannot see, because the product is
+  // not wrong, only its state is.
 ]);
 
 const key = (id, item) => `${String(id || '').trim()}\u0000${String(item || '').trim()}`;
-const ALLOWED = new Set(ALLOW.map((a) => key(a.id, a.item)));
+const ALLOWED = new Map(ALLOW.map((a) => [key(a.id, a.item), a]));
+
+/**
+ * ── WHAT TO ACTUALLY SEARCH THE STORE FOR ─────────────────────────────────
+ *
+ * The plan's item text is written for a HOST to read — "Ice (coolers + drinks,
+ * heat-adjusted)", "Green coffee beans — Ethiopian, unroasted (roasted live at
+ * the ceremony)". Sent to Kroger's `filter.term` it is a poor query, and this
+ * is measured rather than supposed: probed against a live Baltimore store on
+ * 2026-09-23, **37 of these 44 lines matched nothing at all**, while plain
+ * "ice" returns a 7 lb bag immediately.
+ *
+ * So each entry carries the commodity term. It is a knowledge claim, which is
+ * why it lives in the same curated, exact-match list as everything else here
+ * and not in a regex that strips parentheses — "Quesillo (Salvadoran melting
+ * cheese) or mozzarella blend" does not become a good query by deleting its
+ * punctuation.
+ *
+ * Returns null for a line that is not on the list, and a caller that gets null
+ * sends the item text unchanged. The backend falls back the same way.
+ */
+export function storeSearchTerm(line) {
+  const a = line ? ALLOWED.get(key(line.id, line.item)) : null;
+  return (a && a.term) || null;
+}
+
+/**
+ * ── AND WHETHER THE THING THAT CAME BACK IS THE THING WE ASKED FOR ────────
+ *
+ * The unit map guards the UNITS. Nothing guarded the MATCH, and a live probe
+ * found what that costs: "Ribs (racks)" matched **Rib Rack® Original BBQ
+ * Sauce** and "Pork ribs (racks)" matched **Rib Rack® Sea Salt Pork Rinds**.
+ * Both parse cleanly as mass, both would have multiplied to a confident dollar
+ * total, and both would have been the price of the wrong thing — 12 bottles of
+ * barbecue sauce billed as a rack of ribs.
+ *
+ * A better search term fixes most of this at the source. This is the backstop
+ * for what survives it: product-FORM words that mean "a condiment, a seasoning
+ * or a snack made from X" rather than "X". If the matched description carries
+ * one and the line we asked for does not, the total is refused.
+ *
+ * IT IS A HEURISTIC AND IT IS NAMED AS ONE. It cannot prove a match is right;
+ * it can only catch a familiar way of being wrong. That is worth having because
+ * the cost is asymmetric — a false refusal leaves the shelf price on screen as
+ * a reference, exactly as before, while a false accept puts a wrong number in
+ * a host's budget.
+ */
+const NOT_THE_COMMODITY = Object.freeze([
+  'sauce', 'marinade', 'seasoning', 'rub', 'dressing', 'gravy', 'broth',
+  'bouillon', 'stock', 'rinds', 'jerky', 'flavored', 'flavour', 'scented',
+  'mix', 'kit', 'candle', 'soap', 'spray', 'chips', 'crackers', 'cereal',
+]);
+
+export function matchLooksLikeTheLine({ line, term, description } = {}) {
+  const d = String(description || '').toLowerCase();
+  if (!d) return true;                       // nothing to judge; the units still gate
+  const asked = `${String((line && line.item) || '')} ${String(term || '')}`.toLowerCase();
+  for (const w of NOT_THE_COMMODITY) {
+    // Only a word the PRODUCT has and the LINE does not. "Old Bay seasoning"
+    // asks for a seasoning and must still match one.
+    if (d.includes(w) && !asked.includes(w)) return false;
+  }
+  return true;
+}
 
 /** How many lines the allowlist covers. Exported so a test can pin it. */
 export const UNIT_MAPPED_LINES = ALLOW.length;
@@ -271,11 +344,15 @@ export function lineIsMultipliable(line) {
  * total that silently covers more than the host asked for is a total they
  * cannot check.
  */
-export function storeLineTotal({ line, price, size, soldBy } = {}) {
+export function storeLineTotal({ line, price, size, soldBy, description } = {}) {
   const p = Number(price);
   if (!(p > 0)) return null;
   const need = lineIsMultipliable(line);
   if (!need) return null;
+  // The match-quality backstop, BEFORE any arithmetic: a barbecue sauce that
+  // parses as 15.5 oz is still not a rack of ribs, and the units would never
+  // have noticed.
+  if (!matchLooksLikeTheLine({ line, term: storeSearchTerm(line), description })) return null;
   const pack = parseStoreSize(size);
   if (!pack) return null;
   if (pack.dimension !== need.dimension) return null;
