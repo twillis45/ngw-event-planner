@@ -2,7 +2,7 @@
 
 ## 2026-09-23 — deployed, measured end to end, and the coverage limit said out loud
 
-`main` @ pending. 520 suites / 7,388 tests. `verify:push` 5/5, exit 0.
+`main` @ `a8ef138`. 520 suites / 7,388 tests. `verify:push` 5/5, exit 0.
 
 `autoDeploy: true`, so the previous commit shipped itself. Measured against the
 deployed router: **40 of 42 allowlisted lines now match (was 7 of 44)**, and
