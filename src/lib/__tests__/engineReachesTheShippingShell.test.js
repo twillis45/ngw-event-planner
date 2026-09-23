@@ -281,6 +281,45 @@ const PLAYBOOK_EXPORTS_NOT_IN_HOSTV2 = {
   playbookPacing: 'No consumer anywhere.',
 };
 
+// ── THE 159, SORTED (2026-09-23) ────────────────────────────────────────────
+// Host question: "sort the 159 and tell me which are planner."
+//
+// Every module whose exports reach only `src/App.js`, classified by EVIDENCE
+// rather than by the sound of its name: the module's own stated purpose, its
+// domain, and — decisively for the host-facing ones — whether hostv2 already
+// uses it. A module hostv2 imports 33 times is not a gap, whatever its
+// CRA-only exports look like from here.
+//
+// This exists so the person who deletes the CRA shell inherits the sort instead
+// of redoing it, and so a new module cannot join the list unclassified.
+const CRA_ONLY_BY_SURFACE = {
+  // Vendor, studio, client, billing and document work. The professional shell's
+  // inventory: keep, and re-host when the planner product is built.
+  planner: ['studioTeam', 'intelEval', 'draftVersions', 'docusign', 'webhookService',
+    'api/vendorBrief', 'csvParsers', 'commApi', 'eventDocuments', 'importHistory',
+    'closeoutIntel', 'stripeApi', 'workflowCompression', 'vendorBrief', 'vendorBriefConfirm',
+    'nextActionRenderer', 'presentationNav', 'feedback', 'analyticsReader'],
+
+  // HOST modules hostv2 ALREADY USES — seatingPlan 33 references, doItForMe 8,
+  // eventIdentity 8, decisionMemory 5, crabPlan 4. These are leftover exports the
+  // CRA calls and the host app does not; not gaps, and not planner work.
+  hostLive: ['decisionMemory', 'eventIdentity', 'seatingPlan', 'doItForMe', 'crabPlan',
+    'momentLibrary', 'playbooks/index', 'artworkMarks', 'hostIntel', 'eventGeoQuery'],
+
+  // HOST capability hostv2 has NONE of. The only bucket that is a real product
+  // question: send the shopping list to a cart, phone-location assist, the budget
+  // estimator's factor table, the readiness sparkline's history.
+  hostGap: ['instacart', 'locationAssist', 'estimatorFactors', 'readinessHistory'],
+
+  // The CRA host shell's own furniture — its date chips, its routing, its hero
+  // copy. Goes when the shell goes; hostv2 has its own.
+  craShell: ['dateChips', 'homeNav', 'shellTabs', 'planHeroCopy', 'legacyCopy'],
+
+  // Plumbing and tooling, used by whichever shell asks.
+  infra: ['analytics', 'sentry', 'clipboard', 'aiProxy', 'maps', 'weather',
+    'qaMemorySeed', 'severity', 'knowledge/groundingDoctrine', 'knowledge/groundingSources'],
+};
+
 describe('an engine that reaches no host is not a working engine', () => {
   test('(premise) the import graph actually resolved — not 8 modules and a wrong verdict', () => {
     // The instrument failed exactly this way before dynamic imports were parsed.
@@ -359,6 +398,30 @@ describe('an engine that reaches no host is not a working engine', () => {
     // billing and client-intake engines — planner work, not host work.
     const modules = new Set(planEngines.map((r) => r.rel));
     expect([...modules].some((m) => /vendor/i.test(m))).toBe(true);
+  });
+
+  test('THE SORT: every frozen-donor-only module is classified, none drifting', () => {
+    // A module that appears here unclassified is a decision nobody has made —
+    // which is how 216 exports sat in one undifferentiated pile calling itself
+    // debt. Named, so a failure says which module to place.
+    const modules = new Set(allLibRows()
+      .filter((r) => r.importers.length > 0 && !r.inHost && !r.inAdmin && !r.inPlan && r.inCra)
+      .map((r) => r.rel.replace('src/lib/', '').replace(/\.js$/, '')));
+    const classified = new Set(Object.values(CRA_ONLY_BY_SURFACE).flat());
+    const unplaced = [...modules].filter((m) => !classified.has(m)).sort();
+    expect(unplaced).toEqual([]);
+  });
+
+  test('…and the sort is not vacuous — each bucket actually holds something', () => {
+    for (const [bucket, mods] of Object.entries(CRA_ONLY_BY_SURFACE)) {
+      expect(Array.isArray(mods)).toBe(true);
+      expect(mods.length).toBeGreaterThan(3);
+      expect(bucket).toBeTruthy();
+    }
+    // No module may sit in two buckets — the sort has to be a decision, not a
+    // hedge.
+    const all = Object.values(CRA_ONLY_BY_SURFACE).flat();
+    expect(all.length).toBe(new Set(all).size);
   });
 
   test('NEGATIVE CONTROL: the engines this session wired DO reach the host', () => {
