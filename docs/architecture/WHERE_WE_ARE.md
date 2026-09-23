@@ -2,7 +2,7 @@
 
 ## 2026-09-23 — three layers of a price, and the shell says which one it got
 
-`main` @ pending. 519 suites / 7,359 tests. `verify:push` 5/5, exit 0.
+`main` @ `3772ffc`. 519 suites / 7,359 tests. `verify:push` 5/5, exit 0.
 
 Host directive: **build the three layers.** Layers 1 (the national band) and 3
 (the Instacart link out) were already live. Layer 2 — a real shelf price from a

@@ -125,7 +125,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `d86a4ea8` |
+| Branch / HEAD | `main` @ `3772ffc8` |
 | Jest | **7,359 passed**, 1 skipped, **0 failed**, **519 suites** (re-measured 2026-09-23 after the twenty-fourth entry; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
@@ -146,8 +146,9 @@ Host directive: **"build the three layers."** Layers 1 (national band) and 3
 real store — had a 231-line backend router that **nothing had ever called**, and
 it shipped that way because no test asked whether anything reached it.
 
-`verify:push` 5/5, exit 0, checked directly rather than through a pipe (the
-mistake that pushed a red commit earlier today).
+One commit, `3772ffc`. 519 suites / 7,359 tests. `verify:push` 5/5, exit 0 —
+checked directly rather than through a pipe, the mistake that pushed a red
+commit earlier today.
 
 ### The order, and why it lives in exactly one module
 
