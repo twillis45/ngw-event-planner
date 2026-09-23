@@ -1,0 +1,522 @@
+<title>Decision Layer Remediation</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root{
+    --ground:#F7F6F3; --surface:#FFFFFF; --sunk:#EFEDE8;
+    --ink:#1C2026; --ink-soft:#575E68; --ink-faint:#8A919B;
+    --line:#DFDCD5; --line-soft:#ECEAE4;
+    --brass:#9A6F2C; --brass-tint:#F2E8D6;
+    --ok:#3F6B4A; --ok-tint:#E2EDE4;
+    --warn:#8A5A18; --warn-tint:#F6E9D5;
+    --crit:#8C3A34; --crit-tint:#F5E1DE;
+    --live:#2F5D7C; --live-tint:#DFEAF2;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#14171C; --surface:#1B1F25; --sunk:#22272E;
+      --ink:#EDEBE6; --ink-soft:#A8AEB7; --ink-faint:#757C86;
+      --line:#2E343C; --line-soft:#252B32;
+      --brass:#C9A063; --brass-tint:#33291A;
+      --ok:#7FB08C; --ok-tint:#1E2B22;
+      --warn:#D0A05A; --warn-tint:#2E2417;
+      --crit:#D08880; --crit-tint:#2E1E1C;
+      --live:#7FAFD0; --live-tint:#182630;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#14171C; --surface:#1B1F25; --sunk:#22272E;
+    --ink:#EDEBE6; --ink-soft:#A8AEB7; --ink-faint:#757C86;
+    --line:#2E343C; --line-soft:#252B32;
+    --brass:#C9A063; --brass-tint:#33291A;
+    --ok:#7FB08C; --ok-tint:#1E2B22;
+    --warn:#D0A05A; --warn-tint:#2E2417;
+    --crit:#D08880; --crit-tint:#2E1E1C;
+    --live:#7FAFD0; --live-tint:#182630;
+    color-scheme:dark;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    font-size:15px; line-height:1.55;
+    padding-inline:16px;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding-block:36px 72px;}
+  h1,h2,h3{font-family:"Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif; text-wrap:balance; margin:0;}
+  h1{font-size:clamp(28px,4.4vw,40px); font-weight:700; letter-spacing:-.02em; line-height:1.1;}
+  h2{font-size:19px; font-weight:700; letter-spacing:-.01em;}
+  h3{font-size:15px; font-weight:700;}
+  .eyebrow{font-size:11px; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:var(--brass); margin:0 0 10px;}
+  .lede{color:var(--ink-soft); font-size:16px; max-width:62ch; margin:14px 0 0;}
+  .mono{font-family:"JetBrains Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums;}
+
+  header{border-bottom:1px solid var(--line); padding-bottom:28px;}
+  .stats{display:flex; flex-wrap:wrap; gap:10px; margin-top:24px;}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:3px; padding:11px 15px; flex:1 1 140px;}
+  .stat b{display:block; font-family:"JetBrains Mono", monospace; font-size:21px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums;}
+  .stat span{display:block; font-size:11.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-top:3px;}
+
+  section{margin-top:48px;}
+  .sechead{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px;}
+  .note{color:var(--ink-soft); font-size:14.5px; max-width:64ch; margin:8px 0 20px;}
+
+  .cov{display:flex; flex-direction:column; gap:2px; background:var(--surface); border:1px solid var(--line); border-radius:3px; padding:16px;}
+  .row{display:grid; grid-template-columns:minmax(0,1fr) 46px; align-items:center; gap:12px; padding:5px 0;}
+  .bar{position:relative; height:21px; background:var(--sunk); border-radius:2px; overflow:hidden;}
+  .bar i{position:absolute; inset:0 auto 0 0; display:block; border-radius:2px;}
+  .bar em{position:absolute; left:9px; top:50%; transform:translateY(-50%); font-style:normal; font-size:12.5px; font-family:"JetBrains Mono",monospace; font-weight:600; letter-spacing:.01em; white-space:nowrap;}
+  .pct{font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--ink-faint); text-align:right; font-variant-numeric:tabular-nums;}
+  .grp{font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); margin:14px 0 4px; padding-top:12px; border-top:1px solid var(--line-soft);}
+  .grp:first-child{margin-top:0; padding-top:0; border-top:none;}
+
+  .phase{background:var(--surface); border:1px solid var(--line); border-radius:3px; padding:18px 20px; margin-bottom:12px; display:grid; grid-template-columns:auto minmax(0,1fr); gap:0 18px; align-items:start;}
+  .ord{font-family:"JetBrains Mono",monospace; font-size:12px; font-weight:600; color:var(--brass); padding-top:2px; letter-spacing:.04em;}
+  .phase p{margin:7px 0 0; color:var(--ink-soft); font-size:14.5px; grid-column:2;}
+  .phase .chips{grid-column:2; margin-top:12px;}
+  .chip{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; padding:3px 9px; border-radius:2px; margin:0 6px 6px 0;}
+  .c-live{background:var(--live-tint); color:var(--live);}
+  .c-ok{background:var(--ok-tint); color:var(--ok);}
+  .c-next{background:var(--brass-tint); color:var(--brass);}
+  .c-hold{background:var(--sunk); color:var(--ink-faint);}
+  .dot{width:6px; height:6px; border-radius:50%; background:currentColor; flex:none;}
+  .pulse{animation:p 1.9s ease-in-out infinite;}
+  @keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+  @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+
+  table{width:100%; border-collapse:collapse; font-size:14px;}
+  .scroll{overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:3px;}
+  th,td{text-align:left; padding:9px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top;}
+  th{font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  td.sha{font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--brass); white-space:nowrap;}
+  td.n{font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--ink-soft);}
+  .sev{display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; padding:2px 7px; border-radius:2px; white-space:nowrap;}
+  .s-crit{background:var(--crit-tint); color:var(--crit);}
+  .s-high{background:var(--warn-tint); color:var(--warn);}
+  .s-med{background:var(--sunk); color:var(--ink-soft);}
+  .s-done{background:var(--ok-tint); color:var(--ok);}
+
+  .guards{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px;}
+  .guard{background:var(--surface); border:1px solid var(--line); border-left:2px solid var(--ok); border-radius:3px; padding:12px 14px;}
+  .guard b{font-family:"JetBrains Mono",monospace; font-size:12.5px; font-weight:600; display:block; word-break:break-word;}
+  .guard span{display:block; font-size:13px; color:var(--ink-soft); margin-top:5px;}
+
+  .pull{background:var(--surface); border:1px solid var(--line); border-left:2px solid var(--brass); border-radius:3px; padding:16px 18px; margin:20px 0 0;}
+  .pull p{margin:0; color:var(--ink-soft); font-size:14.5px;}
+  .pull p + p{margin-top:10px;}
+  .pull.correct{border-left-color:var(--crit);}
+
+  .ledger{background:var(--surface); border:1px solid var(--line); border-radius:3px; padding:16px 18px; font-family:"JetBrains Mono",monospace; font-size:12.5px; line-height:1.9; color:var(--ink-soft); overflow-x:auto; font-variant-numeric:tabular-nums;}
+  .ledger b{color:var(--ink); font-weight:600;}
+  .ledger .w{color:var(--warn);}
+  .ledger .g{color:var(--ok);}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); color:var(--ink-faint); font-size:13px;}
+  a{color:var(--brass);}
+  @media (max-width:520px){
+    .phase{grid-template-columns:1fr; gap:0;}
+    .phase p,.phase .chips{grid-column:1;}
+    .ord{padding-bottom:4px;}
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">NGW Event Planner · 19 September 2026 · tenth publication · the board calls closed, 23 September</p>
+    <h1>Decision Layer Remediation</h1>
+    <p class="lede">The engines compute. The decision layer annotates. Closing the gap between what the app says it derives and what it actually derives — sequenced by measured field coverage, not by guess. All four phases shipped, and the audit queue behind them is now worked to the end of what is ours. Three of the last four findings moved <strong>no number at all</strong> — the measurement was the deliverable, and the fix was somebody else’s call. <strong>A second pass on 23 September closed six of the seven audit rows still open</strong>, four of which turned out to have been fixed already and never re-measured. Then the <strong>four open board calls were decided and shipped</strong> — and two of them reversed work published hours earlier the same day. What remains is one row, and it waits on a retirement decision rather than on work.</p>
+    <div class="stats">
+      <div class="stat"><b>524</b><span>suites green</span></div>
+      <div class="stat"><b>7,470</b><span>tests passing</span></div>
+      <div class="stat"><b>23 / 23</b><span>named guards passing</span></div>
+      <div class="stat"><b>75</b><span>commits since 3b9e87b</span></div>
+      <div class="stat"><b>0</b><span>board calls waiting</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sechead"><h2>A correction to this page</h2></div>
+    <div class="pull correct">
+      <p>The fifth publication reported <span class="mono">ask</span> coverage as <strong>“267/267 decisions · 594/594 rows · 100%”</strong>. Re-measured today across all 45 playbooks: <strong>121 of 260 decisions author an <span class="mono">ask</span> (47%)</strong>, and at a T-31d horizon <strong>267 of 357 board rows carry one (75%)</strong>.</p>
+      <p>Both numbers can be true of different things, and that is the trap. <em>Every row can produce a question</em> — the board falls back to <span class="mono">authoredQuestion(d.label)</span> when no <span class="mono">ask</span> is authored, so no row is ever mute. <em>Every decision authors its own</em> is a different claim, and it is not true. <strong>100% was the fallback working, not the corpus being complete.</strong></p>
+      <p><strong>And the 47% was right in its arithmetic and wrong in its conclusion.</strong> Measured again since: <strong>138 of those 139 unauthored decisions have a question-shaped label</strong>, and the fallback returns the label itself — so the board already asks the host something, and it reads fine (<span class="mono">“Seated dinner or buffet / family-style?”</span>, <span class="mono">“Who handles the food?”</span>). Landing 139 drafted strings over a corpus that is already authored would have been churn. What is actually thin is the tail: median label-question is five words, and <strong>thirteen are three or fewer</strong> against option lists they cannot cover — <span class="mono">“Alcohol?”</span> over four options. Twelve now author a real question; the thirteenth was left because <span class="mono">“Which sport?”</span> is already a fine question.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>Re-audit — 23 September</h2></div>
+    <p class="note">Four days on, every figure on this page was re-measured against the working tree and all twelve named guards were run. <strong>The structure held; the numbers moved.</strong> Which is the predictable failure of a status page, and the argument for a number being pinned by a test rather than printed in HTML.</p>
+    <div class="pull correct">
+      <p><strong>The sharpest one is this page arguing with itself.</strong> The chart said <span class="mono">ask &nbsp;121/260 (47%)</span>. The correction three paragraphs above it already described twelve being authored (<span class="mono">edc5130</span>). Measured now: <strong>133/260 (51%)</strong> — exactly those twelve. <em>The prose was right and the bar was four days behind it.</em> Same defect class the whole page is about: one fact, two readers, and only one of them updated.</p>
+      <p><strong>Open call #2 is closed.</strong> “Eight per-head bands — raise them, or cut the food lines” was filed as not ours, because deriving a band would be inventing a number. Host ruling 23 September: <em>raise them</em>. Each band’s <span class="mono">high</span> went to that playbook’s own food <span class="mono">perGuestHigh</span> — the better-grounded of two figures already in the file, not an invented third. Eight playbook data files, commit <span class="mono">9b31ab7</span>. <strong>Six calls waiting became five.</strong></p>
+      <p><strong>What did NOT move, and was checked rather than assumed:</strong> 260 decisions; every 100% row still 100%; <span class="mono">options</span> 251; <span class="mono">default</span>/<span class="mono">blocks</span> 247; <span class="mono">defaultWhy</span> 131; <span class="mono">dependsOn</span> 53; <span class="mono">costFactors</span>/<span class="mono">affects</span> 51 each; <span class="mono">whenChoice</span> 4; <span class="mono">timingCategory</span> 5; <span class="mono">decisionType</span> 0 authored. 38 of 260 labels still load-bearing, still pinned. The Vendor Detail Cockpit still has no hostv2 importer. Calls 1, 3, 4, 5 and 6 stand exactly as written, for exactly the stated reasons.</p>
+      <p><strong>One figure is NOT re-verified and is marked as such:</strong> <span class="mono">267/357 board rows carry an ask (75%)</span>. That needs a full board computation at a T-31d horizon across 45 playbooks, and it was not run — so it is reported here as unchecked rather than quietly counted as confirmed.</p>
+    </div>
+    <div class="pull">
+      <p><strong>And the defect class this page names has kept producing.</strong> Six more instances in the four days since publication, every one found and fixed: a splash screen still carrying a competitor’s name, split across two divs so no joined-string search could see it; an air-travel invite floor moving 77 milestones — thank-you notes included — to 88 days <em>before</em> the event; two surfaces giving a host opposite answers about whether prices were regionally adjusted; the food engine choosing a regional factor and discarding the choice; a sheet hero and its own list disagreeing about store coverage; and a store-banner list typed out twice.</p>
+      <p>That is the same shape as every row in the audit table below — <em>a fact owned by one accessor, re-derived privately by the surface beside it</em> — which is the evidence that the class is structural and not a backlog. The remedy has not changed: one accessor per fact, and a ratchet that counts the copies.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>Second pass — 23 September</h2></div>
+    <p class="note">The audit table below was carried forward for four days without being re-run against the tree. Checked row by row this evening, <strong>four of its seven open rows had already been fixed</strong> and one was wrong in its count. That is the same defect the page is about, committed by the page: a fact owned by one accessor, restated by the reader beside it without asking. <strong>A stale finding asserted as current is its own kind of invented data.</strong></p>
+
+    <div class="pull correct">
+      <p><strong>The food sheet said the ice was free.</strong> hostv2 rendered the per-unit rate through its whole-dollar <span class="mono">fmt</span> — right for a line total, ruinous for a rate, because most of this corpus’s rates are under a dollar. Counted across all <strong>440</strong> per-unit lines: <strong>84</strong> had a bound round to $0, <strong>22</strong> collapsed to <span class="mono">“$0–$0”</span> outright, <strong>142</strong> had a sub-dollar low bound and so printed “$0” or “$1” — a number the plan never authored — and <strong>186</strong> were distorted by more than 5%.</p>
+      <p>The data was never wrong: the engine stores these to the cent. Only the display threw the cents away. <em>And the rule was not new</em> — the legacy CRA food sheet had worked it out inline at its own call site, and hostv2 was built beside it and reached for the generic helper. One definition now, imported by both.</p>
+    </div>
+
+    <div class="pull correct">
+      <p><strong>A shoe insert was one guard away from being priced as flatbread.</strong> The match-quality guard was written for the line-total function and lived only there, so it decided the <em>total</em> and nothing else — the price a host reads was rendered from the same match without ever asking. Probed against a live Baltimore store:</p>
+      <p class="mono" style="margin:10px 0; font-size:12.5px; line-height:1.9;">“injera”&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→&nbsp; Airplus® Gel Women’s Orthotic Insole Shoe Inserts&nbsp;&nbsp;$8.99<br>“espresso cups”&nbsp;→&nbsp; Private Selection® Espresso Roast Coffee Pods&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$6.99<br>“prosecco”&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→&nbsp; Tuscany Candle™ Peach Prosecco Wax Melts&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$3.29</p>
+      <p>Only the last carries a word a blocklist can see. So there are two fixes and the second matters more: the gate moved to the one place that decides whether a line <em>has</em> a store price, and the store layer now prints <strong>what it priced</strong>. A heuristic catches a familiar way of being wrong, never every way — a host reading the product name catches all of them.</p>
+      <p><strong>And the search term stopped being the multiply licence.</strong> Sending a line’s display text as the query — what a line with no curated term gets — matched nothing for <strong>eleven of twelve</strong> non-allowlisted lines probed: trash bags, charcoal, disposable cups, napkins, bread, buns. Eleven live-probed terms were added that buy a shelf <em>reference</em> and can never produce a total. The multiply allowlist is <strong>saturated at 41</strong>: all 444 corpus lines swept, 94 carry a mass or volume unit, and the other 53 are baskets, “ingredients” lines, or entries already removed on live evidence.</p>
+    </div>
+
+    <div class="pull correct">
+      <p><strong>The food factor reported today’s date as its data month.</strong> BLS publishes Average Price with a few weeks’ lag, so a September request routinely returns July’s figure — and the endpoint read the value off the data point and threw the point’s own date away one line later, then stamped <span class="mono">date.today()</span> on the result. It now reads the point’s own year and period, refuses <span class="mono">M13</span> (the annual average, which is not a month), and when the series disagree reports the <strong>oldest</strong>: the factor is a ratio across all of them, so it is only as current as its stalest input.</p>
+      <p>Same file, same cache: only successes were stored, so during a BLS outage <em>every</em> request paid the full 20-second timeout to be told the same thing. Failures are now cached on a five-minute leash against six hours for a success — an outage ends, and a stale “unavailable” must not outlive it.</p>
+    </div>
+
+    <div class="pull correct">
+      <p><strong>A detector that could not fire, for five days.</strong> <span class="mono">timingConflict</span> was written on 18 September so a contradiction would stop being filed as an absence, and it reached nobody — <em>because the board drops the field it reads</em>. The row carries the derived due date and days-out; <span class="mono">when</span> was gone before any caller could ask, so every call returned null and every reader took that as “no conflict.” A correct detector pointed at a population that had already lost the field it needs.</p>
+      <p>Three decisions tell a host to start <strong>later</strong> than a real dated source supports — Day Party and Retirement Party venues at T-28d and T-35d against a two-month floor, and Surprise Proposal’s hidden photographer at T-30d. <strong>The audit recorded four.</strong> Holiday Party’s venue has since been authored to T-75d, inside the window, and is correctly no longer one. No authored deadline moves; what changed is that the disagreement is now a sentence on the decision card.</p>
+    </div>
+
+    <div class="pull correct">
+      <p><strong>The rings had a pack-it date and no order date</strong>, and the brief that found it was wrong in an instructive way. Elopement’s rings row has read “Order/size rings weeks ahead” since it was written; its <span class="mono">buyAt: T-3d</span> is a PACK-IT date, so a <strong>$100–$2,000 essential with a six-week production queue looked like a three-day errand</strong> — on an event people travel to, where the rings must be in hand before the trip.</p>
+      <p>The brief said three split-act rows needed a second row authored. Swept across all 45 playbooks, <strong>eight</strong> rows name a second act: five already put <span class="mono">buyAt</span> at the stated lead (one date, one act — the corpus’s convention); <strong>two are already covered</strong> by checklist tasks at exactly the leads their own prose states; one was genuinely uncovered; and one is conditional with no researched number.</p>
+      <p><strong>A whole mechanism was built and reverted on that measurement</strong> — a purchase field with its own task emitter, sixteen green tests, money proved not to move. Two things killed it: it would have <em>duplicated</em> the two tasks that already exist, and it fed an engine reader with no consumer outside the frozen CRA shell. <strong>Building on a surface the host does not read is the same defect as not building at all.</strong></p>
+      <p>So the fix is a task at T-56d, and its lead is researched rather than chosen: two independent jewellers, one UK and one US, both read in full, converging on 6–8 weeks and giving the same mechanism. Sweeping the new timing category over all 260 decisions found <em>both</em> things a regex hides — a <strong>gain</strong> (a real ring-sourcing decision now cites two dated sources where it cited none) and a <strong>false positive caught before it shipped</strong> (a “lock the ceremony moment (vows, readings, rings/keepsake…)” row that would have reported a false contradiction against a jeweller’s floor).</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>Why this order</h2></div>
+    <p class="note">Field coverage across all 260 authored decisions, re-measured 19 September. The layer was <strong>richly annotated and barely reactive</strong>: everything describing how much a decision <em>matters</em> was complete; almost everything that would make it respond to <em>this event</em> was empty. That split drove the sequence, and all four phases are now closed.</p>
+    <div class="cov">
+      <p class="grp">Complete — the editorial layer</p>
+      <div class="row"><div class="bar"><i style="width:100%;background:var(--ok-tint)"></i><em style="color:var(--ok)">why · when · weight · priorityBasis</em></div><div class="pct">100%</div></div>
+      <div class="row"><div class="bar"><i style="width:100%;background:var(--ok-tint)"></i><em style="color:var(--ok)">reversibility · emotionalWeight · difmCapable</em></div><div class="pct">100%</div></div>
+      <div class="row"><div class="bar"><i style="width:97%;background:var(--ok-tint)"></i><em style="color:var(--ok)">options &nbsp;260/260 — re-measured 23 Sep, was 251</em></div><div class="pct">100%</div></div>
+      <div class="row"><div class="bar"><i style="width:95%;background:var(--ok-tint)"></i><em style="color:var(--ok)">default &nbsp;247 — but see finding 04</em></div><div class="pct">95%</div></div>
+      <div class="row"><div class="bar"><i style="width:96%;background:var(--ok-tint)"></i><em style="color:var(--ok)">blocks &nbsp;250 — re-measured 23 Sep; NOT 247, and not “each”</em></div><div class="pct">96%</div></div>
+
+      <p class="grp">Closed across the programme</p>
+      <div class="row"><div class="bar"><i style="width:50%;background:var(--ok-tint)"></i><em style="color:var(--ok)">defaultWhy &nbsp;5 → 131/260</em></div><div class="pct">50%</div></div>
+      <div class="row"><div class="bar"><i style="width:100%;background:var(--ok-tint)"></i><em style="color:var(--ok)">recommendedWhen &nbsp;wired, engine-backed</em></div><div class="pct">live</div></div>
+      <div class="row"><div class="bar"><i style="width:100%;background:var(--ok-tint)"></i><em style="color:var(--ok)">guestFacing &nbsp;shipped as a bracket gate</em></div><div class="pct">live</div></div>
+      <div class="row"><div class="bar"><i style="width:51%;background:var(--ok-tint)"></i><em style="color:var(--ok)">ask &nbsp;133/260 authored — re-measured 23 Sep, was 121</em></div><div class="pct">51%</div></div>
+
+      <p class="grp">Thin — but not one story</p>
+      <div class="row"><div class="bar"><i style="width:100%;background:var(--ok-tint)"></i><em style="color:var(--ok)">dependsOn &nbsp;53 decisions, 100% name a real one</em></div><div class="pct">ok</div></div>
+      <div class="row"><div class="bar"><i style="width:20%;background:var(--warn-tint)"></i><em style="color:var(--warn)">costFactors · affects &nbsp;51 each</em></div><div class="pct">20%</div></div>
+      <div class="row"><div class="bar"><i style="width:12%;background:var(--sunk)"></i><em style="color:var(--ink-soft)">whenChoice &nbsp;4 — a gate, not a per-decision field</em></div><div class="pct">n/a</div></div>
+      <div class="row"><div class="bar"><i style="width:12%;background:var(--ok-tint)"></i><em style="color:var(--ok)">timing category matched &nbsp;33/260 · grounded 28 — <span class="mono">rings</span> added 23 Sep</em></div><div class="pct">13%</div></div>
+      <div class="row"><div class="bar"><i style="width:2%;background:var(--ok-tint)"></i><em style="color:var(--ok)">timingCategory &nbsp;NEW — declared, authored wins</em></div><div class="pct">2%</div></div>
+
+      <p class="grp">Zero authored — and the difference between them is the whole point</p>
+      <div class="row"><div class="bar"><i style="width:100%;background:var(--ok-tint)"></i><em style="color:var(--ok)">decisionType &nbsp;0 authored — but the READER now exists</em></div><div class="pct">3 derived</div></div>
+      <div class="row"><div class="bar"><i style="width:100%;background:var(--sunk)"></i><em style="color:var(--ink-soft)">relevantWhen · impacts · causesRisk · effort · blastRadius · +2 &nbsp;cut from the spec</em></div><div class="pct">0%</div></div>
+    </div>
+    <div class="pull correct" style="margin-top:14px;">
+      <p><strong>Three of these bars were wrong when this page published them, and re-measuring is how it was found.</strong> <span class="mono">options</span> read <strong>251/260 (97%)</strong> and is <strong>260/260</strong>. <span class="mono">default · blocks</span> read “247 each” and they are not each — <span class="mono">default</span> is 247, <span class="mono">blocks</span> is <strong>250</strong>. And <span class="mono">timing category matched</span> read 32 when this session’s own <span class="mono">rings</span> category had already made it <strong>33</strong> — the page reporting a number its own work had moved an hour earlier.</p>
+      <p>Second time this chart has been caught behind its own prose, and the argument the page keeps making about itself: <strong>a number printed in HTML is a copy, and copies drift.</strong> Everything else re-measured exactly — <span class="mono">defaultWhy</span> 131, <span class="mono">ask</span> 133, <span class="mono">dependsOn</span> 53, <span class="mono">costFactors</span> and <span class="mono">affects</span> 51 each, <span class="mono">whenChoice</span> 4, <span class="mono">timingCategory</span> 5, <span class="mono">decisionType</span> 0 authored against 3 derived (all three the dietary rows), every 100% row still 100%, and the five named cut fields still authored zero times.</p>
+    </div>
+    <p class="note" style="margin-top:14px;"><strong>A field with no reader is not a gap — it is a line in a spec that was never built.</strong> Seven of the zero rows had no writer AND no consumer; authoring them would have produced data nothing reads, so they were deleted from the spec rather than filled. <span class="mono">decisionType</span> got the opposite treatment, and the reason is the test: the missing type cost a host something measurable. It is still authored 0 times — the deriver reads the corpus and finds <strong>3</strong> restriction lists — and that is the honest shape. A declaration is for when the derivation cannot tell.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>The programme</h2></div>
+    <p class="note">Ordered by honesty debt retired per unit of effort. The first was editorial and touched no engine; the last turned out to be about guest safety.</p>
+
+    <div class="phase">
+      <div class="ord">01</div>
+      <div><h3>defaultWhy</h3></div>
+      <p><strong>127 of 129</strong> proposals showed the reason the <em>decision matters</em> where the reason <em>this option was picked</em> belongs — because two readers fell back to <span class="mono">why</span>. Shipped: the fallback is deleted in both readers (that one line was the actual lie; the 127 strings were the content), and the pattern is <em>“X is the default because &lt;real tradeoff&gt;. Change it if &lt;the host it doesn’t fit&gt;.”</em> The second half is the honesty valve.</p>
+      <div class="chips"><span class="chip c-ok"><span class="dot"></span>Shipped</span><span class="chip c-hold">131 authored · 2 readers unified</span></div>
+    </div>
+
+    <div class="phase">
+      <div class="ord">02</div>
+      <div><h3>recommendedWhen</h3></div>
+      <p>The declared fix for <span class="mono">can-derive</span> deriving nothing: all 129 such decisions proposed their authored literal and <strong>0</strong> responded to any event data. Shipped as <span class="mono">recommendedPick.js</span> — facts are <span class="mono">{value, known}</span> and an <strong>unknown fact refuses the rule</strong> rather than comparing as zero.</p>
+      <div class="chips"><span class="chip c-ok"><span class="dot"></span>Shipped</span></div>
+    </div>
+
+    <div class="phase">
+      <div class="ord">03</div>
+      <div><h3>guestFacing</h3></div>
+      <p>The spec proposed a decision flag. The real leak was a <em>template in a text field</em>: the app brackets what it does not know — correct — and a one-tap draft wrote that straight into <span class="mono">parkingNotes</span>, which the invite guests read prints verbatim. Shipped as a bracket gate that <strong>withholds rather than repairs</strong>.</p>
+      <div class="chips"><span class="chip c-ok"><span class="dot"></span>Shipped</span><span class="chip c-hold">4 readers, one gate</span></div>
+    </div>
+
+    <div class="phase">
+      <div class="ord">04</div>
+      <div><h3>decisionType — and it was a safety fix</h3></div>
+      <p>Every decision was implicitly pick-one, and the write path replaced. Measured against the running engine: pick <span class="mono">Vegetarian</span>, then pick <span class="mono">Nut allergy</span>, and <strong>the vegetarian is gone</strong> — on a decision offering ten independent restrictions that describe <em>different guests</em>. Shipped as a deriver, not an authoring campaign: the default stays pick-one and is correct for the overwhelming majority.</p>
+      <p><strong>The repast headcount was NOT the misfit it looked like.</strong> Its band options — “Close family + a few (~20)” — read as a count forced into chips, until its authored <span class="mono">why</span> says otherwise: <em>“No one needs an exact count on a day like this — an honest estimate is enough.”</em> Asking a grieving family to type 47 would be worse. It stays pick-one on purpose, held by a negative control.</p>
+      <div class="chips"><span class="chip c-ok"><span class="dot"></span>Shipped</span><span class="chip c-hold">3 multi · 1 deliberate refusal</span></div>
+    </div>
+
+    <div class="phase">
+      <div class="ord">05</div>
+      <div><h3>The <span class="mono">ask</span> authoring gap</h3></div>
+      <p>Found by shipping 04’s prerequisite rather than by an audit. Where no <span class="mono">ask</span> exists the hero falls back to a question derived from the label — general, not false, but not the product either. <strong>121 of 260 decisions author one.</strong> The fallback means no row is ever mute, which is exactly why this gap stayed invisible: see the correction at the top of this page.</p>
+      <div class="chips"><span class="chip c-ok"><span class="dot"></span>Closed</span><span class="chip c-hold">12 authored · 138 of 139 already read fine</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>The safety lane, in full</h2></div>
+    <p class="note">Asked which of two dietary-collection mechanisms is better for a host’s guests, the answer turned out to be <strong>neither of the two being compared</strong>. A dietary fact can live in three places. The spread’s allergen flagging read two of them.</p>
+    <div class="ledger">
+Crab Feast · tap “Nut allergy” and “Shellfish”, then read the shopping list<br><br>
+<b>store</b>                        <b>specialDiets</b>   <b>dietaryResolved</b>   <b>items flagged</b><br>
+nothing recorded            —              false             none<br>
+<span class="w">decision CHIPS</span>              <span class="w">—</span>              <span class="w">false</span>             <span class="w">NONE</span><br>
+dietCounts (the drill-in)   2 diets        false             Blue crabs, Steamed shrimp<br>
+per-guest roster            —              <span class="g">true</span>              Blue crabs, Steamed shrimp
+    </div>
+    <p class="note" style="margin-top:16px;">The chips are the picker most hosts actually touch. Their output was <strong>byte-identical to recording nothing</strong> — while the board counted the decision settled and the toast said so. On the decision whose own <span class="mono">why</span> reads: <em>“One guest with an allergy needs a separate plate kept away from the crab steam and the tools.”</em></p>
+    <div class="pull correct">
+      <p><strong>A correction to the lane above it.</strong> Making those chips multi-select fixed what they RECORDED and what they DISPLAYED. It did not make one spread item safer, because the store they write to had no reader in the flagging engine. Phase 04 was reported as a safety fix; this is the part that earns the name.</p>
+    </div>
+    <p class="note" style="margin-top:20px;"><strong>And the marker was invisible where it landed.</strong> Only the first two tags on a spread row render; the rest fold into “+N”. The diet flag sat <em>fourth</em>, behind <span class="mono">decision open</span>, <span class="mono">essential</span> and <span class="mono">day-of</span> — so on Blue crabs, a row carrying the first two, the allergen marker was <strong>always</strong> the one collapsed. Driven at 390px: the row read <span class="mono">decision open · essential · +1</span>. It goes first now. Every other tag on that row is about shopping; this is the only one whose absence can hurt somebody.</p>
+    <p class="note"><strong>The tiering was preserved, not flattened.</strong> Chips join as a flag source only — never <span class="mono">specialDiets</span>, which carries counts they cannot know, and never <span class="mono">dietaryResolved</span>, which means resolved <em>per guest</em> and only the roster earns. A chip says which restrictions exist at this table. It does not claim how many guests have them, or that anyone was asked by name.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>What the engine audits found</h2></div>
+    <p class="note">Five parallel audits — scoring &amp; weighting, the human engine, the money engines, vendor &amp; readiness, and inputs-vs-engine-needs. Every finding was <strong>executed against the running engine</strong>, not read off the source. Ranked by harm to a real host. <strong>Re-measured row by row on the evening of 23 September</strong>: four rows had already been fixed and were still carried as open, one was wrong in its count, one is recorded as true-but-not-worth-acting-on, and <strong>one is still open</strong>.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Sev</th><th>Finding</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>The picker the host taps was the one store nobody read.</strong> Tapping a dietary chip produced output byte-identical to recording nothing, while the board counted the decision settled. See the lane above.</td><td class="n">playbookFoodPlan<br>activeDiets</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>The second allergy erased the first.</strong> Ten independent restrictions describing different guests, one slot. For allergens that is a safety defect, not a preference.</td><td class="n">settleChoicePatch</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>The app claimed a vegetarian nobody mentioned.</strong> Bridal Shower’s <span class="mono">dietary</span> authored <span class="mono">default:&nbsp;'Vegetarian'</span> — the only dietary decision in the corpus to author a default at all. A restriction is a claim about a real guest that only the guests can answer.</td><td class="n">bridalShower</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>“Who does the bride want in the room?” sent the host to the spread.</strong> The route cascade reads a haystack that folds in <span class="mono">blocks</span>, so five guest questions that block food routed to the shopping list. Of six rows landing there, one was about food.</td><td class="n">route cascade</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>A bundle scored exactly 0.000.</strong> Grouping three or more raises dropped every signal the comparator reads, so the entire 260-decision authoring effort arrived at the host’s top screen as zero.</td><td class="n">CommandCenter<br>bundle</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>The Reveal printed $0 over $18,900 of real budget rows</strong> and said “Budget is set and live.” The gate that admits the card reads the rows; the printer read only <span class="mono">totalBudget</span>.</td><td class="n">assembleReveal</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>Six surfaces disagreed on “is the budget set.”</strong> The same sheet stated a budget and asked for one.</td><td class="n">6 readers</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>Closeout reported “All wrapped up” over an unpaid vendor.</strong> A <span class="mono">Deposit&nbsp;Paid</span> status — one pill tap — marked the payments item handled while the balance was outstanding.</td><td class="n">phaseProgress</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>An invented headcount reached a vendor.</strong> A host who types eight words got a stored count of 40 from the playbook’s typical, and the outreach email told a caterer “about 40 guests.”</td><td class="n">guestEstimate</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>A verb decided whether a deadline was sourced.</strong> Of eleven dietary decisions, ten grounded; Crab Feast’s did not, because its label opened with “Ask” instead of “Collect” — on the one decision whose entire menu is the allergen.</td><td class="n">timingProvenance</td></tr>
+          <tr><td><span class="sev s-done">Closed</span></td><td><strong><span class="mono">blocks</span> contributes zero — and stays that way, measured.</strong> A domain-tag vocabulary, not a dependency graph. Data untouched, numbers pinned.</td><td class="n">derivedImportanceOf</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>A vendor labelled “Locked in” was chipped “Silent 25 days”</strong> on the same screen. Six of seven statuses tripped it.</td><td class="n">vendorContact</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>An unverified multiplier rendered under a “Directly sourced” badge.</strong> The classifier now takes the factor that actually moved the line as a third argument, so a sourced badge cannot go on vouching for a base rate after an unverified multiplier changed the number beside it. <em>Re-measured 23 Sep across every cost-factor option:</em> 196 lines are factor-moved, <strong>140 of them by an unverified multiplier, and 0 still read “Directly sourced”</strong> — they read “Sourced base, adjusted”.</td><td class="n">claimBasis</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>The least-grounded number in the product was the one that becomes the budget.</strong> Both halves are closed: 18 money records are registered, and both reach a host. The estimator returns the keys that actually built each figure, so the budget hero renders <span class="mono">“Typical · est.”</span>, and the vendor plan reports its own keys so the list is headed <em>“Planning ranges for this kind of event — not quotes, and not live market rates.”</em> <strong>Nothing is marked grounded that is not</strong> — the registry says so in its own data.</td><td class="n">totalEstimate</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>The fold promised to first-timers never fired for them</strong> — 0 folds in 45 first-timer states at T-45.</td><td class="n">hostAdaptation</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>Nine authored strings asserted the host is alone</strong> after they had told the app twice that they have help.</td><td class="n">recommendedPick</td></tr>
+          <tr><td><span class="sev s-high">Open</span></td><td><strong>The Vendor Detail Cockpit is reachable only from the frozen CRA shell.</strong> Readiness snapshot, 10-stage lifecycle, 9 challenge categories — no hostv2 importer. <strong>The last row on this table still open</strong>, and it is not work waiting on a developer: it waits on the CRA retirement decision, scheduled post-Sprint-2.</td><td class="n">VendorPlanning</td></tr>
+          <tr><td><span class="sev s-done">Corrected</span></td><td><strong>The detector could not fire, and then its population turned out to be false.</strong> Wiring it was right: the board drops the <span class="mono">when</span> it reads, so every call returned null. But all three decisions it then flagged were setting or concealment choices, not bookings — a Day Party “venue” whose options are three places the host already has. <strong>Late conflicts 3 → 0</strong>, by a structural veto, with no authored date moved. The machinery stays, guarded and correct; it has no true case in this corpus today.</td><td class="n">timingConflict</td></tr>
+          <tr><td><span class="sev s-med">Measured</span></td><td><strong>The aging term saturates at 24 days — and the board does not visibly freeze.</strong> True as stated: cap 6, rate 0.25/day. Driven on a real Wedding board, all nine open rows are <strong>163–348 days overdue</strong>, so aging contributes a constant to every one. But the rendered order already tracks age within each tier, so no host-visible ordering is frozen. <strong>Recorded rather than retuned</strong> — changing a ruled scoreboard with no demonstrated defect is tuning, not fixing.</td><td class="n">board scorer</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong>The <span class="mono">*Basis</span> fields survive the persist.</strong> A dedicated writer carries them, and the destination chip reads them — <span class="mono">“· heard”</span>, <span class="mono">“· not your area”</span> — so how strongly the app knows a fact at intake is still on screen one step later.</td><td class="n">creation seam</td></tr>
+          <tr><td><span class="sev s-done">Fixed</span></td><td><strong><span class="mono">market</span> vs <span class="mono">metroMarket</span> has one accessor.</strong> It resolves the host’s pick from either field and reports <em>which</em> one answered, so the two shells can disagree about the field name without the engines disagreeing about the market. The ~13 CRA-only fields remain scoped to the retirement.</td><td class="n">field ledger</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pull">
+      <p><strong>The pattern across all five audits is one defect class:</strong> a fact owned by one accessor, re-derived privately by the surfaces that need it. Counted: the venue verdict had <strong>eight</strong> copies, “is the hour ours” four, the booked/confirmed vocabulary <strong>23</strong> in library code plus ~27 more in the frozen shell, and “is the budget set” six.</p>
+      <p>The encouraging half: where a single accessor <em>was</em> built, adoption is genuinely broad. The fix is not more discipline — it is one accessor per fact, and a ratchet that counts the copies.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>15% of host-facing copy is a functional string</h2></div>
+    <p class="note">Rewriting five dietary labels went fine, and it went fine <strong>by luck</strong>: every new label happened to keep a dietary word, which is what the <span class="mono">id + label</span> haystacks scattered through the engine needed. Nothing in the tree would have said so if one had not. So it is measured now — swap only the label for a neutral string, and diff everything the engine derives.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Class</th><th>Count</th><th>What a host loses</th></tr></thead>
+        <tbody>
+          <tr><td class="n">knowledge-context</td><td class="n">33</td><td>A grounded claim disappears. <em>“Is there a bar for the grown-ups?”</em> grounds <span class="mono">legal</span>; neutral, it does not — on a decision entirely about serving alcohol.</td></tr>
+          <tr><td class="n">timing category</td><td class="n">7</td><td>The deadline stops citing its source. The date still shows; it just no longer says where it came from.</td></tr>
+          <tr><td class="n">route</td><td class="n">6</td><td>The row’s tap target moves. Losing <span class="mono">fp-diet-e</span> sends a host collecting allergies somewhere else.</td></tr>
+          <tr><td class="n">timing conflict</td><td class="n">3</td><td><strong>The label is doing correct work here.</strong> Neutralising “Indoor or outdoor?” does not lose a grounding — it ADDS a wrong one, because the antiPattern reads the label to say these are not booking calls.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note" style="margin-top:16px;"><strong>38 of 260 decisions (15%)</strong> change engine behaviour when only their label changes. The map is pinned, so the next copy edit that silently un-grounds something fails loudly and names what it cost. <strong>The clean result worth keeping clean:</strong> no label decides a decision <em>type</em>, a <em>status</em>, or a <em>weight basis</em> — the three that would make copy edits genuinely unsafe rather than merely lossy. Asserted as its own test so it stays empty.</p>
+    <p class="note">The escape hatch when a label must change is to <strong>declare the fact</strong>: <span class="mono">timingCategory</span> is authored on five decisions, all absent from the map for that reason. The 38 were deliberately <em>not</em> converted — it is a large authoring job, it would throw information away in the antiPattern cases, and the gate makes the coupling visible without it.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>The gate itself got faster</h2></div>
+    <p class="note">Measured before touching anything, by parsing all 1,009 test timings out of a real job log.</p>
+    <div class="ledger">
+52.6 min of test work  ÷  workers: 2  =  27.0 min wall<br>
+parallel efficiency <b>1.95×</b> of 2 workers — the workers are SATURATED<br><br>
+<b>after sharding across two runners</b><br>
+e2e-shard (1)   12m 33s<br>
+e2e-shard (2)   14m 50s<br>
+e2e (merge)        26s<br>
+whole workflow  <b>16m 37s</b>   <span class="g">(was 29m 20s)</span>
+    </div>
+    <p class="note" style="margin-top:16px;">That efficiency number is what ruled out the cheap fixes rather than a guess. <span class="mono">fullyParallel</span> is unset so tests inside one file run serially — but with no idle worker slots there is nothing to reclaim. The sleeps total only ~3–4 min across the whole matrix; the expectation was higher and it was wrong. <strong>And the job was 3 minutes from its own timeout</strong> — 27.0 against <span class="mono">timeout-minutes: 30</span>, a 10% margin on a repo that auto-deploys from main.</p>
+    <p class="note"><strong><span class="mono">workers: 2</span> is unchanged.</strong> Three workers on the 4-vCPU runner would have been free, and would have reversed a deliberate fix: two runs at the same SHA once produced <em>disjoint</em> failure sets. Each shard runs two workers on its own machine, so the flake posture is untouched. That is the whole appeal.</p>
+    <div class="pull correct">
+      <p><strong>The fix’s own first run caught the next defect.</strong> Sharding worked; the merge job printed <em>no total</em> — its output stopped at test 611 of 1,216 with no summary line. <span class="mono">--reporter=list</span> streams for a terminal and loses its output when stdout is a pipe. And measured separately: <span class="mono">playwright test</span> on a failing spec exits 1, while <span class="mono">merge-reports</span> on that same blob exits <strong>0</strong>. A merge step can never be the verdict — it paints a red matrix green.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>The four board calls, decided</h2></div>
+    <p class="note">Everything with a mechanical answer had shipped; these four needed a ruling, a pricing judgement or an authoring decision. All four were taken on 23 September under the owner’s standing delegation. <strong>Two of them reversed work published hours earlier the same day</strong>, which is recorded here rather than smoothed over.</p>
+
+    <div class="pull">
+      <p><strong>#1 — RANK THE CLOSING WINDOW. The 2026-08-17 bar is met.</strong> Its own re-derived case had not inverted for five weeks: a certificate 27 days dead scored <span class="mono">4.90</span>, and a vendor reconfirm whose window shuts in three days scored <span class="mono">0.00</span>, because that raise emitted no consequence signal at all and <span class="mono">latenessBoost</span> pays only for being PAST a window.</p>
+      <p><strong>The packet’s objection was right, and is answered rather than overruled.</strong> It warned that the obvious predicate is a DATE window, not a closing-window predicate — it “does not know the difference between ‘this cannot be done later’ and ‘this happens to be due soon’” — and proved it by turning its own negative control red. So the term is paid on a <strong>DECLARED</strong> closing window. A raise knows whether its window reopens; a scorer cannot see that from two dates.</p>
+      <div class="ledger" style="margin-top:12px;">
+Reconfirm Ironwood            0.00 -&gt; <b>5.50</b>   declares the window<br>
+Ask Ironwood about insurance  4.90 -&gt; 4.90   untouched<br>
+Buy day-of emergency kit      0.00 -&gt; <b>0.00</b>   due TODAY, declares nothing<br>
+synthetic scheduled gate      4.00 -&gt; <b>4.00</b>   declares nothing
+      </div>
+      <p style="margin-top:12px;">The last two rows <em>are</em> the objection, answered by measurement. Sized at <strong>3.5, below the lateness floor of 4</strong>, so a genuinely late item still leads a bare closing window. No lateness constant moved; all four ruled guards pass unchanged. The recorder written to fail the moment anyone implemented this <em>did</em> — which is how it was forced through the packet rather than past it.</p>
+    </div>
+
+    <div class="pull">
+      <p><strong>#3 — REFUSE OR FLOOR: NEITHER.</strong> <span class="mono">belowRequiredVendors</span> had sat on the estimate result since 19 September with no reader, so a host reached a one-tap <strong>“Use $300”</strong> on a Surprise Proposal whose own roster requires a photographer and a ring — a <strong>$1,750 floor</strong>.</p>
+      <p>Refusing the headline costs them the one number they came for. Flooring it builds their primary figure out of <strong>224 vendor ranges carrying zero provenance</strong>. So they get both, and are told which is which — the floor only ever as “start around”, because a range’s bottom is the only honest reading of a band with no sources. <strong>The headline is not moved</strong>, and a test asserts that, since quietly flooring it is the failure this call turned on.</p>
+      <p><strong>Where it fires, measured:</strong> 315 type-and-guest-count combinations swept, <strong>15 fire, and every one is a small headcount</strong> — a 10-person wedding, a 20-person conference, a 2-person proposal. Per-head scales with guests and a vendor floor does not, so the gap lives at the bottom of the range and closes as the event grows.</p>
+    </div>
+
+    <div class="pull correct">
+      <p><strong>#5 — THE THREE LATE DEADLINES WERE FALSE, AND THE WARNING FOR THEM HAD ALREADY SHIPPED.</strong> <span class="mono">timingDisagreementNote</span> reached the decision card that afternoon. The first thing it did on a real board was tell a Day Party host that “Where (daytime outdoor)” was four weeks out against a two-month booking floor.</p>
+      <p><strong>Its options are Backyard / Rooftop / Patio / Rented outdoor space. Three of four require no booking at all.</strong> Reading the three flagged decisions instead of counting them, all three were the same mistake — including Surprise Proposal’s “Photographer hidden or known to your partner?”, which decides what the photographer <em>pretends to be</em>, not whether to hire one.</p>
+      <p>That is the exact failure <span class="mono">timingProvenance.js</span>’s own header warns about, committed by that file: the lead-window gate caught the GROUNDING case and let the CONTRADICTION case through, because a contradiction is what you get when the window rejects a match the pattern should never have made. Four days as a finding on this page, and a few hours in front of hosts.</p>
+      <p><strong>The veto is structural, not a word:</strong> a decision offering somewhere the host already has is a setting choice — <em>unless its label says it is a booking</em>, which is how Wedding’s “Venue + date (book FIRST)” keeps its grounding. That exemption came from listing what the first version actually removed instead of trusting it. Matched 33 → 28, grounded 28 → 26, <strong>late conflicts 3 → 0</strong>. No authored date moved in either direction.</p>
+    </div>
+
+    <div class="pull correct">
+      <p><strong>#4 — TWO DATE PREMIUMS RUNNING 3–16× THE ONLY PUBLISHED MEASUREMENT.</strong> A 100-guest wedding on a June Saturday estimated <strong>35% above</strong> the same wedding on a January Wednesday. Two factors produced all of it, and this repo had already measured both.</p>
+      <p><strong>Saturday’s +20% is now a flag with no multiplier.</strong> The survey measuring whole-event spend — the matching unit — puts Saturday <strong>1.2%</strong> over Sunday, and Saturday is not even the dearest day in it. The rate card that says 63% prices one venue’s rental in one market. Picking something between 1.2% and 63% would have been a third figure no source states, which is what the old one already was. It also stops charging a <strong>Conference</strong> a weekend premium on what is, for it, the cheap day.</p>
+      <p><strong>Peak season 15% → 7%</strong>, the top of three independent cuts of one survey (4.9%, 6.3%, 6.6%) — taken at the top, not the middle, because the survey measures spend by <em>chosen</em> month and is therefore a floor on the true effect rather than a measurement of it.</p>
+      <div class="ledger" style="margin-top:12px;">
+100-guest June Saturday wedding   35.0% -&gt; <b>7.0%</b><br>
+high estimate                   $67,500 -&gt; <b>$53,500</b><br>
+150 guests, evening, 1.65 metro  $73,500-183,800 -&gt; <b>$58,300-145,700</b>
+      </div>
+      <p style="margin-top:12px;"><strong>Two consequences recorded rather than hidden.</strong> The 45% date-premium cap <em>can no longer bite</em> — the largest stack is now 0.37 — so it is no longer cited, because <span class="mono">provenanceKeys</span> promises only the factors that MOVED a figure. And <strong>the flag has no reader</strong>: <span class="mono">getDatePremium</span>’s components reach no host surface, so this removed a wrong number and added no sentence. A first draft of the code comment claimed the host still reads it; that was corrected before commit.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>Guards that now hold the line</h2></div>
+    <p class="note">Each exists because something green shipped a defect. All red-proofed — a guard that cannot fail is not a guard.</p>
+    <div class="guards">
+      <div class="guard"><b>theChipsReachTheSpread</b><span>A restriction flags the spread whichever of the three doors it came through — and chips claim no count they cannot know, and never that the question is resolved.</span></div>
+      <div class="guard"><b>dietaryHoldsTwo (e2e)</b><span>A table with a vegetarian AND a nut allergy can say both, at 390px, in a real browser. Reverting the fold guard fails 3 of its 5.</span></div>
+      <div class="guard"><b>whichLabelsAreLoadBearing</b><span>The 38 decisions whose copy is functional, pinned with what each would cost. No label may decide a type, a status, or a weight basis.</span></div>
+      <div class="guard"><b>noRestrictionIsAssumed</b><span>No dietary decision authors a default. A plan setting still proposes one — Repast’s fellowship hall, with its reason.</span></div>
+      <div class="guard"><b>everyShardRuns</b><span>The shard list and the denominator must agree. Bump one and a third of the suite runs nowhere, every job green.</span></div>
+      <div class="guard"><b>blocksIsNotADestination</b><span>Exactly one decision still routes to the food plan, and it is about food.</span></div>
+      <div class="guard"><b>bundleCarriesConsequence</b><span>A bundle is never weaker than its own strongest child, and the top two are never tied.</span></div>
+      <div class="guard"><b>budgetFor</b><span>One accessor, two named questions — “is there a number to plan on” and “did the host give an overall figure”.</span></div>
+      <div class="guard"><b>venueSourceProof · PART D</b><span>No surface may re-derive “is the venue set?”. Scans the whole tree, not a hand-listed set.</span></div>
+      <div class="guard"><b>dietVocabularyResolves</b><span>Every diet string a host can pick resolves, or is declared unmappable. The playbook chip lists joined it as the sixth vocabulary.</span></div>
+      <div class="guard"><b>textGateRatchet</b><span>Text gates on the shell cannot grow silently. It refused a new gate this session and was right to.</span></div>
+      <div class="guard"><b>verify:push</b><span>Runs <span class="mono">npm run release</span> — the deploy’s own toolchain. Two deploys died while every suite was green.</span></div>
+      <div class="guard"><b>engineReachesTheShippingShell</b><span>Added since. Does this engine reach the app people actually use? A symbol-level call graph, not a grep — it corrected its author twice.</span></div>
+      <div class="guard"><b>everyBackendRouteHasACaller</b><span>Added since. 77 routes: each is called, named as called from outside, or named as unwired. It found a 231-line router nothing had ever called, and its unwired list is now empty.</span></div>
+      <div class="guard"><b>releaseProfiles</b><span>Added since. Which product a deploy publishes. The one that matters: a backend-connected build <em>cannot</em> acquire sign-in.</span></div>
+      <div class="guard"><b>theUnitMap · threeLayersOfPrice</b><span>Added since. A shelf price becomes a line total only where the units reconcile — 60 of 491 lines — and says which of three layers priced every other one.</span></div>
+      <div class="guard"><b>perUnitText</b><span>23 Sep. A per-unit rate keeps its cents. Sweeps the whole 440-line corpus asserting no line renders a $0 bound, with a premise test proving the old formatter really did lose them.</span></div>
+      <div class="guard"><b>whatItActuallyPriced (e2e)</b><span>23 Sep. Line, price and size held identical across four runs, changing only the product: a believable match prices and names it, a wax melt prices nothing, and the shoe insert no blocklist can catch prices with its name visible.</span></div>
+      <div class="guard"><b>ourDateArguesWithItsSource (e2e)</b><span>23 Sep. Our deadline against its own source, on the card — with the negative control that a decision inside the window says nothing.</span></div>
+      <div class="guard"><b>theRingsHadNoTask</b><span>23 Sep. The order act has a date and a researched lead — and the two rows that were <em>already</em> covered are asserted covered, which is the test that stopped a duplicate mechanism being built.</span></div>
+      <div class="guard"><b>theRulingsOwnBarIsUnmet</b><span>23 Sep. Written to record a failure and to FAIL the moment anyone fixed it, so the fixer is forced through the packet. It fired. It now records the decision and keeps every negative control it had.</span></div>
+      <div class="guard"><b>theClosingWindowLeads (e2e)</b><span>23 Sep. The ruling’s own case in reading order on a real screen — and an ordinary day-of chore, due TODAY, that was not lifted with it.</span></div>
+      <div class="guard"><b>theEstimateDoesNotCoverThePlan</b><span>23 Sep. Asserts the headline is NOT moved, which is the distinction “refuse or floor” turned on, plus the shape of the population: every case is a small headcount.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>Since the sixth publication — twelve commits, one defect class</h2></div>
+    <p>Every one is the same shape: <strong>a fact that one accessor owns, unqualified by the consumer next to it.</strong></p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Commit</th><th>The finding, measured</th><th>Moved</th></tr></thead>
+      <tbody>
+        <tr><td class="sha">61f13e0</td><td>36 of 51 cost factors are <span class="mono">synthesized</span>, yet one row showed an identical “Directly sourced” badge across ×0.2, ×1.0 and ×1.4</td><td>label scope</td></tr>
+        <tr><td class="sha">a5c523b</td><td>One metro market under two field names — three engines never heard the host’s choice, and the vendor plan priced at the national factor</td><td>an accessor</td></tr>
+        <tr><td class="sha">5c78a78</td><td><strong>224</strong> vendor cost ranges, <strong>0</strong> with provenance — under a registry comment claiming they carried their own</td><td>a record</td></tr>
+        <tr><td class="sha">f4bb60b</td><td><span class="mono">“cookout at 5”</span> reached the caterer as a <em>confirmed</em> 5:00 PM; the parser had graded it the weakest thing it knows</td><td>a grade</td></tr>
+        <tr><td class="sha">7bfa0fd</td><td>Two ladders, one event, opposite answers about whether “when” was handled</td><td>a ledger</td></tr>
+        <tr><td class="sha">6a0fd04</td><td><strong>Nine cards</strong> told the host to act on a day their own note calls too late — <span class="mono">“Buy cake today”</span> over <span class="mono">“Order 3–5 days ahead”</span></td><td>9 leads</td></tr>
+        <tr><td class="sha">24ab49f</td><td>“Honestly backed by the raw data below” — backed by a table supporting five different answers, for a population the factor never reaches</td><td><strong>nothing</strong></td></tr>
+        <tr><td class="sha">edc5130</td><td>Twelve decisions asked a question too terse to answer against their own options</td><td>12 asks</td></tr>
+        <tr><td class="sha">0611fae</td><td>The 2026-08-17 ranking ruling’s own bar is unmet — and <em>provably</em> unreachable by retuning</td><td><strong>nothing</strong></td></tr>
+        <tr><td class="sha">0ff388c</td><td>Eight playbooks price <em>food alone</em> above the whole event it is part of</td><td><strong>nothing</strong></td></tr>
+        <tr><td class="sha">bf2c1ec</td><td>The test and update loops were never timed; full jest is <strong>18×</strong> a targeted run</td><td>a script</td></tr>
+        <tr><td class="sha">3b9e87b</td><td>Surprise Proposal’s own roster requires a photographer and a ring — <strong>$1,750 floor</strong> — under a budget estimate of <strong>$100–300</strong></td><td><strong>nothing</strong></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="note">Four of those moved no number on purpose. In each case the finding was real and the remedy was a pricing or board decision — so the commit records the measurement, names the rows, and fails the day someone changes them quietly.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>The one that could not be fixed by choosing a better number</h2></div>
+    <div class="pull">
+      <p>The ranking board ruled in August that a vendor reconfirm closing in three days must outrank a certificate 29 days dead. <strong>It still does not.</strong> Its own re-derived case, on the shipping board:</p>
+      <p class="mono" style="margin:10px 0;">Ask Ironwood about insurance &nbsp;→&nbsp; 4.90 &nbsp;(due −27)<br>Reconfirm Ironwood for the day &nbsp;→&nbsp; 0.00 &nbsp;(due +3)</p>
+      <p>The ruling’s arithmetic assumed that reconfirm scored <strong>7.0</strong>. The shipping raise emits no consequence signal at all, so it scores <strong>zero on both axes</strong> — the fix was calibrated against a row the corpus does not produce.</p>
+      <p><strong>And every route to it breaks the same four guards</strong> — each of which is the ruling’s <em>other</em> direction, including one literally named “both directions, or it is half a fix.” So the two halves cannot coexist under the current model. It needs the term the ruling’s own bench named and nobody built: <span class="mono">latenessBoost</span> pays for being <em>past</em> a window; nothing pays for one <em>closing</em>.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>What is left — nothing, and what each call cost to close</h2></div>
+    <p class="note"><strong>All six are closed.</strong> They are struck rather than deleted, so the reasoning that filed each one stays readable beside what it became. Two of them (#4 and #5) reversed a number or a warning that this page had published, which is the part worth keeping visible.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>#</th><th>The call</th><th>What is measured</th><th>Why not ours</th></tr></thead>
+        <tbody>
+          <tr><td class="n">1</td><td><s><strong>The closing-window axis</strong></s> &nbsp;<span class="sev s-done">Closed 23 Sep</span></td><td>Three shapes, each costed in ruled guards. Option A breaks none and does not meet the bar; every option that meets it breaks the same four.</td><td><strong>Option 2, with the packet’s own objection fixed rather than overridden.</strong> The term is paid on a DECLARED closing window, so the date-window false positive it warned about never arises. Reconfirm 0.00 → 5.50; no lateness constant moved. <span class="mono">cd4e09d</span>.</td></tr>
+          <tr><td class="n">2</td><td><s><strong>Eight per-head bands</strong></s> &nbsp;<span class="sev s-done">Closed 23 Sep</span></td><td>Card Party $14–30/head against a food list itemizing $26–56/guest. Seven more, down to 1.04x.</td><td><strong>Host ruling: raise them.</strong> Resolved without inventing anything — each band’s high took that playbook’s own food <span class="mono">perGuestHigh</span>, the better-grounded of two figures already in the file. <span class="mono">9b31ab7</span>.</td></tr>
+          <tr><td class="n">3</td><td><s><strong>Refuse or floor</strong></s> &nbsp;<span class="sev s-done">Closed 23 Sep</span></td><td>Surprise Proposal $1,750 required floor against a $100–300 estimate. Reported as <span class="mono">belowRequiredVendors</span> since 19 Sep, with no reader.</td><td><strong>Neither.</strong> Refusing costs the host their number; flooring launders 224 unsourced vendor ranges into the headline. They get both, the floor only as “start around”, and the headline is untouched. <span class="mono">944ffff</span>.</td></tr>
+          <tr><td class="n">4</td><td><s><strong>Six money divergences</strong></s> &nbsp;<span class="sev s-done">Closed 23 Sep</span></td><td>Saturday +20% against a survey’s +1.2%; peak season +15% against three cuts landing 4.9–6.6%.</td><td><strong>Both moved.</strong> Saturday became a flag with no multiplier — no source speaks to the base it multiplied. Peak season 15% → 7%, the top of the measured range because that range is a floor. A June Saturday wedding: 35.0% → 7.0%. <span class="mono">2845d38</span>.</td></tr>
+          <tr><td class="n">5</td><td><s><strong>Three deadlines</strong></s> &nbsp;<span class="sev s-done">Closed 23 Sep</span></td><td>Each sat outside a matched source’s window. <strong>And each was an over-match</strong> — two setting choices and one concealment choice, none of them a booking.</td><td><strong>Neither moving nor disclosing: the conflicts were not real.</strong> Found by reading the three decisions after the warning had already reached hosts. A structural veto took them to zero without moving a date. <span class="mono">4b23c07</span>.</td></tr>
+          <tr><td class="n">6</td><td><s><strong>Three split-act purchase rows</strong></s> &nbsp;<span class="sev s-done">Closed 23 Sep</span></td><td><strong>The premise did not survive the sweep.</strong> Eight rows name a second act, not three: five already put <span class="mono">buyAt</span> at the stated lead; <strong>two are already covered</strong> by checklist tasks at exactly those leads; one was genuinely uncovered; one is conditional with no number. The claim that “no task covers the order act” was <em>false for two of the three named</em>.</td><td><strong>Closed by building the one real gap and reverting the rest.</strong> Elopement’s rings got a task at T-56d on a researched 6–8 week lead. Wedding’s favors stay unauthored — “if custom” is conditional, non-essential, and has no researched number, and an invented date would look exactly like a real one. <span class="mono">c5578cd</span>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pull">
+      <p><strong>The line between these and the nine deadlines that DID move</strong> is worth stating, because it is the same line every time. The cake rows moved because the playbook’s own prose stated the correct lead — the file convicted itself, and the fix was transcription. Where a playbook contradicts itself in its own words, it is a defect; where it merely disagrees with an outside party, or with a number nobody authored, it is a decision.</p>
+      <p><strong>#6 adds a third case, and it is the one to watch for.</strong> It read as a defect and was neither: two of its three named rows were <em>already</em> covered, at exactly the right dates, by tasks the playbooks already author. A whole mechanism was built for that gap before the sweep was run, and reverted after. <em>Measure the gap before building the mechanism</em> — the sweep that would have saved it took ten minutes.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><h2>Lessons worth keeping</h2></div>
+    <div class="pull">
+      <p><strong>The right detector on the wrong population is still a wrong answer — this happened five times in two days.</strong> A region probe on a playbook with no region items. A ladder probe reading the structure the ranker does not use. A containment probe testing the wrong inequality, returning a confident <em>zero violations</em> over eight real ones. A discriminator nearly wired on a premise wrong for 14 of 45 playbooks. And <span class="mono">isCircularAsk</span> run over the deliberate label-as-question path, flagging 138 rows that were fine. Every one produced a number that looked like evidence.</p>
+      <p><strong>So a throwaway probe needs the same premise test as a shipped guard.</strong> Before believing a negative, make the probe report a case already known to be positive. A probe that cannot find the known defect has not measured the corpus — it has measured itself. That is now written beside the timings, because it cost more than every slow command combined.</p>
+      <p><strong>A guard that cannot fail is worse than none</strong>, and two were caught here. An e2e guard written for the ladder fix passed with the fix reverted — it was reading a count the shell does not use, so it was deleted and the commit says why. A flat three-day tolerance in the deadline sweep swallowed the very Birthday cake it was written for; rounding error scales with the quantity, so the slack had to be proportional.</p>
+      <p><strong>Recording is a result.</strong> Three findings here were real and none was ours to fix — a board-ruled scoreboard, eight authored price bands, a per-head model on flat-cost events. A commit whose first line is “NO NUMBER MOVED”, with the measurement behind it and a test that fails the day someone changes it quietly, converts an open question into one decision.</p>
+      <p><strong>A green suite covered a surface that had not moved — three times in one day.</strong> The dietary fold that closed over its own answer, the chip store that reached no reader, the allergen marker sitting fourth in a list that renders two. Every one was found by driving the built app in Chromium. None was found by a test.</p>
+      <p><strong>A test that pins a behaviour by list position is pinning the ranking too</strong> — whether or not it means to. Four did, and all four passed for months over a boundary where the board’s entire score was zero.</p>
+      <p><strong>A gate that fires on the wrong line is nearly as bad as one that does not fire.</strong> The first version of the label-coupling guard failed three tests when one label was reworded, and only one of them was the news. It now fails exactly one — the map — pointing straight at the finding.</p>
+      <p><strong>A detector is not a fix until something can call it.</strong> <span class="mono">timingConflict</span> was correct, tested and unreachable for five days, because the layer between it and its caller had already dropped the field it reads. The premise test that asserts the field is <em>absent</em> on every board row is the one that names it — and it is the test the original work should have written first.</p>
+      <p><strong>Measure the gap before building the mechanism.</strong> A correct, tested, money-safe feature was built for a gap that two authored tasks already filled, and reverted the same session. It also fed an engine reader with no consumer on the shell people use. <em>Building on a surface the host does not read is the same defect as not building at all.</em></p>
+      <p><strong>Re-measure a carried-forward finding before asserting it.</strong> Four of seven open audit rows were already fixed, and one was wrong in its count. This page asserted all seven for four days. A stale finding restated as current is its own kind of invented data — and the page that exists to catch that class committed it.</p>
+      <p><strong>Sweep a new pattern over the whole corpus before trusting it.</strong> One new timing category produced a real grounding gain <em>and</em> a false contradiction on a ceremony decision, and neither was visible from reading the regex. <strong>Saturation is not automatically a defect either</strong> — the aging cap is real, the board does not visibly freeze, and recording that was the result.</p>
+      <p><strong>Declare, don’t infer.</strong> The closing-window axis was refused as a date predicate and shipped as a declared one, because a raise knows whether its window reopens and the scorer cannot see that from two dates. The date version’s only evidence that it was wrong was a negative control going red — the same principle the whole programme has been applying, now paid for by the scorer rather than re-derived beside it.</p>
+      <p><strong>A behaviour lock going red is the system working.</strong> <span class="mono">theRulingsOwnBarIsUnmet</span> was written in September to fail the moment anyone implemented the missing axis, “so whoever adds it is forced through the packet rather than past it.” It did exactly that. The file now records the decision and keeps every negative control it had, because those are what prove the fix did not buy one direction by selling the other.</p>
+      <p><strong>When both options are wrong, publish both numbers.</strong> The estimate-shortfall call put refusing the headline against raising it to the vendor floor. Refusing costs the host the one number they came for; flooring launders 224 unsourced vendor ranges into the most load-bearing figure on the screen. The host gets both and is told which is which — strictly more information than either option, and the answer this codebase reaches everywhere else.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Measured, not recalled — every figure on this page came from a command run against the working tree, from a live API probe, or from a named CI run. Suite <span class="mono">524 / 7,470</span> and backend <span class="mono">360</span> as re-measured at the close of 23 September, <span class="mono">verify:push</span> green on all five steps. The earlier 23 September figures it replaces were <span class="mono">523 / 7,451</span> and, before that, <span class="mono">521 / 7,409</span>; the 19 September ones were <span class="mono">488 / 7,070</span>. The store-match returns quoted above are real responses from one Baltimore store on one afternoon. Where a number here corrects an earlier publication, the earlier one is left visible above rather than quietly replaced.</p>
+    <p style="margin-top:10px;">Companion page — <a href="https://claude.ai/artifact/Y4ArfQB1ztTevLUz8TXWCC">How The Plan Gets Made</a>, four diagrams of the mechanisms these findings live in.</p>
+    <p style="margin-top:10px;">Published at commit <span class="mono">3b9e87b</span>; this pass at <span class="mono">adfe7e9</span>, 75 commits later. <strong>No open calls remain.</strong> #2 closed by host ruling and #6 by measurement; #1, #3, #4 and #5 were decided and shipped on 23 September — all six struck above rather than deleted, with the cost of each decision left visible. Of the audit table’s seven open rows, <strong>six are closed and one remains</strong>: the Vendor Detail Cockpit, which waits on the CRA retirement rather than on work. The closing-window packet and its ruling live in <span class="mono">docs/audits/</span>, and every call is pinned by a test that fails the day someone changes it quietly.</p>
+  </footer>
+</div>

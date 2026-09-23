@@ -4843,20 +4843,36 @@ equal the newest gate record's date, or it is stale by definition.
 
 | Page | URL | Source |
 |---|---|---|
-| Decision Layer Remediation | https://claude.ai/artifact/YCYiVBhiqXfybotWygeojv | **not in the repo** — session scratchpad only |
-| How The Plan Gets Made | https://claude.ai/artifact/Y4ArfQB1ztTevLUz8TXWCC | **not in the repo** — session scratchpad only |
+| Decision Layer Remediation | https://claude.ai/artifact/YCYiVBhiqXfybotWygeojv | `docs/artifact/decision-layer-remediation.html` |
+| How The Plan Gets Made | https://claude.ai/artifact/Y4ArfQB1ztTevLUz8TXWCC | `docs/artifact/how-the-plan-gets-made.html` |
 
 The Decision Layer page is the outward record of the September programme: every
 audit finding, what shipped for it, and what each board call cost to close. **At
 v12 (2026-09-23) it shows all six calls closed** and carries the measured figures
-(524 / 7,470, backend 360, 75 commits since `3b9e87b`).
+(524 / 7,470, backend 360, 75 commits since `3b9e87b`). How The Plan Gets Made is
+its companion — four SVG diagrams of the mechanisms those findings live in,
+measured 2026-09-18 and not re-measured since; its own figures are dated on the
+page.
 
-**The trap:** neither page's HTML is committed. The source lives in the session
-scratchpad, which is reclaimed when the container is. Republishing either one
-from a later session means passing its URL to the Artifact tool and editing the
-version it returns — publishing without the URL creates a SEPARATE artifact and
-the link above goes stale silently. Committing the source is the real fix and is
-not done.
+**Both sources were committed 2026-09-23, and each was verified byte-identical to
+its live page before it was** — read back from the artifact service and diffed
+between `<title>` and the final `</div>`, which is the span the publish skeleton
+does not touch. They had lived only in a session scratchpad, which is reclaimed
+with the container: twelve publications with nothing in the repo to republish
+from.
+
+**Republishing rule, which the files do not remove:** pass the URL above to the
+Artifact tool, read that version first, and build the change on what comes back.
+Publishing without the URL creates a SEPARATE artifact and the link here goes
+stale silently. The committed file is the source of truth for CONTENT; the URL is
+the source of truth for IDENTITY, and only one of the two can be recovered from
+this repo.
+
+**These files are not built, linted, or gated** — nothing in `scripts/`,
+`package.json` or `.github/workflows/` reads `docs/artifact/`, verified before
+committing. They are a record, not a deployed surface, so a stale one fails
+nothing and says nothing. Re-verify a page against its URL before trusting the
+copy here.
 
 ## What shipped 2026-08-29
 

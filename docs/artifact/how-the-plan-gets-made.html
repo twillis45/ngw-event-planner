@@ -1,0 +1,427 @@
+<title>How The Plan Gets Made</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ground:#F2F1EE; --panel:#FBFAF8; --sunk:#E7E5E0;
+    --ink:#191C21; --ink-soft:#5A616B; --ink-faint:#8B929B;
+    --line:#D8D5CE; --line-soft:#E8E5DF;
+    --signal:#1F6F63; --signal-tint:#DFEAE7;
+    --break:#A33A2E; --break-tint:#F4E3E0;
+    --hold:#8A6A16; --hold-tint:#F3E9D4;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#15181C; --panel:#1C2026; --sunk:#232830;
+      --ink:#E9E7E2; --ink-soft:#A3AAB4; --ink-faint:#737A84;
+      --line:#2F353D; --line-soft:#262C33;
+      --signal:#6FC0B1; --signal-tint:#16302C;
+      --break:#DE8C80; --break-tint:#33201D;
+      --hold:#D2A855; --hold-tint:#2E2515;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#15181C; --panel:#1C2026; --sunk:#232830;
+    --ink:#E9E7E2; --ink-soft:#A3AAB4; --ink-faint:#737A84;
+    --line:#2F353D; --line-soft:#262C33;
+    --signal:#6FC0B1; --signal-tint:#16302C;
+    --break:#DE8C80; --break-tint:#33201D;
+    --hold:#D2A855; --hold-tint:#2E2515;
+    color-scheme:dark;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size:15.5px; line-height:1.6; padding-inline:18px;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding-block:40px 80px; display:flex; flex-direction:column; gap:0;}
+  h1,h2,h3{font-family:"IBM Plex Serif", Georgia, serif; margin:0; text-wrap:balance;}
+  h1{font-size:clamp(30px,5vw,44px); font-weight:600; letter-spacing:-.02em; line-height:1.08;}
+  h2{font-size:22px; font-weight:600; letter-spacing:-.01em;}
+  h3{font-size:16px; font-weight:600;}
+  p{margin:0;}
+  .mono{font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums;}
+  code{font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:.88em; background:var(--sunk); padding:1px 5px; border-radius:2px;}
+
+  header{border-bottom:1px solid var(--line); padding-bottom:30px; display:flex; flex-direction:column; gap:14px;}
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--signal);}
+  .lede{color:var(--ink-soft); font-size:17px; max-width:64ch;}
+  .facts{display:flex; flex-wrap:wrap; gap:0; border:1px solid var(--line); border-radius:2px; background:var(--panel); margin-top:8px;}
+  .fact{flex:1 1 128px; padding:12px 16px; border-right:1px solid var(--line-soft);}
+  .fact:last-child{border-right:none;}
+  .fact b{display:block; font-family:"IBM Plex Mono",monospace; font-size:20px; font-weight:500; letter-spacing:-.02em;}
+  .fact span{display:block; font-size:11.5px; color:var(--ink-faint); letter-spacing:.06em; text-transform:uppercase; margin-top:2px;}
+
+  section{margin-top:56px; display:flex; flex-direction:column; gap:16px;}
+  .sechead{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
+  .secno{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:500; color:var(--signal); letter-spacing:.08em;}
+  .note{color:var(--ink-soft); max-width:66ch;}
+  .note + .note{margin-top:-4px;}
+
+  figure{margin:0; background:var(--panel); border:1px solid var(--line); border-radius:2px; padding:22px 18px 16px; overflow-x:auto;}
+  figure svg{display:block; width:100%; max-width:100%; height:auto; min-width:560px; color:var(--ink);}
+  figcaption{margin-top:16px; padding-top:12px; border-top:1px solid var(--line-soft); font-size:13.5px; color:var(--ink-soft); min-width:560px;}
+  figcaption strong{color:var(--ink); font-weight:600;}
+
+  .scroll{overflow-x:auto; border:1px solid var(--line); border-radius:2px; background:var(--panel);}
+  table{width:100%; border-collapse:collapse; font-size:14px;}
+  th,td{text-align:left; padding:9px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top;}
+  th{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); font-weight:500; white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  td.n{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .bad{color:var(--break); font-weight:600;}
+  .good{color:var(--signal); font-weight:600;}
+
+  .callout{border-left:2px solid var(--signal); background:var(--panel); padding:16px 18px; display:flex; flex-direction:column; gap:10px;}
+  .callout.warn{border-left-color:var(--break);}
+  .callout p{color:var(--ink-soft); font-size:14.5px;}
+  .callout strong{color:var(--ink);}
+
+  .pairs{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px;}
+  .pair{background:var(--panel); border:1px solid var(--line); border-radius:2px; padding:13px 15px;}
+  .pair b{display:block; font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:500; color:var(--signal); word-break:break-word;}
+  .pair span{display:block; font-size:13px; color:var(--ink-soft); margin-top:5px;}
+  .pair em{font-style:normal; font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-faint); display:block; margin-top:6px;}
+
+  footer{margin-top:64px; padding-top:22px; border-top:1px solid var(--line); color:var(--ink-faint); font-size:13px; display:flex; flex-direction:column; gap:9px;}
+  @media (max-width:560px){
+    .fact{flex:1 1 100%; border-right:none; border-bottom:1px solid var(--line-soft);}
+    .fact:last-child{border-bottom:none;}
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">NGW Event Planner · engine schematic · 18 Sept 2026</p>
+    <h1>How The Plan Gets Made</h1>
+    <p class="lede">Four mechanisms, drawn from the running code rather than the docs: how one fact travels from a typed sentence to a vendor's inbox, how four producers argue over what to do first, what a private copy of a fact actually costs, and which half of the intelligence a host can reach.</p>
+    <div class="facts">
+      <div class="fact"><b>172</b><span>top-level engine modules</span></div>
+      <div class="fact"><b>139</b><span>imported by the host shell</span></div>
+      <div class="fact"><b>45</b><span>playbooks</span></div>
+      <div class="fact"><b>260</b><span>authored decisions</span></div>
+      <div class="fact"><b>4</b><span>producers of "do this first"</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sechead"><span class="secno">01</span><h2>One fact, end to end</h2></div>
+    <p class="note">The app's hardest problem is not computing things. It is keeping track of <em>who said</em> each thing — because the same field holds a number the host typed and a number the app invented, and only one of them may be repeated to a caterer.</p>
+
+    <figure>
+      <svg viewBox="0 0 900 340" role="img" aria-label="A headcount travels from a typed sentence through the parser and the creation seam into storage, then out to engines and surfaces; the parser's confidence tier is dropped at storage, and an outward gate is the only thing standing between an app-invented number and a vendor.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+          </marker>
+          <marker id="arS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#1F6F63"/>
+          </marker>
+          <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#A33A2E"/>
+          </marker>
+        </defs>
+
+        <!-- row 1: the path in -->
+        <rect x="8" y="30" width="150" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="83" y="52" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">What they typed</text>
+        <text x="83" y="69" text-anchor="middle" font-size="11" fill="currentColor" opacity=".7">“Cookout on June 12”</text>
+
+        <line x1="160" y1="56" x2="212" y2="56" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)"/>
+        <text x="186" y="47" text-anchor="middle" font-size="10" fill="currentColor" opacity=".65">parse</text>
+
+        <rect x="214" y="30" width="150" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="289" y="52" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">Parser</text>
+        <text x="289" y="69" text-anchor="middle" font-size="11" fill="currentColor" opacity=".7">25 fields + a tier</text>
+
+        <line x1="366" y1="56" x2="418" y2="56" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)"/>
+        <text x="392" y="47" text-anchor="middle" font-size="10" fill="currentColor" opacity=".65">seam</text>
+
+        <rect x="420" y="30" width="176" height="52" rx="2" fill="none" stroke="#1F6F63" stroke-width="1.4"/>
+        <text x="508" y="52" text-anchor="middle" font-size="12.5" fill="#1F6F63" font-weight="600">Creation seam</text>
+        <text x="508" y="69" text-anchor="middle" font-size="11" fill="#1F6F63" opacity=".85">heard it, or substitute?</text>
+
+        <line x1="598" y1="56" x2="650" y2="56" stroke="#1F6F63" stroke-width="1.4" marker-end="url(#arS)"/>
+
+        <rect x="652" y="30" width="240" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="772" y="50" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">The stored event</text>
+        <text x="772" y="68" text-anchor="middle" font-size="10.5" fill="#1F6F63" font-family="IBM Plex Mono, monospace">guestEstimate + guestCountSource</text>
+
+        <!-- the drop -->
+        <line x1="289" y1="84" x2="289" y2="126" stroke="#A33A2E" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arB)"/>
+        <rect x="186" y="128" width="206" height="42" rx="2" fill="none" stroke="#A33A2E" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="289" y="145" text-anchor="middle" font-size="11.5" fill="#A33A2E" font-weight="600">dropped at persist</text>
+        <text x="289" y="161" text-anchor="middle" font-size="10" fill="#A33A2E" opacity=".9" font-family="IBM Plex Mono, monospace">destination/overnight/startTime Basis</text>
+
+        <!-- row 2: fan out -->
+        <line x1="772" y1="84" x2="772" y2="118" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)"/>
+        <rect x="652" y="120" width="240" height="46" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="772" y="139" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">Engines read it</text>
+        <text x="772" y="155" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">spend · attendance · vendors · food</text>
+
+        <!-- split: inward vs outward -->
+        <line x1="772" y1="168" x2="772" y2="196" stroke="currentColor" stroke-width="1.2"/>
+        <line x1="470" y1="196" x2="880" y2="196" stroke="currentColor" stroke-width="1.2"/>
+
+        <line x1="470" y1="196" x2="470" y2="236" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)"/>
+        <rect x="352" y="238" width="236" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="470" y="258" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">Inward — the host's screens</text>
+        <text x="470" y="275" text-anchor="middle" font-size="11" fill="currentColor" opacity=".7">may plan on our number</text>
+
+        <line x1="880" y1="196" x2="880" y2="212" stroke="#1F6F63" stroke-width="1.4"/>
+        <line x1="880" y1="212" x2="772" y2="212" stroke="#1F6F63" stroke-width="1.4"/>
+        <line x1="772" y1="212" x2="772" y2="230" stroke="#1F6F63" stroke-width="1.4" marker-end="url(#arS)"/>
+        <rect x="640" y="232" width="252" height="38" rx="2" fill="#DFEAE7" stroke="#1F6F63" stroke-width="1.4"/>
+        <text x="766" y="256" text-anchor="middle" font-size="12" fill="#14453D" font-weight="600" font-family="IBM Plex Mono, monospace">guestCountIsConfirmed</text>
+
+        <line x1="766" y1="272" x2="766" y2="300" stroke="#1F6F63" stroke-width="1.4" marker-end="url(#arS)"/>
+        <rect x="640" y="302" width="252" height="32" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="766" y="323" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">Outward — a caterer reads this</text>
+      </svg>
+      <figcaption><strong>The gate is the whole design.</strong> Before it existed, a host who typed eight words got a stored headcount of 40 — the playbook's typical — and the vendor draft said “for about 40 guests.” The number was never wrong to <em>plan</em> with; it was wrong to <em>say</em>. The dashed branch is the same defect one step earlier: the parser knows how strongly it knows each fact, and three of those confidence tiers are still discarded at persist.</figcaption>
+    </figure>
+
+    <div class="pairs">
+      <div class="pair"><b>startTimeSource</b><span>A derived 3pm never reaches an invite or a vendor brief.</span><em>startTimeIsConfirmed</em></div>
+      <div class="pair"><b>guestCountSource</b><span>Our typical headcount never reaches a vendor.</span><em>guestCountIsConfirmed</em></div>
+      <div class="pair"><b>choiceSource</b><span>The app may not sign the host's name to its own pick.</span><em>choiceAttribution</em></div>
+      <div class="pair"><b>bracket rule</b><span>An unfilled <code>[blank]</code> never reaches a guest — withheld, not repaired.</span><em>guestSafeText</em></div>
+    </div>
+    <p class="note">Four instances of one shape: <strong>record who said it at the moment it is decided, and gate the outward surfaces on that record.</strong> Each was built after the same defect was found live on a different field.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="secno">02</span><h2>Four producers, one list</h2></div>
+    <p class="note">Nothing in the app decides what to do first. Four independent producers each push what they think matters into one array, and a comparator settles it afterwards. This is why “four engines give four different answers” was a finding rather than a bug — it is the architecture.</p>
+
+    <figure>
+      <svg viewBox="0 0 900 330" role="img" aria-label="Four producers push actions into one nextActions array; a banded comparator scores each by consequence plus a bounded lateness boost; a grouping step that bundles three or more raises from one surface used to drop every consequence signal, scoring the bundle zero.">
+        <defs>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+          </marker>
+          <marker id="ar2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#A33A2E"/>
+          </marker>
+        </defs>
+
+        <text x="8" y="20" font-size="10.5" fill="currentColor" opacity=".6" font-family="IBM Plex Mono, monospace" letter-spacing="1">PRODUCERS</text>
+
+        <rect x="8" y="30" width="172" height="40" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="94" y="55" text-anchor="middle" font-size="12" fill="currentColor">The ladder · 1 top action</text>
+
+        <rect x="8" y="76" width="172" height="40" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="94" y="101" text-anchor="middle" font-size="12" fill="currentColor">Foundation · 4 dominoes</text>
+
+        <rect x="8" y="122" width="172" height="40" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="94" y="147" text-anchor="middle" font-size="12" fill="currentColor">Phase cues · readiness</text>
+
+        <rect x="8" y="168" width="172" height="40" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="94" y="193" text-anchor="middle" font-size="12" fill="currentColor">Surface registry · raises</text>
+
+        <line x1="182" y1="50" x2="242" y2="108" stroke="currentColor" stroke-width="1" marker-end="url(#ar2)"/>
+        <line x1="182" y1="96" x2="242" y2="114" stroke="currentColor" stroke-width="1" marker-end="url(#ar2)"/>
+        <line x1="182" y1="142" x2="242" y2="126" stroke="currentColor" stroke-width="1" marker-end="url(#ar2)"/>
+        <line x1="182" y1="188" x2="242" y2="132" stroke="currentColor" stroke-width="1" marker-end="url(#ar2)"/>
+
+        <rect x="244" y="96" width="132" height="48" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <text x="310" y="116" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">nextActions</text>
+        <text x="310" y="133" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">one flat array</text>
+
+        <!-- bundling -->
+        <line x1="378" y1="120" x2="424" y2="120" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar2)"/>
+        <text x="401" y="111" text-anchor="middle" font-size="10" fill="currentColor" opacity=".65">group</text>
+
+        <rect x="426" y="90" width="166" height="60" rx="2" fill="none" stroke="#A33A2E" stroke-width="1.3"/>
+        <text x="509" y="110" text-anchor="middle" font-size="12.5" fill="#A33A2E" font-weight="600">Bundle at 3+</text>
+        <text x="509" y="127" text-anchor="middle" font-size="10.5" fill="#A33A2E" opacity=".9">carried the dates,</text>
+        <text x="509" y="141" text-anchor="middle" font-size="10.5" fill="#A33A2E" opacity=".9">dropped every score</text>
+
+        <line x1="594" y1="120" x2="640" y2="120" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar2)"/>
+
+        <rect x="642" y="82" width="250" height="76" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <text x="767" y="103" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">Banded comparator</text>
+        <text x="767" y="123" text-anchor="middle" font-size="11" fill="currentColor" font-family="IBM Plex Mono, monospace">consequence + latenessBoost</text>
+        <text x="767" y="142" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">critical → real work → calm</text>
+
+        <line x1="767" y1="160" x2="767" y2="196" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar2)"/>
+        <rect x="642" y="198" width="250" height="36" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="767" y="221" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">Position one — the host reads this</text>
+
+        <!-- the measured collapse -->
+        <line x1="509" y1="152" x2="509" y2="246" stroke="#A33A2E" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar2b)"/>
+        <rect x="286" y="248" width="446" height="70" rx="2" fill="#F4E3E0" stroke="#A33A2E" stroke-width="1.2"/>
+        <text x="509" y="269" text-anchor="middle" font-size="12" fill="#7A2A20" font-weight="600">Measured, one horizon apart — Crab Feast</text>
+        <text x="509" y="288" text-anchor="middle" font-size="11.5" fill="#7A2A20" font-family="IBM Plex Mono, monospace">T-8 · 1 overdue · single · 2.025</text>
+        <text x="509" y="306" text-anchor="middle" font-size="11.5" fill="#7A2A20" font-family="IBM Plex Mono, monospace">T-6 · 3 overdue · BUNDLE · 0.000</text>
+      </svg>
+      <figcaption><strong>The score died at one boundary.</strong> Three or more overdue decisions is the ordinary state of a real event a few months out — so on almost every live plan the entire 260-decision authoring effort reached the host's most important screen as zero, and what ranked instead was a lateness term that saturates. On a wedding the top two actions tied at exactly <span class="mono">4.9000</span>, leaving producer push order to decide.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="secno">03</span><h2>What a private copy costs</h2></div>
+    <p class="note">The recurring defect in this codebase is not a wrong calculation. It is a fact owned by one accessor and quietly re-derived by the surfaces that need it. Each copy is correct on the day it is written and drifts the day the rule changes.</p>
+
+    <figure>
+      <svg viewBox="0 0 900 250" role="img" aria-label="Left: six surfaces each deriving is-the-budget-set from the raw fields, producing three different answers on the same event. Right: the same six surfaces reading one accessor, which names which of two questions each is asking.">
+        <defs>
+          <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+          </marker>
+          <marker id="ar3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#A33A2E"/>
+          </marker>
+          <marker id="ar3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#1F6F63"/>
+          </marker>
+        </defs>
+
+        <text x="8" y="18" font-size="10.5" fill="#A33A2E" font-family="IBM Plex Mono, monospace" letter-spacing="1">BEFORE — SIX PRIVATE COPIES</text>
+        <rect x="8" y="30" width="118" height="44" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="67" y="49" text-anchor="middle" font-size="11.5" fill="currentColor">The event</text>
+        <text x="67" y="65" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7" font-family="IBM Plex Mono, monospace">rows + totalBudget</text>
+
+        <line x1="128" y1="44" x2="176" y2="30" stroke="#A33A2E" stroke-width="1" marker-end="url(#ar3b)"/>
+        <line x1="128" y1="50" x2="176" y2="62" stroke="#A33A2E" stroke-width="1" marker-end="url(#ar3b)"/>
+        <line x1="128" y1="58" x2="176" y2="94" stroke="#A33A2E" stroke-width="1" marker-end="url(#ar3b)"/>
+        <line x1="128" y1="64" x2="176" y2="126" stroke="#A33A2E" stroke-width="1" marker-end="url(#ar3b)"/>
+        <line x1="128" y1="70" x2="176" y2="158" stroke="#A33A2E" stroke-width="1" marker-end="url(#ar3b)"/>
+        <line x1="128" y1="74" x2="176" y2="190" stroke="#A33A2E" stroke-width="1" marker-end="url(#ar3b)"/>
+
+        <rect x="178" y="18" width="196" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="186" y="34" font-size="11" fill="currentColor">money bar → <tspan font-weight="600">$18,900</tspan></text>
+        <rect x="178" y="50" width="196" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="186" y="66" font-size="11" fill="currentColor">checklist → <tspan font-weight="600">done</tspan></text>
+        <rect x="178" y="82" width="196" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="186" y="98" font-size="11" fill="currentColor">hero cue → <tspan fill="#A33A2E" font-weight="600">“Set your budget”</tspan></text>
+        <rect x="178" y="114" width="196" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="186" y="130" font-size="11" fill="currentColor">editor → <tspan fill="#A33A2E" font-weight="600">asks for one</tspan></text>
+        <rect x="178" y="146" width="196" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="186" y="162" font-size="11" fill="currentColor">Reveal → <tspan fill="#A33A2E" font-weight="600">“$0 · set and live”</tspan></text>
+        <rect x="178" y="178" width="196" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="186" y="194" font-size="11" fill="currentColor">swap → <tspan font-weight="600">derived ceiling</tspan></text>
+
+        <text x="276" y="226" text-anchor="middle" font-size="11" fill="#A33A2E" font-weight="600">one event · three rules · five answers</text>
+
+        <line x1="396" y1="112" x2="444" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar3)"/>
+
+        <text x="462" y="18" font-size="10.5" fill="#1F6F63" font-family="IBM Plex Mono, monospace" letter-spacing="1">AFTER — ONE ACCESSOR, TWO NAMED QUESTIONS</text>
+        <rect x="462" y="30" width="118" height="44" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="521" y="49" text-anchor="middle" font-size="11.5" fill="currentColor">The event</text>
+        <text x="521" y="65" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7" font-family="IBM Plex Mono, monospace">rows + totalBudget</text>
+
+        <line x1="582" y1="52" x2="620" y2="52" stroke="#1F6F63" stroke-width="1.4" marker-end="url(#ar3g)"/>
+        <rect x="622" y="30" width="166" height="44" rx="2" fill="#DFEAE7" stroke="#1F6F63" stroke-width="1.4"/>
+        <text x="705" y="49" text-anchor="middle" font-size="12" fill="#14453D" font-weight="600" font-family="IBM Plex Mono, monospace">budgetFor</text>
+        <text x="705" y="65" text-anchor="middle" font-size="10" fill="#14453D">total · basis · isSet</text>
+
+        <line x1="680" y1="76" x2="640" y2="106" stroke="#1F6F63" stroke-width="1.2" marker-end="url(#ar3g)"/>
+        <line x1="730" y1="76" x2="770" y2="106" stroke="#1F6F63" stroke-width="1.2" marker-end="url(#ar3g)"/>
+
+        <rect x="530" y="108" width="212" height="46" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="636" y="126" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="600">“Is there a number to plan on?”</text>
+        <text x="636" y="144" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">spend · Reveal · checklist · ledger</text>
+
+        <rect x="672" y="162" width="220" height="46" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="782" y="180" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="600">“Did they give an overall figure?”</text>
+        <text x="782" y="198" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">the editor · the swap ceiling</text>
+
+        <text x="705" y="228" text-anchor="middle" font-size="11" fill="#1F6F63" font-weight="600">both legitimate — neither had a name</text>
+      </svg>
+      <figcaption><strong>The six readers were not all wrong.</strong> They were answering two different questions that had no names, so each site picked one by accident. Naming both was the fix; the arithmetic never changed. The same shape, at different scales, is the largest single source of defects found in this codebase.</figcaption>
+    </figure>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>The fact</th><th>Copies found</th><th>What it cost the host</th><th>Now</th></tr></thead>
+        <tbody>
+          <tr><td>Is the venue set?</td><td class="n bad">8</td><td>Asked for a venue the plan already knew, after the host typed a street address</td><td class="good">venueFor</td></tr>
+          <tr><td>Is the budget set?</td><td class="n bad">6</td><td>One sheet stated a budget and asked for one; Reveal printed $0 over $18,900</td><td class="good">budgetFor</td></tr>
+          <tr><td>Is this vendor booked?</td><td class="n bad">23<span class="mono"> +27</span></td><td>“All wrapped up” over an unpaid balance; “Locked in” beside “Silent 25 days”</td><td class="good">workstreams</td></tr>
+          <tr><td>Is the hour ours?</td><td class="n bad">4</td><td>A derived 3pm leaked into seven outward drafts</td><td class="good">startTimeIsConfirmed</td></tr>
+          <tr><td>Is this step late?</td><td class="n bad">2</td><td>“Nothing needs you today” over three rows reading “past its window”</td><td class="good">taskWindowClosed</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">The <span class="mono">+27</span> are in the frozen legacy shell, which is scheduled for deletion — they are counted, not carried.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="secno">04</span><h2>Which half a host can reach</h2></div>
+    <p class="note">The engines are shared; the surfaces are not. A large, well-specified body of vendor intelligence is reachable only from the frozen shell, and the deletion date is real.</p>
+
+    <figure>
+      <svg viewBox="0 0 900 230" role="img" aria-label="One shared library feeds two shells: the live host shell imports 139 distinct modules from it, while the frozen legacy shell is the only route to the vendor detail cockpit, which will be lost when it is deleted.">
+        <defs>
+          <marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+          </marker>
+          <marker id="ar4b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#8A6A16"/>
+          </marker>
+          <marker id="ar4g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#1F6F63"/>
+          </marker>
+        </defs>
+
+        <rect x="8" y="76" width="200" height="72" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="108" y="102" text-anchor="middle" font-size="13" fill="currentColor" font-weight="600">src/lib</text>
+        <text x="108" y="121" text-anchor="middle" font-size="11.5" fill="currentColor" opacity=".8">172 top-level · the engines</text>
+        <text x="108" y="137" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".6">pure, jest-executable</text>
+
+        <line x1="210" y1="100" x2="300" y2="58" stroke="#1F6F63" stroke-width="1.6" marker-end="url(#ar4g)"/>
+        <text x="252" y="70" text-anchor="middle" font-size="10.5" fill="#1F6F63" font-family="IBM Plex Mono, monospace">139 imported</text>
+
+        <line x1="210" y1="126" x2="300" y2="170" stroke="#8A6A16" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#ar4b)"/>
+
+        <rect x="302" y="28" width="236" height="60" rx="2" fill="#DFEAE7" stroke="#1F6F63" stroke-width="1.5"/>
+        <text x="420" y="52" text-anchor="middle" font-size="13" fill="#14453D" font-weight="600">Host shell — the app</text>
+        <text x="420" y="71" text-anchor="middle" font-size="11" fill="#14453D" opacity=".85">public · mobile-first · 390px</text>
+
+        <rect x="302" y="142" width="236" height="60" rx="2" fill="none" stroke="#8A6A16" stroke-width="1.3" stroke-dasharray="5 3"/>
+        <text x="420" y="166" text-anchor="middle" font-size="13" fill="#8A6A16" font-weight="600">Legacy shell — frozen</text>
+        <text x="420" y="185" text-anchor="middle" font-size="11" fill="#8A6A16" opacity=".9">donor only · deletion scheduled</text>
+
+        <line x1="540" y1="172" x2="600" y2="172" stroke="#8A6A16" stroke-width="1.3" marker-end="url(#ar4b)"/>
+        <text x="570" y="163" text-anchor="middle" font-size="10" fill="#8A6A16">only route</text>
+
+        <rect x="602" y="140" width="290" height="64" rx="2" fill="#F3E9D4" stroke="#8A6A16" stroke-width="1.3"/>
+        <text x="747" y="162" text-anchor="middle" font-size="12.5" fill="#5E480F" font-weight="600">Vendor Detail Cockpit</text>
+        <text x="747" y="180" text-anchor="middle" font-size="10.5" fill="#5E480F">10-stage lifecycle · 9 challenge axes</text>
+        <text x="747" y="195" text-anchor="middle" font-size="10.5" fill="#5E480F">readiness · next-action ladder</text>
+
+        <line x1="540" y1="58" x2="600" y2="58" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar4)"/>
+        <rect x="602" y="30" width="290" height="58" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="747" y="52" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">What the host actually sees</text>
+        <text x="747" y="71" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">COI · contact state · status pill · accountability</text>
+      </svg>
+      <figcaption><strong>A specification with no reader is not shipped.</strong> The readiness snapshot, the lifecycle stages, the challenge categories and the next-action ladder that the vendor skill specifies have no importer in the live shell. On the day the frozen shell is deleted, that work disappears unless it is ported first — which makes it a dated decision, not a backlog item.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="secno">05</span><h2>How a claim earns its way onto the screen</h2></div>
+    <p class="note">Two rules do most of the work of keeping the app honest, and both were written after a green test suite shipped a lie.</p>
+    <div class="callout">
+      <h3>An unknown fact refuses its rule</h3>
+      <p>Facts are <code>{value, known}</code>. A rule that needs a headcount and does not have one does not compare against zero and quietly succeed — it declines to fire. This is why a 4-guest event and a 400-guest event stopped receiving the same recommendation, and why a missing number can never masquerade as a small one.</p>
+    </div>
+    <div class="callout">
+      <h3>Withhold, never repair</h3>
+      <p>When the app cannot honestly say something, it says nothing and tells the host why. Stripping the brackets out of “Guests can park <span class="mono">[street / driveway]</span>” leaves a sentence that means something different and is still wrong. A guest shown no parking line is strictly better than a guest shown our placeholder — and the host, not the app, is the one who can fix it.</p>
+    </div>
+    <div class="callout warn">
+      <h3>What this page does not claim</h3>
+      <p>Grounding is uneven and the split is worth knowing: <strong>532 of 622 priced food lines</strong> pass a registry-checked provenance predicate against 297 dated sources — while the per-head bands that produce the headline <em>budget</em>, and 224 vendor cost ranges, have <strong>no provenance field in their shape at all</strong>. The system was built for the grocery list and has not yet reached the largest numbers a host sees.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Every figure on this page was measured against the working tree on 18 September 2026 — counts by direct enumeration, engine behaviour by executing the real functions, reachability from the import graph. Nothing is recalled or estimated. The two module counts are deliberately not a ratio: 172 is the top level of <span class="mono">src/lib</span>, while the 139 the shell imports include modules from its subdirectories.</p>
+    <p>Where a defect is described in the past tense it has shipped a fix; where it is described in the present tense it is measured and open.</p>
+  </footer>
+</div>

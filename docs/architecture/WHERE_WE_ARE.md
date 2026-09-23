@@ -47,9 +47,12 @@ this removed a wrong number without adding a sentence.
 because of this session's own work an hour earlier.
 
 **The Decision Layer page is at v12** (https://claude.ai/artifact/YCYiVBhiqXfybotWygeojv)
-carrying all four calls, their cost, and 23 guards. Its HTML is **not in the
-repo** — see the "Published status pages" section of `HANDOFF.md` for why that
-matters before anyone tries to republish it from a later session.
+carrying all four calls, their cost, and 23 guards. Both it and its companion
+diagram page are now committed under `docs/artifact/`, each verified
+byte-identical to its live page first. Twelve publications had gone out with
+nothing in the repo to republish from. See "Published status pages" in
+`HANDOFF.md` — the URL is still the only source of truth for which artifact a
+republish updates.
 
 **Worth carrying forward:** a detector's population is a separate claim from the
 detector. Declare, do not infer. List what a veto removes before trusting it —
