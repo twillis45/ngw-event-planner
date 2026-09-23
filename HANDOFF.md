@@ -157,7 +157,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `adfe7e9f` — last CODE commit is `2845d382`; `adfe7e9` and everything after it on this line are this file and `WHERE_WE_ARE.md` only |
+| Branch / HEAD | `main` @ `3716b24c` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
@@ -252,9 +252,9 @@ its port, not before it.
 |---|---|---|---|
 | 1 | Next action + the kept chips, into hostv2's existing vendor detail | ~1 day | **SHIPPED** |
 | 2 | **Wire the next action** (promoted by the owner ahead of 3–5) | ~1 day | **SHIPPED** |
-| 3 | Planning + day-of state | ~1 day | open |
-| 4 | Highest-risk line above the vendor list | ~half day | open |
-| 5 | Required questions | ~half day | open |
+| 3 | Planning + day-of state | ~1 day | **CUT — measured, see below** |
+| 4 | Highest-risk line above the vendor list | ~half day | **SHIPPED** |
+| 5 | Required questions | ~half day | **CUT — measured, see below** |
 
 Tests are written alongside each step, against only what ships — not as a
 separate up-front pass over all eleven.
@@ -354,6 +354,71 @@ for any paid vendor, and stays off helpers.
 **Red-proofed** by removing the `data-vid` scoping: the "scoped to its own
 vendor" test goes red, because a bare selector finds the first matching control
 on the sheet — which on a nine-vendor plan is somebody else's row.
+
+### Slice 3, shipped — "which one needs you most"
+
+20/20 in Chromium. `getHighestRiskVendor` gains the same optional `axes`
+argument; `getHostHighestRiskVendor` ranks over the six and drops helpers BEFORE
+ranking, so a cousin cannot outrank a caterer on paperwork she was never going
+to file.
+
+The hero says how many vendors are booked. It has never said WHICH one is the
+problem, so a host with nine vendors opened nine cards to find out. One line,
+carrying the verdict's own sentence, tapping through to that card.
+
+**Ranked over the six, not the nine** — for the same reason slice 1 recomputed
+the verdict. Ranking on nine would name a vendor "worst" on the strength of a
+run-of-show row the host will never see: the wrong-population defect one level
+up from where it was fixed.
+
+**It stays quiet when every vendor is healthy.** The hero already says
+"everyone's locked in"; a "nothing needs you" banner under it is two voices on
+one fact. It also stays quiet below two vendors — "which one" is not a question
+when there is one.
+
+**The fixture was wrong twice, both the same shape.** The "healthy plan" test
+kept naming a vendor, and the engine was right each time: `coiStatus:
+'verified'` is not a valid status (the ladder is `requested` → `received`, with
+`coiVerified` a separate flag), so it fell through to `required` and read
+critical; and a certificate with no expiry date reads overdue however verified
+it is. Measured off the engine rather than guessed the third time.
+
+### Steps 3 and 5 were CUT on measurement, not skipped
+
+Both were scoped from the CRA cockpit's section list. Measured against what
+hostv2 already renders, neither survives.
+
+**Step 3 — planning + day-of state. Cut.**
+
+`getVendorPlanningState` returns 10 rows. **Eight restate the six axes already
+shipped** (vendor selected → booking; contract signed → paperwork; deposit and
+final payment → money; primary contact → staying in touch; arrival → arrival;
+COI → paperwork; scope → an axis already cut as a placeholder). The remaining
+two — "Day-of contact" and "Venue / logistics needs" — are hard-coded
+`not_tracked` with the engine's own notes saying "dedicated day-of contact field
+coming" and "to be added".
+
+`getVendorDayOfState` returns 6, and four of its fields — `loadInOrder`,
+`reportsTo`, `onSiteName`, `checkedIn` — have **zero writers in either shell**.
+Nothing can ever fill them. Shipping that is four rows a host can never satisfy,
+which is the fake-progress defect wearing a checklist.
+
+**Step 5 — required questions. Cut.**
+
+`getVendorRequiredQuestions` returns 10 for a caterer. hostv2 already renders
+**11 promise rows** on the same card from `inferPromisesFromVendor`, and seven
+of the ten are the same item — final guest count, dietary, service style, staff
+count, arrival, kitchen access, payment terms. The promises are STRICTLY BETTER:
+they carry due dates and a "Mark proof on file" control; the questions are
+read-only status.
+
+Three are genuinely new — meal count, vendor meals, power/water — which is not a
+section, it is three rows to consider adding to the promise set. Filed as that,
+not as a port.
+
+**The pattern, for the third time this month:** the brief named a surface, the
+sweep found the surface already existed or could not be filled. Measuring first
+cost an hour and saved two days of building something a host already had.
 
 ## FIXED 2026-09-23 (thirty-second entry) — all four open board calls, and two of them reversed a finding
 
@@ -3348,11 +3413,16 @@ default"*. The sheet was ordering its own cause as a detail.
 Commit `f395e67`. Jest **442/442, 6241 passed** — up one, because a parameterised
 wire-proof enumerated the new decision and it passed. No drift.
 
-**NOT DONE, deliberately — open host call:** the money/totals block still sits
-above the whole section list, so the host still sees "$85–195 · sized for 4–6"
-before the choice that determines it. Host flagged this ("This needs to be pushed
-to the top of choices"); the row reorder above addresses the section list, but
-demoting the sheet's headline summary is a design ruling, not a reorder.
+**~~NOT DONE, deliberately — open host call~~ → RULED 2026-09-23: LEAVE IT.**
+The money/totals block sits above the whole section list, so the host sees
+"$85–195 · sized for 4–6" before the choice that determines it. The host had
+flagged it ("This needs to be pushed to the top of choices"), and the row
+reorder addressed the section list while demoting the sheet's headline summary
+stayed open as a design ruling rather than a reorder.
+
+**Owner ruling: the totals stay above the choices.** No code change; the call is
+closed, not deferred. Nothing else in the repo depends on it moving, and the
+ruling is recorded here so the next reader does not reopen it as an oversight.
 
 ## ADDED 2026-09-17 (third entry, same day) — the checklist finally says something sport-specific
 
@@ -5327,6 +5397,28 @@ These are not blocked on engineering and will not move without you:
   not observed. Nobody outside this project has used it.
 - **Prove the Resend webhook live.** Until then `delivered` cannot honestly
   exist, and DIFM/Attention both sit against that.
+  **Still yours (2026-09-23), and here is exactly why.** Measured from the
+  session container: the live backend answers `email_configured: true`, so
+  Resend IS configured in production — but `api.resend.com` is refused by this
+  environment's network policy (403 to CONNECT), there is no `RESEND_API_KEY`
+  here, and the backend's send endpoint requires a planner credential that must
+  never be minted. Three independent blocks; none of them is a code problem.
+  **What WAS done instead:** `backend/tests/test_resend_webhook_signature.py`,
+  13 tests. `/api/resend-webhook` is the only thing in the system that can write
+  `delivered`, Stripe's webhook has had a signature suite since 2026-08-07, and
+  this one had **nothing**. It now proves the status map, that a forged or
+  omitted signature is rejected 401 and never reaches the database, that the
+  signature covers the BODY (so a captured signature cannot be replayed over a
+  swapped payload), and that unmapped events and malformed bodies are ignored
+  quietly. The dev-mode gap is pinned rather than assumed: with no
+  `RESEND_WEBHOOK_SECRET`, any caller can write `delivered`, and a test says so.
+  **So when you run the live send, a failure is now diagnosable:** if the row
+  does not flip to delivered with these green, the fault is the Resend dashboard
+  endpoint config or the deploy's `RESEND_WEBHOOK_SECRET` — not this code.
+  Two things the suite recorded on the way: `email.sent` maps to *accepted*, not
+  delivered (the distinction the whole comms honesty story rests on), and
+  `email.clicked` collapses into `email-opened`, which loses information a click
+  carries. Not false, so recorded rather than changed.
 - **Send one real vendor email end to end.** Now possible for the first time:
   put an address on a vendor, sign in, and the send path is reachable. That
   run is the precondition for everything above it.

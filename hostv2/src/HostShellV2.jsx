@@ -152,6 +152,7 @@ import { riskSeverityLabel, riskSeverityTone } from '@app/lib/riskSeverity';
 import {
   getVendorCOIState, coiNextAction,
   getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
+  getHostHighestRiskVendor,
 } from '@app/lib/vendorIntelligence';
 import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
@@ -18895,6 +18896,51 @@ export default function HostShellV2() {
                   </GuideLine>
                 </div>
               )}
+              {/* ── WHICH ONE NEEDS YOU MOST ────────────────────────────────────
+                  Cockpit port, final slice. The hero above says how many are
+                  booked; it has never said WHICH of them is the problem, so a
+                  host with nine vendors had to open nine cards to find out.
+
+                  Ranked over the SAME six axes the cards show
+                  (getHostHighestRiskVendor), not the engine's nine. Ranking on
+                  nine would name a vendor "worst" on the strength of a
+                  run-of-show row the host will never see — the same
+                  wrong-population defect fixed inside one card, one level up.
+
+                  ONE LINE, AND ONLY WHEN IT BEATS SILENCE. It renders only for
+                  a critical or attention verdict: on a healthy plan the hero
+                  already says "everyone's locked in", and a "nothing needs you"
+                  banner under it is a second voice saying the same thing. It
+                  also stays quiet with fewer than two vendors — "which one" is
+                  not a question when there is one.
+
+                  Tapping opens that vendor's card, where the six axes and the
+                  next action already live. No new surface; a way in. */}
+              {(() => {
+                const paid = (event.vendors || []).filter(x => x && !x.isInformal);
+                if (paid.length < 2) return null;
+                let top = null;
+                try { top = getHostHighestRiskVendor(paid, event); } catch { return null; }
+                if (!top || !top.vendor || !top.readiness) return null;
+                if (top.readiness.level !== 'critical' && top.readiness.level !== 'attention') return null;
+                const crit = top.readiness.level === 'critical';
+                return (
+                  <button className="fstat" data-vtop={top.vendor.id}
+                    style={{ width: '100%', textAlign: 'left', border: '1px solid var(--line)',
+                      borderLeft: '2px solid ' + (crit ? 'var(--warn)' : 'var(--steel-soft)'),
+                      borderRadius: 'var(--r-sm, 6px)', background: 'var(--card)',
+                      margin: '0 0 var(--sp-3)', alignItems: 'flex-start', gap: 10 }}
+                    onClick={() => setSheet(s => ({ ...s, focus: top.vendor.id }))}
+                    aria-label={'Open ' + (top.vendor.name || 'this vendor') + ' — ' + (top.readiness.summary || top.readiness.label)}>
+                    <span className="fstat-l" style={{ flex: '0 0 auto' }}>{top.vendor.name || 'A vendor'}</span>
+                    <span className="fstat-v" style={{ textAlign: 'right', display: 'block',
+                      color: crit ? 'var(--warn)' : 'var(--faint)' }}>
+                      {top.readiness.summary || top.readiness.label}
+                      <span className="fstat-chev" aria-hidden="true"> ›</span>
+                    </span>
+                  </button>
+                );
+              })()}
               {vendorPlan.relevant && (
                 // Port of Figma 416:60 — the market picker folds to a hairline
                 // disclosure row ("Which market · <label> ›"); tapping opens the

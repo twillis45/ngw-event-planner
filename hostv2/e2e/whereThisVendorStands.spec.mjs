@@ -334,3 +334,107 @@ test('THE FOLD STILL DOES NOT CLIP, with the contract row now always present', a
   console.log('FOLD2 >>>', JSON.stringify(fit));
   expect(fit.client).toBeGreaterThanOrEqual(fit.scroll - 1);
 });
+
+// ─── FINAL SLICE: WHICH VENDOR NEEDS THE HOST MOST ──────────────────────────
+//
+// The hero says how many vendors are booked. It has never said WHICH one is the
+// problem, so a host with nine vendors opened nine cards to find out.
+//
+// Ranked over the same six axes the cards show. Ranking over the engine's nine
+// would name a vendor "worst" on the strength of a run-of-show row the host will
+// never see — the wrong-population defect fixed inside one card, one level up.
+
+const topLine = (page) => page.evaluate(() => {
+  const el = document.querySelector('[data-vtop]');
+  return el ? { vendorId: el.getAttribute('data-vtop'),
+    text: (el.innerText || '').replace(/\s+/g, ' ').trim() } : null;
+});
+
+const openVendorsTab = async (page) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page);
+  await page.goto('?elegant=1');
+  await settled(page);
+  await tapText(page, 'Vendors');
+  await page.waitForTimeout(900);
+  await settled(page);
+};
+
+test('(premise) the top-risk line renders and names a real vendor', async ({ page }) => {
+  await openVendorsTab(page);
+  const t = await topLine(page);
+  console.log('TOP >>>', JSON.stringify(t));
+  expect(t).toBeTruthy();
+  expect(['v1', 'v2', 'v4']).toContain(t.vendorId);
+});
+
+test('IT CARRIES THE VERDICT’S OWN SENTENCE, not a generic nudge', async ({ page }) => {
+  // The line must say WHY, in the engine's words, or it is a badge that sends
+  // the host hunting — which is the thing it exists to stop.
+  await openVendorsTab(page);
+  const t = await topLine(page);
+  expect(t.text.length).toBeGreaterThan(20);
+  expect(t.text).toMatch(/not on file|not yet confirmed|Not booked|no due date|overdue|needs|Decide/i);
+});
+
+test('TAPPING IT OPENS THAT VENDOR’S CARD', async ({ page }) => {
+  await openVendorsTab(page);
+  const t = await topLine(page);
+  await page.evaluate(() => document.querySelector('[data-vtop]').click());
+  await page.waitForTimeout(700);
+  const opened = await page.evaluate((id) => {
+    const c = document.querySelector('.vcard[data-vid="' + id + '"]');
+    return c ? c.classList.contains('open') : null;
+  }, t.vendorId);
+  expect(opened).toBe(true);
+});
+
+test('A HELPER CAN NEVER BE NAMED — they have no ladder to fail', async ({ page }) => {
+  // Cousin Rae is informal. Ranking her would let a cousin outrank a caterer on
+  // paperwork she was never going to file.
+  await openVendorsTab(page);
+  const t = await topLine(page);
+  expect(t.vendorId).not.toBe('v3');
+});
+
+test('IT STAYS QUIET WHEN EVERY VENDOR IS HEALTHY', async ({ page }) => {
+  // On a settled plan the hero already says "everyone's locked in". A second
+  // line under it saying "nothing needs you" is two voices on one fact.
+  await page.setViewportSize({ width: 390, height: 844 });
+  // A "settled" fixture took two tries to get right, and both misses were the
+  // same shape — asserting over a state the engine does not actually consider
+  // clear. `coiStatus: 'verified'` is NOT a valid status (the ladder is
+  // requested -> received, with `coiVerified` as a separate flag), so it fell
+  // through to 'required' and read critical; and a certificate with no expiry
+  // date reads overdue however verified it is. Measured off the engine, the
+  // clear state is received + coiVerified + an expiry past the event.
+  await page.addInitScript(({ d, COI_GOOD_UNTIL }) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
+      id: 'e2e-calm', name: 'Settled', type: 'Wedding', date: d,
+      venueCity: 'Baltimore, MD', guestMode: 'count', guestCount: 80,
+      totalBudget: 40000, budget: [], guests: [],
+      vendors: [
+        { id: 'c1', name: 'Alpha', category: 'Venue', status: 'Confirmed', cost: 1000,
+          contact: 'a@b.c', contractSigned: true, depositPaid: true, balancePaid: true,
+          arrivalTime: '1:00 PM', coiStatus: 'received', coiVerified: true, payDueDate: d,
+          coiExpiryDate: COI_GOOD_UNTIL },
+        { id: 'c2', name: 'Beta', category: 'Catering', status: 'Confirmed', cost: 2000,
+          contact: 'd@e.f', contractSigned: true, depositPaid: true, balancePaid: true,
+          arrivalTime: '2:00 PM', coiStatus: 'received', coiVerified: true, payDueDate: d,
+          coiExpiryDate: COI_GOOD_UNTIL },
+      ],
+    }]));
+    localStorage.setItem('ngw-hostv2-last-event', 'e2e-calm');
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+  }, { d: iso(21), COI_GOOD_UNTIL: iso(200) });
+  await page.goto('?elegant=1');
+  await settled(page);
+  await tapText(page, 'Vendors');
+  await page.waitForTimeout(900);
+  await settled(page);
+  const t = await topLine(page);
+  console.log('CALM >>>', JSON.stringify(t));
+  expect(t).toBeNull();
+});

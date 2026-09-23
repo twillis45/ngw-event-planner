@@ -28,6 +28,7 @@ import {
   getHostVendorReadiness,
   getHostVendorChallenges,
   HOST_READINESS_AXES,
+  getHostHighestRiskVendor,
 } from '../vendorIntelligence';
 
 const iso = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
@@ -184,5 +185,67 @@ describe('NEGATIVE CONTROL: the CRA shell’s engine is byte-for-byte unchanged'
       return a.summary !== b.summary || a.level !== b.level;
     });
     expect(diverged.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── AND THE SAME POPULATION RULE, ONE LEVEL UP ─────────────────────────────
+//
+// `getHighestRiskVendor` was one of the four functions with ZERO coverage when
+// this port was scoped. It is kept (it answers "which vendor needs you most"),
+// so it gets its test WITH its port rather than in a separate up-front pass.
+//
+// The rule it has to obey is slice 1's, applied to a list: rank over the axes
+// the reader renders. Ranking over nine would name a vendor worst on the
+// strength of a run-of-show row the host will never see.
+describe('which vendor needs the host most', () => {
+  const V = (over) => ({ id: 'x', name: 'X', category: 'Venue', status: 'Confirmed',
+    cost: 1000, contact: 'a@b.c', contractSigned: true, depositPaid: true,
+    balancePaid: true, arrivalTime: '1:00 PM', coiStatus: 'received',
+    coiVerified: true, coiExpiryDate: iso(200), payDueDate: iso(10), ...over });
+
+  test('(premise) a settled roster names nobody', () => {
+    // Without this, "it excludes helpers" could pass on a function that returns
+    // null for everything.
+    const a = V({ id: 'a', name: 'Alpha' });
+    const b = V({ id: 'b', name: 'Beta', category: 'Catering' });
+    expect(getHostHighestRiskVendor([a, b], { id: 'e', date: iso(21), vendors: [a, b] })).toBe(null);
+  });
+
+  test('it names the one with the real problem, in the engine’s own words', () => {
+    const fine = V({ id: 'a', name: 'Alpha' });
+    const bad = V({ id: 'b', name: 'Beta', contractSigned: false });
+    const ev = { id: 'e', date: iso(21), vendors: [fine, bad] };
+    const top = getHostHighestRiskVendor([fine, bad], ev);
+    expect(top).toBeTruthy();
+    expect(top.vendor.id).toBe('b');
+    expect(top.readiness.summary).toMatch(/contract/i);
+  });
+
+  test('A HELPER IS DROPPED BEFORE RANKING, not after', () => {
+    // An informal helper has no contract, deposit or insurance to be judged on
+    // (standing rule 2026-08-07). Ranked, a cousin would outrank a caterer on
+    // paperwork she was never going to file. Dropping after the sort would
+    // still be wrong — it would return null when the helper won, hiding the
+    // real worst vendor rather than naming it.
+    const helper = { id: 'h', name: 'Cousin Rae', isInformal: true, cost: 0 };
+    const mild = V({ id: 'a', name: 'Alpha', contractSigned: false });
+    const ev = { id: 'e', date: iso(21), vendors: [helper, mild] };
+    const top = getHostHighestRiskVendor([helper, mild], ev);
+    expect(top).toBeTruthy();
+    expect(top.vendor.id).toBe('a');
+  });
+
+  test('IT RANKS ON THE SIX — a cut axis cannot decide who is worst', () => {
+    // `scope` fires on a missing category and is not rendered. On the six it is
+    // invisible, so a vendor whose ONLY issue is a missing category must not be
+    // named over one with a genuine paperwork gap.
+    const noCategory = V({ id: 'a', name: 'Alpha', category: undefined });
+    const noContract = V({ id: 'b', name: 'Beta', contractSigned: false });
+    const ev = { id: 'e', date: iso(21), vendors: [noCategory, noContract] };
+    const six = getHostHighestRiskVendor([noCategory, noContract], ev);
+    expect(six.vendor.id).toBe('b');
+    // …and the summary it carries is one the host can see a chip for.
+    const shown = getHostVendorChallenges(six.vendor, ev).map((x) => x.note);
+    expect(shown).toContain(six.readiness.summary);
   });
 });

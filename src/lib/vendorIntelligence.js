@@ -621,6 +621,16 @@ export function getHostVendorReadiness(vendor, event) {
   return getVendorReadiness(vendor, event, HOST_READINESS_AXES);
 }
 
+// Which vendor needs the host most, ranked over the same six axes their cards
+// show. Helpers are excluded before ranking, not after: an informal helper has
+// no contract, deposit or insurance to be judged on (standing rule 2026-08-07),
+// so scoring them would let a cousin outrank a caterer on paperwork they were
+// never going to file.
+export function getHostHighestRiskVendor(vendors = [], event) {
+  const paid = (vendors || []).filter((v) => v && !v.isInformal);
+  return getHighestRiskVendor(paid, event, HOST_READINESS_AXES);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Next action — deterministic priority ladder
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1298,10 +1308,15 @@ export function getVendorLinkedWork(vendor, event) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Used by the command strip CTA: "Start with highest-risk vendor".
 // Rank by readiness severity, then by event proximity.
-export function getHighestRiskVendor(vendors = [], event) {
+// `axes` behaves exactly as it does on getVendorReadiness: omitted, nothing
+// changes for any existing caller. Passed, the ranking is decided by the same
+// axes the reader renders — otherwise the host is told "Fired Up needs you most"
+// on the strength of a run-of-show row they will never see, which is the
+// wrong-population defect one level up from where it was fixed for one card.
+export function getHighestRiskVendor(vendors = [], event, axes = null) {
   if (!vendors || vendors.length === 0) return null;
   const scored = vendors.map(v => {
-    const r = getVendorReadiness(v, event);
+    const r = getVendorReadiness(v, event, axes);
     const levelRank = { critical: 1000, attention: 500, not_started: 100, safe: 0, closed: -100 }[r.level] || 0;
     // Higher rank = more urgent. Tiebreak by criticals count.
     const score = levelRank + (r.counts.critical || 0) * 50 + (r.counts.attention || 0) * 5;
