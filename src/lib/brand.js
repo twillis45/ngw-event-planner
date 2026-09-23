@@ -41,10 +41,29 @@
 // the column below mean anything.
 //
 //   noguessworksystems.com   RESOLVES          the owner's own company — already his
-//   noguesswork.com          RESOLVES          taken; by whom is not visible from here
+//   noguesswork.com          RESOLVES          TAKEN, and identified: Dr Rameck
+//                                              Hunt's "The NO GUESSWORK Diet"
+//                                              (Penn Medicine Princeton Health)
 //   noguessworkevents.com    does not resolve  likely free — the exact-match .com
 //   noguesswork.events       does not resolve  likely free
 //   noguessworkevents.app    does not resolve  likely free
+//
+// ─── "NO GUESSWORK" IS IN USE BY OTHERS, IN OTHER CLASSES ───────────────────
+// Found while answering "is noguesswork.com mine?" — it is not. At least two
+// unrelated US entities trade under the bare phrase:
+//
+//   noguesswork.com      Dr Rameck Hunt, "The NO GUESSWORK Diet" (2020) —
+//                        health/publishing. Uses "NGW" as its own abbreviation.
+//   noguessworkprep.com  No Guesswork Test Prep & Tutoring — education.
+//
+// Neither is event software, and trademark rights are granted per class, so
+// coexistence is ordinary rather than a conflict. What it does mean: the BARE
+// phrase is not ownable broadly, so the identity is "No Guesswork Events" and
+// the distinctiveness lives in the full form. `short` below stays for running
+// prose inside the product — descriptive use in our own copy — and should not
+// become the brand in marketing, a wordmark, or a filing.
+//
+// This is a fact for the attorney, not a verdict from here.
 //
 // CONFIRM AT A REGISTRAR BEFORE BUYING. Nothing here is a purchase, a
 // reservation, or a clearance, and none of it is a trademark check.
