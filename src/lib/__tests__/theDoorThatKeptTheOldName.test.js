@@ -65,6 +65,42 @@ describe('the rename reached the screen that says the name', () => {
     expect(ask.label).not.toMatch(/boss/i);
   });
 
+  // ── THE GUARD THAT WOULD HAVE CAUGHT THE SPLASH ──────────────────────────
+  // The two tests below were written first and BOTH passed while the app's
+  // splash screen carved "Event" / "Boss" in the largest type it has. The name
+  // was split across two elements, so no substring of the source contained it.
+  //
+  // So this one strips the JSX tags and reads what is left — an approximation of
+  // what a person SEES, which is the thing the claim was ever about. A literal
+  // search proves a literal absent; it cannot prove a name absent.
+  test('THE GUARD THAT CAUGHT THE SPLASH: the old name is gone from the assembled TEXT too', () => {
+    const offenders = [];
+    for (const rel of HOST_FACING) {
+      const text = read(rel)
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/^\s*\/\/.*$/gm, ' ')
+        .replace(/\s\/\/[^\n]*$/gm, ' ')
+        .replace(/<[^>]*>/g, ' ')        // JSX tags out; their text stays, in order
+        .replace(/\s+/g, ' ');
+      if (/\bEvent\s+Boss\b/i.test(text) || /\bthe\s+Boss\b/i.test(text)) offenders.push(rel);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test('…and the wordmark is DATA on the brand, not markup in the shell', () => {
+    // The actual fix. Two stacked lines of big type that must still spell the
+    // product's name when joined — if someone edits one line, this fails rather
+    // than the app quietly displaying half a name.
+    expect(Array.isArray(BRAND.wordmark)).toBe(true);
+    expect(BRAND.wordmark.length).toBe(2);
+    expect(BRAND.wordmark.join(' ')).toBe(BRAND.full);
+    for (const line of BRAND.wordmark) expect(line).not.toMatch(/boss/i);
+    // And the shell reads it rather than carrying its own copy.
+    const shell = read('hostv2/src/HostShellV2.jsx');
+    expect(shell).toMatch(/BRAND\.wordmark\[0\]/);
+    expect(shell).toMatch(/BRAND\.wordmark\[1\]/);
+  });
+
   test('THE GUARD: no host-facing source says "the Boss" outside a comment', () => {
     // Comments are allowed to record the history — this file and HostShellV2's
     // rail comment both do — so the sweep strips them first and reads what is

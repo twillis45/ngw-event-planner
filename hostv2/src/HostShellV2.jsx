@@ -1035,9 +1035,15 @@ export default function HostShellV2() {
     >
       <div className="sp-glow" />
       <div className="sp-stack">
-        <div className="sp-carv sp-l1">Event</div>
+        {/* READ FROM THE BRAND OWNER, 2026-09-23. These two lines were carved
+            as "Event" / "Boss" and survived the rename — the largest type in the
+            app, sitting directly above a caps lockup that already read from
+            BRAND, so the splash showed the old name and the new one at once.
+            Split across two elements, no search for the joined name could see
+            it. The split is a typographic choice; the name is not ours to hold. */}
+        <div className="sp-carv sp-l1">{BRAND.wordmark[0]}</div>
         <div className="sp-l2row">
-          <div className="sp-carv sp-l2">Boss</div>
+          <div className="sp-carv sp-l2">{BRAND.wordmark[1]}</div>
           <span className="sp-dot" />
         </div>
       </div>

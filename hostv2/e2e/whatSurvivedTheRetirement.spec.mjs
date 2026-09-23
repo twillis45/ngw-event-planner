@@ -126,6 +126,29 @@ test.describe('the moved content reaches a real screen', () => {
 });
 
 test.describe('the rename reached the door that says the name', () => {
+  test('THE SPLASH — the first screen anyone sees, carved from the brand', async ({ page }) => {
+    // THIS IS THE TEST THAT WAS MISSING, and its absence is the whole lesson.
+    // Every other spec in this repo — including the ones below — sets
+    // `ngw-v2-splash-seen` in order to GET PAST the splash to the app. So the
+    // largest type in the product was the one surface no spec had ever read,
+    // and it went on carving "Event" / "Boss" through the entire rename.
+    //
+    // Deliberately seeded WITHOUT that key.
+    await page.addInitScript(() => {
+      localStorage.setItem('ngw-welcomed', '1');
+      localStorage.setItem('ngw-v2-welcomed', '1');
+    });
+    await page.goto('?elegant=1');
+    const splash = page.locator('.sp-stack').first();
+    await splash.waitFor({ state: 'visible', timeout: 8000 });
+    const carved = (await splash.innerText()).replace(/\s+/g, ' ').trim();
+    // The name it actually spells, read off the screen in reading order.
+    expect(carved.toLowerCase()).not.toContain('boss');
+    expect(carved).toMatch(/No Guesswork/);
+    expect(carved).toMatch(/Events/);
+  });
+
+
   test('the ask door reads "Ask No Guesswork", and "the Boss" is nowhere on screen', async ({ page }) => {
     await boot(page, { id: 'ret-brand', type: 'Birthday' });
     // The whole rendered page, not one element: the old name survived in four

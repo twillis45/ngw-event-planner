@@ -99,11 +99,32 @@
 //
 // CONFIRM AT A REGISTRAR BEFORE BUYING. Nothing here is a purchase, a
 // reservation, or a clearance, and none of it is a trademark check.
+// ─── THE WORDMARK, WHICH IS WHY THIS FIELD EXISTS ───────────────────────────
+// The splash screen carves the name in the largest type in the app, across two
+// stacked lines. It was hard-coded as "Event" / "Boss" and SURVIVED THE RENAME —
+// on the first screen every new user sees, directly above a caps lockup that
+// already read from `caps` here. The splash showed both names at once.
+//
+// THREE GUARDS MISSED IT, each for its own reason, and that is the useful part:
+//   · the rename's own gate reads src/App.js, the frozen CRA donor;
+//   · the gate written after THAT searched for "Event Boss" and "the Boss" as
+//     joined strings, and this one is SPLIT ACROSS TWO ELEMENTS — no substring
+//     of the source contains the name;
+//   · the e2e dismissed the splash before it could render, to reach the app.
+//
+// A name assembled at render time is invisible to every search for the name. So
+// the wordmark is data here rather than markup there, and the splash reads it.
+const WORDMARK = Object.freeze(['No Guesswork', 'Events']);
+
 export const BRAND = Object.freeze({
   full: 'No Guesswork Events',
   short: 'No Guesswork',
   caps: 'NO GUESSWORK EVENTS',
   company: 'No Guesswork Systems LLC',
+  // Two stacked lines, big type. Joining them with a space must equal `full`,
+  // and a test asserts exactly that — the split is a typographic decision, not
+  // a second copy of the name.
+  wordmark: WORDMARK,
 });
 
 export default BRAND;
