@@ -28,6 +28,26 @@
 // reads as a corporate insert — "What No Guesswork remembers" is a sentence, and
 // "What No Guesswork Events remembers" is a press release. Surfaces pick the one
 // that fits; neither is ever re-typed.
+// ─── THE DOMAIN, AS FAR AS THIS ENVIRONMENT CAN ESTABLISH IT ────────────────
+// Checked 2026-09-23 by DNS resolution, which is a real signal but NOT an
+// authoritative one — a registered domain can sit with no DNS configured, so
+// "does not resolve" means LIKELY unregistered, never certainly. RDAP and WHOIS
+// are both blocked by this environment's egress proxy and dig/nslookup are not
+// installed, so no registration record was read.
+//
+// The method was calibrated before it was trusted: a known-registered domain
+// resolves and is refused by the proxy (a distinct error), while invented
+// nonsense fails to resolve. The two are distinguishable, which is what makes
+// the column below mean anything.
+//
+//   noguessworksystems.com   RESOLVES          the owner's own company — already his
+//   noguesswork.com          RESOLVES          taken; by whom is not visible from here
+//   noguessworkevents.com    does not resolve  likely free — the exact-match .com
+//   noguesswork.events       does not resolve  likely free
+//   noguessworkevents.app    does not resolve  likely free
+//
+// CONFIRM AT A REGISTRAR BEFORE BUYING. Nothing here is a purchase, a
+// reservation, or a clearance, and none of it is a trademark check.
 export const BRAND = Object.freeze({
   full: 'No Guesswork Events',
   short: 'No Guesswork',
