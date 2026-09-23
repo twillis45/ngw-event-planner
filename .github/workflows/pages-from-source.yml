@@ -29,19 +29,28 @@ on:
   workflow_dispatch:
     inputs:
       release_profile:
-        description: 'demo = open, localStorage-only (current public product). live = authenticated + backend-connected. Choosing live CHANGES WHAT THE PRODUCT IS for every visitor.'
+        description: 'demo = open, localStorage-only. services = backend proxy on (real prices, forecasts, store lookups) with NO sign-in — still localStorage-only for the visitor. live = backend + authentication; choosing live CHANGES WHAT THE PRODUCT IS for every visitor.'
         required: true
         default: demo
         type: choice
-        options: [demo, live]
+        options: [demo, services, live]
   # THE LIVE PATH (2026-08-03). Every merge to main publishes Pages, built from
   # source in CI.
   #
   # A push carries NO inputs, so release_profile is empty here and the env below
-  # floors it to `demo`. That is deliberate and load-bearing: an automatic deploy
-  # can only ever publish the open, localStorage-only demo. Publishing `live`
-  # (authenticated + backend-connected) stays a manual workflow_dispatch, because
-  # it changes what the product IS for every visitor.
+  # falls back to the repository variable DEFAULT_RELEASE_PROFILE, and then to
+  # `demo`. Publishing `live` (authenticated) stays a deliberate act.
+  #
+  # WHY THE FLOOR BECAME A VARIABLE (2026-09-23). It used to be a hard `demo`,
+  # and that was right when the only alternative was `live`. It stopped being
+  # right the moment a third profile existed: a MANUAL services release would be
+  # silently reverted to `demo` by the very next merge to main — the deploy
+  # would be green, the site would quietly lose its prices, and nothing would
+  # say so. A setting you must re-apply after every push is not a setting.
+  #
+  # `demo` is still the default when the variable is unset, so the safety
+  # property holds for anyone who has not deliberately changed it. Set it at:
+  # Settings → Secrets and variables → Actions → Variables.
   push:
     branches: [main]
 
@@ -73,19 +82,33 @@ jobs:
     # HOST RULING 2026-07-31: the public site ships as the OPEN, localStorage-only
     # demo. .env.production.local omits the live values DELIBERATELY — that is
     # product behaviour, not missing configuration. So these are only consumed
-    # when release_profile=live is explicitly chosen; on the demo profile they are
-    # forced empty and their ABSENCE is asserted, so a demo release can never
-    # quietly acquire sign-in because someone set a repository variable.
+    # when the chosen profile calls for them; on `demo` they are forced empty and
+    # their ABSENCE is asserted, so a demo release can never quietly acquire
+    # sign-in because someone set a repository variable.
+    #
+    # THAT RULING IS ABOUT SIGN-IN, and `services` (2026-09-23) is the profile
+    # that finally separates the two things it had been read as covering. A
+    # backend PROXY returning public prices and forecasts does not give the site
+    # accounts, cloud storage or a login screen — the visitor's plans still live
+    # only in their own browser. So `services` takes the API base and is asserted
+    # to have NO Supabase values, and the open, localStorage-only character the
+    # ruling protects is preserved exactly.
     #
     # Set them at: Settings → Secrets and variables → Actions → Variables.
     env:
-      # `|| 'demo'` is the push-trigger floor — see the trigger comment above.
-      RELEASE_PROFILE: ${{ inputs.release_profile || 'demo' }}
-      REACT_APP_API_BASE_URL: ${{ inputs.release_profile == 'live' && vars.REACT_APP_API_BASE_URL || '' }}
-      REACT_APP_SUPABASE_URL: ${{ inputs.release_profile == 'live' && vars.REACT_APP_SUPABASE_URL || '' }}
-      REACT_APP_SUPABASE_ANON_KEY: ${{ inputs.release_profile == 'live' && vars.REACT_APP_SUPABASE_ANON_KEY || '' }}
-      REACT_APP_AUTH_REDIRECT: ${{ inputs.release_profile == 'live' && vars.REACT_APP_AUTH_REDIRECT || '' }}
-      REACT_APP_ENABLE_GOOGLE_AUTH: ${{ inputs.release_profile == 'live' && vars.REACT_APP_ENABLE_GOOGLE_AUTH || '' }}
+      # A dispatch input wins; otherwise the repository default; otherwise demo.
+      # See the trigger comment above for why this is no longer a hard floor.
+      RELEASE_PROFILE: ${{ inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE || 'demo' }}
+      # The API base reaches a proxy that returns PUBLIC data (BLS prices, the
+      # forecast, Kroger shelf prices) and holds its keys server-side. It is
+      # therefore available to `services` as well as `live` — it does not bring
+      # sign-in with it, and the validator asserts the Supabase values stay
+      # absent on `services` so it never quietly does.
+      REACT_APP_API_BASE_URL: ${{ (inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE) == 'live' && vars.REACT_APP_API_BASE_URL || (inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE) == 'services' && vars.REACT_APP_API_BASE_URL || '' }}
+      REACT_APP_SUPABASE_URL: ${{ (inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE) == 'live' && vars.REACT_APP_SUPABASE_URL || '' }}
+      REACT_APP_SUPABASE_ANON_KEY: ${{ (inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE) == 'live' && vars.REACT_APP_SUPABASE_ANON_KEY || '' }}
+      REACT_APP_AUTH_REDIRECT: ${{ (inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE) == 'live' && vars.REACT_APP_AUTH_REDIRECT || '' }}
+      REACT_APP_ENABLE_GOOGLE_AUTH: ${{ (inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE) == 'live' && vars.REACT_APP_ENABLE_GOOGLE_AUTH || '' }}
       REACT_APP_SENTRY_DSN: ${{ vars.REACT_APP_SENTRY_DSN }}
       REACT_APP_POSTHOG_KEY: ${{ vars.REACT_APP_POSTHOG_KEY }}
       REACT_APP_POSTHOG_HOST: ${{ vars.REACT_APP_POSTHOG_HOST }}

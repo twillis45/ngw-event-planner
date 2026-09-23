@@ -20,7 +20,11 @@
  *
  *   --mode=verification   ordinary CI compilation. Public config MAY be blank.
  *                         The result is explicitly NOT production-capable.
- *   --mode=production     a release. Every required public value must be present,
+ *   --mode=demo           the open, localStorage-only public site. Live values
+ *                         must be ABSENT.
+ *   --mode=services       backend-connected, still SIGN-IN FREE. The API base is
+ *                         required; Supabase auth must be absent. See below.
+ *   --mode=live           a full release. Every required public value present,
  *                         or the build fails loudly rather than degrading.
  *
  * Both modes reject prohibited browser variables and server-secret shapes.
@@ -36,9 +40,9 @@ const modeArg = args.find((a) => a.startsWith('--mode='));
 const MODE = modeArg ? modeArg.slice('--mode='.length) : null;
 
 // `production` is kept as a deprecated alias for `live`.
-const MODES = ['verification', 'demo', 'live', 'production'];
+const MODES = ['verification', 'demo', 'services', 'live', 'production'];
 if (!MODE || !MODES.includes(MODE)) {
-  console.error('usage: validate-production-config.mjs --mode=verification|demo|live');
+  console.error('usage: validate-production-config.mjs --mode=verification|demo|services|live');
   process.exit(2);
 }
 const PROFILE = MODE === 'production' ? 'live' : MODE;
@@ -53,6 +57,29 @@ const REQUIRED_PRODUCTION = [
   'REACT_APP_SUPABASE_URL',
   'REACT_APP_SUPABASE_ANON_KEY',
 ];
+
+// ── THE THIRD PROFILE, AND WHY IT EXISTS (2026-09-23) ───────────────────────
+// These three were one concept — "live" — and they are two.
+//
+//   REACT_APP_API_BASE_URL reaches a FastAPI proxy that holds server-side keys
+//   and returns public data: BLS food prices, the weather forecast, Kroger
+//   shelf prices, an Instacart cart link. No account, no sign-in, nothing
+//   stored anywhere but the visitor's own browser.
+//
+//   REACT_APP_SUPABASE_* is sign-in: accounts, cloud sync, per-event ownership.
+//
+// The 2026-07-31 host ruling is that the public site ships OPEN and
+// localStorage-only. Sign-in ends that; a price proxy does not. Bundling them
+// meant the only way to give a host a real shelf price was to also give every
+// visitor a login screen — so the store layer shipped 2026-09-23 correct,
+// tested, driven at seven viewports, and INVISIBLE, because the profile that
+// would have switched it on changed the product into something else.
+//
+// `services` is that missing middle. The API base is required; the Supabase
+// values are asserted ABSENT, exactly as the demo profile asserts them, so this
+// profile can never quietly acquire sign-in either.
+const REQUIRED_SERVICES = ['REACT_APP_API_BASE_URL'];
+const AUTH_VALUES = ['REACT_APP_SUPABASE_URL', 'REACT_APP_SUPABASE_ANON_KEY'];
 
 // ── Prohibited in ANY browser build ──────────────────────────────────────────
 // An explicit list, not a heuristic. Each entry is a name that must never be
@@ -146,11 +173,30 @@ for (const [name, rawValue] of Object.entries(process.env)) {
 if (PROFILE === 'demo') {
   const present3 = REQUIRED_PRODUCTION.filter(present);
   for (const n of present3) {
-    errors.push(`NOT ALLOWED IN A DEMO RELEASE  ${n} — setting it turns the open demo into an authenticated, backend-connected product. Use --mode=live deliberately if that is the intent.`);
+    errors.push(`NOT ALLOWED IN A DEMO RELEASE  ${n} — setting it turns the open demo into a backend-connected or authenticated product. Use --mode=services (backend, no sign-in) or --mode=live (backend + sign-in) deliberately if that is the intent.`);
   }
   if (!present3.length) {
     notes.push('demo release: live auth/backend configuration is absent, as intended.');
     notes.push('This artifact is the OPEN, localStorage-only demo. It is NOT live-production capable.');
+  }
+}
+
+// 3ab — SERVICES RELEASE: the backend proxy ON, sign-in still OFF.
+//
+// Both halves are asserted, and the second is the one that matters. A profile
+// that merely ADDED the API base would drift into a live release the first time
+// someone set a Supabase repository variable for an unrelated reason — the same
+// silent-acquisition failure the demo profile was written to prevent.
+if (PROFILE === 'services') {
+  for (const n of REQUIRED_SERVICES.filter((x) => !present(x))) {
+    errors.push(`MISSING  ${n} — required for a services release; without it the app degrades to the localStorage demo and the store/weather/price layers stay dark`);
+  }
+  for (const n of AUTH_VALUES.filter(present)) {
+    errors.push(`NOT ALLOWED IN A SERVICES RELEASE  ${n} — this profile is deliberately sign-in free. Use --mode=live if a login screen is the intent.`);
+  }
+  if (!errors.length) {
+    notes.push('services release: backend proxy configured, sign-in absent, as intended.');
+    notes.push('Visitors get real prices and forecasts. Their plans still live only in their own browser.');
   }
 }
 
@@ -216,6 +262,9 @@ if (errors.length) {
 const capable = REQUIRED_PRODUCTION.every(present);
 if (PROFILE === 'demo') {
   console.log('✓ demo release: open, localStorage-only. NOT live-production capable — by design.');
+} else if (PROFILE === 'services') {
+  console.log('✓ services release: backend proxy on, sign-in off. Still localStorage-only for the visitor.');
+  console.log('  Real prices, forecasts and store lookups. No accounts, no cloud storage, no login screen.');
 } else if (PROFILE === 'live') {
   console.log('✓ live release: all required public values present and coherent (anon key, matching project, https API).');
   console.log('  NOTE: a live release changes the product from an open demo to authenticated, backend-connected operation.');

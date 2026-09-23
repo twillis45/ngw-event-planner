@@ -1,5 +1,44 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — the release profile that was missing, and two sources that agree
+
+`main` @ pending. 521 suites / 7,407 tests. `verify:push` 5/5, exit 0.
+
+**Baking the API base turned out not to be a build change.** `pages-from-source`
+has had a governed profile since 2026-07-31 — `demo` (open, localStorage-only)
+or `live` (authenticated + backend) — with pushes floored to `demo` because live
+"changes what the product IS for every visitor". That ruling is right and had
+been reading as one decision when it is two: the API base is a proxy returning
+PUBLIC data (prices, forecast, shelf prices); Supabase is sign-in. Sign-in ends
+the open character; a price proxy does not. Bundled, the only way to show a host
+a real shelf price was to give every visitor a login screen — which is why the
+store layer shipped correct, tested, and invisible.
+
+So there is now a third profile, **`services`**: API base required, Supabase
+asserted ABSENT. And the push floor became a repository variable, because a hard
+`demo` was right with two profiles and wrong with three — a manual services
+release would be silently reverted by the next merge. Unset still means `demo`.
+270 lines of release governance had no test; now 12, the important one being
+that a services build **cannot acquire sign-in**.
+
+**storeUnitMap:** the turkey came off after four terms were probed live and
+every one returned deli meat or a breast roast (42 → 41 entries). Third removal
+of one shape, now named — the match guard catches a product of the wrong KIND,
+not the right product in the wrong STATE, FORM or CUT.
+
+**And a free instrument:** every line already carries the corpus's researched
+band, and a shelf price is a second independent measurement. Across 35 live
+matches **26 agreed**. The rest are disclosed, never refused (the shelf price is
+the better number) and never explained (small format, dear store and stale band
+are indistinguishable from here). One threshold, both directions: 1.5× outside.
+
+**Worth carrying forward:** when a setting you want does not exist, check whether
+two decisions got bundled before overriding the one in the way.
+
+**Open:** one repository variable and one dispatch, both the owner's. Dry weight
+vs prepared weight; bulk-format sizing.
+
+
 ## 2026-09-23 — deployed, measured end to end, and the coverage limit said out loud
 
 `main` @ `a8ef138`. 520 suites / 7,388 tests. `verify:push` 5/5, exit 0.

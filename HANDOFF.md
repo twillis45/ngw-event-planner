@@ -125,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `a8ef1381` |
-| Jest | **7,388 passed**, 1 skipped, **0 failed**, **520 suites** (re-measured 2026-09-23 after the twenty-seventh entry; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `de924956` |
+| Jest | **7,407 passed**, 1 skipped, **0 failed**, **521 suites** (re-measured 2026-09-23 after the twenty-eighth entry; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -138,6 +138,95 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-eighth entry) — the profile that was missing, and two sources that agree
+
+Two asks: bake the API base into the Pages build, and address `storeUnitMap`.
+The first turned out not to be a build change at all.
+
+521 suites / 7,407 tests. `verify:push` 5/5, exit 0. 49 e2e green.
+
+### There was no profile for what was wanted
+
+`pages-from-source.yml` has had a governed release profile since 2026-07-31:
+`demo` (open, localStorage-only) or `live` (authenticated + backend), with a
+push floored to `demo` because *"it changes what the product IS for every
+visitor."* The validator asserts the demo case rather than assuming it.
+
+That ruling is right, and it had been reading as one decision when it is two:
+
+| | what it does |
+|---|---|
+| `REACT_APP_API_BASE_URL` | a proxy holding server keys, returning **public** data — BLS prices, forecast, Kroger shelf prices |
+| `REACT_APP_SUPABASE_*` | **sign-in**: accounts, cloud sync, ownership |
+
+Sign-in ends the open, localStorage-only character. A price proxy does not.
+Bundled, the only way to give a host a real shelf price was to give every
+visitor a login screen — which is why the store layer shipped correct, tested,
+driven at seven viewports, and **invisible**.
+
+**So: a third profile, `services`.** API base required, Supabase values asserted
+ABSENT. Backend on, sign-in off, plans still only in the visitor's own browser.
+Baking the value unconditionally would have overridden a recorded host ruling;
+this separates the two things the ruling was being read as covering, and leaves
+it intact.
+
+**And the push floor became a repository variable.** A hard `demo` was right
+with two profiles and wrong with three: a manual `services` release would be
+silently reverted by the very next merge — green deploy, prices quietly gone,
+nothing said. `DEFAULT_RELEASE_PROFILE` unset still means `demo`, so the safety
+property holds for anyone who has not deliberately changed it.
+
+**270 lines of release governance had no test at all.** Now 12, including the
+one that matters: a `services` build **cannot acquire sign-in**, so it cannot
+drift into a live release the first time someone sets a Supabase variable for an
+unrelated reason.
+
+### storeUnitMap — one removal, and a corroboration check
+
+**The turkey came off.** Four search terms probed live — `whole turkey`,
+`turkey`, `whole turkey fresh`, `frozen whole turkey` — and every one returns
+sliced deli meat or a 3 lb breast roast. At 31.5 lbs that is eleven roasts at
+$5.00/lb against a whole bird's ~$1.50. Removed rather than priced as a
+different cut. 42 → 41 entries, 61 → 60 lines.
+
+Third removal of one shape, now named: **the match guard catches a product of
+the wrong KIND. It cannot catch the right product in the wrong STATE (crawfish:
+cooked, not live), FORM (mac & cheese: dry mix, not prepared) or CUT.**
+
+**And a check that costs nothing.** Every priced line already carries the
+corpus's researched band. A shelf price is a second, independent measurement of
+the same commodity — so compare them. Across 35 live matches, **26 agreed**:
+inside the band or within a quarter of its top. Two sources that have never met.
+
+The outliers are informative, not wrong:
+
+    apple-cider vinegar  $13.52/gal vs $3–$7   a gallon as eight 16 oz bottles
+    Old Bay              $15.44/lb  vs $4–$9   a 6 oz tin, not the tub
+    deli potato salad    $5.99/lb   vs $1–$3   the band is for ingredients
+    strawberries         $5.99/lb   vs $1–$3   out of season, or a dear store
+
+So it **discloses and never refuses** — withholding a real price because our
+estimate was low is backwards; the shelf price is the better number. And it
+**never says why**: a small format, a dear store and a stale band are
+indistinguishable from here, and picking one would be invention.
+
+One threshold, both directions: 1.5× outside the band. Two numbers invite each
+being tuned alone until the rule is no longer sayable in a sentence.
+
+### Worth carrying forward
+
+- **When a setting you want does not exist, check whether two decisions got
+  bundled** before overriding the one that is in the way. The host ruling was
+  never wrong; it was being asked to carry a second question it never answered.
+- **A floor you must re-apply after every push is not a setting.**
+- **Two independent estimates of the same quantity are a free instrument.** The
+  corpus and the shelf had never been compared, and the comparison cost nothing.
+
+### Open
+
+- **The repository variable and one dispatch are yours** — see the report.
+- Dry weight vs prepared weight; bulk-format sizing.
 
 ## FIXED 2026-09-23 (twenty-seventh entry) — deployed, measured end to end, and the coverage limit now said out loud
 

@@ -9,7 +9,7 @@
 // false accept is the only failure here that reaches a host's budget.
 import {
   unitDimension, parseStoreSize, lineIsMultipliable, storeLineTotal, UNIT_MAPPED_LINES,
-  storeSearchTerm, matchLooksLikeTheLine,
+  storeSearchTerm, matchLooksLikeTheLine, bandCheck,
 } from '../knowledge/storeUnitMap';
 import { playbookFoodPlan, ALL_PLAYBOOKS } from '../playbooks';
 
@@ -170,7 +170,7 @@ describe('how far this reaches, measured rather than hoped', () => {
     // better ones — the same ceiling geoItemMap records for its own 12.
     //
     // Allowed to move. Pinned so that it moves ON PURPOSE.
-    expect(UNIT_MAPPED_LINES).toBe(42);
+    expect(UNIT_MAPPED_LINES).toBe(41);
 
     let total = 0; let multipliable = 0;
     for (const pb of ALL_PLAYBOOKS) {
@@ -184,7 +184,7 @@ describe('how far this reaches, measured rather than hoped', () => {
     expect(total).toBeGreaterThan(400);
     // The honest headline: this is what a host can get a real TOTAL for. Every
     // other line keeps the estimate and, where a product matched, a reference.
-    expect(multipliable).toBe(61);
+    expect(multipliable).toBe(60);
   });
 });
 
@@ -309,5 +309,96 @@ describe('what the live store actually sent back', () => {
       description: 'Jumbo Collard Greens Bunch',
     });
     expect(r).toBe(null);
+  });
+});
+
+// ─── TWO INDEPENDENT MEASUREMENTS OF THE SAME COMMODITY ──────────────────────
+//
+// Every priced line carries the corpus's own researched band. A shelf price is
+// a second measurement of the same thing, by a source that has never seen the
+// first. Comparing them is free, and across 35 live matches at a Baltimore
+// store, 26 agreed — inside the band or within a quarter of its top.
+//
+// The numbers below are that live response, not inventions.
+describe('when the shelf and the plan disagree, the host is told', () => {
+  const band = (lo, hi, unit = 'lbs') => ({ id: 'p_x', item: 'X', unit, perUnitLow: lo, perUnitHigh: hi });
+
+  test('AGREEMENT IS SILENT — which is the common case, and noise is not honesty', () => {
+    // Ice: $0.43/lb against an authored $0.20–$0.40. 1.07× the top, and not
+    // worth a sentence. Whole chicken at 1.14× likewise.
+    expect(bandCheck({ line: band(0.2, 0.4), perUnit: 0.43 })).toBe(null);
+    expect(bandCheck({ line: band(1.3, 3.5), perUnit: 3.99 })).toBe(null);
+    // Comfortably inside says nothing either.
+    expect(bandCheck({ line: band(4, 7), perUnit: 5.99 })).toBe(null);
+  });
+
+  test('DEARER than the plan expected is disclosed', () => {
+    // Apple-cider vinegar: a gallon bought as eight 16 oz bottles works out at
+    // $13.52/gal against an authored $3–$7. The jug is about $5.
+    const r = bandCheck({ line: band(3, 7, 'gal'), perUnit: 13.52 });
+    expect(r.side).toBe('high');
+    expect(r.factor).toBe(1.9);
+    expect(r.note).toMatch(/dearer per gal than this plan expected/);
+    // …and it says to LOOK, not what to conclude.
+    expect(r.note).toMatch(/worth a look at the size on the shelf/);
+  });
+
+  test('CHEAPER is disclosed too, by the SAME factor — one rule, both directions', () => {
+    // Store-brand refried beans: $0.99 for 16 oz against an authored $1.50–$3.
+    // Below the floor by more than 1.5×, so it speaks.
+    const r = bandCheck({ line: band(1.5, 3), perUnit: 0.99 });
+    expect(r.side).toBe('low');
+    expect(r.note).toMatch(/cheaper per lb than this plan expected/);
+
+    // And the symmetry is the point: the rule is one factor outside the band in
+    // either direction, not two numbers tuned apart until it cannot be stated in
+    // a sentence. Just inside the floor stays silent.
+    expect(bandCheck({ line: band(1.5, 3), perUnit: 1.05 })).toBe(null);
+    expect(bandCheck({ line: band(1.5, 3), perUnit: 4.4 })).toBe(null);
+    expect(bandCheck({ line: band(1.5, 3), perUnit: 4.6 }).side).toBe('high');
+  });
+
+  test('IT NEVER EXPLAINS WHY, because it cannot', () => {
+    // A small format, a dear store and a stale authored band are
+    // indistinguishable from here. Naming one would be invention, and this
+    // module's whole argument is that it does not invent.
+    const r = bandCheck({ line: band(1, 3), perUnit: 5.99 });
+    expect(r.note).not.toMatch(/store is|because|since|due to|out of season/i);
+  });
+
+  test('IT NEVER REFUSES — the shelf price is the better number', () => {
+    // The tempting mistake: treat a disagreement as a bad match and withhold
+    // the total. That throws away a real price because our estimate was low,
+    // which is backwards. Deli potato salad really is $5.99/lb.
+    const line = { id: 'p_potatosalad', item: 'Potato salad', unit: 'lbs', units: 6.9, perUnitLow: 1, perUnitHigh: 3 };
+    const r = storeLineTotal({
+      line, price: 5.99, size: '16 oz', soldBy: 'UNIT',
+      description: 'Harris Teeter Fresh Foods Market Original Potato Salad',
+    });
+    expect(r).not.toBe(null);
+    expect(r.total).toBe(41.93);
+    expect(r.band.side).toBe('high');     // flagged, and still delivered
+  });
+
+  test('no authored band ⇒ nothing to compare, and nothing is said', () => {
+    expect(bandCheck({ line: { unit: 'lbs' }, perUnit: 9 })).toBe(null);
+    expect(bandCheck({ line: band(1, 3) })).toBe(null);
+    expect(bandCheck({})).toBe(null);
+  });
+});
+
+describe('the turkey came off the list', () => {
+  test('no term reached a whole bird, so the line carries no total', () => {
+    // FOUR terms probed live — "whole turkey", "turkey", "whole turkey fresh",
+    // "frozen whole turkey" — and every one returns sliced deli meat or a 3 lb
+    // breast roast. At 31.5 lbs that is eleven roasts at $5.00/lb against a
+    // whole bird's ~$1.50. Removed rather than priced as a different cut.
+    const line = { id: 'p_turkey', item: 'Turkey (whole bird, or breast for a small table)', unit: 'lbs', units: 31.5 };
+    expect(storeSearchTerm(line)).toBe(null);
+    expect(lineIsMultipliable(line)).toBe(null);
+    expect(storeLineTotal({
+      line, price: 14.99, size: '3 lbs', soldBy: 'UNIT',
+      description: 'Butterball All Natural Frozen Turkey Breast Roast',
+    })).toBe(null);
   });
 });

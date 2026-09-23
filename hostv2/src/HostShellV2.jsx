@@ -18204,7 +18204,20 @@ export default function HostShellV2() {
                                           rounding is the part they most need to
                                           see, because you cannot buy 4.29 bags. */}
                                       {L.total != null && (
-                                        <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>{L.math}</span>
+                                        <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
+                                          {L.math}
+                                          {/* ── WHEN THE TWO SOURCES DISAGREE ──
+                                              The plan's authored band and the
+                                              shelf are independent measurements
+                                              of the same commodity, and 26 of 35
+                                              live matches agreed. When they do
+                                              not, the host is told — and NOT told
+                                              why, because a small format, a dear
+                                              store and a stale band cannot be
+                                              told apart from here, and picking
+                                              one would be invention. */}
+                                          {L.band ? ' ' + L.band.note : ''}
+                                        </span>
                                       )}
                                     </>
                                   );

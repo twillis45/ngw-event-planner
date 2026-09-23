@@ -182,7 +182,17 @@ const ALLOW = Object.freeze([
   { id: 'p_wings', item: 'Chicken wings' , term: 'chicken wings' },
   { id: 'p_ribs', item: 'Ribs (racks)' , term: 'pork ribs' },
   { id: 'p_ribs', item: 'Pork ribs (racks)' , term: 'pork ribs' },
-  { id: 'p_turkey', item: 'Turkey (whole bird, or breast for a small table)' , term: 'whole turkey' },
+  // REMOVED 2026-09-23. FOUR search terms were probed against a live store —
+  // "whole turkey", "turkey", "whole turkey fresh", "frozen whole turkey" — and
+  // every one returns sliced deli meat or a 3 lb breast roast. At the 31.5 lbs
+  // this line sizes to, that is eleven breast roasts at $5.00/lb against a whole
+  // bird's ~$1.50. No term reaches the product the line means, so the line comes
+  // off rather than carrying a price for a different cut.
+  //
+  // Third removal of the same shape, and the shape is now named: the match guard
+  // catches a product of the wrong KIND; it cannot catch the right product in
+  // the wrong STATE (crawfish: cooked not live), the wrong FORM (mac & cheese:
+  // dry mix not prepared) or the wrong CUT.
   { id: 'p_shrimp', item: 'Fresh shrimp (shell-on / head-on)' , term: 'raw shrimp' },
   { id: 'p_shrimp', item: 'Steamed shrimp (Old Bay)' , term: 'cooked shrimp' },
   // REMOVED 2026-09-23, same probe: the line says LIVE, by the sack. The store
@@ -344,6 +354,62 @@ export function lineIsMultipliable(line) {
  * total that silently covers more than the host asked for is a total they
  * cannot check.
  */
+/**
+ * ── DOES THE SHELF PRICE AGREE WITH WHAT THIS PLAN WAS BUILT ON? ──────────
+ *
+ * Every priced line carries `perUnitLow`/`perUnitHigh` — the corpus's own
+ * researched band for this commodity, in the line's own unit. A store price is
+ * a second, independent measurement of the same thing, so the two can be
+ * compared, and that comparison is free: no new data, no new call.
+ *
+ * Measured across 35 live matches at a Baltimore store: 26 land inside the
+ * authored band or within a quarter of its top. That is real corroboration
+ * between two sources that have never met. The outliers are informative rather
+ * than wrong:
+ *
+ *   apple-cider vinegar  $13.52/gal vs $3–$7   — a gallon bought as eight
+ *                                                16 oz bottles; the jug is ~$5
+ *   Old Bay              $15.44/lb  vs $4–$9   — a 6 oz tin, not the tub
+ *   deli potato salad    $5.99/lb   vs $1–$3   — the band is for ingredients
+ *   strawberries         $5.99/lb   vs $1–$3   — out of season, or a dear store
+ *
+ * SO THIS DISCLOSES AND NEVER REFUSES. Refusing would throw away a real price
+ * because our estimate was low, which is backwards — the shelf price is the
+ * better number. What a host needs is to know the two disagree, so they can
+ * look. What this must NOT do is explain WHY: small format, dear store and a
+ * stale band are indistinguishable from here, and picking one would be
+ * invention.
+ *
+ * THE THRESHOLD IS CHOSEN, NOT DERIVED, AND THERE IS ONLY ONE. A factor of 1.5
+ * outside the band in either direction: above `hi × 1.5`, or below `lo ÷ 1.5`.
+ * One number rather than two, because two invites each being tuned alone until
+ * the rule is no longer sayable in a sentence. It is picked to sit clear of
+ * ordinary variation — ice at 1.07× the top and whole chicken at 1.14× are not
+ * worth interrupting a host for — and it is stated here so the next person
+ * moves it on purpose.
+ */
+export function bandCheck({ line, perUnit } = {}) {
+  const lo = Number(line && line.perUnitLow);
+  const hi = Number(line && line.perUnitHigh);
+  const p = Number(perUnit);
+  if (!(p > 0) || !(hi > 0) || !(lo > 0)) return null;
+  if (p > hi * 1.5) {
+    return {
+      side: 'high',
+      factor: Math.round((p / hi) * 10) / 10,
+      note: `That is dearer per ${String(line.unit || 'unit').replace(/s$/, '')} than this plan expected — worth a look at the size on the shelf.`,
+    };
+  }
+  if (p < lo / 1.5) {
+    return {
+      side: 'low',
+      factor: Math.round((p / lo) * 100) / 100,
+      note: `That is cheaper per ${String(line.unit || 'unit').replace(/s$/, '')} than this plan expected.`,
+    };
+  }
+  return null;
+}
+
 export function storeLineTotal({ line, price, size, soldBy, description } = {}) {
   const p = Number(price);
   if (!(p > 0)) return null;
@@ -377,7 +443,12 @@ export function storeLineTotal({ line, price, size, soldBy, description } = {}) 
     : `${packs} × ${packText} at $${p.toFixed(2)} = $${total.toFixed(2)}${
       packs > exactPacks ? ` — covers ${trimNum(need.qty)}, you take home ${trimNum(round3(packs * packBase / need.per))} ${need.unit}` : ''}.`;
 
-  return { total, packs, byWeight, because, needBase, packBase };
+  // The store's price expressed in the LINE's own unit, so it can be held
+  // against the band the plan was built on. Same arithmetic as the total, read
+  // the other way round.
+  const perUnit = p * need.per / packBase;
+  const band = bandCheck({ line, perUnit });
+  return { total, packs, byWeight, because, needBase, packBase, perUnit, band };
 }
 
 const round3 = (n) => Math.round(n * 1000) / 1000;

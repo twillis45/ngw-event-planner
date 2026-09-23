@@ -124,6 +124,7 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
       total: t ? t.total : null,
       packs: t ? t.packs : null,
       math: t ? t.because : null,
+      band: t && t.band ? t.band : null,
       size: hit.size || null,
       soldBy: hit.soldBy || null,
       layer: 'store',
@@ -149,7 +150,7 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
         return {
           range: g.range,
           exact: null,
-          total: null, packs: null, math: null,
+          total: null, packs: null, math: null, band: null,
           layer: 'regional',
           label: PRICE_LAYERS.regional.label,
           because: g.basis || `Adjusted for your region from BLS average prices.`,
@@ -163,7 +164,7 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
   return {
     range: band,
     exact: null,
-    total: null, packs: null, math: null,
+    total: null, packs: null, math: null, band: null,
     layer: 'national',
     label: PRICE_LAYERS.national.label,
     because: state
@@ -224,6 +225,10 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
       // shelf is a total they have to take on faith, and this layer's whole
       // claim is that it does not require faith.
       math: t ? t.because : null,
+      // …and whether this store's price agrees with the band the plan was built
+      // on. null when they agree, which is the common case — 26 of 35 live
+      // matches landed inside the band or within a quarter of its top.
+      band: t && t.band ? t.band : null,
       because: hit.promo
         ? `On sale at your store: $${p.toFixed(2)}${hit.size ? ` · ${hit.size}` : ''} (was $${round2(hit.price).toFixed(2)}).`
         : `Your store's shelf price: $${p.toFixed(2)}${hit.size ? ` · ${hit.size}` : ''}.`,
@@ -234,7 +239,7 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
       layer: 'regional',
       label: PRICE_LAYERS.regional.label,
       exact: null, size: null, onSale: false, was: null, product: null,
-      total: null, packs: null, math: null,
+      total: null, packs: null, math: null, band: null,
       scope: geoBasis.scope === 'item' ? 'item' : 'basket',
       // The two regional answers are NOT the same quality and are not described
       // as if they were. One is this commodity's own published series; the other
@@ -249,7 +254,7 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
     layer: 'national',
     label: PRICE_LAYERS.national.label,
     exact: null, size: null, onSale: false, was: null, product: null,
-    total: null, packs: null, math: null,
+    total: null, packs: null, math: null, band: null,
     because: 'National average — nothing local moved this line.',
   };
 }
