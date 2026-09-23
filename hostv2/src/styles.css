@@ -2701,8 +2701,17 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    VENDOR-BRIEF-AUTHORING: 640px clipped it again once the on-site-contact/
    note fields + the minted-link panel landed (measured scrollHeight ~1225px
    on a vendor with several open promises + COI + a minted brief). Bumped
-   with headroom rather than re-measuring every future addition. */
-.vcard.open .vc-more{max-height:1500px; opacity:1}
+   with headroom rather than re-measuring every future addition.
+   COCKPIT-PORT SLICE 1 (2026-09-23): 1500px clipped it a THIRD time. The
+   readiness block added 431px to that same vendor — measured in Chromium at
+   390px, scrollHeight 1252 -> 1683 — and the overflow is SILENT: the content
+   simply stops, with no error anywhere and nothing in any suite watching.
+   Three bumps, each found only because someone happened to look. This one
+   ships with the tripwire the other two never had:
+   hostv2/e2e/whereThisVendorStands.spec.mjs asserts scrollHeight <=
+   clientHeight on the tallest seeded vendor, so the next block that outgrows
+   this number turns a test red instead of quietly losing its own bottom. */
+.vcard.open .vc-more{max-height:2400px; opacity:1}
 
 /* ── THE DETAIL USES THE DEAD THIRD (vendors ruling clause 6) ────────────────
    At desktop the sheet had a third of its width doing nothing while an opened

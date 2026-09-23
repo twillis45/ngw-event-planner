@@ -484,7 +484,24 @@ export function getVendorChallengeSummary(vendor, event) {
 //   label: human-readable status (e.g. "Needs attention", "Critical", "Ready for day-of")
 //   summary: short consequence line
 //   counts: { critical, attention, safe, notTracked } across challenge categories
-export function getVendorReadiness(vendor, event) {
+// ─── THE VERDICT IS COMPUTED OVER THE AXES ITS READER CAN SEE ───────────────
+//
+// `axes` is an optional allow-list of challenge keys. Omitted — which is every
+// caller that existed before 2026-09-23, the CRA cockpit included — it is null
+// and NOTHING changes: all nine axes, exactly as before.
+//
+// It exists because hostv2 renders six of the nine (HOST_READINESS_AXES below).
+// Filtering only the chips would have shipped a verdict citing evidence the host
+// cannot see. MEASURED over 1,568 vendor/event combinations before writing this:
+// 208 of them (13.3%) produced a readiness sentence sourced from an axis hostv2
+// does not render — "Vendor category not set — scope unclear" (64 cases) and
+// "No run-of-show entries reference this vendor" (32), each under a label with
+// no chip behind it to explain it.
+//
+// That is this codebase's recurring defect once more: a verdict derived over a
+// different population than the one its reader is looking at. Fixed at the
+// source, with ONE ladder — not a second copy that drifts.
+export function getVendorReadiness(vendor, event, axes = null) {
   if (!vendor) return { level: 'not_started', label: 'Not started', summary: '', counts: {} };
   const status = vendor.status || '';
   const eventDays = event && event.date ? daysFrom(event.date) : null;
@@ -492,7 +509,10 @@ export function getVendorReadiness(vendor, event) {
   const eventToday = eventDays === 0;
   const eventSoon = eventDays !== null && eventDays >= 0 && eventDays <= 14;
 
-  const c = getVendorChallengeSummary(vendor, event);
+  const _allAxes = getVendorChallengeSummary(vendor, event);
+  const c = axes
+    ? Object.fromEntries(Object.entries(_allAxes).filter(([k]) => axes.includes(k)))
+    : _allAxes;
   const cats = Object.values(c);
   const critical = cats.filter(x => x && x.level === 'critical').length;
   const attention = cats.filter(x => x && x.level === 'attention').length;
@@ -559,6 +579,46 @@ export function getVendorReadiness(vendor, event) {
     ? `${safe} of ${safe + notTracked} checks passing · ${notTracked} not tracked yet${nameList ? ` (${nameList})` : ''}.`
     : (eventSoon ? 'All checks passing — ready for event day.' : 'Booking healthy.');
   return { level: 'safe', label, summary, counts };
+}
+
+// ─── THE HOST'S SIX AXES ─────────────────────────────────────────────────────
+//
+// Owner ruling 2026-09-23: port only what is important to a host. The CRA
+// cockpit was built for planners and shows all nine. Three are cut, and the
+// engine's own comments make the argument for two of them:
+//
+//   scope    — "we don't have a scope field." It reports whether `category` is
+//              filled in. Form completeness dressed as intelligence.
+//   timeline — counts run-of-show rows naming the vendor. A planner's
+//              cross-reference, not a host worry.
+//   dayOf    — DUPLICATE. It and `logistics` both key off `arrivalSet`; two
+//              chips, one fact.
+//
+// `closeout` was ALSO cut in the first scoping pass and is kept here, because
+// the measurement said so: it is the single largest source of a host-visible
+// verdict with no chip behind it (112 of 208 cases), and its one sentence —
+// "Final payment not recorded after event" — is money the host owes. It is the
+// only axis that can turn a past event critical. Cutting it would have hidden
+// the cause of a red state. The sweep corrected the scope, not the other way
+// round.
+//
+// Order is the engine's own, preserved by the filter: the attention sentence is
+// picked by first match, so this list's order IS the host's priority order.
+export const HOST_READINESS_AXES = [
+  'booking', 'communication', 'logistics', 'financial', 'documents', 'closeout',
+];
+
+// The six axes a host is shown, in order, as {key, ...challenge} rows.
+export function getHostVendorChallenges(vendor, event) {
+  const all = getVendorChallengeSummary(vendor, event);
+  return HOST_READINESS_AXES
+    .filter((k) => all[k])
+    .map((k) => ({ key: k, ...all[k] }));
+}
+
+// The verdict over exactly those six. Same shape as getVendorReadiness.
+export function getHostVendorReadiness(vendor, event) {
+  return getVendorReadiness(vendor, event, HOST_READINESS_AXES);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -158,8 +158,10 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `adfe7e9f` — last CODE commit is `2845d382`; `adfe7e9` and everything after it on this line are this file and `WHERE_WE_ARE.md` only |
-| Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`). The one carried-forward audit row still open is the Vendor Detail Cockpit, which waits on the CRA retirement decision post-Sprint-2, not on work |
-| Jest | **7,470 passed**, 1 skipped, **0 failed**, **524 suites** (re-measured 2026-09-23 after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
+| CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
+| Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
+| Jest | **7,478 passed**, 1 skipped, **0 failed**, **525 suites** (re-measured 2026-09-23 after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -171,6 +173,138 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## Vendor cockpit port — scoped 2026-09-23, after two owner rulings
+
+### The two rulings
+
+1. **The frozen CRA shell is NOT deleted post-Sprint-2.** It stays until hostv2
+   is in production, being purchased, and accepted by the public. No date.
+2. **Port only what is important to a host.**
+
+Ruling 1 removed the only argument for doing characterization tests first — that
+the reference was about to disappear. Nothing expires now, so the sequencing
+driver is host value, not deadline. **Ruling 1 does not thaw the freeze**: A1
+still holds, `src/App.js` is still donor-only.
+
+### What is actually missing, measured
+
+`vendorIntelligence.js` exports 13 functions the CRA cockpit uses. **hostv2 reads
+2** (`getVendorCOIState`, `vendorCoiRequirement`). The other 11 have no hostv2
+reader.
+
+The screen is NOT the gap. hostv2 already has a vendor detail surface — its own
+code calls it a cockpit — carrying COI, contact state, accountability/promises,
+conflicts, brief authoring, reply parsing, pay links, decision memory, event
+memory, the readiness rollup hero, the workstream strip and the market picker. It
+also already stores the underlying fields: `payDueDate`, `balancePaid`,
+`arrivalTime`, `contractSigned`.
+
+**hostv2 shows a host the FACTS. It does not show the VERDICT.** That is the
+whole port, and it is why this came in under the first estimate.
+
+### The 9 readiness axes, cut to 5 on the engine's own evidence
+
+| Axis | Call | Why |
+|---|---|---|
+| documents | **KEEP** | "Insurance expired — venue will turn them away." Highest consequence in the file |
+| financial | **KEEP** | "Final payment overdue by Nd"; "$X balance has no due date on file" — the latter catches money nobody is watching |
+| booking | **KEEP** | "Confirmed but no contract on file" |
+| logistics | **KEEP** | "Arrival/setup time not confirmed" — one text fixes it |
+| communication | **KEEP** | "No contact details on file"; "Last touch Nd ago — reconfirm" |
+| scope | **CUT** | The engine's own comment: *"we don't have a scope field."* It checks whether `category` is filled in — form completeness dressed as intelligence |
+| timeline | **CUT** | Counts run-of-show rows naming the vendor. A planner's cross-reference |
+| dayOf | **CUT — DUPLICATE** | It and `logistics` both key off `arrivalSet`. Two chips, one fact |
+| closeout | **CUT** | Fires only after the event, says only "final payment not recorded". Belongs in the money view |
+
+Nine chips at 390px is a planner tool. Five is a host tool. **Scope and timeline
+are weak because the DATA does not exist to make them strong** — porting them
+ships a chip that cannot say anything true.
+
+### The other pieces, same test
+
+| Piece | Call |
+|---|---|
+| `getVendorNextAction` / `getActionableNextStep` | **KEEP** — strongest host value in the file |
+| `getVendorPlanningState`, `getVendorDayOfState` | **KEEP** |
+| `getHighestRiskVendor` | **KEEP** — one line above the vendor list |
+| `getVendorRequiredQuestions` | **KEEP** |
+| `getVendorCloseoutState` | **CUT** |
+| `getVendorLifecycleStage` | **CUT** — 10 stages is vendor-management vocabulary; the next action says what to do without naming a stage |
+| `getVendorLinkedWork` | **CUT** — planner navigation |
+| `getVendorPortfolioSummary` | **CUT** |
+| Activity log (feed + composer) | **CUT** — no hostv2 analogue, planner-facing |
+| `v.notes` | **ALREADY CUT** — hostv2 decided this deliberately; host-private bookkeeping |
+
+### Test coverage, and why the cut changes it
+
+Four of the eleven had **zero** test coverage: `getVendorCloseoutState`,
+`getVendorLinkedWork`, `getHighestRiskVendor`, `getVendorPortfolioSummary`. Only
+4 test files reference `vendorIntelligence.js` at all, mostly for COI.
+
+**Two of those four are now cut**, so their missing coverage stops mattering.
+`getHighestRiskVendor` is kept and still untested — it needs a test written WITH
+its port, not before it.
+
+### Sequence — ~2–3 days, down from 4–5
+
+| # | Step | Size | State |
+|---|---|---|---|
+| 1 | Next action + the kept chips, into hostv2's existing vendor detail | ~1 day | **SHIPPED** |
+| 2 | Planning + day-of state | ~1 day | open |
+| 3 | Highest-risk line above the vendor list | ~half day | open |
+| 4 | Required questions | ~half day | open |
+
+Tests are written alongside each step, against only what ships — not as a
+separate up-front pass over all eleven.
+
+### Slice 1, shipped — "Where this stands"
+
+525 suites / 7,478 tests. `verify:push` 5/5. 7/7 driven in Chromium at 390px.
+
+| File | What |
+|---|---|
+| `src/lib/vendorIntelligence.js` | `getVendorReadiness` gains an optional `axes` allow-list; new `HOST_READINESS_AXES` (6), `getHostVendorChallenges`, `getHostVendorReadiness` |
+| `hostv2/src/HostShellV2.jsx` | The block, inside `.vc-more`, non-informal vendors only |
+| `hostv2/src/styles.css` | `.vcard.open .vc-more` cap 1500 → 2400px |
+| `src/lib/__tests__/theVerdictNamesAVisibleChip.test.js` | 8 tests, red-proofed — 3 go red with the filter reverted |
+| `hostv2/e2e/whereThisVendorStands.spec.mjs` | 7 tests in Chromium |
+
+**The measurement that changed the design.** Filtering only the CHIPS would have
+left the verdict citing evidence the host cannot see. Swept 1,568 vendor/event
+combinations: **208 (13.3%)** produced a readiness sentence sourced from an axis
+hostv2 does not render. So the verdict is recomputed over the same six — ONE
+ladder, filtered at the source, not a second copy that drifts.
+
+**The sweep also corrected the scope.** `closeout` was cut in the first pass as
+"belongs in the money view". It was **112 of those 208** — the only axis that can
+turn a past event critical, and its sentence is money the host still owes. Put
+back. The cut stayed at `scope`, `timeline` and `dayOf` (a duplicate of
+`logistics`; both key off the same arrival field).
+
+**Three things the work ran into, recorded rather than smoothed over:**
+
+1. **A board ruling I nearly broke.** The 2026-08-21 ruling caps the RESTING
+   vendor card at one chip — four stacked amber marks had spent the whole colour
+   budget. Six would be worse. The block went below the fold, and the premise
+   test asserts it is ABSENT on the closed card.
+2. **I caused a silent clip, and it was the third one.** `.vc-more` is
+   height-capped for its reveal transition. Measured in Chromium: the block took
+   that vendor from **1252px to 1683px** against a 1500px cap — content simply
+   stops, with no error anywhere. The cap's own comment records the same thing
+   happening at 340px and again at 640px. Raised to 2400px, and **this time it
+   ships with the tripwire the other two never had**: the e2e spec asserts
+   `scrollHeight <= clientHeight`.
+3. **`counts` has four buckets and an axis has five levels.** Found by my own
+   test failing. An axis at `not_started` lands in none of them. Pre-existing and
+   shared with the frozen shell, so it is PINNED rather than changed — nothing a
+   host reads is wrong, but a future reader summing `counts` now fails loudly
+   instead of being quietly short.
+
+**No CTA shipped.** `getActionableNextStep` returns payment, contract and arrival
+flows with no wiring in this shell, and a button that cannot do what it says is
+the UX_07 defect. The next action ships as prose, and an e2e test asserts the
+block contains **zero** interactive elements until those actions are real.
 
 ## FIXED 2026-09-23 (thirty-second entry) — all four open board calls, and two of them reversed a finding
 
@@ -462,7 +596,7 @@ code, not the page — and the page was stale on four of seven:
 | field ledger — `market` vs `metroMarket` | **fixed**; `marketFor.js` is the single accessor, with `marketSource` |
 | timingConflict — deadlines contradicting their source | **fixed this entry** (three, not four) |
 | board scorer — aging saturates at 24 days | **true and not acted on.** `AGING_CAP 6 / AGING_PER_DAY 0.25`. Measured on a real Wedding board: all 9 open rows are 163-348 days overdue, so aging contributes a constant 6 to every one of them. But the rendered order is already consistent with age (313, 313, 223, 163 within the med tier), so **no host-visible order is frozen.** Changing the curve would be tuning a ranker with no demonstrated defect — recorded, not fixed |
-| VendorPlanning — cockpit is CRA-only | **open.** Real, and scoped to CRA deletion post-Sprint-2 |
+| VendorPlanning — cockpit is CRA-only | **open, and no longer blocked.** The post-Sprint-2 deletion it was scoped to was struck by owner ruling 2026-09-23. Now scoped by HOST VALUE instead of by a date — see "Vendor cockpit port" |
 
 ### Worth carrying forward
 
@@ -1685,7 +1819,9 @@ label-question is 5 words, thirteen are ≤3 against option lists they cannot co
   7.0. **Re-ruling, not a constant to pick.**
 - **Six money divergences** need pricing research, not code.
 - **Four deadlines** disagree only with a commercially-interested source.
-- **Vendor Detail Cockpit** still CRA-only, blocked on the post-Sprint-2 deletion.
+- **Vendor Detail Cockpit** still CRA-only. (Was "blocked on the post-Sprint-2
+  deletion" — that deletion date was struck by owner ruling 2026-09-23. See the
+  State table.)
 
 ## FIXED 2026-09-19 (fifteenth entry) — four open audit items, each one a fact its own consumer unqualified
 

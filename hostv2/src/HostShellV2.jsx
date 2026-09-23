@@ -143,7 +143,16 @@ import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { raiseCounts } from '@app/lib/surfaceRegistry';
 import { riskSeverityLabel, riskSeverityTone } from '@app/lib/riskSeverity';
-import { getVendorCOIState, coiNextAction } from '@app/lib/vendorIntelligence';
+// Vendor cockpit port, slice 1 (owner rulings 2026-09-23: the frozen shell is
+// NOT deleted post-Sprint-2, and only the host-important pieces come over).
+// getHostVendorChallenges / getHostVendorReadiness are the SIX-axis pair — the
+// verdict is computed over exactly the axes rendered below, because a sweep of
+// 1,568 combinations found 208 where the nine-axis verdict cited an axis this
+// shell does not show. See src/lib/__tests__/theVerdictNamesAVisibleChip.test.js.
+import {
+  getVendorCOIState, coiNextAction,
+  getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
+} from '@app/lib/vendorIntelligence';
 import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { isPlausibleCityText, parseVenueLocation } from '@app/lib/cityText';
@@ -19191,6 +19200,81 @@ export default function HostShellV2() {
                             </span>
                           </div>
                         )}
+                        {/* ── WHERE THIS VENDOR STANDS ────────────────────────────────────
+                            Vendor cockpit port, slice 1. The engine has scored every vendor
+                            on these axes since Sprint 53 and NOTHING in this shell read it —
+                            hostv2 imported 2 of the 13 functions the CRA cockpit uses. The
+                            facts were already here (payDueDate, balancePaid, arrivalTime,
+                            contractSigned); the VERDICT on them was not.
+
+                            SIX AXES, NOT NINE (owner ruling: host-important only). scope
+                            ("we don't have a scope field" — the engine's own comment) and
+                            timeline (run-of-show cross-reference) are planner machinery;
+                            dayOf duplicates logistics, both keyed on the same arrival field.
+                            `closeout` was cut in the first scoping pass and put back by
+                            measurement — it is the only axis that can turn a past event
+                            critical, and its sentence is money the host still owes.
+
+                            BELOW THE FOLD, NOT ON THE CARD FACE. The 2026-08-21 ruling's
+                            clause 3 caps the resting card at ONE chip because four stacked
+                            amber marks spent the whole colour budget. Six would be worse.
+                            This renders inside .vc-more, which a host opens deliberately.
+
+                            NOT FOR HELPERS. Standing rule (2026-08-07): helpers get contact,
+                            never the paid-vendor ladder. An informal helper has no contract,
+                            no deposit and no COI to be judged against.
+
+                            NO CTA HERE YET. getActionableNextStep returns payment, contract
+                            and arrival flows that need real wiring; a button that cannot do
+                            what it says is the CTA-truthfulness defect (UX_07). The next
+                            action ships as a STATEMENT until its actions are wired. */}
+                        {!v.isInformal && (() => {
+                          let rd = null; let axes = []; let na = null;
+                          try {
+                            rd = getHostVendorReadiness(v, event);
+                            axes = getHostVendorChallenges(v, event);
+                            na = getVendorNextAction(v, event);
+                          } catch { return null; }
+                          if (!rd || !axes.length) return null;
+                          // Host words, not the engine's keys. "Logistics" and
+                          // "documents" are trade vocabulary; a host thinks arrival
+                          // and paperwork.
+                          const LABEL = {
+                            booking: 'Booking', communication: 'Staying in touch',
+                            logistics: 'Arrival', financial: 'Money',
+                            documents: 'Paperwork', closeout: 'After the event',
+                          };
+                          // UX_02 colour budget: amber and red are EXCEPTIONS. A safe or
+                          // untracked axis carries no tone at all, so six calm rows stay
+                          // six calm rows and the one that needs a host reads instantly.
+                          const tone = (lvl) => (lvl === 'critical' ? 'warn' : lvl === 'attention' ? 'warn' : null);
+                          return (
+                            <div style={{ margin: '2px 0 10px' }}>
+                              <div className="shelf-label">Where this stands</div>
+                              {/* The verdict, then its one sentence. Both come from the
+                                  same six axes listed underneath — never a seventh. */}
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+                                <strong style={{ fontSize: 'var(--t-row)' }}>{rd.label}</strong>
+                                {rd.summary && <span className="grounding" style={{ margin: 0 }}>{rd.summary}</span>}
+                              </div>
+                              {na && na.title && (
+                                <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>
+                                  <strong>Next:</strong> {na.title}
+                                  {na.consequence ? <span style={{ color: 'var(--faint)' }}> {na.consequence}</span> : null}
+                                </p>
+                              )}
+                              <div className="fstat-list" style={{ margin: 0 }}>
+                                {axes.map(a => (
+                                  <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
+                                    <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
+                                    <span className="fstat-v" style={{ textAlign: 'right', display: 'block',
+                                      color: tone(a.level) ? 'var(--warn)' : 'var(--faint)' }}>{a.note}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {/* ── CONTACT, ON THE ROW — FOR EVERYONE ─────────────────────────
                             Board ruling 2026-08-07: no comms hub. The act belongs where the
                             host is standing when they notice, not in a destination they must

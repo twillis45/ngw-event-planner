@@ -1,11 +1,43 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — the vendor cockpit's first slice reaches a host
+
+525 suites / 7,478 tests. `verify:push` 5/5. 7/7 in Chromium at 390px.
+
+Two owner rulings unblocked and reshaped this: the frozen CRA shell is **not**
+deleted post-Sprint-2 (it stays until hostv2 is in production and selling), and
+the port takes **only the host-important pieces**.
+
+The engine has scored every vendor on booking, contact, arrival, money,
+paperwork and post-event settlement since Sprint 53, and hostv2 imported 2 of
+the 13 functions that read it. The facts were already on the screen — agreed
+cost, paid flag, arrival time, contract flag. **The verdict on them was not.**
+Six of the nine axes now render, below the fold, with the next action as prose.
+
+**The measurement that changed the design.** Filtering only the chips would have
+left the verdict citing evidence the host cannot see: over 1,568 vendor/event
+combinations, 208 (13.3%) did exactly that. The verdict is now computed over the
+same six it draws — one ladder, filtered at the source. The same sweep put 112
+of those 208 on `closeout`, which the first scoping pass had cut; it is the only
+axis that can turn a past event critical and its sentence is money owed, so the
+measurement put it back.
+
+**And the work broke two things on the way, both recorded.** A 2026-08-21 board
+ruling caps the resting vendor card at one chip, so six would have been a
+regression — the block went below the fold and a test asserts it is absent on the
+closed card. And the block silently clipped: 1252px → 1683px against a 1500px
+cap, the third time that cap has been outgrown. Raised, and this time with the
+tripwire the two earlier bumps never had.
+
 ## 2026-09-23 — all four open board calls, and two of them reversed a same-day finding
 
 `main` @ `2845d38` (last code commit; docs follow). 524 suites / 7,470 tests.
-`verify:push` 5/5. **No board call is open** — all six are closed, and the only
-carried-forward audit row still open is the Vendor Detail Cockpit, which waits on
-the CRA retirement decision rather than on work.
+`verify:push` 5/5. **No board call is open** — all six are closed. The one
+carried-forward audit row still open is the Vendor Detail Cockpit, and two owner
+rulings later the same day unblocked it: **the CRA shell is not deleted
+post-Sprint-2** (it stays until hostv2 is in production and selling), and the
+port takes **only what is important to a host**. It stays frozen; only its
+deletion date moved.
 
 **#1 Rank the closing window.** The 2026-08-17 ruling's bar had been unmet for
 five weeks — a certificate 27 days dead scored 4.90 against a vendor reconfirm
@@ -156,8 +188,9 @@ seam and the `market`/`metroMarket` ledger are all already fixed). The board
 scorer's aging cap is real — it saturates at 24 days, and a real Wedding board
 has all nine open rows 163-348 days overdue — but the rendered order is already
 consistent with age, so nothing is visibly frozen and retuning it would be
-tuning without a defect. The Vendor Detail Cockpit remains CRA-only, scoped to
-CRA deletion post-Sprint-2.
+tuning without a defect. The Vendor Detail Cockpit remains CRA-only. (It was
+scoped to CRA deletion post-Sprint-2; that date was struck by owner ruling later
+the same day — see the top entry.)
 
 **Worth carrying forward:** a detector is not a fix until something can call it.
 Re-measure a carried-forward finding before asserting it. Saturation in a
