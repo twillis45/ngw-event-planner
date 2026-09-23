@@ -144,7 +144,17 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // read `src/App.js` and matched the two-word product name only — the right check
 // against the wrong half of the product. An e2e proves the screens it opens;
 // this gate proves the SOURCE, including render sites no spec happens to visit.
-const MAX_HOSTV2_TEXT_GATES = 44;
+// ── 44 -> 45 (2026-09-23) ───────────────────────────────────────────────────
+// `engineReachesTheShippingShell.test.js` reads hostv2 source to build the
+// IMPORT GRAPH — it parses `hostv2/src/main.jsx` and the modules it reaches, to
+// answer whether a library export is reachable from the shipping entry point.
+//
+// It is the rare case where reading hostv2 as text is the only way. The claim is
+// about the SHAPE OF THE GRAPH, not about behavior, so an e2e cannot make it:
+// a browser shows what one screen does, and cannot show that nothing anywhere
+// calls a function. That question is what let the air-travel invite floor ship
+// into a shell nobody uses while its own tests stayed green.
+const MAX_HOSTV2_TEXT_GATES = 45;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
