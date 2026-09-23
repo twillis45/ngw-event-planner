@@ -1,5 +1,29 @@
 # Where We Are -- live status board
 
+## 2026-09-23 — the unit suite was calling production from CI
+
+`main` @ `9320a5e`. 521 suites / 7,409 tests. `verify:push` 5/5, exit 0.
+
+The first `services` dispatch failed at the **Unit suite** step, not the
+validator. The job-level env block exists for the build and was reaching the
+tests too; five suites assert the UNCONFIGURED path and say so in their own
+names. Three of them did not merely fail — they **timed out at 5s**, because the
+unit suite started making live HTTP calls to the production backend from a CI
+runner. Latent since the profiles were written: a `live` dispatch would have hit
+it identically, and nobody had run one.
+
+Fixed by stripping the whole `REACT_APP_*` namespace on that step (a named list
+would rot). The log surfaced two more: the CRA/hostv2 parity check was gated to
+`live` alone, so a services release would have shipped with it silently skipped;
+and the text-gate ratchet's sweep was counting a file that merely MENTIONS
+hostv2 in a comment — narrowed the heuristic rather than raising the baseline,
+because a ratchet bumped for non-reasons stops being a signal.
+
+**Worth carrying forward:** a config block scoped wider than its purpose will
+find a consumer you did not intend. And "it only breaks on a path nobody runs"
+is a countdown, not a defence.
+
+
 ## 2026-09-23 — the release profile that was missing, and two sources that agree
 
 `main` @ `060be50`. 521 suites / 7,407 tests. `verify:push` 5/5, exit 0.

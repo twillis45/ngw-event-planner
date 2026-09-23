@@ -125,8 +125,8 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `3400c397` |
-| Jest | **7,407 passed**, 1 skipped, **0 failed**, **521 suites** (re-measured 2026-09-23 after the twenty-eighth entry; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Branch / HEAD | `main` @ `9320a5e4` |
+| Jest | **7,409 passed**, 1 skipped, **0 failed**, **521 suites** (re-measured 2026-09-23 after the twenty-ninth entry; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -138,6 +138,68 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-23 (twenty-ninth entry) — the unit suite was calling production from CI
+
+The first `services` dispatch (run 410) failed. Not at the validator — at the
+**Unit suite** step. Five suites, eight tests, one cause, and it was mine.
+
+521 suites / 7,409 tests. `verify:push` 5/5, exit 0.
+
+### What it was
+
+The job-level `env:` block exists for the BUILD, and it was reaching the unit
+suite too. Five suites assert the UNCONFIGURED path and say so in their own
+names — `// REACT_APP_API_BASE_URL unset in test env`, `(API unconfigured in
+test env)`.
+
+With a real base present they did not merely fail. `kcrStore`,
+`firstRealTrace` and `vendorBriefConfirm` **timed out at 5s**, because the unit
+suite started making live HTTP calls to the production backend from a CI runner.
+
+**Latent since the profiles were written.** A `live` dispatch would have hit it
+identically; nobody had ever run one. `services` is only what made a
+backend-configured release something anyone would actually run — so the change
+did not cause the defect, it exposed it.
+
+### Three fixes, because the log showed three things
+
+1. **Strip the whole `REACT_APP_*` namespace on that step** rather than naming
+   variables — a named list rots the first time one is added above it.
+   `checks.yml` solves the same problem the other way for e2e, with a
+   reserved-TLD fake host.
+
+2. **The parity check was gated to `live` alone.** "Verify CRA and hostv2
+   configuration parity" greps both bundles for the API base — and both profiles
+   bake it into both bundles, so the failure it catches is identical on either.
+   A services release would have shipped with that check **silently skipped**.
+   Same shape as the gap that started this whole session.
+
+3. **The ratchet's sweep was counting prose.** `textGateRatchet` flagged
+   `releaseProfiles.test.js` as a hostv2 source-text gate. It is not one — it
+   reads a workflow YAML and never touches a hostv2 file; it tripped on the word
+   "hostv2" in a single comment. That is the same mistake the ratchet made about
+   ITSELF on its first run, where the fix was an exclusion that worked for one
+   file and not for the class. A ratchet bumped for non-reasons stops being a
+   signal, so the heuristic was narrowed — strip comments, then ask — and the
+   baseline stayed 47. The file's own premise test is what proves the population
+   did not collapse.
+
+### Verified by reproducing it
+
+    with the env (the run-410 condition):   2 failed, 11 passed
+    with the strip (the fixed step):       13 passed
+
+### Worth carrying forward
+
+- **A config block scoped wider than its purpose will find a consumer you did
+  not intend.** The env was for the build; three test suites picked it up and
+  started calling production.
+- **"It only breaks on a path nobody runs" is a countdown, not a defence.** This
+  sat dormant from the day the profiles were written until the first time
+  someone had a reason to use one.
+- **Narrow a false-positive heuristic; do not raise the number past it.** The
+  ratchet's value is entirely in its number meaning something.
 
 ## FIXED 2026-09-23 (twenty-eighth entry) — the profile that was missing, and two sources that agree
 
