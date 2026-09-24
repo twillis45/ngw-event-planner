@@ -17466,9 +17466,23 @@ export default function HostShellV2() {
                         confidently wrong in both directions and is deliberately not
                         built. What IS honest is telling the host which kind of number
                         they are reading. Sheet-level on purpose: the same sentence on
-                        every row would be noise, and noise is not honesty. */}
-                    <Grounding gap={3}>{priceNote()}</Grounding>
-                    {PRICE_VINTAGE ? <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>est. prices · {PRICE_VINTAGE}</p> : null}
+                        every row would be noise, and noise is not honesty.
+
+                        DEMOTED, NOT DROPPED (2026-09-24). This shipped as a third
+                        `Grounding` line, which put a 2-line caveat at the SAME
+                        visual weight as the prices it qualifies — `.grounding` is
+                        one class, so the longest block reads loudest. parity/MANIFEST
+                        line 63 specifies this hero as "Eyebrow → BigValue →
+                        GuideLine → TWO `Grounding` lines + a muted
+                        `est. prices · <vintage>` line"; it had grown to four. The
+                        sentence is unchanged (geoCostIndex.test.js pins it verbatim)
+                        and still on the same screen — it joins the provenance stamp,
+                        where a statement about WHERE A NUMBER CAME FROM belongs,
+                        instead of competing with the number. Honesty is about the
+                        fact being present and true, not about its type size. */}
+                    <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
+                      {priceNote()}{PRICE_VINTAGE ? ` · est. prices ${PRICE_VINTAGE}` : ''}
+                    </p>
                   </div>
                   );
                 })() : (

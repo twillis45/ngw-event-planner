@@ -164,9 +164,9 @@
         <p class="say">decisions carry <code>difmCapable: 'can-derive'</code> — the flag that lets the app say <em>&ldquo;We&rsquo;ll go with X&rdquo;</em> instead of asking</p>
       </div>
       <div class="does">
-        <div class="lbl">Does</div>
-        <div class="n">3</div>
-        <p class="say"><strong>125 propose a hardcoded literal.</strong> Driven for real against a 4-guest home dinner on $400 and a 400-guest destination event on $120,000 — same date, same playbook — exactly three changed their answer.</p>
+        <div class="lbl">Does &middot; was 3</div>
+        <div class="n">7</div>
+        <p class="say"><strong>Four rules authored 24 Sep, and 121 still propose a literal.</strong> Driven for real against a 4-guest home dinner on $400 and a 400-guest destination event on $120,000 — same date, same playbook — three changed their answer. Seven do now.</p>
       </div>
     </div>
 
@@ -210,16 +210,25 @@
       <article class="item lead">
         <div class="item-head">
           <h3>recommendedWhen</h3>
-          <span class="tag">authoring</span>
+          <span class="tag">4 of 4 done</span>
         </div>
-        <p><strong>125 decisions promise derivation and deliver a literal.</strong> <code>can-derive</code> is what lets the app propose instead of ask, and on 125 of 128 it proposes the same answer regardless of guest count, budget or runway. This is the product&rsquo;s core promise, and it is a truthfulness problem before it is a capability one.</p>
+        <p><strong>125 decisions proposed a literal regardless of the event.</strong> <code>can-derive</code> is what lets the app propose instead of ask, and on 125 of 128 it proposes the same answer regardless of guest count, budget or runway. This is the product&rsquo;s core promise, and it is a truthfulness problem before it is a capability one.</p>
         <pre>Dinner Party/seating   "Open"                         → "Host-assigned"
 Anniversary/help       "Fully DIY"                    → "Bartender"
 Day Party/food         "Light passed bites + grazing" → "Food truck"
 
 the only three that moved. the engine returns basis:"authored-default"
 for the other 125 — it is honest internally; the surface is not.</pre>
-        <p><code>recommendedPick.js</code> is built, live, and already carries the right honesty rule: an unknown fact <em>refuses</em> its rule rather than comparing as zero. It needs <strong>rules authored, not code</strong> — and not 125 of them. Only where an event fact genuinely changes the answer; the rest have one honestly-right default and should stop claiming to derive.</p>
+        <p><code>recommendedPick.js</code> is built, live, and already carries the right honesty rule: an unknown fact <em>refuses</em> its rule rather than comparing as zero. It needs <strong>rules authored, not code</strong>.</p>
+        <p><strong>STARTED 24 Sep — and both of my framings were wrong.</strong></p>
+        <p><em>The scale was wrong.</em> I guessed 30&ndash;50 decisions could carry rules. The evidence is already authored in prose: all three shipping rules encode one shape — a numeric guest threshold the decision&rsquo;s own <code>why</code> states in words. Scanning for that shape finds <strong>seven</strong> decisions in the whole corpus. Three had rules; the four that did not are now authored, each threshold taken from its own sentence. Beyond those, there is nothing to derive from — authoring more would be inventing thresholds, not reading them.</p>
+        <pre>Get-Together/food_style    "for 25+ guests … a pitmaster"          25
+Engagement Party/help      "For 30-40 guests one host cannot…"    30
+Holiday Party/food_format  "For 20-50 guests a full host-cooked
+                            spread is a brutal solo lift"         20
+Retirement Party/help      "For 40-50 mostly-older guests one
+                            host cannot run a buffet…"            40</pre>
+        <p><em>And the dishonesty was overstated.</em> I called this &ldquo;a truthfulness problem before a capability one.&rdquo; Reading the surface says otherwise: <code>decisionApproach</code> renders <em>&ldquo;We&rsquo;ll go with X unless you&rsquo;d rather change it&rdquo;</em> — a proposal, not a claim of derivation. Proposing a sensible authored default and saying so is honest. <strong>This is a capability gap, not a lie.</strong> Still worth closing; less urgent than I wrote.</p>
       </article>
 
       <article class="item">

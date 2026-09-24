@@ -32,6 +32,10 @@ const SELF_PINNED = [
   // and photographs it. Running the same capture at six geometries would write
   // six sets of screenshots to one path.
   '**/_eightiethAudit.spec.mjs',
+  // Self-pinned to 393x852 (iPhone 14 Pro) in a file-level `test.use`, and
+  // env-guarded on THRESHOLD_DEMO. Six geometries would write six sets of
+  // screenshots into one dated folder.
+  '**/_thresholdDemo.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,
