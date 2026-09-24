@@ -9,6 +9,7 @@ import { deriveFinding, findingToKCR } from './finding';
 import { recordsToEvidence } from './providers';
 import { analyzeEvidence, dedupeEvidence } from './evidenceIntelligence';
 import { createObservation } from './observation';
+import { normalizeBlocks } from '../blockVocabulary';
 
 export const CAMPAIGN_STATES = ['draft', 'scheduled', 'running', 'observations', 'evidence', 'findings', 'kcr', 'published', 'validated'];
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -70,6 +71,19 @@ export function clearCampaigns() { try { localStorage.removeItem(KEY); } catch {
 
 // ── UI helpers (pure, exported for testing) ────────────────────────────────────
 
+// A decision that COULD carry cost multipliers: a real choice whose outcome
+// moves money. `blocks` is the authors' own statement of what a decision holds
+// up, read through the one vocabulary accessor so a plural cannot hide a match.
+const COST_BEARING_BLOCKS = [
+  'food', 'beverage', 'rentals', 'menu', 'catering', 'catering_style', 'decor',
+  'budget', 'purchasing', 'cake', 'tableware', 'glassware', 'favors', 'lodging',
+  'beverage_purchases', 'food_purchases', 'bar_purchases', 'vendor', 'staffing',
+];
+export function costFactorCandidate(d) {
+  if (!d || !Array.isArray(d.options) || d.options.length < 2) return false;
+  return normalizeBlocks(d.blocks).some((b) => COST_BEARING_BLOCKS.includes(b));
+}
+
 // Derive structured field-path options from a playbook for the Campaign Launch picker.
 // Returns [{path, label, kind}] ordered: pricing → quantity → cost-factor → knowledge.
 export function getFieldPaths(pb) {
@@ -79,8 +93,28 @@ export function getFieldPaths(pb) {
     paths.push({ path: `${p.id}.unitCostRange`, label: `${p.item} — unit cost range`, kind: 'pricing' });
     if (p.qtyPerGuest !== undefined) paths.push({ path: `${p.id}.qtyPerGuest`, label: `${p.item} — qty per guest`, kind: 'quantity' });
   }
-  for (const d of (pb.decisions || []).filter((d) => d.costFactors && Object.keys(d.costFactors).length)) {
-    paths.push({ path: `decisions[${d.id}].costFactors`, label: `${d.label.slice(0, 48)} — cost multipliers`, kind: 'cost-factor' });
+  // ── THE PICKER COULD ONLY EVER OFFER WHAT ALREADY EXISTED ───────────────
+  //
+  // This filtered on `d.costFactors && Object.keys(...).length`, so a research
+  // campaign could be aimed at the 51 decisions that HAVE cost multipliers and
+  // never at the 93 cost-affecting decisions that do not. Measured 2026-09-24:
+  // 93 of 144 cost-affecting decisions carry none, and every one of them was
+  // invisible to the pipeline whose job is to fill them. Combined with the
+  // merge's own loop over existing keys (see playbookMerge.js), the pipeline
+  // was structurally incapable of ADDING a cost factor — only of refining one.
+  //
+  // The population is decisions that could carry one: a real choice (2+
+  // options) whose `blocks` name something that costs money. Nothing is
+  // invented by offering a path — a campaign still has to find a fact, and the
+  // merge still only writes a key research returned a consensus for.
+  for (const d of (pb.decisions || [])) {
+    if (!costFactorCandidate(d)) continue;
+    const has = d.costFactors && Object.keys(d.costFactors).length;
+    paths.push({
+      path: `decisions[${d.id}].costFactors`,
+      label: `${String(d.label || d.id).slice(0, 48)} — cost multipliers${has ? '' : ' (none yet)'}`,
+      kind: 'cost-factor',
+    });
   }
   paths.push({ path: 'knowledge.sources', label: 'Knowledge sources (citations)', kind: 'grounding' });
   paths.push({ path: 'governance', label: 'Governance (review cadence)', kind: 'governance' });

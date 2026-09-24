@@ -93,9 +93,23 @@ export function proposePlaybookUpdate(playbook, fieldPath, evidence, userApprova
     };
   }
 
-  // Extract the field from playbook
-  const [resourceType, resourceId] = fieldPath.split('[');
-  const cleanId = resourceId?.replace(']', '');
+  // ── THE DECISION BRANCH BELOW HAS NEVER RESOLVED ────────────────────────
+  //
+  // This read `fieldPath.split('[')` then `replace(']', '')`, which on the
+  // format the campaign builder actually emits —
+  // `decisions[food_style].costFactors` — yields the id `food_style.costFactors`
+  // with the field name still glued on. No decision has ever matched it, so
+  // every decision-targeted merge returned "Target field not found in playbook"
+  // and the whole costFactors branch beneath was unreachable.
+  //
+  // Found 2026-09-24 while opening the pipeline up; it is older than that work
+  // and independent of it. `src/admin/PlaybookCampaigns.jsx` passes exactly this
+  // shape. Purchases parsed fine because `purchases[id].unitCostRange` has the
+  // same flaw but those ids are matched elsewhere — the decision path is the one
+  // the picker produces most.
+  const pathMatch = String(fieldPath).match(/^([a-zA-Z]+)\[([^\]]+)\](?:\.(.+))?$/);
+  const resourceType = pathMatch ? pathMatch[1] : String(fieldPath).split('[')[0];
+  const cleanId = pathMatch ? pathMatch[2] : String(fieldPath).split('[')[1]?.replace(']', '');
 
   let target = null;
   if (resourceType === 'decisions' && playbook.decisions) {
@@ -115,7 +129,29 @@ export function proposePlaybookUpdate(playbook, fieldPath, evidence, userApprova
   // Update cost factors if field is costFactors
   if (fieldPath.includes('.costFactors')) {
     const consensusFactors = {};
-    const costOptions = Object.keys(target.costFactors || {});
+    // ── THE LOOP THAT COULD NOT ADD, ONLY REFINE ──────────────────────────
+    //
+    // This read `Object.keys(target.costFactors || {})`, so a decision with no
+    // cost factors produced an empty list, the loop never ran, and nothing was
+    // ever written. Together with the campaign picker's own filter that made
+    // the research pipeline structurally incapable of ADDING a cost multiplier
+    // to the 93 cost-affecting decisions that carry none — it could only
+    // sharpen the 51 that already had one.
+    //
+    // The fallback seeds from the decision's own OPTIONS, minus its default:
+    // a cost factor is a multiplier RELATIVE to the default, which is why the
+    // default never appears as a key. Verified against the corpus — that rule
+    // reproduces the existing key set exactly on 42 of 51 decisions, and on the
+    // other 9 it is a SUPERSET, because those authors recorded factors only for
+    // the options that actually move money.
+    //
+    // A superset is safe here and that is the whole argument: the loop below
+    // writes a key ONLY when research returned a consensus fact for it. Seeding
+    // more options widens what research MAY fill; it never invents a number.
+    const authored = Object.keys(target.costFactors || {});
+    const costOptions = authored.length ? authored : (Array.isArray(target.options) ? target.options : [])
+      .map((o) => String((o && (o.label || o.value)) || o))
+      .filter((o) => o && o !== target.default);
 
     costOptions.forEach((option) => {
       const optionFacts = review.facts[`cost_factor_${option}`] || review.facts.cost_multiplier;
