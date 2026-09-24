@@ -164,7 +164,7 @@
   <header class="top">
     <div class="eyebrow">NGW Event Planner &middot; source-of-truth sweep &middot; 24 Sep 2026</div>
     <h1>One Fact, Two Owners</h1>
-    <p class="lede">Every duplication claim below was tested by importing both sides and comparing, or by an off-the-shelf tool. Three were real, five were name collisions that turned out to be different things, and one was my own mistake.</p>
+    <p class="lede">Every duplication claim below was tested by importing both sides and comparing, or by an off-the-shelf tool. Three survived. Five were name collisions over different things, one was my own bad test, and one I had called real was withdrawn when I read the code to fix it.</p>
   </header>
 
   <div class="headline-stat">
@@ -195,24 +195,25 @@ apiAuth.js   &larr; the owner, used by 3 modules      b6bc60e0c4c3</pre>
       <p class="evidence"><strong>Checked before saying anything alarming: the credential is gated correctly.</strong> <code>scripts/validate-production-config.mjs</code> and the deploy workflow both keep that variable out of browser builds, in one place. There is no leak. The cost is that the decision to attach a credential is made in seven files and prevented in one, and any change to how auth works means finding nine implementations.</p>
     </article>
 
-    <article class="find real">
+    <article class="find mine">
       <div class="find-head">
         <span class="sym">SYNC_STATUS &middot; SYNC_STATUS_LABEL &middot; getEventSyncStatus</span>
-        <span class="chip real">real</span>
-        <span class="count">2 vocabularies</span>
+        <span class="chip mine">withdrawn on testing</span>
+        <span class="count">2 questions, not 2 answers</span>
       </div>
-      <p class="evidence">Two modules describe the same thing &mdash; whether an event has synced &mdash; and agree on exactly one value.</p>
-      <pre>api/syncState.js   local-only   pending        synced          sync-failed
-syncStatus.js      local-only   sample         server-synced   unknown
+      <p class="evidence"><strong>This was listed as real. Reading both modules and both consumers showed it is not.</strong> They do not answer the same question, so there is no single fact with two owners.</p>
+      <pre>api/syncState.getEventSyncStatus(event)
+    reads PER-EVENT evidence &mdash; is a write queued, did the last
+    attempt error, is there a success stamp
+    &rarr; local-only | pending | synced | sync-failed
 
-the one shared value, labelled twice:
-  api/syncState   "On this phone &mdash; not synced yet"
-  syncStatus      "Local only"</pre>
-      <ul class="owners">
-        <li><b>hostv2</b> reads <code>api/syncState.js</code></li>
-        <li><b>src/App.js</b> and <b>AdminConsole.jsx</b> read <code>syncStatus.js</code></li>
-      </ul>
-      <p class="evidence">Same event, two answers about its sync state, and two different sentences for the one state they share.</p>
+syncStatus.getEventSyncStatus(event, sessionCtx)
+    asks nothing about the event; reads three booleans the CALLER
+    supplies about the SESSION
+    &rarr; sample | local-only | server-synced | unknown</pre>
+      <p class="evidence">The second is older and coarser, and its <code>unknown</code> exists precisely because it has no per-event evidence &mdash; the stamps and queue maps the first one reads are that evidence. Calling them two vocabularies for one concept was wrong.</p>
+      <p class="evidence">The one consumer I expected to be misled is not. The admin console's sync table is gated to <code>NODE_ENV !== 'production'</code> and labels itself <em>&ldquo;Dev/QA only &middot; Derived from session state&rdquo;</em>, printing the session values it used. Every row showing the same status is the disclosed consequence of a session-derived status, not a control lying about what it does.</p>
+      <p class="evidence"><strong>Nothing to fix.</strong> The remaining issue is the shared export NAME, and renaming it means editing <code>src/App.js</code>, which is frozen to security and data-loss fixes. A labelling collision is neither.</p>
     </article>
 
     <article class="find real">
@@ -306,8 +307,8 @@ closeoutIntel.js  isPastEvent(event, asOf)
       <h2>Order to fix them</h2>
     </div>
     <ol class="order">
-      <li><p><strong><code class="mono">LS_CUSTOMS</code></strong> &mdash; one line, and it is the only one with data loss behind it. Import the key instead of redeclaring it.</p></li>
-      <li><p><strong><code class="mono">SYNC_STATUS</code></strong> &mdash; two label sets for one state is something a host can actually see. Fold to one owner.</p></li>
+      <li><p><strong><code class="mono">LS_CUSTOMS</code></strong> &mdash; <em>done 2026-09-24.</em> <code class="mono">eventPool</code> re-exports the key from the store that writes it, and a structural guard fails if anyone declares a second one.</p></li>
+
       <li><p><strong><code class="mono">authHeaders</code></strong> &mdash; largest, but the owning module already exists. Move the six onto <code class="mono">apiAuth.js</code> and keep the planner-token decision in one place.</p></li>
       <li><p><strong><code class="mono">feedback</code></strong> &mdash; carry the mute-versus-haptics rule up into the shared module, then delete the host copy.</p></li>
     </ol>
@@ -324,13 +325,14 @@ closeoutIntel.js  isPastEvent(event, asOf)
         <thead><tr><th>Instrument</th><th>Scope</th><th>Result</th></tr></thead>
         <tbody>
           <tr><td class="mono">export-collision scan</td><td>402 modules in <span class="mono">src/</span> and <span class="mono">hostv2/src/</span></td><td>17 names owned by 2+ modules</td></tr>
-          <tr><td class="mono">import-and-compare</td><td>each of the 17</td><td>4 real &middot; 5 cleared &middot; 1 my error</td></tr>
+          <tr><td class="mono">import-and-compare</td><td>each of the 17</td><td>4 flagged real &middot; 5 cleared &middot; 1 my error</td></tr>
+          <tr><td class="mono">read both consumers</td><td>the 4 flagged real, before fixing each</td><td>1 withdrawn &mdash; <span class="mono">SYNC_STATUS</span> answers a different question</td></tr>
           <tr><td class="mono">jscpd</td><td>141,641 lines, JS and JSX</td><td>9 clones &middot; 120 lines &middot; 0.08%</td></tr>
           <tr><td class="mono">rollup module graph</td><td>the real hostv2 bundle</td><td>confirmed both duplicate surfaces are outside it</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="evidence">A name collision is not a finding until both sides are opened. Five of the seventeen looked like duplication and were not, and one of the ones I called divergent was my own test calling a function wrong.</p>
+    <p class="evidence">A name collision is not a finding until both sides are opened, and a finding is not confirmed until you read the code you would change to fix it. Five of the seventeen looked like duplication and were not. One divergence was my own test calling a function wrong. And one I had already written up as real did not survive the reading I did before fixing it.</p>
   </section>
 
   <footer class="foot">
