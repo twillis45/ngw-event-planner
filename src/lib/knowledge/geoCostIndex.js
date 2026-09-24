@@ -66,6 +66,79 @@ export function regionForState(state) {
   return STATE_TO_REGION[state.trim().toUpperCase()] || null;
 }
 
+// ── ZIP prefix -> state, so a typed ZIP can name a region ───────────────────
+//
+// Host directive 2026-09-24: "if we default to bls the copy should identify
+// region if we have zipcode input." The store picker already takes a ZIP and
+// `venueFor(event).zip` already seeds it, but the plan note read only the
+// STATE — so a host looking at their own ZIP on screen was still told to "add
+// your venue state".
+//
+// THIS IS A FACT TABLE, NOT AN ESTIMATE, which is the only reason it belongs in
+// this module. USPS allocates ZIP prefixes to states in contiguous blocks; the
+// mapping is published, not inferred, exactly like the Census table above. The
+// output is then run through STATE_TO_REGION so there is ONE definition of a
+// region in this file and a ZIP cannot disagree with a state.
+//
+// THE REFUSALS ARE THE POINT. Puerto Rico, the Virgin Islands, Guam and the
+// military APO/FPO ranges are in NO Census region, and BLS publishes no
+// regional series for them. They return null and the caller falls back to the
+// national sentence — rather than being rounded into "the South" because their
+// digits sort that way.
+const ZIP3_TO_STATE = Object.freeze([
+  [5, 5, 'NY'], [6, 9, null] /* PR, VI */, [10, 27, 'MA'], [28, 29, 'RI'],
+  [30, 38, 'NH'], [39, 49, 'ME'], [50, 59, 'VT'], [60, 69, 'CT'],
+  [70, 89, 'NJ'], [90, 98, null] /* military AE */, [100, 149, 'NY'],
+  [150, 196, 'PA'], [197, 199, 'DE'], [200, 205, 'DC'], [206, 219, 'MD'],
+  [220, 246, 'VA'], [247, 268, 'WV'], [270, 289, 'NC'], [290, 299, 'SC'],
+  [300, 319, 'GA'], [320, 339, 'FL'], [340, 340, null] /* military AA */,
+  [341, 349, 'FL'], [350, 369, 'AL'], [370, 385, 'TN'], [386, 397, 'MS'],
+  [398, 399, 'GA'], [400, 427, 'KY'], [430, 459, 'OH'], [460, 479, 'IN'],
+  [480, 499, 'MI'], [500, 528, 'IA'], [530, 549, 'WI'], [550, 567, 'MN'],
+  [570, 577, 'SD'], [580, 588, 'ND'], [590, 599, 'MT'], [600, 629, 'IL'],
+  [630, 658, 'MO'], [660, 679, 'KS'], [680, 693, 'NE'], [700, 714, 'LA'],
+  [716, 729, 'AR'], [730, 749, 'OK'], [750, 799, 'TX'], [800, 816, 'CO'],
+  [820, 831, 'WY'], [832, 838, 'ID'], [840, 847, 'UT'], [850, 865, 'AZ'],
+  [870, 884, 'NM'], [889, 898, 'NV'], [900, 961, 'CA'],
+  [962, 966, null] /* military AP */, [967, 968, 'HI'], [969, 969, null] /* GU, MP */,
+  [970, 979, 'OR'], [980, 994, 'WA'], [995, 999, 'AK'],
+]);
+
+/** '21401' -> 'MD'. Unallocated, territory and military ZIPs -> null. */
+export function stateForZip(zip) {
+  const digits = String(zip == null ? '' : zip).trim();
+  // A ZIP is five digits; ZIP+4 is allowed and the +4 is irrelevant here.
+  if (!/^\d{5}(-\d{4})?$/.test(digits)) return null;
+  const p = Number(digits.slice(0, 3));
+  for (const [lo, hi, st] of ZIP3_TO_STATE) {
+    if (p >= lo && p <= hi) return st;
+  }
+  return null;   // a prefix USPS has not allocated
+}
+
+/** '21401' -> 'south'. Anything this cannot prove -> null, never a default. */
+export function regionForZip(zip) {
+  return regionForState(stateForZip(zip));
+}
+
+/**
+ * regionForAddress('143 Ritchie Hwy, Severna Park, MD, 21146') -> 'south'
+ *
+ * The Kroger locations endpoint flattens a structured address —
+ * `addressLine1, city, state, zipCode` — into one string before it reaches the
+ * client (kroger.py), so the state and ZIP it HAS are not separately readable
+ * here. The ZIP is the unambiguous part: five digits, terminal, server-built.
+ *
+ * Deliberately a SEPARATE function rather than making regionForZip lenient. A
+ * resolver that accepts "any string with five digits in it" would happily read
+ * a phone number or a price, and this module's whole contract is that it names
+ * only what it can prove.
+ */
+export function regionForAddress(address) {
+  const m = /(\d{5})(?:-\d{4})?\s*$/.exec(String(address == null ? '' : address).trim());
+  return m ? regionForZip(m[1]) : null;
+}
+
 /**
  * geoAdjust(itemKey, state) -> { factor, region, basis, national }
  *
@@ -138,8 +211,12 @@ export function geoHonestyLine(itemKey, state) {
  * BLS series actually have; saying "not adjusted for New Mexico" would imply a
  * granularity that does not exist even once the table grows.
  */
-export function geoPlanNote(state, appliedBasis) {
-  const region = regionForState(state);
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export function geoPlanNote(state, appliedBasis, zip) {
+  // The state is the stronger fact and wins when present; a typed ZIP is the
+  // fallback, and only names a region it can actually resolve.
+  const region = regionForState(state) || regionForZip(zip);
   const REGION_LABEL = {
     northeast: 'the Northeast', midwest: 'the Midwest',
     south: 'the South', west: 'the West',
@@ -162,10 +239,34 @@ export function geoPlanNote(state, appliedBasis) {
     // The state-derived label is authoritative and well-formed ("the South");
     // the backend's own label is the fallback when no state resolved.
     const where = region ? REGION_LABEL[region] : (parts[0] ? `the ${parts[0]}` : 'your area');
-    const rest = parts.slice(1).join(' · ');
+    // ── CONDENSED 2026-09-24 (host: "too long") ──────────────────────────────
+    // It rendered as: "Prices adjusted for the South — 2026-08 · BLS Average
+    // Price." and the shell then appended "· est. prices Aug 2026" — so the
+    // line STATED THE SAME MONTH TWICE, in two formats, and wrapped to two
+    // lines on a 390px phone. Two lines of provenance under two lines of
+    // numbers is the caveat shouting over the thing it qualifies again.
+    //
+    // Compacted, not trimmed of meaning: the region, the source and the month
+    // all survive. "2026-08" becomes "Aug 2026" because that is how the rest of
+    // this product writes a vintage, and the duplicate suffix is suppressed by
+    // the caller (HostShellV2) whenever this branch runs.
+    // Source then month reads as a citation ("BLS Aug 2026"); the other order
+    // reads as two loose facts. So they are partitioned rather than joined in
+    // whatever sequence the backend happened to send.
+    const tail = parts.slice(1);
+    const isMonth = (x) => /^\d{4}-\d{2}$/.test(x) || /^[A-Z][a-z]{2} \d{4}$/.test(x);
+    const month = tail.filter(isMonth).map((x) => {
+      const m = /^(\d{4})-(\d{2})$/.exec(x);
+      return m ? `${MONTH_ABBR[Number(m[2]) - 1] || m[2]} ${m[1]}` : x;
+    })[0] || '';
+    // "BLS Average Price" is the series name; "Average Price" restates what a
+    // regional factor already is, and the attribution that matters is BLS.
+    const source = tail.filter((x) => !isMonth(x))
+      .map((x) => x.replace(/^BLS Average Price$/i, 'BLS')).join(' · ');
+    const rest = [source, month].filter(Boolean).join(' ');
     return rest
-      ? `Prices adjusted for ${where} — ${rest}.`
-      : `Prices adjusted for ${where}.`;
+      ? `Adjusted for ${where} · ${rest}`
+      : `Adjusted for ${where}`;
   }
   if (!region) {
     return 'These are national average prices — add your venue state and we can start localizing them.';

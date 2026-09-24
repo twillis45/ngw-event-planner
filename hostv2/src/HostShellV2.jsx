@@ -138,7 +138,7 @@ import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
-import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
+import { geoPlanNote, regionForZip, regionForAddress } from '@app/lib/knowledge/geoCostIndex';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
@@ -1543,22 +1543,8 @@ export default function HostShellV2() {
   // getFoodPriceFactor via the API base (BLS regional). State comes ONLY from
   // an explicit ', XX' in venueCity — never guessed. Neutral 1.0 otherwise.
   const [foodPP, setFoodPP] = useState({ priceFactor: 1, priceContext: null, itemFactors: {} });
-  useEffect(() => {
-    let dead = false;
-    const m = /,\s*([A-Za-z]{2})\s*$/.exec(vf.city);
-    const state = (m ? m[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
-    if (!isFoodPricesConfigured() || !state) { setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); return undefined; }
-    (async () => {
-      try {
-        const d = await getFoodPriceFactor({ state });
-        // itemFactors: the backend's PER-ITEM regional factors. geoItemMap decides
-        // which priced lines may claim one; every other line keeps the basket mean.
-        // Exactly one multiplier lands on any band — see playbooks/index.js factorFor.
-        if (!dead) setFoodPP({ priceFactor: d.factor || 1, priceContext: d.factor !== 1 ? (d.regionLabel + (d.month ? ' · ' + d.month : '') + ' · ' + d.source) : null, itemFactors: d.itemFactors || {} });
-      } catch { if (!dead) setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); }
-    })();
-    return () => { dead = true; };
-  }, [event.id, vf.city]); // eslint-disable-line react-hooks/exhaustive-deps
+  // (the BLS factor effect now lives below, beside the store state it reads —
+  //  see "THE REGION CAN COME FROM A ZIP" after the priceStore declarations)
 
   // ── Experience Context (PC-1 canonical): unlocks blockers + continuity ──
   // ── The production profile (ngw-profile — the SAME key the original app +
@@ -2523,6 +2509,50 @@ export default function HostShellV2() {
   const [priceStore, setPriceStore] = useState(null);   // { locationId, name, address } once picked
   const [priceIdx, setPriceIdx] = useState(null);       // Map from storePriceIndex — null until a fetch lands
   const [storePicker, setStorePicker] = useState(null); // { zip, stores, busy, reason } while choosing
+
+  // ── THE REGION CAN COME FROM A ZIP, NOT ONLY FROM A STATE ──────────────────
+  //
+  // Host directive 2026-09-24: "the bls pull for region should update the
+  // pricing on hero too" and "national average message should change when we
+  // have regional or store information."
+  //
+  // This effect used to resolve a state ONLY from a trailing ", XX" in the
+  // venue city or the saved profile. Everything else got factor 1.0 — so a host
+  // who had typed a ZIP into the store picker, and then picked a real Kroger
+  // whose address ends in one, was still shown national bands. We had their
+  // location three different ways and priced as if we had none.
+  //
+  // MOVED HERE, below the store state, deliberately: `priceStore` and
+  // `storePicker` are declared above this line and were declared BELOW the
+  // effect's old position, so naming them in the dependency array from there
+  // would read a `const` in its temporal dead zone.
+  //
+  // Order is strongest-fact-first, and it is the same order geoPlanNote uses so
+  // the sentence and the numbers cannot disagree: an explicit state, then the
+  // venue's own ZIP, then the ZIP of the store the host actually chose, then
+  // the one they typed to find it. `regionForZip`/`regionForAddress` refuse
+  // anything they cannot resolve to a Census region, so this can only ever
+  // widen the set of hosts who get a real factor — never invent a region.
+  const blsRegion = (regionForZip(vf.zip)
+    || regionForAddress(priceStore && priceStore.address)
+    || regionForZip(storePicker && storePicker.zip)
+    || null);
+  useEffect(() => {
+    let dead = false;
+    const m = /,\s*([A-Za-z]{2})\s*$/.exec(vf.city);
+    const state = (m ? m[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
+    if (!isFoodPricesConfigured() || (!state && !blsRegion)) { setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); return undefined; }
+    (async () => {
+      try {
+        const d = await getFoodPriceFactor(state ? { state } : { region: blsRegion });
+        // itemFactors: the backend's PER-ITEM regional factors. geoItemMap decides
+        // which priced lines may claim one; every other line keeps the basket mean.
+        // Exactly one multiplier lands on any band — see playbooks/index.js factorFor.
+        if (!dead) setFoodPP({ priceFactor: d.factor || 1, priceContext: d.factor !== 1 ? (d.regionLabel + (d.month ? ' · ' + d.month : '') + ' · ' + d.source) : null, itemFactors: d.itemFactors || {} });
+      } catch { if (!dead) setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); }
+    })();
+    return () => { dead = true; };
+  }, [event.id, vf.city, blsRegion]); // eslint-disable-line react-hooks/exhaustive-deps
   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   const [showMoreDiets, setShowMoreDiets] = useState(false); // dietary "other" fold (parity: App.js:10850)
@@ -5255,7 +5285,18 @@ export default function HostShellV2() {
   }, [foodPlan, priceIdx]);
   const priceCoverage = useMemo(() => layerCoverage(priceLayerRows), [priceLayerRows]);
   const priceNote = () => {
-    const base = geoPlanNote(venueFor(event).state, foodPP.priceContext);
+    // A ZIP the host has ALREADY GIVEN names the region when no state does.
+    // Host directive 2026-09-24: the sheet was telling a host to "add your
+    // venue state" while their own ZIP sat two inches above it in the store
+    // picker. Venue ZIP first (persisted, and the picker seeds from it), then
+    // the one typed into the picker. `geoPlanNote` refuses any ZIP it cannot
+    // resolve to a Census region, so this can widen the sentence but never
+    // guess a region.
+    // Named `vf`, not `v`: venueSourceProof's resolver tracks which identifiers
+    // hold a venueFor() result FILE-WIDE, and a bare `v` collides with the
+    // vendor loops that also use it — the gate correctly flagged one.
+    const vf = venueFor(event);
+    const base = geoPlanNote(vf.state, foodPP.priceContext, vf.zip || (storePicker && storePicker.zip));
     // The store sentence only appears when a store actually reached something.
     // A picked store that matched nothing must not change what the sheet says.
     if (!priceIdx || !priceIdx.size) return base;
@@ -17487,7 +17528,12 @@ export default function HostShellV2() {
                         instead of competing with the number. Honesty is about the
                         fact being present and true, not about its type size. */}
                     <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
-                      {priceNote()}{fVintage ? ` · est. prices ${fVintage.label}` : ''}
+                      {/* The vintage suffix is the NATIONAL branch's stamp. When a
+                          regional factor actually applied, geoPlanNote already ends
+                          in its own month ("· BLS Aug 2026") and appending this made
+                          the line state the month twice, in two formats, over two
+                          lines. One month, one format. */}
+                      {priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${fVintage.label}` : ''}
                     </p>
                   </div>
                   );
@@ -17506,7 +17552,18 @@ export default function HostShellV2() {
                 {/* Meal tally (guests parity gap #5): what guests actually picked —
                     the same guest.meal field RSVPs, CSV imports, and the per-guest
                     meal edit write. Rendered ONLY once at least one real answer
-                    exists; no invented zeros. */}
+                    exists; no invented zeros.
+
+                    DEMOTED 2026-09-24, same fix and same reason as the geography
+                    caveat three blocks up. parity/MANIFEST line 63 specifies this
+                    hero as two `Grounding` lines plus the muted stamp, and this
+                    line made a THIRD at full weight — the MANIFEST already listed
+                    it as a deferred follow-up, "honest extra data, absent from the
+                    comp". On a 390px phone it was the longest block on screen and
+                    therefore the loudest, putting an RSVP inventory above the
+                    decision the sheet exists for (UX_04: figures never above the
+                    ask). Content is byte-identical and still on the same screen;
+                    only its type size changed. It is a tally, not a headline. */}
                 {(() => {
                   const gs = event.guests || [];
                   const counts = {};
@@ -17522,8 +17579,16 @@ export default function HostShellV2() {
                   const order = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
                   const keys = [...order.filter(k => counts[k]), ...Object.keys(counts).filter(k => !order.includes(k))];
                   return (
-                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>
-                      Meal picks so far: {keys.map(k => `${k} ${counts[k]}`).join(' · ')}{un > 0 ? ` · ${un} unanswered` : ''}.
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
+                      {/* NON-BREAKING inside each pair (2026-09-24, host: "hard to
+                          read with wrapping"). A ·-separated run wraps wherever it
+                          runs out of room, which put "Fish" on one line and "1" on
+                          the next — the count is the whole point of the pair, so a
+                          break between them makes the reader reassemble it. The
+                          spaces WITHIN a pair are U+00A0 so lines break only at the
+                          separators. "so far" dropped: "Meals" plus a count of
+                          unanswered already says it is in progress. */}
+                      Meals: {keys.map(k => `${k}\u00A0${counts[k]}`).join(' · ')}{un > 0 ? ` · ${un}\u00A0unanswered` : ''}
                     </p>
                   );
                 })()}

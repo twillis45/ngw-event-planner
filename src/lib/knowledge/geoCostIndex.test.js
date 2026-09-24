@@ -5,7 +5,7 @@
 // it looks identical to a real regional match and it is what 226 citations are
 // doing today across the whole corpus.
 import {
-  regionForState, geoAdjust, applyGeo, geoHonestyLine, geoPlanNote, CENSUS_REGIONS,
+  regionForState, regionForZip, regionForAddress, geoAdjust, applyGeo, geoHonestyLine, geoPlanNote, CENSUS_REGIONS,
 } from './geoCostIndex';
 import { REGIONAL_FACTORS, ITEM_SERIES } from './geoCostFactors';
 
@@ -219,7 +219,10 @@ describe('the plan note says what actually happened to the price', () => {
     // direction. The month and the series come through.
     const n = geoPlanNote('MD', APPLIED);
     expect(n).toContain('May 2026');
-    expect(n).toContain('BLS Average Price');
+    // Abbreviated to 'BLS' 2026-09-24 when the line was condensed: the words
+    // "Average Price" restate what a regional factor is, and the attribution
+    // this test exists to protect is the SERIES, which is still named.
+    expect(n).toMatch(/\bBLS\b/);
   });
 
   test('MARYLAND IS THE SOUTH, which is the case most likely to be read as a bug', () => {
@@ -244,6 +247,100 @@ describe('the plan note says what actually happened to the price', () => {
   });
 
   test('a basis with no detail still reads as a sentence', () => {
-    expect(geoPlanNote('MD', 'South')).toBe('Prices adjusted for the South.');
+    expect(geoPlanNote('MD', 'South')).toBe('Adjusted for the South');
+  });
+});
+
+// ─── A ZIP THE HOST TYPED IS A LOCATION THE NOTE REFUSED TO READ (2026-09-24) ─
+//
+// Host directive: "if we default to bls the copy should identify region if we
+// have zipcode input."
+//
+// The store picker already takes a ZIP — it is how a host finds a Kroger — and
+// `venueFor(event).zip` already seeds it. But geoPlanNote derived its region
+// from the STATE alone, so a host who had typed 21401 was still told to "add
+// your venue state" underneath prices that could have been named as Southern.
+// The location was on screen and the sentence denied having it.
+//
+// A ZIP prefix maps to a state by USPS allocation — a published fact, the same
+// class as the Census table above, not an estimate. So this names the region it
+// can prove and REFUSES the rest: a territory or a military ZIP is in no Census
+// region, and inventing one is the failure this whole module exists to avoid.
+describe('a ZIP resolves the region when no state does', () => {
+  test('a ZIP prefix maps to its Census region', () => {
+    expect(regionForZip('21401')).toBe('south');      // Annapolis MD
+    expect(regionForZip('02134')).toBe('northeast');  // Boston MA
+    expect(regionForZip('60601')).toBe('midwest');    // Chicago IL
+    expect(regionForZip('94110')).toBe('west');       // San Francisco CA
+  });
+
+  test('ZIP+4, whitespace and a numeric ZIP all resolve', () => {
+    expect(regionForZip('21401-1234')).toBe('south');
+    expect(regionForZip('  21401 ')).toBe('south');
+    expect(regionForZip(21401)).toBe('south');
+  });
+
+  test('REFUSES rather than guesses: no Census region, no answer', () => {
+    expect(regionForZip('00601')).toBeNull();   // Puerto Rico — in no Census region
+    expect(regionForZip('09123')).toBeNull();   // military APO/AE
+    expect(regionForZip('')).toBeNull();
+    expect(regionForZip(null)).toBeNull();
+    expect(regionForZip('abcde')).toBeNull();
+    expect(regionForZip('123')).toBeNull();     // too short to be a ZIP
+  });
+
+  test('THE FIX: with a ZIP and no state, the note names the region', () => {
+    const n = geoPlanNote(null, null, '21401');
+    expect(n).toBe('These are national average prices — not yet adjusted for the South.');
+    expect(n).not.toMatch(/add your venue state/);
+  });
+
+  test('the state still wins when both are present — it is the stronger fact', () => {
+    expect(geoPlanNote('MA', null, '21401')).toBe(
+      'These are national average prices — not yet adjusted for the Northeast.');
+  });
+
+  test('an unresolvable ZIP falls back to the old ask, never to a guessed region', () => {
+    expect(geoPlanNote(null, null, '00601')).toMatch(/add your venue state/);
+    expect(geoPlanNote(null, null, '')).toMatch(/add your venue state/);
+  });
+
+  test('(premise) every existing caller is untouched — the 2-arg contract holds', () => {
+    expect(geoPlanNote('MD')).toBe('These are national average prices — not yet adjusted for the South.');
+    expect(geoPlanNote(null)).toMatch(/add your venue state/);
+    expect(geoPlanNote('MD', 'South · May 2026 · BLS Average Price'))
+      .toBe('Adjusted for the South · BLS May 2026');
+  });
+
+  test('an applied basis still outranks a ZIP — what happened beats where', () => {
+    expect(geoPlanNote(null, 'South · May 2026', '21401')).toMatch(/^Adjusted for the South/);
+  });
+});
+
+// ─── THE ZIP SURVIVES THE STORE PICK (2026-09-24, found by driving it) ───────
+//
+// Driven on an iPhone against the live backend: typing 21401 flipped the note
+// to "not yet adjusted for the South" correctly — and then CHOOSING a store
+// flipped it BACK to "add your venue state", because picking clears
+// `storePicker`. The host had given a location, seen it recognised, and watched
+// the app forget it one tap later. The chosen store carries its own address,
+// which is a better source than the picker anyway: it is where they will shop.
+describe('a chosen store address resolves the region', () => {
+  test('reads the terminal ZIP out of the flattened Kroger address', () => {
+    expect(regionForAddress('143 Ritchie Hwy, Severna Park, MD, 21146')).toBe('south');
+    expect(regionForAddress('1200 N Wells St, Chicago, IL, 60610')).toBe('midwest');
+    expect(regionForAddress('  500 Main St, Boston, MA, 02134  ')).toBe('northeast');
+    expect(regionForAddress('1 Market St, San Francisco, CA, 94105-1234')).toBe('west');
+  });
+
+  test('REFUSES anything that is not a terminal ZIP — it is not a digit hunt', () => {
+    // The guard that matters: a five-digit run somewhere in the middle of a
+    // string is not a ZIP, and reading one would invent a region from a street
+    // number or a phone number.
+    expect(regionForAddress('12345 Some Road, Nowhere')).toBeNull();
+    expect(regionForAddress('call 21401 for hours')).toBeNull();
+    expect(regionForAddress('')).toBeNull();
+    expect(regionForAddress(null)).toBeNull();
+    expect(regionForAddress('..., PR, 00601')).toBeNull();   // territory, still refused
   });
 });

@@ -22,10 +22,24 @@ const NEUTRAL = Object.freeze({
 // getFoodPriceFactor({ region, state }) → { factor, region, regionLabel, month, source, note }.
 // Pass a census region ('ne'|'mw'|'south'|'west') or a 2-letter state; the backend
 // resolves state→region. Never throws.
+// ── TWO VOCABULARIES FOR ONE SET OF REGIONS, RECONCILED HERE ────────────────
+// The backend keys its BLS areas on 'ne' | 'mw' | 'south' | 'west'
+// (food_prices.py `_AREA`), while geoCostIndex — the one place this repo defines
+// what a region IS — uses the Census names 'northeast' | 'midwest' | 'south' |
+// 'west'. Callers were previously forced to know the backend's spelling, and a
+// caller passing the Census name got `reg not in _AREA` on the server, which
+// silently falls back to 'us' and a factor of 1.0. That is the worst shape of
+// failure available here: a regional adjustment that reports success and does
+// nothing. Translated at the boundary so both spellings work.
+const REGION_WIRE = Object.freeze({ northeast: 'ne', midwest: 'mw', south: 'south', west: 'west' });
+
 export async function getFoodPriceFactor({ region, state } = {}) {
   if (!BASE) return NEUTRAL;
   const qs = new URLSearchParams();
-  if (region) qs.set('region', String(region));
+  if (region) {
+    const r = String(region).trim().toLowerCase();
+    qs.set('region', REGION_WIRE[r] || r);
+  }
   if (state) qs.set('state', String(state));
   try {
     const res = await fetch(`${BASE}/api/food-prices?${qs.toString()}`);
