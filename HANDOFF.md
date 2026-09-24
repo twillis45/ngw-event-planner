@@ -1,6 +1,25 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-23 (thirty-second entry:
+**Measured reality, not intentions.** Updated 2026-09-24 (thirty-third entry:
+priority #1 of the unfed-engine list closed — four decisions now answer to the
+event, each threshold read out of its own authored sentence, taking the corpus
+from 3 of 128 that move to 7. The scale I had guessed (30-50 rules) was wrong:
+scanning for the sentence shape the three shipping rules encode finds SEVEN in
+the whole corpus, so beyond those there is nothing to derive from. A review-board
+Engineering & Delivery wing was added, because 21 wings covered design, market,
+cuisine and lighting and none had read a diff. And the cost-data question was
+measured for the board: 51 decisions carry 118 multipliers, 106 move money
+correctly, 0 backwards, 10 are authored and DEAD; 50 of 51 already state a
+`sufficientWhen`, so it is a worklist with its own acceptance test, not a blank
+page; but only 16 carry sources and ONE carries a date, next to a purchase
+surface with 533 cited rows all dated August or later. Worth carrying forward:
+a capture instrument must prove it reached the thing it photographs — the
+threshold demo passed twice while never opening the sheet, because "two captures
+differ" is satisfied by two guest counts on the home screen; and the FIRST
+provenance census read `costProvenance` instead of `costFactorProvenance` and
+reported a dramatic, quotable, false "51 of 51 with no provenance". Two key names
+for one idea is itself the finding. See the thirty-third entry.)
+Before that, on 2026-09-23 (thirty-second entry:
 all four open board calls closed, and two of them reversed work shipped hours
 earlier. The closing-window axis landed and the 2026-08-17 bar is finally met;
 "refuse or floor" turned out to be neither; the three "late deadlines" were all
@@ -157,11 +176,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `0a6c2206` |
+| Branch / HEAD | `main` @ `160fe2f2` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,611 passed**, 1 skipped, **0 failed**, **537 suites** (re-measured 2026-09-24 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,635 passed**, 1 skipped, **0 failed**, **542 suites** (re-measured 2026-09-24 after the thirty-third entry; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -963,6 +982,81 @@ not as a port.
 **The pattern, for the third time this month:** the brief named a surface, the
 sweep found the surface already existed or could not be filled. Measuring first
 cost an hour and saved two days of building something a host already had.
+
+## FIXED 2026-09-24 (thirty-third entry) — priority #1 closed, an engineering wing convened, and the cost question measured
+
+542 suites / 7,635 passed, 1 skipped. `verify:push` 6/6.
+
+**Priority #1 — `recommendedWhen`, and both of my framings were wrong.**
+`can-derive` is what lets the app propose instead of ask, and on 125 of 128
+decisions it proposed the same answer for a 4-guest home dinner and a 400-guest
+destination gala. I guessed 30–50 could carry rules. The evidence is already
+authored in prose: all three shipping rules encode one shape — a numeric guest
+threshold the decision's own `why` states in words — and scanning the corpus for
+that shape finds **seven**. Three had rules; the four that did not are now
+authored, each threshold taken from its own sentence:
+Get-Together/food_style 25, Engagement Party/help 30, Holiday Party/food_format
+20, Retirement Party/help 40. Beyond those there is nothing to derive from —
+authoring more would be inventing thresholds, not reading them.
+`theRuleMatchesItsOwnSentence.test.js` guards the DERIVATION, not the rule:
+each threshold must still appear in its own prose. The second framing was also
+overstated — I called this "a truthfulness problem before a capability one", and
+the surface actually renders *"We'll go with X unless you'd rather change it"*,
+which is a proposal, not a claim of derivation. Capability gap, not a lie.
+
+**The shopping hero was denser than what it explained.** The price-provenance
+sentence shipped as a third `Grounding` line; `.grounding` is one class, so a
+two-line caveat rendered at the same visual weight as the numbers it qualifies.
+Demoted into the muted provenance stamp — sentence byte-identical, still on the
+same screen. Confirmed in Chromium at 390px: **3 `.grounding` blocks where there
+were 4**.
+
+**Review board — an Engineering & Delivery wing.** 21 wings covered design,
+market, cuisine, lighting and regional practice; none had read a diff. Seven
+named seats plus the standing Next Maintainer, each justified by something that
+happened in-session. Render-first does not apply to build questions; MEASURE-first
+replaces it — a measurement taken with an instrument the reviewer did not write.
+
+**The cost-data question, measured for the board**
+(`docs/audits/2026-09-24_COST_DATA_SOURCING_BOARD_PACKET.md`, artifact
+*Feeding The Engine*):
+
+| | |
+|---|---|
+| 51 decisions, 118 multipliers | 106 move money correctly, 0 backwards, **10 authored and dead** |
+| 50 of 51 state a `sufficientWhen` | the corpus wrote its own acceptance test — a worklist, not a blank page |
+| 16 carry sources, **1** carries a date | purchase surface next door: 533 cited, all dated Aug-2026 or later |
+
+Of the 10 dead: 6 from unreachable `affects` ids (`foodApproach` collapsed
+`p_protein`/`p_sides` into `fa-*` and the multipliers kept the old targets), 4
+undiagnosed — and on both `Fish Fry/starch` and `Low Country Boil/seasoning` the
+up-multiplier works while the down-multiplier no-ops, which is a cost-engine
+defect no pricing research can fix. Board's sequence: repair or retire the dead
+ten first, ship `lastVerified` plus a census guard, then run the 50 sentences.
+Fetch-vs-author is a product commitment left to the owner.
+
+**A fourth money surface, found by photographing the fix.** The hero stamps
+*"est. prices Jan 2026"* from `PRICE_TABLE_META.asOf` (`src/lib/sourcing.js:25`).
+It is real and correctly derived — and it labels a *fallback* protein table,
+not the rows on screen. Measured against the 533 dated purchase rows: earliest
+**2026-08-14**, latest **2026-09-17**, and **zero** older than the stamp. Every
+priced row on that screen is newer than the date the screen displays. The fix is
+the house rule — derive the vintage from the rows actually rendered.
+
+**Worth carrying forward.**
+- **A capture instrument must prove it reached the thing it photographs.** The
+  threshold demo passed twice while never opening the decision sheet: a budget
+  prompt sat in front of it, and the only checks were "reached the app" and "the
+  two captures differ" — which two different guest counts satisfy on the home
+  screen alone. Second offence of the same shape in two days.
+- **Two key names for one idea is itself a finding.** The first provenance census
+  read `costProvenance` (the purchase-row key) instead of `costFactorProvenance`
+  and reported a dramatic, quotable, false "51 of 51 with no provenance at all".
+  Recorded rather than deleted — the next reader reaches for the same wrong one.
+- **A guard-off capture still costs a browser start** if its `test.skip` sits in
+  the test body. The three sibling capture specs all do; the new one is
+  file-level. And an unpinned capture spec runs across the whole project matrix —
+  4 tests became 28 before it was added to `SELF_PINNED`.
 
 ## FIXED 2026-09-23 (thirty-second entry) — all four open board calls, and two of them reversed a finding
 
@@ -5644,6 +5738,7 @@ equal the newest gate record's date, or it is stale by definition.
 |---|---|---|
 | Decision Layer Remediation | https://claude.ai/artifact/YCYiVBhiqXfybotWygeojv | `docs/artifact/decision-layer-remediation.html` |
 | How The Plan Gets Made | https://claude.ai/artifact/Y4ArfQB1ztTevLUz8TXWCC | `docs/artifact/how-the-plan-gets-made.html` |
+| Feeding The Engine | https://claude.ai/artifact/4PC3GqwysQA9ARdEuwc7vb | `docs/artifact/feeding-the-engine.html` |
 
 The Decision Layer page is the outward record of the September programme: every
 audit finding, what shipped for it, and what each board call cost to close. **At

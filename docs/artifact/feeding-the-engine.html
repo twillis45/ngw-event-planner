@@ -1,0 +1,360 @@
+<title>Feeding The Engine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground:    #f5f2ec;
+    --card:      #fffdfa;
+    --ink:       #1c1a17;
+    --ink-2:     #56504a;
+    --ink-3:     #8d857c;
+    --rule:      #ded7cc;
+    --rule-2:    #ebe5db;
+    --gap:       #b4451f;   /* what is broken */
+    --gap-bg:    #f8e7df;
+    --works:     #3f6b4a;   /* what is already right */
+    --works-bg:  #e4eee5;
+    --deep:      #1c1a17;
+    --deep-ink:  #efe9e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:   #16150f; --card: #1e1c16; --ink: #eee9df; --ink-2: #ada69a;
+      --ink-3:    #756e63; --rule: #33302a; --rule-2: #272420;
+      --gap:      #e8845c; --gap-bg: #30201a; --works: #86b593; --works-bg: #1b2820;
+      --deep:     #0d0c09; --deep-ink: #ded7cb;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:   #16150f; --card: #1e1c16; --ink: #eee9df; --ink-2: #ada69a;
+    --ink-3:    #756e63; --rule: #33302a; --rule-2: #272420;
+    --gap:      #e8845c; --gap-bg: #30201a; --works: #86b593; --works-bg: #1b2820;
+    --deep:     #0d0c09; --deep-ink: #ded7cb;
+  }
+
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px; line-height: 1.6;
+    padding-inline: 16px; padding-block: 0;
+  }
+  .wrap { max-width: 62rem; margin-inline: auto; padding-block: 3rem 5rem; display: flex; flex-direction: column; gap: 3.2rem; }
+
+  h1, h2, h3, h4 { font-family: "Bricolage Grotesque", system-ui, sans-serif; text-wrap: balance; margin: 0; line-height: 1.08; letter-spacing: -0.02em; }
+  h1 { font-size: clamp(2.2rem, 7vw, 3.7rem); font-weight: 800; }
+  h2 { font-size: clamp(1.35rem, 3.4vw, 1.85rem); font-weight: 700; }
+  h3 { font-size: 1.12rem; font-weight: 600; }
+  h4 { font-size: 0.95rem; font-weight: 600; }
+  p  { margin: 0; max-width: 62ch; }
+  .mono, code { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 0.86em; }
+  code { background: var(--rule-2); padding: 0.08em 0.34em; border-radius: 3px; }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 0.67rem; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3);
+  }
+
+  header.top { display: flex; flex-direction: column; gap: 1.1rem; }
+  .lede { font-size: 1.14rem; color: var(--ink-2); max-width: 56ch; }
+  .thesis {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 700;
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem); line-height: 1.3; color: var(--gap);
+    max-width: 34ch; letter-spacing: -0.01em;
+  }
+
+  /* The census strip: the three rows this page exists to make concrete. */
+  .census { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .census > div { background: var(--card); padding: 1rem 1.05rem 1.15rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .census .n { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .census .n.bad  { color: var(--gap); }
+  .census .n.good { color: var(--works); }
+  .census p { font-size: 0.86rem; color: var(--ink-2); line-height: 1.45; }
+
+  section { display: flex; flex-direction: column; gap: 1.2rem; }
+  .sec-head { display: flex; flex-direction: column; gap: 0.5rem; border-top: 2px solid var(--ink); padding-top: 0.9rem; }
+
+  /* A worked example is one object: the record, the diagnosis, the edit. */
+  .ex { border: 1px solid var(--rule); border-radius: 6px; background: var(--card); overflow: hidden; }
+  .ex-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 0.8rem; padding: 0.85rem 1.05rem; border-bottom: 1px solid var(--rule-2); }
+  .ex-head .who { font-family: "JetBrains Mono", monospace; font-size: 0.82rem; font-weight: 600; }
+  .tag { font-family: "JetBrains Mono", monospace; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.22em 0.5em; border-radius: 3px; }
+  .tag.bad  { background: var(--gap-bg);   color: var(--gap); }
+  .tag.good { background: var(--works-bg); color: var(--works); }
+  .ex-body { padding: 1.05rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  .ex-body p { font-size: 0.95rem; }
+
+  pre {
+    margin: 0; background: var(--deep); color: var(--deep-ink);
+    font-family: "JetBrains Mono", monospace; font-size: 0.74rem; line-height: 1.6;
+    padding: 0.9rem 1rem; border-radius: 5px; overflow-x: auto;
+  }
+  pre .del { color: #e8845c; }
+  pre .add { color: #86b593; }
+  pre .dim { color: #7d766b; }
+
+  .label { font-family: "JetBrains Mono", monospace; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .scroller { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
+  .scroller table { min-width: 34rem; }
+
+  .note { border-left: 3px solid var(--gap); padding: 0.1rem 0 0.1rem 0.9rem; color: var(--ink-2); font-size: 0.95rem; }
+  .note.ok { border-left-color: var(--works); }
+
+  footer { border-top: 1px solid var(--rule); padding-top: 1.4rem; color: var(--ink-3); font-size: 0.82rem; display: flex; flex-direction: column; gap: 0.5rem; }
+
+  @media (max-width: 40rem) {
+    .census { grid-template-columns: 1fr; }
+    body { font-size: 16px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <span class="eyebrow">NGW Event Planner · cost data · 24 September 2026</span>
+    <h1>Feeding&nbsp;The&nbsp;Engine</h1>
+    <p class="thesis">Three numbers describe the cost corpus. Here is what fixing each one actually looks like, in the corpus's own records.</p>
+    <p class="lede">Companion to <em>The Unfed Engine</em>, which ranked the priorities. This page does not argue — it shows the real record before the edit and after it, for every claim in the census below. Every number here was measured; the method note at the foot says how, including the measurement that came back wrong.</p>
+  </header>
+
+  <div class="census">
+    <div>
+      <span class="eyebrow">Reach</span>
+      <span class="n bad">10</span>
+      <p>of 118 multipliers are authored and <strong>dead</strong> — they cannot change a total no matter what evidence backs them. 106 move money in the authored direction; none move it backwards.</p>
+    </div>
+    <div>
+      <span class="eyebrow">Specification</span>
+      <span class="n good">50</span>
+      <p>of 51 decisions already state a <code>sufficientWhen</code> — the evidence that would settle them. The corpus wrote its own acceptance test before anyone asked. It is a worklist, not a blank page.</p>
+    </div>
+    <div>
+      <span class="eyebrow">Freshness</span>
+      <span class="n bad">1</span>
+      <p>carries a <code>lastVerified</code> date. 16 carry sources. The purchase rows next door: 533 cited, every one dated, none older than August.</p>
+    </div>
+  </div>
+
+  <!-- ─── 1 ─────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Fix one · costs nothing to research</span>
+      <h2>Ten multipliers that cannot move money</h2>
+    </div>
+    <p>These are the cheapest fix on the page and they must go first, because researching a number the engine will throw away is the only genuinely wasted work available here. They split into two kinds, and only one of them is a data problem.</p>
+
+    <div class="ex">
+      <div class="ex-head">
+        <span class="who">Get-Together / food_style</span>
+        <span class="tag bad">dead · wrong target</span>
+        <span class="tag good">already researched</span>
+      </div>
+      <div class="ex-body">
+        <p>The sharpest case in the corpus: a <strong>sourced, researched</strong> multiplier pointing at rows that do not exist. Hiring a pitmaster adds 40% to the event — grounded to <code>catering-perperson-2026</code> — and it changes the total by nothing.</p>
+        <span class="label">The record today</span>
+<pre>costFactors: { 'Hire a BBQ caterer / pitmaster': 1.4,
+               'Potluck — guests bring sides':  0.75 },
+<span class="del">affects: ['p_protein', 'p_sides'],</span>
+costFactorProvenance: {
+  tier: 'researched', sources: ['catering-perperson-2026'],
+  claim: 'Hiring a BBQ pitmaster adds ~40% to total event cost…'
+}</pre>
+        <span class="label">What the live food list actually contains</span>
+<pre><span class="dim">playbookFoodPlan(Get-Together, 30 guests).list →</span>
+[ 'fa-catering', 'p_ice', 'p_fuel', 'p_thermometer',
+  'p_tableware', 'p_cleanup' ]
+<span class="dim">                 ↑ no p_protein. no p_sides.</span></pre>
+        <p><code>foodApproach</code> collapses the protein and sides rows into a single <code>fa-*</code> line. The multiplier survived that refactor pointing at the old ids, so it silently no-ops — the failure mode the audit calls <em>unreachable&nbsp;affects</em>. Four of the ten dead values are this decision; two more are <code>Vow&nbsp;Renewal/food_style</code> and <code>Repast/food_source</code>, same cause.</p>
+        <span class="label">The edit</span>
+<pre><span class="add">affects: ['fa-catering'],</span></pre>
+        <p class="note">And then <strong>measure it</strong>, do not assume it. A ×1.4 applied to a collapsed catering line is not obviously the same arithmetic as ×1.4 applied to protein plus sides. <code>_costAudit.test.js</code> already reports whether a factor moves the total and in which direction — the edit is only finished when that row leaves the NO-OP list.</p>
+      </div>
+    </div>
+
+    <div class="ex">
+      <div class="ex-head">
+        <span class="who">Fish Fry / starch</span>
+        <span class="tag bad">dead · code defect</span>
+      </div>
+      <div class="ex-body">
+        <p>The other kind, and it is not a data problem at all. This decision points at <code>p_starch</code>, which <em>is</em> in the live list. One of its three multipliers works and two do not:</p>
+        <div class="scroller"><table>
+          <thead><tr><th>option</th><th>factor</th><th>food total 30 guests</th><th>verdict</th></tr></thead>
+          <tbody>
+            <tr><td>Both</td><td class="num">×1.30</td><td class="num">moves</td><td style="color:var(--works)">works</td></tr>
+            <tr><td>Grits</td><td class="num">×0.95</td><td class="num">$140–370 → $140–370</td><td style="color:var(--gap)">NO-OP</td></tr>
+            <tr><td>Fries only</td><td class="num">×0.80</td><td class="num">$140–370 → $140–370</td><td style="color:var(--gap)">NO-OP</td></tr>
+          </tbody>
+        </table></div>
+        <p>Same decision, same reachable target, same code path — the multiplier above 1 lands and both below 1 vanish. <code>Low&nbsp;Country&nbsp;Boil/seasoning</code> shows the identical asymmetry (×1.2 works, ×0.9 does not). That is four of the ten, and <strong>no amount of pricing research fixes any of them</strong>; it is a diagnosis in the cost engine, not in the corpus.</p>
+        <p class="note">Undiagnosed on purpose. The pattern points at a floor or a rounding step swallowing downward adjustments on a small band, but that has not been read in the code yet — and a cause that has not been read is a guess. Naming it as open is the honest state.</p>
+      </div>
+    </div>
+
+    <div class="ex">
+      <div class="ex-head">
+        <span class="who">Crab Feast / where_buy &nbsp;·&nbsp; PTA / concessions</span>
+        <span class="tag good">not a defect</span>
+      </div>
+      <div class="ex-body">
+        <p>Two of the twelve no-ops are ×1.0. They are <em>supposed</em> to change nothing — a vendor choice that does not move the price is a real answer. Counting them as broken would have inflated the finding by 20%, which is why the table above says ten and not twelve.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 2 ─────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Fix two · the actual research programme</span>
+      <h2>The worklist that is already written</h2>
+    </div>
+    <p>This is the finding that should drive the decision. Fifty of fifty-one records state <strong>both</strong> what the number claims and what evidence would settle it. Nobody has to design an acceptance bar — the corpus set one, fifty times, in advance.</p>
+
+    <div class="ex">
+      <div class="ex-head">
+        <span class="who">Fish Fry / starch</span>
+        <span class="tag bad">tier: synthesized</span>
+      </div>
+      <div class="ex-body">
+        <span class="label">Today — a heuristic that says so</span>
+<pre>costFactorProvenance: {
+  tier: 'synthesized', confidence: 'medium',
+  verificationStatus: 'synthesized',
+  note:  'Cost factor heuristics need verification against actual pricing.',
+  claim: 'Grits cost ~5% less than spaghetti as a fish-fry starch;
+          serving both costs ~30% more; fries-only costs ~20% less',
+  <span class="add">sufficientWhen: 'Grocery price comparison of grits vs. spaghetti
+                   per serving at scale confirms the relative cost
+                   differentials'</span>
+}</pre>
+        <p>The green line is the whole argument. It is not a wish — it is a runnable instruction: price grits and spaghetti per serving at scale, compare. A researcher needs no brief, no scoping call and no judgement about what would count. <strong>Fifty rows carry one of these.</strong></p>
+        <span class="label">What "done" looks like — and it exists already</span>
+<pre><span class="dim">// New Year's Eve Party / toast_pour — the ONE record in finished shape</span>
+costFactorProvenance: {
+  tier: 'researched', confidence: 'medium',
+  <span class="add">verificationStatus: 'cited',</span>
+  <span class="add">sources: ['sparklingwine-band-2026', 'sparkling-cider-2026',
+            'sparkling-cider-indie-2026'],</span>
+  <span class="add">lastVerified: '2026-08-21',</span>
+  note:  'Grounded 2026-08-21: sparkling cider at $4.29-8.49 a bottle
+          against drinkable sparkling wine at $10-25 confirms the
+          cider-at-a-third-to-half ratio the factors encode…',
+  claim: 'An all-wine toast costs about 20% more than the split;
+          an all-zero-proof toast about halves the toast line…'
+}</pre>
+        <p>Same four fields, filled. The transformation is mechanical once the evidence is in hand: <code>tier</code> to <code>researched</code>, <code>verificationStatus</code> to <code>cited</code>, the sources named, the date stamped, and the note rewritten to say what was actually found.</p>
+        <p class="note ok">This is not a new process. The purchase surface in the same repository already ran it to completion — 533 cited rows. The template is in-house and finished; it does not need designing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 3 ─────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Fix three · do this before the research, not after</span>
+      <h2>One date in fifty-one</h2>
+    </div>
+    <p>The two money surfaces in this repository hold the same kind of number to two completely different standards. The gap is not quality — it is that one of them has a <em>freshness process</em> and the other has no freshness field.</p>
+
+    <div class="scroller"><table>
+      <thead><tr><th></th><th>purchase rows</th><th>decision multipliers</th></tr></thead>
+      <tbody>
+        <tr><td>records</td><td class="num">623</td><td class="num">51</td></tr>
+        <tr><td>cited, with a <code>sufficientWhen</code></td><td class="num" style="color:var(--works)">533</td><td class="num">—</td></tr>
+        <tr><td>carry <code>sources[]</code></td><td class="num">533</td><td class="num" style="color:var(--gap)">16</td></tr>
+        <tr><td>carry <code>lastVerified</code></td><td class="num" style="color:var(--works)">533</td><td class="num" style="color:var(--gap)">1</td></tr>
+        <tr><td>dated earlier than 1&nbsp;Aug&nbsp;2026</td><td class="num" style="color:var(--works)">0</td><td class="num">n/a — no dates to be stale</td></tr>
+        <tr><td>standing guard on the shape</td><td><code>moneyProvenanceShape.test.js</code></td><td style="color:var(--gap)">none</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="ex">
+      <div class="ex-head">
+        <span class="who">the sequencing argument</span>
+        <span class="tag bad">order matters</span>
+      </div>
+      <div class="ex-body">
+        <p>Fifty rows researched in one batch, with no <code>lastVerified</code> discipline, produces fifty rows that go stale on the same day — and no way to tell, because there is nothing to read. The purchase surface avoided that by dating every row as it landed. <strong>Ship the date field and the census guard first</strong>, then research into them.</p>
+        <p>One record is also bare: <code>PTA&nbsp;/&nbsp;Booster&nbsp;Fundraiser / concessions</code> carries <code>costFactors</code> and no <code>costFactorProvenance</code> at all. It is the only one, and a shape guard would have caught it the day it was written.</p>
+        <span class="label">The missing guard, in outline</span>
+<pre><span class="dim">// the decision-side sibling of moneyProvenanceShape.test.js</span>
+every decision with costFactors carries costFactorProvenance   <span class="dim">// catches the bare one</span>
+every record states a claim AND a sufficientWhen               <span class="dim">// 50/51 today</span>
+every 'researched' record carries sources[] AND lastVerified   <span class="dim">// 1/16 today</span>
+the researched/synthesized split is pinned as a number         <span class="dim">// so promotion shows up</span></pre>
+        <p class="note">The last line is the one that repays itself. Pin <em>16 researched / 34 synthesized</em> and every promotion turns the guard red on purpose, with the reason written beside the new number — the way this repo already records a count that genuinely moved.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 4 ─────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Found while photographing the fix · not in the board packet</span>
+      <h2>The date on the screen is older than everything behind it</h2>
+    </div>
+    <p>The shopping hero ends with a freshness stamp: <strong>&ldquo;est. prices Jan&nbsp;2026&rdquo;</strong>. It is real — correctly formatted from a real constant, not invented. It is also labelling the wrong table.</p>
+
+    <div class="ex">
+      <div class="ex-head">
+        <span class="who">PRICE_TABLE_META &nbsp;·&nbsp; src/lib/sourcing.js:25</span>
+        <span class="tag bad">stale label</span>
+      </div>
+      <div class="ex-body">
+        <span class="label">What the stamp reads</span>
+<pre>export const PRICE_TABLE_META = {
+  <span class="del">asOf: '2026-01',</span>          <span class="dim">// "the vintage of the researched ranges below"</span>
+  reviewCadence: 'yearly',
+};</pre>
+        <p>&ldquo;The ranges below&rdquo; are <code>CANONICAL_PROTEIN_PRICES</code> — ten protein rows in that same file, several cited to 2025 pages. And that table is a <em>fallback</em>: it prices proteins that lack their own <code>sourcingPrices</code>, on non-default sourcing tiers only.</p>
+        <p>The dollars actually on the hero — <code>Food $195–$515 · supplies $20–$60</code> — do not come from there. They come from the playbook <code>purchases[].unitCostRange</code>, and those rows carry their own dates:</p>
+        <span class="label">Measured against the 533 dated rows</span>
+<pre>DISPLAYED STAMP      : asOf = 2026-01   <span class="dim">("est. prices Jan 2026")</span>
+dated purchase rows  : 533
+  earliest           : <span class="add">2026-08-14</span>
+  latest             : <span class="add">2026-09-17</span>
+  by month           : { '2026-08': 529, '2026-09': 4 }
+  OLDER than the stamp: <span class="add">0</span></pre>
+        <p><strong>Not one priced row on that screen is as old as the date the screen displays.</strong> The stamp under-claims by seven to eight months — the safe direction to be wrong in, and still wrong. A host reading &ldquo;Jan 2026&rdquo; in September has been handed a reason to distrust numbers that were re-verified last month.</p>
+        <span class="label">The fix, in the house rule</span>
+<pre><span class="del">- const PRICE_VINTAGE = format(PRICE_TABLE_META.asOf)   // one hardcoded constant</span>
+<span class="add">+ derive the vintage from the rows this plan actually rendered</span>
+<span class="dim">  — single source of truth, no hardcoding, and it cannot drift again
+    because the label and the data become the same fact.</span></pre>
+        <p class="note">This is a <strong>fourth</strong> money surface — <code>sourcing.js</code>, alongside the purchase rows, the decision multipliers and the geography note. The board packet counted three. Found by photographing the density fix, which is the argument for driving a change in a browser rather than reading the diff.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── sequence ──────────────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">What the board recommends</span>
+      <h2>The order, and the one call that is not the board's</h2>
+    </div>
+    <div class="scroller"><table>
+      <thead><tr><th>#</th><th>do</th><th>cost</th><th>why here</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td><strong>Repair or retire the 10 dead multipliers</strong></td><td>small, code-side</td><td>six are a wrong-target bug, four are a cost-engine defect. No research budget can fix either, and spending it on them is the only certain waste available.</td></tr>
+        <tr><td class="num">2</td><td><strong>Ship <code>lastVerified</code> + the census guard</strong></td><td>very small</td><td>so 50 researched rows do not all go stale together, unobserved.</td></tr>
+        <tr><td class="num">2b</td><td><strong>Derive the on-screen price vintage from the rows rendered</strong></td><td>small, host-side</td><td>the stamp currently reads 7–8 months older than every number it labels. Visible to hosts today, and it is the same single-source-of-truth move as the rest of this list.</td></tr>
+        <tr><td class="num">3</td><td><strong>Run the 50 <code>sufficientWhen</code> sentences as the worklist</strong></td><td>research time</td><td>the bar is written, the template is in-repo, the transformation is mechanical.</td></tr>
+        <tr><td class="num">—</td><td><strong>Say the tier on the surface</strong></td><td>UI</td><td>honest interim while 3 is in flight: a synthesized multiplier that says it is synthesized is not a lie.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note"><strong>Not the board's call:</strong> whether NGW maintains a priced corpus or consumes a pricing feed. Fetching does not remove this work — a fetched price still needs a claim and a date, or it is an unlabelled number with better latency. That is a product and cost commitment, and it belongs to the owner.</p>
+  </section>
+
+  <footer>
+    <p><strong>How every number here was measured.</strong> Effectiveness (118 / 106 / 10) from <code>src/lib/playbooks/_costAudit.test.js</code>, a pre-existing report not written for this page. The provenance census and the purchase contrast from a temporary pass over <code>ALL_PLAYBOOKS</code>, reading <code>d.costFactors</code>, <code>d.costFactorProvenance</code> and <code>pb.purchases[].costProvenance</code>. Records quoted verbatim from <code>src/lib/playbooks/data/</code>.</p>
+    <p><strong>And one measurement came back wrong.</strong> The census first read <code>d.costProvenance</code> — the purchase-row key — and reported 51 of 51 decisions with no provenance at all. Dramatic, quotable, false: the decision key is <code>costFactorProvenance</code>. Recorded rather than deleted, because two key names for one idea is itself a finding, and the next reader will reach for the same wrong one.</p>
+    <p>Packet: <code>docs/audits/2026-09-24_COST_DATA_SOURCING_BOARD_PACKET.md</code> · convened wing: Engineering&nbsp;&amp;&nbsp;Delivery.</p>
+  </footer>
+
+</div>
