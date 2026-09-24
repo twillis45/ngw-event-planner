@@ -30,7 +30,7 @@ try { APP_EVENTS = JSON.parse(localStorage.getItem('ngw-events')) || []; } catch
 // there is still exactly ONE definition of each. They moved because the INVITE
 // needs them and must NOT drag this module (and the 40 playbooks it imports) into
 // a guest's download — see inviteShared.js.
-import { saveCustomEvents } from '@app/lib/customEventStore';
+import { saveCustomEvents, LS_CUSTOMS } from '@app/lib/customEventStore';
 export { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './inviteShared.js';
 // The multi-event store: EVERY event created in this shell, as an array.
 // Each stores itself whole (no LS_PATCH layer — that's for sample/app bases).
@@ -55,7 +55,24 @@ export { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './inviteShared
 // rollup's module graph shows it is already inside the host bundle, so this
 // costs nothing. Consumers (HostShellV2, LodgingCockpit) import LS_CUSTOMS from
 // THIS module and are untouched by the re-export.
-export { LS_CUSTOMS } from '@app/lib/customEventStore';
+// IMPORTED ABOVE AS WELL AS RE-EXPORTED HERE, AND THAT IS THE WHOLE FIX.
+// `export { X } from '…'` is a pure re-export: it forwards the binding to
+// consumers and creates NO local binding in this module. `loadCustomEvents`
+// below reads `localStorage.getItem(LS_CUSTOMS)` in this module's own scope,
+// so from the moment the const became a re-export that line threw a
+// ReferenceError — straight into its own `catch`, which set `list = []`.
+//
+// WHAT THAT COST, measured with vitest against this file: a stored custom
+// event returned `[]` from `loadCustomEvents()`, so it never entered
+// ALL_SAMPLES, so `BOOT_EVENT_ID` could not resolve it and fell through to
+// `ROSTER[0]`. Every event a host had created was invisible in the switcher
+// and on boot. The data was never lost — localStorage still held it, and the
+// save guard was refusing writes that would drop it, which is why the
+// "another tab may have this event open" banner appeared alongside.
+//
+// The silent `catch` is what let it ship: a key that no longer exists and a
+// key that is empty are indistinguishable to it.
+export { LS_CUSTOMS };
 // Last event the host was on — creation and switching write it, boot reads it,
 // so a reload lands back on the event they were working, not the first sample.
 export const LS_LAST_EVENT = 'ngw-hostv2-last-event';

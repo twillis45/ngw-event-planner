@@ -62,10 +62,55 @@ describe('one owner for the created-events bucket', () => {
     expect(LS_CUSTOMS.length).toBeGreaterThan(0);
   });
 
-  test('THE GUARD: eventPool re-exports the key and does not declare one', () => {
-    expect(SRC).toMatch(/^\s*export\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}\s*from\s*['"]@app\/lib\/customEventStore['"]/m);
+  // ── CORRECTED 2026-09-24, SAME DAY, AFTER THIS GUARD CAUSED AN OUTAGE ─────
+  //
+  // The original assertion demanded the PURE re-export form:
+  //
+  //     export { LS_CUSTOMS } from '@app/lib/customEventStore';
+  //
+  // `export … from` forwards a binding to consumers and creates NO local
+  // binding in the re-exporting module. eventPool does not only forward this
+  // key — `loadCustomEvents()` READS it, `localStorage.getItem(LS_CUSTOMS)`,
+  // in this module's own scope. So from the moment the guard's preferred form
+  // landed, that line threw a ReferenceError into its own `catch`, which set
+  // `list = []`.
+  //
+  // WHAT IT COST, measured with vitest against the module: every event a host
+  // had created returned empty from `loadCustomEvents()`, never entered
+  // ALL_SAMPLES, and `BOOT_EVENT_ID` fell through to `ROSTER[0]`. A host's own
+  // events were invisible in the switcher and on boot. Nothing was lost —
+  // storage still held them, and the save guard was refusing writes that would
+  // drop them, which is why "another tab may have this event open" appeared
+  // alongside.
+  //
+  // THE LESSON, WHICH IS WHY THIS COMMENT IS LONG: the guard was checking a
+  // FORM when its own header states the intent as OWNERSHIP — "eventPool must
+  // RE-EXPORT the key, never declare its own". Importing from the owner and
+  // re-exporting satisfies ownership exactly: still one declaration, still in
+  // customEventStore. The form was never the point, and pinning it forbade the
+  // only shape that both satisfies the intent and works.
+  //
+  // A structural guard can only see the shape of the code. `hostv2/test/
+  // customEventsAreVisible.test.mjs` is the behavioural half added with this
+  // correction — it EXECUTES the module and fails if a stored event cannot be
+  // read back, which is the thing this test can never check.
+  test('THE GUARD: eventPool gets the key from its owner and declares none', () => {
+    // A local binding, so the module can READ the key it also forwards.
+    expect(SRC).toMatch(/^\s*import\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}\s*from\s*['"]@app\/lib\/customEventStore['"]/m);
+    // And still forwarded, so every existing consumer import keeps working.
+    expect(SRC).toMatch(/^\s*export\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}/m);
     // The half that actually catches a regression — a fresh declaration.
     expect(SRC).not.toMatch(/^\s*export\s+(?:const|let|var)\s+LS_CUSTOMS\b/m);
+    expect(SRC).not.toMatch(/^\s*(?:const|let|var)\s+LS_CUSTOMS\s*=/m);
+  });
+
+  test('THE FORM THAT BROKE IT IS NOW ITSELF FORBIDDEN', () => {
+    // A pure `export … from` with no accompanying import is exactly the shape
+    // that made the key unreadable here. Named so nobody restores it as a
+    // tidy-up.
+    const pureReExport = /^\s*export\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}\s*from\s*['"]/m.test(SRC);
+    const hasLocalImport = /^\s*import\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}\s*from\s*['"]/m.test(SRC);
+    expect(pureReExport && !hasLocalImport).toBe(false);
   });
 
   test('AND NO FILE RESTATES THE LITERAL AS ITS OWN CONSTANT', () => {

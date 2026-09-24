@@ -4469,8 +4469,38 @@ export function playbookFoodPlan(event, opts = {}) {
   // caterer OR the community (repast committee, potluck sign-ups). W8 fix
   // (2026-07-22): a repast family was told to buy 28.5 lbs of chicken the
   // playbook's own note says the committee brings.
-  const _foodOffPlate = _usesCaterer || _fa.communityBrings === true;
+  //
+  // ── ATTRIBUTE, DO NOT DELETE (2026-09-24, review board) ────────────────────
+  // `communityBrings` used to sit in this same condition, and a 40-guest Repast
+  // therefore returned SIX lines and ZERO food lines: sweet tea, ice, plates,
+  // to-go containers, serving utensils, trash bags — and not one item of the
+  // meal. Repast's `food_source` DEFAULT is "Ask the repast committee to carry
+  // it", so that was the ordinary experience, not an edge case.
+  //
+  // The W8 fix above was right that the host must not be told to buy 28.5 lbs
+  // of chicken the committee is bringing. It was wrong about the remedy: it
+  // solved a SHOPPING error by creating a COORDINATION one, on the single event
+  // type where "who is bringing the greens" is the whole job and nobody wants
+  // to ask a grieving family twice.
+  //
+  // So the two cases separate here. A CATERER genuinely replaces the food — the
+  // host buys nothing and a per-guest catering line is injected below in its
+  // place, so those rows still drop. The COMMUNITY replaces the BUYER, not the
+  // food: the dishes still have to arrive, so they stay on the plan, marked as
+  // somebody else's to carry and costed at zero (see `_attributeCommunity`).
+  const _communityBrings = _fa.communityBrings === true;
+  const _foodOffPlate = _usesCaterer;
   const hostCooksIt = (p) => !(_foodOffPlate && p.category === 'food');
+  // The bringer's name in the host's OWN words — read out of the option they
+  // picked, never invented. Falls back to the neutral collective noun.
+  const _bringerLabel = (() => {
+    const pick = String((_fa && _fa.pick) || '');
+    if (/committee/i.test(pick)) return 'The repast committee';
+    if (/church/i.test(pick)) return 'The church';
+    if (/neighbou?rs|friends/i.test(pick)) return 'Friends and neighbors';
+    if (/famil(y|ies)/i.test(pick)) return 'The family';
+    return 'The community';
+  })();
   const _catVendor = _usesCaterer ? (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || ''))) : null;
   const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
 
@@ -5028,6 +5058,31 @@ export function playbookFoodPlan(event, opts = {}) {
     for (const it of list) {
       const flags = itemDietaryFlags(it.item || it.short, activeDiets);
       if (flags.length) it.dietFlags = flags;
+    }
+  }
+
+  // The community is carrying the meal: the dishes stay listed so the host can
+  // see and coordinate them, and cost nothing because she is not buying them.
+  // Zeroing here rather than at the filter keeps ONE list — every consumer that
+  // already reads `list` (the sheet, the budget, effectiveItems, the day sheet)
+  // picks the attribution up without knowing this rule exists.
+  //
+  // KEYED ON THE PURCHASE'S CATEGORY, NOT ITS DISPLAY GROUP. The first cut of
+  // this used `group === 'Food'` and silently missed repast's `p_dessert`,
+  // which the playbook files under a `Dessert` group — so the cakes stayed on
+  // the host's budget while the chicken came off it. `hostCooksIt` above keys
+  // on `p.category === 'food'`; this has to mirror that exactly or the two
+  // halves of one rule disagree.
+  const _communityFoodIds = _communityBrings
+    ? new Set((playbook.purchases || []).filter((p) => p && p.category === 'food').map((p) => p.id))
+    : null;
+  if (_communityBrings) {
+    for (const it of list) {
+      if (!it || !_communityFoodIds.has(it.id)) continue;
+      it.broughtByCommunity = true;
+      it.broughtByLabel = _bringerLabel;
+      it.low = 0;
+      it.high = 0;
     }
   }
 

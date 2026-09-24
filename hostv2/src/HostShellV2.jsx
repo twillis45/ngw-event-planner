@@ -139,6 +139,7 @@ import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress } from '@app/lib/knowledge/geoCostIndex';
+import { firstStoreIn } from '@app/lib/communitySource';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
@@ -18264,7 +18265,15 @@ export default function HostShellV2() {
                   // store's unbought lines with a walk-in total. Store truth =
                   // the host's pick (foodWhere) first, else the plan's buyAt /
                   // first where option. Session-only; never an event write.
-                  const storeOf = (it) => (event.foodWhere || {})[it.id] || (Array.isArray(it.where) && it.where[0]) || null; // buyAt is WHEN, never a store
+                  // A PERSON IS NOT A SHOP (2026-09-24, review board). This read
+                  // `it.where[0]` raw, and four repast lines are authored
+                  // `where: ['Brought by the community', 'Grocery', ...]` — so the
+                  // store picker offered a grieving family a shop called "Brought by
+                  // the community", in the same chip row as Grocery and Caterer.
+                  // `firstStoreIn` skips the people and returns the shop behind them,
+                  // or null when there is no shop at all, which is the honest answer
+                  // for a line nobody is buying. buyAt is WHEN, never a store.
+                  const storeOf = (it) => (event.foodWhere || {})[it.id] || firstStoreIn(it.where) || null;
                   const activeAll = allItems.filter(it => !it.skipped);
                   const stores = [...new Set(activeAll.map(storeOf).filter(Boolean))];
                   const inStore = (it) => !shopStore || storeOf(it) === shopStore || (Array.isArray(it.where) && it.where.includes(shopStore));
@@ -18412,7 +18421,15 @@ export default function HostShellV2() {
                                     // their sibling tags (owner/yours/swapped) already use.
                                     // Only `essential && !got` above stays amber: that one IS a gap.
                                     if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag plan">day-of</span>);
-                                    if (it.added && it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
+                                    // WHO IS CARRYING IT (2026-09-24). `owner` is on EVERY
+                                    // row, but this was gated on `it.added`, so only a
+                                    // dish the host typed herself could ever name a
+                                    // bringer — the playbook's own community lines never
+                                    // could. The community attribution comes first
+                                    // because it is the stronger fact: the engine
+                                    // established it from the host's food_source pick.
+                                    if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{it.broughtByLabel || 'The community'}</span>);
+                                    else if (it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
                                     else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
                                     if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
                                     if (it.badge) tags.push(<span key="badge" className="tag plan">{String(it.badge).toLowerCase()}</span>);
