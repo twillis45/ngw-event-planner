@@ -110,6 +110,29 @@ jobs:
   # The merge job below keeps the name `e2e`, so any required-check or branch
   # rule pinned to that name still resolves, and it still reports ONE combined
   # total — which HANDOFF.md tracks.
+  #
+  # ── 2 SHARDS RAN OUT OF ROOM, EXACTLY AS THE NOTE ABOVE PREDICTED (2026-09-24)
+  #
+  # The comment at the top of this block warned that "a 10% margin on a repo
+  # that auto-deploys from main turns a slow runner into a false red". That
+  # margin is now spent. Measured on run 767 (`7ad21d9`):
+  #
+  #   e2e-shard (1)   26m18s   SUCCESS      — 12% margin left
+  #   e2e-shard (2)   29m      CANCELLED    — hit timeout-minutes: 30
+  #
+  # Shard 2 was KILLED, not failed. No test reported a failure; the job ran out
+  # of clock, the merge job's "fail if any shard failed" saw a non-success, and
+  # the whole run went red on a suite that may well have been passing. The
+  # 2026-09-18 sharding brought each shard to ~14 min; ten days of added specs
+  # took them to ~26-29.
+  #
+  # RAISING THE TIMEOUT ALONE WOULD BE THE WRONG FIX — it moves the wall without
+  # buying margin back, and the next ten days spend it again. Three shards cut
+  # each one to roughly 17-18 min against the same 30, which is the same
+  # mechanism that worked in September rather than a new one. `workers: 2` per
+  # shard is UNCHANGED, so the 2026-08-06 flake posture (two runs at one SHA
+  # producing disjoint failure sets) is untouched — the trade is one more
+  # runner, not more parallelism per machine.
   e2e-shard:
     runs-on: ubuntu-latest
     # Three times on 2026-08-19 the `playwright install` step hung indefinitely
@@ -122,7 +145,7 @@ jobs:
       # re-run twice to learn what one run already knew.
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -202,7 +225,17 @@ jobs:
           REACT_APP_API_BASE_URL: https://e2e-mock.invalid
       # PW_BLOB switches the reporter to `blob` (playwright.config.mjs), which is
       # the only format `merge-reports` can recombine. Local runs keep `list`.
-      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
+      # THE DENOMINATOR IS DERIVED, NOT RESTATED. `strategy.job-total` is the
+      # matrix length, so the shard count lives in exactly one place — the
+      # `shard:` list above — and adding a fourth shard is a one-line change.
+      #
+      # This matters more than it looks. A hand-written denominator that falls
+      # out of step with the matrix DOES NOT FAIL: `--shard=3/2` runs NOTHING,
+      # every job goes green, and the merged total quietly drops a third of the
+      # suite. `e2eTotal.mjs` only catches a total of ZERO, so a partial merge
+      # would sail through as "0 failures". Deriving it removes the second
+      # number instead of asking the next person to remember it.
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         working-directory: hostv2
         env:
           PW_BLOB: '1'

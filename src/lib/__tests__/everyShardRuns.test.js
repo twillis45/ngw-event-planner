@@ -52,11 +52,32 @@ describe('every shard of the e2e matrix actually runs', () => {
     const step = (wf.jobs['e2e-shard'].steps || [])
       .map((s) => s.run || '').find((r) => r.includes('--shard='));
     expect(step).toBeTruthy();
-    const m = /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/(\d+)/.exec(step);
-    expect(m).toBeTruthy();
-    expect(`denominator ${m[1]} vs ${shards.length} shards`).toBe(`denominator ${shards.length} vs ${shards.length} shards`);
-    // And the list is 1..N with no gaps or repeats — `[1, 3]` over /2 would
-    // silently drop the middle third just as effectively.
+
+    // ── TWO ACCEPTABLE FORMS, AND ONE OF THEM CANNOT DRIFT (2026-09-24) ─────
+    //
+    // This guard was written for a LITERAL denominator, because that is what
+    // the workflow had, and it went red the moment the workflow stopped
+    // restating the number. That is the guard doing its job — the fix is to
+    // teach it the better form, not to loosen it.
+    //
+    //   ${{ strategy.job-total }}   the matrix length, DERIVED. The two numbers
+    //                               become one and this whole class of defect
+    //                               stops existing. Preferred.
+    //   a literal 2 / 3 / …         still legal, and then it must match.
+    //
+    // A denominator that is neither — a typo, a different context, an empty
+    // expression — fails here rather than shipping.
+    const derived = /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/\$\{\{\s*strategy\.job-total\s*\}\}/.test(step);
+    if (!derived) {
+      const m = /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/(\d+)/.exec(step);
+      expect(m).toBeTruthy();
+      expect(`denominator ${m[1]} vs ${shards.length} shards`).toBe(`denominator ${shards.length} vs ${shards.length} shards`);
+    }
+
+    // Either way the list is 1..N with no gaps or repeats — `[1, 3]` over /2
+    // would silently drop the middle third just as effectively, and a derived
+    // denominator does NOT protect against that (job-total counts the entries,
+    // it does not check they are the right ones).
     expect(shards).toEqual(Array.from({ length: shards.length }, (_, i) => i + 1));
   });
 
@@ -110,10 +131,30 @@ describe('every shard of the e2e matrix actually runs', () => {
   });
 
   test('NEGATIVE CONTROL: the timeout still exceeds the measured shard time', () => {
-    // The job this replaced ran 27.0 min against `timeout-minutes: 30` — a 10%
-    // margin on a repo that auto-deploys from main, where a slow runner turns a
-    // green build into a false red. A shard is ~14 min, so 30 is now ~2x. If a
-    // future change pushes shard time back up, this is where to notice.
+    // "If a future change pushes shard time back up, this is where to notice."
+    // IT DID, AND THIS DID NOT NOTICE — recorded rather than quietly rewritten.
+    //
+    // Written 2026-09-18 when a shard was ~14 min against 30, and the comment
+    // read "30 is now ~2x". Measured on run 767 (2026-09-24), ten days later:
+    //
+    //   e2e-shard (1)   26m18s   SUCCESS
+    //   e2e-shard (2)   29m      CANCELLED at timeout-minutes: 30
+    //
+    // Shard 2 was killed by the clock, no test having reported a failure, and
+    // the whole run went red on a suite that may have been passing. This
+    // assertion (>= 25) stayed green throughout, because it watches the TIMEOUT
+    // and the thing that moved was the RUNTIME. A guard on the constant cannot
+    // see the measurement drift out from under it.
+    //
+    // The workflow now runs THREE shards, which puts each at roughly 17-18 min
+    // against the same 30. The floor below is unchanged and still right; what is
+    // fixed is the margin, and what is recorded is that this test was the wrong
+    // instrument for catching the loss of it. A real guard would compare against
+    // observed shard duration, which needs a number CI publishes and nothing
+    // here reads yet.
     expect(wf.jobs['e2e-shard']['timeout-minutes']).toBeGreaterThanOrEqual(25);
+    // At least three shards: two could not finish inside the timeout on
+    // 2026-09-24, and going back to two silently restores that.
+    expect(wf.jobs['e2e-shard'].strategy.matrix.shard.length).toBeGreaterThanOrEqual(3);
   });
 });
