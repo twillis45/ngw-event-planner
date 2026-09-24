@@ -11,9 +11,20 @@ runtime proof to become a defect, that is said.
 
 ## 0. The three headline numbers
 
+> **AMENDED 2026-09-24, after an independent instrument disagreed.** The first
+> version of this audit led with "146 empty-or-comment-only catches", counted by
+> a script written for this audit. ESLint's own `no-empty` rule, run against the
+> same file, reported **21**. The gap is real and the correction matters:
+> `no-empty` does not flag a block containing a comment, because **a comment is
+> a decision**. Re-counted, the file holds **23 bare `catch {}`** (ESLint says
+> 21 — the two extra are multi-line forms it folds differently) and **101
+> comment-only** catches. 146 was inflated and it blurred the only distinction
+> that matters here. §1 is rewritten below; **the priority did not move** — all
+> six of the worst sites turn out to be bare.
+
 | question | measured |
 |---|---|
-| results swallowed in silence | **146** empty-or-comment-only `catch` blocks. 74 are known-safe idioms. 52 are not. **16 of those guard code that BUILDS something the host reads** |
+| results swallowed in silence | **23 bare `catch {}`** (ESLint `no-empty`: 21) + 101 comment-only. **6 of the 23 bare ones sit around the code that builds the host's next-steps list** |
 | wired and not used | **4** of 468 named imports are imported and never referenced again |
 | not wired that should be | 329 `src/lib` modules · **215 reachable** from the host shell · 114 not · 82 of those are admin/knowledge infrastructure (correctly out) · **32 left**, containing **two duplicate surfaces** |
 
@@ -21,16 +32,15 @@ runtime proof to become a defect, that is said.
 
 ## 1. SWALLOWED — 16 catches that can drop host-visible content
 
-`HostShellV2.jsx` contains 417 `catch` clauses. 146 have an empty or
-comment-only body. Most are correct: 32 guard storage, 38 guard DOM/browser
-APIs, 2 clipboard, 2 JSON — all idioms where a throw genuinely means "this
-browser said no" and the page must carry on.
+`HostShellV2.jsx` contains 417 `catch` clauses. Of the ones that swallow:
 
-52 are not one of those idioms. Of those, **16 guard a region that builds
-something the host reads**, which is the category that matters: a throw there
-does not degrade the feature, it **deletes rows with no signal at all**.
+| | count | what it means |
+|---|---|---|
+| `catch { /* the pointer is gone */ }` — **comment-only** | **101** | somebody decided, and said why. Mostly storage, DOM and browser-capability idioms where a throw genuinely means "this browser said no" |
+| `catch {}` — **bare** | **23** | nothing says why. ESLint's `no-empty` flags exactly these (it reports 21; the two extra are multi-line forms it folds differently) and **that rule's whole design is the distinction above** |
 
-The five worst sit in one function — the host's next-steps list:
+The bare 23 are the finding. And the concentration is the point: **six of them
+sit in one function — the host's next-steps list.**
 
 | site | what a throw silently removes |
 |---|---|
@@ -44,13 +54,18 @@ Each is `try { …push rows… } catch {}`. The host sees a shorter list and has
 way to know one exists. A group-rate deadline or a guest with no ride back is
 exactly the row whose absence costs money, and it is the row most cheaply lost.
 
-**Two more worth naming**
+`:2029` is the sixth, in the same region: `try { if (effectiveDone(event, t))
+return true; } catch {}` — a throw makes a **completed task read as not done**.
+Wrong state, not missing state.
 
-- `HostShellV2.jsx:2029` — `try { if (effectiveDone(event, t)) return true; } catch {}`.
-  A throw makes a **completed task read as not done**. Wrong state, not missing state.
-- `HostShellV2.jsx:3100` — the COI next-action walk. A throw drops a **compliance
-  prompt**; the comment says `/* no coi engine */`, which is true of one cause
-  and not of the others.
+All six are BARE. Not one carries a comment. The 101 commented catches in this
+file represent someone weighing a failure mode and writing down the answer; the
+rows that carry the host's money and their guests' rides are guarded by the
+ones where nobody did.
+
+**One more, commented but worth naming:** `HostShellV2.jsx:3100`, the COI
+next-action walk. A throw drops a **compliance prompt**. Its comment says
+`/* no coi engine */`, which is true of one cause and silent about the others.
 
 **What this audit does NOT claim.** None of these has been observed throwing.
 The finding is that if one did, nothing — not a log, not a chip, not a degraded
@@ -137,10 +152,12 @@ same mistake as assuming `relevantWhen` needed 260 rows.
 
 ## 4. What to do, in order
 
-1. **Make the 16 content-bearing catches audible.** Not removed — recorded. A
-   catch around a row-builder should leave a trace, so a short list is
-   distinguishable from an empty one. Highest leverage: `:2066`, `:2095`,
-   `:2107`, `:2123`, `:2142` — one function, five sites, the host's next-steps list.
+1. **Make the six bare catches around the next-steps list audible** — `:2029`,
+   `:2066`, `:2095`, `:2107`, `:2123`, `:2142`. Not removed: recorded, so a short
+   list is distinguishable from an empty one. Then rule on the other 17 bare
+   ones: each either gets a comment saying why swallowing is right, or gets a
+   trace. **Leave the 101 commented ones alone** — they are already decisions.
+   `no-empty` can then be turned on for this file and hold the line.
 2. **Resolve `isBillingLive`.** Consult it or delete it; an imported gate that
    nothing calls is the shape of a paywall that does not know it is dormant.
 3. **One sync vocabulary.** Fold `syncStatus.js` into `api/syncState.js` or the
@@ -159,7 +176,12 @@ Items 1–5 are measured and specific. Item 6 is a question list.
 - **Swallowed:** every line matching an empty/comment-only `catch`, then the
   guarded region walked back to its `try` (≤40 lines) and matched against
   known-safe idioms; the remainder classified by whether the region pushes rows
-  or sets state.
+  or sets state. **Then cross-checked against ESLint's `no-empty`**, which is
+  why this section was rewritten — see the amendment note at the top. The audit
+  script and the linter disagreed 146 to 21, and the linter was making a
+  distinction the script had flattened. Every hand-rolled count in this document
+  is a candidate for the same treatment; `no-empty` and `max-lines` were the two
+  claims an off-the-shelf rule could check, and both were run.
 - **Wired-unused:** every named import collected, then counted in the file body
   with import lines removed. All four hits were then verified individually —
   a count is not a finding until the symbol is looked at.
