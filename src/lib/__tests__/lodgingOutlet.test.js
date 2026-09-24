@@ -17,6 +17,7 @@
 const { lodgingCommitted, stayFromPick } = require('../lodgingIntel');
 const { hostSpending } = require('../hostSpending');
 const { SURFACES } = require('../surfaceRegistry');
+const { useFrozenClock } = require('../../testUtils/frozenClock');
 
 const NIGHTS = { date: '2026-09-11', endDate: '2026-09-13' };
 const ev = (over) => ({
@@ -98,6 +99,14 @@ describe('a chosen house reaches the plan', () => {
 });
 
 describe('a shortlist with no decision raises a real row', () => {
+  // FROZEN ON PURPOSE (2026-09-24). `NIGHTS` above is an absolute date, and the
+  // lodging raiser's first line is `if (isPastEvent(event.date)) return []`. On
+  // 2026-09-12 that fixture went into the past and this block started measuring
+  // a finished event: the one assertion that expects a row went red, and the
+  // two that expect NO row stayed green for the wrong reason — an empty array
+  // satisfies them exactly as a working gate does. Freezing the clock is what
+  // frozenClock.js was written for, and it documents this precise failure.
+  useFrozenClock();
   const surface = SURFACES.find((s) => s.id === 'lodging');
   const raise = (e) => { try { return surface.raise(e) || []; } catch (_e) { return []; } };
 
