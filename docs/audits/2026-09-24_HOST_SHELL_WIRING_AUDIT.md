@@ -1,0 +1,169 @@
+# Host shell wiring audit — what is swallowed, what is wired and unused, what is not wired
+
+Date: 2026-09-24
+Surface: `hostv2/` (26,170 lines; `HostShellV2.jsx` is 21,692 of them)
+Method: static measurement against the real files — import graph, transitive
+reachability from the host's own entry points, and a classified sweep of every
+empty `catch`. Nothing here is a runtime observation; where a finding needs a
+runtime proof to become a defect, that is said.
+
+---
+
+## 0. The three headline numbers
+
+| question | measured |
+|---|---|
+| results swallowed in silence | **146** empty-or-comment-only `catch` blocks. 74 are known-safe idioms. 52 are not. **16 of those guard code that BUILDS something the host reads** |
+| wired and not used | **4** of 468 named imports are imported and never referenced again |
+| not wired that should be | 329 `src/lib` modules · **215 reachable** from the host shell · 114 not · 82 of those are admin/knowledge infrastructure (correctly out) · **32 left**, containing **two duplicate surfaces** |
+
+---
+
+## 1. SWALLOWED — 16 catches that can drop host-visible content
+
+`HostShellV2.jsx` contains 417 `catch` clauses. 146 have an empty or
+comment-only body. Most are correct: 32 guard storage, 38 guard DOM/browser
+APIs, 2 clipboard, 2 JSON — all idioms where a throw genuinely means "this
+browser said no" and the page must carry on.
+
+52 are not one of those idioms. Of those, **16 guard a region that builds
+something the host reads**, which is the category that matters: a throw there
+does not degrade the feature, it **deletes rows with no signal at all**.
+
+The five worst sit in one function — the host's next-steps list:
+
+| site | what a throw silently removes |
+|---|---|
+| `HostShellV2.jsx:2066` | **every "Decide: …" row**, the whole `decisionBoard.open` loop |
+| `HostShellV2.jsx:2095` | **every task row** |
+| `HostShellV2.jsx:2107` | the lodging row — *"Group rate ends — N of M have no room yet"* |
+| `HostShellV2.jsx:2123` | the ground row — *"N people still need a ride back"* |
+| `HostShellV2.jsx:2142` | the air row — *"their flight lands after the day starts"* |
+
+Each is `try { …push rows… } catch {}`. The host sees a shorter list and has no
+way to know one exists. A group-rate deadline or a guest with no ride back is
+exactly the row whose absence costs money, and it is the row most cheaply lost.
+
+**Two more worth naming**
+
+- `HostShellV2.jsx:2029` — `try { if (effectiveDone(event, t)) return true; } catch {}`.
+  A throw makes a **completed task read as not done**. Wrong state, not missing state.
+- `HostShellV2.jsx:3100` — the COI next-action walk. A throw drops a **compliance
+  prompt**; the comment says `/* no coi engine */`, which is true of one cause
+  and not of the others.
+
+**What this audit does NOT claim.** None of these has been observed throwing.
+The finding is that if one did, nothing — not a log, not a chip, not a degraded
+state — would say so. The fix is not to remove the guards; it is that a catch
+around content should record that it fired, so the gap is visible instead of
+indistinguishable from "there was nothing to show".
+
+---
+
+## 2. WIRED AND NOT USED — 4 of 468
+
+Imported into `HostShellV2.jsx` and never referenced anywhere in the body.
+Verified individually, not just by count: each appears on exactly one line, its
+own import.
+
+| symbol | from | what is not happening |
+|---|---|---|
+| **`isBillingLive`** | `@app/lib/passGate` | The host shell imports the billing-live check and **never consults it.** Billing is DORMANT (`REACT_APP_BILLING_LIVE` unset), so whatever the pass surfaces do, they do **not** do it because this said so. Worth a deliberate answer: either the gate belongs on those surfaces, or the import should go. |
+| **`questionFrom`** | `@app/lib/askVoice` | Imported beside `normalizeAsk`, which **is** used. The import's own comment calls this "the final ask boundary — one terminal mark, never '??'". Half the boundary is applied. `selectedAction.js` uses both together, which is the pattern this file departs from. |
+| **`helperStatusLine`** | `@app/lib/helperResponsibility` | Imported beside `deriveHelperResponsibilities` and `guestHelperRoles`, both used. The line itself — *"Covered by Dana"* / *"Assigned to Dana, but not confirmed"* — renders nowhere. The distinction between assigned and **confirmed** is the whole point of that module and the host never sees it. |
+| **`ALL_PLAYBOOKS`** | `@app/lib/playbooks` | Dead weight on the import line. Harmless; delete it. |
+
+`helperStatusLine` is the one with host-visible cost: the module deliberately
+returns a different sentence for *assigned* than for *confirmed*, and the shell
+shows neither.
+
+---
+
+## 3. NOT WIRED — and two duplicate surfaces
+
+215 of 329 `src/lib` modules are reachable from the host shell transitively
+(through anything it imports, not just direct imports — so `recommendedPick`,
+reached via `playbooks/index.js`, counts as wired). 114 are not, and **82 of
+those are the `knowledge/` and `api/` research and admin trees, correctly out of
+the host.**
+
+Of the 32 that remain, these are the two that break a non-negotiable.
+
+### 3a. Two modules own "what a sync state is called"
+
+| | `src/lib/syncStatus.js` | `src/lib/api/syncState.js` |
+|---|---|---|
+| exports | `SYNC_STATUS`, `SYNC_STATUS_LABEL`, `getEventSyncStatus`, `makeEventSyncRow` | `SYNC_STATUS`, `SYNC_STATUS_LABEL`, `getEventSyncStatus`, + 7 more |
+| read by | `src/App.js` (frozen CRA), `src/admin/AdminConsole.jsx` | **hostv2** |
+
+Three names are owned twice. The host shell and the admin console can label the
+same sync state differently and no test compares them. This is the
+`blockVocabulary` story again — one vocabulary, two owners, silent drift — and
+it is a **duplicate surface**, which CLAUDE.md lists as a non-negotiable.
+
+### 3b. The host shell wrote its own haptics instead of using the one that exists
+
+`src/lib/feedback.js` is a **16-function feedback vocabulary** — `feedbackCommit`,
+`feedbackSeal`, `feedbackReveal`, `feedbackLock`, `feedbackHeart`,
+`feedbackBudget`, `feedbackAlert`, `feedbackDayStart`… each pairing a specific
+haptic with a specific tone. `src/App.js` and `ChecklistGenerator.jsx` use it.
+
+`HostShellV2.jsx:5621` defines its **own** `feedback(kind)`: eight lines, three
+patterns (`magic`, `error`, default). So the flagship surface has a **coarser
+feedback vocabulary than the engine already owns**, and a "seal", a "lock", a
+"heart" and a "budget warning" all feel identical on the surface where they
+matter most.
+
+The host version is not simply worse — its comment records a real audit finding
+(muting sound must not kill haptics) that the shared module may not honour.
+That is an argument for **folding that rule into the shared module**, not for
+keeping two.
+
+### 3c. The rest of the 32, honestly bucketed
+
+| bucket | modules |
+|---|---|
+| correctly out (fixtures, data, CRA/admin-only) | `__fixtures__/*` (3), `usCitiesFull`, `adminApi`, `analyticsReader`, `legacyCopy`, `vendorAccountability/__qa__`, `vendorAccountability/fixtures` |
+| **built this session, deliberately unwired pending the board** | `decisionBlastRadius` (3), `decisionImpacts` (5), `blockVocabulary` (5) — see the blast-radius packet |
+| **host-facing capability the shell cannot reach — needs a call** | `severity` (7), `shellTabs` (5), `dateChips` (8), `draftVersions` (8), `vendorBriefConfirm` (8), `vendorCopilot` (4), `presentationNav` (6), `eventDocuments` (5), `maps` (3), `homeNav` (2), `planHeroCopy` (1), `clipboard` (1), `webhookService` (5), `playbookRegistry` (15), `vendorCategoriesByType` (2), `followUpDrafts` (2), `budgetEstimator/BudgetEstimateHint` |
+
+The last bucket is a **list of candidates, not a list of defects.** Several of
+those are plausibly CRA-era surfaces the host replaced on purpose. Each needs
+one question answered — *does the host already do this another way?* — before it
+becomes work. Naming them is the point; assuming they are all gaps would be the
+same mistake as assuming `relevantWhen` needed 260 rows.
+
+---
+
+## 4. What to do, in order
+
+1. **Make the 16 content-bearing catches audible.** Not removed — recorded. A
+   catch around a row-builder should leave a trace, so a short list is
+   distinguishable from an empty one. Highest leverage: `:2066`, `:2095`,
+   `:2107`, `:2123`, `:2142` — one function, five sites, the host's next-steps list.
+2. **Resolve `isBillingLive`.** Consult it or delete it; an imported gate that
+   nothing calls is the shape of a paywall that does not know it is dormant.
+3. **One sync vocabulary.** Fold `syncStatus.js` into `api/syncState.js` or the
+   reverse, and leave one owner.
+4. **One feedback vocabulary**, carrying the host's mute-vs-haptics rule.
+5. **Render `helperStatusLine`,** or decide out loud that the host does not
+   distinguish assigned from confirmed.
+6. Walk the last bucket in §3c one module at a time.
+
+Items 1–5 are measured and specific. Item 6 is a question list.
+
+---
+
+## 5. Method, so this can be re-run
+
+- **Swallowed:** every line matching an empty/comment-only `catch`, then the
+  guarded region walked back to its `try` (≤40 lines) and matched against
+  known-safe idioms; the remainder classified by whether the region pushes rows
+  or sets state.
+- **Wired-unused:** every named import collected, then counted in the file body
+  with import lines removed. All four hits were then verified individually —
+  a count is not a finding until the symbol is looked at.
+- **Not wired:** BFS from the ten host entry points over resolved `@app/` and
+  relative imports, compared against every non-test module under `src/lib`.
+  **Transitive on purpose:** a direct-import test would have wrongly called
+  `recommendedPick` unwired when the board reaches it through `playbooks/index.js`.
