@@ -1,0 +1,341 @@
+<title>One Fact, Two Owners</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --paper:      #f1f0ec;
+    --surface:    #fbfaf8;
+    --ink:        #191d21;
+    --ink-soft:   #4e565e;
+    --ink-faint:  #848d95;
+    --rule:       #d9d7d1;
+    --rule-soft:  #e8e6e1;
+    --real:       #a04a22;
+    --real-bg:    #f6e9e1;
+    --cleared:    #3d6b55;
+    --cleared-bg: #e3eee8;
+    --mine:       #6d4670;
+    --mine-bg:    #eee6ef;
+    --slab:       #22262b;
+    --slab-ink:   #d6d9dc;
+  }
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:      #14171a;
+      --surface:    #1b1f23;
+      --ink:        #e7e9eb;
+      --ink-soft:   #a7b0b8;
+      --ink-faint:  #6f7981;
+      --rule:       #2e343a;
+      --rule-soft:  #24292e;
+      --real:       #e08d5e;
+      --real-bg:    #2e211a;
+      --cleared:    #7fbfa0;
+      --cleared-bg: #1a2721;
+      --mine:       #c095c4;
+      --mine-bg:    #262030;
+      --slab:       #0e1113;
+      --slab-ink:   #c6cace;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:      #14171a;
+    --surface:    #1b1f23;
+    --ink:        #e7e9eb;
+    --ink-soft:   #a7b0b8;
+    --ink-faint:  #6f7981;
+    --rule:       #2e343a;
+    --rule-soft:  #24292e;
+    --real:       #e08d5e;
+    --real-bg:    #2e211a;
+    --cleared:    #7fbfa0;
+    --cleared-bg: #1a2721;
+    --mine:       #c095c4;
+    --mine-bg:    #262030;
+    --slab:       #0e1113;
+    --slab-ink:   #c6cace;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    padding-inline: 16px;
+    padding-block: 0;
+  }
+  .wrap { max-width: 61rem; margin-inline: auto; padding-block: 3rem 5rem; }
+
+  h1, h2, h3 { text-wrap: balance; line-height: 1.12; margin: 0; letter-spacing: -0.018em; }
+  h1 { font-size: clamp(2.1rem, 6vw, 3.3rem); font-weight: 700; }
+  h2 { font-size: clamp(1.35rem, 3.2vw, 1.75rem); font-weight: 600; }
+  h3 { font-size: 1.05rem; font-weight: 600; }
+  p { margin: 0; max-width: 62ch; }
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; font-weight: 500;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  header.top { display: flex; flex-direction: column; gap: 1rem; padding-bottom: 2.25rem; border-bottom: 2px solid var(--ink); }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); max-width: 58ch; }
+
+  /* The one figure that reframes the whole page. */
+  .headline-stat {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem 1.1rem;
+    margin-block: 2.5rem; padding: 1.5rem 1.6rem;
+    background: var(--slab); color: var(--slab-ink); border-radius: 3px;
+  }
+  .headline-stat .n {
+    font-family: "IBM Plex Mono", monospace; font-size: clamp(2.4rem, 7vw, 3.6rem);
+    font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: #fff;
+  }
+  :root:not([data-theme="light"]) .headline-stat .n { color: #fff; }
+  .headline-stat .n small { font-size: 0.34em; font-weight: 500; opacity: 0.72; margin-left: 0.15em; }
+  .headline-stat .say { font-size: 0.97rem; max-width: 38ch; opacity: 0.88; }
+
+  section { margin-block: 3.25rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .sec-head { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  /* A finding. The owner count is real information, so it leads. */
+  .find {
+    background: var(--surface); border: 1px solid var(--rule); border-left-width: 4px;
+    border-radius: 2px; padding: 1.35rem 1.4rem; display: flex; flex-direction: column; gap: 0.95rem;
+  }
+  .find.real    { border-left-color: var(--real); }
+  .find.cleared { border-left-color: var(--cleared); }
+  .find.mine    { border-left-color: var(--mine); }
+
+  .find-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 0.9rem; }
+  .sym { font-family: "IBM Plex Mono", monospace; font-size: 1.02rem; font-weight: 600; }
+  .chip {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.2rem 0.5rem; border-radius: 2px; white-space: nowrap;
+  }
+  .chip.real    { background: var(--real-bg);    color: var(--real); }
+  .chip.cleared { background: var(--cleared-bg); color: var(--cleared); }
+  .chip.mine    { background: var(--mine-bg);    color: var(--mine); }
+  .count { margin-left: auto; font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+  .owners { display: flex; flex-direction: column; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
+  .owners li {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; color: var(--ink-soft);
+    padding-left: 0.85rem; border-left: 2px solid var(--rule-soft);
+  }
+  .owners li b { color: var(--ink); font-weight: 600; }
+
+  .evidence { font-size: 0.93rem; color: var(--ink-soft); max-width: 66ch; }
+  .evidence strong { color: var(--ink); font-weight: 600; }
+
+  pre {
+    margin: 0; background: var(--slab); color: var(--slab-ink); border-radius: 2px;
+    padding: 0.95rem 1.05rem; overflow-x: auto;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; line-height: 1.6;
+  }
+
+  .tbl-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; min-width: 30rem; }
+  th, td { text-align: left; padding: 0.55rem 0.8rem 0.55rem 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
+  td.mono { font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; }
+
+  ol.order { counter-reset: step; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+  ol.order li { counter-increment: step; display: flex; gap: 0.9rem; align-items: flex-start; }
+  ol.order li::before {
+    content: counter(step); flex: 0 0 auto;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; font-weight: 600;
+    width: 1.6rem; height: 1.6rem; display: grid; place-items: center;
+    border: 1px solid var(--rule); border-radius: 2px; color: var(--ink-soft);
+  }
+  ol.order li p { font-size: 0.94rem; }
+
+  footer.foot { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: 0.83rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  @media (prefers-reduced-motion: no-preference) { a { transition: color 120ms ease; } }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">NGW Event Planner &middot; source-of-truth sweep &middot; 24 Sep 2026</div>
+    <h1>One Fact, Two Owners</h1>
+    <p class="lede">Every duplication claim below was tested by importing both sides and comparing, or by an off-the-shelf tool. Three were real, five were name collisions that turned out to be different things, and one was my own mistake.</p>
+  </header>
+
+  <div class="headline-stat">
+    <div class="n">0.08<small>%</small></div>
+    <p class="say">Structural copy-paste, measured by jscpd across 141,641 lines: 120 duplicated lines, most of them test fixtures. This codebase is not copy-paste heavy. The duplication is conceptual, and a clone detector cannot see it.</p>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Tested &middot; real</div>
+      <h2>One fact, more than one owner</h2>
+      <p class="evidence">Found by scanning 402 modules for exported names owned by two or more files, then importing both sides of every hit and comparing the values.</p>
+    </div>
+
+    <article class="find real">
+      <div class="find-head">
+        <span class="sym">authHeaders()</span>
+        <span class="chip real">real</span>
+        <span class="count">9 copies &middot; 5 variants</span>
+      </div>
+      <p class="evidence">The module that exists to own this is <code>apiAuth.js</code>. Three files import it. Six roll their own. Fingerprinting each definition shows five genuinely different implementations, not nine copies of one.</p>
+      <pre>adminApi.js  rsvp.js  vendorBrief.js  commApi.js   7a0d55c1fd43
+kas.js       kcr.js                                165f054f6840
+research.js                                        fdfac9575715
+orchestratorClient.js                              7dc5d329dd95
+apiAuth.js   &larr; the owner, used by 3 modules      b6bc60e0c4c3</pre>
+      <p class="evidence">They differ in substance. <code>apiAuth</code> sends only the Supabase bearer token. The four-file variant also attaches <code>X-Planner-Token</code>. Seven files independently read <code>REACT_APP_PLANNER_TOKEN</code>, each with its own comment calling it a transition or dev fallback.</p>
+      <p class="evidence"><strong>Checked before saying anything alarming: the credential is gated correctly.</strong> <code>scripts/validate-production-config.mjs</code> and the deploy workflow both keep that variable out of browser builds, in one place. There is no leak. The cost is that the decision to attach a credential is made in seven files and prevented in one, and any change to how auth works means finding nine implementations.</p>
+    </article>
+
+    <article class="find real">
+      <div class="find-head">
+        <span class="sym">SYNC_STATUS &middot; SYNC_STATUS_LABEL &middot; getEventSyncStatus</span>
+        <span class="chip real">real</span>
+        <span class="count">2 vocabularies</span>
+      </div>
+      <p class="evidence">Two modules describe the same thing &mdash; whether an event has synced &mdash; and agree on exactly one value.</p>
+      <pre>api/syncState.js   local-only   pending        synced          sync-failed
+syncStatus.js      local-only   sample         server-synced   unknown
+
+the one shared value, labelled twice:
+  api/syncState   "On this phone &mdash; not synced yet"
+  syncStatus      "Local only"</pre>
+      <ul class="owners">
+        <li><b>hostv2</b> reads <code>api/syncState.js</code></li>
+        <li><b>src/App.js</b> and <b>AdminConsole.jsx</b> read <code>syncStatus.js</code></li>
+      </ul>
+      <p class="evidence">Same event, two answers about its sync state, and two different sentences for the one state they share.</p>
+    </article>
+
+    <article class="find real">
+      <div class="find-head">
+        <span class="sym">LS_CUSTOMS</span>
+        <span class="chip real">real</span>
+        <span class="count">1 key &middot; 2 declarations</span>
+      </div>
+      <p class="evidence">The same localStorage key string, declared in two files. They currently match.</p>
+      <pre>src/lib/customEventStore.js:30   'ngw-hostv2-custom-events'
+hostv2/src/eventPool.js:37       'ngw-hostv2-custom-events'</pre>
+      <p class="evidence">If either one ever changes, the host shell and the store read different buckets and <strong>every event a host created disappears</strong>. hostv2 already imports freely from <code>@app/lib</code>, so the second declaration has no technical reason to exist. Cheapest to fix, worst if it breaks.</p>
+    </article>
+
+    <article class="find real">
+      <div class="find-head">
+        <span class="sym">feedback()</span>
+        <span class="chip real">real</span>
+        <span class="count">16 functions vs 3 patterns</span>
+      </div>
+      <p class="evidence"><code>src/lib/feedback.js</code> is a 16-function haptic and tone vocabulary &mdash; <code>feedbackCommit</code>, <code>feedbackSeal</code>, <code>feedbackLock</code>, <code>feedbackHeart</code>, <code>feedbackBudget</code> &mdash; used by the CRA shell. <code>HostShellV2.jsx:5621</code> defines its own <code>feedback(kind)</code> with three patterns. Confirmed absent from the host bundle by rollup.</p>
+      <p class="evidence">The flagship surface has a coarser vocabulary than the engine already owns, so a seal, a lock, a heart and a budget warning all feel the same. The host version does carry a real audit finding the shared module may not &mdash; that muting sound must not kill haptics &mdash; which argues for folding that rule up, not for keeping two.</p>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Tested &middot; cleared</div>
+      <h2>Same name, different thing</h2>
+      <p class="evidence">Five more names are owned twice. Importing both sides showed they hold unrelated facts. These are naming hazards, not duplicate truth, and none of them needs fixing.</p>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Owner A holds</th><th>Owner B holds</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">DECISION_TYPES</td>
+            <td>audit event kinds &mdash; <span class="mono">vendor_selection, budget_reallocation, planner_override</span></td>
+            <td>the schema shape enum &mdash; <span class="mono">pick-one, multi, count, yes-no, free</span></td>
+          </tr>
+          <tr>
+            <td class="mono">PHASES</td>
+            <td>lifecycle phases &mdash; planning, research, booking, &hellip; closeout</td>
+            <td>timeline buckets &mdash; 12 Months Out, &hellip; Week Of, Final Days</td>
+          </tr>
+          <tr>
+            <td class="mono">KNOWLEDGE_DOMAINS</td>
+            <td>playbook families with descriptions and member types</td>
+            <td>a flat list of subject tags</td>
+          </tr>
+          <tr>
+            <td class="mono">ENGINES</td>
+            <td>governed price models</td>
+            <td>surface labels for the registry</td>
+          </tr>
+          <tr>
+            <td class="mono">PROVIDER_FAMILIES</td>
+            <td>7 operational groupings with labels and member providers</td>
+            <td>16 authority families, validated by <span class="mono">makeProvider</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="evidence">The last one deserves a note: three of campaign's family ids are not in the providers list, and providers throws on an unknown family. <strong>Traced it &mdash; campaign never calls that validator</strong>, so the two lists sit on different axes and nothing breaks.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Tested &middot; my error</div>
+      <h2>The one I got wrong</h2>
+    </div>
+    <article class="find mine">
+      <div class="find-head">
+        <span class="sym">isPastEvent</span>
+        <span class="chip mine">my test was wrong</span>
+      </div>
+      <p class="evidence">My probe showed <code>true</code> from one and <code>false</code> from the other on the same 2020 date, which looked like two implementations disagreeing about whether an event is past. Then I read them.</p>
+      <pre>dates.js          isPastEvent(dateString, now)
+closeoutIntel.js  isPastEvent(event, asOf)
+                    &rarr; resolves spanEnd(event) for multi-day events
+                    &rarr; calls dates.isPastEvent, imported as isPastCalendarDay</pre>
+      <p class="evidence">It is a wrapper, and the author renamed it on import specifically to prevent this confusion. My test passed an object where a string was expected. <strong>Not a defect &mdash; a bug in the instrument.</strong> Third time tonight that a hand-written measurement was wrong, so it is recorded rather than dropped.</p>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Sequence</div>
+      <h2>Order to fix them</h2>
+    </div>
+    <ol class="order">
+      <li><p><strong><code class="mono">LS_CUSTOMS</code></strong> &mdash; one line, and it is the only one with data loss behind it. Import the key instead of redeclaring it.</p></li>
+      <li><p><strong><code class="mono">SYNC_STATUS</code></strong> &mdash; two label sets for one state is something a host can actually see. Fold to one owner.</p></li>
+      <li><p><strong><code class="mono">authHeaders</code></strong> &mdash; largest, but the owning module already exists. Move the six onto <code class="mono">apiAuth.js</code> and keep the planner-token decision in one place.</p></li>
+      <li><p><strong><code class="mono">feedback</code></strong> &mdash; carry the mute-versus-haptics rule up into the shared module, then delete the host copy.</p></li>
+    </ol>
+    <p class="evidence">None of this is on the engine priority list. It is separate work, and smaller than it looked before testing.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Method</div>
+      <h2>What measured what</h2>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Instrument</th><th>Scope</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">export-collision scan</td><td>402 modules in <span class="mono">src/</span> and <span class="mono">hostv2/src/</span></td><td>17 names owned by 2+ modules</td></tr>
+          <tr><td class="mono">import-and-compare</td><td>each of the 17</td><td>4 real &middot; 5 cleared &middot; 1 my error</td></tr>
+          <tr><td class="mono">jscpd</td><td>141,641 lines, JS and JSX</td><td>9 clones &middot; 120 lines &middot; 0.08%</td></tr>
+          <tr><td class="mono">rollup module graph</td><td>the real hostv2 bundle</td><td>confirmed both duplicate surfaces are outside it</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="evidence">A name collision is not a finding until both sides are opened. Five of the seventeen looked like duplication and were not, and one of the ones I called divergent was my own test calling a function wrong.</p>
+  </section>
+
+  <footer class="foot">
+    <div>Measured 24 September 2026 against <code class="mono">main</code>. Figures are reproducible from the method table above.</div>
+    <div>No Guesswork Systems LLC &middot; NGW Event Planner</div>
+  </footer>
+
+</div>
