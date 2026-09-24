@@ -884,26 +884,28 @@ export function parseSmartEventText(text, opts = {}) {
     // written for.
     const _HOURWORD = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
       seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+    // THE MERIDIEM IS OPTIONAL HERE, and the first version wrongly required it.
+    // "dinner at 6:30" already resolves to 6:30 PM through the grading below —
+    // the word "dinner" supplies the bucket — so refusing "dinner at half past
+    // six" in the same sentence was inconsistent rather than careful. It feeds
+    // the shared grading instead of returning its own verdict, so it is read
+    // exactly as the digit form beside it would be, basis and all.
     const halfPast = t.match(
-      /\b(?:at\s+)?half\s+past\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*([ap])\.?m?\.?\b/i);
+      /\b(?:at\s+)?half\s+past\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*([ap])?\.?m?\.?\b/i);
+    let forced = null;
     if (halfPast) {
       const raw = halfPast[1].toLowerCase();
-      let hh = /^\d+$/.test(raw) ? parseInt(raw, 10) : _HOURWORD[raw];
-      if (!hh) return null;
-      const mer2 = (halfPast[2] || '').toLowerCase();
-      if (mer2 === 'p' && hh < 12) hh += 12;
-      if (mer2 === 'a' && hh === 12) hh = 0;
-      const h12 = hh % 12 === 0 ? 12 : hh % 12;
-      return { startTime: `${h12}:30 ${hh >= 12 ? 'PM' : 'AM'}`, startTimeBasis: 'said-exact' };
+      const hh = /^\d+$/.test(raw) ? parseInt(raw, 10) : _HOURWORD[raw];
+      if (hh) forced = { h: hh, min: 30, mer: (halfPast[2] || '').toLowerCase() };
     }
-    if (!m) return null;
+    if (!m && !forced) return null;
     // The meridiem is whichever capture group came back as a/p — the shapes
     // above put it in different slots, so find it rather than index blindly.
-    const groups = m.slice(1).filter((g) => g != null);
-    const mer = (groups.find((g) => /^[ap]$/i.test(g)) || '').toLowerCase();
+    const groups = m ? m.slice(1).filter((g) => g != null) : [];
+    const mer = forced ? forced.mer : (groups.find((g) => /^[ap]$/i.test(g)) || '').toLowerCase();
     const nums = groups.filter((g) => /^\d+$/.test(g));
-    let h = parseInt(nums[0], 10);
-    const min = nums.length > 1 ? parseInt(nums[1], 10) : 0;
+    let h = forced ? forced.h : parseInt(nums[0], 10);
+    const min = forced ? forced.min : (nums.length > 1 ? parseInt(nums[1], 10) : 0);
     if (!(h >= 1 && h <= 24) || !(min >= 0 && min <= 59)) return null;
     let basis;
     if (mer) {

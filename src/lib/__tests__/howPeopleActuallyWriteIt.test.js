@@ -263,6 +263,27 @@ describe('THE FIELDS THE SWEEP FOUND EMPTY', () => {
     expect(P('dinner at half past six pm, 10 people').startTime).toBe('6:30 PM');
   });
 
+  test('HALF PAST READS EXACTLY AS THE DIGIT FORM DOES — basis and all', () => {
+    // A CORRECTION. The first version required a meridiem and I defended that
+    // as principled. It was not: "dinner at 6:30" already resolves to 6:30 PM
+    // through the shared grading, because the word "dinner" supplies the
+    // bucket. Refusing the words while reading the digits was inconsistent, so
+    // it feeds the same grading now instead of returning its own verdict.
+    for (const [digits, words] of [
+      ['dinner at 6:30, 10 people', 'dinner at half past six, 10 people'],
+      ['dinner at 6:30 pm, 10 people', 'dinner at half past six pm, 10 people'],
+      ['brunch at 10:30, 10 people', 'brunch at half past ten, 10 people'],
+      ['cookout at 2:30, 10 people', 'cookout at half past two, 10 people'],
+    ]) {
+      const a = P(digits); const b = P(words);
+      expect(`${b.startTime}/${b.startTimeBasis}`).toBe(`${a.startTime}/${a.startTimeBasis}`);
+    }
+    // …and the three grades are genuinely exercised above, or this proves nothing.
+    expect(P('dinner at half past six, 10 people').startTimeBasis).toBe('said-with-bucket');
+    expect(P('dinner at half past six pm, 10 people').startTimeBasis).toBe('said-exact');
+    expect(P('cookout at half past two, 10 people').startTimeBasis).toBe('said-hour-only');
+  });
+
   test('the honoree is usually a relationship, not a name', () => {
     // Only a capitalised name resolved, so most milestone birthdays — thrown
     // for exactly these people, written exactly this way — carried no honoree.
