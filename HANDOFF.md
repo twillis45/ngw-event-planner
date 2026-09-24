@@ -1,6 +1,19 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-24 (thirty-third entry:
+**Measured reality, not intentions.** Updated 2026-09-24 (thirty-fourth entry:
+the Kroger pipeline already pulled real shelf prices on request and threw every
+one away; they are now kept as KAS observations, attributable or not kept at all.
+A duplication sweep found the kas_records INSERT written twice and folded the
+statement (not the write — one path has an admin principal to audit, the other
+has none). AND I DISPROVED TWO OF MY OWN RECOMMENDATIONS: `bake:knowledge` is
+not a hand-crank (gate:knowledge goes red on a stale snapshot, in verify:push
+and twice in CI), and the backend is not updating inconsistently (BLS caches per
+region+month, the three-layer fallback is 30 green unit tests plus 8 e2e cases).
+What was missing was observability, so `/kroger/status` now answers `configured`
+and `recording` separately. Worth carrying forward: test your own recommendation
+before shipping it — two of four were wrong, and both would have made the system
+worse. See the thirty-fourth entry.)
+Before that, on 2026-09-24 (thirty-third entry:
 priority #1 of the unfed-engine list closed — four decisions now answer to the
 event, each threshold read out of its own authored sentence, taking the corpus
 from 3 of 128 that move to 7. The scale I had guessed (30-50 rules) was wrong:
@@ -176,11 +189,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `160fe2f2` |
+| Branch / HEAD | `main` @ `17c3d285` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,635 passed**, 1 skipped, **0 failed**, **542 suites** (re-measured 2026-09-24 after the thirty-third entry; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,653 passed**, 1 skipped, **0 failed**, **544 suites** (re-measured 2026-09-24 after the thirty-fourth entry; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -982,6 +995,81 @@ not as a port.
 **The pattern, for the third time this month:** the brief named a surface, the
 sweep found the surface already existed or could not be filled. Measuring first
 cost an hour and saved two days of building something a host already had.
+
+## FIXED 2026-09-24 (thirty-fourth entry) — the shelf price is kept, and two of my own recommendations were wrong
+
+544 suites / 7,653 passed. 384 backend tests. `verify:push` 6/6.
+
+**THE PRICE PIPELINE ALREADY EXISTED. What was missing was keeping.** Every
+price `/api/shopping/kroger/search-list` returned was shown to one host and
+discarded at the end of the request, while the corpus those prices could
+re-verify sat at one vintage. `kroger.py` now records a KAS observation per real
+shelf price. Server-side and not by preference: `kas.py` gates every write
+behind `require_admin`, so a browser writing an observation would fail for every
+real host — the only people who generate price data.
+
+Rules, each a way this could have gone quietly wrong: an observation needs a
+`purchaseId` AND an `assetId` or it is not recorded (matching a product name
+back to `p_ice` by string is the guess `geoItemMap` refuses to make); a match
+without a price is not a price; the id is idempotent per (row, store, month) so
+two hosts pricing ice at one store this month is ONE notice, not manufactured
+corroboration; and no event id, identity or ZIP travels — asserted on both sides.
+
+**A DUPLICATION SWEEP, asked for mid-build, found one real thing.** The
+`kas_records` INSERT existed twice — extracted to `app/kas_store.py`, called by
+both. Only the STATEMENT is shared: the admin path has a principal to audit and
+a concurrent editor to guard against, and an automated observation has neither.
+Rejected as NOT duplication after opening both sides: the other "Mon YYYY"
+formatters (a calendar label, an invite date — different questions) and the
+JS/Python slug pair (cannot be imported across languages; both pinned to the
+same four strings instead).
+
+**AND `theClientAndTheRouterAgree` pinned a literal line of source** —
+`return term ? { name, term } : { name };` — which broke on a change that could
+not affect the claim it was pinning. A source-text proxy is the weaker of two
+instruments, so that claim moved to a test asserting the real request body.
+
+**TWO RECOMMENDATIONS I MADE AND THEN DISPROVED.**
+
+1. *"`bake:knowledge` is a hand-crank that will break — put it in the release
+   chain."* **Wrong.** Tested by adding a KCR without re-baking: `gate:knowledge`
+   goes red (`snapshot is STALE`), and it runs in `verify:push` AND twice in CI.
+   The snapshot is source-controlled on purpose, so what ships is what was
+   reviewed; baking during `release` would have the deploy regenerate the
+   artifact instead — strictly worse. Change dropped.
+2. *"the backend isn't updating consistently."* **Largely wrong.** BLS caches per
+   (region, month) with a 6h success TTL and a 5-min failure TTL — ≤16 upstream
+   calls a day across all hosts, ever. Kroger is on-request by design; a cron
+   would spend a 450-list/day ceiling on nobody's event. The fallbacks are
+   already proven: `threeLayersOfPrice` is 30 green unit tests plus 8 e2e cases
+   covering no-keys, no-store-nearby and an unconfigured build. What was missing
+   was observability, not correctness.
+
+**So `/kroger/status` now answers two questions.** `configured` (can we price?)
+and `recording` (can we keep it? — that needs a database, which pricing does
+not). A deployment pricing lists perfectly while silently recording nothing is
+invisible from the host's side and from the response; this is the only place it
+shows. Plus one info log per successful write, because with a warning-only path
+"no observations yet" and "the writer is broken" produce identical logs.
+
+**The grounding monitor ran for the first time.** A workflow of that name has
+been scheduled monthly since the freshness work and has never produced a run:
+it lived in the `ngw-event-planner-workspace` repo, pointed at
+`working-directory: demo`, a path that does not exist there.
+`sourceFreshness.js` records this in its own header ("**Dead.**"); this is that
+comment acted on. Now weekly, in this repo, warning-only.
+
+**Worth carrying forward.**
+- **Test your own recommendation before shipping it.** Two of the four things I
+  proposed this session were disproved by a five-minute experiment against the
+  code. Both would have made the system worse.
+- **A capability that needs a different dependency deserves its own flag.**
+  Pricing needs Kroger keys; keeping the price needs a database. One boolean
+  would have hidden the gap that matters.
+- **Persistence shipped unproven against a live DB.** Nothing in this container
+  can reach one. The info log and the `recording` flag are what will make the
+  first real pull provable — recorded here so the next session verifies it
+  rather than assuming it.
 
 ## FIXED 2026-09-24 (thirty-third entry) — priority #1 closed, an engineering wing convened, and the cost question measured
 

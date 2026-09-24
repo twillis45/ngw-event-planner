@@ -332,6 +332,51 @@ dated purchase rows  : 533
     </div>
   </section>
 
+  <!-- ─── 5 ─────────────────────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Shipped 24 Sep · and two things this page got wrong</span>
+      <h2>The price is kept now — and the fix was not where I said</h2>
+    </div>
+    <p>The sections above frame the corpus as needing a research programme. Tracing the code found something better: <strong>the app already pulls real shelf prices on request, and throws every one away.</strong></p>
+
+    <div class="ex">
+      <div class="ex-head">
+        <span class="who">kroger.py &nbsp;·&nbsp; search-list</span>
+        <span class="tag good">shipped</span>
+      </div>
+      <div class="ex-body">
+        <p>A host taps <em>&ldquo;Price this list at a store near you&rdquo;</em>, picks a store, and the backend returns a real shelf price per line. The host saw it. Nothing persisted it. Every one of those prices was evidence about a corpus row, generated at zero marginal cost against an API budget already provisioned, and discarded at the end of the request.</p>
+        <span class="label">What a priced line becomes now</span>
+<pre>p_ice @ store 01400376, Sep 2026  →  $2.99 (7 lb, UNIT)
+
+<span class="add">kind:      pricing
+assetId:   Get-Together
+fieldPath: p_ice.unitCostRange</span>   <span class="dim">← the field a KCR would target</span></pre>
+        <p><strong>Attributable, or not kept.</strong> An observation is recorded only when the line names its corpus row and the request names the playbook. Matching a free-text product name back to <code>p_ice</code> by string would be the same guess <code>geoItemMap</code> refuses to make. Both fields are optional on the wire — without them the list prices exactly as before and records nothing.</p>
+        <p><strong>Idempotent per (row, store, month).</strong> Two hosts pricing ice at the same store this month saw one shelf; counting it twice would manufacture the corroboration a later &ldquo;N observations agree&rdquo; rule depends on. A different store or month is a genuinely independent look.</p>
+        <p class="note">Server-side, and not by preference: <code>kas.py</code> gates every write behind <code>require_admin</code>, so a browser writing an observation would fail for every real host — the only people who generate price data. No event id, no identity, no ZIP travels; a store id is a shop, not a person.</p>
+      </div>
+    </div>
+
+    <div class="ex">
+      <div class="ex-head">
+        <span class="who">two recommendations, disproved by testing them</span>
+        <span class="tag bad">I was wrong</span>
+      </div>
+      <div class="ex-body">
+        <p><strong>1. &ldquo;<code>bake:knowledge</code> is a hand-crank that will break — put it in the release chain.&rdquo;</strong> Tested by publishing a KCR without re-baking:</p>
+<pre>x snapshot is STALE - run: npm run bake:knowledge</pre>
+        <p>The gate already catches it, in <code>verify:push</code> <em>and</em> twice in CI. The snapshot is source-controlled on purpose, so what ships is what was reviewed. Baking during <code>release</code> would have the deploy regenerate the artifact instead — strictly worse. Change dropped.</p>
+        <p><strong>2. &ldquo;The backend isn&rsquo;t updating consistently.&rdquo;</strong> Largely wrong. BLS caches per (region, month) at a 6-hour success TTL — at most sixteen upstream calls a day across all hosts, ever. Kroger is on-request by design; a scheduled scrape would spend a 450-list/day ceiling on nobody&rsquo;s event. And the fallbacks are already proven: <code>threeLayersOfPrice</code> is 30 green unit tests plus 8 browser cases covering no keys, no store nearby, and an unconfigured build.</p>
+        <p>What was actually missing was <em>observability</em>, not correctness. So <code>/kroger/status</code> now answers two questions rather than one:</p>
+<pre>{ "configured": true,   <span class="dim">// can we price a list?</span>
+  <span class="add">"recording":  true</span>    <span class="dim">// can we KEEP it? — needs a database, which pricing does not</span> }</pre>
+        <p class="note">A deployment pricing lists perfectly while silently recording nothing is invisible from the host&rsquo;s side and from the response. One flag would have hidden exactly the gap worth seeing.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ─── sequence ──────────────────────────────────────────────────────── -->
   <section>
     <div class="sec-head">
@@ -348,6 +393,7 @@ dated purchase rows  : 533
         <tr><td class="num">—</td><td><strong>Say the tier on the surface</strong></td><td>UI</td><td>honest interim while 3 is in flight: a synthesized multiplier that says it is synthesized is not a lie.</td></tr>
       </tbody>
     </table></div>
+    <p class="note ok"><strong>Update, 24 Sep.</strong> Step 3 has a second source now, and it is the better one: real shelf prices from hosts pricing their own lists, kept as observations (section above). It costs no API budget, prices the items people actually buy, and arrives with a store and a date attached. The <code>sufficientWhen</code> worklist stays — several of those sentences literally ask for &ldquo;current shelf prices at the same store,&rdquo; which is what an observation is.</p>
     <p class="note"><strong>Not the board's call:</strong> whether NGW maintains a priced corpus or consumes a pricing feed. Fetching does not remove this work — a fetched price still needs a claim and a date, or it is an unlabelled number with better latency. That is a product and cost commitment, and it belongs to the owner.</p>
   </section>
 

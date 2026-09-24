@@ -119,6 +119,23 @@ def test_THE_RECORD_SHAPE_MATCHES_THE_JS_MODEL():
     assert keys == js_fields | {"price"}
 
 
+def test_STATUS_REPORTS_PRICING_AND_RECORDING_SEPARATELY(monkeypatch):
+    # Two capabilities, two answers. A deployment can price lists perfectly
+    # (Kroger keys present) while recording nothing (no database) — and that is
+    # precisely the state worth being able to see, because it is invisible from
+    # the host's side and from the response. Collapsing them into one flag would
+    # hide it.
+    from app.routers import kroger as k
+
+    monkeypatch.setattr(k, "KROGER_CLIENT_ID", "id", raising=False)
+    monkeypatch.setattr(k, "KROGER_CLIENT_SECRET", "secret", raising=False)
+    monkeypatch.setattr("app.config.DATABASE_URL", "", raising=False)
+    assert k.kroger_status() == {"configured": True, "recording": False}
+
+    monkeypatch.setattr("app.config.DATABASE_URL", "postgres://x", raising=False)
+    assert k.kroger_status() == {"configured": True, "recording": True}
+
+
 def test_slug_matches_the_js_rule():
     # Two slug functions that disagree produce two records for one notice.
     assert _slug("Get-Together") == "get-together"

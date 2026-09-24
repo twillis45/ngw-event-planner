@@ -154,8 +154,18 @@ async def _get_token() -> Optional[str]:
 
 @router.get("/kroger/status")
 def kroger_status():
-    """Lets the client decide whether to show Kroger matching/store-pick UI."""
-    return {"configured": _configured()}
+    """Lets the client decide whether to show Kroger matching/store-pick UI.
+
+    `recording` reports whether a real shelf price can be KEPT as evidence on
+    this deployment — it needs a database, which pricing itself does not. Two
+    separate capabilities, reported separately, because a deployment that
+    prices lists perfectly while silently recording nothing is exactly the
+    state this endpoint exists to make visible. It is a configuration check,
+    not a live ping: answering `status` must not depend on a database
+    round-trip that pricing does not need.
+    """
+    from ..config import DATABASE_URL
+    return {"configured": _configured(), "recording": bool(DATABASE_URL)}
 
 
 # ─── KEEPING THE PRICE, WHICH IS THE WHOLE POINT ─────────────────────────────
@@ -295,6 +305,15 @@ async def _persist_observations(records: list) -> int:
                     await upsert_kas_record(
                         conn, rec, "observation", rec.get("assetId"), "kroger-api",
                     )
+        # ── SAY SO WHEN IT WORKS, NOT ONLY WHEN IT FAILS ────────────────────
+        # This path is deliberately silent to the host and cannot be exercised
+        # without a live database, so it shipped unproven. With only the
+        # `warning` below, a pipeline that never once wrote a row and a pipeline
+        # writing rows all day produce identical logs — and "no observations
+        # yet" would be indistinguishable from "the writer is broken". One info
+        # line per successful write is what makes the first real pull provable.
+        log.info("recorded %d price observation(s): %s",
+                 len(records), ", ".join(r["id"] for r in records[:5]))
         return len(records)
     except Exception as e:  # no DATABASE_URL, pool down, migration missing
         log.warning("price observation write skipped: %s", e)
