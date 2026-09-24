@@ -157,11 +157,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `7d1b3e93` |
+| Branch / HEAD | `main` @ `be8ce5e` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,585 passed**, 1 skipped, **0 failed**, **534 suites** (re-measured 2026-09-24 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,601 passed**, 1 skipped, **0 failed**, **536 suites** (re-measured 2026-09-24 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -173,6 +173,98 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-24 — a pipeline that could sharpen but never start, and two "260-row backlogs" that were not backlogs
+
+Four fields were still carrying the label **"authoring — 260 rows"**. None of the
+four turned out to need 260 rows. The label had never been checked.
+
+### 1. `costFactors` — a closed loop, not an authoring backlog (`f27a5bd`)
+
+`costFactors` are **not hand-authored**. They are fed by the KCR research
+pipeline: a campaign targets `decisions[id].costFactors`, findings come back,
+`proposePlaybookUpdate` merges a consensus value in. So "93 decisions need cost
+factors authored" was the wrong reading. Measured: **not one of them was
+reachable by that pipeline**, for three independent reasons.
+
+| where | defect |
+|---|---|
+| `campaign.js` | the field-path picker filtered on `d.costFactors && Object.keys(...).length` — it only ever offered a target for a decision that **already had one** |
+| `playbookMerge.js` | the merge looped `Object.keys(target.costFactors \|\| {})`, so with no existing keys the loop never ran |
+| `playbookMerge.js` | **pre-existing, older than both** — the path parser split on `[` and stripped `]` by hand, so `decisions[food_style].costFactors` resolved to the id `food_style.costFactors`. **No decision path has ever resolved.** |
+
+**Why three and not one.** They are three stages of one pipe — pick a target,
+resolve the path, write the value — and each hid the next. The picker only
+offered decisions that already had factors, so the merge was only ever exercised
+on decisions that already had them, so "cannot add a key" never showed; and
+nothing ever aimed at a decision path, so the parser that could not read one
+never had to. **Fixing any single one would have changed nothing measurable**,
+which is why the gap read for months like an authoring backlog instead of a
+broken pipe.
+
+The seed rule, verified rather than assumed: with no authored keys, seed from the
+decision's own options **minus its default**, because a cost factor is a
+multiplier relative to the default. That reproduces the existing key set exactly
+on **42 of 51** decisions and is a superset on the other 9, where authors
+recorded factors only for the options that move money. A superset is safe
+because the loop writes a key **only when research returned a consensus fact** —
+seeding more options widens what research MAY fill, it never invents a number.
+Pinned by its own test. Picker now offers **152 targets where it offered 51**.
+
+### 2. `relevantWhen` — already shipping, under four names (`be8ce5e`)
+
+The spec said PARTIAL and it was being read as "author a condition on 260
+decisions". Measured instead: the field exists, is authored, is wired, and
+reaches the host — spelled four ways.
+
+| dialect | decisions | what it does |
+|---|---|---|
+| `whenChoice {id,in}` | 4 | show only while |
+| `standsDownWhen {id,in}` | 9 | retire once **ANSWERED** (a default is an assumption and never stands a real ask down) |
+| `optionGates {option:{…}}` | 5 | prune **one option**; the host's own pick always outranks the gate |
+| `recommendedWhen [{when,pick}]` | 3 | move the recommendation |
+
+21 declarations on **18** decisions — three carry two dialects at once, which is
+the argument for one name stated as a number. `playbookDecisionBoard` applies the
+first three, `recommendedPick` the fourth, hostv2 calls both.
+`relevantWhenAlreadyShips.test.js` drives the real board: answer Get-Together's
+`food_style` with the caterer and **both** the menu and the potluck decision
+leave; answer potluck instead and only potluck leaves. **Proven non-vacuous** —
+remove the stand-down gate and two tests go red, remove the `minGuests` gate and
+a third does. What is left is a **name**, not rows.
+
+### 3 and 4. `effort` and `causesRisk` — measured, not labelled
+
+- **`effort` — not derivable.** `impacts` was derivable because a `blocks` target
+  names its own surface; **nothing on a decision names how much work it is.** The
+  nearest signals (`when`, `weight`, `reversibility`, `difmCapable`, option count)
+  spread across **21 populated cells** of their cross-tab, so they do not collapse
+  into three groups and any mapping would be invented.
+- **`causesRisk` — not derivable, and the only genuine authoring of the four.**
+  The link is not hiding on the risk end: a risk `trigger` is an English
+  description of a *state* ("More RSVPs than chairs"), not a reference to a
+  choice. **3 of 324 triggers contain an option label verbatim and 2 of those are
+  word coincidences.** ~324 rows of real judgment, correctly sized.
+
+Both are behind **no reader at all**. The rule they share: *260 authored rows
+behind no consumer is 260 rows of dead data — build the reader first, or drop the
+field.*
+
+### Worth carrying forward
+
+- **Three blocks in one pipe hide each other.** Each defect made the next
+  unobservable, so the whole pipeline read as an authoring gap. When a backlog has
+  sat still for months, check whether anything could have moved it.
+- **Check the label before repeating it.** Two of four "260-row" fields needed
+  zero rows.
+- **A truncated grep is a false finding.** I first reported `standsDownWhen` and
+  `optionGates` as authored-but-unread; the grep behind it was piped through
+  `head` and `index.js`'s matches fell below the fold. The claim died on opening
+  the file.
+- **The right assertion on the wrong population still fails.** The gate test's
+  first draft read `board.open` and went red on a board that was working — a 2027
+  event is on a long runway, so the horizon logic defers most rows, and the gate
+  runs *before* bucketing.
 
 ## FIXED 2026-09-23 — four defects found by driving an 80th birthday, twice
 
