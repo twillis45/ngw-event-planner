@@ -183,7 +183,20 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // limit BEFORE typing a ZIP — is deliberately NOT here. It is a claim about
 // what renders, and it is driven in hostv2/e2e/threeLayersOfPrice.spec.mjs at
 // all seven viewports.
-const MAX_HOSTV2_TEXT_GATES = 47;
+// 47 -> 48 (2026-09-24): theStampCannotOutliveItsData.test.js.
+//
+// The price-vintage stamp read a hardcoded `PRICE_TABLE_META.asOf` of '2026-01'
+// while NONE of the 533 dated price rows it labelled was older than 2026-08-14.
+// The fix derives the label from the rows actually rendered, and the regression
+// it has to prevent is STRUCTURAL: someone reintroducing a module-scope
+// `PRICE_VINTAGE` constant, or re-importing the price table. A browser cannot
+// carry that — it shows a month, and a wrong constant that happens to say the
+// right month renders identically to a correct derivation.
+//
+// The behaviour half is deliberately NOT here. That the stamp renders the
+// derived month is a claim about what a host reads, and it is driven in
+// hostv2/e2e/priceVintageIsDerived.spec.mjs.
+const MAX_HOSTV2_TEXT_GATES = 48;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

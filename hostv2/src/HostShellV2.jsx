@@ -15,14 +15,16 @@ import { buildExperienceContext } from '@app/lib/experienceContext';
 import { deriveHelperResponsibilities, helperStatusLine, guestHelperRoles } from '@app/lib/helperResponsibility';
 import { buildCrabPlan, defaultCountPerUnit, lineCrabCount, recommendCrabOrder } from '@app/lib/crabPlan';
 import { buildVendorPlan } from '@app/lib/vendorPlan';
-import { PRICE_TABLE_META } from '@app/lib/sourcing';
-// Formatted vintage of the researched price ranges, for a VISIBLE freshness tag
-// on the food estimates (per-screen audit: "add a freshness tag, not just a
-// footer disclaimer" — so the commodity-price engine reads as trustworthy).
-// Built with local Date(y, m-1, …) to avoid a UTC-parse month rollover.
-const PRICE_VINTAGE = (() => {
-  try { const [y, m] = String(PRICE_TABLE_META.asOf || '').split('-'); if (!y || !m) return ''; return new Date(Number(y), Number(m) - 1, 15).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); } catch { return ''; }
-})();
+// A VISIBLE freshness tag on the food estimates (per-screen audit: "add a
+// freshness tag, not just a footer disclaimer" — so the commodity-price engine
+// reads as trustworthy).
+//
+// DERIVED FROM THE ROWS, NOT FROM A CONSTANT (2026-09-24). This was
+// `PRICE_TABLE_META.asOf` — a hardcoded '2026-01' that described a FALLBACK
+// protein table, not the rows on screen, and stamped "Jan 2026" onto 533 price
+// rows of which NONE was dated earlier than 2026-08-14. See
+// src/lib/priceVintage.js for the measurement and for the judgment calls.
+import { priceVintage } from '@app/lib/priceVintage';
 import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '@app/lib/vendorEstimator';
 import { parseVendorReply, isAiProxyConfigured, extractDocumentAI } from '@app/lib/aiProxy';
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
@@ -17426,6 +17428,10 @@ export default function HostShellV2() {
                   const left = foodPlan.itemCount - foodPlan.boughtCount;
                   const done = foodPlan.boughtCount >= foodPlan.itemCount && foodPlan.itemCount > 0;
                   const fSpan = foodSpan;
+                  // The vintage of THESE rows, not of a constant. Null when no
+                  // rendered row carries a researched date — then no stamp,
+                  // rather than an old one (two playbooks are in that state).
+                  const fVintage = priceVintage(foodPlan.list);
                   return (
                   <div style={{ padding: '2px 0 14px' }}>
                     {/* Figma 378:60 parity — the hero composes the parity kit
@@ -17481,7 +17487,7 @@ export default function HostShellV2() {
                         instead of competing with the number. Honesty is about the
                         fact being present and true, not about its type size. */}
                     <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
-                      {priceNote()}{PRICE_VINTAGE ? ` · est. prices ${PRICE_VINTAGE}` : ''}
+                      {priceNote()}{fVintage ? ` · est. prices ${fVintage.label}` : ''}
                     </p>
                   </div>
                   );
