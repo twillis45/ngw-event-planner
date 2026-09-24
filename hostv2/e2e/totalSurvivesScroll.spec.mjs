@@ -88,4 +88,10 @@ test('it never claims a store subtotal it does not have', async ({ page }) => {
   const t = (await page.locator('.ftotal').innerText()).replace(/\s+/g, ' ');
   expect(t).not.toMatch(/priced at your store/i);
   expect(t).toMatch(/estimated/i);
+  // AND IT IS A REAL FIGURE. The first cut asserted only /estimated/i, and the
+  // bar was shipping "$NaN–$NaN estimated" — wrong field on the plan, and the
+  // assertion matched it happily. Found by looking at the phone, not by the
+  // test, which is the whole argument for the demo.
+  expect(t).not.toMatch(/NaN|undefined|\$\s*—|\$0–\$0/);
+  expect(t).toMatch(/\$[\d,]+\s*[–-]\s*\$[\d,]+ estimated/);
 });

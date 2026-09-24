@@ -19184,7 +19184,13 @@ export default function HostShellV2() {
                     <span className="ftotal-r">
                       {priceCoverage.storeTotal > 0
                         ? `${fmt(priceCoverage.storeSum)} priced at your store`
-                        : `${fmt(foodPlan.costLow)}–${fmt(foodPlan.costHigh)} estimated`}
+                        /* foodLow/suppliesLow, NOT costLow — `costLow` is
+                           undefined on this plan shape and `fmt(undefined)`
+                           renders "$NaN". Caught by looking at the phone: the
+                           e2e asserted /estimated/i, which "$NaN–$NaN
+                           estimated" satisfies perfectly. The test now asserts
+                           a real figure. */
+                        : `${fmt((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0))}–${fmt((foodPlan.foodHigh || 0) + (foodPlan.suppliesHigh || 0))} estimated`}
                     </span>
                   </div>
                 ) : null}
