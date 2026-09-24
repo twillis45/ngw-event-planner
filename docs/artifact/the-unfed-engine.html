@@ -1,0 +1,296 @@
+<title>The Unfed Engine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground:    #f5f2ec;
+    --card:      #fffdfa;
+    --ink:       #1c1a17;
+    --ink-2:     #56504a;
+    --ink-3:     #8d857c;
+    --rule:      #ded7cc;
+    --rule-2:    #ebe5db;
+    --gap:       #b4451f;   /* the distance between claim and behaviour */
+    --gap-bg:    #f8e7df;
+    --works:     #3f6b4a;
+    --works-bg:  #e4eee5;
+    --deep:      #1c1a17;
+    --deep-ink:  #efe9e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:   #16150f;
+      --card:     #1e1c16;
+      --ink:      #eee9df;
+      --ink-2:    #ada69a;
+      --ink-3:    #756e63;
+      --rule:     #33302a;
+      --rule-2:   #272420;
+      --gap:      #e8845c;
+      --gap-bg:   #30201a;
+      --works:    #86b593;
+      --works-bg: #1b2820;
+      --deep:     #0d0c09;
+      --deep-ink: #ded7cb;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:   #16150f; --card: #1e1c16; --ink: #eee9df; --ink-2: #ada69a;
+    --ink-3:    #756e63; --rule: #33302a; --rule-2: #272420;
+    --gap:      #e8845c; --gap-bg: #30201a; --works: #86b593; --works-bg: #1b2820;
+    --deep:     #0d0c09; --deep-ink: #ded7cb;
+  }
+
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px; line-height: 1.6;
+    padding-inline: 16px; padding-block: 0;
+  }
+  .wrap { max-width: 60rem; margin-inline: auto; padding-block: 3rem 5rem; }
+
+  h1, h2, h3 { font-family: "Bricolage Grotesque", system-ui, sans-serif; text-wrap: balance; margin: 0; line-height: 1.08; letter-spacing: -0.02em; }
+  h1 { font-size: clamp(2.3rem, 7vw, 4rem); font-weight: 800; }
+  h2 { font-size: clamp(1.4rem, 3.4vw, 1.9rem); font-weight: 700; }
+  h3 { font-size: 1.1rem; font-weight: 600; }
+  p  { margin: 0; max-width: 60ch; }
+  .mono, code { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 0.87em; }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 0.67rem; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3);
+  }
+
+  header.top { display: flex; flex-direction: column; gap: 1.1rem; padding-bottom: 2rem; }
+  .lede { font-size: 1.15rem; color: var(--ink-2); max-width: 54ch; }
+  .thesis {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 700;
+    font-size: clamp(1.15rem, 2.6vw, 1.5rem); line-height: 1.3; color: var(--gap);
+    max-width: 30ch; letter-spacing: -0.01em;
+  }
+
+  /* The claim/behaviour pair IS the content's structure, so it is the layout. */
+  .pair {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--rule); border-radius: 3px; overflow: hidden;
+    background: var(--card); margin-block: 0.9rem;
+  }
+  .pair > div { padding: 1.1rem 1.15rem; display: flex; flex-direction: column; gap: 0.45rem; }
+  .pair .claims { border-right: 1px solid var(--rule-2); }
+  .pair .does { background: var(--gap-bg); }
+  .pair .lbl { font-family: "JetBrains Mono", monospace; font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .pair .does .lbl { color: var(--gap); }
+  .pair .n { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(1.6rem, 4.5vw, 2.3rem); line-height: 1; font-variant-numeric: tabular-nums; }
+  .pair .does .n { color: var(--gap); }
+  .pair .say { font-size: 0.93rem; color: var(--ink-2); }
+  .pair .does .say { color: var(--ink); }
+  @media (max-width: 640px) {
+    .pair { grid-template-columns: 1fr; }
+    .pair .claims { border-right: none; border-bottom: 1px solid var(--rule-2); }
+  }
+
+  section { margin-block: 3rem; display: flex; flex-direction: column; gap: 1.1rem; }
+  .sec-head { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  /* Rank is real sequence information here — #3 gates #4 — so it is numbered. */
+  .rank { display: flex; flex-direction: column; gap: 1.1rem; counter-reset: r; }
+  .item {
+    counter-increment: r; background: var(--card);
+    border: 1px solid var(--rule); border-radius: 3px; padding: 1.2rem 1.3rem;
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .item.lead { border-color: var(--gap); border-width: 1px 1px 1px 4px; }
+  .item-head { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+  .item-head::before {
+    content: counter(r); font-family: "JetBrains Mono", monospace; font-weight: 600;
+    font-size: 0.8rem; color: var(--ink-3);
+    width: 1.7rem; height: 1.7rem; display: grid; place-items: center; flex: 0 0 auto;
+    border: 1px solid var(--rule); border-radius: 2px;
+  }
+  .item.lead .item-head::before { color: var(--gap); border-color: var(--gap); }
+  .item-head h3 { font-family: "JetBrains Mono", monospace; font-size: 0.97rem; font-weight: 600; letter-spacing: 0; }
+  .tag {
+    margin-left: auto; font-family: "JetBrains Mono", monospace; font-size: 0.62rem;
+    font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.2rem 0.5rem; border-radius: 2px; white-space: nowrap;
+    background: var(--works-bg); color: var(--works);
+  }
+  .tag.code { background: var(--gap-bg); color: var(--gap); }
+  .item p { font-size: 0.97rem; color: var(--ink-2); }
+  .item p strong { color: var(--ink); font-weight: 600; }
+
+  pre {
+    margin: 0; background: var(--deep); color: var(--deep-ink); border-radius: 3px;
+    padding: 1rem 1.1rem; overflow-x: auto;
+    font-family: "JetBrains Mono", monospace; font-size: 0.78rem; line-height: 1.65;
+  }
+
+  .tbl-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; min-width: 28rem; }
+  th, td { text-align: left; padding: 0.6rem 0.9rem 0.6rem 0; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; font-size: 0.64rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+  td.num { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+
+  .note {
+    border-left: 3px solid var(--rule); padding: 0.1rem 0 0.1rem 1rem;
+    color: var(--ink-2); font-size: 0.95rem;
+  }
+  .note strong { color: var(--ink); }
+
+  footer.foot { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">NGW Event Planner &middot; engine priority &middot; 24 Sep 2026</div>
+    <h1>The Unfed Engine</h1>
+    <p class="thesis">Nothing below is a bug. Every engine is built and correct. They are starved.</p>
+    <p class="lede">Four of the five priorities are authoring and decisions, not code. More intelligence has been built here than has been fed.</p>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Measured, not recalled</div>
+      <h2>What the engine claims, and what it does</h2>
+    </div>
+
+    <div class="pair">
+      <div class="claims">
+        <div class="lbl">Claims</div>
+        <div class="n">128</div>
+        <p class="say">decisions carry <code>difmCapable: 'can-derive'</code> — the flag that lets the app say <em>&ldquo;We&rsquo;ll go with X&rdquo;</em> instead of asking</p>
+      </div>
+      <div class="does">
+        <div class="lbl">Does</div>
+        <div class="n">3</div>
+        <p class="say"><strong>125 propose a hardcoded literal.</strong> Driven for real against a 4-guest home dinner on $400 and a 400-guest destination event on $120,000 — same date, same playbook — exactly three changed their answer.</p>
+      </div>
+    </div>
+
+    <div class="pair">
+      <div class="claims">
+        <div class="lbl">Claims</div>
+        <div class="n">45</div>
+        <p class="say">playbooks with a dependency graph, ordering everything by what unblocks what</p>
+      </div>
+      <div class="does">
+        <div class="lbl">Does</div>
+        <div class="n">9</div>
+        <p class="say">have a real graph. <strong>14 carry a single token dependency. 22 have none at all.</strong> All 67 entries resolve — the graph is clean, just thin.</p>
+      </div>
+    </div>
+
+    <div class="pair">
+      <div class="claims">
+        <div class="lbl">Claims</div>
+        <div class="n">51</div>
+        <p class="say">decisions with authored <code>costFactors</code> grounding the budget</p>
+      </div>
+      <div class="does">
+        <div class="lbl">Does</div>
+        <div class="n">16</div>
+        <p class="say">are <strong>researched</strong>. 34 are synthesized — honestly labelled, but made in-house. One carries factors with no provenance tier at all.</p>
+      </div>
+    </div>
+
+    <p class="note"><strong>One figure needs qualifying, and it is mine.</strong> I said &ldquo;152 cost-affecting decisions, 101 with no cost factor.&rdquo; The 152 comes from a predicate I wrote. The widest defensible reading — any decision with two or more options — is 251, of which 200 have none. The real range is <strong>101 to 200</strong>, and where the line sits is judgment, not measurement.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Ranked by what it costs a host today</div>
+      <h2>Priority</h2>
+    </div>
+
+    <div class="rank">
+
+      <article class="item lead">
+        <div class="item-head">
+          <h3>recommendedWhen</h3>
+          <span class="tag">authoring</span>
+        </div>
+        <p><strong>125 decisions promise derivation and deliver a literal.</strong> <code>can-derive</code> is what lets the app propose instead of ask, and on 125 of 128 it proposes the same answer regardless of guest count, budget or runway. This is the product&rsquo;s core promise, and it is a truthfulness problem before it is a capability one.</p>
+        <pre>Dinner Party/seating   "Open"                         → "Host-assigned"
+Anniversary/help       "Fully DIY"                    → "Bartender"
+Day Party/food         "Light passed bites + grazing" → "Food truck"
+
+the only three that moved. the engine returns basis:"authored-default"
+for the other 125 — it is honest internally; the surface is not.</pre>
+        <p><code>recommendedPick.js</code> is built, live, and already carries the right honesty rule: an unknown fact <em>refuses</em> its rule rather than comparing as zero. It needs <strong>rules authored, not code</strong> — and not 125 of them. Only where an event fact genuinely changes the answer; the rest have one honestly-right default and should stop claiming to derive.</p>
+      </article>
+
+      <article class="item">
+        <div class="item-head">
+          <h3>costFactors</h3>
+          <span class="tag">campaign execution</span>
+        </div>
+        <p><strong>Run the research now that it can reach.</strong> Until 24 September the pipeline was structurally incapable of <em>adding</em> a cost factor — three independent blocks, each hiding the next. It now offers <strong>152 targets where it offered 51</strong>.</p>
+        <p>Budget is the number a host trusts most and scrutinises hardest, and 16 decisions in the whole corpus have a researched one. The machine is fixed. Feed it.</p>
+      </article>
+
+      <article class="item">
+        <div class="item-head">
+          <h3>the board ruling on unlocks</h3>
+          <span class="tag">a decision</span>
+        </div>
+        <p><strong>Free, and it gates the next one.</strong> <code>unlocks</code> is unbounded and already outranks maximum lateness on <strong>64 of 260 decisions</strong>. The ranking is wrong today, and deepening the dependency graph before this is settled amplifies a known error.</p>
+        <p>Costs a decision, not work. The packet is filed and waiting.</p>
+      </article>
+
+      <article class="item">
+        <div class="item-head">
+          <h3>dependsOn</h3>
+          <span class="tag">authoring</span>
+        </div>
+        <p><strong>22 playbooks have no graph at all.</strong> Everything sequenced by what-unblocks-what is correspondingly thin. Authoring, no code — and it would deepen on authoring alone.</p>
+        <p>Do it <em>after</em> the ruling above, not before.</p>
+      </article>
+
+      <article class="item">
+        <div class="item-head">
+          <h3>impacts and the blast radius</h3>
+          <span class="tag code">code</span>
+        </div>
+        <p><strong>227 of 260 decisions carry derived <code>impacts</code>, and nothing reads them.</strong> Real work, and the smallest of the five. The blast radius is built and deliberately unwired pending the ruling above.</p>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Deliberately excluded</div>
+      <h2>What is not on this list</h2>
+    </div>
+    <p class="note"><strong>The host-shell cleanup.</strong> 41 dead bindings, 23 bare <code>catch {}</code> blocks, the duplicate-surface sweep. None of it makes the engine work better. It is hygiene, it is real, and it belongs in the gap between engine passes rather than ahead of them. Asking what the priority was before starting is what kept a pass from going into deleting unused imports.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Method</div>
+      <h2>How each figure was taken</h2>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Figure</th><th>How</th><th>Confidence</th></tr></thead>
+        <tbody>
+          <tr><td class="num">125 of 128</td><td>Drove the real <span class="mono">decisionProposal</span> against two events differing on every fact a rule can read, and compared the answers</td><td>Behavioural — not a field count</td></tr>
+          <tr><td class="num">9 / 14 / 22</td><td>Counted <span class="mono">dependsOn</span> per playbook; all 67 entries checked to resolve</td><td>Direct</td></tr>
+          <tr><td class="num">16 researched</td><td><span class="mono">costFactorProvenance.tier</span> across the corpus</td><td>Direct</td></tr>
+          <tr><td class="num">152 / 101</td><td>A predicate I wrote for &ldquo;cost-affecting&rdquo;</td><td><strong>Judgment</strong> — widest reading is 251 / 200</td></tr>
+          <tr><td class="num">64 of 260</td><td>Scored each decision as a blocker against the ruled lateness ceiling</td><td>Direct, pinned by test</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">The confidence column exists because two hand-rolled counts in the neighbouring audit were wrong this same day, both caught by re-running the claim through a tool that was not mine. Any figure here without a second instrument behind it should be read as provisional.</p>
+  </section>
+
+  <footer class="foot">
+    <div>Measured 24 September 2026 against <code class="mono">main</code>.</div>
+    <div>No Guesswork Systems LLC &middot; NGW Event Planner</div>
+  </footer>
+
+</div>
