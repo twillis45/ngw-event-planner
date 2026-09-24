@@ -9,7 +9,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `1b9027e4` |
+| Branch / HEAD | `main` @ `fcca0ac0` |
 | Jest | **6,228 passed**, 1 skipped, **441 suites** — re-measured 2026-09-24. It was **RED on arrival** this session (1 failed): a fixture date went past and took the lodging raiser's gate with it. Fixed at `0a603d5f`; see the clock-rot trap below |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
