@@ -2,6 +2,12 @@
 
 _Authoritative reference. Last updated: 2026-07-26. Mirrors the `reference_review_board_roster` memory (panel index) — keep the two in sync. Governs every NGW visual/UX/strategy audit. Pairs with `NGW_10PLUS_MASTER_PROMPT.md` and `02_STUDIO_MATTE_UI_STANDARD.md`._
 
+> **Scope note (2026-09-24).** This roster governs visual/UX/strategy audits AND,
+> since the Engineering & Delivery wing was added, build questions — architecture,
+> CI, test quality, data provenance, secrets. The two run differently: visual
+> audits are **render-first**, build questions are **measure-first**, with the
+> measurement taken by an instrument the reviewer did not write.
+
 > **The board is a panel of NAMED INDUSTRY STARS** — channel each person's actual publicly-known signature principle (a synthesis of their philosophy, not the literal individual). Convening only generic "UI lead / planner / grandmother" seats is INCOMPLETE. Run **render-first**, **design-stars-then-event-pros**, **brutal not consensus**, bar = **bless = 10+** (not 9).
 
 ---
@@ -159,6 +165,55 @@ _Doctrine: the app is **uninhabited** — it tracks the party instead of being t
 - **Eugene Schwartz** (*Breakthrough Advertising*) — market awareness stages; which message lands on a buyer who does not yet know the problem has a name.
 - **Joanna Wiebe** (Copyhackers) — conversion copywriting; the pricing page and the paywall as copy, not layout.
 - **A performance-marketing operator** (function, not celebrity) — CAC, payback period, channel economics; "can this price survive paid acquisition."
+
+### Engineering & Delivery — added 2026-09-24
+
+**Why this wing exists.** Every other wing on this roster judges what the product
+*says* or what it *sells*. None judged whether the build is sound, and the gap was
+found the hard way: a sweep asked the board to rule on a codebase question and
+discovered 21 wings covering design, market, cuisine, lighting and regional
+practice, and not one seat that had ever read a diff. The roster's own header
+scopes it to "every visual/UX/strategy audit" — this wing extends it to the build.
+
+**Convene for:** architecture and migration calls, CI and release questions, test
+and guard quality, data provenance and lineage, secrets and auth surface, and any
+"should we refactor this or cap it" decision. **Do NOT convene for visual audits**
+— the design stars own those, and render-first does not apply here.
+
+**Render-first does not apply; MEASURE-first does.** The visual method opens with
+screenshots because a layout problem only exists in assembled pixels. The
+equivalent discipline for this wing is a measurement taken with an instrument the
+reviewer did not write. The session that created this wing produced three
+hand-rolled counts and two of them were wrong, both caught by an off-the-shelf
+linter. A finding with no second instrument behind it is a hypothesis.
+
+| Seat | Signature lens |
+|---|---|
+| **Michael Feathers** (*Working Effectively with Legacy Code*) | seams and characterization tests; "legacy code is code without tests." The seat for a FROZEN donor shell — how to work around code you may not edit, and what a seam costs |
+| **Martin Fowler** | the refactoring catalogue and the strangler fig — which is literally the CRA→hostv2 migration. "Make the change easy, then make the easy change." Judges whether a refactor is sequenced or a rewrite wearing a sequence |
+| **Dave Farley** (*Continuous Delivery*) | the deployment pipeline as the single path to production; "if it hurts, do it more often." The seat that asks why e2e takes 20 minutes and what that buys |
+| **Nicole Forsgren** (*Accelerate* / DORA) | lead time, change failure rate, batch size. The seat that would have stopped eight pushes in fifty minutes, each cancelling the last one's tests |
+| **James Bach / Michael Bolton** (context-driven testing) | "a test that cannot fail is not a test." Red-proofing, vacuous guards, and the difference between checking and testing. The seat that catches a guard passing for the wrong reason |
+| **Monica Rogati** (the AI hierarchy of needs) | you cannot do the clever layer without the data layer underneath it. The seat for "the engine is not broken, it is unfed" — and for whether a field with no reader should be authored at all |
+| **Tanya Janca** (appsec, *Alice and Bob Learn…*) | secrets in client bundles, auth surface, the credential that is gated in one place and decided in seven. Practical, not theatrical |
+
+**The player seat (standing amendment, 2026-08-27).**
+
+| Seat | Signature lens |
+|---|---|
+| **The Next Maintainer** (function, not celebrity) | someone who did not write this, reading it cold at 2am with a red build. Cannot ask the author. Judges whether the comment explains the decision or just restates the code, whether a number in a doc is reproducible, and whether a guard says what it is guarding. **This repo already writes for this seat** — the long why-comments are the house style — so the seat's job is to check the style is doing its job, not to ask for it |
+
+A board on a build question with no Next Maintainer seat is incomplete and must
+say so in its own output, the same as any other panel here.
+
+**Standing caution for this wing.** Its members are the most likely on the roster
+to recommend a refactor, because that is the literature they come from. The
+counter-discipline is the repo's own record: on 2026-09-24 a nine-copy duplication
+was CAPPED rather than folded, because one of the copies carried a deliberate
+difference that folding would have destroyed — and a sibling finding the same day
+was WITHDRAWN entirely after reading the code it proposed to change. **A
+recommendation to refactor must name what breaks if it is wrong, and what the
+live defect is. "It is duplicated" is not a defect.**
 
 ### NGW Lighting Buyer Bench — added 2026-08-26
 **Twenty buyer archetypes for the lighting product.** Convene for pricing, tier, paywall, positioning, and
