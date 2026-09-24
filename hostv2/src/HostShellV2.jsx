@@ -140,6 +140,7 @@ import { BRAND } from '@app/lib/brand';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn } from '@app/lib/communitySource';
+import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
@@ -8319,8 +8320,21 @@ export default function HostShellV2() {
                     const typeLabel = String(eventTypeLabel(event) || event.type || event.name || '').trim();
                     const name = String(event.name || '').trim();
                     if (name && name.toUpperCase() !== typeLabel.toUpperCase()) parts.push(name.toUpperCase());
-                    // 3. type
-                    if (typeLabel) parts.push(typeLabel.toUpperCase());
+                    // 3. type — UNLESS THE NAME ALREADY SAID IT (2026-09-24).
+                    //    This element was ported as "countdown · event name,
+                    //    uppercase" — two facts. It now carries four, each added
+                    //    deliberately, and the SUM is what broke: 85 characters
+                    //    at 11.5px/700/uppercase with 1.035px of tracking wrapped
+                    //    to four lines on a 390px phone, last line an orphan.
+                    //    Host: "not easily readable."
+                    //
+                    //    No fact is dropped — a RESTATEMENT is. Four of the five
+                    //    shipped sample events name their own type ("A repast for
+                    //    Deacon Willie Hayes · REPAST"), and the fifth, "Wanda
+                    //    turns 50 · BIRTHDAY", does not and keeps it. The old
+                    //    check was exact equality, which caught only the case
+                    //    where the name IS the type.
+                    if (typeLabel && !typeIsRestatedByName(name, typeLabel)) parts.push(typeLabel.toUpperCase());
                     // 4. when — the span for multi-day (host report 2026-07-27, "I
                     //    don't see the multi day"), otherwise the absolute date,
                     //    which the single-day case never carried at all.
