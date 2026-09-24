@@ -821,6 +821,35 @@ const DEMO_TOOLS_ARMED = (() => {
   } catch { return false; }
 })();
 
+// ─── SHOP / BRINGING — the spread sheet's two modes ──────────────────────────
+//
+// Renders NOTHING when no line is carried by somebody else, which is every
+// event type but the repast today. A mode control over one mode is chrome.
+//
+// Real <button>s with `role="tab"`: the review board's access seat found the
+// list rows were the only real controls on this sheet in its mockups, and while
+// that turned out to be false of the shipped rows, it is a good bar to hold a
+// new control to. 44px of hit area, keyboard reachable, and the current mode
+// carries aria-selected rather than only a colour.
+function FoodModes({ mode, count, setSheet }) {
+  if (!count) return null;
+  const btn = (key, label, on) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={mode === key}
+      className={'fmode' + (mode === key ? ' on' : '')}
+      onClick={on}
+    >{label}</button>
+  );
+  return (
+    <div className="fmodes" role="tablist" aria-label="What you buy, and what others bring">
+      {btn('shop', 'Shop', () => setSheet({ kind: 'food' }))}
+      {btn('bringing', `Bringing · ${count}`, () => setSheet({ kind: 'bringing' }))}
+    </div>
+  );
+}
+
 export default function HostShellV2() {
   const [stage, setStage] = useState('plan');
   const [eventId, setEventId] = useState(BOOT_EVENT_ID);
@@ -12114,7 +12143,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -17436,8 +17465,66 @@ export default function HostShellV2() {
                 );
               })()}
             </>)}
+            {/* ── THE THIRD MODE (host ruling 2026-09-24) ──────────────────────
+                When somebody else is carrying part of the meal, the host has TWO
+                jobs on this sheet and they are not the same job: what she buys,
+                and what she is waiting on. The review board's communal-host seat
+                put it plainly — every direction on the canvas assumed one host,
+                one cart, one store, and for a repast that is structurally wrong.
+
+                MODELLED AS A SHEET, not as tab state inside the food sheet. That
+                is this codebase's own idiom for a mode (`setSheet({kind})`), it
+                keeps the back/close behaviour every other sheet already has, and
+                it avoided wrapping a 1,700-line render in a conditional.
+
+                THE CONTROL ONLY APPEARS WHEN THERE IS SOMETHING TO BRING. A
+                cookout has no community lines, and a permanent "Bringing · 0" tab
+                would be chrome advertising an empty room — the exact speculative
+                UI the density work spent the morning removing. */}
+            {sheet.kind === 'bringing' && foodPlan ? (() => {
+              const rows = (foodPlan.list || []).filter((i) => i && i.broughtByCommunity);
+              const named = rows.filter((r) => String(r.owner || '').trim()).length;
+              const who = (rows[0] && rows[0].broughtByLabel) || 'The community';
+              return (
+                <>
+                  <FoodModes mode="bringing" count={rows.length} setSheet={setSheet} />
+                  <div style={{ padding: '2px 0 14px' }}>
+                    <Eyebrow>Not yours to buy</Eyebrow>
+                    <BigValue>{rows.length === 1 ? 'One dish' : `${rows.length} dishes`}</BigValue>
+                    <GuideLine>
+                      {`${who} is carrying the food. You are buying the table around it.`}
+                    </GuideLine>
+                    <Grounding gap={ASK_RHYTHM.valueToWhy}>
+                      {named === rows.length
+                        ? 'Everyone is spoken for.'
+                        : `${named} of ${rows.length} spoken for · nothing here costs you anything`}
+                    </Grounding>
+                  </div>
+                  <div className="fstat-list">
+                    {rows.map((r) => (
+                      <button key={r.id} className="fstat" onClick={() => setSheet({ kind: 'food' })}>
+                        <span className="fstat-l">{r.short || r.item}</span>
+                        <span className="fstat-v">
+                          {String(r.owner || '').trim() || 'Who’s bringing?'}
+                          <span className="fstat-chev" aria-hidden="true">›</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* A RECORD, NOT A REQUEST. The repast playbook carries a 2026-09-03
+                      three-seat ruling about not telling a family they are doing their
+                      funeral wrong; a screen that looked like it was chasing the church
+                      for dishes would be the same error in another register. Nothing
+                      here sends anything. */}
+                  <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>
+                    This is a note of what you were told. Nothing here is sent to anyone.
+                  </p>
+                </>
+              );
+            })() : null}
             {sheet.kind === 'food' && (foodPlan ? (
               <>
+                <FoodModes mode="shop" count={(foodPlan.list || []).filter((i) => i && i.broughtByCommunity).length} setSheet={setSheet} />
                 {/* PRINCIPLES REDESIGN: summary before detail — the bought count
                     leads (the host's real question: "how much is left to do?"),
                     one grounding line carries the rest of the engine's math. */}
@@ -17499,6 +17586,27 @@ export default function HostShellV2() {
                     <Grounding gap={3}>
                       {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head · sized for {fGuestPhrase} guests
                     </Grounding>
+                    {/* BOTH MONEY TRUTHS, NEITHER PRETENDING TO BE THE OTHER.
+                        Host ruling 2026-09-24 ("do one of each") after the review
+                        board split: three seats held that a precise number for the
+                        WRONG quantity is worse than an imprecise one for the right
+                        quantity. A store subtotal is eight grocery lines; the band
+                        above is the whole spread for 7-9 guests. Shown together,
+                        with the store figure explicitly scoped by its line count,
+                        so neither can be read as the other.
+
+                        `storeSum` counts ONLY the lines the unit map resolved to a
+                        real total — a shelf price the plan's units cannot be
+                        reconciled against contributes nothing. A prototype of this
+                        summed every matched line, including one the same screen
+                        flagged as a wrong product, and printed it beside a caption
+                        claiming one line fewer. */}
+                    {priceCoverage.storeTotal > 0 ? (
+                      <Grounding gap={3}>
+                        <b style={{ fontWeight: 600, color: 'var(--ink)' }}>{fmt(priceCoverage.storeSum)}</b>
+                        {` of it priced at your store · ${priceCoverage.storeTotal} of ${priceCoverage.total} line${priceCoverage.total === 1 ? '' : 's'}`}
+                      </Grounding>
+                    ) : null}
                     {/* SCOPE, NOT SCALE (foodSpan.js): across a multi-day span
                         this plan sizes ONE gathering. Quantities are NOT
                         multiplied by the day count — that would invent a plan

@@ -306,7 +306,12 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
  * the feature honest when coverage is thin, which it usually is.
  */
 export function layerCoverage(lines) {
-  const out = { store: 0, regional: 0, national: 0, regionalItem: 0, storeTotal: 0, total: 0 };
+  // `storeSum` is MONEY; every other field here is a COUNT. It sums only the
+  // store lines the unit map actually resolved to a line total, because that is
+  // the only set a host could add up. A prototype of this screen summed every
+  // matched line instead — including one the same screen flagged as the wrong
+  // product — and printed it beside a caption saying it had priced one fewer.
+  const out = { store: 0, regional: 0, national: 0, regionalItem: 0, storeTotal: 0, storeSum: 0, total: 0 };
   for (const l of Array.isArray(lines) ? lines : []) {
     if (!l || !l.layer) continue;
     out.total += 1;
@@ -314,13 +319,14 @@ export function layerCoverage(lines) {
     // A matched price and a usable TOTAL are different achievements, and the
     // gap between them is most of this feature. Counted apart so the sheet can
     // say "priced 6, totalled 2" instead of implying the six are all spendable.
-    if (l.layer === 'store' && Number(l.total) > 0) out.storeTotal += 1;
+    if (l.layer === 'store' && Number(l.total) > 0) { out.storeTotal += 1; out.storeSum += Number(l.total); }
     // Counted separately because the regional layer answers at two different
     // qualities and the summary must not average them into one claim: 12 of the
     // 491 authored lines in this corpus have their own published BLS series;
     // everything else takes the region's basket mean.
     if (l.layer === 'regional' && l.scope === 'item') out.regionalItem += 1;
   }
+  out.storeSum = Math.round(out.storeSum * 100) / 100;
   return out;
 }
 

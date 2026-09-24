@@ -5806,3 +5806,19 @@ button.vc-pill::after{
   100%{ outline-color:transparent; }
 }
 @media (prefers-reduced-motion: reduce){ .vgo-lands{ animation:none } }
+
+/* ── SHOP / BRINGING mode control (2026-09-24) ──────────────────────────────
+   Tokens only — no new colour enters the system for this. The selected tab
+   uses --steel-soft on --bg rather than a second accent, per the standing
+   "one accent, used once" rule; the review board's type census had already
+   found two near-duplicate blues in this sheet and adding a third would be
+   the same defect with a new name. 44px of hit area on a control that sits at
+   the top of the sheet, where a one-handed thumb reaches worst. */
+.fmodes{ display:flex; gap:2px; padding:2px; margin:0 0 var(--sp-3);
+  background:var(--bg); border:1px solid var(--line); border-radius:10px; }
+.fmode{ flex:1 1 0; font:inherit; font-size:13px; font-weight:400; color:var(--muted);
+  background:none; border:none; border-radius:8px; padding:12px 8px; cursor:pointer;
+  min-height:44px; transition:background .16s var(--ease-out), color .16s var(--ease-out); }
+.fmode:hover{ color:var(--ink); }
+.fmode.on{ background:var(--steel-soft); color:var(--bg); font-weight:600; }
+.fmode:focus-visible{ outline:2px solid var(--steel-soft); outline-offset:2px; }

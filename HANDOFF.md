@@ -6324,6 +6324,43 @@ to spend money.
 
 ## Traps that cost time here
 
+- **`git status -sb` reports the LAST-FETCHED remote, not the remote.** A session
+  opened here 2026-09-24, read `## main...origin/main` with no divergence, and
+  worked for an hour against a tree **273 commits behind**. It "found" and fixed
+  a red test that origin had already fixed differently. FETCH FIRST, then
+  `git rev-list --left-right --count origin/main...HEAD`. HANDOFF agreeing with
+  the local log is not corroboration — it is one stale fact written twice.
+- **An e2e failure is a BUILD MISMATCH until proven otherwise, and the premise
+  test tells you which.** The runner serves the EXISTING `dist/` and never
+  builds. A dist built `--base=/` (for a local preview or the simulator) makes
+  every asset 404, `settled()` times out, and it reads exactly like a product
+  bug — this session mis-read it as "the new feature fails at mobile width" and
+  was one step from filing a phantom viewport defect. Rebuilt correctly: 7/7 at
+  mobile, 21/21 across tablet and landscape. **If the premise test fails too, it
+  is the build. If only the feature assertions fail, it is the feature.**
+  Local e2e build: `REACT_APP_API_BASE_URL=https://e2e-mock.invalid npx vite build`
+  with NO `--base`.
+- **`.env.local` points local builds at PRODUCTION.** It sets
+  `REACT_APP_API_BASE_URL=https://ngw-events-api.onrender.com`, and Vite loads
+  `.env.local` in EVERY mode. So a plain local build talks to the live backend;
+  the browser has no session, the authenticated event routes 401, and the sync
+  layer then overrides a seeded event. CI is safe only because `checks.yml:225`
+  sets the mock host explicitly. The file is gitignored, so this is a
+  per-machine trap that will not reproduce for everyone.
+- **A silent `catch` cannot tell "missing" from "empty", and it hid a shipped
+  data-visibility bug for a day.** `eventPool.js` read a constant it only
+  RE-EXPORTED (`export { X } from …` creates no local binding), threw a
+  ReferenceError into its own `catch`, and returned `[]` — so every event a
+  host had created was invisible in the switcher and on boot. Found only by
+  EXECUTING the module in vitest; jest cannot run hostv2, and a regex would
+  have found the identifier on both lines and called it present.
+- **A structural guard can mandate a broken form.** `oneOwnerForTheEventBucket`
+  asserted the exact re-export syntax that caused the bug above, while its own
+  header stated the intent as OWNERSHIP. A guard that checks a FORM when it
+  means a PROPERTY will eventually forbid the only shape that works. It now
+  checks the property, and the behavioural half lives in
+  `hostv2/test/customEventsAreVisible.test.mjs`.
+
 - **Node 20 here is the INTEL Homebrew prefix** (`/usr/local/opt/node@20`), so
   on Apple Silicon it runs under Rosetta as x86_64 and **every child process
   inherits that**. `python3` then cannot dlopen `pydantic_core`'s arm64 binary,

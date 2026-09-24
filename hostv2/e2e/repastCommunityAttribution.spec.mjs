@@ -101,3 +101,60 @@ test('THE STORE PICKER DOES NOT OFFER A SHOP CALLED "BROUGHT BY THE COMMUNITY"',
   expect(t).not.toMatch(/shopping at brought by/i);
   expect(t).not.toMatch(/brought by the community\s*›/i);
 });
+
+// ─── THE THIRD MODE (host ruling 2026-09-24) ─────────────────────────────────
+//
+// "What I buy" and "what I am waiting on" are two jobs, and the review board's
+// communal-host seat found every proposed direction assumed one host with one
+// cart at one store. For a repast that is structurally wrong: the committee is
+// carrying the meal, and the host needs to see it without it being priced to her.
+const bootCookout = async (page) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
+      id: 'e2e-cookout-modes', name: 'The Cookout', type: 'The Cookout',
+      date: '2027-06-17', venueCity: '21014',
+      guestMode: 'count', guestCount: 20, totalBudget: 1200,
+      budget: [], vendors: [], guests: [],
+    }]));
+    localStorage.setItem('ngw-hostv2-last-event', 'e2e-cookout-modes');
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+  });
+  await page.goto('?elegant=1');
+  await settled(page);
+  await openSectionByName(page, 'The spread & shopping');
+  await settled(page);
+  await page.locator('.sheet').first().waitFor({ state: 'visible', timeout: 8000 });
+};
+
+test('the mode control offers Bringing, counted', async ({ page }) => {
+  await boot(page);
+  const tabs = await page.locator('.fmode').allInnerTexts();
+  expect(tabs.join(' ')).toMatch(/Shop/);
+  expect(tabs.join(' ')).toMatch(/Bringing\s*·\s*4/);
+});
+
+test('the Bringing panel lists the dishes and charges the host nothing', async ({ page }) => {
+  await boot(page);
+  await page.locator('.fmode', { hasText: 'Bringing' }).click();
+  await settled(page);
+  const t = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
+  expect(t).toMatch(/chicken|ham/i);
+  expect(t).toMatch(/cake|pudding/i);
+  expect(t).toMatch(/nothing here costs you anything/i);
+  // A RECORD, NOT A REQUEST — the repast carries its own ruling about not
+  // instructing a grieving family, and a screen that looked like it chased the
+  // church for dishes would be that error in another register.
+  expect(t).toMatch(/nothing here is sent to anyone/i);
+});
+
+test('NO DEAD CHROME: an event with nothing to bring gets no mode control', async ({ page }) => {
+  // A permanent "Bringing · 0" tab would advertise an empty room. This is the
+  // assertion that keeps the control honest as more playbooks gain community
+  // sources — it fails loudly if the control ever renders unconditionally.
+  await bootCookout(page);
+  const t = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
+  expect(t).toMatch(/bought|spread/i);          // premise: the sheet really opened
+  expect(await page.locator('.fmode').count()).toBe(0);
+});

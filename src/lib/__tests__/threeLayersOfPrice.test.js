@@ -262,7 +262,11 @@ describe('the sheet never claims more coverage than it has', () => {
       { layer: 'regional', scope: 'item' }, { layer: 'regional', scope: 'basket' },
       { layer: 'national' },
     ]);
-    expect(cov).toEqual({ store: 2, regional: 2, national: 1, regionalItem: 1, storeTotal: 1, total: 5 });
+    // storeSum added 2026-09-24 for the two-money-truths hero. Deliberately a
+    // deep-equality assertion, and deliberately updated by hand rather than
+    // loosened to toMatchObject: this test exists to make a new field a
+    // decision, and it just did its job.
+    expect(cov).toEqual({ store: 2, regional: 2, national: 1, regionalItem: 1, storeTotal: 1, storeSum: 57.39, total: 5 });
   });
 
   test('A MATCHED PRICE AND A SPENDABLE TOTAL ARE COUNTED APART', () => {
@@ -372,5 +376,60 @@ describe('THE STORE LAYER REFUSES A MATCH IT DOES NOT BELIEVE', () => {
     // shell renders it under the price.
     const r = layerForLine({ purchase: RIBS, storeIndex: idx('Smithfield Extra Tender Pork Back Ribs') });
     expect(r.product).toBe('Smithfield Extra Tender Pork Back Ribs');
+  });
+});
+
+// ─── BOTH MONEY TRUTHS, NEITHER PRETENDING TO BE THE OTHER (2026-09-24) ──────
+//
+// Host ruling after the review board split on which number is the headline:
+// "do one of each." The estimate band answers "what will this cost me" and the
+// store subtotal answers "what did a real shop quote for the lines it could
+// price." They are different quantities and the sheet now carries both.
+//
+// The sum lives HERE rather than in the shell because the shell already had a
+// wrong one: a prototype summed all nine matched lines — including a bagged-ice
+// line the same screen flagged as a wrong product — and printed it as the total
+// while its own caption said "8 of 9 priced". A total is a claim, and the rule
+// it has to keep is that it counts only what the unit map actually resolved.
+describe('the store subtotal counts only what resolved to a real total', () => {
+  const { layerCoverage } = require('../priceLayers');
+
+  test('it sums the store lines that produced a total', () => {
+    const cov = layerCoverage([
+      { layer: 'store', total: 25.95 },
+      { layer: 'store', total: 11.21 },
+      { layer: 'store', total: 4.29 },
+    ]);
+    expect(cov.storeSum).toBeCloseTo(41.45, 2);
+    expect(cov.storeTotal).toBe(3);
+  });
+
+  test('A PRICED LINE WITH NO TOTAL ADDS NOTHING — this is the whole rule', () => {
+    // The collard-greens case: the store sells a bunch, the plan counts pounds,
+    // so the unit map refuses. There IS a shelf price; there is no line total,
+    // and a subtotal that quietly included one would be fabricated.
+    const cov = layerCoverage([
+      { layer: 'store', total: 25.95 },
+      { layer: 'store', total: null },
+      { layer: 'store' },
+    ]);
+    expect(cov.storeSum).toBeCloseTo(25.95, 2);
+    expect(cov.store).toBe(3);
+    expect(cov.storeTotal).toBe(1);
+  });
+
+  test('regional and national lines never enter the store subtotal', () => {
+    const cov = layerCoverage([
+      { layer: 'store', total: 10 },
+      { layer: 'regional', total: 999 },
+      { layer: 'national', total: 999 },
+    ]);
+    expect(cov.storeSum).toBeCloseTo(10, 2);
+  });
+
+  test('no store lines means no subtotal, not zero dressed as a price', () => {
+    expect(layerCoverage([{ layer: 'national' }]).storeSum).toBe(0);
+    expect(layerCoverage([]).storeSum).toBe(0);
+    expect(layerCoverage(null).storeSum).toBe(0);
   });
 });
