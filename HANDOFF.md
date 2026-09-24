@@ -189,7 +189,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `17c3d285` |
+| Branch / HEAD | `main` @ `708f4b7f` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
@@ -1070,6 +1070,58 @@ comment acted on. Now weekly, in this repo, warning-only.
   can reach one. The info log and the `recording` flag are what will make the
   first real pull provable — recorded here so the next session verifies it
   rather than assuming it.
+
+### Later the same day — the network opened, and three things were found live
+
+The session's env was widened to full outbound access partway through. That
+turned three claims into measurements, and two of them were defects.
+
+**The asyncpg pool was cached per PROCESS, not per event loop.** Found by a demo
+that lied: three requests to one route through `TestClient`, a row count that
+stayed flat, reported as the idempotent id working. Nothing had been written
+after the first call — every later write failed with "Event loop is closed",
+silently, because the observation writer swallows write errors on purpose so a
+governance write cannot break a host's page. I first called it a harness
+artifact and left it. That was true of the impact (uvicorn is one loop) and
+wrong as a reason: six routers share that pool. `get_pool()` now keys on the
+running loop. Proved against the thing that lied — the same three-request
+scenario now logs three writes, zero skips, one row.
+
+**A BLS quota refusal was being retried every five minutes, which kept it
+refused.** A live call returned HTTP 200 with BLS's own body: *"the daily
+threshold for total number of requests allocated to the user with registration
+key  has been reached"* — note the empty space where a key belongs. Measured:
+20 series per query (under the 25 limit), a 6h success TTL allowing 16
+queries/day, and a 5-minute failure TTL allowing ~1,150 — against a documented
+unregistered budget of ~10. The failure cache was too short for the daily
+allowance to ever reset. A refusal naming the daily threshold now backs off to
+the next UTC midnight; everything else keeps the short retry. **The real fix is
+a free `BLS_API_KEY` on the backend** (`data.bls.gov/registrationEngine/`);
+this only stops the self-inflicted half.
+
+The fallback itself behaved perfectly throughout — factor 1.0, month null, an
+honest note, no invented price. That is the first LIVE proof of a degradation
+path previously only proven by tests.
+
+**And the Kroger field question could not be answered from here.**
+developer.kroger.com renders client-side (`soldBy`, which we consume, appears
+zero times in 790KB of markup); the Gatsby chunks and page-data path do not
+carry it; and headless Chromium does not trust the egress proxy's CA, whose only
+fix is weakening TLS verification. `backend/scripts/kroger_probe.py` answers it
+from a real response instead, which is the better source anyway — one call,
+read-only, printing every field split into what `kroger.py` reads and what it
+ignores. Run it where the credentials are.
+
+**Worth carrying forward.**
+- **A pipe to `tail` hides the exit status, and `&&` after it is a lie.** This
+  session pushed once on a red `verify:push` because `npm run verify:push |
+  tail -4 && git push` continued on tail's success. The repo had already
+  recorded this trap; I re-ran it anyway. Run the gate on its own line.
+- **"Harness artifact" is a description, not a verdict.** The pool bug was
+  correctly diagnosed and wrongly dismissed in the same breath.
+- **www.bls.gov returns 403 to automated retrieval.** That is their stated bot
+  policy; it was not routed around, so the 10/day and 500/day figures remain
+  this repo's own claim rather than something re-verified.
 
 ## FIXED 2026-09-24 (thirty-third entry) — priority #1 closed, an engineering wing convened, and the cost question measured
 
