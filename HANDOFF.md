@@ -189,13 +189,13 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `708f4b7f` |
+| Branch / HEAD | `main` @ `71b5ff0d` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
 | Jest | **7,653 passed**, 1 skipped, **0 failed**, **544 suites** (re-measured 2026-09-24 after the thirty-fourth entry; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
-| Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
+| Backend pytest | **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
 | e2e (Playwright) | **MEASURED 2026-09-24 on Checks run 769 (`6408910`): `e2e MERGED TOTAL — 1809 passed · 214 skipped · 0 failed · 0 flaky`.** The suite grew from 1,009 to 1,809 in six days, which is what spent the timeout margin: on run 767 two shards ran 26m18s and 29m against `timeout-minutes: 30`, and the second was KILLED BY THE CLOCK with no test having failed — the merge job turned that into a red run. **Now THREE shards**, measured wall time on the test step: shard 1 **18m04s**, shard 2 **16m59s**, shard 3 **20m37s**; worst job including setup ~21m47s, so ~8 min of margin (27%). My estimate before the change was 17-18 min and shard 3 came in above it — recorded. The denominator now derives from the matrix (`strategy.job-total`), and 1,809 > 1,000 is the proof that derivation did not silently drop a shard's worth of tests. Historic: full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008. **SHARDED 2026-09-18 (`dffc86e` + `f1871a9`)** — two runners, `--shard=k/2`, merged with `merge-reports`. **CONFIRMED on run 659 (`f1871a9`), which prints the combined total itself:** `e2e MERGED TOTAL — 1009 passed · 207 skipped · 0 failed · 0 flaky`. Shard 1 **12m33s**, shard 2 **14m50s**, merge 26s, whole workflow **16m37s** against 29m20s unsharded (run 658, the first sharded run, measured 12m22s / 14m26s / 16m20s). The e2e step went **27.0 -> ~14.5 min, a 46% cut**. `workers: 2` is UNCHANGED — each shard runs two workers on its own machine, so the 2026-08-06 flake fix is untouched |
@@ -205,6 +205,104 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## START HERE IF YOU ARE A LOCAL SESSION (written 2026-09-24)
+
+Three things are finished in code and unproven on real infrastructure, because a
+cloud container holds no credentials. Each one below says what it needs, where it
+must run, and what "it worked" looks like — so none has to be re-diagnosed.
+
+**Nothing here is blocked on more code.** The pipelines are built, tested, and
+demoed against a local postgres. What is missing is one run against the real
+services.
+
+### 1. Prove the price-observation write on the deployed backend
+
+Built 2026-09-24, demoed against a local postgres
+(`backend/tests/_demo_price_observation_e2e.py`), never executed against Supabase.
+
+```
+GET /api/shopping/kroger/status  ->  {"configured": true, "recording": true}
+```
+
+`configured` is Kroger keys; `recording` is a database. Both must be true or
+nothing is kept. Then have a host price a real list at a real store and look for
+this in the backend log:
+
+```
+recorded N price observation(s): obs-price-<type>-<row>-<store>-<YYYY-MM>
+```
+
+That line is the whole proof, and the only success signal — the endpoint's
+response is deliberately unchanged, because a governance write must never be
+visible to a host. If it never appears, check `recording` first.
+
+### 2. Answer the Kroger field question
+
+`backend/scripts/kroger_probe.py` — read-only, one API call, no writes.
+
+```
+python3 backend/scripts/kroger_probe.py --zip <zip> --stores       # find a locationId
+python3 backend/scripts/kroger_probe.py --term ice --location <id>
+```
+
+Prints every field Kroger returns, split into what `kroger.py` reads and what it
+ignores. **A `--location` is required or there are no price fields at all.** This
+was not answerable from the cloud container: developer.kroger.com renders
+client-side, and headless Chromium cannot be given the egress proxy's CA without
+weakening TLS verification.
+
+### 3. Get a BLS key — free, and the quota is currently exhausted
+
+Measured live 2026-09-24: BLS refused with *"the daily threshold ... for the user
+with registration key  has been reached"* — note the empty space, that is the
+unregistered pool. Every regional food factor is falling back to national today.
+
+Register at **`https://data.bls.gov/registrationEngine/`**, then set `BLS_API_KEY`
+on the **backend only** — never in a CRA or hostv2 build, which ship to browsers.
+
+Verify by reading `month` from the factor response:
+
+```
+month: null       -> still falling back (no key, or quota spent)
+month: "2026-08"  -> live BLS data
+```
+
+The quota backoff shipped this day stops the self-inflicted half (a 5-minute
+retry against a ~10/day budget kept the refusal alive). It does not buy quota.
+
+### The one thing a local session can do that nothing else can
+
+Drive **hostv2 against a running backend** and watch the loop as a host meets it:
+store picker -> shelf prices on the rows -> an observation recorded.
+
+```
+cd backend && uvicorn app.main:app --reload --port 8000
+
+cd hostv2 && REACT_APP_API_BASE_URL=http://127.0.0.1:8000 npx vite build --mode development
+npx playwright test e2e/threeLayersOfPrice.spec.mjs
+```
+
+The inline env var reaching the bundle was VERIFIED, not assumed: `loadEnv` in
+`hostv2/vite.config` reads `.env*` from the repo root, so whether a shell
+variable survives was an open question — it does (built 2026-09-24 and found
+baked into `dist/assets/`).
+
+That spec detects which bundle it is on and asserts what is true of THAT build.
+**CI only ever runs the unconfigured branch** — proving the app promises nothing
+it cannot reach. The configured path was last driven by hand on 2026-09-23, and
+it is the half finding #1 depends on.
+
+### Traps this session hit, so you do not
+
+- **`npm run verify:push | tail` hides the exit status, and `&&` after it lies.**
+  A push went out on a red gate this way. Run the gate on its own line.
+- **`TestClient` cannot demonstrate anything about persistence** unless the pool
+  is per-loop (fixed 2026-09-24, `test_pool_is_per_event_loop.py`). A flat row
+  count read exactly like idempotency working while nothing was written.
+- **www.bls.gov returns 403 to automated retrieval.** Their bot policy — do not
+  route around it. The published-limit figures in `food_prices.py` remain this
+  repo's own claim, not something re-verified.
 
 ## FIXED 2026-09-24 — a pipeline that could sharpen but never start, and two "260-row backlogs" that were not backlogs
 
