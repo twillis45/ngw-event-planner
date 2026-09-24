@@ -879,6 +879,68 @@ export function choiceShown(event, whenChoice) {
   return answers.some((a) => want.includes(a));
 }
 
+// ── standsDownWhen — the OTHER half of the same condition ───────────────────
+//
+// `standsDownWhen {id, in}` retires a decision (or, inside `optionGates`, one
+// option) once another decision has been ANSWERED one of those ways. Hire a
+// caterer and both "plan the menu" and "run the potluck signup" are moot.
+//
+// WHY THIS IS NOT `choiceShown` INVERTED, which is the mistake waiting here.
+// `choiceShown` resolves through `choicePickFor`, which falls back to the
+// playbook's AUTHORED DEFAULT when the host has answered nothing. That is right
+// for "show only while" — a default is the app's working assumption and rows
+// should compose against it. It is wrong for stand-down: retiring a real ask on
+// an assumption HIDES WORK the host never agreed to skip. So this reads the
+// answered pick and nothing else, and an unanswered decision stands nothing
+// down. The asymmetry is the rule, not an oversight.
+//
+// ── WHY IT LIVES HERE AND NOT IN TWO PLACES ─────────────────────────────────
+//
+// Until 2026-09-24 this predicate was written out BY HAND, twice — once in
+// `playbookDecisionBoard` for whole decisions and once in
+// `playbookDecisionOptions` for single options — while `whenChoice`, the half
+// it pairs with, has had exactly one accessor (`choiceShown`) read from ~14
+// call sites. Two copies of one rule is two places to drift, and they already
+// had: both copies compared a SCALAR answer, so neither handled the array a
+// `multi` decision stores, and neither supported `{not:[...]}` — two shapes
+// `choiceShown` grew in 2026-09-13/18 and its twin never did.
+//
+// The array read is added here, and it is provably byte-identical today: all 9
+// authored `standsDownWhen` in the corpus target `food_style`, `venue`,
+// `cookmethod` or `make_vs_order`, and not one of those is a `multi` decision.
+// Same trap `choiceShown` closed before it was sprung, closed the same way.
+export function standsDown(event, cond) {
+  if (!cond || !cond.id) return false;
+  // ANSWERED ONLY — deliberately not `choicePickFor`. See above.
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : null;
+  const answered = picks ? picks[cond.id] : null;
+  if (answered == null) return false;
+  const answers = Array.isArray(answered) ? answered : [answered];
+  const want = Array.isArray(cond.in) ? cond.in : [];
+  return answers.some((a) => want.includes(a));
+}
+
+/**
+ * Is this decision relevant to this event at all?
+ *
+ * The three whole-decision dialects, composed once: `whenChoice` (show only
+ * while), `standsDownWhen` (retire once answered), `whenKids` (a childcare ask
+ * has no business on a board with no kids coming). `optionGates`, the
+ * fourth dialect, prunes a single OPTION rather than the decision and is applied
+ * by `playbookDecisionOptions`.
+ *
+ * `DECISION_SCHEMA_SPEC.md` calls this whole family `relevantWhen` and lists it
+ * as unbuilt. It is built — it just answers to four names, which is why this
+ * function exists to say so in one place.
+ */
+export function decisionRelevant(event, decision) {
+  if (!decision) return false;
+  if (decision.whenChoice && !choiceShown(event, decision.whenChoice)) return false;
+  if (standsDown(event, decision.standsDownWhen)) return false;
+  if (decision.whenKids && !eventHasKids(event)) return false;
+  return true;
+}
+
 // ── TRAVEL MODE — how guests actually arrive ────────────────────────────────
 // Host-answered at intake ('drive' | 'fly' | 'mixed'), never inferred from
 // distance: the app holds no city coordinates, so any mileage would be invented.
@@ -3375,25 +3437,15 @@ export function playbookDecisionBoard(event, asOf, profile) {
   for (const d of decisions) {
     if (!d || !d.label) continue;
     // ── Coherence gate (audit 2026-07-27): the board finally speaks the same
-    // gating vocabulary tasks and purchases always have. Two forms:
-    //   whenChoice {id,in}      — show only while the referenced pick (answered
-    //                             OR authored default, same as choiceShown
-    //                             everywhere else) is in `in`.
-    //   standsDownWhen {id,in}  — the inverse blocks[] never had: RETIRE this
-    //                             decision once the referenced decision is
-    //                             ANSWERED with a pick in `in`. Answered only —
-    //                             a default is an assumption, and suppressing a
-    //                             real ask on an assumption would hide work.
+    // gating vocabulary tasks and purchases always have. Its three whole-decision
+    // forms — whenChoice (show only while), standsDownWhen (retire once ANSWERED)
+    // and whenKids — now compose in ONE accessor, `decisionRelevant`, rather than
+    // three lines written out here (2026-09-24). The stand-down half used to be
+    // hand-inlined at this spot AND again inside playbookDecisionOptions, which
+    // is how both copies came to lag `choiceShown` on multi answers.
     // Before this gate, settling "caterer" left potluck-coordination, menus,
     // and pot-sizing decisions live on the board (findings F1–F6).
-    if (d.whenChoice && !choiceShown(event, d.whenChoice)) continue;
-    if (d.standsDownWhen && d.standsDownWhen.id) {
-      const answered = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices[d.standsDownWhen.id] : null;
-      if (answered != null && (Array.isArray(d.standsDownWhen.in) ? d.standsDownWhen.in : []).includes(answered)) continue;
-    }
-    // whenKids on a DECISION (F7): a childcare ask has no business on a board
-    // with no kids coming — same eventHasKids truth tasks already gate on.
-    if (d.whenKids && !eventHasKids(event)) continue;
+    if (!decisionRelevant(event, d)) continue;
     const offset = buyOffsetDays(d.when); // 'T-21d' → -21 ; null when no `when`
     const daysOut = (dte !== null && offset !== null) ? dte + offset : null;
     const dueDate = decisionDueDate(dateSet ? event.date : null, offset);
@@ -4091,10 +4143,9 @@ export function playbookDecisionOptions(event, id) {
     const g = gates && gates[o];
     if (!g) return true;
     if (g.whenChoice && !choiceShown(event, g.whenChoice)) return false;
-    if (g.standsDownWhen && g.standsDownWhen.id) {
-      const a = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices[g.standsDownWhen.id] : null;
-      if (a != null && (Array.isArray(g.standsDownWhen.in) ? g.standsDownWhen.in : []).includes(a)) return false;
-    }
+    // The SAME predicate the board applies to a whole decision, applied here to
+    // one option. It was written out by hand in both places until 2026-09-24.
+    if (standsDown(event, g.standsDownWhen)) return false;
     if (g.minGuests) {
       const n = Number(event.guestCount) || Number(event.guestEstimate) || 0;
       if (n && n < g.minGuests) return false;
