@@ -34,7 +34,28 @@ import { saveCustomEvents } from '@app/lib/customEventStore';
 export { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './inviteShared.js';
 // The multi-event store: EVERY event created in this shell, as an array.
 // Each stores itself whole (no LS_PATCH layer — that's for sample/app bases).
-export const LS_CUSTOMS = 'ngw-hostv2-custom-events';
+//
+// ── RE-EXPORTED, NOT RE-DECLARED (2026-09-24) ──────────────────────────────
+//
+// This line used to read `export const LS_CUSTOMS = 'ngw-hostv2-custom-events'`
+// — a second declaration of a key `@app/lib/customEventStore` already owns and
+// already writes. The comment four lines above states this module's own rule
+// for exactly this situation: re-export "so every existing host-shell import
+// keeps working and there is still exactly ONE definition of each." LS_CUSTOMS
+// was the one constant that escaped it.
+//
+// IT IS NOT A HYPOTHETICAL. `src/admin/AdminConsole.jsx` carries the record of
+// the same key going wrong once already: a 2026-09-02 review board found the
+// operator console reading only `ngw-events`, the frozen shell's key, while the
+// shipping app wrote this one — so every panel labelled "this browser's book"
+// rendered EMPTY. Two owners for one bucket name is how that happens, and the
+// bucket here holds every event a host has created.
+//
+// Free, and checked rather than assumed: customEventStore has ZERO imports, and
+// rollup's module graph shows it is already inside the host bundle, so this
+// costs nothing. Consumers (HostShellV2, LodgingCockpit) import LS_CUSTOMS from
+// THIS module and are untouched by the re-export.
+export { LS_CUSTOMS } from '@app/lib/customEventStore';
 // Last event the host was on — creation and switching write it, boot reads it,
 // so a reload lands back on the event they were working, not the first sample.
 export const LS_LAST_EVENT = 'ngw-hostv2-last-event';
