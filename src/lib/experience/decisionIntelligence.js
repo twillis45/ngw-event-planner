@@ -5,18 +5,25 @@
 
 import { ROLES, PHASES } from './experienceContext';
 import { taskLeadDays } from '../taskLead';
+import { normalizeBlocks, BLOCK } from '../blockVocabulary';
 
 // Blocks → roles that care about them
+// Keyed on the TOKENS, not on string literals. These keys and the corpus's
+// `blocks` values are one vocabulary, and holding them as bare strings in two
+// files is how `vendor` here never met `vendors` there.
 const BLOCK_ROLE_MAP = {
-  food:       ['host', 'caterer', 'coordinator', 'planner'],
-  logistics:  ['coordinator', 'venue', 'operations', 'planner'],
-  vendor:     ['planner', 'coordinator', 'corporate'],
-  budget:     ['planner', 'corporate', 'host'],
-  compliance: ['corporate', 'planner'],
-  staffing:   ['operations', 'coordinator', 'planner'],
-  guests:     ['host', 'planner', 'coordinator', 'family'],
-  timeline:   ['coordinator', 'photographer', 'operations', 'planner'],
+  [BLOCK.FOOD]:       ['host', 'caterer', 'coordinator', 'planner'],
+  [BLOCK.LOGISTICS]:  ['coordinator', 'venue', 'operations', 'planner'],
+  [BLOCK.VENDOR]:     ['planner', 'coordinator', 'corporate'],
+  [BLOCK.BUDGET]:     ['planner', 'corporate', 'host'],
+  [BLOCK.COMPLIANCE]: ['corporate', 'planner'],
+  [BLOCK.STAFFING]:   ['operations', 'coordinator', 'planner'],
+  [BLOCK.GUESTS]:     ['host', 'planner', 'coordinator', 'family'],
+  [BLOCK.TIMELINE]:   ['coordinator', 'photographer', 'operations', 'planner'],
 };
+
+/** Exported so a coverage check reads the real keys instead of a copy of them. */
+export const BLOCK_ROLE_KEYS = Object.freeze(Object.keys(BLOCK_ROLE_MAP));
 
 // Parse a decision's authored timing → positive days-before-event ('T-7d' → 7,
 // 'T0' → 0, unknown → null).
@@ -69,7 +76,12 @@ function priorityBoost(decision) {
 // Score a single decision for the given role/phase/situations
 export function scoreDecision(decision, role, phase, situations) {
   let score = 0;
-  const blocks = decision.blocks || [];
+  // Normalized, because the lookups below are EXACT and the corpus is not.
+  // `vendors` (28 uses, the second most common target) never matched the
+  // `vendor` key in BLOCK_ROLE_MAP or in any role's decisionBlocks — measured
+  // 2026-09-24, and it had been silent since both were written. See
+  // src/lib/blockVocabulary.js.
+  const blocks = normalizeBlocks(decision.blocks);
   const daysOut = parseDaysOut(decision.when);
 
   // Phase timing match (strongest signal)
@@ -88,12 +100,12 @@ export function scoreDecision(decision, role, phase, situations) {
 
   // Situation urgency — conflicts push decisions to the top
   for (const sit of (situations || [])) {
-    if (sit === 'budget-exceeded' && blocks.includes('budget')) score += 4;
-    if (sit === 'vendor-late' && (blocks.includes('logistics') || blocks.includes('vendor'))) score += 4;
-    if (sit === 'attendance-spike' && blocks.includes('food')) score += 3;
-    if (sit === 'food-delay' && blocks.includes('food')) score += 4;
-    if (sit === 'weather-alert' && blocks.includes('logistics')) score += 3;
-    if (sit === 'permit-issue' && blocks.includes('compliance')) score += 4;
+    if (sit === 'budget-exceeded' && blocks.includes(BLOCK.BUDGET)) score += 4;
+    if (sit === 'vendor-late' && (blocks.includes(BLOCK.LOGISTICS) || blocks.includes(BLOCK.VENDOR))) score += 4;
+    if (sit === 'attendance-spike' && blocks.includes(BLOCK.FOOD)) score += 3;
+    if (sit === 'food-delay' && blocks.includes(BLOCK.FOOD)) score += 4;
+    if (sit === 'weather-alert' && blocks.includes(BLOCK.LOGISTICS)) score += 3;
+    if (sit === 'permit-issue' && blocks.includes(BLOCK.COMPLIANCE)) score += 4;
   }
 
   // Priority tier — additive, bounded tie-breaker. Applied ONLY to already-relevant

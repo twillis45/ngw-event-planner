@@ -1,3 +1,5 @@
+// One vocabulary for what a decision blocks — see blockVocabulary.js.
+import { BLOCK } from '../blockVocabulary';
 // ─── Experience Context (XIP-1 Bundle A) ──────────────────────────────────────
 // Defines the projection inputs: Role, Phase, Situation, Workspace.
 // Pure data + factories. No knowledge ownership. No side effects.
@@ -11,7 +13,7 @@ export const ROLES = {
     primaryConcern: 'guests & food',
     decisionStyle: 'practical',
     workspaceOrder: ['food', 'shopping', 'guests', 'tasks', 'contingencies', 'timeline'],
-    decisionBlocks: ['food', 'guests', 'logistics'],
+    decisionBlocks: [BLOCK.FOOD, BLOCK.GUESTS, BLOCK.LOGISTICS],
   },
   planner: {
     label: 'Professional Planner',
@@ -27,7 +29,7 @@ export const ROLES = {
     primaryConcern: 'execution & vendors',
     decisionStyle: 'tactical',
     workspaceOrder: ['timeline', 'vendors', 'tasks', 'contingencies', 'guests', 'staffing'],
-    decisionBlocks: ['logistics', 'staffing', 'vendor', 'timeline'],
+    decisionBlocks: [BLOCK.LOGISTICS, BLOCK.STAFFING, BLOCK.VENDOR, BLOCK.TIMELINE],
   },
   corporate: {
     label: 'Corporate Planner',
@@ -35,7 +37,7 @@ export const ROLES = {
     primaryConcern: 'compliance & approvals',
     decisionStyle: 'process',
     workspaceOrder: ['compliance', 'approvals', 'budget', 'vendors', 'documents', 'timeline'],
-    decisionBlocks: ['compliance', 'budget', 'logistics'],
+    decisionBlocks: [BLOCK.COMPLIANCE, BLOCK.BUDGET, BLOCK.LOGISTICS],
   },
   venue: {
     label: 'Venue Manager',
@@ -43,7 +45,7 @@ export const ROLES = {
     primaryConcern: 'capacity & logistics',
     decisionStyle: 'operational',
     workspaceOrder: ['capacity', 'setup', 'timeline', 'logistics', 'cleanup', 'staffing'],
-    decisionBlocks: ['logistics', 'staffing'],
+    decisionBlocks: [BLOCK.LOGISTICS, BLOCK.STAFFING],
   },
   photographer: {
     label: 'Photographer',
@@ -51,7 +53,7 @@ export const ROLES = {
     primaryConcern: 'timeline & conditions',
     decisionStyle: 'moment-driven',
     workspaceOrder: ['timeline', 'logistics', 'contingencies'],
-    decisionBlocks: ['timeline', 'logistics'],
+    decisionBlocks: [BLOCK.TIMELINE, BLOCK.LOGISTICS],
   },
   operations: {
     label: 'Operations Manager',

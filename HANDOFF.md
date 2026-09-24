@@ -157,11 +157,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `b26b5760` |
+| Branch / HEAD | `main` @ `7aab29da` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,545 passed**, 1 skipped, **0 failed**, **531 suites** (re-measured 2026-09-24 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,560 passed**, 1 skipped, **0 failed**, **532 suites** (re-measured 2026-09-24 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -365,6 +365,55 @@ relative dates (`this weekend`, `a week from friday`, `end of june`, `first
 weekend in june`), `weekend trip` → overnight, and `half past six` with no
 meridiem — which is genuinely ambiguous between 6:30 AM and PM, so refusing it is
 the right answer rather than a gap.
+
+### FIXED 2026-09-24 — `vendors` never met `vendor`, and nothing said so
+
+Step 1 of the five-fields plan: normalize the `blocks` vocabulary before
+anything derives from it.
+
+**The live defect.** `vendors` is the corpus's SECOND most-used block target —
+**28 uses**. Every consumer that looks it up by exact key spells it `vendor`:
+`BLOCK_ROLE_MAP` in `decisionIntelligence.js`, and the coordinator role's own
+`decisionBlocks` in `experienceContext.js`. **They have never matched.** Those 28
+vendor decisions scored zero for role relevance, for every role, on a lookup that
+reads correctly in both files. Corpus-wide, only **91 of 471 block uses (19%)**
+reached a role key at all.
+
+**Fixed by one accessor, not by editing 28 authored files.** Re-spelling the
+corpus fixes today and nothing else — the next author writes the plural again,
+because the plural is the natural word. `src/lib/blockVocabulary.js` owns it.
+
+**And the vocabulary is TOKENS now** (`BLOCK.VENDOR`, `BLOCK.GUESTS`, …),
+imported by both consumers. Before this the same vocabulary existed as bare
+string literals in three places — the role map's keys, every role's
+`decisionBlocks` array, and the six situation checks — which is exactly how
+`vendor` here never met `vendors` there. A typo is a build error now.
+
+**The fold direction follows a stated rule**, because without one it is a coin
+flip and the first pass got `guests` backwards:
+
+1. If a CONSUMER keys on a spelling, fold to that — the corpus can be re-spelled,
+   a lookup table cannot fold.
+2. Otherwise fold to the corpus's own majority spelling — never to a third string
+   that appears nowhere, which would invent a target.
+
+**Measured result:** reach 19% → **26%**, exactly **+31 rows** (28 `vendors`, 2
+`headcount`, 1 `guestcount`). Distinct targets 147 → 140.
+
+**It never guesses at a plural it was not told about.** A blind `/s$/` strip
+would invent `logistic` and `game` and would break `logistics`, which is both a
+corpus target and a consumer key.
+
+**RED-PROOFING CAUGHT THIS FILE'S OWN GUARD BEING VACUOUS.** Reverting
+`normalizeBlocks(decision.blocks)` back to `decision.blocks || []` inside
+`scoreDecision` left all eleven tests GREEN — they proved the vocabulary module
+correct and never that anything called it. Three tests were added that drive the
+real scorer, and the revert now turns two of them red.
+
+**Still unreached, recorded not hidden: 74%.** That is not a spelling problem —
+`rentals`(24), `menu`(16), `decor`(8) and 100+ others have no role entry at all,
+and adding one is a judgement about which roles care. Authoring, not
+normalization. The 26% is pinned so it moves visibly.
 
 ### Where the spec's unauthored decision fields actually live
 
