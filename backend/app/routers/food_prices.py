@@ -90,6 +90,42 @@ _CACHE: dict = {}
 _SUCCESS_TTL = 6 * 3600     # BLS publishes monthly; 6h keeps it fresh cheaply
 _FAIL_TTL = 300             # an outage must not cost every host 20 seconds
 
+# ── A QUOTA REFUSAL IS NOT AN OUTAGE (2026-09-24) ───────────────────────────
+#
+# Measured live this day, from a machine with no BLS_API_KEY:
+#
+#   REQUEST_NOT_PROCESSED: "the daily threshold for total number of requests
+#   allocated to the user with registration key  has been reached"
+#
+# Every failure was cached for 5 minutes, which is right for an outage and
+# actively harmful here. Unregistered BLS allows ~10 queries a day. The 6h
+# success TTL already permits 4 regions x 4 = 16 fetches a day, over that limit
+# on a busy day — and once the quota IS spent, a 5-minute retry means up to 288
+# attempts per region per day, ~1,150 in total against a budget of 10. The
+# failure cache was too short to let the daily quota ever reset: the outage
+# sustained itself.
+#
+# So a refusal that names the daily threshold backs off until the next UTC day,
+# when the quota actually resets. Every other failure keeps the 5-minute retry,
+# because a real outage does end and nobody wants a stale "unavailable" for the
+# rest of the month.
+#
+# THE REAL FIX IS A KEY. A free BLS_API_KEY raises the limit to 500 queries a
+# day, which makes the 16/day worst case a non-issue. This backoff stops the
+# self-sustaining failure while there is no key; it does not buy more quota.
+_QUOTA_RE = re.compile(r"daily threshold", re.I)
+
+
+def _fail_ttl_for(err: Exception, now: float) -> int:
+    """Seconds to cache a failure: to the next UTC midnight for a quota refusal."""
+    if not _QUOTA_RE.search(str(err)):
+        return _FAIL_TTL
+    tomorrow = (datetime.datetime.fromtimestamp(now, datetime.timezone.utc)
+                + datetime.timedelta(days=1)).replace(
+                    hour=0, minute=0, second=0, microsecond=0)
+    # +60s of slack so a clock a minute fast does not retry into the same day.
+    return max(_FAIL_TTL, int(tomorrow.timestamp() - now) + 60)
+
 _BLS_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
 
 
@@ -220,6 +256,9 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
                     "month": None, "source": src,
                     "note": "Current prices unavailable right now — showing national estimate."}
         # CACHED, on a short leash. Without this every request during an outage
-        # pays the full 20s timeout to learn the same thing.
-        _CACHE[(reg, month_key)] = (time.time() + _FAIL_TTL, fallback)
+        # pays the full 20s timeout to learn the same thing. A daily-quota
+        # refusal gets a LONG leash instead — see `_fail_ttl_for`: retrying that
+        # every 5 minutes cannot succeed and keeps the quota pinned at zero.
+        now = time.time()
+        _CACHE[(reg, month_key)] = (now + _fail_ttl_for(e, now), fallback)
         return fallback
