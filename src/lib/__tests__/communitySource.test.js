@@ -2,7 +2,7 @@
 // community". These pin the predicate that stops it — and, more importantly,
 // pin it against the REAL authored corpus rather than against invented strings,
 // so a playbook adding a new community phrasing fails here instead of shipping.
-import { isCommunitySource, firstStoreIn } from '../communitySource';
+import { isCommunitySource, firstStoreIn, storesIn } from '../communitySource';
 import { ALL_PLAYBOOKS } from '../playbooks';
 
 describe('a person is not a shop', () => {
@@ -71,8 +71,71 @@ describe('a person is not a shop', () => {
         if (isCommunitySource(p.where[0])) caught.push(`${pb.type}:${p.id}`);
       }
     }
-    // Measured 2026-09-24: exactly the four repast dishes, nothing else.
-    expect(caught).toHaveLength(4);
+    // Measured 2026-09-24: exactly the repast dishes, nothing else. The count
+    // was 4 until the same day, when those four bundled lines were split one
+    // dish per line so the Bringing panel could name a different person against
+    // the greens, the mac and the potato salad. Eleven is the same four dishes'
+    // worth of food; no playbook and no `where` value changed.
+    expect(caught).toHaveLength(11);
     expect(caught.every((s) => /repast/i.test(s))).toBe(true);
+  });
+});
+
+// ─── THE META LINE WAS THE SECOND PLACE A PERSON WAS LISTED AS A SHOP ────────
+//
+// `firstStoreIn` fixed the store PICKER. The row meta underneath it still
+// printed `it.where` raw, so the same repast line rendered
+//
+//   23 lbs · $3–$7/lb · Brought by the community,Grocery,Caterer,Restaurant
+//
+// Found by reading a failing e2e's output rather than by looking for it — the
+// identical defect one element over, which is this repo's recurring shape: a
+// fact owned by an accessor and re-derived by the consumer beside it.
+describe('storesIn keeps the shops and drops the people', () => {
+  test('the authored repast shape loses only the community entry', () => {
+    expect(storesIn(['Brought by the community', 'Grocery', 'Caterer', 'Restaurant']))
+      .toEqual(['Grocery', 'Caterer', 'Restaurant']);
+  });
+
+  test('ORDER IS PRESERVED — it is a list a host reads, not a set', () => {
+    expect(storesIn(['Grocery', 'Brought by the community', 'Bakery']))
+      .toEqual(['Grocery', 'Bakery']);
+  });
+
+  test('a list of only people returns [], so the caller drops the segment', () => {
+    // The honest meta for a line nobody is buying: no shops named at all. The
+    // tag beside it already says who is carrying it.
+    expect(storesIn(['Brought by the community'])).toEqual([]);
+    expect(storesIn(['The repast committee', 'Church'])).toEqual([]);
+  });
+
+  test('an ordinary list is returned untouched — the common case must not move', () => {
+    expect(storesIn(['Grocery', 'Costco'])).toEqual(['Grocery', 'Costco']);
+  });
+
+  test('a bare string is accepted, because `where` is not always an array', () => {
+    expect(storesIn('Grocery')).toEqual(['Grocery']);
+    expect(storesIn('Brought by the community')).toEqual([]);
+  });
+
+  test('junk in, empty out — never a crash and never a fabricated shop', () => {
+    expect(storesIn(null)).toEqual([]);
+    expect(storesIn(undefined)).toEqual([]);
+    expect(storesIn([])).toEqual([]);
+    expect(storesIn([null, '', '   ', 'Grocery'])).toEqual(['Grocery']);
+  });
+
+  test('it agrees with firstStoreIn, which is the accessor it generalizes', () => {
+    // If these two ever disagree the module has two opinions about what a shop
+    // is, which is the thing it was written to prevent.
+    const cases = [
+      ['Brought by the community', 'Grocery', 'Caterer'],
+      ['Grocery', 'Costco'],
+      ['The repast committee'],
+      [],
+    ];
+    for (const w of cases) {
+      expect(storesIn(w)[0] || null).toBe(firstStoreIn(w));
+    }
   });
 });

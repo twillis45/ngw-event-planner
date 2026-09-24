@@ -87,7 +87,12 @@ describe('THE DEFECT ITSELF, re-proved against the live corpus', () => {
     dates.sort();
     const older = dates.filter((d) => d < constantIso).length;
     expect(`${dates.length} dated rows, earliest ${dates[0]}, older than ${PRICE_TABLE_META.asOf}: ${older}`)
-      .toBe(`533 dated rows, earliest 2026-08-14, older than 2026-01: 0`);
+      // 533 until 2026-09-24, when repast's four bundled food lines became
+      // eleven. The seven new rows inherit their parent's costProvenance
+      // verbatim, `lastVerified` included, so the row COUNT moved and the two
+      // facts this test actually guards — the earliest date, and that nothing
+      // predates the old constant — did not.
+      .toBe(`540 dated rows, earliest 2026-08-14, older than 2026-01: 0`);
   });
 
   test('EVERY playbook now derives a stamp its own rows can stand behind', () => {

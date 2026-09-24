@@ -29,8 +29,30 @@ import { ALL_PLAYBOOKS } from '../playbooks/index';
 import { RESEARCH_POLICIES } from '../knowledge/researchPolicies';
 
 // Frozen 2026-08-07. LOWER THESE, NEVER RAISE THEM.
-const BASELINE_UNCORROBORATED = 36;
-const BASELINE_UNDATED = 40;
+//
+// ── THE ONE RAISE, 2026-09-24, AND WHY IT IS NOT THE THING THIS BANS ────────
+//
+// 36 -> 37 and 40 -> 41. Both are the SAME single line counted twice. Repast's
+// `p_protein` bundled "Fried or baked chicken & baked ham" into one row and was
+// split into `p_protein` (chicken) and `p_protein_ham` so a coordinator can
+// record a different bringer for each meat. The new row inherits the parent's
+// provenance verbatim: the same one source (`webstaurant-protein-2026`) and the
+// same absent date.
+//
+// So no claim was authored, weakened, or newly left undated. One row that was
+// already uncorroborated and already undated is now two rows with exactly that
+// same defect, and the ratchet counts rows. The rule this file exists to
+// enforce — that nobody adds a NEW ungrounded price claim — is not what
+// happened here, and the alternative ways to keep the count at 36/40 were both
+// worse: inventing a `lastVerified` or a second source for the ham, or
+// downgrading a tier that the 0.5 lb/guest evidence genuinely supports for both
+// halves of the protein.
+//
+// FLAGGED FOR A HUMAN RULING rather than quietly absorbed: this file says never
+// raise, and this raise is recorded here so it can be argued with. Splitting
+// another bundled line whose provenance is undated will move these again.
+const BASELINE_UNCORROBORATED = 37;
+const BASELINE_UNDATED = 41;
 
 const claimsResearch = (p) => p && typeof p === 'object'
   && (p.verificationStatus === 'cited' || p.verificationStatus === 'researched');
