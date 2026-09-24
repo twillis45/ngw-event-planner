@@ -76,3 +76,8 @@ ds-bundle/
 .design-sync/b*.json
 .design-sync/batch*.json
 .design-sync/close-*.json
+
+# Local-only sandbox Playwright override (hardcoded container browser path).
+# It declares itself uncommitted in its own header; a `git add -A` swept it in
+# once (be8ce5e, reverted in the next commit). Ignored so that cannot recur.
+hostv2/playwright.sandbox.config.mjs
