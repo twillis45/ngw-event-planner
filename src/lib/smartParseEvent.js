@@ -14,6 +14,7 @@ import { ALL_PLAYBOOKS } from './playbooks';
 import { matchVacationArea } from './vacationAreas';
 import { resolveCanonicalType, GENERIC_GATHERING_WORDS } from './eventTaxonomyAdapter';
 import { parseVenueLocation, resolveSpokenCity, US_STATE_NAME_TO_ABBR } from './cityText';
+import { resolveHoliday } from './holidayDates.mjs';
 
 // Occasion choices = the REAL playbook catalog: every type the engine ships a
 // full playbook for, minus the business types a host never plans.
@@ -356,16 +357,44 @@ export function parseSmartEventText(text, opts = {}) {
       monthYear = { year: now.getFullYear(), month: now.getMonth(), label: MONTH_LABEL[now.getMonth()] + ' ' + now.getFullYear() };
     }
   }
+  // ── A NAMED HOLIDAY IS AN EXACT DATE ────────────────────────────────────
+  // Found by a systematic field sweep, 2026-09-23: "thanksgiving 2027",
+  // "juneteenth 2027", "labor day weekend 2027", "christmas eve 2027", "new
+  // years eve 2027" and "mothers day 2027" all returned NO DATE. People plan
+  // around holidays constantly, and each of those hosts typed the single most
+  // important fact and watched it disappear.
+  //
+  // These are computed, not guessed — a fixed calendar date or a published rule
+  // ("the fourth Thursday in November") — which is why this may set an exact
+  // `date` where the season handler below only offers a month. It runs AFTER
+  // every explicit form, so a host who wrote both a holiday and a real date
+  // keeps the date they wrote.
+  if (!date) {
+    const hol = resolveHoliday(t, now);
+    if (hol) date = hol.date;
+  }
   // Season ("this fall", "next summer") — wider than a month, but still just
   // OPTIONS from the season's anchor month, never a guessed exact date.
   if (!date && !monthYear) {
-    const seasM = t.match(/\b(next|this)\s+(winter|spring|summer|fall|autumn)\b/i);
+    // "summer 2027" — a season with the year said outright — resolved to
+    // NOTHING, because this only read the relative forms. A host who names the
+    // year is being MORE specific than one who says "next summer", and was
+    // getting less for it.
+    const seasM = t.match(/\b(next|this)\s+(winter|spring|summer|fall|autumn)\b/i)
+      || t.match(/\b(winter|spring|summer|fall|autumn)\s+(20\d{2})\b/i)
+      || t.match(/\b(20\d{2})\s+(winter|spring|summer|fall|autumn)\b/i);
     if (seasM) {
-      const season = seasM[2].toLowerCase();
-      const seasonLabel = season === 'autumn' ? 'Fall' : season[0].toUpperCase() + season.slice(1);
-      const month = SEASON_MONTH[season];
-      const year = now.getFullYear() + (seasM[1].toLowerCase() === 'next' ? 1 : 0);
-      monthYear = { year, month, label: seasonLabel + ' ' + year };
+      const parts = seasM.slice(1).filter(Boolean).map((x) => String(x).toLowerCase());
+      const season = parts.find((x) => SEASON_MONTH[x] !== undefined);
+      const saidYear = parts.find((x) => /^20\d{2}$/.test(x));
+      const rel = parts.find((x) => x === 'next' || x === 'this');
+      if (season) {
+        const seasonLabel = season === 'autumn' ? 'Fall' : season[0].toUpperCase() + season.slice(1);
+        const month = SEASON_MONTH[season];
+        const year = saidYear ? Number(saidYear)
+          : now.getFullYear() + (rel === 'next' ? 1 : 0);
+        monthYear = { year, month, label: seasonLabel + ' ' + year };
+      }
     }
   }
 
@@ -380,19 +409,65 @@ export function parseSmartEventText(text, opts = {}) {
       if (!m) return null;
       if (/^(January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|My|Our|The|A|An|Me|Us|Him|Her|Them|Everyone|Family|Friends)$/i.test(m[1])) return null;
       return m;
+    })()
+    // ── THE HONOREE IS USUALLY A RELATIONSHIP, NOT A NAME ──────────────────
+    // Found by a systematic field sweep, 2026-09-23: only a CAPITALISED name
+    // resolved, so "birthday party for mom" and "birthday for my grandmother"
+    // carried no honoree at all — and most milestone birthdays are thrown for
+    // exactly those people, written exactly that way. The honoree reaches the
+    // event name and the invite, so losing it loses whose party it is.
+    //
+    // Capitalised to match the name form's output ("Mom", not "mom"), and the
+    // possessive "my" is dropped so the label reads "for Mom" rather than
+    // "for my mom".
+    || (() => {
+      const m = t.match(/\b(?:for|honoring|celebrating)\s+(?:my\s+|our\s+)?((?:great[\s-]*)?(?:grand)?(?:mom|mommy|mama|momma|mother|dad|daddy|father|pop|pops|ma|grandma|granny|grandmother|grandad|granddad|grandpa|grandfather|auntie|aunt|uncle|sister|brother|cousin|wife|husband|son|daughter|nephew|niece|godmother|godfather|bestie|best\s+friend|partner|fianc[ée]e?))\b/i);
+      if (!m) return null;
+      const word = m[1].replace(/\s+/g, ' ').toLowerCase();
+      return [m[0], word.charAt(0).toUpperCase() + word.slice(1)];
     })();
-  const home = /backyard|back\s?yard|at home|my place|our (house|home)|the house/i.test(t);
+  // "AT MY HOUSE" WAS NOT IN THIS LIST. Found by a systematic field sweep,
+  // 2026-09-23: the pattern carried `my place`, `our house` and `the house` and
+  // somehow never the commonest phrasing of all. venueKind drives the whole
+  // home-versus-booked-venue lane, so a host hosting at home was being routed as
+  // if they still had a venue to find.
+  //
+  // A RELATIVE'S HOME IS STILL A HOME — "at mom's house", "at my sister's
+  // place" need no venue booking, which is the distinction venueKind exists to
+  // draw. The possessive form is required, so a bare "the club" or "the hall"
+  // cannot slip in.
+  const home = /backyard|back\s?yard|at home|my (?:place|house|home|crib|spot)|our (?:house|home|place)|the (?:house|crib)/i.test(t)
+    || /\b(?:at|in)\s+(?:my\s+)?(?:mom|mama|momma|mother|dad|father|pop|grandma|granny|grandmother|grandad|grandpa|auntie|aunt|uncle|sister|brother|cousin|parents?|folks)(?:['’]?s)?\s+(?:house|place|home|yard|backyard)\b/i.test(t);
   // Venue phrase kept VERBATIM — "my brother's backyard" is the venue, not a
   // generic "Backyard". Guests read this in invites and rain notes.
   const vm = t.match(/\b(?:in|at)\s+((?:my|our|his|her|their)\s+[a-z]+(?:['’]s)?\s+(?:backyard|back\s?yard|house|place|yard|home|garden|farm|cabin|lake house))\b/i)
-    || t.match(/\b(?:in|at)\s+(the\s+(?:park|beach|clubhouse|pavilion|community center))\b/i);
+    || t.match(/\b(?:in|at)\s+(the\s+(?:park|beach|clubhouse|pavilion|community center))\b/i)
+    // ── THE ROOMS PEOPLE ACTUALLY RENT ────────────────────────────────────
+    // The 80th-birthday drive typed "at the church hall in Baltimore" and the
+    // hall vanished — only the city survived. These are the ordinary rented
+    // rooms for a repast, a milestone birthday, a reunion: the church hall, the
+    // fire hall, the VFW, the rec center, the lodge. Kept verbatim, because
+    // guests read this line in the invite.
+    || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:church|fellowship|banquet|fire|legion|social|event|reception|dining|great)\s+(?:hall|room|space|center|centre))\b/i)
+    || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:vfw|elks?\s*lodge|masonic\s*(?:temple|lodge)|rec(?:reation)?\s*center|senior\s*center|banquet\s*facility|ballroom|event\s*space|country\s*club))\b/i);
   const venuePhrase = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1) : '';
 
   // ── Milestone number ("80th birthday", "50th anniversary") ──────────────
   // A real signal that used to be silently discarded — carried into the event
   // NAME by the caller rather than invented as a new standalone field.
   const msm = t.match(/\b(\d{1,3}(?:st|nd|rd|th))\s+(?:birthday|anniversary)\b/i);
-  const milestone = msm ? msm[1].toLowerCase() : null;
+  // "she's turning 80", "mom turns 40 in June" — the same milestone said as a
+  // verb rather than an ordinal. It was dropped entirely; the sweep found it.
+  // The ordinal suffix is derived, not guessed: 1st/2nd/3rd/nth by the ordinary
+  // English rule, including the 11th/12th/13th exceptions.
+  const turnM = msm ? null : t.match(/\bturn(?:s|ing)\s+(\d{1,3})\b/i);
+  const _ord = (n) => {
+    const v = n % 100;
+    if (v >= 11 && v <= 13) return n + 'th';
+    return n + ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th');
+  };
+  const milestone = msm ? msm[1].toLowerCase()
+    : (turnM ? _ord(parseInt(turnM[1], 10)) : null);
 
   // ── City + state ("in Santa Fe, New Mexico") ─────────────────────────────
   // Routed through the SAME parseVenueLocation the manual "Which town?" field
@@ -794,6 +869,33 @@ export function parseSmartEventText(text, opts = {}) {
            || t.match(/\b(\d{1,2})\s*([ap])\.m?\.?\b/i)
            || t.match(/\b(\d{1,2})\s*([ap])m\b/i)
            || t.match(/\b(?:at|from|starts?(?:\s+at)?|kick(?:s)?\s*off(?:\s+at)?|doors(?:\s+(?:at|open(?:\s+at)?))?)\s+(\d{1,2})(?::(\d{2}))?\b(?!\s*(?:guests?|people|ppl|folks))/i);
+    // NOON AND MIDNIGHT ARE EXACT TIMES. Found by the same sweep: "at noon"
+    // produced startTime null and timeOfDay "afternoon" — the host named an
+    // exact hour and the app downgraded it to a vague part of the day, then
+    // asked them for the time it had just been told. "Half past six" is here for
+    // the same reason: it is a stated clock time, not a hedge.
+    const wordTime = t.match(/\b(?:at\s+)?(noon|midday|midnight)\b/i);
+    if (wordTime) {
+      const w = wordTime[1].toLowerCase();
+      return { startTime: w === 'midnight' ? '12:00 AM' : '12:00 PM', startTimeBasis: 'said-exact' };
+    }
+    // The hour after "half past" is a WORD at least as often as a digit — the
+    // first version of this only read digits and missed the phrasing it was
+    // written for.
+    const _HOURWORD = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+      seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+    const halfPast = t.match(
+      /\b(?:at\s+)?half\s+past\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*([ap])\.?m?\.?\b/i);
+    if (halfPast) {
+      const raw = halfPast[1].toLowerCase();
+      let hh = /^\d+$/.test(raw) ? parseInt(raw, 10) : _HOURWORD[raw];
+      if (!hh) return null;
+      const mer2 = (halfPast[2] || '').toLowerCase();
+      if (mer2 === 'p' && hh < 12) hh += 12;
+      if (mer2 === 'a' && hh === 12) hh = 0;
+      const h12 = hh % 12 === 0 ? 12 : hh % 12;
+      return { startTime: `${h12}:30 ${hh >= 12 ? 'PM' : 'AM'}`, startTimeBasis: 'said-exact' };
+    }
     if (!m) return null;
     // The meridiem is whichever capture group came back as a/p — the shapes
     // above put it in different slots, so find it rather than index blindly.
@@ -890,7 +992,12 @@ export function parseSmartEventText(text, opts = {}) {
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
     venueAddress: venueAddress || null,
     honoree: hm ? hm[1] : null,
-    venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : (lodging || venueAt ? 'venue' : ''),
+    // A NAMED ROOM IS A BOOKED VENUE. The church-hall/VFW/rec-center forms added
+    // 2026-09-23 produced a venue NAME with an empty venueKind, so the shell
+    // kept treating a booked hall as "no venue yet" — the exact lane this field
+    // exists to switch. A phrase carrying my/our is still a home.
+    venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home'
+      : (lodging || venueAt || venuePhrase ? 'venue' : ''),
     venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),
     // Order is strongest-first: a said "City, ST" or ZIP, then a curated
     // vacation area's real hub town, then the bare town she named — which
@@ -900,8 +1007,11 @@ export function parseSmartEventText(text, opts = {}) {
     vacationArea: area ? area.id : null,
     // "No kids." / "adults only" → the invite policy InviteV2 + doItForMe already
     // consume; never invented — only when the host said it.
-    kidsPolicy: /\bno\s+(?:kids|children)\b|\badults?[\s-]only\b/i.test(t) ? 'adults_only'
-      : /\bkids?\s+(?:are\s+)?welcome\b|\bfamily[\s-]friendly\b/i.test(t) ? 'kids_welcome' : null,
+    // Widened 2026-09-23 by the field sweep: "21 and up" and "grown folks only"
+    // are how an adults-only event is actually announced, and "kid friendly"
+    // without the hyphen missed a rule written only for the hyphenated form.
+    kidsPolicy: /\bno\s+(?:kids|children|littles)\b|\badults?[\s-]only\b|\b21\s*(?:\+|and\s+(?:up|over))\b|\bgrown\s*folks?\s+only\b/i.test(t) ? 'adults_only'
+      : /\bkids?\s+(?:are\s+)?welcome\b|\bfamily[\s-]?friendly\b|\bkid[\s-]?friendly\b|\bbring\s+(?:the\s+)?(?:kids|children|littles|whole\s+family)\b/i.test(t) ? 'kids_welcome' : null,
   };
 }
 

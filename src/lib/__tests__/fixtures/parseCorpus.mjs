@@ -113,7 +113,15 @@ export const PARSE_CORPUS = [
   { text: "Birthday brunch at 10 for 24", from: 'derived variant — morning bucket keeps the bare hour in the AM', expect: { timeOfDay: 'morning', startTime: '10:00 AM', startTimeBasis: 'said-with-bucket', guests: 24, type: 'Get-Together', secondaryType: 'Birthday' }, suspect: 'the PRIMARY occasion is the birthday; "brunch" is the descriptor. It resolves the other way round, so the reveal names the event a Get-Together.' },
   { text: "Sunset cocktail party at 7 for 40", from: 'derived variant — "sunset" is an evening bucket', expect: { timeOfDay: 'evening', startTime: '7:00 PM', startTimeBasis: 'said-with-bucket', guests: 40 } },
   { text: "Cookout at my place at 4 for 20, no kids", from: 'derived variant — no meridiem, no bucket: the weakest basis', expect: { type: 'The Cookout', startTime: '4:00 PM', startTimeBasis: 'said-hour-only', guests: 20, kidsPolicy: 'adults_only', venue: 'Home', venueKind: 'home' } },
-  { text: "Crab feast next Saturday at noon for 40 in the backyard", from: 'derived variant — "noon" is a bucket word, not a clock', expect: { type: 'Crab Feast', date: '2026-09-19', guests: 40, timeOfDay: 'afternoon', startTime: null, venue: 'Backyard', venueKind: 'home' } },
+  // REVERSED 2026-09-23, deliberately and in the open. This entry recorded
+  // `startTime: null` under the reasoning '"noon" is a bucket word, not a
+  // clock'. A field sweep put it the other way: "noon" is definitionally 12:00
+  // PM and needs no reading to resolve, which is this parser's own stated test
+  // for `said-exact` (the 24-hour branch carries the same comment). The host
+  // named an exact hour and was then asked for the time they had just given.
+  // `timeOfDay` still reads 'afternoon' beside it, so nothing was taken away —
+  // a bucket AND a clock, which is what the sentence actually contains.
+  { text: "Crab feast next Saturday at noon for 40 in the backyard", from: 'derived variant — "noon" IS a clock (reversal of the earlier bucket-word call, 2026-09-23)', expect: { type: 'Crab Feast', date: '2026-09-19', guests: 40, timeOfDay: 'afternoon', startTime: '12:00 PM', startTimeBasis: 'said-exact', venue: 'Backyard', venueKind: 'home' } },
 
   // ── Dates: relative, absolute, ranges, month-only, season ─────────────────
   { text: "Baby shower tomorrow at 11am for 18 people", from: 'derived variant — "tomorrow"', expect: { type: 'Baby Shower', date: '2026-09-19', guests: 18, startTime: '11:00 AM', startTimeBasis: 'said-exact' } },

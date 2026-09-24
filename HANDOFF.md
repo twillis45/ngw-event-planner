@@ -157,11 +157,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `0c39b0bc` |
+| Branch / HEAD | `main` @ `b26b5760` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,531 passed**, 1 skipped, **0 failed**, **530 suites** (re-measured 2026-09-23 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,545 passed**, 1 skipped, **0 failed**, **531 suites** (re-measured 2026-09-24 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -328,6 +328,63 @@ the parser hedge a type the host had named exactly.
 function" and "pull up" were added to the taxonomy, they started reporting
 `named`. Exported through the documented adapter chain rather than imported
 directly, because this repo has a production guard about that.
+
+### 7. The systematic pass — every field, not the ones I thought to try
+
+The phrasing work above came from cases I chose. This came from sweeping **all
+26 fields the parser returns** against 54 real phrasings. **25 read on the first
+run. 44 read now.**
+
+| Field | Was | Now |
+|---|---|---|
+| `date` | `thanksgiving 2027`, `juneteenth 2027`, `labor day weekend 2027`, `christmas eve`, `new years eve`, `mothers day`, `easter` → **nothing** | exact dates, computed |
+| `venueKind` | **`at my house` was not in the home list at all** | `home` — also mom's house, my sister's place |
+| `venue` | `at the church hall` → **nothing** (the 80th drive's own sentence) | the hall, and `venueKind: 'venue'` |
+| `startTime` | `at noon` → null, downgraded to "afternoon" | 12:00 PM · also midnight, half past six |
+| `honoree` | `for mom` → **nothing**; only capitalised NAMES resolved | `Mom`, `Grandmother` |
+| `milestone` | `turning 80` → nothing | `80th` (and `13th`, not `13rd`) |
+| `monthYear` | `summer 2027` → nothing; only `next summer` worked | Summer 2027 |
+| `kidsPolicy` | `21 and up`, `kid friendly`, `bring the kids` → nothing | adults_only / kids_welcome |
+
+**Holidays are computed, not guessed** — `src/lib/holidayDates.mjs`. Fixed dates
+and published rules ("the fourth Thursday in November"), verified against the
+real 2027 calendar rather than against what the code produced. That check earned
+itself immediately: **four holidays were silently wrong** because `a|b` +
+`\s*weekend` binds the suffix to `b` alone, so a bare "thanksgiving" tested true
+for "weekend" and moved to the preceding Saturday. Thanksgiving, Christmas Eve,
+New Year's Eve and MLK Day were all wrong and all four looked plausible.
+
+**A recorded decision reversed in the open.** The golden corpus pinned
+`startTime: null` for "at noon" under the reasoning *"noon is a bucket word, not
+a clock"*. Noon is definitionally 12:00 PM and needs no reading to resolve, which
+is this parser's own stated test for `said-exact`. The entry now carries the
+reversal and its reason rather than being quietly edited.
+
+**Still missing, measured and recorded (10 of 54):** city nicknames (`in vegas`),
+relative dates (`this weekend`, `a week from friday`, `end of june`, `first
+weekend in june`), `weekend trip` → overnight, and `half past six` with no
+meridiem — which is genuinely ambiguous between 6:30 AM and PM, so refusing it is
+the right answer rather than a gap.
+
+### Where the spec's unauthored decision fields actually live
+
+Asked where `relevantWhen`, `impacts`, `causesRisk`, `effort` and `blastRadius`
+were authored. **Measured: nowhere on a decision.**
+
+| Field | Playbook data | Engine | Spec status |
+|---|---|---|---|
+| `relevantWhen` | 0 | 0 | PARTIAL — generalizes `whenChoice`, which IS authored |
+| `impacts` | 0 | 0 | BLANK for non-cost |
+| `causesRisk` | 0 | 0 | BLANK |
+| `effort` | 0 as a field | 0 as a field | BLANK |
+| `blastRadius` | 0 | a FUNCTION in `knowledge/dependencyEngine.js` | "derivable now" from `blocks`/`dependsOn` |
+
+Two of the five look live and are not: `effort` appears 17 times in playbook data
+purely inside authored PROSE ("the biggest effort/cost lever"), and `blastRadius`
+is a knowledge-graph function used by `roadmap.js` and `domain.js` — a different
+thing wearing the same name. That is how a 0%-authored row can read ambiguous.
+`docs/architecture/DECISION_SCHEMA_SPEC.md` already marks four of the five BLANK
+or PARTIAL in its own status column.
 
 ### A fix written, measured, and thrown away
 

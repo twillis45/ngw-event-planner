@@ -166,3 +166,127 @@ describe('the whole sentence, the way it would really arrive', () => {
     expect(P('cookout june 14, 20 people, food is on me').venueCity).toBe(null);
   });
 });
+
+// ─── THE SYSTEMATIC PASS ────────────────────────────────────────────────────
+//
+// The block above came from phrasings I thought to try. This one came from
+// sweeping EVERY field the parser returns against a corpus of real phrasings —
+// 54 of them, of which 25 read on the first run. Everything below was in the
+// other 29.
+import { resolveHoliday } from '../holidayDates.mjs';
+
+describe('HOLIDAYS — computed, not guessed', () => {
+  const N = new Date('2026-09-23T12:00:00Z');
+
+  test('every one of them, against the published 2027 calendar', () => {
+    // Fixed dates and published rules ("the fourth Thursday in November"), so
+    // this is arithmetic. Checked against the real calendar rather than against
+    // what the code happens to produce — which is how the first version was
+    // caught shifting four holidays to the wrong day.
+    const cal = {
+      'thanksgiving 2027': '2027-11-25', 'christmas 2027': '2027-12-25',
+      'christmas eve 2027': '2027-12-24', 'new years eve 2027': '2027-12-31',
+      'juneteenth 2027': '2027-06-19', '4th of july 2027': '2027-07-04',
+      'memorial day 2027': '2027-05-31', 'labor day 2027': '2027-09-06',
+      'mothers day 2027': '2027-05-09', 'fathers day 2027': '2027-06-20',
+      'halloween 2027': '2027-10-31', 'easter 2027': '2027-03-28',
+      'mlk day 2027': '2027-01-18', 'presidents day 2027': '2027-02-15',
+    };
+    for (const [text, want] of Object.entries(cal)) {
+      expect(`${text} -> ${resolveHoliday(text, N).date}`).toBe(`${text} -> ${want}`);
+    }
+  });
+
+  test('"X weekend" resolves to the Saturday, which is a stated choice', () => {
+    // A three-day span, and holiday-weekend events land on Saturday far more
+    // often than on the Monday. The host sees the date before anything is built
+    // on it; returning nothing was the worse answer.
+    expect(resolveHoliday('labor day weekend 2027', N).date).toBe('2027-09-04');
+    expect(resolveHoliday('memorial day weekend 2027', N).date).toBe('2027-05-29');
+  });
+
+  test('THE ALTERNATION BUG THAT SHIFTED FOUR HOLIDAYS', () => {
+    // `a|b` + '\\s*weekend' binds the suffix to `b` alone, so a BARE
+    // "thanksgiving" tested true for "weekend" and was silently moved back to
+    // the preceding Saturday. Thanksgiving, Christmas Eve, New Year's Eve and
+    // MLK Day were all wrong, and all four looked plausible.
+    expect(resolveHoliday('thanksgiving 2027', N).weekend).toBe(false);
+    expect(resolveHoliday('christmas eve 2027', N).weekend).toBe(false);
+    expect(resolveHoliday('mlk day 2027', N).weekend).toBe(false);
+  });
+
+  test('an explicit date in the same sentence always wins', () => {
+    // A holiday NAME is a weaker signal than a date the host wrote out. The
+    // holiday pass runs after every explicit form for exactly this reason.
+    expect(P('cookout june 14 2027 the weekend after juneteenth, 30 people').date)
+      .toBe('2027-06-14');
+  });
+
+  test('and they reach the parser, not just the module', () => {
+    expect(P('thanksgiving dinner 2027, 20 people').date).toBe('2027-11-25');
+    expect(P('juneteenth cookout 2027, 50 people').date).toBe('2027-06-19');
+    expect(P('christmas eve dinner 2027, 12 people').date).toBe('2027-12-24');
+  });
+});
+
+describe('THE FIELDS THE SWEEP FOUND EMPTY', () => {
+  test('"at my house" was not in the home list at all', () => {
+    // venueKind drives the whole home-versus-booked-venue lane, and the
+    // commonest phrasing of all was missing while "my place" and "our house"
+    // were both present.
+    expect(P('birthday party at my house, 30 people').venueKind).toBe('home');
+    expect(P('cookout at moms house, 30 people').venueKind).toBe('home');
+    expect(P("cookout at my sister's place, 30 people").venueKind).toBe('home');
+  });
+
+  test('THE ROOMS PEOPLE RENT — the 80th drive typed one and lost it', () => {
+    // "at the church hall in Baltimore" kept the city and dropped the hall.
+    const a = P('birthday party at the church hall, 30 people');
+    expect(a.venue).toMatch(/church hall/i);
+    expect(a.venueKind).toBe('venue');          // booked, not home
+    expect(P('cookout at the vfw, 30 people').venueKind).toBe('venue');
+    expect(P('reception at the banquet hall, 30 people').venue).toMatch(/banquet hall/i);
+  });
+
+  test('NEGATIVE CONTROL: a home is still a home', () => {
+    // The venue additions must not flip a backyard into a booked venue.
+    expect(P('cookout in the backyard, 30 people').venueKind).toBe('home');
+    expect(P('cookout at the club, 30 people').venueKind).toBe('');
+  });
+
+  test('"noon" is a clock — a recorded call, reversed in the open', () => {
+    // The golden corpus pinned startTime null for "at noon" under the reasoning
+    // that noon is a bucket word. Noon is definitionally 12:00 PM and needs no
+    // reading to resolve, which is this parser's own test for `said-exact`.
+    expect(P('birthday party at noon, 30 people').startTime).toBe('12:00 PM');
+    expect(P('dinner at midnight, 10 people').startTime).toBe('12:00 AM');
+    expect(P('dinner at half past six pm, 10 people').startTime).toBe('6:30 PM');
+  });
+
+  test('the honoree is usually a relationship, not a name', () => {
+    // Only a capitalised name resolved, so most milestone birthdays — thrown
+    // for exactly these people, written exactly this way — carried no honoree.
+    expect(P('birthday party for mom, 30 people').honoree).toBe('Mom');
+    expect(P('birthday for my grandmother, 30 people').honoree).toBe('Grandmother');
+    expect(P('birthday party for Vida, 30 people').honoree).toBe('Vida');
+  });
+
+  test('a milestone said as a verb', () => {
+    expect(P('moms turning 80, 30 people').milestone).toBe('80th');
+    expect(P('she turns 41 in june, 30 people').milestone).toBe('41st');
+    expect(P('he turns 13 next year, 20 people').milestone).toBe('13th');   // not 13rd
+  });
+
+  test('a season with the year said outright', () => {
+    // Naming the year is MORE specific than "next summer" and returned less.
+    expect(P('birthday party summer 2027, 30 people').monthYear.label).toBe('Summer 2027');
+    expect(P('reunion fall 2028, 60 people').monthYear.label).toBe('Fall 2028');
+  });
+
+  test('kids policy, the way it is actually announced', () => {
+    expect(P('day party 21 and up, 40 people').kidsPolicy).toBe('adults_only');
+    expect(P('cookout kid friendly, 30 people').kidsPolicy).toBe('kids_welcome');
+    expect(P('cookout bring the kids, 30 people').kidsPolicy).toBe('kids_welcome');
+    expect(P('cookout june 14 2027, 30 people').kidsPolicy).toBe(null);
+  });
+});
