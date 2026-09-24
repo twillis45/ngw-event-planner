@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from ..auth import require_admin
 from ..db import get_pool
+from ..kas_store import upsert_kas_record
 
 router = APIRouter(prefix="/api/admin", tags=["kas"])
 
@@ -99,15 +100,11 @@ async def upsert_kas(
                     conflicts.append({"id": r["id"], "serverUpdatedAt": cur.isoformat()})
                     continue
                 clean = {kk: vv for kk, vv in r.items() if not kk.startswith("_")}  # strip sync meta
-                await conn.execute(
-                    """
-                    insert into kas_records (id, kind, data, asset_id, created_by, updated_at)
-                    values ($1, $2, $3::jsonb, $4, $5, now())
-                    on conflict (id) do update set
-                      kind=excluded.kind, data=excluded.data, asset_id=excluded.asset_id,
-                      created_by=excluded.created_by, updated_at=now()
-                    """,
-                    clean["id"], kind, json.dumps(clean), _asset_of(clean), clean.get("createdBy") or clean.get("source"),
+                # The statement lives in kas_store so the observation writer in
+                # kroger.py cannot drift from it — see that module's note.
+                await upsert_kas_record(
+                    conn, clean, kind, _asset_of(clean),
+                    clean.get("createdBy") or clean.get("source"),
                 )
                 upserted += 1
             if upserted or conflicts:

@@ -1,0 +1,92 @@
+# ─── GROUNDING MONITOR — the scoreboard for how stale the priced corpus is ───
+#
+# REVIVED 2026-09-24. A workflow by this name has existed since the freshness
+# work, scheduled monthly, and has never produced a single run. Two reasons, both
+# fatal on their own:
+#
+#   1. It lived in the `ngw-event-planner-workspace` repository — a DIFFERENT
+#      repo from the one holding `scripts/groundingAudit.mjs`.
+#   2. It set `working-directory: demo`, a path that does not exist in that repo
+#      (the layout it was written against is gone), so every step would have
+#      failed at the first `cd` even if the script had been there.
+#
+# `src/lib/knowledge/sourceFreshness.js` already records this in its own header —
+# "it lives one level ABOVE the git root, so it is untracked and has never run.
+# **Dead.**" This file is that comment being acted on rather than re-read.
+#
+# WHAT IT DOES AND DOES NOT DO. It runs the audit and publishes the scoreboard.
+# It does not fetch prices, does not edit the corpus, and does not fail on
+# staleness — `sourceFreshness.js` is explicit that freshness is a WARNING
+# system and never an invalidator: "a stale source is not a wrong source. It is
+# a source nobody has looked at lately, and the only correct response is to tell
+# a human." A red build would be this file overruling that doctrine.
+#
+# WEEKLY, NOT MONTHLY. The corpus was researched in one batch — 529 of 533 dated
+# price rows carry an August 2026 date — so it ages as a block rather than a
+# trickle, and a monthly check can be three weeks late in noticing. Weekly costs
+# one short job and makes the drift visible while it is still small.
+#
+# NO SECRETS. The audit reads the checked-in corpus; it makes no network calls
+# and needs no credentials. Nothing here may ever be given one: a browser-facing
+# build must never carry a key, and this job has no reason to hold one either.
+name: grounding-monitor
+
+on:
+  schedule:
+    # Mondays, 13:17 UTC. Off the :00 mark deliberately — GitHub's scheduler
+    # queues heavily on the hour and delays are common there.
+    - cron: '17 13 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The human-readable scoreboard, straight into the run log: coverage, the
+      # lowest-grounded playbooks, and the count of items due for a re-check.
+      - name: Grounding scoreboard
+        run: node scripts/groundingAudit.mjs --stale 30
+
+      # The machine-readable form, kept as an artifact so two runs can be
+      # diffed. This is what makes a later price-pull PROVABLE rather than
+      # asserted: if a pull moved nothing, the next report says so.
+      - name: Grounding report (machine-readable)
+        run: node scripts/groundingAudit.mjs --json > grounding.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grounding-report
+          path: grounding.json
+          retention-days: 90
+
+      # A one-line summary on the run itself, so the trend is readable from the
+      # Actions list without opening a log or downloading an artifact.
+      - name: Summary
+        if: always()
+        run: |
+          node -e '
+            const j = require("./grounding.json").summary;
+            const l = [
+              "## Grounding scoreboard",
+              "",
+              "| measure | value |",
+              "| --- | --- |",
+              `| priced items cited | **${j.truePct}%** (${j.cited} of ${j.priced}) |`,
+              `| settled (cited + consensus) | ${j.settledPct}% |`,
+              `| still synthesized | ${j.synthesized} |`,
+              `| carry a lastVerified stamp | ${j.lastVerified} |`,
+              `| playbooks | ${j.playbooks} |`,
+              "",
+              "Freshness is a warning, never an invalidator — a stale source still grounds.",
+            ].join("\n");
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, l + "\n");
+          '

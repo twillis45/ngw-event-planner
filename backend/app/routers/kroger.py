@@ -49,8 +49,10 @@ HONESTY:
     a 500 in the host's face.
 """
 import base64
+import datetime
 import logging
 import os
+import re
 import time
 from typing import List, Optional
 
@@ -88,11 +90,22 @@ class LineItem(BaseModel):
     term: Optional[str] = None
     quantity: Optional[float] = 1
     unit: Optional[str] = "each"
+    # ── WHICH CORPUS ROW THIS LINE IS, IF THE CALLER KNOWS ───────────────────
+    # Optional, and its absence is not an error — this endpoint also serves
+    # lookups that correspond to no authored row. It exists so a real shelf
+    # price can be ATTRIBUTED. Without it a price is a fact about a product
+    # name, and matching that back to `p_ice` by string would be guessing —
+    # the same guess `geoItemMap.js` refuses to make for regional factors.
+    # No id, no observation.
+    purchaseId: Optional[str] = None
 
 
 class SearchListRequest(BaseModel):
     items: List[LineItem] = []
     locationId: Optional[str] = None
+    # The playbook type ("Get-Together"), so an observation names the asset it
+    # is evidence about. Same rule as purchaseId: absent means not recorded.
+    assetId: Optional[str] = None
 
 
 async def _get_token() -> Optional[str]:
@@ -143,6 +156,149 @@ async def _get_token() -> Optional[str]:
 def kroger_status():
     """Lets the client decide whether to show Kroger matching/store-pick UI."""
     return {"configured": _configured()}
+
+
+# ─── KEEPING THE PRICE, WHICH IS THE WHOLE POINT ─────────────────────────────
+#
+# Until 2026-09-24 every real shelf price this endpoint returned was shown to one
+# host once and discarded. Meanwhile the authored corpus it could re-verify sat
+# at a single vintage: 529 of 533 dated price rows carry an August 2026 date,
+# because the corpus was researched in one batch and nothing has re-checked it
+# since. Real hosts pricing real lists were already generating exactly the
+# evidence the corpus needs, against an API budget already provisioned, and it
+# was being thrown away at the end of the request.
+#
+# ── WHY THIS IS SERVER-SIDE AND NOT IN THE CLIENT ───────────────────────────
+#
+# The obvious place is `storePrices.js`, where the result lands. It cannot go
+# there: `kas.py` gates every write behind `require_admin`, so a host's browser
+# writing an observation would fail for every real host — the only people who
+# generate price data. Moving hosts inside that gate to fix it would be a
+# security regression to buy a data-collection convenience. The server already
+# holds the price, the store and the service-role pool, so it records it.
+#
+# ── WHAT IS AND IS NOT STORED ───────────────────────────────────────────────
+#
+# Stored: the corpus row, the playbook type, the Kroger store id, the price and
+# its size/unit, the matched product description, and the month.
+# NOT stored: no event id, no host id, no ZIP, no list contents beyond the line
+# being priced. A Kroger `locationId` identifies a shop, not a person. This is
+# store pricing data, and `kas_records` is already declared "admin-scoped
+# governance metadata: no host data, no PII" — that stays true.
+#
+# ── IDEMPOTENT PER (row, store, month), DELIBERATELY ────────────────────────
+#
+# The id below collapses repeat observations of the same row at the same store
+# in the same month, matching `observation.js`'s rule that "re-noticing the same
+# thing is idempotent". Two hosts pricing ice at the same store this month is
+# ONE observation, not two — counting it twice would manufacture corroboration
+# out of one shelf. A different store, or a different month, is a genuinely
+# independent look and gets its own record. That is what makes a later
+# "N independent observations agree" rule mean something.
+#
+# ── IT NEVER AFFECTS THE RESPONSE ───────────────────────────────────────────
+#
+# Recording is best-effort and fully swallowed. A host pricing their list must
+# not see a slower, failing, or different answer because a governance write had
+# a bad day. No DB configured is a normal state, not an error.
+def _slug(s) -> str:
+    """Mirror of `slug()` in src/lib/knowledge/observation.js.
+
+    Kept byte-identical in behaviour on purpose: the JS side builds observation
+    ids with the same rule, and two slug functions that disagree would produce
+    two records for one notice — which is precisely the double-counting the
+    idempotent id exists to prevent.
+    """
+    return re.sub(r"^-|-$", "", re.sub(r"[^a-z0-9]+", "-", str(s or "").lower()))
+
+
+def _price_observations(req: "SearchListRequest", results: list, at: datetime.datetime) -> list:
+    """Build KAS observation records from a priced result set. Pure — no I/O."""
+    if not req.assetId or not req.locationId:
+        return []
+    by_name = {}
+    for it in (req.items or []):
+        if it and it.purchaseId and (it.name or "").strip():
+            by_name[(it.name or "").strip()] = it.purchaseId
+    month = at.strftime("%Y-%m")
+    stamp = at.strftime("%Y-%m-%d")
+    out = []
+    for r in results:
+        pid = by_name.get(r.get("name"))
+        price = r.get("price")
+        # A match without a price is not a price (the same rule the client's
+        # three-layer resolver applies). Only a real number is evidence.
+        if not pid or not isinstance(price, (int, float)) or price <= 0:
+            continue
+        # The promo price is what a host would actually pay, but the REGULAR
+        # price is what re-verifies a band — a band built from sale prices would
+        # under-state the corpus for everyone who shops off-sale. Both are kept;
+        # only `price` is presented as the observation's figure.
+        size = r.get("size")
+        sold_by = r.get("soldBy")
+        obs_id = f"obs-price-{_slug(req.assetId)}-{_slug(pid)}-{_slug(req.locationId)}-{month}"
+        statement = (
+            f"Kroger store {req.locationId} priced \"{r.get('description') or r.get('name')}\" "
+            f"at ${price:.2f}" + (f" ({size})" if size else "") + f" on {stamp}."
+        )
+        out.append({
+            "id": obs_id,
+            "kind": "pricing",
+            "statement": statement,
+            "source": "kroger-api",
+            "gapType": None,
+            "assetId": req.assetId,
+            "assetKind": "playbook",
+            # The field a later KCR would target. Named here so the observation
+            # is already pointed at the thing it is evidence about.
+            "fieldPath": f"{pid}.unitCostRange",
+            "region": None,
+            "noticedAt": at.isoformat(),
+            "status": "open",
+            "linkedEvidence": [],
+            "linkedFindings": [],
+            # Numbers a corroboration rule can read without parsing the prose.
+            "price": {
+                "regular": round(float(price), 2),
+                "promo": (round(float(r["promoPrice"]), 2)
+                          if isinstance(r.get("promoPrice"), (int, float)) else None),
+                "size": size,
+                "soldBy": sold_by,
+                "locationId": req.locationId,
+                "productId": r.get("productId"),
+                "description": r.get("description"),
+                "observedOn": stamp,
+            },
+            "audit": [{"at": at.isoformat(), "action": "observed", "by": "kroger-api"}],
+        })
+    return out
+
+
+async def _persist_observations(records: list) -> int:
+    """Write observations to kas_records. Best-effort: never raises to the caller."""
+    if not records:
+        return 0
+    try:
+        # Imported here rather than at module load: this router must keep
+        # serving prices on a deployment with no database configured, and a
+        # top-level import would couple the two.
+        from ..db import get_pool
+        from ..kas_store import upsert_kas_record
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                for rec in records:
+                    # ONE insert statement, shared with kas.py. The surrounding
+                    # logic is deliberately NOT shared — that path has an admin
+                    # principal to audit and a concurrent editor to guard
+                    # against, and this one has neither.
+                    await upsert_kas_record(
+                        conn, rec, "observation", rec.get("assetId"), "kroger-api",
+                    )
+        return len(records)
+    except Exception as e:  # no DATABASE_URL, pool down, migration missing
+        log.warning("price observation write skipped: %s", e)
+        return 0
 
 
 @router.post("/kroger/search-list")
@@ -235,6 +391,18 @@ async def kroger_search_list(req: SearchListRequest):
                     if item.get("soldBy"):
                         row["soldBy"] = item.get("soldBy")
                 results.append(row)
+        # The prices exist here and nowhere else. Recorded before returning, and
+        # wrapped in its OWN try — see the note above `_price_observations`.
+        # Without this guard a throw while BUILDING the records would be caught
+        # by the handler below, which returns `{"error": "unavailable",
+        # "results": []}`: a governance write failing would have thrown away the
+        # prices it exists to keep, and told the host their store was down.
+        try:
+            await _persist_observations(
+                _price_observations(req, results, datetime.datetime.now(datetime.timezone.utc))
+            )
+        except Exception as e:  # noqa: BLE001 — recording must never reach the host
+            log.warning("price observation step skipped: %s", e)
         return {"configured": True, "results": results}
     except Exception as e:  # network/timeout — degrade, never 500 the host
         log.warning("Kroger search-list failed: %s", e)

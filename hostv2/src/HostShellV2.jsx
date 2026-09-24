@@ -18023,7 +18023,22 @@ export default function HostShellV2() {
                                 // Sent as `{ name: it.item }` — the same string
                                 // priceLayers keys the index on, so the round trip
                                 // cannot drift into matching nothing.
-                                const r = await storePrices(lines.map(it => ({ name: it.item })), s.locationId);
+                                //
+                                // `id` and the event type ride along so the server
+                                // can KEEP each real shelf price as evidence about
+                                // the corpus row it priced (kroger.py,
+                                // `_price_observations`). Before this the prices
+                                // were shown once and discarded, while the corpus
+                                // they could re-verify sat at one August vintage.
+                                // Both are optional on the wire: a line with no
+                                // `id` is priced exactly as before and simply not
+                                // recorded, because matching a product name back
+                                // to a row by string would be a guess.
+                                const r = await storePrices(
+                                  lines.map(it => ({ name: it.item, id: it.id })),
+                                  s.locationId,
+                                  event && event.type,
+                                );
                                 const idx = storePriceIndex(r.results);
                                 setPriceStore(s); setPriceIdx(idx); setStorePicker(null);
                                 toast(idx.size

@@ -95,7 +95,15 @@ describe('the name a line is matched by makes it back', () => {
     // If the client ever sent the term AS the name, matching would improve and
     // every price would then fail to find its line — a silent, total loss that
     // looks exactly like a store with no prices.
-    expect(CLIENT).toMatch(/return term \? \{ name, term \} : \{ name \};/);
+    // THE CLIENT HALF MOVED, 2026-09-24, and is deliberately not re-asserted.
+    // This pinned the literal source `return term ? { name, term } : { name };`
+    // and broke the moment the request gained `purchaseId` — a change that
+    // cannot affect the claim it was pinning. A source-text proxy for a
+    // behaviour is the weaker of two instruments, so the claim now lives where
+    // it can be checked directly: `` `name` is STILL the plan text `` in
+    // aPriceIsAttributableOrItIsNotKept.test.js asserts the ACTUAL request
+    // body, which is the thing the router parses. One claim, one place, the
+    // stronger instrument. What stays here is the half that test cannot see.
     expect(CLIENT).toMatch(/storeSearchTerm/);
 
     // And the router must search the term while still echoing the name.

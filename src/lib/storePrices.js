@@ -88,11 +88,24 @@ export async function nearbyStores(zip) {
 /**
  * Shelf prices for a shopping list at one store.
  *
- * `items` is the plan's own list — `{ name }` is all this needs. The response is
- * handed straight to `storePriceIndex` in priceLayers, which drops anything that
- * matched without a price.
+ * `items` is the plan's own list — `{ name }` is all this needs to PRICE. The
+ * response is handed straight to `storePriceIndex` in priceLayers, which drops
+ * anything that matched without a price.
+ *
+ * ── AND `assetId` + THE PER-LINE `id`, WHICH ARE ABOUT KEEPING IT ───────────
+ *
+ * The server records an observation per real shelf price, so the corpus can be
+ * re-verified from prices hosts are already fetching rather than from a
+ * scheduled scrape (backend/app/routers/kroger.py, `_price_observations`). It
+ * refuses to record one unless the line names the row it belongs to, because
+ * matching a free-text product name back to `p_ice` would be a guess — the same
+ * guess `geoItemMap` refuses to make for regional factors.
+ *
+ * So these two are the whole of what makes a price attributable. They are
+ * OPTIONAL: without them this prices the list exactly as before and records
+ * nothing. Nothing about the host travels — no event id, no ZIP, no identity.
  */
-export async function storePrices(items, locationId) {
+export async function storePrices(items, locationId, assetId) {
   if (!BASE) return EMPTY;
   const loc = String(locationId || '').trim();
   // No store means Kroger sends no price. Asking anyway would spend a request to
@@ -110,14 +123,22 @@ export async function storePrices(items, locationId) {
     .filter((x) => x.name)
     .map(({ i, name }) => {
       const term = storeSearchTerm(i && i.line ? i.line : i);
-      return term ? { name, term } : { name };
+      // The corpus row id, when the caller has one. `id` is what the food plan
+      // already carries per line (`p_ice`, `p_crabs`); a line without one — an
+      // added or ad-hoc row — simply goes unattributed rather than guessed at.
+      const purchaseId = String((i && (i.id || (i.line && i.line.id))) || '').trim() || undefined;
+      return { name, ...(term ? { term } : null), ...(purchaseId ? { purchaseId } : null) };
     });
   if (!line.length) return { configured: true, results: [], reason: 'no-items' };
   try {
     const res = await fetch(`${BASE}/api/shopping/kroger/search-list`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: line, locationId: loc }),
+      body: JSON.stringify({
+        items: line,
+        locationId: loc,
+        ...(String(assetId || '').trim() ? { assetId: String(assetId).trim() } : null),
+      }),
     });
     if (!res.ok) return { configured: true, results: [], reason: 'unavailable' };
     const d = await res.json();
