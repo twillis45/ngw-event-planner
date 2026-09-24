@@ -51,14 +51,28 @@ describe('the census the spec should have carried', () => {
         if (d[k]) { counts[k] = (counts[k] || 0) + 1; conditional.add(`${type}/${d.id}`); }
       }
     }
+    // AMENDED 2026-09-24: recommendedWhen 3 -> 7. Four rules were authored that
+    // day for the four decisions whose own prose states a guest threshold —
+    // Get-Together/food_style (25), Engagement Party/help (30), Holiday
+    // Party/food_format (20), Retirement Party/help (40). This lock going red is
+    // the lock working: the field it counts genuinely moved, and the number is
+    // updated WITH the reason rather than bumped.
+    // See theRuleMatchesItsOwnSentence.test.js for where each threshold came
+    // from and the guard that keeps it matching its own sentence.
     expect(counts).toEqual({
-      whenChoice: 4, standsDownWhen: 9, optionGates: 5, recommendedWhen: 3,
+      whenChoice: 4, standsDownWhen: 9, optionGates: 5, recommendedWhen: 7,
     });
-    // 21 declarations but only 18 decisions, because three decisions carry two
-    // dialects at once (Anniversary/help declares BOTH optionGates and
-    // recommendedWhen). That overlap is the argument for one name, stated as a
-    // number rather than as an opinion.
-    expect(conditional.size).toBe(18);
+    // 25 declarations on 19 decisions. The overlap GREW with the four new rules
+    // and that is the interesting part: only ONE of the four landed on a
+    // decision that carried no condition before (Get-Together/food_style). The
+    // other three — Engagement Party/help, Holiday Party/food_format,
+    // Retirement Party/help — already declared `standsDownWhen`, so they now
+    // speak two of the four dialects each.
+    //
+    // Six decisions carrying two dialects, up from three, is the argument for
+    // one name getting stronger on its own, stated as a number rather than as
+    // an opinion.
+    expect(conditional.size).toBe(19);
   });
 });
 
