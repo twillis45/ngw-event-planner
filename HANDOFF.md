@@ -157,7 +157,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `c1d32f91` |
+| Branch / HEAD | `main` @ `73c78cc3` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
@@ -532,6 +532,50 @@ loud, and a computed key is precisely where JS lets it stay silent.
 Fixed two ways: the module **throws at import** if any key is falsy or the string
 `"undefined"`, and the guard asserts it independently. `BLOCK` gained `SEATING`,
 `VENUE` and `SHOPPING`.
+
+### Are the thin fields thin because they SHOULD be? Measured, per row.
+
+Asked whether the low-coverage rows are one story. **They are not** — and only
+one of the five is a real gap.
+
+| Row | Coverage | Verdict |
+|---|---|---|
+| `dependsOn` | 53 / 260 (20%) | **GAP — should not be thin** |
+| `costFactors` | 51 / 260 (20%) | **GAP — should not be thin** |
+| `whenChoice` | 4 (2%) | correctly thin — a conditional gate |
+| timing matched | 28 / 260 | correctly thin — at its ceiling |
+| `timingCategory` | new | correctly thin — same population |
+
+**`dependsOn` is the real one, and the shape is worse than 20% suggests.** The
+split is not 23 playbooks with dependencies and 22 without. It is:
+
+- **6 with a real graph** — Wedding 7/9, Anniversary 6/8, Vow Renewal 6/9,
+  Fundraiser/Gala 6/7, Client Dinner 5/6, Holiday Party 3/5
+- **17 with a token one** — a single dependency in a playbook of 6–9 decisions:
+  Birthday 1/6, Watch Party 1/8, Sweet 16 1/9, Retirement 1/9, Reunion 1/9,
+  Quinceañera 1/7
+- **22 with none at all** — The Cookout, Fish Fry, Sunday Dinner, Day Party,
+  Crab Feast, Low Country Boil, Repast, Baby Shower, Elopement, Surprise Proposal
+
+It is not that casual events have no dependencies. The Cookout's `cooking_model`
+(how you cook) plainly waits on `grill_master` (who cooks) — both sit at T-14d
+with no declared relationship. **Only six playbooks were ever walked properly.**
+Everything derived from the graph — `decisionBlastRadius` included — is
+correspondingly thin, and would deepen on authoring alone with no code change.
+
+**`costFactors`: 93 of 144 cost-affecting decisions (65%) have none.** Measured
+against decisions whose `blocks` name food, beverage, rentals, menu, catering,
+decor, budget or a purchase. That is an authoring gap with a measurable
+denominator, not a field that only applies sometimes.
+
+**Timing is at its ceiling, and the misses are deliberate.** 28 decisions match a
+timing category. Six `venue` decisions do NOT — Gender Reveal, Engagement Party,
+Anniversary, Holiday Party, Retirement Party, Vow Renewal — and every one offers
+the host a place they already have ("Host home", "Backyard / outdoor",
+"Relative's home", "Office / workplace"), so a commercial booking lead cannot
+convict their date. `Wedding/venue`, whose label says "book FIRST", is exempted
+and matches. **That is the 2026-09-23 structural veto working, confirmed from a
+direction it was not built for.**
 
 ### Where the spec's unauthored decision fields actually live
 
