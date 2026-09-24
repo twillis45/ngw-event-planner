@@ -33,21 +33,27 @@ import { LS_CUSTOMS } from '../customEventStore';
 const ROOT = path.join(__dirname, '..', '..', '..');
 const POOL = path.join(ROOT, 'hostv2', 'src', 'eventPool.js');
 
-// ── A SOURCE GATE MUST READ CODE, NOT PROSE ────────────────────────────────
+// ── A SOURCE GATE MUST READ CODE, NOT PROSE — AND MUST NOT EAT THE CODE ────
 //
 // The first version of this guard went red on its own subject: the comment in
 // eventPool.js explaining what the line USED to say contains the literal text
 // `export const LS_CUSTOMS = '…'`, and the regex matched the explanation.
 //
-// Third time in one session that a comment fooled a text measurement — the
-// unused-import sweep counted names mentioned in comments as used, and the CRA
-// warning gate's fingerprint carried a line number out of a message. Comments
-// are stripped here so the gate reads the file's behaviour, not its prose.
-const stripComments = (s) => String(s)
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/(^|[^:])\/\/.*$/gm, '$1');
-
-const SRC = stripComments(fs.readFileSync(POOL, 'utf8'));
+// The fix for THAT was a hand-rolled comment stripper, and it was wrong. Within
+// the hour it was measured against the whole tree: it removed more than 60% of
+// 83 of 447 files. Cause — `adminApi.js` has a `//` line comment containing the
+// characters `/*` (an `/api/admin/*` route), the block-comment pass ran first,
+// paired that `/*` with a `*/` a thousand characters later, and swallowed the
+// real code in between. A guard whose instrument silently deletes what it is
+// meant to inspect is the failure this repo keeps re-learning, and this time it
+// was mine, shipped.
+//
+// NO STRIPPING NOW. A declaration begins a line; a mention inside a comment has
+// `//` or prose before it on that line. Line-anchored matching needs no parser
+// and cannot delete anything. Verified against the real tree: it finds exactly
+// one LS_CUSTOMS declarer, matches an indented declaration, and does not match
+// `// see LS_CUSTOMS in customEventStore`.
+const SRC = fs.readFileSync(POOL, 'utf8');
 
 describe('one owner for the created-events bucket', () => {
   test('(premise) the store owns a non-empty key', () => {
@@ -57,9 +63,9 @@ describe('one owner for the created-events bucket', () => {
   });
 
   test('THE GUARD: eventPool re-exports the key and does not declare one', () => {
-    expect(SRC).toMatch(/export\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}\s*from\s*['"]@app\/lib\/customEventStore['"]/);
+    expect(SRC).toMatch(/^\s*export\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}\s*from\s*['"]@app\/lib\/customEventStore['"]/m);
     // The half that actually catches a regression — a fresh declaration.
-    expect(SRC).not.toMatch(/export\s+(?:const|let|var)\s+LS_CUSTOMS\b/);
+    expect(SRC).not.toMatch(/^\s*export\s+(?:const|let|var)\s+LS_CUSTOMS\b/m);
   });
 
   test('AND NO FILE RESTATES THE LITERAL AS ITS OWN CONSTANT', () => {
@@ -76,8 +82,13 @@ describe('one owner for the created-events bucket', () => {
       return out;
     };
     const files = [...walk(path.join(ROOT, 'src')), ...walk(path.join(ROOT, 'hostv2', 'src'))];
-    const re = new RegExp(`(?:const|let|var)\\s+\\w+\\s*=\\s*['"]${LS_CUSTOMS}['"]`);
-    const declarers = files.filter((f) => re.test(stripComments(fs.readFileSync(f, 'utf8'))))
+    // ANCHORED TO A LINE START. eventPool.js now carries a sentence that QUOTES
+    // the old declaration — "This line used to read `export const LS_CUSTOMS =
+    // '…'`" — and an unanchored match reads that prose as a declarer. It did,
+    // on the first run. A declaration begins its line; a quotation of one does
+    // not.
+    const re = new RegExp(`^\\s*(?:export\\s+)?(?:const|let|var)\\s+\\w+\\s*=\\s*['"]${LS_CUSTOMS}['"]`, 'm');
+    const declarers = files.filter((f) => re.test(fs.readFileSync(f, 'utf8')))
       .map((f) => f.replace(ROOT + path.sep, ''));
     expect(declarers).toEqual(['src/lib/customEventStore.js']);
   });
@@ -87,15 +98,23 @@ describe('one owner for the created-events bucket', () => {
     // actually matches the shape it is written to reject, without needing to
     // edit a real file to find out.
     const relapse = `export const LS_CUSTOMS = '${LS_CUSTOMS}';`;
-    expect(relapse).toMatch(/export\s+(?:const|let|var)\s+LS_CUSTOMS\b/);
-    expect(relapse).toMatch(new RegExp(`(?:const|let|var)\\s+\\w+\\s*=\\s*['"]${LS_CUSTOMS}['"]`));
+    expect(relapse).toMatch(/^\s*export\s+(?:const|let|var)\s+LS_CUSTOMS\b/m);
+    // …and a mention inside a comment is NOT a declaration. This is the case the
+    // stripper existed to handle, now handled by the anchor instead.
+    expect(`// was: export const LS_CUSTOMS = '${LS_CUSTOMS}'`).not.toMatch(/^\s*export\s+(?:const|let|var)\s+LS_CUSTOMS\b/m);
+    // The literal-declaration pattern, in the exact anchored form the scan uses.
+    const scanRe = new RegExp(`^\\s*(?:export\\s+)?(?:const|let|var)\\s+\\w+\\s*=\\s*['"]${LS_CUSTOMS}['"]`, 'm');
+    expect(relapse).toMatch(scanRe);
+    expect(`  const LS = '${LS_CUSTOMS}';`).toMatch(scanRe);                       // indented, unexported
+    expect(`// used to read: const LS = '${LS_CUSTOMS}'`).not.toMatch(scanRe);     // prose
+    expect(` * const LS = '${LS_CUSTOMS}'`).not.toMatch(scanRe);                   // block-comment prose
   });
 
   test('the shell still reaches the key through eventPool', () => {
     // The re-export exists so consumers need no edit. If someone "tidies" it by
     // deleting the re-export and pointing HostShellV2 at the store directly,
     // that is a different change and this says so.
-    const shell = stripComments(fs.readFileSync(path.join(ROOT, 'hostv2', 'src', 'HostShellV2.jsx'), 'utf8'));
-    expect(shell).toMatch(/import\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}\s*from\s*['"]\.\/eventPool\.js['"]/);
+    const shell = fs.readFileSync(path.join(ROOT, 'hostv2', 'src', 'HostShellV2.jsx'), 'utf8');
+    expect(shell).toMatch(/^\s*import\s*\{[^}]*\bLS_CUSTOMS\b[^}]*\}\s*from\s*['"]\.\/eventPool\.js['"]/m);
   });
 });
