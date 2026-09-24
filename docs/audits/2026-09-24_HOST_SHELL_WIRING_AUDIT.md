@@ -26,7 +26,7 @@ runtime proof to become a defect, that is said.
 |---|---|
 | results swallowed in silence | **23 bare `catch {}`** (ESLint `no-empty`: 21) + 101 comment-only. **6 of the 23 bare ones sit around the code that builds the host's next-steps list** |
 | wired and not used | **18** unused imports, **6** dead components and **17** unused locals — 41 dead bindings in one file (ESLint `no-unused-vars`) |
-| not wired that should be | 329 `src/lib` modules · **216 bundled** into the host shell · 113 not · 82 admin/knowledge (correctly out) · **31 left**, containing **two duplicate surfaces**. Confirmed by the real rollup module graph, not inferred |
+| not wired that should be | 329 `src/lib` modules · **217 bundled** into the host shell · 112 not · 82 admin/knowledge (correctly out) · **30 left**. Re-measured against the real rollup module graph after the fixes landed — `feedback.js` moved into the bundle, which is the fold showing up in the graph rather than in a claim |
 
 ---
 
