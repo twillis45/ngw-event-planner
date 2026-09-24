@@ -182,8 +182,8 @@
     <article class="find real">
       <div class="find-head">
         <span class="sym">authHeaders()</span>
-        <span class="chip real">real</span>
-        <span class="count">9 copies &middot; 5 variants</span>
+        <span class="chip real">real &middot; capped</span>
+        <span class="count">9 copies &middot; 3 behaviours &middot; capped</span>
       </div>
       <p class="evidence">The module that exists to own this is <code>apiAuth.js</code>. Three files import it. Six roll their own. Fingerprinting each definition shows five genuinely different implementations, not nine copies of one.</p>
       <pre>adminApi.js  rsvp.js  vendorBrief.js  commApi.js   7a0d55c1fd43
@@ -191,8 +191,17 @@ kas.js       kcr.js                                165f054f6840
 research.js                                        fdfac9575715
 orchestratorClient.js                              7dc5d329dd95
 apiAuth.js   &larr; the owner, used by 3 modules      b6bc60e0c4c3</pre>
-      <p class="evidence">They differ in substance. <code>apiAuth</code> sends only the Supabase bearer token. The four-file variant also attaches <code>X-Planner-Token</code>. Seven files independently read <code>REACT_APP_PLANNER_TOKEN</code>, each with its own comment calling it a transition or dev fallback.</p>
-      <p class="evidence"><strong>Checked before saying anything alarming: the credential is gated correctly.</strong> <code>scripts/validate-production-config.mjs</code> and the deploy workflow both keep that variable out of browser builds, in one place. There is no leak. The cost is that the decision to attach a credential is made in seven files and prevented in one, and any change to how auth works means finding nine implementations.</p>
+      <p class="evidence"><strong>Read all nine before touching any. Five fingerprints, but only THREE behaviours</strong> &mdash; two of the pairs differ by nothing but a comment (<code>/* fall through to token */</code> against <code>/* fall through */</code>).</p>
+      <pre>A  rsvp &middot; vendorBrief &middot; commApi &middot; adminApi
+     Authorization + X-Planner-Token, no Content-Type in the helper
+B  kas &middot; kcr &middot; research
+     Content-Type + Authorization + X-Planner-Token
+C  apiAuth &middot; orchestratorClient
+     Content-Type + Authorization, and NO token</pre>
+      <p class="evidence">Group A's missing Content-Type is <strong>not</strong> a missing header: all four set it at the call site. Checked, because a POST with a JSON body and no Content-Type would have been a real defect hiding inside the duplication. It is not there.</p>
+      <p class="evidence"><strong>Group C omits the token deliberately, and says so.</strong> <code>apiAuth</code> writes <em>&ldquo;unauthenticated &mdash; backend will 401&rdquo;</em> in its catch where the others write <em>&ldquo;fall through to token&rdquo;</em>. Opposite intents, both authored. So the obvious fix &mdash; move the six onto <code>apiAuth</code> &mdash; would <strong>remove the transition fallback from seven files</strong>: a no-op in production, a behaviour change in local dev.</p>
+      <p class="evidence">The credential itself is gated correctly, in one place: <code>scripts/validate-production-config.mjs</code> and the deploy workflow keep the variable out of browser builds. There is no leak. What is left is a maintenance cost with no live defect behind it, against the widest blast radius in the codebase &mdash; every API client in the app.</p>
+      <p class="evidence"><strong>CAPPED, NOT FOLDED, 2026-09-24.</strong> <code>authHeadersDoesNotGrowAgain</code> fails if a tenth copy appears, and pins the real consolidation target as a number: seven files decide to attach the credential, one file prevents it. The debt is registered and stopped from growing; paying it waits for a reason better than tidiness.</p>
     </article>
 
     <article class="find mine">
@@ -232,10 +241,12 @@ hostv2/src/eventPool.js:37       'ngw-hostv2-custom-events'</pre>
       <div class="find-head">
         <span class="sym">feedback()</span>
         <span class="chip real">real</span>
-        <span class="count">16 functions vs 3 patterns</span>
+        <span class="count">16 bands vs 3 guesses &middot; fixed</span>
       </div>
       <p class="evidence"><code>src/lib/feedback.js</code> is a 16-function haptic and tone vocabulary &mdash; <code>feedbackCommit</code>, <code>feedbackSeal</code>, <code>feedbackLock</code>, <code>feedbackHeart</code>, <code>feedbackBudget</code> &mdash; used by the CRA shell. <code>HostShellV2.jsx:5621</code> defines its own <code>feedback(kind)</code> with three patterns. Confirmed absent from the host bundle by rollup.</p>
-      <p class="evidence">The flagship surface has a coarser vocabulary than the engine already owns, so a seal, a lock, a heart and a budget warning all feel the same. The host version does carry a real audit finding the shared module may not &mdash; that muting sound must not kill haptics &mdash; which argues for folding that rule up, not for keeping two.</p>
+      <p class="evidence"><strong>Three differences, and all three were defects.</strong> The shell's default duration was <strong>10ms</strong> &mdash; below the perceptible floor the engine documents in its own words: <em>&ldquo;a 9ms buzz technically fires but the motor renders nothing, so a haptic you can't feel is pointless.&rdquo;</em> Eight of the shell's thirteen feedback calls used that default. They fired, and nobody felt them. It also ignored <code>prefers-reduced-motion</code> for vibration, in a file that honours it for animation, and the <code>ngw-haptics</code> opt-out never reached the shell at all.</p>
+      <p class="evidence">The one thing the shell got right &mdash; muting sound silences the chime and leaves haptics alone, from a motion re-audit &mdash; is <strong>kept by the fold rather than lost to it</strong>: the engine already separates <code>ngw-haptics</code> from <code>ngw-sounds</code>. That is the opposite of <code>authHeaders</code>, where folding would have destroyed a deliberate difference, and it is why this one was folded and that one capped.</p>
+      <p class="evidence"><strong>FIXED 2026-09-24.</strong> The shell delegates to <code>haptic()</code>, and the intent map lives with the bands so the two cannot drift. The chime stays local on purpose &mdash; <code>playMessageChime</code> is the shell's message tone, not the engine's. Red-proofed on both halves separately: a typo'd band name is a <em>silent</em> downgrade, since <code>haptic()</code> falls back rather than throwing, and a band below the floor fails on its own.</p>
     </article>
   </section>
 
@@ -309,8 +320,8 @@ closeoutIntel.js  isPastEvent(event, asOf)
     <ol class="order">
       <li><p><strong><code class="mono">LS_CUSTOMS</code></strong> &mdash; <em>done 2026-09-24.</em> <code class="mono">eventPool</code> re-exports the key from the store that writes it, and a structural guard fails if anyone declares a second one.</p></li>
 
-      <li><p><strong><code class="mono">authHeaders</code></strong> &mdash; largest, but the owning module already exists. Move the six onto <code class="mono">apiAuth.js</code> and keep the planner-token decision in one place.</p></li>
-      <li><p><strong><code class="mono">feedback</code></strong> &mdash; carry the mute-versus-haptics rule up into the shared module, then delete the host copy.</p></li>
+      <li><p><strong><code class="mono">authHeaders</code></strong> &mdash; <em>capped 2026-09-24, deliberately not folded.</em> Group C omits the planner token on purpose, so the obvious fold would change behaviour in seven files. A guard now fails on a tenth copy. Pay it down when auth actually changes, and do it by parameterising <code class="mono">apiAuth</code> rather than deleting the fallback.</p></li>
+      <li><p><strong><code class="mono">feedback</code></strong> &mdash; <em>done 2026-09-24.</em> The shell delegates to the engine's tuned bands, and the mute-versus-haptics rule survived because the engine already separated those keys. Eight call sites went from an imperceptible 10ms to a band a host can actually feel.</p></li>
     </ol>
     <p class="evidence">None of this is on the engine priority list. It is separate work, and smaller than it looked before testing.</p>
   </section>

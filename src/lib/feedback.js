@@ -14,7 +14,9 @@
 //   • Mirrors the Magic Moments motion bands — feedback is the same language in
 //     a different sense.
 
-const VIBE = {
+// Exported so a consumer's intent map can be checked against the real bands
+// instead of a test restating them. `VIBE` stays the internal name.
+export const VIBE_BANDS = {
   // Durations tuned ABOVE the Android perceptible floor (~25-30ms) — a 9ms buzz
   // technically fires but the motor renders nothing, so a haptic you can't feel is
   // pointless. Light = ~25ms, medium = ~40ms, committed actions get a pattern.
@@ -43,7 +45,7 @@ export function haptic(kind = 'tap') {
   if (reducedMotion() || !enabled('ngw-haptics')) return;
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      navigator.vibrate(VIBE[kind] || VIBE.tap);
+      navigator.vibrate(VIBE_BANDS[kind] || VIBE_BANDS.tap);
     }
   } catch (e) { /* non-critical */ }
 }
@@ -139,3 +141,27 @@ export function feedbackAlert()   { haptic('warning'); tone('alert'); }
 export function feedbackDayStart(){ haptic('commit'); tone('dayStart'); }
 // DAY-OF — the heart moment
 export function feedbackHeart()   { haptic('commit'); tone('heart'); }
+
+// ── ONE SHELL INTENT MAP, OWNED HERE (2026-09-24) ───────────────────────────
+//
+// hostv2's shell speaks three intents — a payoff, a committed act, a light tick
+// — and until this date it translated them into durations of its own, with a
+// 10ms default that sits BELOW the perceptible floor documented above. Eight of
+// its thirteen feedback calls used that default: they fired, and nobody felt
+// them. It also missed both guards in `haptic()` — reduced-motion and the
+// `ngw-haptics` opt-out.
+//
+// The map lives with the bands rather than in the shell so the two cannot drift,
+// and so a guard can check it against the real table instead of restating it.
+// Each row is justified by the band's own comment above:
+//
+//   magic → seal    "the one thing done — a rising triplet"
+//   act   → commit  "a value committed"
+//   tick  → select  "a light scan-a-choice tick"
+//   error → error
+export const FEEDBACK_BAND = Object.freeze({
+  magic: 'seal',
+  act:   'commit',
+  tick:  'select',
+  error: 'error',
+});

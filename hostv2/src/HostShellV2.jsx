@@ -167,6 +167,10 @@ import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 import { instacartCart, INSTACART_FALLBACK } from '@app/lib/instacart';
 import { parseSmartEventText, unusedClauses, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
+// The engine's tuned haptic bands. Free to import — feedback.js has zero
+// imports of its own — and it carries the two guards this shell was missing:
+// prefers-reduced-motion, and the `ngw-haptics` opt-out.
+import { haptic, FEEDBACK_BAND } from '@app/lib/feedback';
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
 // ── THE THREE LAYERS OF A PRICE (2026-09-23) ───────────────────────────────
 // store > regional > national, with exactly ONE module knowing that order.
@@ -5618,12 +5622,39 @@ export default function HostShellV2() {
     if (prevInboundCount.current !== null && count > prevInboundCount.current) { try { notifyMessageArrival(); } catch {} }
     prevInboundCount.current = count;
   }, [event, customs, eventId]);
+  // ── HAPTICS COME FROM THE ENGINE NOW (2026-09-24) ──────────────────────────
+  //
+  // This used to call navigator.vibrate with its own durations, and all three
+  // differences from @app/lib/feedback were defects rather than choices:
+  //
+  //   1. THE DEFAULT WAS 10ms, BELOW THE FLOOR. feedback.js tunes every
+  //      duration "ABOVE the Android perceptible floor (~25-30ms)" and says
+  //      why: "a 9ms buzz technically fires but the motor renders nothing, so
+  //      a haptic you can't feel is pointless." EIGHT of this file's thirteen
+  //      calls — every `act` and every `tick` — got that 10ms. They fired and
+  //      nobody felt them.
+  //   2. prefers-reduced-motion WAS IGNORED for vibration. This file honours it
+  //      for animation (REDUCE_MOTION, ~line 296) and never consulted it here,
+  //      so a host who asked for calm still got buzzed.
+  //   3. The `ngw-haptics` opt-out did not exist in this shell at all.
+  //
+  // THE ONE RULE THIS FILE GOT RIGHT IS KEPT, and kept BY the fold rather than
+  // in spite of it: muting sound silences the chime and leaves haptics alone (a
+  // motion re-audit found muting killed vibration too, making silent-haptics
+  // impossible). feedback.js already separates them — `ngw-haptics` and
+  // `ngw-sounds` are different keys — so delegating preserves the rule.
+  //
+  // The chime stays local on purpose: playMessageChime is this shell's own
+  // message tone, not the engine's tone(), and the payoff is meant to sound
+  // like the app's messages.
+  //
+  // Kind mapping, each justified by the engine's own comment on that band:
+  //   magic → 'seal'    "the one thing done — a rising triplet"  (the payoff)
+  //   act   → 'commit'  "a value committed"                      (copy, mark done)
+  //   tick  → 'select'  "a light scan-a-choice tick"             (toggle, expand)
+  //   error → 'error'   (defined both sides; no call site today)
   const feedback = (kind) => {
-    // The "Sound" setting (muted) gates the AUDIO chime ONLY — a host who
-    // silences sound still gets haptics (motion re-audit: muting sound also
-    // killed all vibration, so silent-haptics was impossible). Distinct patterns
-    // per intent so commit / celebration / error each feel different.
-    try { if (navigator.vibrate) navigator.vibrate(kind === 'magic' ? [12, 70, 12] : kind === 'error' ? [40, 30, 40] : 10); } catch { /* no haptics */ }
+    haptic(FEEDBACK_BAND[kind] || 'tap');
     if (kind === 'magic' && !muted) { try { playMessageChime(); } catch { /* no audio */ } }
   };
 
