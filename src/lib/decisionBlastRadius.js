@@ -43,13 +43,25 @@ export function unblockGraph(playbook) {
   const out = {};
   const decisions = (playbook && playbook.decisions) || [];
   const known = new Set(decisions.map((d) => d && d.id).filter(Boolean));
+  const add = (dep, id) => {
+    // Only real ids — an unresolvable name would silently inflate every count
+    // above it, which is the failure mode this whole module exists to avoid.
+    if (!known.has(dep) || !id || dep === id) return;
+    (out[dep] ||= []);
+    if (!out[dep].includes(id)) out[dep].push(id);
+  };
   for (const d of decisions) {
-    for (const dep of (Array.isArray(d && d.dependsOn) ? d.dependsOn : [])) {
-      // Only real ids — an unresolvable name would silently inflate every count
-      // above it, which is the failure mode this whole module exists to avoid.
-      if (!known.has(dep)) continue;
-      (out[dep] ||= []).push(d.id);
-    }
+    for (const dep of (Array.isArray(d && d.dependsOn) ? d.dependsOn : [])) add(dep, d.id);
+    // ── A GATE IS A DEPENDENCY, STATED IN A DIFFERENT FIELD ────────────────
+    // `whenChoice: { id: 'major_event', in: [...] }` means this decision does
+    // not exist until that one is answered. That is the strongest dependency
+    // there is, and three decisions declared it while leaving `dependsOn` null:
+    // Watch Party's tourney_span, reg_sport and ppv_cost, all gated on
+    // `major_event`. Read here rather than copied into the data, so a future
+    // gated decision is counted the day it is authored and nobody has to
+    // remember to write the same fact twice.
+    const gate = d && d.whenChoice && d.whenChoice.id;
+    if (gate) add(gate, d.id);
   }
   return out;
 }

@@ -116,6 +116,11 @@ describe('it counts what was never counted', () => {
 });
 
 describe('THE POPULATION — small, and that is the finding', () => {
+  // AMENDED 2026-09-24, while the packet was already with the board: reading
+  // `whenChoice.id` as a dependency added Watch Party's three gated decisions,
+  // moving 41 -> 42 and the raw-wiring figure 76 -> 77. The packet carries the
+  // same amendment. This is why the numbers are pinned — the drift was caught
+  // by these tests going red, not by anyone re-reading the document.
   test('only a sixth of decisions have anything waiting on them', () => {
     // Which is why this is a RANKING signal and not a headline: it speaks for
     // 41 decisions out of 260, and says nothing about the other 219.
@@ -128,7 +133,7 @@ describe('THE POPULATION — small, and that is the finding', () => {
       }
     }
     expect(total).toBe(260);
-    expect(withDownstream).toBe(41);
+    expect(withDownstream).toBe(42);
   });
 });
 
@@ -179,7 +184,7 @@ describe('the wiring is a board call, and these are the numbers for it', () => {
         if (decisionBlastRadius(pb, d, g).allDecisions > 0) changed++;
       }
     }
-    expect(changed).toBe(41);
+    expect(changed).toBe(42);
   });
 });
 
@@ -219,7 +224,7 @@ describe('the inversion that is already shipping', () => {
     }
     expect(total).toBe(260);
     expect(already).toBe(64);
-    expect(wired).toBe(76);
+    expect(wired).toBe(77);
   });
 
   test('the packet’s distribution table is the real distribution', () => {
@@ -231,6 +236,6 @@ describe('the inversion that is already shipping', () => {
         dist[n] = (dist[n] || 0) + 1;
       }
     }
-    expect(dist).toEqual({ 0: 219, 1: 28, 2: 5, 3: 3, 5: 4, 6: 1 });
+    expect(dist).toEqual({ 0: 218, 1: 28, 2: 5, 3: 4, 5: 4, 6: 1 });
   });
 });

@@ -2,6 +2,13 @@
 
 Date: September 24, 2026
 Status: **PACKET — no decision taken, no constant moved, nothing wired.**
+**AMENDED 2026-09-24, after issue.** Three Watch Party decisions
+(`tourney_span`, `reg_sport`, `ppv_cost`) declare `whenChoice: { id:
+'major_event' }` — gated on another decision — while leaving `dependsOn` null. A
+gate IS a dependency, so `unblockGraph` reads it. Effect on this packet: the
+population moves **41 → 42**, and the raw-wiring figure **76 → 77**. Nothing
+else changes and no conclusion turns on it. The drift was caught by the pinning
+tests going red, which is what they are for.
 Relates to: `docs/audits/2026-08-17_RANKING_FLOOR_BOARD.md` (the Ranking floor),
 `docs/audits/2026-08-17_VENDOR_CONSEQUENCE_RULING.md`, and
 `docs/audits/2026-09-23_CLOSING_WINDOW_RULING.md` (the most recent term added to
@@ -54,14 +61,14 @@ one resolves to a real decision id in its own playbook**, and the graph has
 
 | downstream decisions | count |
 |---|---|
-| 0 | 219 |
+| 0 | 218 |
 | 1 | 28 |
 | 2 | 5 |
-| 3 | 3 |
+| 3 | 4 |
 | 5 | 4 |
 | 6 | 1 |
 
-**41 of 260 (16%)** have anything waiting on them. The transitive walk earns its
+**42 of 260 (16%)** have anything waiting on them. The transitive walk earns its
 keep at the top: the Gala's fundraising target has **4 direct** dependents and
 **6** downstream — a first-order count under-reports the most load-bearing
 decision in that playbook by a third.
@@ -115,7 +122,7 @@ feeds the scorer:
 | a 27-day-late item | 4.90 | 4.90 |
 | a vendor reconfirm closing in 3 days | 5.50 | 5.50 |
 
-Decisions scoring above the lateness ceiling: **64 → 76 (25% → 29%)**.
+Decisions scoring above the lateness ceiling: **64 → 77 (25% → 30%)**.
 
 So the new term does not *create* the inversion. It **amplifies one that is
 already shipping**, and it does so most on exactly the decisions that matter
@@ -166,8 +173,8 @@ the ranker at all, and at what size?
 
 ### One measurement for whoever takes B2
 
-The distribution is **top-heavy and thin**: 219 of 260 decisions score zero and a
-single decision scores 6. A bounded term would separate roughly **41 rows** from
+The distribution is **top-heavy and thin**: 218 of 260 decisions score zero and a
+single decision scores 6. A bounded term would separate roughly **42 rows** from
 the rest, and only **8** would feel a cap at all. Whatever ceiling is chosen, it
 changes very few rows — which is an argument that it is safe, and equally an
 argument that it is not worth much. Both readings are honest and the board should
