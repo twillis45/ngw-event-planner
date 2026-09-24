@@ -25,8 +25,8 @@ runtime proof to become a defect, that is said.
 | question | measured |
 |---|---|
 | results swallowed in silence | **23 bare `catch {}`** (ESLint `no-empty`: 21) + 101 comment-only. **6 of the 23 bare ones sit around the code that builds the host's next-steps list** |
-| wired and not used | **4** of 468 named imports are imported and never referenced again |
-| not wired that should be | 329 `src/lib` modules · **215 reachable** from the host shell · 114 not · 82 of those are admin/knowledge infrastructure (correctly out) · **32 left**, containing **two duplicate surfaces** |
+| wired and not used | **18** unused imports, **6** dead components and **17** unused locals — 41 dead bindings in one file (ESLint `no-unused-vars`) |
+| not wired that should be | 329 `src/lib` modules · **216 bundled** into the host shell · 113 not · 82 admin/knowledge (correctly out) · **31 left**, containing **two duplicate surfaces**. Confirmed by the real rollup module graph, not inferred |
 
 ---
 
@@ -75,16 +75,38 @@ indistinguishable from "there was nothing to show".
 
 ---
 
-## 2. WIRED AND NOT USED — 4 of 468
+## 2. WIRED AND NOT USED — 41 dead bindings, not 4
 
-Imported into `HostShellV2.jsx` and never referenced anywhere in the body.
-Verified individually, not just by count: each appears on exactly one line, its
-own import.
+> **AMENDED 2026-09-24.** The first version said **4**. ESLint's `no-unused-vars`
+> says **18 unused imports**, plus 6 dead components and 17 unused locals — 41 in
+> all. My script counted a name appearing IN A COMMENT as a use, so `foodApproach`
+> and `PhotoStrip` (both mentioned in comments, both never called) read as live.
+> I found 4 of 18. Second hand-rolled count in this document to be wrong, and
+> wrong in the same direction: the linter saw what a regex could not.
+
+| category | n | names |
+|---|---|---|
+| **unused imports** | 18 | `Fragment`, `PhotoStrip`, `AskColumn`, `Eyebrow`, `BigValue`, `BigValueInput`, `GuideLine`, `Grounding`, `CtaRow`, `TierRow`, `SettledRow`, `SettledCard`, `OptionList`, `helperStatusLine`, `questionFrom`, `ALL_PLAYBOOKS`, `foodApproach`, `isBillingLive` |
+| **dead components** | 6 | `AddressField`, `CityField`, `LodgeDeck`, `SheetHero`, `TweenNum`, `VendorReplyParserV2` |
+| unused locals | 17 | `cycleVendorStatus`, `cycleLodging`, `cycleRide`, `planComplete`, `suggestions`, `decisionFor`, … |
+
+The **six dead components** are the sharper half. `AddressField` and `CityField`
+are input components with 8-9 props each; `LodgeDeck` and `SheetHero` are layout
+components. All four are fully written, and rendered nowhere. Eleven of the
+unused imports come from one line — the design-system components `AskColumn`,
+`Eyebrow`, `BigValue`, `CtaRow`, `TierRow`, `SettledRow`, `SettledCard`,
+`OptionList` — imported and never placed.
+
+That is the signature of a file where things were built, replaced, and the old
+version was never removed.
+
+Four of the imports still deserve individual notes, because they are not all the
+same kind of dead.
 
 | symbol | from | what is not happening |
 |---|---|---|
 | **`isBillingLive`** | `@app/lib/passGate` | The host shell imports the billing-live check and **never consults it.** Billing is DORMANT (`REACT_APP_BILLING_LIVE` unset), so whatever the pass surfaces do, they do **not** do it because this said so. Worth a deliberate answer: either the gate belongs on those surfaces, or the import should go. |
-| **`questionFrom`** | `@app/lib/askVoice` | Imported beside `normalizeAsk`, which **is** used. The import's own comment calls this "the final ask boundary — one terminal mark, never '??'". Half the boundary is applied. `selectedAction.js` uses both together, which is the pattern this file departs from. |
+| **`questionFrom`** | `@app/lib/askVoice` | **A missing step, not a leftover.** `selectedAction.js` uses the pair as a ladder: `normalizeAsk(row.ask) \|\| questionFrom(row.label) \|\| fallback` — use the authored ask, else turn the label into a question, else fall back. HostShellV2 imports both and uses only the first, so **a row with no authored `ask` has no way to become a question.** Use it; "or delete it" is the wrong reading. |
 | **`helperStatusLine`** | `@app/lib/helperResponsibility` | Imported beside `deriveHelperResponsibilities` and `guestHelperRoles`, both used. The line itself — *"Covered by Dana"* / *"Assigned to Dana, but not confirmed"* — renders nowhere. The distinction between assigned and **confirmed** is the whole point of that module and the host never sees it. |
 | **`ALL_PLAYBOOKS`** | `@app/lib/playbooks` | Dead weight on the import line. Harmless; delete it. |
 
@@ -96,7 +118,16 @@ shows neither.
 
 ## 3. NOT WIRED — and two duplicate surfaces
 
-215 of 329 `src/lib` modules are reachable from the host shell transitively
+> **VERIFIED 2026-09-24 against the real bundler.** This section's numbers came
+> from a hand-written BFS over resolved imports. Re-measured by building hostv2
+> with rollup and dumping `this.getModuleIds()` — the actual module graph, with
+> vite's aliases, plugins and conditional resolution applied: **216 bundled, 113
+> not**, against the BFS's 215/114. Off by one (`usCitiesFull.js`, which the BFS
+> missed and the bundler includes). The admin/non-admin split is 82/31 against a
+> claimed 82/32. **This claim held**, and both duplicate surfaces below are
+> confirmed absent from the host bundle by the bundler itself.
+
+216 of 329 `src/lib` modules are bundled into the host shell
 (through anything it imports, not just direct imports — so `recommendedPick`,
 reached via `playbooks/index.js`, counts as wired). 114 are not, and **82 of
 those are the `knowledge/` and `api/` research and admin trees, correctly out of
@@ -182,10 +213,20 @@ Items 1–5 are measured and specific. Item 6 is a question list.
   distinction the script had flattened. Every hand-rolled count in this document
   is a candidate for the same treatment; `no-empty` and `max-lines` were the two
   claims an off-the-shelf rule could check, and both were run.
-- **Wired-unused:** every named import collected, then counted in the file body
-  with import lines removed. All four hits were then verified individually —
-  a count is not a finding until the symbol is looked at.
+- **Wired-unused:** first by a hand-written import counter, then **replaced** by
+  ESLint `no-unused-vars`. The hand count said 4; the linter says 18 imports plus
+  6 dead components and 17 unused locals. The script counted a name appearing in
+  a COMMENT as a use. The linter's number is the one in this document.
+- **Not wired:** first a hand-written BFS from the ten host entry points, then
+  **confirmed** by building hostv2 and dumping rollup's real module graph
+  (`this.getModuleIds()`). 216/113 against the BFS's 215/114 — off by one.
 - **Not wired:** BFS from the ten host entry points over resolved `@app/` and
   relative imports, compared against every non-test module under `src/lib`.
   **Transitive on purpose:** a direct-import test would have wrongly called
   `recommendedPick` unwired when the board reaches it through `playbooks/index.js`.
+
+**Score, stated plainly: three claims, two of them wrong on the first pass.**
+Swallowed catches (146 → 23 bare) and unused imports (4 → 18) both failed their
+cross-check; reachability held. The substantive findings survived every time —
+what failed was the counting. Any number in this document that has not been
+checked by a second instrument should be read as provisional.
