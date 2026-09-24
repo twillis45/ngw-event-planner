@@ -102,11 +102,19 @@ test('the hero, the list row and the pinned footer all say the same thing', asyn
   const footer = readTally(await page.locator('.ftotal .ftotal-l').first().innerText());
   expect(footer.total).toBe(rows);
 
-  // Hero: an Eyebrow "Bought so far" over a BigValue "N of M" (no "bought").
-  const hero = await page.locator('.sheet').first().innerText();
-  const heroM = /Bought so far\s*(\d+)\s+of\s+(\d+)/i.exec(hero.replace(/\s+/g, ' '));
-  expect(heroM).not.toBeNull();
-  expect(Number(heroM[2])).toBe(rows);
+  // THE HERO NO LONGER CARRIES A COUNT (2026-09-24, board D). It led with
+  // "Bought so far / N of M"; the headline is now the money and the count lives
+  // in the pinned footer alone. Two readouts of one fact instead of three, so
+  // what is asserted here is that the hero states the SAME money the footer
+  // does — the remaining pair that could drift.
+  const hero = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
+  const heroMoney = /(\$[\d,]+)[\u2013-](\$[\d,]+)/.exec(hero);
+  expect(heroMoney, 'the hero states an estimate').not.toBeNull();
+  const footMoney = /(\$[\d,]+)[\u2013-](\$[\d,]+)\s+estimated/.exec(
+    (await page.locator('.ftotal').first().innerText()).replace(/\s+/g, ' '));
+  if (footMoney) {
+    expect(`${heroMoney[1]}-${heroMoney[2]}`).toBe(`${footMoney[1]}-${footMoney[2]}`);
+  }
 
   // The collapsed list row is only present while the list fold is closed on
   // some widths; assert it only when it is actually rendered.

@@ -215,7 +215,10 @@ test('NO STORE NEARBY: named, not a spinner that stops', async ({ page }) => {
   await tapText(page, 'Find stores');
   await page.waitForTimeout(900);
   const t = await bodyText(page);
-  expect(t).toMatch(/No Kroger, Harris Teeter, Fred Meyer, Ralphs and their sister stores near that ZIP/);
+  // COPY CHANGED 2026-09-24: "Kroger and its sister stores" put Kroger
+  // ALONGSIDE the others, so a host with no Kroger nearby would not learn that
+  // their Harris Teeter is one. The short form is now the ownership adjective.
+  expect(t).toMatch(/No Kroger-owned store near that ZIP/);
   expect(t).toMatch(/coverage is regional, and plenty of the map has none\. The estimate stands\./);
 });
 
@@ -294,10 +297,23 @@ test('A LINE TOTAL, WITH ITS ARITHMETIC — and a reference where the units do n
   expect(t).not.toMatch(/× 8 oz at \$9\.99/);
 
   // The summary counts the two achievements apart.
-  const note = await page.evaluate(() => {
-    const el = [...document.querySelectorAll('.grounding')].find(x => /priced at your store/i.test(x.innerText || ''));
-    return el ? (el.innerText || '').replace(/\s+/g, ' ') : 'NO NOTE';
-  });
-  console.log('COVERAGE NOTE:', note);
-  expect(note).toMatch(/convert to a line total/);
+  //
+  // SELECTOR WIDENED 2026-09-24, after this went red on a product that was
+  // right. It took the FIRST `.grounding` matching /priced at your store/ and
+  // asserted the coverage sentence on it. Commit 7a33cce0 then added a second
+  // element matching that same phrase — the hero's store subtotal, "$78 of it
+  // priced at your store · 2 of 22 lines" — which sorts earlier in the DOM. The
+  // test started reading the hero and reporting the coverage note missing.
+  //
+  // Both lines legitimately say "priced at your store": one is the money, one
+  // is the reconciliation. So the assertion is now against ALL of them — the
+  // claim was always "the sheet says this somewhere", never "this exact
+  // element does".
+  const notes = await page.evaluate(() =>
+    [...document.querySelectorAll('.grounding')]
+      .map(x => (x.innerText || '').replace(/\s+/g, ' '))
+      .filter(t => /priced at your store/i.test(t)));
+  console.log('COVERAGE NOTES:', JSON.stringify(notes));
+  expect(notes.length, 'no element mentions the store subtotal at all').toBeGreaterThan(0);
+  expect(notes.join(' || ')).toMatch(/convert to a line total/);
 });

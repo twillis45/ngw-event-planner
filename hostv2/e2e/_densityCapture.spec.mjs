@@ -50,7 +50,7 @@ test('the shopping hero at 390px', async ({ page }) => {
   // and this goes red instead of photographing the wrong screen.
   const sheet = page.locator('.sheet').last();
   const heroText = await sheet.innerText();
-  expect(heroText).toMatch(/Bought so far/i);
+  expect(heroText).toMatch(/estimate, all in/i);   // hero signature since 2026-09-24
 
   // The count of `.grounding` elements IS the fix. Before: three `Grounding`
   // lines plus the vintage stamp. After: two, plus one merged muted line.

@@ -81,3 +81,11 @@ ds-bundle/
 # It declares itself uncommitted in its own header; a `git add -A` swept it in
 # once (be8ce5e, reverted in the next commit). Ignored so that cannot recur.
 hostv2/playwright.sandbox.config.mjs
+
+# A SECOND BUILD OUTPUT, AND WHY THERE ARE TWO (2026-09-24)
+# `dist/` is built for the e2e runner (its own base path, a mock API host);
+# `dist-sim/` is built for driving the app in the iOS Simulator (base `/`, the
+# real backend). They were one directory until a sim rebuild landed in the
+# middle of a running suite and voided it, and a suite rebuild then broke the
+# simulator mid-demo. Same output, two consumers, two directories.
+hostv2/dist-sim/

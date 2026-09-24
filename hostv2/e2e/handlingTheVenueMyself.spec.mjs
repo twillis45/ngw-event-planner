@@ -56,12 +56,12 @@ test('the escape hatch is on the card, before anything is typed', async ({ page 
   // "Preempted", per the ruling — the host should not have to try and fail
   // first. The control sits with the venue input itself.
   await openBoard(page);
-  expect((await labels(page)).some((x) => /I.m handling the venue myself/i.test(x))).toBe(true);
+  expect((await labels(page)).some((x) => /I.ll sort this/i.test(x))).toBe(true);
 });
 
 test('parking stops the board leading with the venue', async ({ page }) => {
   await openBoard(page);
-  await tapText(page, 'I.m handling the venue myself');
+  await tapText(page, 'I.ll sort this');
   await page.waitForTimeout(1600);
   await settled(page);
   expect(await bodyText(page)).not.toMatch(/Pick the place in Santa Fe/i);
@@ -72,7 +72,7 @@ test('PARKING IS NOT ANSWERING — the plan still shows the venue unknown', asyn
   // handled. The parts meter must be unmoved, and the card must say so.
   await openBoard(page);
   const before = (await bodyText(page)).match(/(\d+) of (\d+) plan parts handled/i);
-  await tapText(page, 'I.m handling the venue myself');
+  await tapText(page, 'I.ll sort this');
   await page.waitForTimeout(1600);
   await settled(page);
   const t = await bodyText(page);
@@ -83,7 +83,7 @@ test('PARKING IS NOT ANSWERING — the plan still shows the venue unknown', asyn
 
 test('it is reversible, and the parked state says so while it lasts', async ({ page }) => {
   await openBoard(page);
-  await tapText(page, 'I.m handling the venue myself');
+  await tapText(page, 'I.ll sort this');
   await page.waitForTimeout(1600);
   await settled(page);
   expect(await bodyText(page)).toMatch(/Parked — you.re sorting the venue yourself/i);

@@ -83,15 +83,37 @@ test('AND STILL THERE AFTER SCROLLING TO THE END OF THE LIST', async ({ page }) 
 });
 
 test('it never claims a store subtotal it does not have', async ({ page }) => {
-  // With no store picked the bar shows the estimate band, not a store figure.
+  // With no store picked the bar must not imply a store figure.
   await boot(page);
   const t = (await page.locator('.ftotal').innerText()).replace(/\s+/g, ' ');
   expect(t).not.toMatch(/priced at your store/i);
-  expect(t).toMatch(/estimated/i);
   // AND IT IS A REAL FIGURE. The first cut asserted only /estimated/i, and the
   // bar was shipping "$NaN–$NaN estimated" — wrong field on the plan, and the
   // assertion matched it happily. Found by looking at the phone, not by the
   // test, which is the whole argument for the demo.
   expect(t).not.toMatch(/NaN|undefined|\$\s*—|\$0–\$0/);
-  expect(t).toMatch(/\$[\d,]+\s*[–-]\s*\$[\d,]+ estimated/);
+});
+
+// ── THE BAR STOPPED CARRYING THE ESTIMATE, AND THAT WAS THE POINT ─────────
+//
+// Until 2026-09-24 this bar read "$100–$400 estimated" — the SAME figure the
+// hero states four inches above it. The host called the duplication out, and
+// the bar became progress ("nothing in the cart yet" → "$X in the cart · $Y to
+// go"), which is what board D's footer carries.
+//
+// So the old `/\$… estimated/` assertion here was testing the duplication. The
+// guarantee worth keeping is that the ESTIMATE IS STILL ON THE SHEET, stated
+// once — dropping it from the bar must not be how it quietly disappears.
+test('the estimate is still on the sheet, stated once', async ({ page }) => {
+  await boot(page);
+  const sheet = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
+  expect(sheet).toMatch(/\$[\d,]+\s*[–-]\s*\$[\d,]+/);
+  expect(sheet).toMatch(/estimate, all in/i);
+  expect(sheet).not.toMatch(/NaN|undefined/);
+
+  // ONCE, not twice: the bar must not have grown the number back.
+  const bar = (await page.locator('.ftotal').innerText()).replace(/\s+/g, ' ');
+  const hero = /(\$[\d,]+)\s*[–-]\s*(\$[\d,]+)/.exec(sheet);
+  expect(hero).not.toBeNull();
+  expect(bar).not.toContain(`${hero[1]}–${hero[2]}`);
 });

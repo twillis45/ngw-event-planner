@@ -46,8 +46,32 @@ const BASE = process.env.REACT_APP_API_BASE_URL;
  * Exported so the shell never retypes it — the same single-owner rule the
  * brand name and the layer order already live under.
  */
-export const STORE_FAMILY = 'Kroger and its sister stores — Harris Teeter, Fred Meyer, Ralphs, QFC, King Soopers, Fry\'s, Smith\'s and the rest';
-export const STORE_FAMILY_SHORT = 'Kroger, Harris Teeter, Fred Meyer, Ralphs and their sister stores';
+/*
+ * SAY THAT KROGER IS THE PARENT, NOT A SIBLING (host, 2026-09-24).
+ *
+ * This read "Kroger and its sister stores", which puts Kroger alongside the
+ * others and leaves a host to conclude we only check one chain. The host asked
+ * for copy "indicating that Kroger is not the only grocery store" — and the
+ * useful fact is the opposite of a limitation: Harris Teeter IS Kroger. A
+ * Mid-Atlantic host who reads "Kroger" and knows there is no Kroger within
+ * fifty miles will not tap a button that is, in fact, about to price their
+ * Harris Teeter.
+ *
+ * VERIFIED, NOT RECALLED. The Kroger Co. describes itself as operating under
+ * "two dozen local banner names including Kroger, City Market, Dillons, Food
+ * 4 Less, Fred Meyer, Fry's, Harris Teeter, Jay C, King Soopers, QFC, Ralphs
+ * and Smith's" (ir.kroger.com investor releases; thekrogerco.com/about/history).
+ * Harris Teeter was acquired in 2014; the 1999 Fred Meyer merger brought
+ * Smith's, Ralphs, Food 4 Less and QFC. Corporate ownership is a claim about a
+ * real company, so it is sourced rather than remembered.
+ *
+ * It remains ONE family, which is the honest limit and is still said out loud.
+ */
+export const STORE_FAMILY = 'the Kroger family — Harris Teeter, Fred Meyer, Ralphs, QFC, King Soopers, Fry\'s, Smith\'s and two dozen banners in all';
+/** Adjective form, for "No ___ near that ZIP". */
+export const STORE_FAMILY_SHORT = 'Kroger-owned store';
+/** The teaching line: names the parent AND the banners a host would recognize. */
+export const STORE_FAMILY_TEACH = 'Kroger\'s two dozen banners — Harris Teeter, Ralphs, QFC, Fred Meyer and more';
 
 export function isStorePricesConfigured() {
   return Boolean(BASE);

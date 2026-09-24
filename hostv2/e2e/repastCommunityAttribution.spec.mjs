@@ -132,7 +132,7 @@ test('the mode control offers Bringing, counted', async ({ page }) => {
   await boot(page);
   const tabs = await page.locator('.fmode').allInnerTexts();
   expect(tabs.join(' ')).toMatch(/Shop/);
-  expect(tabs.join(' ')).toMatch(/Bringing\s*·\s*4/);
+  expect(tabs.join(' ')).toMatch(/Bringing\s*·\s*11/);
 });
 
 test('the Bringing panel lists the dishes and charges the host nothing', async ({ page }) => {
@@ -149,12 +149,85 @@ test('the Bringing panel lists the dishes and charges the host nothing', async (
   expect(t).toMatch(/nothing here is sent to anyone/i);
 });
 
-test('NO DEAD CHROME: an event with nothing to bring gets no mode control', async ({ page }) => {
+test('NO DEAD CHROME: an event with nothing to bring gets no BRINGING tab', async ({ page }) => {
   // A permanent "Bringing · 0" tab would advertise an empty room. This is the
   // assertion that keeps the control honest as more playbooks gain community
-  // sources — it fails loudly if the control ever renders unconditionally.
+  // sources.
+  //
+  // NARROWED 2026-09-24, with the rule it guards. It read "gets no mode
+  // control" and asserted zero `.fmode` buttons, which was right while the
+  // control was Shop|Bringing — with nothing brought there was nothing to
+  // switch between. Board D's control is three wide (Shop · Bringing · Plan),
+  // and Shop and Plan exist on every event, so the whole control can no longer
+  // be absent: hiding it would hide the only door to the planning rows on
+  // almost every event in the corpus.
+  //
+  // The property this test exists for is untouched — a tab for a room with
+  // nobody in it — so it now asserts exactly that, and nothing more.
   await bootCookout(page);
   const t = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
-  expect(t).toMatch(/bought|spread/i);          // premise: the sheet really opened
-  expect(await page.locator('.fmode').count()).toBe(0);
+  expect(t).toMatch(/bought|spread|estimate/i);   // premise: the sheet really opened
+  const labels = await page.locator('.fmode').allInnerTexts();
+  expect(labels.length).toBeGreaterThan(0);       // the control is there…
+  expect(labels.join(' | ')).not.toMatch(/Bringing/i);  // … without the empty room
+  expect(labels.join(' | ')).toMatch(/Plan/);     // and the planning door is reachable
+});
+
+// ─── THE CONTROL HAS TO DO WHAT IT SAYS (UX_07) ──────────────────────────────
+//
+// The first cut of the Bringing row read "Who's bringing?" with a chevron and
+// then navigated to the Shop sheet. It named one act and performed another —
+// the exact shape `ctaNamesTheAct` exists to stop, and I shipped it.
+test('naming a bringer actually records one, and both surfaces agree', async ({ page }) => {
+  await boot(page);
+  await page.locator('.fmode', { hasText: 'Bringing' }).click();
+  await settled(page);
+
+  // Before: nobody named.
+  const first = page.locator('.fstat').first();
+  expect((await first.innerText()).replace(/\s+/g, ' ')).toMatch(/Add a name/);
+
+  await first.click();
+  const input = page.locator('input#bringer-p_protein, .sheet input.field').first();
+  await input.fill('Sister Vaughn');
+  await input.press('Enter');
+  await settled(page);
+
+  // The row now carries the name, and the count moved.
+  const panel = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
+  expect(panel).toMatch(/Sister Vaughn/);
+  expect(panel).toMatch(/1 of 11 spoken for/);
+
+  // AND THE SHOP LIST AGREES. One fact, two surfaces — the chip must stop
+  // saying "The repast committee" for a dish that now has a person.
+  await page.locator('.fmode', { hasText: 'Shop' }).click();
+  await settled(page);
+  const listRow = page.locator('.fstat', { hasText: 'The list' }).first();
+  if (await listRow.count()) { await listRow.click(); await settled(page); }
+
+  // OPEN ONLY WHAT IS CLOSED. The first cut clicked every `.fgroup` in a loop,
+  // and a click on an OPEN fold shuts it — so whether the chicken row was on
+  // screen at the end depended on the order the folds happened to be in. The
+  // run that failed and the run that passed differed by exactly that, which is
+  // how a real defect got reported as flake.
+  const folds = page.locator('.fgroup');
+  const total = await folds.count();
+  for (let i = 0; i < total; i += 1) {
+    const f = folds.nth(i);
+    if (!(await f.isVisible())) continue;
+    const open = (await f.getAttribute('class') || '').split(/\s+/).includes('open');
+    if (!open) { await f.click(); await page.waitForTimeout(110); }
+  }
+  await settled(page);
+
+  // ASSERT ON THE ROW, NOT ON THE SHEET. A sheet-wide `toMatch` passes if the
+  // name survives anywhere at all — including in the Bringing panel behind it —
+  // so it could go green while the Shop chip still said "The repast committee".
+  // The claim is that THIS DISH, in the Shop list, names the person.
+  const chickenRow = page.locator('.fgroup .frow', { hasText: /chicken/i }).first();
+  await expect(chickenRow).toBeVisible();
+  const rowText = (await chickenRow.innerText()).replace(/\s+/g, ' ');
+  expect(rowText).toMatch(/Sister Vaughn/);
+  // And the collective noun is gone from it — one fact, one answer.
+  expect(rowText).not.toMatch(/The repast committee/);
 });

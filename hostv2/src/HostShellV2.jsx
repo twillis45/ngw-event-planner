@@ -139,7 +139,7 @@ import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress } from '@app/lib/knowledge/geoCostIndex';
-import { firstStoreIn } from '@app/lib/communitySource';
+import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
@@ -184,7 +184,7 @@ import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices'
 // Northeast that never throws and never looks wrong. `layerForLine` reads the
 // decision the engine recorded (`geoBasis`) instead of re-deriving it.
 import { layerForLine, storePriceIndex, layerCoverage, coverageNote } from '@app/lib/priceLayers';
-import { isStorePricesConfigured, nearbyStores, storePrices, STORE_FAMILY, STORE_FAMILY_SHORT } from '@app/lib/storePrices';
+import { isStorePricesConfigured, nearbyStores, storePrices, STORE_FAMILY, STORE_FAMILY_SHORT, STORE_FAMILY_TEACH } from '@app/lib/storePrices';
 import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
@@ -833,7 +833,12 @@ const DEMO_TOOLS_ARMED = (() => {
 // new control to. 44px of hit area, keyboard reachable, and the current mode
 // carries aria-selected rather than only a colour.
 function FoodModes({ mode, count, setSheet }) {
-  if (!count) return null;
+  // Shop and Plan always exist; Bringing only when somebody is carrying
+  // something. The old guard hid the WHOLE control when count was 0, which was
+  // right while the control was Shop|Bringing and wrong the moment Plan joined
+  // it — it would have hidden the only door to the planning rows on every event
+  // without a community line, i.e. almost all of them.
+  void 0;
   const btn = (key, label, on) => (
     <button
       type="button"
@@ -843,10 +848,16 @@ function FoodModes({ mode, count, setSheet }) {
       onClick={on}
     >{label}</button>
   );
+  // ── WORKFLOW ORDER, NOT BOARD ORDER (host, 2026-09-24) ────────────────
+  // Board D draws these Shop · Bringing · Plan. That is the order they were
+  // DESIGNED in, not the order a host moves through them: you settle what you
+  // are serving, you find out what other people are carrying, and only then do
+  // you know what is left to buy. Left to right should be first to last.
   return (
-    <div className="fmodes" role="tablist" aria-label="What you buy, and what others bring">
+    <div className="fmodes" role="tablist" aria-label="Planning, what others bring, and what you buy">
+      {btn('plan', 'Plan', () => setSheet({ kind: 'foodplan' }))}
+      {count ? btn('bringing', `Bringing · ${count}`, () => setSheet({ kind: 'bringing' })) : null}
       {btn('shop', 'Shop', () => setSheet({ kind: 'food' }))}
-      {btn('bringing', `Bringing · ${count}`, () => setSheet({ kind: 'bringing' }))}
     </div>
   );
 }
@@ -1331,10 +1342,21 @@ export default function HostShellV2() {
         </div>
       ) : (
         <div style={{ marginTop: 'var(--sp-2)' }}>
+          {/* RENAMED 2026-09-24 (host). "I'm handling the venue myself" reads
+              like an ANSWER — covered, sorted, done — when all it does is
+              acknowledge the blocker so the plan stops leading with it. The
+              venue stays unknown and stays counted against the host, which the
+              parked note underneath then has to explain. A label that needs a
+              paragraph to correct it is the wrong label.
+              "I'll sort this" names the act: the host is taking it off the
+              app's hands, not telling it the answer. Nothing about stopping the
+              asking is in the words, because the app already stops — saying so
+              would describe our behavior back to the host instead of naming
+              theirs. */}
           <button className="mini" onClick={() => patchEvent(
             parkVenuePatch(event),
             'Parked — the plan will stop leading with the venue.')}
-          >I’m handling the venue myself</button>
+          >I’ll sort this</button>
         </div>
       )}
     </>
@@ -2537,6 +2559,7 @@ export default function HostShellV2() {
   // plan next month and read last month's prices as current. The layer is worth
   // having and it is not worth persisting — so it is re-asked for, or it is not
   // claimed at all.
+  const [bringerEdit, setBringerEdit] = useState(null); // { id, value } while naming who carries a dish
   const [priceStore, setPriceStore] = useState(null);   // { locationId, name, address } once picked
   const [priceIdx, setPriceIdx] = useState(null);       // Map from storePriceIndex — null until a fetch lands
   const [storePicker, setStorePicker] = useState(null); // { zip, stores, busy, reason } while choosing
@@ -3099,11 +3122,36 @@ export default function HostShellV2() {
     if (known) { didResume.current = true; switchEvent(id); }
   }, [resumePointer, customs, hydratedEvents, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toast = (msg, action, tone) => {
+  // Feature-detected ONCE, not per render: whether this browser has a system
+  // share sheet at all. Desktop Safari and most desktop browsers do not, so the
+  // "Share the list" button must be absent there rather than present and dead.
+  // `typeof` guard because this file is also imported by node-side tests.
+  const canShareLists = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  const dismissToast = () => {
+    clearTimeout(toastTimer.current);
+    setToastMsg(null); setToastAction(null); setToastTone(null);
+  };
+  /**
+   * toast(msg, action, tone, { sticky })
+   *
+   * STICKY EXISTS FOR ONE SHAPE OF MESSAGE (host, 2026-09-24: "allow user to
+   * dismiss message after send the list to instacart"). A timed toast assumes
+   * the host is still looking at us. The Instacart handoff assumes the
+   * opposite — it opens another tab, so the notice explaining what just
+   * happened to their clipboard counts down while they are in a different app,
+   * and is gone when they come back confused.
+   *
+   * A sticky toast sets no timer and is given its own dismissal, so it waits as
+   * long as the host is away. Used sparingly: a message that will not leave is
+   * worse than one that leaves too early, unless the host has genuinely gone.
+   */
+  const toast = (msg, action, tone, opts) => {
     setToastMsg(msg);
-    setToastAction(action || null);
+    setToastAction(action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null));
     setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
     clearTimeout(toastTimer.current);
+    if (opts && opts.sticky) return;
     // An actionable toast lingers a little longer — the host needs a beat to
     // read it AND decide; a plain notice keeps the original rhythm.
     toastTimer.current = setTimeout(() => { setToastMsg(null); setToastAction(null); setToastTone(null); }, action ? 6500 : 3400);
@@ -4293,6 +4341,31 @@ export default function HostShellV2() {
   // Runs once per open (dep is `sheet`; within-sheet interactions use other
   // state, so identity is stable while open). Mirrors the splash keydown idiom
   // (window listener + cleanup) but in BUBBLE phase, not capture, so a focused
+  // ── SWITCHING TABS MUST NOT BOUNCE THE SCREEN (host, 2026-09-24) ────────
+  //
+  // "screen shouldn't bounce between moving to different shop/bringing/plan
+  // sections." The three tabs are three different heights — Shop runs to a
+  // grocery list, Plan is four rows — and they are one scrolling `.sheet`. Tap
+  // a tab while scrolled down the list and the new tab keeps the old
+  // scrollTop, so a short tab lands mid-content or snaps as the browser clamps
+  // to a shorter page. Either way the header jumps out from under the thumb
+  // that just tapped it.
+  //
+  // The tab control lives at the TOP of the sheet, so the honest resting place
+  // after a switch is the top. Keyed on sheet.kind, so it fires when the tab
+  // changes and NOT on every re-render inside a tab — ticking an item off must
+  // not throw the host back to the top of the aisle.
+  //
+  // `auto`, not `smooth`: a switch should be instant. An animated scroll is
+  // the bounce, just slower.
+  useEffect(() => {
+    if (!sheet) return;
+    if (sheet.kind !== 'food' && sheet.kind !== 'foodplan' && sheet.kind !== 'bringing') return;
+    const el = sheetRef.current;
+    if (el && typeof el.scrollTo === 'function') el.scrollTo({ top: 0, behavior: 'auto' });
+    else if (el) el.scrollTop = 0;
+  }, [sheet && sheet.kind]);   // eslint-disable-line react-hooks/exhaustive-deps
+
   // field's own Escape-to-cancel (food tune, vendor cost, diet, guest count)
   // runs first and Escape only closes the sheet when focus isn't in a text box.
   useEffect(() => {
@@ -12193,7 +12266,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -17533,7 +17606,7 @@ export default function HostShellV2() {
                 UI the density work spent the morning removing. */}
             {sheet.kind === 'bringing' && foodPlan ? (() => {
               const rows = (foodPlan.list || []).filter((i) => i && i.broughtByCommunity);
-              const named = rows.filter((r) => String(r.owner || '').trim()).length;
+              const named = rows.filter((r) => String((event.foodOwner || {})[r.id] || r.owner || '').trim()).length;
               const who = (rows[0] && rows[0].broughtByLabel) || 'The community';
               return (
                 <>
@@ -17550,16 +17623,68 @@ export default function HostShellV2() {
                         : `${named} of ${rows.length} spoken for · nothing here costs you anything`}
                     </Grounding>
                   </div>
+                  {/* A CONTROL THAT PERFORMS THE ACT IT NAMES (UX_07). The first
+                      cut of this row said "Who's bringing?" with a chevron and
+                      then called setSheet({kind:'food'}) — it named one act and
+                      did another, which is the exact shape `ctaNamesTheAct`
+                      exists to stop, shipped by me one commit earlier.
+
+                      `foodOwner` is an override map keyed by purchase id, the
+                      same idiom as `foodGot`, `foodWhere`, `foodSkip` and
+                      `foodReal`. The engine's own `owner` stays the fallback, so
+                      an authored bringer still shows and the host's answer wins.
+
+                      A RECORD, NOT A REQUEST: this writes down what she was
+                      told. Clearing the field removes the name rather than
+                      storing an empty one, because "nobody named yet" and
+                      "somebody called ''" are different facts. */}
                   <div className="fstat-list">
-                    {rows.map((r) => (
-                      <button key={r.id} className="fstat" onClick={() => setSheet({ kind: 'food' })}>
-                        <span className="fstat-l">{r.short || r.item}</span>
-                        <span className="fstat-v">
-                          {String(r.owner || '').trim() || 'Who’s bringing?'}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
-                      </button>
-                    ))}
+                    {rows.map((r) => {
+                      const saved = String((event.foodOwner || {})[r.id] || r.owner || '').trim();
+                      const editing = bringerEdit && bringerEdit.id === r.id;
+                      const commit = () => {
+                        const v = String((bringerEdit && bringerEdit.value) || '').trim();
+                        const next = { ...(event.foodOwner || {}) };
+                        if (v) next[r.id] = v; else delete next[r.id];
+                        setBringerEdit(null);
+                        patchEvent({ foodOwner: next },
+                          v ? `${v} is bringing ${(r.short || r.item)}.`
+                            : `Cleared — nobody is named for ${(r.short || r.item)} yet.`);
+                      };
+                      if (editing) {
+                        return (
+                          <div key={r.id} className="fstat" style={{ display: 'block' }}>
+                            <label className="shelf-label" htmlFor={'bringer-' + r.id}
+                              style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>
+                              Who is bringing {r.short || r.item}?
+                            </label>
+                            <input className="field" id={'bringer-' + r.id} autoFocus
+                              placeholder="A name, as you were told it"
+                              value={bringerEdit.value}
+                              onChange={(e) => setBringerEdit({ id: r.id, value: e.target.value })}
+                              onBlur={commit}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') commit();
+                                if (e.key === 'Escape') setBringerEdit(null);
+                              }} />
+                          </div>
+                        );
+                      }
+                      return (
+                        <button key={r.id} className="fstat"
+                          onClick={() => setBringerEdit({ id: r.id, value: saved })}>
+                          <span className="fstat-l">{r.short || r.item}</span>
+                          {/* NO WRAP. Beside a long dish — "Sheet cake, pound
+                              cake, pies, banana pudding" — this broke to "Add a
+                              / name" and the row grew a line. The label is the
+                              act and stays whole; the DISH is what should take
+                              the wrapping, because it is the content. */}
+                          <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+                            {saved || 'Add a name'}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                   {/* A RECORD, NOT A REQUEST. The repast playbook carries a 2026-09-03
                       three-seat ruling about not telling a family they are doing their
@@ -17572,9 +17697,21 @@ export default function HostShellV2() {
                 </>
               );
             })() : null}
-            {sheet.kind === 'food' && (foodPlan ? (
+            {/* SHOP AND PLAN ARE SEPARATE TABS (2026-09-24, boards D and E).
+                Host: "shop and plan should be separated in spread and shopping
+                like we have in prototypes." Board D's control is three wide —
+                Shop · Bringing · Plan — and this shipped with two, so the
+                planning rows (Your choices, Dietary needs, How it's sourced)
+                sat on top of the shopping list, which is what made the Shop tab
+                seven stacked blocks deep before the first grocery.
+
+                ONE BODY, TWO TABS rather than a second sheet: the hero, the
+                drill-in panels and the pinned footer are shared, and `planTab`
+                picks which rows and which hero belong to the tab in front. A
+                separate sheet kind would have duplicated all of it. */}
+            {(sheet.kind === 'food' || sheet.kind === 'foodplan') && (foodPlan ? (
               <>
-                <FoodModes mode="shop" count={(foodPlan.list || []).filter((i) => i && i.broughtByCommunity).length} setSheet={setSheet} />
+                <FoodModes mode={sheet.kind === 'foodplan' ? 'plan' : 'shop'} count={(foodPlan.list || []).filter((i) => i && i.broughtByCommunity).length} setSheet={setSheet} />
                 {/* PRINCIPLES REDESIGN: summary before detail — the bought count
                     leads (the host's real question: "how much is left to do?"),
                     one grounding line carries the rest of the engine's math. */}
@@ -17603,7 +17740,15 @@ export default function HostShellV2() {
                 ) : foodPlan.hasRealCount ? (() => {
                   const fBand = (() => { try { return attendanceBand(event); } catch { return null; } })();
                   const fBandLbl = (() => { try { return attendanceBandLabel(fBand); } catch { return null; } })();
-                  const fGuestPhrase = (fBand && fBand.applicable && fBand.band && fBandLbl) ? fBandLbl : `${foodPlan.bandLow}–${foodPlan.bandHigh}`;
+                  // A BAND OF ONE IS A NUMBER. With a locked headcount bandLow
+                  // and bandHigh are equal, and the old hero hid that behind
+                  // "sized for 10–10 guests" — which nobody noticed until the
+                  // rewrite put the phrase on its own line and it read "10–10".
+                  const fGuestPhrase = (fBand && fBand.applicable && fBand.band && fBandLbl)
+                    ? fBandLbl
+                    : (foodPlan.bandLow === foodPlan.bandHigh
+                        ? `${foodPlan.bandHigh}`
+                        : `${foodPlan.bandLow}–${foodPlan.bandHigh}`);
                   // shopTally, not itemCount/boughtCount: the hero counts the
                   // list the host ticks, which includes supplies. See the
                   // accessor's note for why the engine's food-only pair stays.
@@ -17616,56 +17761,70 @@ export default function HostShellV2() {
                   const fVintage = priceVintage(foodPlan.list);
                   return (
                   <div style={{ padding: '2px 0 14px' }}>
-                    {/* Figma 378:60 parity — the hero composes the parity kit
-                        (Eyebrow → BigValue → GuideLine serif → two-line Grounding),
-                        so a Figma move lands in one place (anti-drift, parity/MANIFEST).
-                        The count is the star; the guide voice is the human line. */}
-                    <Eyebrow>Bought so far</Eyebrow>
+                    {/* ── THE HERO IS THE MONEY (2026-09-24, board D) ──────────
+                        Host, on the shipped Shop tab: "still not laid out well
+                        messy" / "not spaced well either". Counted on the phone,
+                        SEVEN stacked text blocks stood between the tab control
+                        and the first grocery:
+
+                          Bought so far
+                          0 of 10
+                          Nothing's crossed off yet — one good store run…
+                          Food $55–$155 · supplies $45–$245
+                          $1–$3 a head · sized for 32–46 guests
+                          National average · not yet adjusted… · est. prices Aug 2026
+                          THE LIST / Price this list… / Checks Kroger… / Copy… / Lock…
+
+                        Board D's Shop hero is three:
+
+                          $310–$940
+                          estimate, all in · $27–$79 a head · 7–9 guests
+                          $41.45 priced at your store · 3 of 6 food lines…
+
+                        WHAT CHANGED, AND WHY EACH ONE GOES:
+
+                        · The BigValue is the MONEY, not the count. A shopping
+                          screen's headline number is what this costs; "0 of 10"
+                          is progress, and progress belongs at the end of the
+                          aisle, which is exactly where the pinned footer already
+                          says it — twice on one screen was the redundancy.
+                        · The serif GuideLine goes with it. "Nothing's crossed off
+                          yet" narrates a count no longer in the hero.
+                        · Food/supplies split and per-head/guests were two lines
+                          saying one thing; D says it in one, and the split by
+                          category is a PLAN question, not an aisle one.
+                        · `foodSpan` (scope across a multi-day event) joins the
+                          muted provenance caption below rather than taking a
+                          line of its own — it qualifies the number, like the
+                          geography and vintage stamp it now sits with.
+
+                        Nothing here is dropped from the product: the count is in
+                        the footer, the category split is in Plan, and the scope
+                        note is one line lower. */}
                     <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(done ? { color: 'var(--ok)' } : null) }}>
-                      {shopTally.bought} of {shopTally.total}
+                      {fmt((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0))}–{fmt((foodPlan.foodHigh || 0) + (foodPlan.suppliesHigh || 0))}
                     </BigValue>
-                    <GuideLine>
-                      {done
-                        ? 'Everything’s bought — the spread is covered.'
-                        : shopTally.bought === 0
-                          ? 'Nothing’s crossed off yet — one good store run covers all of it.'
-                          : left <= 2
-                            ? `${left} to go — nearly there.`
-                            : `${left} still to grab — check things off as you shop.`}
-                    </GuideLine>
                     <Grounding gap={ASK_RHYTHM.valueToWhy}>
-                      Food {fmt(foodPlan.foodLow)}–{fmt(foodPlan.foodHigh)} · supplies {fmt(foodPlan.suppliesLow)}–{fmt(foodPlan.suppliesHigh)}
-                    </Grounding>
-                    <Grounding gap={3}>
-                      {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head · sized for {fGuestPhrase} guests
+                      estimate, all in · {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head · {fGuestPhrase} guests
                     </Grounding>
                     {/* BOTH MONEY TRUTHS, NEITHER PRETENDING TO BE THE OTHER.
                         Host ruling 2026-09-24 ("do one of each") after the review
                         board split: three seats held that a precise number for the
                         WRONG quantity is worse than an imprecise one for the right
                         quantity. A store subtotal is eight grocery lines; the band
-                        above is the whole spread for 7-9 guests. Shown together,
-                        with the store figure explicitly scoped by its line count,
-                        so neither can be read as the other.
+                        above is the whole spread. Shown together, with the store
+                        figure explicitly scoped by its line count, so neither can
+                        be read as the other.
 
                         `storeSum` counts ONLY the lines the unit map resolved to a
                         real total — a shelf price the plan's units cannot be
-                        reconciled against contributes nothing. A prototype of this
-                        summed every matched line, including one the same screen
-                        flagged as a wrong product, and printed it beside a caption
-                        claiming one line fewer. */}
+                        reconciled against contributes nothing. */}
                     {priceCoverage.storeTotal > 0 ? (
                       <Grounding gap={3}>
                         <b style={{ fontWeight: 600, color: 'var(--ink)' }}>{fmt(priceCoverage.storeSum)}</b>
                         {` of it priced at your store · ${priceCoverage.storeTotal} of ${priceCoverage.total} line${priceCoverage.total === 1 ? '' : 's'}`}
                       </Grounding>
                     ) : null}
-                    {/* SCOPE, NOT SCALE (foodSpan.js): across a multi-day span
-                        this plan sizes ONE gathering. Quantities are NOT
-                        multiplied by the day count — that would invent a plan
-                        nobody researched — so the sheet states what the number
-                        actually covers, right under the "sized for" line. */}
-                    {fSpan ? <Grounding gap={3}>{fSpan.text}</Grounding> : null}
                     {/* GEOGRAPHY, SAID ONCE (2026-08-16). Every priced line in the
                         corpus is a NATIONAL band - 226 cost citations, none adjusted
                         for where the host is - and until today nothing said so. BLS
@@ -17706,7 +17865,7 @@ export default function HostShellV2() {
                           A non-breaking space is width-independent and month-
                           independent: the date either fits on the line or moves to
                           the next one whole. */}
-                      {priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
+                      {fSpan ? fSpan.text + ' · ' : ''}{priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
                     </p>
                   </div>
                   );
@@ -17886,13 +18045,21 @@ export default function HostShellV2() {
                           Merged from your RSVPs — Undo
                         </button>
                       )}
+                      {/* A COMMIT IS NOT A FOOTNOTE (host, 2026-09-24: "that's
+                          everyone noted blends with the rest of options"). This
+                          button sat INSIDE the grounding paragraph, inline after
+                          the sentence — the one control that settles the whole
+                          panel, set in explanatory body text at explanatory
+                          weight, wrapping mid-sentence. Lifted out to its own
+                          line under the note, so the explanation explains and
+                          the act is a thing you press. */}
                       <p className="grounding" style={{ margin: '10px 0 0' }}>
                         Vegetarian + vegan counts add a real, priced main below; the others flag the lines to double-check.
-                        {!event.dietaryNoted && <span> </span>}
-                        {!event.dietaryNoted && (
-                          <button className="mini" onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.'); closeDiet(); }}>That’s everyone — noted</button>
-                        )}
                       </p>
+                      {!event.dietaryNoted && (
+                        <button className="mini" style={{ marginTop: 'var(--sp-2)' }}
+                          onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.'); closeDiet(); }}>That’s everyone — noted</button>
+                      )}
                       {/* The dietary-note drafter lives here now (port of 391:60 —
                           it belongs with dietary needs, not on the calm summary). */}
                       <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => { try { openDraft('Dietary note', draftDietaryNote(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Draft a dietary note</button>
@@ -17918,6 +18085,7 @@ export default function HostShellV2() {
                   const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
                   const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
                   const listDone = shopTally.done;
+                  const planTab = sheet.kind === 'foodplan';
                   if (dietOpen || choicesOpen || foodSect.sourced || foodSect.list) return null; // a drill-in panel is open below
                   // Progressive disclosure (port of Figma 391:60) — the heavy sections
                   // (sourcing, the shopping list) fold to summary rows; each drills in
@@ -17933,7 +18101,7 @@ export default function HostShellV2() {
                           everything else builds on the right assumption instead of
                           a generic default". The sheet was ordering it as though it
                           were a detail. Host-reported this session. */}
-                      {hasChoices && (
+                      {planTab && hasChoices && (
                         <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
                           <span className="fstat-l">Your choices</span>
                           <span className="fstat-v" style={openN > 0 ? null : { color: 'var(--ok)' }}>
@@ -17942,6 +18110,7 @@ export default function HostShellV2() {
                           </span>
                         </button>
                       )}
+                      {planTab && (
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
                         <span className="fstat-l">Dietary needs</span>
                         <span className="fstat-v" style={anyDiet || event.dietaryNoted ? { color: 'var(--ok)' } : null}>
@@ -17949,7 +18118,8 @@ export default function HostShellV2() {
                           <span className="fstat-chev" aria-hidden="true">›</span>
                         </span>
                       </button>
-                      {hasSourcing && (
+                      )}
+                      {planTab && hasSourcing && (
                         <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, sourced: true }))}>
                           <span className="fstat-l">How it’s sourced</span>
                           <span className="fstat-v">
@@ -17958,6 +18128,7 @@ export default function HostShellV2() {
                           </span>
                         </button>
                       )}
+                      {!planTab && (
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, list: true }))}>
                         <span className="fstat-l">The list</span>
                         <span className="fstat-v" style={listDone ? { color: 'var(--ok)' } : null}>
@@ -17965,6 +18136,7 @@ export default function HostShellV2() {
                           <span className="fstat-chev" aria-hidden="true">›</span>
                         </span>
                       </button>
+                      )}
                     </div>
                   );
                 })()}
@@ -17992,13 +18164,30 @@ export default function HostShellV2() {
                           : settled > 0
                             ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
                             : undefined;
+                        // ILLUMINATE ON COMPLETION (host, 2026-09-24). The tone
+                        // above is a state readout; this is attention. The host
+                        // answers the last question at the BOTTOM of a scrolling
+                        // panel and the way out is a small button at the top, so
+                        // at the moment the work finishes nothing moves in their
+                        // eyeline. Fires only when there is nothing left to
+                        // answer — a glow after every pick would be decoration.
+                        const allSettled = settled === foodPlan.choices.length && foodPlan.choices.length > 0;
                         return (
-                          <button className="mini" style={{ marginLeft: 'var(--sp-2)', ...tone }}
+                          <button className={'mini' + (allSettled ? ' lit-done' : '')} style={{ marginLeft: 'var(--sp-2)', ...tone }}
                             onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>Done</button>
                         );
                       })()}
                     </div>
-                    {foodPlan.choices.map(d => {
+                    {/* WHICH ONE IS NEXT (host, 2026-09-24: "next option in Your
+                        choices should illuminate"). Settling a choice folds it to
+                        a green line, and the remaining questions all looked
+                        identical — the host had to re-read the panel to find
+                        where they were. The FIRST unsettled one is lit in steel,
+                        which is progress rather than completion (UX_02 keeps
+                        green for done), so the eye lands on the next act without
+                        being told twice. */}
+                    {(() => { void 0; })()}
+                    {foodPlan.choices.map((d, _ci) => {
                       // AUTO-COLLAPSE (host request): a made choice folds to its
                       // settled line; when the LAST one lands the whole section
                       // closes itself — done work never keeps the room.
@@ -18018,8 +18207,10 @@ export default function HostShellV2() {
                           </div>
                         );
                       }
+                      const firstOpenId = (foodPlan.choices.find(c => !((event.foodChoices || {})[c.id])) || {}).id;
+                      const isNext = d.id === firstOpenId;
                       return (
-                        <div key={d.id} style={{ marginBottom: 'var(--sp-3)' }}>
+                        <div key={d.id} className={isNext ? 'choice-next' : undefined} style={{ marginBottom: 'var(--sp-3)' }}>
                           <div className="f-name" style={{ marginBottom: 6 }}>{d.label}</div>
                           <div className="chips">
                             {(d.options || []).map(opt => (
@@ -18067,7 +18258,11 @@ export default function HostShellV2() {
                     (full-width), plus the contextual tip. Both hidden while a
                     drill-in panel is open. The "Dietary note" drafter now lives
                     inside the Dietary-needs drill-in where it belongs. */}
-                {!(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && !noKitchen && (
+                {/* … and NOT on the Plan tab. "Copy the shopping list" and
+                    "Send the list to Instacart" are the aisle's two actions; on a
+                    tab whose whole content is Your choices / Dietary needs / How
+                    it's sourced they are answers to a question nobody asked. */}
+                {sheet.kind !== 'foodplan' && !(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && !noKitchen && (
                   <>
                     <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-2)' }} onClick={() => {
                       // foodShopItems/eventGeoQuery are the same shared engines legacy's
@@ -18093,26 +18288,134 @@ export default function HostShellV2() {
                       style={{ width: '100%', marginBottom: 'var(--sp-2)' }}
                       onClick={async () => {
                         if (sendingCart) return;
+                        // ── THE CLIPBOARD WRITE HAPPENS BEFORE THE AWAIT ─────────
+                        //
+                        // It used to run AFTER `await instacartCart(...)`, and
+                        // that is a real defect on the path that executes 100% of
+                        // the time today, because the Instacart key is not set.
+                        // Safari grants clipboard access on TRANSIENT USER
+                        // ACTIVATION, and awaiting a network round-trip spends
+                        // it; the write can then be rejected. The failure is
+                        // silent by construction — the catch swallows it, the
+                        // store opens anyway, the toast still says "List copied",
+                        // and the host pastes nothing into Instacart's search box.
+                        //
+                        // So the list is built and written while the tap is still
+                        // live. The copy is wasted when a real cart comes back,
+                        // which costs nothing and happens never at present.
                         setSendingCart(true);
                         let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                        let listText = '';
+                        try {
+                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                          const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                          listText = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
+                        } catch (_e) { listText = ''; }
+                        let copied = false;
+                        try { await navigator.clipboard.writeText(listText); copied = true; } catch (_e) { copied = false; }
+
+                        // ── AND THE TAB OPENS INSIDE THE TAP TOO ───────────────
+                        //
+                        // Host, 2026-09-24: "instacart button wasnt opening the
+                        // browser." Same defect as the clipboard write, one line
+                        // further down. `window.open` ran AFTER two awaits, so
+                        // Safari had already withdrawn the transient activation
+                        // and refused the popup — and the `catch` swallowed the
+                        // refusal, so the button did nothing, silently, forever.
+                        //
+                        // The window is opened NOW, synchronously, at the known
+                        // fallback. If a real cart comes back we redirect that
+                        // same tab. `noopener` is dropped deliberately, because
+                        // it nulls the handle we need for the redirect; the
+                        // opener reference is severed by hand instead.
+                        //
+                        // A blocked popup is now SAID OUT LOUD. It is the one
+                        // outcome the host cannot see for themselves.
+                        let win = null;
+                        try { win = window.open(INSTACART_FALLBACK, '_blank'); } catch (_e) { win = null; }
+                        try { if (win) win.opener = null; } catch (_e) { /* cross-origin, already safe */ }
+
                         let url = INSTACART_FALLBACK; let realCart = false;
                         try {
                           const r = await instacartCart(`${event.name || 'Event'} shopping list`, shopItems);
                           if (r && r.url) { url = r.url; realCart = true; }
                         } catch (_e) { /* the fallback below is the honest path */ }
                         if (!realCart) {
-                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                          let text = '';
-                          try {
-                            const d = draftShoppingList(event, profile, { items: shopItems, anchor });
-                            text = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
-                          } catch (_e) { text = ''; }
-                          try { await navigator.clipboard.writeText(text); } catch (_e) { /* clipboard denied — the store still opens */ }
-                          toast('List copied. Paste it into Instacart — the one-tap cart needs a store key we do not have yet.');
+                          // STICKY: this explains what happened to their clipboard
+                          // and it fires as we open another tab. A 3.4s timer
+                          // would run out while the host is inside Instacart.
+                          // And it tells the truth about the copy rather than
+                          // asserting one that may have been refused.
+                          toast(copied
+                            ? 'List copied. Paste it into Instacart — the one-tap cart needs a store key we do not have yet.'
+                            : 'Instacart is open, but the copy was blocked. Use "Copy the shopping list", then paste it there.',
+                            null, null, { sticky: true });
                         }
                         setSendingCart(false);
-                        try { window.open(url, '_blank', 'noopener'); } catch (_e) { /* popup blocked */ }
+                        if (realCart) {
+                          // Point the tab we already opened at the real cart.
+                          if (win) { try { win.location.replace(url); } catch (_e) { /* it navigated away */ } }
+                          else { try { window.open(url, '_blank', 'noopener'); } catch (_e) { /* blocked; told below */ } }
+                        }
+                        if (!win) {
+                          toast(copied
+                            ? 'Your browser blocked the new tab. The list is copied — open instacart.com and paste it.'
+                            : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and paste it.',
+                            null, null, { sticky: true });
+                        }
                       }}>{sendingCart ? 'Sending…' : 'Send the list to Instacart'}</button>
+                    {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
+                        Host asked for print, email, and "integration with anylist
+                        or other apps". Researched 2026-09-24, and the honest
+                        finding is that the per-app integrations mostly do not
+                        exist:
+
+                        · AnyList publishes NO API, no URL scheme, no email-in.
+                          The wrappers that exist are reverse-engineered and want
+                          the host's AnyList PASSWORD, so they are unshippable at
+                          any price.
+                        · Google Keep's API is Workspace-admin only.
+                        · Paprika, Out of Milk and Flipp have no public path.
+                        · Apple Reminders has no documented URL scheme either.
+
+                        What all of them DO have is a share extension. The Web
+                        Share API has been in iOS Safari since 12.2, and one
+                        button reaches Messages, Mail, Notes, Reminders and
+                        AnyList's own importer through the system sheet — no
+                        OAuth, no install prompt, no integration per app.
+
+                        FEATURE-DETECTED, not assumed: desktop Safari and most
+                        desktop browsers have no share sheet, so the button is
+                        absent there rather than present and broken. Copy already
+                        covers that case.
+
+                        BUILT BEFORE THE CALL, and the call is synchronous.
+                        `navigator.share` requires transient user activation, and
+                        awaiting anything first can spend it — the same defect
+                        that was live in the Instacart handler above.
+
+                        AbortError is the host closing the sheet, and also fires
+                        when there is nothing to share to. Neither is a failure,
+                        so neither gets an error toast. */}
+                    {canShareLists && (
+                      <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-2)' }} onClick={() => {
+                        let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                        let text = '';
+                        try {
+                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                          const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                          text = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
+                        } catch (_e) { text = ''; }
+                        if (!text) { toast('Nothing to share yet.'); return; }
+                        // No `url`: some targets take only one of text/url, and a
+                        // grocery list is the text. Synchronous — see above.
+                        navigator.share({ title: `${event.name || 'Event'} shopping list`, text })
+                          .catch((e) => {
+                            if (e && e.name === 'AbortError') return;   // closed the sheet
+                            toast('Couldn\u2019t open the share sheet.');
+                          });
+                      }}>Share the list</button>
+                    )}
                     {nudgeFor('food')}
                   </>
                 )}
@@ -18320,9 +18623,48 @@ export default function HostShellV2() {
                           types a ZIP and gets nothing should have known that was
                           possible before they tapped — otherwise an accurate
                           empty result reads as a broken feature. */}
+                      {/* CONDENSED 2026-09-24 (host: "clean up the checks Kroger
+                          message — copy is too dense and not laid out well").
+                          It ran 250 characters over FIVE lines of italic serif:
+                          the longest single block on the sheet, sitting above a
+                          list of actual groceries. Board D carries no explainer
+                          here at all — just the offer, then a compact store row
+                          once one is picked.
+
+                          Two of the three facts stay, because the reason above
+                          still holds: a host who types a ZIP into a one-chain
+                          lookup and gets nothing must have known that was
+                          possible, or an accurate empty result reads as broken.
+
+                          The third — "what it finds sits beside your estimate,
+                          never instead of it" — is dropped HERE and not lost: it
+                          is a fact about RESULTS, and `coverageNote` already
+                          says it at the moment there are results to qualify
+                          ("the rest are averages", "they are shelf references").
+                          Stated twice, the earlier telling is just length. */}
+                      {/* TWO SHORT LINES, NOT ONE LONG PARAGRAPH.
+                          The host's complaint was layout ("copy is too dense and
+                          not laid out well"), and my first pass answered it by
+                          DELETING the third fact — "what it finds sits beside
+                          your estimate, never instead of it". That clause has a
+                          test on it (threeLayersOfPrice: "says what it will and
+                          will not do"), and it is the one sentence that stops a
+                          host reading a shelf price as a replacement for the
+                          plan's band. Same mistake I made with the per-unit rate
+                          an hour earlier: density is not a licence to drop a
+                          guarantee.
+
+                          So every fact stays and the LAYOUT changes. What the
+                          lookup covers reads at guide weight; the two caveats
+                          drop to the muted caption where provenance lives. One
+                          five-line block becomes two short ones with a
+                          hierarchy. */}
                       <GuideLine gap={0} style={{ margin: '6px 0 0' }}>
-                        Checks {STORE_FAMILY} for a real shelf price on each line. Coverage is regional — there may be none near you. What it finds sits beside your estimate, never instead of it.
+                        Checks {STORE_FAMILY_TEACH}.
                       </GuideLine>
+                      <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
+                        Coverage is regional — there may be none near you. What it finds sits beside your estimate, never instead of it.
+                      </p>
                     </div>
                   );
                 })()}
@@ -18585,6 +18927,27 @@ export default function HostShellV2() {
                                     // treatment WAVE-5 gave it — an identification label, not a
                                     // gap warning — this is about ORDER, not about shouting.
                                     if (Array.isArray(it.dietFlags) && it.dietFlags.length) tags.push(<span key="diet" className="tag plan">{it.dietFlags.join(' · ').toLowerCase()}</span>);
+                                    // ── WHO IS CARRYING IT OUTRANKS WHAT IS LEFT TO DO ─────────
+                                    //
+                                    // This sat FIFTH, behind diet, decision, essential and
+                                    // day-of, under a two-tag cap — so on the repast rows it
+                                    // was always the one folded into "+1". Measured on the
+                                    // shipped repast: after writing "Sister Vaughn" against
+                                    // the chicken, the Shop list rendered
+                                    //
+                                    //   Fried or baked chicken & baked ham  decision open essential +1
+                                    //
+                                    // and her name was inside the +1. Naming a bringer looked
+                                    // like it had done nothing.
+                                    //
+                                    // ORDER, not shouting — it keeps the neutral `.tag.plan`
+                                    // WAVE-5 gave it. A line somebody else is carrying is a
+                                    // line the host has nothing to do about, which makes the
+                                    // carrier the fact that settles the row; "decision open"
+                                    // and "essential" describe work, and there is none here.
+                                    if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{String((event.foodOwner || {})[it.id] || '').trim() || it.broughtByLabel || 'The community'}</span>);
+                                    else if (it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
+                                    else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
                                     if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
                                     if (it.essential && !got) tags.push(<span key="ess" className="tag essential">essential</span>);
                                     // WAVE-5 (UX_02 amber budget): "day-of" and diet flags are
@@ -18600,9 +18963,11 @@ export default function HostShellV2() {
                                     // could. The community attribution comes first
                                     // because it is the stronger fact: the engine
                                     // established it from the host's food_source pick.
-                                    if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{it.broughtByLabel || 'The community'}</span>);
-                                    else if (it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
-                                    else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
+                                    // The host's own answer outranks the engine's
+                                    // collective noun: once she has written down
+                                    // "Sister Vaughn", the Shop list must not keep
+                                    // saying "The repast committee" beside the same
+                                    // dish. One fact, two surfaces, one answer.
                                     if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
                                     if (it.badge) tags.push(<span key="badge" className="tag plan">{String(it.badge).toLowerCase()}</span>);
                                     const shown = tags.slice(0, 2);
@@ -18611,10 +18976,72 @@ export default function HostShellV2() {
                                   })()}
                                 </span>
                                 <span className="v-meta">
+                                  {/* ── BOARD D'S ROW IS THREE LINES; THIS WAS SEVEN ─────
+                                      Host: "the current items has trivia leaking and
+                                      should be more like D." Measured on the shipped
+                                      repast, one row:
+
+                                        Fried or baked chicken & baked ham
+                                        [Sister Vaughn] [decision open] [+1]
+                                        23 lbs · $3–$7/lb · Grocery, Caterer, Restaurant
+                                        ½ lb/guest × 46 guests · typical
+                                        Directly sourced — Grounded to webstaurant-protein-
+                                        2026: ~0.5 lb protein/guest is the source-stated
+                                        one-main portion for a multi-protein spread.
+                                        $0–$0
+
+                                      Board D, same job: `5 lb · 0.5 lb a guest`.
+
+                                      THREE THINGS LEFT THIS LINE, none of them deleted
+                                      from the product:
+
+                                      · the per-unit band ($3–$7/lb) — the row already
+                                        prints the line total the band produces, so this
+                                        is the same fact at a finer grain.
+                                      · the shop-KIND list (Grocery, Caterer, Restaurant)
+                                        — not a store, just a category. A real pick still
+                                        shows, as "your pick: …", because that one names
+                                        somewhere a host is actually going.
+                                      · the "× 46 guests · typical" tail — 23 lbs IS
+                                        ½ × 46, printed one line above it.
+
+                                      The grounding claim moved behind `tune` (host,
+                                      2026-09-24: "provenance can be reachable but hide
+                                      it"). */}
                                   {[
                                     it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
+                                    // RESTORED 2026-09-24, same day I removed it. I cut
+                                    // this as trivia while collapsing the row to board
+                                    // D's three lines, reasoning that the line total
+                                    // states the same fact at a coarser grain. It does
+                                    // not, and `aRateIsNotFree.spec.mjs` exists to say
+                                    // so: rows once rendered "$0–$0/lb" and told a host
+                                    // the ice was free. Three of its tests went red,
+                                    // including "ICE IS TWENTY CENTS A POUND, and the
+                                    // sheet now says so."
+                                    //
+                                    // A per-unit rate is what makes a quantity
+                                    // checkable in the aisle — 23 lbs is a number, $3/lb
+                                    // is a number you can argue with at the counter. The
+                                    // density fix was the shop-kind list, the doubled
+                                    // multiplication and the citation essay; this was
+                                    // never part of it.
                                     foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null,
-                                    (event.foodWhere || {})[it.id] ? 'your pick: ' + (event.foodWhere || {})[it.id] : (Array.isArray(it.where) ? it.where.join(',') : it.where),
+                                    it.basis || null,
+                                    it.forgotten ? 'often forgotten' : null,
+                                    // A PERSON IS NOT A SHOP, second site. This printed
+                                    // `it.where` raw, so a repast line read
+                                    // "Brought by the community,Grocery,Caterer" — the
+                                    // same defect `firstStoreIn` fixed in the store picker,
+                                    // one element over. `storesIn` drops the people and
+                                    // keeps the shops in authored order; when there are no
+                                    // shops it returns [] and the segment falls away
+                                    // entirely, which is the honest meta for a line nobody
+                                    // is buying — the tag beside it already names who is.
+                                    // Comma-space, not comma: it is a list a host reads.
+                                    (event.foodWhere || {})[it.id]
+                                      ? 'your pick: ' + (event.foodWhere || {})[it.id]
+                                      : null,
                                   ].filter(Boolean).join(' · ')}
                                 </span>
                                 {/* ── THE SHELF PRICE, BESIDE THE ESTIMATE ─────
@@ -18697,34 +19124,10 @@ export default function HostShellV2() {
                                     </>
                                   );
                                 })()}
-                                {/* The "because" behind the quantity (it.basis, the
-                                    shared engine's already-formatted rate string —
-                                    lib/quantities/quantityBasis.js) and the "often
-                                    forgotten" heads-up (it.forgotten) — both read by
-                                    legacy's food card, neither rendered in V2 before
-                                    (found in the 2026-07-11 food-plan audit). Muted
-                                    text, not accent color: informational, not
-                                    interactive (UX_02 color-restraint doctrine) — a
-                                    deliberate change from legacy's steel-colored
-                                    treatment of "forgotten". */}
-                                {(it.basis || it.forgotten) && (
-                                  <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                    {/* Portion goal (host request 2026-07-12): the per-guest
-                                        rate ALONE ("½ lb/guest") never told the host what to
-                                        aim for overall. Scaling it by the real guest count —
-                                        "½ lb/guest × 15 guests" — surfaces the recommended
-                                        target the quantity was sized from, the same rate×guests
-                                        framing legacy showed (App.js ~11317) and V2 had dropped.
-                                        Only when there's a per-guest basis (it.basis is '' for
-                                        flat/converted goods) and a real count. */}
-                                    {[
-                                      it.basis
-                                        ? it.basis + (foodPlan.guests > 0 ? ' × ' + foodPlan.guests + ' ' + (foodPlan.guests === 1 ? 'guest' : 'guests') : '') + ' · typical'
-                                        : null,
-                                      it.forgotten ? 'often forgotten' : null,
-                                    ].filter(Boolean).join(' · ')}
-                                  </span>
-                                )}
+                                {/* The basis line that used to sit here — "½ lb/guest × 46
+                                    guests · typical" — is folded into the meta above as
+                                    "23 lbs · ½ lb/guest". The multiplication was printing
+                                    the arithmetic behind a number already on the row. */}
                                 {/* GOVERNED KNOWLEDGE, VISIBLE (Phase 5C.10; rewritten 5G-B).
                                     5C.10 rendered "Sourced — …" on the 52 lines that pass
                                     isGroundedItemQty and NOTHING on the other 485. The Phase A
@@ -18742,6 +19145,28 @@ export default function HostShellV2() {
                                     what `Sourced —` meant, on exactly the same 52 lines.
                                     Muted, one line, no accent (UX_02 restraint). */}
                                 {(() => {
+                                  // ── REACHABLE, NOT IN THE AISLE (host, 2026-09-24) ──────
+                                  // "provenance can be reachable but hide it."
+                                  //
+                                  // This rendered on EVERY row, and on a grounded line it
+                                  // is the longest thing on the screen:
+                                  //
+                                  //   Directly sourced — Grounded to webstaurant-protein-
+                                  //   2026: ~0.5 lb protein/guest is the source-stated
+                                  //   one-main portion for a multi-protein spread.
+                                  //
+                                  // Three lines of citation above a chicken the host is
+                                  // trying to buy. Board D shows no provenance on a row.
+                                  //
+                                  // NOT DELETED, AND THIS MATTERS. The 5G-B rationale
+                                  // above still holds — silence about what a number rests
+                                  // on was itself judged the largest honesty defect in the
+                                  // product. So the claim renders in full, with its author-
+                                  // written detail, the moment the host opens `tune` on the
+                                  // line: the panel where they interrogate the number is
+                                  // exactly where its basis belongs. Hidden by default,
+                                  // one tap away, never gone.
+                                  if (!tuning) return null;
                                   // Third argument added 2026-09-19: the cost factor that
                                   // actually moved this line. Without it the badge went on
                                   // vouching for a base rate after a synthesized multiplier
@@ -19204,9 +19629,13 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.</p>
                     </div>
                   ) : (
+                    sheet.kind === 'foodplan' ? null : (
+                    /* Adding a line to the shopping list is a SHOP act; on the
+                       Plan tab it was a third copy of the same door. */
                     <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setFoodAddOpen(true)}>
                       + Add an item you’re bringing or buying<span className="chev" aria-hidden="true">›</span>
                     </button>
+                    )
                   )}
                 </div>
                 {/* ── THE MONEY STAYS ON SCREEN (review board, 2026-09-24) ──────
@@ -19226,21 +19655,32 @@ export default function HostShellV2() {
                     only appears when the unit map resolved something, because a
                     subtotal that quietly included an unreconciled shelf price is
                     the exact defect the board caught in the prototype. */}
-                {!noKitchen && foodPlan.itemCount > 0 ? (
+                {sheet.kind !== 'foodplan' && !noKitchen && foodPlan.itemCount > 0 ? (
                   <div className="ftotal">
                     <span className="ftotal-l">
                       {shopTally.bought} of {shopTally.total} bought
                     </span>
+                    {/* ── IT STOPS REPEATING THE HERO (host, 2026-09-24) ────────
+                        "check for duplication of info and choices between
+                        shop/bringing/plan sections." The sharpest one was on a
+                        single screen at a single moment: the hero read
+                        "$100–$400" and this bar, four inches below it, read
+                        "$100–$400 estimated". The same number, twice, in the two
+                        most prominent slots on the sheet.
+
+                        Board D's footer is `$11.21 spent · $30.24 to go` — not
+                        the estimate again. A pinned bar in a shopping aisle is
+                        for PROGRESS: what has gone in the cart and what is left.
+                        The estimate is the headline and is stated once, up top.
+
+                        The store figure keeps precedence when there is one,
+                        because a real shelf subtotal beats both. */}
                     <span className="ftotal-r">
                       {priceCoverage.storeTotal > 0
                         ? `${fmt(priceCoverage.storeSum)} priced at your store`
-                        /* foodLow/suppliesLow, NOT costLow — `costLow` is
-                           undefined on this plan shape and `fmt(undefined)`
-                           renders "$NaN". Caught by looking at the phone: the
-                           e2e asserted /estimated/i, which "$NaN–$NaN
-                           estimated" satisfies perfectly. The test now asserts
-                           a real figure. */
-                        : `${fmt((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0))}–${fmt((foodPlan.foodHigh || 0) + (foodPlan.suppliesHigh || 0))} estimated`}
+                        : shopTally.bought > 0
+                          ? `${fmt((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))} in the cart · ${fmt(Math.max(0, ((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0)) - ((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))))} to go`
+                          : 'nothing in the cart yet'}
                     </span>
                   </div>
                 ) : null}

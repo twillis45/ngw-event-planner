@@ -5842,3 +5842,67 @@ button.vc-pill::after{
   display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 .ftotal-l{ font-size:14px; font-weight:600; color:var(--ink); }
 .ftotal-r{ font-size:13px; font-weight:400; color:var(--muted); text-align:right; }
+
+/* ── ATTENTION ON THE WAY OUT (host, 2026-09-24) ─────────────────────────────
+   "when making Your Choices selections Done should use attention system to draw
+   user attention to close" and "next option in Your choices should illuminate".
+
+   The panel already TINTED Done — steel while partly answered, green once every
+   choice was settled (UX_02: green means complete, and only then). A tint is a
+   state readout; it is not attention. The host answers the last question at the
+   BOTTOM of a scrolling panel and the way out is a small button back at the
+   top, so nothing moves in their eyeline at the moment the work finishes.
+
+   Same illumination the host ruled for the attention system on 2026-07-23 —
+   "add illumination to the attention system, same color" — which casts a
+   key-glow rather than flashing (.card.spot, .efold-grab handlelight above).
+   Reused, not reinvented: one attention language for the app.
+
+   IT FIRES ON COMPLETION, NOT ON EVERY PICK. A glow that runs after each answer
+   is decoration; this runs when there is finally nothing left to answer, which
+   is the one moment "close this" is the right next act. Decays to the resting
+   green tint, so the button still READS complete after the light goes. */
+.mini.lit-done{
+  animation: minilight 2.4s var(--ease-out) 1 both;
+}
+@keyframes minilight{
+  0%{   box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 0%, transparent); }
+  22%{  box-shadow:0 0 16px 3px color-mix(in srgb, var(--ok) 55%, transparent); }
+  70%{  box-shadow:0 0 10px 1px color-mix(in srgb, var(--ok) 28%, transparent); }
+  100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 0%, transparent); }
+}
+
+/* The NEXT unanswered choice lights instead, in steel — progress, not
+   completion (UX_02 reserves green for done). Steady, not animated: this one
+   has to stay findable while the host reads the options under it, and a decaying
+   glow would leave the question it marks looking like every other question. */
+.choice-next{
+  border-radius:var(--r-md);
+  margin-left:calc(var(--sp-2) * -1); margin-right:calc(var(--sp-2) * -1);
+  padding:var(--sp-2);
+  background:color-mix(in srgb, var(--steel) 9%, transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--steel) 26%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce){
+  .mini.lit-done{ animation:none; box-shadow:0 0 0 2px color-mix(in srgb, var(--ok) 42%, transparent); }
+}
+
+/* ── SHAPE PARITY (host, 2026-09-24: "make sure parity with chip/pill shapes") ─
+   The radius audit recorded on `.tag` above settled the rule — "every other chip
+   (.chip/.lens/.vc-pill) is a full pill; .tag now matches" — and then two
+   controls that sit in the same rows were left out of it:
+
+     .chip      --r-pill      .tag   --r-pill
+     .mini      --r-sm        .fmode 8px, raw
+
+   On the food sheet `.mini` is Done / Change / skip it / tune, sitting inline
+   among `.tag` chips and `.chip` options, so the eye reads them as the same
+   family of small round things and then finds two corner radii in one row.
+   `.fmode` additionally hardcoded 8px where the file has tokens for this.
+
+   `.fmode` stays a soft rectangle rather than becoming a pill — it is a
+   segmented TAB, and the segments have to read as a divided track, which a row
+   of separate pills does not. It just uses the token now. */
+.mini{ border-radius:var(--r-pill); }
+.fmode{ border-radius:var(--r-sm); }

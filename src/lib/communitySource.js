@@ -50,3 +50,29 @@ export function firstStoreIn(where) {
   }
   return null;
 }
+
+/**
+ * Every entry in a `where` list that is actually a SHOP, in authored order.
+ *
+ * `firstStoreIn` fixed the store PICKER — the chip row no longer offers a shop
+ * called "Brought by the community". The row META below it was still printing
+ * the raw array, so the same repast line read
+ *
+ *   23 lbs · $3–$7/lb · Brought by the community,Grocery,Caterer,Restaurant
+ *
+ * which is the identical mistake one element over: a group of people listed
+ * among the storefronts, comma-joined, as somewhere to go. Same predicate, the
+ * whole list rather than the head of it.
+ *
+ * Returns [] when every option is a community source, so a caller can drop the
+ * segment rather than print an empty "·".
+ */
+export function storesIn(where) {
+  if (!Array.isArray(where)) {
+    const s = String(where == null ? '' : where).trim();
+    return s && !isCommunitySource(s) ? [s] : [];
+  }
+  return where
+    .map((w) => String(w == null ? '' : w).trim())
+    .filter((s) => s && !isCommunitySource(s));
+}

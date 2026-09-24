@@ -55,7 +55,11 @@ test.describe('the price vintage is derived from the rows, not from a constant',
     await openSectionByName(page, 'spread');
     await expect(page.locator('#sheet-title')).toBeVisible({ timeout: 8000 });
     const sheet = page.locator('.sheet').last();
-    await expect(sheet).toContainText(/Bought so far/i, { timeout: 8000 });
+    // The Shop hero led with "Bought so far / N of M" until 2026-09-24, when
+    // board D moved the money to the headline and the count to the pinned
+    // footer. The premise only needs proof the sheet is open and showing its
+    // hero, so it now reads the line that replaced it.
+    await expect(sheet).toContainText(/estimate, all in/i, { timeout: 8000 });
     await expect(sheet).toContainText(/est\. prices \w{3}[\s\u00A0]\d{4}/, { timeout: 8000 });
   });
 

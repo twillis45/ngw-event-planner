@@ -32,6 +32,16 @@
 // and `kitchenSignal` ranks a told answer above any inference from a listing URL.
 import { test, expect, settled } from './fixtures.mjs';
 
+// ── THE HERO'S SIGNATURE STRING CHANGED (2026-09-24) ──────────────────
+//
+// These tests use a hero phrase as a PROXY for "the money hero is on screen",
+// which is what the no-kitchen gate has to withhold. Board D moved the money to
+// the headline, so "Bought so far" (the old eyebrow over the bought count) and
+// "a head · sized for" (the old two-line sub) are both gone. The hero now
+// signs itself with "estimate, all in".
+//
+// The guarantee is untouched: no kitchen, no money on the sheet.
+
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
   const el = [...document.querySelectorAll('button,[role="button"],a')]
@@ -113,7 +123,7 @@ test('the sheet stops counting a shop that is not happening', async ({ page }) =
   await openList(page, 'A room block I guarantee fills');
   const t = await bodyText(page);
   expect(t).not.toMatch(/one good store run/i);
-  expect(t).not.toMatch(/Bought so far/i);
+  expect(t).not.toMatch(/estimate, all in/i);
   expect(t).toMatch(/Nothing to shop for/i);
   // And no action that operates on the withheld list survives.
   expect(t).not.toMatch(/Copy the shopping list/i);
@@ -126,12 +136,12 @@ test('no restaurant number is invented to replace the grocery one', async ({ pag
   // nobody measured. The money goes rather than being re-badged.
   await openList(page, 'A room block I guarantee fills');
   const t = await bodyText(page);
-  expect(t).not.toMatch(/a head · sized for/i);
+  expect(t).not.toMatch(/estimate, all in/i);
   expect(t).not.toMatch(/est\. prices ·/i);
   // (premise) the same fixture with a kitchen DOES price it — so the absence
   // above is the gate, not a fixture that never had money to show.
   await openList(page, 'A house we rent for everyone');
-  expect(await bodyText(page)).toMatch(/a head · sized for/i);
+  expect(await bodyText(page)).toMatch(/estimate, all in/i);
 });
 
 test('the span disclosure survives the withholding, and is said once', async ({ page }) => {
@@ -152,7 +162,7 @@ test('NEGATIVE CONTROL: an UNTOLD kitchen still ships the list', async ({ page }
   const t = await bodyText(page);
   expect(t).not.toMatch(/no kitchen to cook in/i);
   expect(t).toMatch(/Drinks 0 of 3 bought/i);
-  expect(t).toMatch(/Bought so far/i);
+  expect(t).toMatch(/estimate, all in/i);
 });
 
 test('NEGATIVE CONTROL: a LOCAL event is untouched by any of it', async ({ page }) => {

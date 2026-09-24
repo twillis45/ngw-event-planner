@@ -105,6 +105,15 @@ test('NEGATIVE CONTROL: the food sheet still folds exactly as it did', async ({ 
   await tapText(page, "what you.?re serving|dietary needs on the food plan");
   await page.waitForTimeout(1500);
   await settled(page);
+  // DIETARY NEEDS MOVED TO THE PLAN TAB (2026-09-24). The spread sheet split
+  // into Plan / Bringing / Shop, and the planning rows — Your choices, Dietary
+  // needs, How it's sourced — left the shopping tab, which is what stopped it
+  // being seven stacked blocks deep before the first grocery. The sheet opens
+  // on Shop, so the door is one tap further in. The fold behaviour this test
+  // guards is unchanged; only the route to it moved.
+  await tapText(page, '^Plan$');
+  await page.waitForTimeout(600);
+  await settled(page);
   await tapText(page, 'Dietary needs');
   await page.waitForTimeout(1200);
   await settled(page);
