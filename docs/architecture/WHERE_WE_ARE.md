@@ -1,5 +1,40 @@
 # Where We Are -- live status board
 
+## 2026-09-24 — main went red with nobody touching it
+
+Nothing had been committed since 2026-09-09 and `verify:all` came back 9 of 10.
+The failure was a **fixture that expired**: `lodgingOutlet.test.js` pins its
+event to `2026-09-11`, and the lodging raiser's first line is
+`if (isPastEvent(event.date)) return []`. On 2026-09-12 the fixture became a
+finished event and the block stopped exercising the raiser.
+
+**The red assertion was the cheap half.** The same describe block holds two
+assertions that expect NO row to be raised, and an empty array satisfies those
+exactly as a working gate does. They had been reporting green while testing
+nothing since 2026-09-12. Proven rather than asserted: with the stale date left
+in place and the `!picked` guard deleted from `surfaceRegistry.js`, the suite
+still printed `✓ once she picks, the question stops being asked`. With the clock
+frozen, it reddens.
+
+Fixed at `0a603d5f` — `useFrozenClock()`, the helper written 2026-07-31 whose
+own header documents this precise failure mode. 9 of 441 suites use it.
+
+**The class was sized with an instrument, and the grep would have lied.** A grep
+for past absolute fixture dates in non-frozen suites returns 77 files, almost
+all false positives — explicit `asOf` arguments and deliberately-historical
+dates. Running the whole suite under a shifted `Date.now()` instead: **+30 days
+clean, +90 days one suite (`hostEngineSelectionParity`, 4 tests), +180 days
+three.** The next fuse burns between late October and late December 2026.
+
+No gate exists against this class. That is the open decision, recorded rather
+than quietly fixed.
+
+Also corrected this session: the HANDOFF "Next, in order" list had two finished
+items at the top. Both landed 2026-08-22 (`b478fcfc` guest told/not-told,
+`07f80687` day CRUD across a span) and the list was last edited 2026-09-03 —
+three weeks describing built work as pending. Verified by driving
+`guestTold.spec.mjs` live (3/3, no skips), not by reading the commit messages.
+
 ## 2026-09-03 — the shell was never unit-testable, and now it is
 
 The architectural fact of the day, which had been true for months and unwritten:

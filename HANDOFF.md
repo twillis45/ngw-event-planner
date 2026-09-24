@@ -1,6 +1,7 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-03 (stage 8 recording).
+**Measured reality, not intentions.** Updated 2026-09-24 (a red main fixed; the
+Next list corrected against the tree).
 The long-form architecture log stays `docs/architecture/WHERE_WE_ARE.md`;
 this file is the short answer to "where is it, is it green, what's next."
 
@@ -9,7 +10,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Fact | Value |
 |---|---|
 | Branch / HEAD | `main` @ `1b9027e4` |
-| Jest | **6,228 passed**, 1 skipped, **441 suites** — measured this pass |
+| Jest | **6,228 passed**, 1 skipped, **441 suites** — re-measured 2026-09-24. It was **RED on arrival** this session (1 failed): a fixture date went past and took the lodging raiser's gate with it. Fixed at `0a603d5f`; see the clock-rot trap below |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **353 passed** — re-run this pass via `verify-all` |
 | verify-all | **10 steps**, seam included; `--fast` skips the matrix |
@@ -84,6 +85,61 @@ change cannot redden the matrix.
 **The trap worth keeping:** this defect had no source location. Each file was
 individually reasonable; the duplication existed only in their composition. No
 single-file assertion could see it, which is the argument for the live drive.
+
+## TRAP: a fixture date is a fuse, and the vacuous half is the dangerous half
+
+**main was RED on arrival 2026-09-24** and nothing had been committed since
+2026-09-09. Nobody broke it. `lodgingOutlet.test.js` pins
+`NIGHTS = { date: '2026-09-11', endDate: '2026-09-13' }`, and the lodging
+raiser opens with `if (isPastEvent(event.date)) return []`. On **2026-09-12**
+that fixture crossed into the past and the whole describe block started
+measuring a finished event.
+
+**One assertion went red. Two went VACUOUS — and that is the finding.** The
+block has three tests: one expects a row to be raised, two expect that NO row
+is raised. An empty array satisfies the two negatives *exactly as a working
+gate does*. They kept reporting green while testing nothing at all.
+
+Measured, not reasoned about. With the stale date in place I deleted the
+`!picked` guard from `surfaceRegistry.js` — a real regression that would nag a
+host who has already chosen her house — and re-ran:
+
+```
+✕ two or more options and none picked is an open decision
+✓ once she picks, the question stops being asked     ← the guard is GONE
+```
+
+With the clock frozen, that second line goes red. Both directions red-proofed
+(disconnect the raise branch → assertion one reddens; drop the picked guard →
+assertion two reddens), and `surfaceRegistry.js` was restored from a copy and
+confirmed byte-identical to HEAD, never `git checkout --`.
+
+Fixed at `0a603d5f` with `useFrozenClock()` — which **already documents this
+exact failure** in its own header comment ("a hardcoded future date measured
+against the real now… has been shrinking ever since"). The helper was written
+2026-07-31. This suite was never migrated to it. **9 of 441 suites use it.**
+
+**HOW THE CLASS WAS SIZED, and why the grep was useless.** A grep for past
+absolute fixture dates in suites with no frozen clock returns **77 files** —
+nearly all false positives (explicit `asOf` arguments; deliberately historical
+dates like `2020-01-01` in closeout tests). Classifying from that list would
+have produced a 77-file migration to fix a 3-file problem.
+
+The instrument instead: drop a temporary `src/setupTests.js` that shifts
+`Date.now()` and no-arg `new Date()` forward, and run the whole suite. CRA
+picks the file up automatically; delete it afterwards. Measured:
+
+| clock | result |
+|---|---|
+| +30 days | **441 suites pass** — clean |
+| +90 days | 1 suite, 4 tests: `hostEngineSelectionParity.test.js` |
+| +180 days | 3 suites: the above + `derivedReasonHonesty`, `recordDedupStaysLive` |
+
+**So the next detonation is between late Oct and late Dec 2026**, and it is
+`hostEngineSelectionParity`. That is a dated, measured fuse, not a worry. The
+probe script is not committed — it is eight lines and is reproduced above in
+description; **there is no gate against this class**, which is the open
+decision this session hands over.
 
 ## TRAP: a green unit run does not cover the host shell at all
 
@@ -723,15 +779,38 @@ assumed.
 
 ## Next, in order
 
-1. **The transport board's queue**, non-transport and none of it needs the
-   webhook: per-recipient handoff recording on the guest rails; the roster
-   told/not-told read (`Told 24 of 41 — 17 still to tell`).
-2. **Day CRUD across a span** — Workflow's named gap, and newly TESTABLE
-   because `TEST_MULTI_DAY` now exists. Was unbuildable before: no seeded
-   event had a span.
-3. Author the 16 `synthesized` purchases in clientDinner/fundraiserGala with
+**Items 1 and 2 below were already BUILT when this list was written.** Both
+landed 2026-08-22 and the list was last edited 2026-09-03, so they sat at the
+top of the queue for three weeks describing finished work. Struck through
+rather than deleted, because what a stale Next list costs is the point.
+
+1. ~~**The transport board's queue** — per-recipient handoff recording on the
+   guest rails; the roster told/not-told read.~~ **DONE 2026-08-22** (`b478fcfc`,
+   "The app remembers who you told"). `src/lib/guestTold.js` carries
+   `recordTold` / `clearTold` / `isTold` / `toldRollup`; HostShellV2 writes at
+   :5509–5515, renders the per-guest mark at :19392–19427 and the rollup line
+   at :19067. The exact copy in this list — `Told 24 of 41 — 17 still to tell`
+   — is `toldLine()` and is asserted in `guestTold.test.js:91`. Driven live
+   2026-09-24: `hostv2/e2e/guestTold.spec.mjs` 3/3 on desktop, no skips.
+   *Latent risk, not a live defect:* both interacting tests guard with
+   `if (!(await mark.count())) test.skip(...)` on `.guest-told`, the control
+   under test — delete the control and they skip rather than fail. They do not
+   skip today.
+2. ~~**Day CRUD across a span.**~~ **DONE 2026-08-22** (`07f80687`, "Add a day,
+   drop a day"). `src/lib/spanEdit.js` (`addDay` / `dropDay` / `dayCount` /
+   `rowsOn`), wired in HostShellV2 at :11752–11779 including the stranded-rows
+   prompt, and gated by `hostv2/e2e/dayCrud.spec.mjs` (7 tests) whose last
+   assertion is the one that matters — adding a day must actually open the
+   span-gated "Your days" door.
+3. Author the `synthesized` purchases in clientDinner/fundraiserGala with
    real citations. Today ADDED to the grounding backlog rather than reducing
-   it — honestly, but it is now owed.
+   it — honestly, but it is now owed. **Count corrected 2026-09-24: 18, not
+   16** — 5 rows in `clientDinner.js`, 13 in `fundraiserGala.js`, counted as
+   lines carrying `verificationStatus: 'synthesized'`. The shape to match is
+   `costProvenance` with `sources` ids into `COST_SOURCES`
+   (`src/lib/knowledge/costProvenance.js`), a `lastVerified` date, a `claim`
+   and a `sufficientWhen`; `babyShower.js:63-65` is the exemplar. **This is now
+   the top open engineering-adjacent item**, since 1 and 2 are done.
 4. ~~`helperConfirmed` has a writer but no surface shows the confirmed state~~
    — **DONE 2026-08-29**, see above.
 5. ~~Rule the stage 6 gate~~ — **RULED 2026-08-29: passed with conditions.**
