@@ -34,7 +34,10 @@ const LADDER = new Set([0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80]);
 // horizontal carousel (host report: a mis-tap risk, not a spacing cleanup —
 // see styles.css's .shelf comment). One off-ladder declaration removed as a
 // side effect of that fix, not a dedicated pass.
-const BASELINE = 271;
+// 271 -> 270 on 2026-09-24: the pinned total bar needed to cancel the sheet's
+// own bottom inset exactly, and repeating `28px` would have ADDED two
+// off-ladder literals. Naming it `--sheet-pad-b` once removed the original too.
+const BASELINE = 270;
 
 const PROP = /\b(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;{}]+)/g;
 

@@ -1483,7 +1483,12 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      were the vocabulary of a card rising over a visible board, and there is no
      board left to rise over. Safe-area padding at the foot so the last row
      clears the home indicator on a real handset. */
-  background:var(--card); border-radius:0; padding:18px var(--sp-5) calc(28px + env(safe-area-inset-bottom, 0px));
+  background:var(--card); border-radius:0;
+  /* Named once (2026-09-24) so the pinned total bar can cancel exactly this
+     inset instead of repeating the literal — two copies of a layout constant
+     is how a footer ends up 4px off the edge on one surface and not another. */
+  --sheet-pad-b: 28px;
+  padding:18px var(--sp-5) calc(var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px));
   animation:sheetrise var(--ms-sheet) var(--ease-standard);
 }
 /* `--from-y` is written by the shell from the pointer that opened this sheet.
@@ -5822,3 +5827,18 @@ button.vc-pill::after{
 .fmode:hover{ color:var(--ink); }
 .fmode.on{ background:var(--steel-soft); color:var(--bg); font-weight:600; }
 .fmode:focus-visible{ outline:2px solid var(--steel-soft); outline-offset:2px; }
+
+/* ── The running total, pinned (2026-09-24) ─────────────────────────────────
+   8 of 8 grocery-list leaders keep the money on screen; ours lived in the hero
+   and scrolled away by the third row. `.sheet` is the scroller, so `sticky`
+   pins this inside the sheet rather than over the whole app the way `fixed`
+   would. Negative margins cancel the sheet's own padding so the bar spans edge
+   to edge and eats the bottom inset, and it carries the safe-area padding
+   itself so the last line clears the home indicator. */
+.ftotal{ position:sticky; bottom:calc((var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px)) * -1);
+  margin:var(--sp-4) calc(var(--sp-5) * -1) calc((var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px)) * -1);
+  padding:12px var(--sp-5) calc(12px + env(safe-area-inset-bottom, 0px));
+  background:var(--bg); border-top:1px solid var(--line);
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.ftotal-l{ font-size:14px; font-weight:600; color:var(--ink); }
+.ftotal-r{ font-size:13px; font-weight:400; color:var(--muted); text-align:right; }

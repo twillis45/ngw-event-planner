@@ -19159,6 +19159,35 @@ export default function HostShellV2() {
                     </button>
                   )}
                 </div>
+                {/* ── THE MONEY STAYS ON SCREEN (review board, 2026-09-24) ──────
+                    8 of 8 grocery-list leaders keep a running total pinned; this
+                    sheet had it once, in the hero, where it scrolls away by the
+                    third row. The in-aisle seat put the cost plainly: the back
+                    half of the trip is the half where the total matters, and it
+                    was gone for all of it.
+
+                    STICKY, NOT FIXED. `.sheet` is the scroller (position:absolute,
+                    inset:0, overflow-y:auto), so a sticky child pins inside the
+                    sheet and cannot escape it onto another surface — which a
+                    fixed bar would, over every other sheet in the app.
+
+                    IT STATES WHAT IT COUNTS. "N of M bought" is the tick-off
+                    fraction; the store figure is scoped by its own line count and
+                    only appears when the unit map resolved something, because a
+                    subtotal that quietly included an unreconciled shelf price is
+                    the exact defect the board caught in the prototype. */}
+                {!noKitchen && foodPlan.itemCount > 0 ? (
+                  <div className="ftotal">
+                    <span className="ftotal-l">
+                      {foodPlan.boughtCount} of {foodPlan.itemCount} bought
+                    </span>
+                    <span className="ftotal-r">
+                      {priceCoverage.storeTotal > 0
+                        ? `${fmt(priceCoverage.storeSum)} priced at your store`
+                        : `${fmt(foodPlan.costLow)}–${fmt(foodPlan.costHigh)} estimated`}
+                    </span>
+                  </div>
+                ) : null}
               </>
             ) : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No spread to build for this kind of event yet.</div>)}
             {sheet.kind === 'vendors' && (() => {
