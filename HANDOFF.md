@@ -157,7 +157,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `7829c388` |
+| Branch / HEAD | `main` @ `c64f55f5` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
@@ -462,6 +462,34 @@ fundraising target above a genuinely late item — the exact direction the
 2026-08-17 ruling fixed, and the reason the closing window was sized at 3.5. So
 the engine ships and the wiring waits for a packet, the same way the closing
 window did. The guard pins the arithmetic so the packet's numbers cannot rot.
+
+### …and writing that packet found something bigger, already shipping
+
+**`unlocks` is unbounded and ALREADY outranks maximum lateness on a quarter of
+the corpus — with no change from this work.**
+
+    gateHolder            +2
+    closing window        +3.5     ruled 2026-09-23, deliberately BELOW the floor
+    lateness floor         4       ruled 2026-08-17
+    lateness ceiling       4.9     ruled 2026-08-17
+    unlocks               +N       never ruled, never bounded
+
+A gate-holder naming three surfaces scores **2 + 3 = 5.00**. The most a genuinely
+late item can ever reach is **4.90**. Scored as blockers, **64 of 260 decisions
+(25%)** already clear the lateness ceiling — `Dinner Party/format`,
+`Birthday/theme`, `Birthday/headcount`, `Baby Shower/guestlist` among them.
+
+The 2026-08-17 ruling's direction — *"a late critical item still outranks a
+scheduled one of higher raw consequence"* — is not holding for a quarter of the
+corpus, and appears never to have been measured against `unlocks`. Wiring the
+blast radius does not CREATE that inversion; it takes it from 64 to 76 (29%).
+
+**PACKET FILED: `docs/audits/2026-09-24_BLAST_RADIUS_BOARD_PACKET.md`.** It asks
+two questions in order — bound `unlocks` (changing today's shipping order),
+rule it correct and amend the August ruling, or leave it unmeasured; and only
+then whether the blast radius feeds the ranker at all. Every number in it is
+pinned by `howMuchOpensUp.test.js`, including the distribution table, so a
+packet the board is reading cannot drift underneath them.
 
 ### Where the spec's unauthored decision fields actually live
 

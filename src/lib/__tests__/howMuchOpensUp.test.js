@@ -182,3 +182,55 @@ describe('the wiring is a board call, and these are the numbers for it', () => {
     expect(changed).toBe(41);
   });
 });
+
+// ─── THE PACKET'S HEADLINE, PINNED ──────────────────────────────────────────
+//
+// docs/audits/2026-09-24_BLAST_RADIUS_BOARD_PACKET.md asks the board a question
+// it did not commission: `unlocks` is unbounded and ALREADY outranks maximum
+// lateness on a quarter of the corpus, with no change from this work. A packet
+// whose numbers drift is worse than no packet, so they are facts here.
+import { actionConsequence, latenessBoost } from '../../CommandCenter';
+
+describe('the inversion that is already shipping', () => {
+  const asBlocker = (unlocks) => actionConsequence({ dueInDays: 20, leadDays: 0, gateHolder: true, unlocks });
+  const MAX_LATE = latenessBoost({ dueInDays: -365, leadDays: 0 });   // the ruled ceiling
+
+  test('(premise) the lateness ceiling is what the 2026-08-17 ruling fixed', () => {
+    expect(MAX_LATE).toBeCloseTo(4.9, 5);
+  });
+
+  test('A GATE-HOLDER NAMING THREE SURFACES ALREADY BEATS IT', () => {
+    // 2 (gateHolder) + 3 (unlocks) = 5.00 against a ceiling of 4.90. No part of
+    // this comes from the blast radius work — it is today's shipping arithmetic.
+    expect(asBlocker(3)).toBe(5);
+    expect(asBlocker(3)).toBeGreaterThan(MAX_LATE);
+  });
+
+  test('…on 64 of 260 decisions, and 76 if the new term were wired raw', () => {
+    let already = 0; let wired = 0; let total = 0;
+    for (const pb of ALL_PLAYBOOKS) {
+      const g = unblockGraph(pb);
+      for (const d of (pb.decisions || [])) {
+        total++;
+        const b = decisionBlastRadius(pb, d, g);
+        if (asBlocker(b.surfaces) > MAX_LATE) already++;
+        if (asBlocker(b.surfaces + b.allDecisions) > MAX_LATE) wired++;
+      }
+    }
+    expect(total).toBe(260);
+    expect(already).toBe(64);
+    expect(wired).toBe(76);
+  });
+
+  test('the packet’s distribution table is the real distribution', () => {
+    const dist = {};
+    for (const pb of ALL_PLAYBOOKS) {
+      const g = unblockGraph(pb);
+      for (const d of (pb.decisions || [])) {
+        const n = decisionBlastRadius(pb, d, g).allDecisions;
+        dist[n] = (dist[n] || 0) + 1;
+      }
+    }
+    expect(dist).toEqual({ 0: 219, 1: 28, 2: 5, 3: 3, 5: 4, 6: 1 });
+  });
+});
