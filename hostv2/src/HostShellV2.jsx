@@ -17656,7 +17656,18 @@ export default function HostShellV2() {
                           in its own month ("· BLS Aug 2026") and appending this made
                           the line state the month twice, in two formats, over two
                           lines. One month, one format. */}
-                      {priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${fVintage.label}` : ''}
+                      {/* The vintage is ONE token typographically. Condensing the
+                          national sentence took this line from three wrapped lines
+                          to two, and the two-line version then broke between "Aug"
+                          and "2026", leaving the year alone on the last line — the
+                          same orphan the masthead was fixed for this morning.
+                          A character budget cannot prevent that: the break depends
+                          on the column width and on how long the month name is, so
+                          "Sept 2026" would reopen it at a width "Aug 2026" passes.
+                          A non-breaking space is width-independent and month-
+                          independent: the date either fits on the line or moves to
+                          the next one whole. */}
+                      {priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
                     </p>
                   </div>
                   );

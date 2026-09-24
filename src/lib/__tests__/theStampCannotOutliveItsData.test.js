@@ -129,6 +129,17 @@ describe('the host shell does not go back to a constant', () => {
   });
 
   test('and the stamp renders the derived label', () => {
-    expect(SRC).toMatch(/est\. prices \$\{fVintage\.label\}/);
+    // LOOSENED 2026-09-24, deliberately, and only along the axis that is not
+    // this test's job. It pinned the exact concatenation
+    // `est. prices ${fVintage.label}`, so it failed the moment the label was
+    // wrapped to keep "Aug 2026" from breaking across two lines — a typographic
+    // change that cannot reintroduce a constant.
+    //
+    // What this file guards is that the month is DERIVED, never hardcoded, and
+    // that property is unchanged: the stamp's own text must still be followed
+    // immediately by an interpolation that reads `fVintage.label`. Hardcode the
+    // month and there is no `${` to match; read a constant instead and the name
+    // does not appear. The formatting inside the braces is free.
+    expect(SRC).toMatch(/est\. prices \$\{[^}]*\bfVintage\.label\b/);
   });
 });

@@ -129,7 +129,7 @@ describe('the sheet-level note never implies a locality it does not have', () =>
 
   test('with no state it asks for one instead of guessing', () => {
     for (const v of [undefined, null, '', 'ZZ']) {
-      expect(geoPlanNote(v)).toMatch(/add your venue state/i);
+      expect(geoPlanNote(v)).toMatch(/add your state/i);
     }
   });
 
@@ -203,8 +203,8 @@ describe('the plan note says what actually happened to the price', () => {
     // Every existing caller passes one argument, and the public demo has no
     // backend. That path must be byte-identical or this "fix" is a regression
     // for every host on a national baseline.
-    expect(geoPlanNote('MD')).toBe('These are national average prices — not yet adjusted for the South.');
-    expect(geoPlanNote(null)).toMatch(/add your venue state/);
+    expect(geoPlanNote('MD')).toBe('National average · not yet adjusted for the South');
+    expect(geoPlanNote(null)).toMatch(/add your state/);
   });
 
   test('THE FIX: when a factor MOVED a price, the note says adjusted', () => {
@@ -291,23 +291,23 @@ describe('a ZIP resolves the region when no state does', () => {
 
   test('THE FIX: with a ZIP and no state, the note names the region', () => {
     const n = geoPlanNote(null, null, '21401');
-    expect(n).toBe('These are national average prices — not yet adjusted for the South.');
-    expect(n).not.toMatch(/add your venue state/);
+    expect(n).toBe('National average · not yet adjusted for the South');
+    expect(n).not.toMatch(/add your state/);
   });
 
   test('the state still wins when both are present — it is the stronger fact', () => {
     expect(geoPlanNote('MA', null, '21401')).toBe(
-      'These are national average prices — not yet adjusted for the Northeast.');
+      'National average · not yet adjusted for the Northeast');
   });
 
   test('an unresolvable ZIP falls back to the old ask, never to a guessed region', () => {
-    expect(geoPlanNote(null, null, '00601')).toMatch(/add your venue state/);
-    expect(geoPlanNote(null, null, '')).toMatch(/add your venue state/);
+    expect(geoPlanNote(null, null, '00601')).toMatch(/add your state/);
+    expect(geoPlanNote(null, null, '')).toMatch(/add your state/);
   });
 
   test('(premise) every existing caller is untouched — the 2-arg contract holds', () => {
-    expect(geoPlanNote('MD')).toBe('These are national average prices — not yet adjusted for the South.');
-    expect(geoPlanNote(null)).toMatch(/add your venue state/);
+    expect(geoPlanNote('MD')).toBe('National average · not yet adjusted for the South');
+    expect(geoPlanNote(null)).toMatch(/add your state/);
     expect(geoPlanNote('MD', 'South · May 2026 · BLS Average Price'))
       .toBe('Adjusted for the South · BLS May 2026');
   });
@@ -321,7 +321,7 @@ describe('a ZIP resolves the region when no state does', () => {
 //
 // Driven on an iPhone against the live backend: typing 21401 flipped the note
 // to "not yet adjusted for the South" correctly — and then CHOOSING a store
-// flipped it BACK to "add your venue state", because picking clears
+// flipped it BACK to "add your state", because picking clears
 // `storePicker`. The host had given a location, seen it recognised, and watched
 // the app forget it one tap later. The chosen store carries its own address,
 // which is a better source than the picker anyway: it is where they will shop.
@@ -342,5 +342,88 @@ describe('a chosen store address resolves the region', () => {
     expect(regionForAddress('')).toBeNull();
     expect(regionForAddress(null)).toBeNull();
     expect(regionForAddress('..., PR, 00601')).toBeNull();   // territory, still refused
+  });
+});
+
+// ─── THE NOTE HAS A LENGTH BUDGET (2026-09-24, host: the pricing-basis note) ─
+//
+// Every other test here pins the note's WORDS. None of them could fail on the
+// thing the host actually reported twice in one day, because the defect was
+// never a wrong word — it was a true sentence too long to read. The adjusted
+// branch was condensed in the morning and the national branches were left
+// behind, so the caption got LONGER the less the app knew:
+//
+//   adjusted   "Adjusted for the South · BLS Aug 2026"                  37 ch
+//   national   "These are national average prices — add your venue
+//                state and we can start localizing them."
+//                + the shell's "· est. prices Aug 2026"                113 ch
+//
+// at var(--t-caption-min) on a 390px phone: one line against three, under a
+// hero that is itself two lines of numbers.
+//
+// So this measures the COMPOSED line — what a host sees, including the suffix
+// HostShellV2 appends on exactly the branches that do not carry their own
+// month. A words-only test cannot regress on length; this one cannot pass on
+// the old copy.
+describe('the pricing-basis note fits the phone', () => {
+  // The shell appends this on the national branches only: the adjusted branch
+  // already ends in its own month, and appending would print it twice.
+  const SUFFIX = ' · est. prices Aug 2026';
+  // MEASURED, not chosen. Rendered in the live shell with the real `.grounding`
+  // computed style (14px, line-height 16.8, 358px of content inside a 390px
+  // phone) and the line count read off the box:
+  //
+  //   old no-region  113 ch → 3 lines   ← what the host reported
+  //   old region      90 ch → 2 lines
+  //   new, worst      76 ch → 2 lines   (Northeast, the longest region label)
+  //   adjusted        37 ch → 1 line
+  //
+  // So the 2→3 tip for this sentence shape sits between 90 and 113. The budget
+  // is 80: comfortably under the tip, four characters of slack over the worst
+  // case we ship (enough for "Sept 2026"), and tight enough that BOTH strings
+  // this change replaced fail it — see the premise below.
+  const BUDGET = 80;
+
+  test('(premise) the budget is tight enough to have failed the old copy', () => {
+    // RED-PROOF, in the file rather than in a commit message: these are the two
+    // sentences this change replaced. If the budget is ever loosened to where
+    // they would pass, the guard has stopped guarding and this premise says so.
+    const OLD = [
+      'These are national average prices — add your venue state and we can start localizing them.',
+      'These are national average prices — not yet adjusted for the South.',
+    ];
+    for (const o of OLD) expect((o + SUFFIX).length).toBeGreaterThan(BUDGET);
+  });
+
+  test('no region resolved — the branch that nudges for a state', () => {
+    const composed = geoPlanNote(null) + SUFFIX;
+    expect(composed.length).toBeLessThanOrEqual(BUDGET);
+    // Condensed, not gutted: the basis and the one useful input both survive.
+    expect(composed).toMatch(/National average/i);
+    expect(composed).toMatch(/add your state/i);
+  });
+
+  test('region known but not applied — the branch that names it', () => {
+    const composed = geoPlanNote('MD') + SUFFIX;
+    expect(composed.length).toBeLessThanOrEqual(BUDGET);
+    expect(composed).toMatch(/National average/i);
+    expect(composed).toMatch(/the South/);
+  });
+
+  test('a ZIP-resolved region is held to the same budget', () => {
+    // The widest national branch: the region arrives from a ZIP rather than a
+    // state, and the label is the longest one we ship.
+    for (const zip of ['21401', '02101', '60601', '94101']) {
+      const composed = geoPlanNote(null, null, zip) + SUFFIX;
+      expect(composed.length).toBeLessThanOrEqual(BUDGET);
+    }
+  });
+
+  test('the adjusted branch stays the shortest of the three', () => {
+    // It carries its own month, so it takes no suffix. If a future edit ever
+    // makes the CAVEAT shorter than the ANSWER, the hierarchy has inverted.
+    const adjusted = geoPlanNote('MD', 'South · 2026-08 · BLS Average Price');
+    expect(adjusted.length).toBeLessThan((geoPlanNote('MD') + SUFFIX).length);
+    expect(adjusted).not.toMatch(/est\. prices/);
   });
 });

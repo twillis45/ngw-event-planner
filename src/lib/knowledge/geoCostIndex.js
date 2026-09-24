@@ -268,8 +268,27 @@ export function geoPlanNote(state, appliedBasis, zip) {
       ? `Adjusted for ${where} · ${rest}`
       : `Adjusted for ${where}`;
   }
+  // ── CONDENSED 2026-09-24, SECOND PASS (host: "the pricing-basis note") ────
+  // The branch above was compacted earlier the same day and these two were
+  // left behind, so the line a host actually sees got LONGER the less we knew:
+  //
+  //   adjusted   "Adjusted for the South · BLS Aug 2026"                 37 ch
+  //   national   "These are national average prices — add your venue
+  //               state and we can start localizing them."
+  //               + the caller's "· est. prices Aug 2026"               112 ch
+  //
+  // Three wrapped lines of grey caption under two lines of numbers — the
+  // caveat shouting over the thing it qualifies, which is the exact defect the
+  // adjusted branch was fixed for. Same remedy, same shape: lead with the
+  // basis, then one segment after a middot.
+  //
+  // NO FACT IS DROPPED. "National average" is the basis; the region still
+  // names itself when we know it; the nudge still names the one input that
+  // would improve the number. What went is the throat-clearing ("These are"),
+  // the restatement ("prices", already implied by a row of dollar figures) and
+  // "localizing them", which is our word, not a host's.
   if (!region) {
-    return 'These are national average prices — add your venue state and we can start localizing them.';
+    return 'National average · add your state for local prices';
   }
-  return `These are national average prices — not yet adjusted for ${REGION_LABEL[region]}.`;
+  return `National average · not yet adjusted for ${REGION_LABEL[region]}`;
 }
