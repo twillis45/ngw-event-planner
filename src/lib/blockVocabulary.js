@@ -63,6 +63,14 @@ export const BLOCK = Object.freeze({
   RESERVATIONS: 'reservations',
   PURCHASING:   'purchasing',
   INVITATIONS:  'invitations',
+  // Added 2026-09-24 after `[BLOCK.SEATING]` in decisionImpacts.js resolved to
+  // `undefined` and JS quietly made a map key literally named "undefined" — so
+  // `seating` (7 uses) read as unmapped while the map looked correct. A missing
+  // token is exactly what tokens are meant to make loud, and a computed key is
+  // the one place JS lets it stay silent. Guarded now in the impacts test.
+  SEATING:      'seating',
+  VENUE:        'venue',
+  SHOPPING:     'shopping',
 });
 
 // THE RULE, because without one the direction is a coin flip and I got it
@@ -86,6 +94,9 @@ const CANON = {
   reservation:  BLOCK.RESERVATIONS,  // 1  -> 2
   purchases:    BLOCK.PURCHASING,    // 3  -> 5
   invite:       BLOCK.INVITATIONS,   // 4  -> 5
+  // No separators at all, so the separator fold above cannot reach it — it
+  // needs naming. Same rule: 3 uses fold into the 11-use spelling.
+  runofshow:    'run_of_show',       // 3  -> 11
 };
 
 /**
@@ -98,8 +109,18 @@ const CANON = {
  * that appear nowhere.
  */
 export function normalizeBlock(name) {
-  const s = String(name == null ? '' : name).trim().toLowerCase();
-  if (!s) return '';
+  const raw = String(name == null ? '' : name).trim().toLowerCase();
+  if (!raw) return '';
+  // SEPARATORS ARE NOT MEANING. Measured 2026-09-24, after the first pass
+  // missed them: `run_of_show`(11) vs `runofshow`(3), `food_purchases`(2) vs
+  // `food-purchases`(1), `rain_plan`(1) vs `rain-plan`(1) — three targets, 18
+  // uses, split purely by which key an author happened to reach for. Unlike a
+  // plural this needs no judgement: there is no reading where a hyphen and an
+  // underscore mean different things.
+  //
+  // Underscore is the corpus's majority style and no consumer key contains a
+  // separator at all, so this can collide with nothing.
+  const s = raw.replace(/[\s-]+/g, '_');
   return CANON[s] || s;
 }
 

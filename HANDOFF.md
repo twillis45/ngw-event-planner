@@ -157,11 +157,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `c64f55f5` |
+| Branch / HEAD | `main` @ `c1d32f91` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,570 passed**, 1 skipped, **0 failed**, **533 suites** (re-measured 2026-09-24 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,585 passed**, 1 skipped, **0 failed**, **534 suites** (re-measured 2026-09-24 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -490,6 +490,48 @@ rule it correct and amend the August ruling, or leave it unmeasured; and only
 then whether the blast radius feeds the ranker at all. Every number in it is
 pinned by `howMuchOpensUp.test.js`, including the distribution table, so a
 packet the board is reading cannot drift underneath them.
+
+### Step 3 — `impacts`, derived. No authoring needed.
+
+The spec wants
+`('budget'|'shopping'|'schedule'|'guestComms'|'seating'|'vendors'|'risk')[]` and
+zero decisions carry it. **It never needed authoring** — `blocks` already names
+what a decision holds up, in the authors' own words, on 250 of 260 decisions.
+What was missing was the translation. `src/lib/decisionImpacts.js`.
+
+**Measured: 227 of 260 decisions (87%) now carry impacts; 380 of 471 block uses
+(81%) are placed.**
+
+**It does not guess, and that is why coverage is not 100%.** A target is mapped
+only where the WORD ITSELF settles it — `bar_purchases` is shopping because it is
+a purchase. **77 targets stay unmapped** (`celebration`, `ceremony`, `location`,
+`ring`) because folding them into a near neighbour would invent the very fact
+this field exists to state. A map that reached 100% would be a map that had
+started guessing.
+
+The spec's own example holds: `bar_purchases` → shopping + budget + **risk**,
+which is the "alcohol hits more than cost" case it was written around.
+
+### Step 1 was incomplete, and step 3 is what found it
+
+Normalization had merged plurals and missed **separators**. Measured:
+`run_of_show`(11) vs `runofshow`(3), `food_purchases`(2) vs `food-purchases`(1),
+`rain_plan`(1) vs `rain-plan`(1) — three targets, 18 uses, split purely by which
+key an author reached for. Unlike a plural this needed no judgement: there is no
+reading where a hyphen and an underscore mean different things. **147 → 137
+distinct targets, zero separator collisions left.**
+
+### A silent failure that tokens are supposed to prevent
+
+`[BLOCK.SEATING]` was written before that token existed. **JS accepts `undefined`
+as a computed key without a murmur**, so the map gained a key literally named
+`"undefined"` — and `seating` (7 uses) read as unmapped while the map looked
+correct on the page. A missing token is the one thing tokenizing is meant to make
+loud, and a computed key is precisely where JS lets it stay silent.
+
+Fixed two ways: the module **throws at import** if any key is falsy or the string
+`"undefined"`, and the guard asserts it independently. `BLOCK` gained `SEATING`,
+`VENUE` and `SHOPPING`.
 
 ### Where the spec's unauthored decision fields actually live
 
