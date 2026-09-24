@@ -5291,6 +5291,42 @@ export default function HostShellV2() {
   }, [event]);
   const noKitchen = !!(foodSpan && foodSpan.listApplies === false);
 
+  // ── ONE PLACE ANSWERS "HOW LONG IS THE LIST, AND HOW MUCH OF IT IS BOUGHT" ─
+  //
+  // Third instance of the rule the two accessors above exist for, and the first
+  // one where the two halves of a SINGLE SENTENCE disagreed.
+  //
+  // The pinned footer read "0 of 9 bought · $435–$860 estimated". Measured
+  // against the engine on the shipped retirement sample:
+  //
+  //   active lines rendered   Food 2 · Drinks 7 · Supplies 5   = 14
+  //   foodPlan.itemCount                                       =  9
+  //   the money                 foodLow+suppliesLow .. High    = all 14
+  //
+  // `itemCount` and `boughtCount` filter `isFood`, which the engine defines as
+  // `group !== 'Supplies'` — supplies are a separate DOLLAR line there, and
+  // that is right for the budget. It is wrong for a shopping list, where the
+  // host ticks all fourteen. So the footer counted nine things and priced
+  // fourteen, and its own comment two lines up claims "IT STATES WHAT IT
+  // COUNTS."
+  //
+  // NOT FIXED IN THE ENGINE ON PURPOSE. `itemCount`/`boughtCount` mean
+  // "the food is shopped" to the readiness gate, to dayBefore's RECON-I5 and
+  // to the nav row that says "food & drinks · N of M" — all correct as they
+  // stand. Widening them there would move four consumers to fix one sentence.
+  // The SHOPPING surfaces need a different question answered, so it is asked
+  // once, here, and the three readouts that price the whole list now count the
+  // whole list too.
+  const shopTally = useMemo(() => {
+    if (!foodPlan) return { bought: 0, total: 0, done: false };
+    // suppliesCount/suppliesBought are already non-skipped in the engine, and
+    // isFood is `group !== 'Supplies'`, so these two sum to every active line
+    // exactly once — the same set the groups below render and total.
+    const total = (foodPlan.itemCount || 0) + (foodPlan.suppliesCount || 0);
+    const bought = (foodPlan.boughtCount || 0) + (foodPlan.suppliesBought || 0);
+    return { bought, total, done: total > 0 && bought >= total };
+  }, [foodPlan]);
+
   // ── ONE PLACE ANSWERS "WHAT PRICED THESE NUMBERS" ────────────────────────
   // Same rule as foodSpanNote above, applied to the thing that broke this
   // morning: the sheet and the money readout each answered "were these
@@ -17568,8 +17604,11 @@ export default function HostShellV2() {
                   const fBand = (() => { try { return attendanceBand(event); } catch { return null; } })();
                   const fBandLbl = (() => { try { return attendanceBandLabel(fBand); } catch { return null; } })();
                   const fGuestPhrase = (fBand && fBand.applicable && fBand.band && fBandLbl) ? fBandLbl : `${foodPlan.bandLow}–${foodPlan.bandHigh}`;
-                  const left = foodPlan.itemCount - foodPlan.boughtCount;
-                  const done = foodPlan.boughtCount >= foodPlan.itemCount && foodPlan.itemCount > 0;
+                  // shopTally, not itemCount/boughtCount: the hero counts the
+                  // list the host ticks, which includes supplies. See the
+                  // accessor's note for why the engine's food-only pair stays.
+                  const left = shopTally.total - shopTally.bought;
+                  const done = shopTally.done;
                   const fSpan = foodSpan;
                   // The vintage of THESE rows, not of a constant. Null when no
                   // rendered row carries a researched date — then no stamp,
@@ -17583,12 +17622,12 @@ export default function HostShellV2() {
                         The count is the star; the guide voice is the human line. */}
                     <Eyebrow>Bought so far</Eyebrow>
                     <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(done ? { color: 'var(--ok)' } : null) }}>
-                      {foodPlan.boughtCount} of {foodPlan.itemCount}
+                      {shopTally.bought} of {shopTally.total}
                     </BigValue>
                     <GuideLine>
                       {done
                         ? 'Everything’s bought — the spread is covered.'
-                        : foodPlan.boughtCount === 0
+                        : shopTally.bought === 0
                           ? 'Nothing’s crossed off yet — one good store run covers all of it.'
                           : left <= 2
                             ? `${left} to go — nearly there.`
@@ -17878,7 +17917,7 @@ export default function HostShellV2() {
                   const hasSourcing = (foodPlan.sourcingTiers || []).length > 0;
                   const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
                   const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
-                  const listDone = foodPlan.boughtCount >= foodPlan.itemCount && foodPlan.itemCount > 0;
+                  const listDone = shopTally.done;
                   if (dietOpen || choicesOpen || foodSect.sourced || foodSect.list) return null; // a drill-in panel is open below
                   // Progressive disclosure (port of Figma 391:60) — the heavy sections
                   // (sourcing, the shopping list) fold to summary rows; each drills in
@@ -17922,7 +17961,7 @@ export default function HostShellV2() {
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, list: true }))}>
                         <span className="fstat-l">The list</span>
                         <span className="fstat-v" style={listDone ? { color: 'var(--ok)' } : null}>
-                          {foodPlan.boughtCount} of {foodPlan.itemCount} bought
+                          {shopTally.bought} of {shopTally.total} bought
                           <span className="fstat-chev" aria-hidden="true">›</span>
                         </span>
                       </button>
@@ -19190,7 +19229,7 @@ export default function HostShellV2() {
                 {!noKitchen && foodPlan.itemCount > 0 ? (
                   <div className="ftotal">
                     <span className="ftotal-l">
-                      {foodPlan.boughtCount} of {foodPlan.itemCount} bought
+                      {shopTally.bought} of {shopTally.total} bought
                     </span>
                     <span className="ftotal-r">
                       {priceCoverage.storeTotal > 0
