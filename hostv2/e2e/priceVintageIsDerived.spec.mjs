@@ -35,6 +35,16 @@ const boot = async (page) => {
   }, null, { timeout: 20000 });
 };
 
+// ─── THE SEPARATOR IS A NON-BREAKING SPACE (2026-09-24) ──────────────────────
+//
+// These matched `\w{3} \d{4}` with a LITERAL space and went red when the
+// vintage was bound into one token to stop "Aug" and "2026" splitting across
+// two lines. Caught by the e2e after the change had already been committed:
+// the unit suites never render, so 547 green suites said nothing about it.
+//
+// `[\s\u00A0]` accepts either separator, because which one it is is a
+// typographic decision that may change again; what these tests are for is that
+// the MONTH is derived from the rows. Widened only along that axis.
 test.describe('the price vintage is derived from the rows, not from a constant', () => {
   test('PREMISE — the shopping hero renders and carries a vintage stamp', async ({ page }) => {
     // Without this, both assertions below could pass on a sheet that never
@@ -46,7 +56,7 @@ test.describe('the price vintage is derived from the rows, not from a constant',
     await expect(page.locator('#sheet-title')).toBeVisible({ timeout: 8000 });
     const sheet = page.locator('.sheet').last();
     await expect(sheet).toContainText(/Bought so far/i, { timeout: 8000 });
-    await expect(sheet).toContainText(/est\. prices \w{3} \d{4}/, { timeout: 8000 });
+    await expect(sheet).toContainText(/est\. prices \w{3}[\s\u00A0]\d{4}/, { timeout: 8000 });
   });
 
   test('THE REGRESSION — it does not show the fallback table\'s January date', async ({ page }) => {
@@ -58,7 +68,7 @@ test.describe('the price vintage is derived from the rows, not from a constant',
     // genuinely re-verified in a January, this goes red and the reader has this
     // comment to tell them the stamp must still be DERIVED — at which point the
     // assertion is what changes, with a reason, not the derivation.
-    expect(text).not.toMatch(/est\. prices Jan 2026/);
+    expect(text).not.toMatch(/est\. prices Jan[\s\u00A0]2026/);
   });
 
   test('the month it shows is the month the corpus says, on the same screen', async ({ page }) => {
@@ -69,7 +79,7 @@ test.describe('the price vintage is derived from the rows, not from a constant',
     await openSectionByName(page, 'spread');
     await expect(page.locator('#sheet-title')).toBeVisible({ timeout: 8000 });
     const text = await page.locator('.sheet').last().innerText();
-    const m = text.match(/est\. prices (\w{3}) (\d{4})/);
+    const m = text.match(/est\. prices (\w{3})[\s\u00A0](\d{4})/);
     expect(m, 'no vintage stamp found on the food sheet').toBeTruthy();
     // Every dated row in the corpus falls in Aug–Sep 2026, and the derivation
     // takes the OLDEST so the label is true of all of them. A stamp outside this
