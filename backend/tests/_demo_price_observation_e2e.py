@@ -25,15 +25,20 @@ pulls — while the logs showed every write after the first failing with
 "Event loop is closed". The count was flat because nothing was written, and the
 demo presented that as the feature working.
 
-Cause: TestClient runs each request in its own event loop, while `db.py` caches
-one asyncpg pool in a module global. The pool created during the first request
-is bound to a loop that is dead by the second. That is a HARNESS artifact, not
-a production bug — uvicorn serves every request on one long-lived loop, which is
-the condition the global pool is written for — but it makes TestClient unable to
-demonstrate anything about persistence.
+Cause: TestClient runs each request in its own event loop, while `db.py` cached
+one asyncpg pool in a module global, so the pool was bound to a loop that was
+dead by the second request.
 
-So the route coroutine is awaited directly, inside one loop. Less HTTP, and
-every assertion below is about something that actually happened.
+FIXED 2026-09-24 — `db.py` now keys the pool on the running loop, and the same
+three-request TestClient scenario writes on all three. It was called a harness
+artifact at first, and that was true of the impact (uvicorn serves every request
+on one loop, so production never hit it) and wrong as a reason to leave it: six
+routers share that pool, and "correct only under one caller" was not a property
+the module stated. See tests/test_pool_is_per_event_loop.py.
+
+This file still awaits the route coroutine directly rather than going back to
+TestClient — one loop, no HTTP layer, and nothing between the assertion and the
+thing it measures.
 """
 import asyncio
 import json
