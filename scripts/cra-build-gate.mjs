@@ -93,6 +93,33 @@ if (/Failed to compile/.test(out)) {
 const FILE_RE = /^([A-Za-z0-9_./-]+\.(?:js|jsx|ts|tsx|mjs|cjs))\s*$/;
 const WARN_RE = /^\s+Line\s+(\d+):(\d+):\s+(.*?)\s{2,}([a-zA-Z@][a-zA-Z0-9@/_-]*)\s*$/;
 
+// ── THE LINE NUMBER THIS GATE MEANT TO EXCLUDE, AND WHERE IT GOT BACK IN ────
+//
+// The fingerprint is `rule|file|message`, and the header above says line numbers
+// are left out DELIBERATELY because "line numbers shift on every unrelated edit
+// above a warning, which would make the gate fail constantly for no real change
+// and train people to regenerate the baseline reflexively."
+//
+// `react-hooks/exhaustive-deps` puts the line number INSIDE ITS MESSAGE:
+//
+//   The 'vendors' conditional could make the dependencies of useMemo Hook
+//   (at line 21063) change on every render. …
+//
+// So for that one rule family — 10 of the 245 baselined warnings — the
+// fingerprint carried a line number after all, and did exactly what the design
+// set out to prevent. MEASURED 2026-09-24: App.js moved by a net +8 lines on
+// 2026-09-23 (`4386914`, `a617d96` — the app rename), and two warnings that had
+// not changed in any other respect reported as NEW at 21063 and 43452 where the
+// baseline held 21055 and 43444. The gate went red on a file nobody had a
+// warning-relevant edit in, and it stayed red across FIFTEEN pushes without
+// anyone seeing it, because every Checks run in that window was cancelled by the
+// next push before `cra-build` finished.
+//
+// Normalized on BOTH sides, so the committed baseline keeps matching without
+// being regenerated — regenerating would have recorded the shift as if it were
+// a review decision, which is the reflex this gate's own header warns against.
+const fpMessage = (m) => String(m).replace(/\(at line \d+\)/g, '(at line …)');
+
 const found = new Map();       // fingerprint -> { rule, file, message, count }
 let currentFile = null;
 for (const raw of out.split('\n')) {
@@ -104,7 +131,7 @@ for (const raw of out.split('\n')) {
   const [, , , messageRaw, rule] = wm;
   const message = messageRaw.trim();
   const file = currentFile || '<unknown>';
-  const fp = `${rule}|${file}|${message}`;
+  const fp = `${rule}|${file}|${fpMessage(message)}`;
   const hit = found.get(fp) || { rule, file, message, count: 0 };
   hit.count += 1;
   found.set(fp, hit);
@@ -152,7 +179,7 @@ if (UPDATE) {
       entries: exceptions,
     },
     generatedFrom: 'npx react-scripts build',
-    fingerprint: 'rule|file|message (no line numbers — they shift on unrelated edits)',
+    fingerprint: 'rule|file|message, with any embedded "(at line N)" normalized away — line numbers shift on unrelated edits',
     totalWarnings: total,
     byRule: Object.fromEntries(Object.entries(byRule).sort((a, b) => b[1] - a[1])),
     byFile: Object.fromEntries(Object.entries(byFile).sort((a, b) => b[1] - a[1])),
@@ -173,7 +200,7 @@ if (!existsSync(BASELINE)) {
   process.exit(1);
 }
 const baseline = JSON.parse(readFileSync(BASELINE, 'utf8'));
-const baseMap = new Map(baseline.warnings.map((w) => [`${w.rule}|${w.file}|${w.message}`, w]));
+const baseMap = new Map(baseline.warnings.map((w) => [`${w.rule}|${w.file}|${fpMessage(w.message)}`, w]));
 const baseFiles = new Set(baseline.warnings.map((w) => w.file));
 
 const newWarnings = [];

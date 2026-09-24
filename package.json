@@ -41,7 +41,7 @@
     "design:build": "node scripts/build-design-lib.mjs && node scripts/check-design-dts.mjs",
     "verify:all": "node scripts/verify-all.mjs",
     "verify:fast": "node scripts/verify-all.mjs --fast",
-    "verify:push": "node scripts/verify-all.mjs handoff knowledge unit seam release",
+    "verify:push": "node scripts/verify-all.mjs handoff knowledge unit seam release cra",
     "handoff:check": "node scripts/handoff-freshness.mjs",
     "handoff:stamp": "node scripts/handoff-freshness.mjs --stamp",
     "coverage:honesty": "node scripts/coverage-honesty.mjs"
