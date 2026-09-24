@@ -157,11 +157,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `7aab29da` |
+| Branch / HEAD | `main` @ `7829c388` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,560 passed**, 1 skipped, **0 failed**, **532 suites** (re-measured 2026-09-24 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,570 passed**, 1 skipped, **0 failed**, **533 suites** (re-measured 2026-09-24 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **360 passed** — re-measured 2026-09-23 (thirtieth entry, +7 in `test_food_price_factor.py`). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -414,6 +414,54 @@ real scorer, and the revert now turns two of them red.
 `rentals`(24), `menu`(16), `decor`(8) and 100+ others have no role entry at all,
 and adding one is a judgement about which roles care. Authoring, not
 normalization. The 26% is pinned so it moves visibly.
+
+### Step 2 — `blastRadius`, built. NOT wired, and the measurement says why.
+
+**A name collision I reported as a finished feature.** I told the owner the
+decision-level `blastRadius` was "already built, just needs wiring", on the
+strength of `knowledge/dependencyEngine.js` exporting that name. **It is a
+different thing entirely** — it takes a playbook and a FIELD PATH and reports
+which engines, readers, prompts and tests an authoring edit would disturb.
+Different inputs, different output, different job. The new module is
+`src/lib/decisionBlastRadius.js` so the next reader does not repeat it.
+
+**What was actually derivable.** Two downstream signals live on a decision and
+only one is counted anywhere:
+
+| | | counted today? |
+|---|---|---|
+| `blocks` | the SURFACES waiting on it | yes — `unlocks: blocks.length` |
+| `dependsOn` | the DECISIONS waiting on it | **no** |
+
+67 `dependsOn` entries, 28 distinct targets, **every one resolves to a real
+decision id**, and the graph has **zero cycles**. The decision half is also the
+only one that can be transitive — a surface does not unblock a surface.
+
+**Measured:** 41 of 260 decisions (16%) have something waiting on them; deepest
+chain 6. The transitive walk earns its keep — the Gala's fundraising target has
+4 direct dependents and **6** downstream, so a first-order count under-reports
+the most load-bearing decision in that playbook by a third. Surfaces and
+decisions are kept as separate fields, because "four other calls open up" is a
+different claim from "this touches four surfaces".
+
+**THE WIRING IS A BOARD CALL, and the numbers say don't do it blind.**
+`actionConsequence` adds `unlocks` directly, so the obvious wiring is
+`blocks.length + allDecisions`. Measured against the ruled bands:
+
+    Fundraiser / Gala/target   unlocks 4 -> 10  (+6)
+    Wedding/budget             unlocks 4 ->  9  (+5)
+    Wedding/venue              unlocks 3 ->  6  (+3)
+
+    gateHolder           +2
+    closing window       +3.5   (ruled 2026-09-23, deliberately BELOW…)
+    lateness floor        4     (…this, ruled 2026-08-17)
+    lateness ceiling      4.9
+
+**A +6 term is larger than every other signal in the model.** It would put a
+fundraising target above a genuinely late item — the exact direction the
+2026-08-17 ruling fixed, and the reason the closing window was sized at 3.5. So
+the engine ships and the wiring waits for a packet, the same way the closing
+window did. The guard pins the arithmetic so the packet's numbers cannot rot.
 
 ### Where the spec's unauthored decision fields actually live
 
