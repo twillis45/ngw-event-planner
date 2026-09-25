@@ -41,6 +41,13 @@ const boot = async (page) => {
   await page.getByText('Plan the food', { exact: false }).first().click();
   await settled(page);
   const sheet = page.locator('.sheet').last();
+  // YOUR CHOICES MOVED TO THE PLAN TAB (2026-09-24). The spread sheet split
+  // into Plan / Bringing / Shop so the planning rows would stop sitting on top
+  // of the shopping list; the sheet opens on Shop, so the door is one tap
+  // further in. Everything this spec asserts about dietary holding two answers
+  // is unchanged — only the route to the panel moved.
+  const planTab = sheet.locator('.fmode', { hasText: /^Plan$/ }).first();
+  if (await planTab.count()) { await planTab.click(); await settled(page); }
   await sheet.getByText('Your choices', { exact: false }).first().click();
   await settled(page);
   return sheet;
@@ -129,6 +136,11 @@ test('tapping a restriction marks the lines it applies to', async ({ page }) => 
   await settled(page);
   await sheet.getByText('Done', { exact: false }).first().click();
   await settled(page);
+  // …and back to Shop for the list. Answering a dietary question happens on
+  // Plan; the rows it marks live on Shop. The tab split put a step between
+  // them that did not exist when both were one scroll.
+  const shopTab = sheet.locator('.fmode', { hasText: /^Shop$/ }).first();
+  if (await shopTab.count()) { await shopTab.click(); await settled(page); }
   await sheet.getByText('The list', { exact: false }).first().click();
   await settled(page);
   // The list is grouped; open Food to reach the item rows.
