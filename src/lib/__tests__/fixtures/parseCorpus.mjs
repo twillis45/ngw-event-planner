@@ -66,7 +66,14 @@ export const PARSER_FIELDS = [
   // exists because deleting ONE character from the type word lands 35 of 45
   // playbook types on Birthday, silently — see oneTypoBoughtABirthday.test.js.
   'type', 'typeBasis', 'secondaryType', 'theme', 'guests', 'budget', 'date', 'endDate', 'monthYear',
-  'milestone', 'isDestination', 'destinationBasis', 'travelMode', 'overnight', 'overnightBasis',
+  // `nights` and `lodgingKind` added 2026-09-25, from a host-reported parse:
+  // "50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb
+  // accomodations". Measured, every duration phrase was discarded unless the
+  // host gave explicit DATES — "5 days" produced nothing at all — and the
+  // accommodation word set `overnight` without recording WHICH kind, which is
+  // the half that decides whether a shopping list applies at all.
+  'milestone', 'nights', 'lodgingKind',
+  'isDestination', 'destinationBasis', 'travelMode', 'overnight', 'overnightBasis',
   'timeOfDay', 'startTime', 'startTimeBasis', 'venueAddress', 'honoree', 'venueKind', 'venue',
   'venueCity', 'venueState', 'vacationArea', 'kidsPolicy',
 ];

@@ -12,6 +12,7 @@
 
 import { ALL_PLAYBOOKS } from './playbooks';
 import { matchVacationArea } from './vacationAreas';
+import { matchLandmark } from './knowledge/landmarkGazetteer';
 import { resolveCanonicalType, GENERIC_GATHERING_WORDS } from './eventTaxonomyAdapter';
 import { parseVenueLocation, resolveSpokenCity, US_STATE_NAME_TO_ABBR } from './cityText';
 import { resolveHoliday } from './holidayDates.mjs';
@@ -108,6 +109,27 @@ export function parseSmartEventText(text, opts = {}) {
     || t.match(/\b(\d{1,3})\s*(?:ish|-ish)\b/i)
     || t.match(/\b(\d{1,3})\s+or\s+so\b/i);
   if (gm) guests = parseInt(gm[1], 10);
+
+  // ── A COUPLE IS TWO PEOPLE (2026-09-25) ───────────────────────────
+  //
+  // Host-reported, with the string that failed: "50th birthday nov 2027 8
+  // couples 5 nights Disneyland ...". It parsed guests as NULL, so a sixteen-
+  // person trip sized itself to the Birthday playbook's typical — a number the
+  // host never said, standing in for one they did. That is the exact defect the
+  // COUNT_NOUNS list above was widened to fix; "couples" is the same failure in
+  // a different word.
+  //
+  // It is NOT in COUNT_NOUNS because those are one-for-one: 20 cousins is 20
+  // people. A pair noun is a MULTIPLIER, and folding it into that list would
+  // have counted eight.
+  //
+  // Only consulted when no one-for-one count matched, so "16 guests, 8 couples"
+  // reads sixteen and never thirty-two.
+  if (guests === null) {
+    const PAIR_NOUNS = 'couples|pairs|duos';
+    const pm = t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${PAIR_NOUNS})\\b`, 'i'));
+    if (pm) guests = parseInt(pm[1], 10) * 2;
+  }
 
   // ── DOZENS ────────────────────────────────────────────────────────────────
   // "a dozen", "half a dozen", "a couple dozen" are counts, not slang for
@@ -660,6 +682,20 @@ export function parseSmartEventText(text, opts = {}) {
   // three facts honestly; the hub town (not the area) anchors weather/maps.
   const area = matchVacationArea(t);
 
+  // ── THE PARK, NOT THE TOWN IT SITS IN (2026-09-25) ───────────────────────
+  // Same shape of loss as the vacation area above, one step further out.
+  // MEASURED: "50th birthday nov 2027 8 couples 5 nights Disneyland" parsed to
+  // isDestination false, venueCity null — eight couples, five nights, answered
+  // "Local event" — while the same sentence with "in Anaheim" flagged
+  // correctly. Hosts name the park; the park is the most specific fact in the
+  // sentence and it was the one fact thrown away.
+  //
+  // The gazetteer carries city + state off the operator's own published
+  // address, and REFUSES an ambiguous bare brand ("Six Flags", "Busch
+  // Gardens") rather than guessing one of its locations — see
+  // knowledge/landmarkGazetteer.js for the sources and the refusals.
+  const landmark = matchLandmark(t);
+
   // ── What isDestination ACTUALLY means ────────────────────────────────────
   // Read the decisions it gates: "How many guests are traveling in", "How are
   // guests staying", "Are you providing group transport". The flag is about
@@ -686,7 +722,7 @@ export function parseSmartEventText(text, opts = {}) {
     '\\bgetaway\\b', '\\bretreat\\b',
     '\\bdriv(?:e|ing)\\s+(?:up|down|out|in)\\b',
   ].join('|'), 'i');
-  const travelSaid = TRAVEL_STRONG.test(t) || !!area;
+  const travelSaid = TRAVEL_STRONG.test(t) || !!area || !!landmark;
 
   // A bare place name after travel phrasing — "weekend trip to Asheville".
   // parseVenueLocation deliberately refuses a city with no state (a guessed
@@ -791,7 +827,13 @@ export function parseSmartEventText(text, opts = {}) {
 
   // Why it was decided, for the "· heard" chip and any later explanation. Never
   // a silent commit: the host still confirms via the toggle.
+  // A NAMED PARK IS ITS OWN REASON. It is not the host's own travel wording
+  // ('travel-language') and it is emphatically not the bare-city guess
+  // ('place-named', which HostShellV2 ~1613 deliberately declines to commit) —
+  // it is a published fact about a place nobody lives. Reported as itself so
+  // the chip can say what was actually heard.
   const destinationBasis = !isDestination ? null
+    : (landmark && !TRAVEL_STRONG.test(t) && !area) ? 'landmark-named'
     : travelSaid ? 'travel-language'
     : (homeCity ? 'place-differs-from-your-area' : 'place-named');
 
@@ -822,6 +864,87 @@ export function parseSmartEventText(text, opts = {}) {
   // forgetting something she actually told it. The basis names where the fact
   // CAME from, and the strongest source wins.
   const overnightBasis = !overnight ? null : (saidOvernight ? 'said-so' : 'multi-day-span');
+
+  // ── HOW LONG, NOT JUST WHETHER (2026-09-25) ──────────────────────
+  //
+  // Measured on the host's failing string and six variants: a span appeared
+  // ONLY from explicit dates. Every natural duration phrase was discarded —
+  //
+  //   "5 nights in Anaheim"   → overnight: true, and nothing else
+  //   "5 days in Anaheim"     → NOTHING, not even overnight
+  //   "5-day trip to Anaheim" → NOTHING
+  //   "weekend in Anaheim"    → NOTHING
+  //   "Nov 12-16 2027"        → date + endDate ✓
+  //
+  // The whole multi-day system hangs off date+endDate (lib/dates spanNights),
+  // and foodSpan uses it to say "sized for the main gathering, not all 5 days".
+  // A host who says "5 nights" is telling us precisely that, and we threw it
+  // away.
+  //
+  // NIGHTS IS THE STORED UNIT because that is what spanNights computes and what
+  // lodging counts. "5 days" is four nights; "a long weekend" is deliberately
+  // NOT guessed, because it means three nights to some hosts and two to others
+  // and inventing one would put a wrong date on a plan.
+  const nights = (() => {
+    const explicit = t.match(/\b(\d{1,2})\s*(?:-|\s)?\s*nights?\b/i);
+    if (explicit) return parseInt(explicit[1], 10);
+    const dayForm = t.match(/\b(\d{1,2})\s*(?:-|\s)?\s*days?\b/i);
+    if (dayForm) {
+      const d = parseInt(dayForm[1], 10);
+      return d > 1 ? d - 1 : 0;     // 5 days is 4 nights
+    }
+    // A plain "weekend" is two nights by near-universal use. "Long weekend" is
+    // ambiguous and is left alone rather than guessed.
+    if (/\blong\s+weekend\b/i.test(t)) return null;
+    if (/\bweekend\b/i.test(t)) return 2;
+    return null;
+  })();
+
+  // ── WHAT KIND OF ROOF, NOT JUST THAT THERE IS ONE (2026-09-25) ────────────
+  //
+  // Host: "If parser mentions an accommodation it should know. Airbnb Arbor
+  // etc." The words were already half-read — `saidOvernight` above matches
+  // airbnb/vrbo/hotel/cabin and sets `overnight: true`. It throws away WHICH,
+  // and which is the part that decides something.
+  //
+  // `lodgingIntel.kitchenSignal` is three-valued (kitchen true / false / NOT
+  // TOLD) and `foodSpanNote` branches hard on it: a rental with a kitchen keeps
+  // the shopping list and says "the other meals are still yours to plan"; a
+  // hotel withholds the list entirely, because a grocery list is not the plan
+  // for a hotel stay. Today a host who types "airbnb" lands in NOT TOLD and
+  // gets neither. That module's own comment names this hole: "a host who books
+  // a hotel by phone and types the name reaches `kitchen === null`
+  // permanently."
+  //
+  // NO SECOND SOURCE OF TRUTH. This emits a KIND, not a kitchen boolean. The
+  // creation flow writes it to `foodChoices.dest_lodging`, which is the field
+  // kitchenSignal already reads first and trusts most ("told beats inferred").
+  // Deciding the kitchen here would put a second answer next to the one the
+  // host can give on the lodging surface, and those two would drift.
+  //
+  // AMBIGUOUS WORDS ARE REFUSED, not guessed. "Suite" and "lodge" and "resort"
+  // can each be either — plenty of suites have kitchenettes and plenty of
+  // resorts are condos — and a wrong guess here silently withholds a shopping
+  // list from a host who needs one. Only words that settle it appear below.
+  const lodgingKind = (() => {
+    // Rental platforms and dwelling words: a kitchen comes with the building.
+    if (/\bairbnb\b|\bvrbo\b|\bhomeaway\b|\bhouse\s+rental\b|\brental\s+house\b|\bbeach\s+house\b|\blake\s+house\b|\bcabins?\b|\bvillas?\b|\bcondos?\b|\bcottages?\b/i.test(t)) return 'rental';
+    // A room block IS a hotel — that is what a block is (lodgingIntel says so).
+    if (/\bhotels?\b|\bmotels?\b|\broom\s+block\b/i.test(t)) return 'hotel';
+    return null;
+  })();
+
+  // NO endDate IS DERIVED HERE, deliberately. The date block above ALREADY
+  // turns a duration into an endDate whenever a start date resolved (see
+  // "Duration form" there) — I wrote that derivation a second time before
+  // reading far enough, which would have been two places computing one fact,
+  // the exact defect this file's own comments warn about elsewhere.
+  //
+  // What was genuinely missing is the case with NO start day: "nov 2027 … 5
+  // nights" has a month and no date, so that block cannot fire and the
+  // duration was dropped on the floor. `nights` now carries it out of the
+  // parser so the creation flow can apply it the moment a real date is picked.
+  // Inventing a day from a month to make a span would be worse than waiting.
 
   // TIME OF DAY — the coarse word the host actually said. This used to be dropped entirely,
   // so "cookout in the afternoon" created an event with NO time signal at all, and the
@@ -989,7 +1112,7 @@ export function parseSmartEventText(text, opts = {}) {
   const lodging = /\b(airbnb|vrbo|lake\s*house|beach\s*house|cabin|rental\s+(?:house|home|condo)|rent(?:ed|ing)?\s+(?:an?\s+)?(?:airbnb|vrbo|house|cabin|condo))\b/i.test(t);
 
   return {
-    type, typeBasis, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    type, typeBasis, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
     venueAddress: venueAddress || null,
@@ -1002,10 +1125,14 @@ export function parseSmartEventText(text, opts = {}) {
       : (lodging || venueAt || venuePhrase ? 'venue' : ''),
     venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),
     // Order is strongest-first: a said "City, ST" or ZIP, then a curated
-    // vacation area's real hub town, then the bare town she named — which
-    // carries NO state, because none was said (resolveSpokenCity, cityText.js).
-    venueCity: loc ? (loc.zip || loc.city) : (area ? area.hubTown : (spokenCity ? spokenCity.city : null)),
-    venueState: loc ? (loc.state || null) : (area ? area.state : null),
+    // vacation area's real hub town, then a named landmark's published city
+    // (it carries a real state, so it outranks the next one), then the bare
+    // town she named — which carries NO state, because none was said
+    // (resolveSpokenCity, cityText.js).
+    venueCity: loc ? (loc.zip || loc.city)
+      : (area ? area.hubTown : (landmark ? landmark.city : (spokenCity ? spokenCity.city : null))),
+    venueState: loc ? (loc.state || null)
+      : (area ? area.state : (landmark ? landmark.state : null)),
     vacationArea: area ? area.id : null,
     // "No kids." / "adults only" → the invite policy InviteV2 + doItForMe already
     // consume; never invented — only when the host said it.
@@ -1045,11 +1172,46 @@ export function parseSmartEventText(text, opts = {}) {
 // would destroy the trust the disclosure exists to protect.
 const _CLAUSE_SPLIT = /\s*(?:,|\band\b|;)\s*/i;
 
+// Words that carry no meaning alone, so a phrase made only of them is noise
+// rather than a fact we dropped.
+const _FILLER = new Set([
+  'a', 'an', 'the', 'and', 'or', 'of', 'for', 'to', 'in', 'on', 'at', 'with',
+  'is', 'are', 'be', 'it', 'we', 'i', 'my', 'our', 'us', 'plus', 'also',
+]);
+
+/**
+ * The clauses the parser did NOT use — what to tell the host it ignored.
+ *
+ * ── IT WENT SILENT EXACTLY WHEN A HOST TYPED NATURALLY (2026-09-25) ─────────
+ *
+ * Host-reported string: "50th birthday nov 2027 8 couples 5 nights Disneyland
+ * 2 excursions airbnb accomodations". This returned [] — a clean bill of
+ * health — while the parser had dropped five facts on the floor.
+ *
+ * The cause was one line. Clauses were split on commas, "and" or semicolons;
+ * that sentence has none of them, so it was ONE clause and the function bailed
+ * at "nothing to compare against". Add commas to the identical words and it
+ * correctly reported ["8 couples","5 nights","Disneyland","2 excursions"]. The
+ * self-knowledge was intact and gated on punctuation the host never typed.
+ *
+ * WHY THIS MATTERS MORE THAN THE PARSE ITSELF. A reference scan of Google
+ * Maps, Airbnb, TripIt, Joy, Evite and Punchbowl (9/25/2026) found that NO
+ * leader extracts a place from a sentence either — Google Maps typed with this
+ * exact sentence returns zero predictions. What every leader does instead is
+ * refuse OUT LOUD and name a recovery: "Add a missing place to Google Maps",
+ * Joy's "add it to Google Maps first, then come back", TripIt emailing you
+ * that it could not read your forward. Refusing is not the failure. Refusing
+ * silently is, and that is what we shipped.
+ *
+ * THE FALLBACK IS PER-WORD, not a smarter sentence splitter. Removing one word
+ * and re-parsing asks the only question that matters — did this word change
+ * what we understood — and needs no grammar. Adjacent unused words are merged
+ * back into phrases so the host reads "2 excursions", not "2" and "excursions".
+ * Short strings only, so N re-parses is cheap.
+ */
 export function unusedClauses(text, opts = {}) {
   const t = String(text || '').trim();
   if (t.length < 12) return [];
-  const clauses = t.split(_CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length > 2);
-  if (clauses.length < 2) return [];          // one clause: nothing to compare against
   let full;
   try { full = parseSmartEventText(t, opts); } catch { return []; }
   const same = (a, b) => {
@@ -1057,13 +1219,68 @@ export function unusedClauses(text, opts = {}) {
     for (const k of keys) if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) return false;
     return true;
   };
-  const out = [];
-  for (const c of clauses) {
-    const without = t.split(c).join(' ').replace(/\s{2,}/g, ' ').trim();
-    if (!without || without === t) continue;
+  const unchanged = (without) => {
+    if (!without || without === t) return false;
     let p;
-    try { p = parseSmartEventText(without, opts); } catch { continue; }
-    if (same(p, full)) out.push(c);
+    try { p = parseSmartEventText(without, opts); } catch { return false; }
+    return same(p, full);
+  };
+
+  // Punctuated input keeps the original clause reading — a host who wrote
+  // commas told us where the boundaries are, and that beats guessing them.
+  const clauses = t.split(_CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length > 2);
+  if (clauses.length >= 2) {
+    const out = [];
+    for (const c of clauses) {
+      if (unchanged(t.split(c).join(' ').replace(/\s{2,}/g, ' ').trim())) out.push(c);
+    }
+    return out;
   }
+
+  // No punctuation to go on: ask the question per word instead.
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 3) return [];
+  const used = words.map((_, i) => !unchanged(
+    words.slice(0, i).concat(words.slice(i + 1)).join(' ').trim(),
+  ));
+
+  // ── A LONE WORD BESIDE A USED ONE IS REDUNDANCY, NOT A MISS ───────────────
+  //
+  // Measured while building this: "cookout in the backyard for 20 people"
+  // reported ["people"]. Removing "people" changes nothing BECAUSE "for 20"
+  // already matched the count — the word is half of a fact we used, and the
+  // per-word test cannot see that from one removal. Telling a host we ignored
+  // "people" there is crying wolf in the exact mechanism meant to earn trust.
+  //
+  // Same shape on the reported sentence: "accomodations" sits beside "airbnb",
+  // which we DID read as the lodging kind. The word is redundant, not dropped.
+  //
+  // So a single-word run is only reported when it stands alone — neither
+  // neighbour was used. A run of two or more words is reported regardless,
+  // because "2 excursions" being individually AND jointly removable is exactly
+  // what a genuinely unread fact looks like.
+  //
+  // This under-reports on purpose. A miss we stay quiet about costs the host
+  // one fact; a false alarm costs them the belief that the list means anything.
+  const out = [];
+  let run = [];
+  let runStart = -1;
+  const flush = (endExclusive) => {
+    if (!run.length) { runStart = -1; return; }
+    const meaty = run.some((w) => {
+      const bare = w.replace(/[^a-z0-9]/gi, '').toLowerCase();
+      return bare.length > 2 && !_FILLER.has(bare);
+    });
+    const leftUsed = runStart > 0 && used[runStart - 1];
+    const rightUsed = endExclusive < words.length && used[endExclusive];
+    const standsAlone = !leftUsed && !rightUsed;
+    if (meaty && (run.length > 1 || standsAlone)) out.push(run.join(' '));
+    run = []; runStart = -1;
+  };
+  for (let i = 0; i < words.length; i += 1) {
+    if (used[i]) { flush(i); }
+    else { if (!run.length) runStart = i; run.push(words[i]); }
+  }
+  flush(words.length);
   return out;
 }
