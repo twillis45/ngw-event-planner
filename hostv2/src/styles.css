@@ -5906,3 +5906,32 @@ button.vc-pill::after{
    of separate pills does not. It just uses the token now. */
 .mini{ border-radius:var(--r-pill); }
 .fmode{ border-radius:var(--r-sm); }
+
+/* ── TEMPORARY: the chip layout for the shopping actions (2026-09-25) ────────
+   Comparison harness behind `?acts=chips`, so the host can choose between
+   stacked full-width buttons and one primary plus a chip row ON THE REAL
+   SURFACE. Deleted once the choice is made.
+
+   The case for chips: Shop already carries Copy / Instacart / Share, and print
+   and email are queued — five stacked full-width buttons would rebuild exactly
+   the density the redesign just removed. Board D has ONE primary.
+
+   The FIRST child stays full-width (it is the primary); every later action
+   becomes an inline pill that wraps. */
+.shop-acts.chips > .food-act:not(:first-of-type){
+  width:auto !important;
+  display:inline-flex;
+  margin:0 var(--sp-2) var(--sp-2) 0;
+  /* ON THE LADDER (spacingLadder.test.js). The first cut used `9px 14px`,
+     copied off a neighbouring control, and both numbers are off the 0/1/2/4/8/
+     12/16/20/24 ladder — the ratchet caught it at 272 against a 270 baseline.
+     Raising the baseline for a new decoration is exactly what that test exists
+     to refuse. */
+  padding:8px 16px;
+  border-radius:var(--r-pill);
+  background:none;
+  border:1px solid var(--line);
+  color:var(--steel-soft);
+  font-weight:600;
+}
+.shop-acts.chips > .food-act:first-of-type{ margin-bottom:var(--sp-3); }

@@ -168,7 +168,7 @@ import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 // the shipping app could not — one of four host capabilities found living only
 // in a shell scheduled for deletion. The engine is unchanged and shared; only
 // the button is new here.
-import { instacartCart, INSTACART_FALLBACK } from '@app/lib/instacart';
+import { instacartCart, instacartConfigured, INSTACART_FALLBACK, instacartSearchUrl } from '@app/lib/instacart';
 import { parseSmartEventText, unusedClauses, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
@@ -813,6 +813,17 @@ const PASS_PAID_RETURN = (() => {
 // The seeded event's id is 'demoqa-*' — neither 'cust-' nor 'ev-copy-', so
 // passGate treats it as a sample: it never consumes the free tier and never
 // gets gated, which is exactly right for a demo walkthrough.
+// ── TEMPORARY: TWO LAYOUTS FOR THE SHOPPING ACTIONS ─────────────────────
+// Host, 2026-09-25, asked to see both before choosing. `?acts=chips` renders
+// one primary plus a chip row; the default keeps the stacked full-width
+// buttons. This is a COMPARISON HARNESS and comes out as soon as the choice is
+// made — it exists so the decision is made on the real surface rather than on a
+// drawing, after three mockups under-drew the product earlier in this work.
+const ACTS_CHIPS = (() => {
+  try { return new URLSearchParams(window.location.search).get('acts') === 'chips'; }
+  catch { return false; }
+})();
+
 const DEMO_TOOLS_ARMED = (() => {
   try {
     const p = new URLSearchParams(window.location.search).get('demo');
@@ -1392,51 +1403,107 @@ export default function HostShellV2() {
   const VOICE_IDLE_MS = 20000;
   const voiceIdleTimer = useRef(null);
   const clearVoiceIdleTimer = () => { if (voiceIdleTimer.current) { clearTimeout(voiceIdleTimer.current); voiceIdleTimer.current = null; } };
+  // ── IT KEPT CLOSING MID-SENTENCE, AND continuous:true DID NOT FIX IT ───────
+  //
+  // Host, 2026-09-25: "Say it feature is closing before finished speaking. I
+  // thought this was done." It WAS addressed — `continuous = true` is still set
+  // below, and on Chrome that is the fix. It does nothing on the platform this
+  // app is built for.
+  //
+  // WebKit's own issue tracker and the Web Speech API community are explicit:
+  // continuous mode "is completely useless on iOS", and worse, a natural pause
+  // of a second or two makes iOS CLEAR the text already transcribed and start
+  // over. So a host pausing to think lost the sentence twice — the session
+  // ended, and what they had said was wiped.
+  //   https://github.com/WebAudio/web-speech-api/issues/96
+  //   https://github.com/WebKit/Documentation/issues/120
+  //
+  // TWO FIXES, because there are two bugs:
+  //
+  // 1. WANT vs STATE. `listening` was both "the host asked for this" and "a
+  //    recognition session is open" — so when iOS ended the session on its own,
+  //    the app concluded the host was done. `wantVoiceRef` is the host's
+  //    intent, and it only goes false when they tap stop, the idle backstop
+  //    fires, or a real error lands. While it is true, `onend` starts a FRESH
+  //    instance rather than giving up. A new object per cycle is also what the
+  //    WebKit guidance recommends over holding one open.
+  //
+  // 2. ACCUMULATE. Because iOS wipes the transcript across a pause, the text is
+  //    kept here, not read back off `ev.results`. Finalized phrases append to
+  //    `voiceFinalRef`; the live interim is shown after them. Without this the
+  //    auto-restart would make it worse — every restart would blank the field.
+  const wantVoiceRef = useRef(false);
+  const voiceFinalRef = useRef('');
+  const voiceRestartsRef = useRef(0);
+
+  const makeRecognizer = () => {
+    const r = new SpeechRec();
+    r.lang = 'en-US'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    r.onresult = (ev) => {
+      clearVoiceIdleTimer();
+      voiceIdleTimer.current = setTimeout(() => { toast('Stopped listening — quiet for a while.'); stopVoice(); }, VOICE_IDLE_MS);
+      let interim = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
+        const res = ev.results[i];
+        const chunk = (res[0] && res[0].transcript) || '';
+        if (res.isFinal) voiceFinalRef.current = `${voiceFinalRef.current} ${chunk}`.replace(/\s+/g, ' ').trim();
+        else interim += chunk;
+      }
+      const text = `${voiceFinalRef.current} ${interim}`.replace(/\s+/g, ' ').trim();
+      if (text) { setSmartText(text); setFType(null); setCreateEdit(null); }
+    };
+    r.onend = () => {
+      // THE RESTART. Only while the host still wants it, and capped so a
+      // recognizer that dies instantly cannot spin — 40 restarts is far more
+      // than a real dictation needs and stops well short of a hot loop.
+      if (wantVoiceRef.current && voiceRestartsRef.current < 40) {
+        voiceRestartsRef.current += 1;
+        try { recogRef.current = makeRecognizer(); recogRef.current.start(); return; }
+        catch { /* fall through and settle */ }
+      }
+      clearVoiceIdleTimer(); wantVoiceRef.current = false; setListening(false);
+    };
+    r.onerror = (ev) => {
+      const code = (ev && ev.error) || '';
+      // 'no-speech' is a pause, not a failure — iOS raises it constantly during
+      // normal dictation. Let onend restart and say nothing to the host.
+      if (code === 'no-speech') return;
+      // 'aborted' is the host's own tap to stop — never an error to report.
+      clearVoiceIdleTimer(); wantVoiceRef.current = false; setListening(false);
+      if (code === 'aborted') return;
+      toast(
+        code === 'not-allowed' || code === 'service-not-allowed'
+          ? 'Mic access is blocked — allow the microphone in your browser settings, or type it instead.'
+        : code === 'audio-capture' ? 'No microphone found — type it instead.'
+        : code === 'network' ? 'Voice needs a connection right now — type it instead.'
+        : 'Couldn’t hear that — try again or type it.'
+      );
+    };
+    return r;
+  };
+
   const startVoice = () => {
     if (!SpeechRec) { toast('Voice input isn’t available in this browser — type it instead.'); return; }
     try {
-      const r = new SpeechRec();
-      recogRef.current = r;
-      // continuous: true — non-continuous mode ends the session on the browser's
-      // OWN first-pause detection (its endpointer), not an app timer; a host
-      // pausing mid-sentence ("crab feast for... twenty... in the backyard")
-      // was getting cut off before finishing. "tap to stop" only makes sense
-      // once the app, not the browser, decides when listening ends.
-      r.lang = 'en-US'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
-      r.onresult = (ev) => {
-        clearVoiceIdleTimer();
-        voiceIdleTimer.current = setTimeout(() => { toast('Stopped listening — quiet for a while.'); stopVoice(); }, VOICE_IDLE_MS);
-        const text = Array.from(ev.results).map(x => x[0] && x[0].transcript).join(' ').trim();
-        if (text) { setSmartText(text); setFType(null); setCreateEdit(null); }
-      };
-      r.onend = () => { clearVoiceIdleTimer(); setListening(false); };
-      // ── "TRY AGAIN" IS THE WRONG ADVICE FOR A DENIED MIC ──────────────────
-      // One generic toast fired for every error code, including 'not-allowed'.
-      // A host who declined (or never granted) the mic permission was told
-      // "Couldn't hear that — try again", which is advice that cannot work:
-      // retrying re-prompts nothing, the browser remembers the denial, and the
-      // only way out is a setting this copy never mentions. Same class as the
-      // "· heard" ruling — the app stating something it does not know.
-      r.onerror = (ev) => {
-        clearVoiceIdleTimer(); setListening(false);
-        const code = (ev && ev.error) || '';
-        // 'aborted' is the host's own tap to stop — never an error to report.
-        if (code === 'aborted') return;
-        toast(
-          code === 'not-allowed' || code === 'service-not-allowed'
-            ? 'Mic access is blocked — allow the microphone in your browser settings, or type it instead.'
-          : code === 'audio-capture' ? 'No microphone found — type it instead.'
-          : code === 'network' ? 'Voice needs a connection right now — type it instead.'
-          : 'Couldn’t hear that — try again or type it.'
-        );
-      };
+      wantVoiceRef.current = true;
+      voiceRestartsRef.current = 0;
+      // A fresh dictation starts from empty; picking up mid-session does not.
+      voiceFinalRef.current = '';
+      recogRef.current = makeRecognizer();
       setListening(true);
-      r.start();
+      recogRef.current.start();
       voiceIdleTimer.current = setTimeout(() => { toast('Stopped listening — quiet for a while.'); stopVoice(); }, VOICE_IDLE_MS);
       feedback('act');
-    } catch { setListening(false); toast('Voice input didn’t start — type it instead.'); }
+    } catch { wantVoiceRef.current = false; setListening(false); toast('Voice input didn’t start — type it instead.'); }
   };
-  const stopVoice = () => { clearVoiceIdleTimer(); try { recogRef.current && recogRef.current.stop(); } catch {} setListening(false); };
+  // Intent goes false FIRST, so the onend this triggers settles instead of
+  // restarting.
+  const stopVoice = () => {
+    wantVoiceRef.current = false;
+    clearVoiceIdleTimer();
+    try { recogRef.current && recogRef.current.stop(); } catch {}
+    setListening(false);
+  };
   const [revealed, setRevealed] = useState(false);
   // REVEAL — THE MONOLITH (host concept pick 2026-07-27, "partial to B", plus
   // "the fallback list should be the baseline / let the host READ"): keynote
@@ -3127,6 +3194,25 @@ export default function HostShellV2() {
   // "Share the list" button must be absent there rather than present and dead.
   // `typeof` guard because this file is also imported by node-side tests.
   const canShareLists = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  // Asked ONCE, on mount, so the Instacart tap needs no await before it can
+  // navigate — see instacart.js:instacartConfigured for the defect that forced
+  // this. Null = not asked yet; the handler treats anything but `true` as no.
+  const [icReady, setIcReady] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    instacartConfigured().then((ok) => { if (alive) setIcReady(!!ok); }).catch(() => { if (alive) setIcReady(false); });
+    return () => { alive = false; };
+  }, []);
+
+  // A bfcache restore can bring the page back with an in-flight flag still set
+  // — measured: navigating to Instacart froze the button on "Sending…" and
+  // coming back kept it that way. Clear it whenever the page is shown again.
+  useEffect(() => {
+    const onShow = () => setSendingCart(false);
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
 
   const dismissToast = () => {
     clearTimeout(toastTimer.current);
@@ -17867,6 +17953,35 @@ export default function HostShellV2() {
                           the next one whole. */}
                       {fSpan ? fSpan.text + ' · ' : ''}{priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
                     </p>
+                    {/* ── WHERE WE ARE SHOPPING (host, 2026-09-24, board D) ─────
+                        "we need to include which stores are under umbrella or
+                        that Kroger is parent" — and, with it, where the host is
+                        actually shopping.
+                        A picked store already rendered its name, a Change and a
+                        coverage sentence, but only INSIDE the list drill-in. So
+                        a host on the Shop tab could not see which store their
+                        prices came from without opening the list, while the hero
+                        right above them was quoting that store's subtotal.
+                        Board D puts it directly under the hero, and it is the
+                        one row that answers "whose prices are these".
+                        Compact on purpose: name, then where and how far it got.
+                        The full coverage sentence stays in the drill-in rather
+                        than being said twice. */}
+                    {priceStore ? (
+                      <div className="actions-row" style={{ margin: 'var(--sp-2) 0 0', alignItems: 'center' }}>
+                        <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <span className="of" style={{ fontWeight: 700 }}>{priceStore.name}</span>
+                          <span className="v-meta">
+                            {[priceStore.address, priceCoverage.total > 0
+                              ? `${priceCoverage.store} of ${priceCoverage.total} lines priced`
+                              : null].filter(Boolean).join(' · ')}
+                          </span>
+                        </span>
+                        <button className="mini" style={{ marginLeft: 'auto' }} onClick={() => {
+                          setPriceStore(null); setPriceIdx(null); setStorePicker(null);
+                        }}>Change</button>
+                      </div>
+                    ) : null}
                   </div>
                   );
                 })() : (
@@ -18263,7 +18378,7 @@ export default function HostShellV2() {
                     tab whose whole content is Your choices / Dietary needs / How
                     it's sourced they are answers to a question nobody asked. */}
                 {sheet.kind !== 'foodplan' && !(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && !noKitchen && (
-                  <>
+                  <div className={ACTS_CHIPS ? 'shop-acts chips' : 'shop-acts'}>
                     <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-2)' }} onClick={() => {
                       // foodShopItems/eventGeoQuery are the same shared engines legacy's
                       // "Copy the shopping list" reads (App.js:10614-10615), so both apps
@@ -18288,6 +18403,53 @@ export default function HostShellV2() {
                       style={{ width: '100%', marginBottom: 'var(--sp-2)' }}
                       onClick={async () => {
                         if (sendingCart) return;
+                        // ── NO KEY? THEN NO AWAIT AT ALL. ─────────────────────────
+                        //
+                        // Driven on an iPhone: the tap opened Instacart in the SAME
+                        // tab, which tore this page down mid-`await instacartCart`.
+                        // The promise never settled, `setSendingCart(false)` never
+                        // ran, and coming back restored a cached page with the
+                        // button frozen on "Sending…". The fallback never executed,
+                        // so the host got a generic storefront instead of their
+                        // list — worse than the popup bug it replaced.
+                        //
+                        // `icReady` answers "is a real cart even possible" ONCE, on
+                        // mount. When it is not — which is every host today, the
+                        // key is unset — this whole branch is synchronous, runs
+                        // inside the tap, and navigates before anything can unload
+                        // it. Anything other than a definite `true` takes this path,
+                        // because the deep-link run works and a hung request does
+                        // not.
+                        if (icReady !== true) {
+                          const q = (foodPlan.list || []).filter(it => it && !it.skipped && it.item
+                            && !it.broughtByCommunity && !(event.foodGot || {})[it.id]);
+                          if (!q.length) { toast('Nothing left to buy.', null, 'ok'); return; }
+                          const step = (i) => {
+                            const line = q[i];
+                            if (!line) return;
+                            const term = icSearchTerm(line) || line.short || line.item;
+                            try { window.open(instacartSearchUrl(term), '_blank'); } catch (_e) { /* same-tab nav is fine */ }
+                            const nxt = q[i + 1];
+                            toast(
+                              `${i + 1} of ${q.length} — ${line.short || line.item}. Add it, then come back.`,
+                              nxt ? { label: `Next: ${nxt.short || nxt.item}`, fn: () => step(i + 1) } : null,
+                              null, { sticky: true },
+                            );
+                          };
+                          // Toast BEFORE navigating: on a same-tab open this page is
+                          // about to be unloaded, and the sticky notice has to
+                          // already be in the DOM so the bfcache restore brings it
+                          // back with the host.
+                          const first = q[0];
+                          toast(
+                            `1 of ${q.length} — ${first.short || first.item}. Add it, then come back.`,
+                            q[1] ? { label: `Next: ${q[1].short || q[1].item}`, fn: () => step(1) } : null,
+                            null, { sticky: true },
+                          );
+                          const t0 = icSearchTerm(first) || first.short || first.item;
+                          try { window.open(instacartSearchUrl(t0), '_blank'); } catch (_e) { /* nothing to do */ }
+                          return;
+                        }
                         // ── THE CLIPBOARD WRITE HAPPENS BEFORE THE AWAIT ─────────
                         //
                         // It used to run AFTER `await instacartCart(...)`, and
@@ -18341,15 +18503,49 @@ export default function HostShellV2() {
                           if (r && r.url) { url = r.url; realCart = true; }
                         } catch (_e) { /* the fallback below is the honest path */ }
                         if (!realCart) {
-                          // STICKY: this explains what happened to their clipboard
-                          // and it fires as we open another tab. A 3.4s timer
-                          // would run out while the host is inside Instacart.
-                          // And it tells the truth about the copy rather than
-                          // asserting one that may have been refused.
-                          toast(copied
-                            ? 'List copied. Paste it into Instacart — the one-tap cart needs a store key we do not have yet.'
-                            : 'Instacart is open, but the copy was blocked. Use "Copy the shopping list", then paste it there.',
-                            null, null, { sticky: true });
+                          // ── STEP THE LIST, DO NOT ASK FOR A PASTE THAT FAILS ────
+                          //
+                          // This used to say "List copied. Paste it into
+                          // Instacart." Measured: the clipboard holds a 30-line,
+                          // 1,208-character document (title, section headers,
+                          // "[ ]" boxes, quantities, a total) and Instacart's
+                          // search box takes ONE query. The instruction could not
+                          // succeed — the shape UX_07 forbids, a CTA naming an act
+                          // the host cannot complete.
+                          //
+                          // Driven on an iPhone instead: a `?k=<item>` link opens
+                          // real products at real stores with a green + on each,
+                          // and that + adds to the host's Instacart SESSION. So
+                          // stepping the list builds a genuine cart with no API
+                          // key. The paid Products Link API removes the tapping;
+                          // it is not what makes the cart possible.
+                          //
+                          // The toast's existing action slot IS the stepper — no
+                          // new chrome — and it stays put, because the host is in
+                          // another tab between taps.
+                          const icQueue = (foodPlan.list || []).filter(it => it && !it.skipped && it.item
+                            && !it.broughtByCommunity && !(event.foodGot || {})[it.id]);
+                          // The FIRST step reuses the tab already opened inside the
+                          // tap — opening another would leave the host with two,
+                          // one of them a generic search they did not ask for.
+                          // Later steps are driven by a toast tap, which is its own
+                          // fresh user gesture, so they may open normally.
+                          const icStep = (i, reuse) => {
+                            const line = icQueue[i];
+                            if (!line) return;
+                            const term = icSearchTerm(line) || line.short || line.item;
+                            const href = instacartSearchUrl(term);
+                            if (reuse) { try { reuse.location.replace(href); } catch (_e) { /* navigated away */ } }
+                            else { try { window.open(href, '_blank'); } catch (_e) { /* popup blocked; said below */ } }
+                            const nxt = icQueue[i + 1];
+                            toast(
+                              `${i + 1} of ${icQueue.length} — ${line.short || line.item}. Add it, then come back.`,
+                              nxt ? { label: `Next: ${nxt.short || nxt.item}`, fn: () => icStep(i + 1) } : null,
+                              null, { sticky: true },
+                            );
+                          };
+                          if (icQueue.length) icStep(0, win);
+                          else toast('Nothing left to buy.', null, 'ok');
                         }
                         setSendingCart(false);
                         if (realCart) {
@@ -18417,7 +18613,7 @@ export default function HostShellV2() {
                       }}>Share the list</button>
                     )}
                     {nudgeFor('food')}
-                  </>
+                  </div>
                 )}
                 {/* Sourcing tier — the plan's real cook/order axis; switching
                     re-prices proteins and changes where each line says to buy.
@@ -18815,7 +19011,12 @@ export default function HostShellV2() {
                     const gBought = gActive.filter(it => (event.foodGot || {})[it.id]).length;
                     const gLow = gActive.reduce((t, it) => t + (it.locked != null ? Number(it.locked) : Number(it.low) || 0), 0);
                     const gHigh = gActive.reduce((t, it) => t + (it.locked != null ? Number(it.locked) : Number(it.high) || 0), 0);
-                    const gDecisions = gActive.filter(it => undecidedAffects[it.id]).length;
+                    // SAME RULE AS THE ROW CHIPS, or the two disagree. Work
+                    // tags were dropped from community-carried lines — a dish
+                    // the committee brings is not the host's decision — but this
+                    // header went on counting them, so a repast read "Food · 7
+                    // decisions open" over seven rows that each showed none.
+                    const gDecisions = gActive.filter(it => undecidedAffects[it.id] && !it.broughtByCommunity).length;
                     // Accordion (never-dense): a group opens when tapped, when a
                     // deep-link targets one of its lines, or while tuning one.
                     const focusHere = gItems.some(it => it.id === sheet.focus || it.id === foodTune);
