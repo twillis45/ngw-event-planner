@@ -93,9 +93,36 @@ const PROTEIN_RE = /\b(rib|ribs|chicken|brisket|sausage|hot ?link|half-?smoke|po
 // without this, that line matched PROTEIN_RE and inherited ground-beef $/lb pricing
 // under a non-default sourcing tier (a $0.30-0.60 bun repriced to $3-8 each).
 const CARRIER_RE = /\b(bun|buns|bread|roll|rolls|bagel|bagels|tortilla|tortillas)\b/i;
+
+// ── A THING NAMED AFTER A PROTEIN IS NOT THE PROTEIN (2026-09-25) ───────────
+//
+// Same defect as the bun above, one aisle over. These lines are sold BY THE
+// POUND, so a unit check cannot save them — they are simply not the meat their
+// name mentions, and the canonical table happily quoted them seafood prices.
+// Measured at 30 guests on a non-default tier:
+//
+//   Fish Fry      · "Cornmeal / fish fry breading + flour"   $2  -> $36
+//                   authored $0.55-3/lb, repriced at fish's $9-14/lb
+//   Crawfish Boil · "Crawfish/crab boil seasoning … + cayenne + salt"
+//                   $14 -> $48, repriced as crawfish
+//   Low Country   · "Old Bay / crab boil seasoning (dry + liquid)"
+//                   $0.40-1 a serving, quoted $8-14
+//
+// The pattern is a product CATEGORY word — seasoning, breading, sauce, mix —
+// sitting beside the protein it is meant for. That word is the signal, and it
+// is a smaller and more stable set than the list of proteins it protects
+// against, which is why the exclusion lives here rather than as ever more
+// careful protein patterns.
+//
+// This is the same family as the store-match guard in priceLayers: "ice"
+// returning Lipton Iced Tea Bags, "injera" returning shoe inserts. A name
+// containing a word is not the thing.
+const CONDIMENT_RE = /\b(seasoning|seasonings|spice|spices|rub|marinade|brine|sauce|gravy|broth|stock|bouillon|breading|batter|mix|cornmeal|flour|oil|butter)\b/i;
+
 export function isProteinItem(name) {
   const s = String(name || '');
   if (CARRIER_RE.test(s)) return false;
+  if (CONDIMENT_RE.test(s)) return false;
   return PROTEIN_RE.test(s);
 }
 

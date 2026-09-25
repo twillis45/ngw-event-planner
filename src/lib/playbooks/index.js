@@ -4579,10 +4579,41 @@ export function playbookFoodPlan(event, opts = {}) {
   // canonical table fills NON-default tiers (costco/grocery) with researched $/lb. The
   // DEFAULT tier (butcher) is left null on purpose → keeps the playbook's authored base,
   // so default costs/tests don't move; only switching channels pulls real per-tier prices.
+  // ── A PER-POUND PRICE MAY ONLY REPLACE A PER-POUND LINE (2026-09-25) ──────
+  //
+  // `canonicalProteinPrice` returns researched dollars PER POUND. Nothing
+  // checked that the line it was about to re-price is measured in pounds, and
+  // four shipped lines are not. Measured at 30 guests, switching off the
+  // default tier:
+  //
+  //   Engagement Party  Crostini & deviled eggs   4 bites/guest @ $0.60
+  //                     -> grocery $1,080, because shrimp is $9-14 A POUND
+  //                        and 120 BITES were multiplied by it. $36 a head
+  //                        of appetizer.
+  //   Engagement Party  Meatballs & sliders       $90  -> $450
+  //   Holiday Party     Charcuterie & crudite     bites, same shape
+  //   Low Country Boil  Old Bay / crab boil       0.4-1 per SERVING -> $8-14,
+  //                     because "crab boil" satisfies isProteinItem. The
+  //                     seasoning was priced as shrimp.
+  //
+  // WHY IT SURVIVED: the guard two lines down returns null on the DEFAULT
+  // tier, so none of this fires until a host changes sourcing. The default was
+  // hiding it, which is also why moving the default — the change this
+  // investigation started as — had to wait for this fix. Switching everyone to
+  // Costco or grocery would have shipped these numbers to every affected host
+  // at once.
+  //
+  // The guard is on the UNIT, not on a list of item names. A name blocklist
+  // would need editing every time a playbook adds an appetizer; a line priced
+  // in bites simply cannot take a price quoted in pounds, whatever it is
+  // called. Authored `sourcingPrices` are exempt: those are per-tier prices
+  // written FOR that line, in that line's own unit.
+  const WEIGHT_UNIT_RE = /^(lb|lbs|pound|pounds|oz|ounce|ounces|kg)\b/i;
   const srcTierRange = (p) => {
     if (!(p.category === 'food' && isProteinItem(p.item))) return null;
     if (p.sourcingPrices && Array.isArray(p.sourcingPrices[sourcing])) return p.sourcingPrices[sourcing];
     if (sourcing === DEFAULT_SOURCING) return null;
+    if (!WEIGHT_UNIT_RE.test(String(p.unit || ''))) return null;
     return canonicalProteinPrice(p.item, sourcing);
   };
   // Per-item store pick (event.foodWhere[id] = a chosen store name, written when
