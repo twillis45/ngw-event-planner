@@ -1,6 +1,21 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-24 (thirty-fourth entry:
+**Measured reality, not intentions.** Updated 2026-09-25 (thirty-fifth entry:
+sixteen commits landed with NO handoff entry — two `Stamp HANDOFF to current
+SHA` commits moved the SHA without writing the record, and the freshness gate
+went red nine commits behind anyway. This entry is reconstructed from those
+diffs and says so. The work: the spread sheet rebuilt as Plan / Bringing / Shop
+with a pinned running total, Repast de-stacked from four bundled lines to
+eleven dishes, the parser taught a real host sentence, a ZIP now PRICING the
+plan rather than labelling it, and Instacart's paste replaced after the
+clipboard payload was measured at 1,208 characters against a search box that
+takes one query. Worth carrying forward: three defects reached a commit and
+were caught by a phone ($NaN on a real handset), by CI (five e2e timeouts after
+a tab moved), and by an e2e spec (a non-breaking space) — never by the unit
+suite, which is four more data points for the standing rule that jest cannot
+execute hostv2. And a 321-line live-store harvest exists that is IN NO REPO.
+See the thirty-fifth entry.)
+Before that, on 2026-09-24 (thirty-fourth entry:
 the Kroger pipeline already pulled real shelf prices on request and threw every
 one away; they are now kept as KAS observations, attributable or not kept at all.
 A duplication sweep found the kas_records INSERT written twice and folded the
@@ -189,12 +204,12 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `52cbd90b` |
+| Branch / HEAD | `main` @ `5b433ed1` |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,653 passed**, 1 skipped, **0 failed**, **544 suites** (re-measured 2026-09-24 after the thirty-fourth entry; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
-| vitest (hostv2 seam) | **14 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
+| Jest | **7,794 passed**, 1 skipped, **0 failed**, **548 suites** (re-measured 2026-09-25 after the thirty-fifth entry; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| vitest (hostv2 seam) | **21 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
@@ -205,6 +220,114 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-24/25 (thirty-fifth entry) — sixteen commits that had no entry, written from their own diffs
+
+548 suites / 7,794 passed, 1 skipped. 21 vitest. 393 backend. `verify:push`
+green after the stamp this entry carries.
+
+**WRITTEN FROM THE COMMITS, NOT FROM HAVING DONE THE WORK.** Sixteen commits
+landed between `7bda982` and `5b433ed` with no handoff entry, and two
+`Stamp HANDOFF to current SHA` commits in the middle that moved the SHA without
+writing the record. The freshness gate then went red anyway, nine commits
+behind. This entry is reconstructed by reading those sixteen diffs and commit
+bodies; where a reason is quoted it is the commit author's, not a re-derivation.
+Recorded that way so the next reader knows which sentences are first-hand.
+
+### The spread sheet, rebuilt around what a host does in an aisle
+
+`42d572a` split it into **Plan / Bringing / Shop** — the host counted seven
+stacked text blocks between the tab control and the first grocery ("still not
+laid out well messy", "trivia leaking"); board D's Shop hero is three.
+`7a33cce` had added the Bringing mode and both money truths.
+`83d3276` pinned the running total so it survives to the end of the list — it
+had lived in the hero, which is gone by the third row, and 8 of 8 grocery-list
+leaders keep one pinned.
+
+Then the corrections, and they are the instructive part:
+
+- `52cbd90` — **the pinned total printed `$NaN`.** `foodPlan.costLow/costHigh`
+  do not exist on that plan shape (the hero reads `foodLow`/`suppliesLow`), so
+  `fmt(undefined)` rendered "$NaN–$NaN estimated" on a real event on a real
+  handset, one commit after the feature was called done. The commit's own
+  verdict: *"found by looking at the phone, which is the entire argument for
+  the demo."* A test was green over it.
+- `1a68752` — the same bar **counted nine things and priced fourteen.**
+- `5218124` — the pricing-basis note ran 113 characters, three wrapped lines
+  at 390px, under a hero of two.
+- `2581be9` — binding "Aug 2026" into one token to stop the year orphaning
+  swapped U+0020 for U+00A0, and **two of the three assertions in
+  `priceVintageIsDerived.spec.mjs` went red.** The commit records why it got
+  past: 547 CRA suites and 21 vitest tests were run and called green, and none
+  of them render the shell.
+- `5b433ed` — **CI caught what a local run did not.** Five
+  `dietaryHoldsTwo.spec.mjs` timeouts after the Plan/Bringing/Shop split:
+  `Your choices` moved to the Plan tab, the sheet opens on Shop, and the spec
+  clicked a row that is no longer on the screen it is looking at.
+
+That is three separate defects reaching a commit and being caught by a phone,
+by CI, and by an e2e spec respectively — never by the unit suite. The pattern
+is already this repo's stated rule (jest cannot execute hostv2); this entry is
+four more data points for it.
+
+### Data and parsing
+
+- `9f3bbf5` **Repast: four bundled lines become eleven dishes.** The stronger
+  of the two stated reasons is mechanical, not cosmetic: a host can name ONE
+  bringer per line, so "Greens, mac & cheese & potato salad" is one line and
+  three dishes and three carriers who cannot each be recorded — on a repast,
+  where four of ten lines are community-carried.
+- `b6c8fa0` the parser on a real host sentence — *"50th birthday nov 2027 8
+  couples 5 nights Disneyland 2 excursions airbnb accomodations"* — parsed four
+  facts and silently dropped five. `8 couples` is a MULTIPLIER, not a count
+  noun.
+- `f49e950` **every event a host created was invisible to the pool**, and a
+  repast's meal was being deleted. Both the same shape: a fact that existed and
+  a reader that could not see it.
+- `4aa558a` the masthead said the event type twice and wrapped to four lines —
+  measured on the live build at 390px (83 characters at 11.5px/700/uppercase),
+  not eyeballed.
+
+### Two integrations told the truth about themselves
+
+- `05759fc` **a ZIP the host already gave now prices the plan**, rather than
+  only labelling it. `geoPlanNote` and the BLS factor fetch each resolved a
+  region separately.
+- `c1fc298` **Instacart: the paste could never have worked.** The clipboard
+  payload was measured — a 30-line, 1,208-character document with title,
+  section headers, "[ ]" boxes, quantities, per-guest rates and a total — and
+  Instacart's search box takes one query. The toast was instructing the host to
+  do something impossible. Stepped the list instead.
+
+### NOT IN THE REPO: a 321-line live-store harvest
+
+Reported by the session that did it, and **no part of it is committed** —
+`storeUnitMap.js` has not been touched since 2026-09-23. Recorded here because
+the result is a real measurement that currently survives nowhere:
+
+| | lines | matched |
+|---|---|---|
+| with a curated search term | 45 | **43 (96%)** |
+| without one | 276 | **33 (12%)** |
+
+Curating the term moves the match rate eight-fold. Every one of the 76 matches
+carried a `size`, split 66 `UNIT` / 10 `WEIGHT`. Roughly 12% of matches were
+wrong, and the wrong ones share a shape — `Wine` returned a wine POURER,
+"Beer, soda & water" a peach-mango tonic, "Baked beans ingredients" a bag of
+millet: every one a bundled or vague line, the same population the de-stacking
+census flags.
+
+**These figures are relayed, not verified here.** They are one Harris Teeter,
+one metro, one morning, and sizes are regional — so the harvest belongs in
+`storeUnitMap` as an observation carrying its store and its date, never as
+universal fact. Costco is not a Kroger banner and has no public API, so
+warehouse pack sizes cannot come from this route at all and must be recorded at
+a different evidence tier rather than blended with probed ones.
+
+**Still open, unchanged from the thirty-fourth entry's START HERE block:** the
+price-observation write is unproven against Supabase, `kroger_probe.py` has not
+been run, and no `BLS_API_KEY` is registered — the unregistered quota was
+measured exhausted on 2026-09-24.
 
 ## START HERE IF YOU ARE A LOCAL SESSION (written 2026-09-24)
 
