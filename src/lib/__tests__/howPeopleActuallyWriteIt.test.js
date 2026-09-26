@@ -149,21 +149,32 @@ describe('the whole sentence, the way it would really arrive', () => {
     expect(p.venueState).toBe('MD');
   });
 
-  test('TWO LIMITS, RECORDED RATHER THAN PAPERED OVER', () => {
-    // 1. A spelled-out state needs a locative preposition, because without one
-    //    "Virginia Washington" is a person as easily as a place.
+  test('ONE LIMIT LEFT — the other was closed 2026-09-26', () => {
+    // 1. STILL A LIMIT. A spelled-out state needs a locative preposition,
+    //    because without one "Virginia Washington" is a person as easily as a
+    //    place.
     expect(P('cookout june 14 2027, 20 people, in baltimore maryland').venueCity).toMatch(/baltimore/i);
     expect(P('cookout june 14 2027, 20 people, baltimore maryland').venueCity).toBe(null);
 
-    // 2. An all-lower-case city+abbreviation is NOT read, and the fix for it was
-    //    written, measured and thrown away. Relaxing the case requirement turned
-    //    "food is on me" into the town of "food is on", Maine — a dozen state
-    //    codes are ordinary words (ok, hi, me, in, or, la, pa, id, oh, de, co).
-    //    A wrong town moves weather, market, venue and the travel lane. The host
-    //    is asked instead of guessed at.
-    expect(P('cookout june 14 2027, 20 people, baltimore md').venueCity).toBe(null);
+    // 2. CLOSED, ON THE OWNER'S RULING ("we will need lowercase states").
+    //    This test used to assert that "baltimore md" read as NOTHING, and the
+    //    reasoning it recorded was sound about the fix that had been tried: a
+    //    bare /i turned "food is on me" into the town of "food is on", Maine.
+    //
+    //    The error was in the diagnosis, not the measurement. BOTH recorded
+    //    failures were the CITY half, never the state — parseVenueLocation
+    //    already accepted "baltimore, md" and "asheville, north carolina" the
+    //    whole time. So the city is what gets validated now: the captured
+    //    phrase is shortened from the LEFT and the curated whitelist decides
+    //    where the town begins. "ppl baltimore" becomes Baltimore; "food is on"
+    //    resolves at no length and the match is dropped whole.
+    expect(P('cookout june 14 2027, 20 people, baltimore md').venueCity).toMatch(/Baltimore/i);
     expect(P('cookout june 14 2027, 20 people, Baltimore MD').venueCity).toMatch(/Baltimore/);
+    // The OTHER sentence this test was built on — still null, and now for a
+    // reason that survives the relaxation rather than being protected by it.
     expect(P('cookout june 14, 20 people, food is on me').venueCity).toBe(null);
+    // …and the second recorded failure, which is now simply correct.
+    expect(P('bday party 6/14/27 abt 45 ppl baltimore md').venueCity).toMatch(/Baltimore/i);
   });
 });
 

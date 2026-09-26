@@ -108,25 +108,45 @@ describe('NEGATIVE CONTROLS: the loosening invented nothing', () => {
     expect({ city: p.venueCity, state: p.venueState }).toEqual({ city: null, state: null });
   });
 
-  test('and a lowercase state is left to the host rather than guessed', () => {
-    // The documented shortfall, pinned so it is a choice and not a surprise:
-    // the city comes back, the state does not, and no state is invented.
-    const p = parseSmartEventText('birthday June 14 2027, 30 people, in austin tx');
-    expect({ city: p.venueCity, state: p.venueState }).toEqual({ city: 'Austin', state: null });
-    // The careful spelling still gets both — nothing was taken away.
-    const up = parseSmartEventText('birthday June 14 2027, 30 people, in Austin TX');
-    expect({ city: up.venueCity, state: up.venueState }).toEqual({ city: 'Austin', state: 'TX' });
+  test('a lowercase state resolves too — owner ruling 2026-09-26', () => {
+    // This test first asserted the opposite: city back, state left to the host.
+    // The owner ruled that hosts type "austin tx" and the state has to come
+    // with it, so the discrimination moved off the STATE and onto the CITY.
+    // Two tiers, both going through the unchanged parseVenueLocation gate:
+    // a whitelist-known town vouches for any abbreviation anywhere, and an
+    // unknown town needs the sentence to delimit it AND the abbreviation to
+    // not be an English word.
+    for (const [lower, upper] of [
+      ['birthday June 14 2027, 30 people, in austin tx', 'birthday June 14 2027, 30 people, in Austin TX'],
+      ['cookout in silver spring md, 30 people', 'cookout in Silver Spring MD, 30 people'],
+      ['party in portland or, 30 people', 'party in Portland OR, 30 people'],
+    ]) {
+      const a = parseSmartEventText(lower); const b = parseSmartEventText(upper);
+      expect({ [lower]: { city: a.venueCity, state: a.venueState } })
+        .toEqual({ [lower]: { city: b.venueCity, state: b.venueState } });
+      expect(a.venueState).toBeTruthy();   // premise: the pair really carries a state
+    }
+  });
+
+  test('a town the whitelist does not know still needs the sentence to delimit it', () => {
+    // Tier B, and the line that keeps the old rejection's failure from coming
+    // back. "in greenbelt md" says where the town starts; "abt 45 ppl greenbelt
+    // md" does not, and a town is not guessed at from undelimited words.
+    expect(parseSmartEventText('reunion in greenbelt md aug 3 2027, 30 people').venueCity).toBe('Greenbelt');
+    expect(parseSmartEventText('reunion abt 45 ppl greenbelt md aug 3 2027').venueCity).toBeNull();
+    // A multi-word town survives, which a "just take the last word" rule could
+    // not — that rule reads "silver spring md" as Spring, MD.
+    expect(parseSmartEventText('cookout in silver spring md, 30 people').venueCity).toBe('Silver Spring');
   });
 });
 
 describe('KNOWN GAPS the sweep found and did not close', () => {
-  test('a lowercase full state name still does not resolve', () => {
-    // No collision risk here — "north carolina" is not an English phrase — so
-    // this one is closeable. It is pinned rather than fixed because it lives in
-    // the strict parseVenueLocation path, which commits a city+state pair, and
-    // widening a COMMITTING gate is a different decision from widening a
-    // whitelist-gated hint.
-    expect(parseSmartEventText('reunion in asheville, north carolina, 30 people').venueState).toBeNull();
+  test('a lowercase full state name resolves — closed in the same pass', () => {
+    // Measured while building the two tiers: parseVenueLocation already read
+    // "asheville, north carolina" perfectly and only the capitalised capture
+    // could reach it. A spelled-out state after a comma is not ambiguous the
+    // way a two-letter code is, so it needs no word-collision guard.
+    expect(parseSmartEventText('reunion in asheville, north carolina, 30 people').venueState).toBe('NC');
     expect(parseSmartEventText('reunion in Asheville, North Carolina, 30 people').venueState).toBe('NC');
   });
 

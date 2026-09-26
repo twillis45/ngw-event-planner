@@ -614,6 +614,103 @@ export function parseSmartEventText(text, opts = {}) {
     return null;
   })();
 
+  // ── LOWER CASE, SOLVED BY VALIDATING THE CITY INSTEAD OF THE STATE ───────
+  //
+  // OWNER RULING 2026-09-26: "we will need lowercase states." The rejection
+  // recorded above stands as a rejection OF THE FIX THAT WAS TRIED — a bare
+  // `/i` — and its two measured failures are the specification for this one:
+  //
+  //     "cookout june 14, 20 people, food is on me"  ->  city "food is on"
+  //     "bday party 6/14/27 abt 45 ppl baltimore md" ->  city "ppl baltimore"
+  //
+  // BOTH FAILURES ARE THE CITY HALF, NOT THE STATE. `parseVenueLocation` was
+  // never the problem: measured today it already accepts "baltimore, md",
+  // "greenbelt, md" and even "asheville, north carolina". What a lowercase
+  // match loses is the capital letter that used to mark where the city STARTS,
+  // so the capture swallows whatever words precede it. Relaxing the state was
+  // never going to work; validating the city is.
+  //
+  // TIER A — THE CITY VOUCHES FOR THE STATE. Shorten the captured phrase from
+  // the LEFT, longest first, and keep the first sub-phrase the curated usCities
+  // whitelist knows. "ppl baltimore" becomes Baltimore; "food is on" resolves at
+  // no length and the match is dropped whole. Because the city is vouched for,
+  // the abbreviation is accepted anywhere in the sentence — including the
+  // fourteen that are also English words, since "or" after a real city is a
+  // state and not a conjunction.
+  //
+  // TIER B — NO KNOWN CITY, SO THE SENTENCE MUST DELIMIT IT. The whitelist is
+  // ~240 metros; "silver spring md" and "greenbelt md" are not in it and are
+  // exactly what a host types. Three conditions together, and they are the
+  // reason "in the park or the hall" cannot become Park, OR:
+  //
+  //   1. the abbreviation is NOT an ordinary English word. Checked against
+  //      /usr/share/dict/words (web2) on 2026-09-26 — deliberately the most
+  //      PERMISSIVE list available, because over-listing is the safe direction
+  //      here: it only pushes more abbreviations up to Tier A. 23 of 50 are in
+  //      it, which leaves md, tx, ny, nj, fl, va, nc, sc, ct, il and the rest
+  //      usable structurally.
+  //   2. something DELIMITS the start of the city — a location preposition
+  //      ("in silver spring md") or a comma ("silver spring, md"). This is what
+  //      kills "abt 45 ppl greenbelt md": nothing says where the town begins,
+  //      so the town is not guessed at. It is also why Tier B can safely take a
+  //      multi-word city, which a "just use the last word" rule could not —
+  //      that rule reads "silver spring md" as Spring, MD.
+  //   3. the abbreviation ends its clause. A state is the last thing in a
+  //      place phrase; a conjunction is not.
+  //
+  // Everything still goes through `tryLoc` -> parseVenueLocation, so the real
+  // state gate is untouched and no state is invented that a host did not type.
+  //
+  // ORDER MATTERS: this runs only after every capitalised form has failed, so a
+  // host who does use the shift key gets the identical answer she got before.
+  const _ST_IS_ALSO_A_WORD = new Set(['al', 'ak', 'ar', 'ca', 'de', 'ga', 'hi', 'id', 'in',
+    'la', 'me', 'ma', 'mi', 'mo', 'ne', 'oh', 'ok', 'or', 'pa', 'ut', 'wa', 'wi', 'wy']);
+  const _titleCase = (v) => String(v || '').replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  // Longest-first from the LEFT: the whitelist decides where the town begins.
+  const _cityTail = (phrase) => {
+    const w = String(phrase || '').trim().split(/\s+/).filter(Boolean);
+    for (let i = 0; i < w.length; i += 1) {
+      const hit = resolveSpokenCity(w.slice(i).join(' '));
+      if (hit) return hit.city;
+    }
+    return null;
+  };
+  const locLower = locBare || (() => {
+    // TIER A — anywhere in the sentence, because a known city is the anchor.
+    const reA = /\b([a-z][a-z.'’-]*(?:\s+[a-z][a-z.'’-]*){0,3})[\s,]+([a-z]{2})\b(?!\.\w)/g;
+    let m;
+    while ((m = reA.exec(t)) !== null) {
+      const city = _cityTail(m[1]);
+      if (city) { const r = tryLoc(city, m[2]); if (r) return r; }
+      reA.lastIndex = m.index + m[1].length;   // resume after the city half
+    }
+    // TIER B — delimited, clause-final, and never an English word.
+    // Clause-final, OR followed by something that plainly starts a NEW fact —
+    // a month or a number. "in greenbelt md aug 3 2027" is how hosts write it,
+    // and a conjunction is not followed by a date. Safe here and nowhere else:
+    // Tier B has already excluded every abbreviation that is an English word.
+    const _ENDS = '(?=\\s*(?:[,.;]|$|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\\d))';
+    const reB = new RegExp("(?:\\b(?:in|at|near)\\s+|,\\s*)([a-z][a-z.'’-]*(?:\\s+[a-z][a-z.'’-]*){0,2})[\\s,]+([a-z]{2})\\b" + _ENDS, 'g');
+    while ((m = reB.exec(t)) !== null) {
+      if (_ST_IS_ALSO_A_WORD.has(m[2])) continue;
+      const r = tryLoc(_titleCase(m[1]), m[2]);
+      if (r) return r;
+    }
+    // TIER C — the full state NAME, spelled out and lower case. Measured today:
+    // parseVenueLocation already reads "asheville, north carolina" perfectly;
+    // only the capitalised capture above could reach it. A spelled-out state
+    // name after a comma is not ambiguous the way a two-letter code is — there
+    // is no English sentence where "…, north carolina," is a conjunction — so
+    // this needs no word-collision guard, just the same strict gate.
+    const reC = new RegExp('(?:\\b(?:in|at|near)\\s+|,\\s*)([a-z][a-z.\'’-]*(?:\\s+[a-z][a-z.\'’-]*){0,2})\\s*,\\s*('
+      + Object.keys(US_STATE_NAME_TO_ABBR).map((n) => n.toLowerCase()).join('|') + ')\\b', 'g');
+    while ((m = reC.exec(t)) !== null) {
+      const r = tryLoc(_titleCase(m[1]), m[2]);
+      if (r) return r;
+    }
+    return null;
+  })();
+
   // ── THE STREET LINE (2026-09-17) ─────────────────────────────────────────
   // parseVenueLocation refuses any string containing digits (cityText.js), and
   // that is correct for a "City, ST" resolver — but it means a host who gives a
@@ -667,7 +764,7 @@ export function parseSmartEventText(text, opts = {}) {
   // name is a common word ("...in Washington", "New York") and needs the
   // preposition to be a location claim rather than a coincidence. Longest names
   // first so "New Mexico" is never read as "Mexico" or "New".
-  const locName = locBare || (() => {
+  const locName = locLower || (() => {
     const names = Object.keys(US_STATE_NAME_TO_ABBR)
       .sort((a, b) => b.length - a.length)
       .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
