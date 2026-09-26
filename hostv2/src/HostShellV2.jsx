@@ -18000,7 +18000,92 @@ export default function HostShellV2() {
                         where a statement about WHERE A NUMBER CAME FROM belongs,
                         instead of competing with the number. Honesty is about the
                         fact being present and true, not about its type size. */}
-                    <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
+                {/* Meal tally (guests parity gap #5): what guests actually picked —
+                    the same guest.meal field RSVPs, CSV imports, and the per-guest
+                    meal edit write. Rendered ONLY once at least one real answer
+                    exists; no invented zeros.
+
+                    DEMOTED 2026-09-24, same fix and same reason as the geography
+                    caveat three blocks up. parity/MANIFEST line 63 specifies this
+                    hero as two `Grounding` lines plus the muted stamp, and this
+                    line made a THIRD at full weight — the MANIFEST already listed
+                    it as a deferred follow-up, "honest extra data, absent from the
+                    comp". On a 390px phone it was the longest block on screen and
+                    therefore the loudest, putting an RSVP inventory above the
+                    decision the sheet exists for (UX_04: figures never above the
+                    ask). Content is byte-identical and still on the same screen;
+                    only its type size changed. It is a tally, not a headline. */}
+                {(() => {
+                  const gs = event.guests || [];
+                  const counts = {};
+                  gs.forEach(g => {
+                    const m = String((g && g.meal) || '').trim();
+                    if (m && m !== '—') counts[m] = (counts[m] || 0) + 1;
+                  });
+                  const answered = Object.values(counts).reduce((a, b) => a + b, 0);
+                  if (!answered) return null;
+                  const un = gs.length - answered;
+                  // Stable order: the invite's own meal choices first, then any
+                  // free-text meals a CSV brought in.
+                  const order = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
+                  const keys = [...order.filter(k => counts[k]), ...Object.keys(counts).filter(k => !order.includes(k))];
+                  return (
+                    <>
+                    {/* ── ONE OF THESE FACTS IS A JOB (board option B) ────────
+                        Six facts sat under the big number as three cramped
+                        lines in three greys — owner: "it looks horrible". They
+                        do not share a job: one is money, ONE IS A TASK, two are
+                        reference and two are provenance. Flattening them into
+                        ·-runs hid the only one a host can act on.
+
+                        The task is a row now, and it says what it MEANS —
+                        "haven't said what they eat", not a bare "unanswered".
+                        The counts stay plainly beneath it and the provenance
+                        follows under a rule. EVERY fact that was here is still
+                        here: the chip sketch drawn earlier was rejected because
+                        it dropped the four per-meal counts and the region
+                        qualifier while claiming it kept them. */}
+                    {un > 0 && (
+                      <div className="later-row" style={{ margin: '0 0 var(--sp-2)', background: 'var(--warn-tint)',
+                        border: 'none', borderRadius: 'var(--r-md)', padding: 'var(--sp-2) var(--sp-3)',
+                        flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                        <span className="t" style={{ color: 'var(--warn)', fontWeight: 600, flex: '1 1 auto' }}>
+                          {un} {un === 1 ? 'guest hasn’t' : 'guests haven’t'} said what they eat
+                        </span>
+                        <button className="mini" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
+                          Note what they eat
+                        </button>
+                      </div>
+                    )}
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-2)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
+                      {/* NON-BREAKING inside each pair (2026-09-24, host: "hard to
+                          read with wrapping"). A ·-separated run wraps wherever it
+                          runs out of room, which put "Fish" on one line and "1" on
+                          the next — the count is the whole point of the pair, so a
+                          break between them makes the reader reassemble it. The
+                          spaces WITHIN a pair are U+00A0 so lines break only at the
+                          separators. "so far" dropped: "Meals" plus a count of
+                          unanswered already says it is in progress. */}
+                      {/* ── ONE OF THESE FACTS IS A JOB (2026-09-26) ────────
+                          The whole line renders at --faint, so "3 unanswered" —
+                          the only part the host can DO something about — sits in
+                          exactly the same grey as the counts, which are just a
+                          readout. Nothing is cut and nothing is restyled except
+                          the actionable fragment, which takes the warn colour
+                          the rest of the app already uses for "this needs you".
+                          Still one line, still every number. */}
+                      Meals: {keys.map(k => `${k}\u00A0${counts[k]}`).join(' · ')}
+                    </p>
+                    </>
+                  );
+                })()}
+                    {/* PROVENANCE IS A FOOTNOTE AND NOW SITS LIKE ONE. It used
+                        to run directly under the per-head band, above the meal
+                        counts, in the same grey — three unrelated sentences
+                        stacked with no hierarchy. It qualifies everything above
+                        it, so it goes last, under a rule. Same text, same owner
+                        (geoPlanNote); the string is not split. */}
+                    <p className="grounding" style={{ margin: 'var(--sp-3) 0 0', paddingTop: 'var(--sp-2)', borderTop: '1px solid var(--line-soft)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
                       {/* The vintage suffix is the NATIONAL branch's stamp. When a
                           regional factor actually applied, geoPlanNote already ends
                           in its own month ("· BLS Aug 2026") and appending this made
@@ -18062,58 +18147,6 @@ export default function HostShellV2() {
                       : null}
                   </>
                 )}
-                {/* Meal tally (guests parity gap #5): what guests actually picked —
-                    the same guest.meal field RSVPs, CSV imports, and the per-guest
-                    meal edit write. Rendered ONLY once at least one real answer
-                    exists; no invented zeros.
-
-                    DEMOTED 2026-09-24, same fix and same reason as the geography
-                    caveat three blocks up. parity/MANIFEST line 63 specifies this
-                    hero as two `Grounding` lines plus the muted stamp, and this
-                    line made a THIRD at full weight — the MANIFEST already listed
-                    it as a deferred follow-up, "honest extra data, absent from the
-                    comp". On a 390px phone it was the longest block on screen and
-                    therefore the loudest, putting an RSVP inventory above the
-                    decision the sheet exists for (UX_04: figures never above the
-                    ask). Content is byte-identical and still on the same screen;
-                    only its type size changed. It is a tally, not a headline. */}
-                {(() => {
-                  const gs = event.guests || [];
-                  const counts = {};
-                  gs.forEach(g => {
-                    const m = String((g && g.meal) || '').trim();
-                    if (m && m !== '—') counts[m] = (counts[m] || 0) + 1;
-                  });
-                  const answered = Object.values(counts).reduce((a, b) => a + b, 0);
-                  if (!answered) return null;
-                  const un = gs.length - answered;
-                  // Stable order: the invite's own meal choices first, then any
-                  // free-text meals a CSV brought in.
-                  const order = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
-                  const keys = [...order.filter(k => counts[k]), ...Object.keys(counts).filter(k => !order.includes(k))];
-                  return (
-                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
-                      {/* NON-BREAKING inside each pair (2026-09-24, host: "hard to
-                          read with wrapping"). A ·-separated run wraps wherever it
-                          runs out of room, which put "Fish" on one line and "1" on
-                          the next — the count is the whole point of the pair, so a
-                          break between them makes the reader reassemble it. The
-                          spaces WITHIN a pair are U+00A0 so lines break only at the
-                          separators. "so far" dropped: "Meals" plus a count of
-                          unanswered already says it is in progress. */}
-                      {/* ── ONE OF THESE FACTS IS A JOB (2026-09-26) ────────
-                          The whole line renders at --faint, so "3 unanswered" —
-                          the only part the host can DO something about — sits in
-                          exactly the same grey as the counts, which are just a
-                          readout. Nothing is cut and nothing is restyled except
-                          the actionable fragment, which takes the warn colour
-                          the rest of the app already uses for "this needs you".
-                          Still one line, still every number. */}
-                      Meals: {keys.map(k => `${k}\u00A0${counts[k]}`).join(' · ')}
-                      {un > 0 ? <> · <span style={{ color: 'var(--warn)', fontWeight: 650 }}>{un}&nbsp;unanswered</span></> : ''}
-                    </p>
-                  );
-                })()}
                 {/* Menu decisions — the playbook's real choices; picking one re-sizes
                     and re-prices the spread through the same engine. */}
                 {(() => {

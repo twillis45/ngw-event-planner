@@ -6081,6 +6081,12 @@ button.vc-pill::after{
    the check exact THIRDS failed — 111px columns left 77 of content and
    overflowed it by 35 — which is why this is two columns and not three. */
 .shop-acts.chips{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:var(--sp-2); }
+/* Anything in this row that is NOT one of the action buttons spans it. The row
+   also carries the playbook's note card and its own buttons, and under the old
+   flex-wrap those simply took a full line; a grid put them in ONE COLUMN, which
+   rendered "Email" as a tall cell beside a block of paragraph text. Found by
+   looking at a screenshot — the text dump of the same screen read correctly. */
+.shop-acts.chips > *:not(.food-act){ grid-column:1 / -1; }
 .shop-acts.chips > .food-act:not(:first-of-type){
   /* A grid cell already sizes this; the old `width:100%` inline styles that
      used to fight it are gone from the JSX. The iOS Simulator is what proved
