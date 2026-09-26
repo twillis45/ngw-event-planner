@@ -5907,10 +5907,10 @@ button.vc-pill::after{
 .mini{ border-radius:var(--r-pill); }
 .fmode{ border-radius:var(--r-sm); }
 
-/* ── TEMPORARY: the chip layout for the shopping actions (2026-09-25) ────────
-   Comparison harness behind `?acts=chips`, so the host can choose between
-   stacked full-width buttons and one primary plus a chip row ON THE REAL
-   SURFACE. Deleted once the choice is made.
+/* ── ONE PRIMARY, THEN CHIPS (host choice, 2026-09-25) ──────────────────────
+   Both layouts were built behind a flag and shown side by side on the real
+   Shop tab rather than drawn — three mockups had already under-drawn this
+   product earlier in the work. The host picked this one; the harness is gone.
 
    The case for chips: Shop already carries Copy / Instacart / Share, and print
    and email are queued — five stacked full-width buttons would rebuild exactly

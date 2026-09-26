@@ -813,17 +813,6 @@ const PASS_PAID_RETURN = (() => {
 // The seeded event's id is 'demoqa-*' — neither 'cust-' nor 'ev-copy-', so
 // passGate treats it as a sample: it never consumes the free tier and never
 // gets gated, which is exactly right for a demo walkthrough.
-// ── TEMPORARY: TWO LAYOUTS FOR THE SHOPPING ACTIONS ─────────────────────
-// Host, 2026-09-25, asked to see both before choosing. `?acts=chips` renders
-// one primary plus a chip row; the default keeps the stacked full-width
-// buttons. This is a COMPARISON HARNESS and comes out as soon as the choice is
-// made — it exists so the decision is made on the real surface rather than on a
-// drawing, after three mockups under-drew the product earlier in this work.
-const ACTS_CHIPS = (() => {
-  try { return new URLSearchParams(window.location.search).get('acts') === 'chips'; }
-  catch { return false; }
-})();
-
 const DEMO_TOOLS_ARMED = (() => {
   try {
     const p = new URLSearchParams(window.location.search).get('demo');
@@ -18373,12 +18362,18 @@ export default function HostShellV2() {
                     (full-width), plus the contextual tip. Both hidden while a
                     drill-in panel is open. The "Dietary note" drafter now lives
                     inside the Dietary-needs drill-in where it belongs. */}
+                {/* ONE PRIMARY, THEN CHIPS. Chosen by the host 2026-09-25 from
+                    the two laid side by side on the real Shop tab rather than
+                    drawn. Copy is the act most hosts take; Instacart, Share and
+                    the handoffs queued behind them are alternatives to it, and
+                    five stacked full-width buttons would rebuild the density
+                    this redesign just removed. Board D carries ONE primary. */}
                 {/* … and NOT on the Plan tab. "Copy the shopping list" and
                     "Send the list to Instacart" are the aisle's two actions; on a
                     tab whose whole content is Your choices / Dietary needs / How
                     it's sourced they are answers to a question nobody asked. */}
                 {sheet.kind !== 'foodplan' && !(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && !noKitchen && (
-                  <div className={ACTS_CHIPS ? 'shop-acts chips' : 'shop-acts'}>
+                  <div className="shop-acts chips">
                     <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-2)' }} onClick={() => {
                       // foodShopItems/eventGeoQuery are the same shared engines legacy's
                       // "Copy the shopping list" reads (App.js:10614-10615), so both apps
