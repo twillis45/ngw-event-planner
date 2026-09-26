@@ -41,8 +41,8 @@ describe('(premise) the mismatch was real and this is its size', () => {
     const k = keyed();
     const all = uses();
     const raw = all.filter((b) => k.includes(b)).length;
-    expect(all.length).toBe(471);
-    expect(raw).toBe(91);                       // 19%
+    expect(all.length).toBe(472);
+    expect(raw).toBe(92);                       // 19%
   });
 });
 

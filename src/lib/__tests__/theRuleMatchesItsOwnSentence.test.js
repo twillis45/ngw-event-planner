@@ -129,9 +129,9 @@ describe('a derived rule matches its own sentence', () => {
         if ((a && a.pick) !== (b && b.pick)) moved.push(`${pb.type}/${d.id}`);
       }
     }
-    expect(canDerive).toBe(128);
+    expect(canDerive).toBe(129);
     expect(`${moved.length} of ${canDerive} move: ${moved.sort().join(', ')}`).toBe(
-      `7 of 128 move: ${[
+      `7 of 129 move: ${[
         'Anniversary/help', 'Get-Together/food_style', 'Day Party/food',
         'Dinner Party/seating', 'Engagement Party/help', 'Holiday Party/food_format',
         'Retirement Party/help',

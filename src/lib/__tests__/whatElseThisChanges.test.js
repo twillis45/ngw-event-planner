@@ -105,8 +105,8 @@ describe('COVERAGE — measured, not targeted', () => {
       total++;
       if (decisionImpacts(d).length) withImpacts++;
     }
-    expect(total).toBe(260);
-    expect(withImpacts).toBe(227);
+    expect(total).toBe(261);
+    expect(withImpacts).toBe(228);
   });
 
   test('81% of block uses are placed, and 77 targets are deliberately not', () => {
@@ -117,8 +117,8 @@ describe('COVERAGE — measured, not targeted', () => {
         if (MAPPED_BLOCKS.includes(b)) placed++; else unmapped.add(b);
       }
     }
-    expect(uses).toBe(471);
-    expect(placed).toBe(380);
+    expect(uses).toBe(472);
+    expect(placed).toBe(381);
     expect(unmapped.size).toBe(77);
   });
 });

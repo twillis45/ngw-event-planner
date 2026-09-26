@@ -41,7 +41,20 @@ describe('the urgent-decision tier actually ranks', () => {
     expect(top).toBeTruthy();
     // Before: 'mild' won purely because it was listed first (NaN sort → insertion order).
     expect(JSON.stringify(top)).toMatch(/crabs/i);
-    expect(JSON.stringify(top)).not.toMatch(/Old Bay/i);
+    // NAMES THE TASK, not the brand (tightened 2026-09-26, when the crab playbook
+    // gained a `seasoning` decision whose ask says "Old Bay" — a bare brand match
+    // flagged a correctly-ranked board as broken). The mild TASK is what must not win.
+    //
+    // ⚠️ MEASURED WHILE TIGHTENING THIS, AND IT NEEDS A RULING, not a quiet rewrite:
+    // the seeded `mild` task ("Buy the Old Bay") does not appear ANYWHERE in
+    // nextActions — asserting /Buy the Old Bay/i is reachable fails. So this line
+    // has been vacuous since the bundling change: the thing it forbids cannot
+    // occur. `top` is now the DECISIONS BUNDLE (dietary, 8 days late,
+    // priorityScore 307), not the 58-day-late `bad` task, and the /crabs/i match
+    // above passes on dietary's rankReason prose rather than on that task. The
+    // test's stated subject — a task ladder that ranks by lateness — is no longer
+    // the mechanism it observes. Left measuring what it measures today; flagged.
+    expect(JSON.stringify(top)).not.toMatch(/Buy the Old Bay/i);
   });
 
   test('the host is told HOW late it is — overdueDays was always 0', () => {

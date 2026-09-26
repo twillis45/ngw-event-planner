@@ -54,23 +54,23 @@ const EV = (option, value) => ([{
 }]);
 
 describe('(premise) the gap is real and has a real denominator', () => {
-  test('101 of 152 cost-affecting decisions carry no cost factors', () => {
+  test('102 of 153 cost-affecting decisions carry no cost factors', () => {
     let candidates = 0; let without = 0;
     for (const pb of ALL_PLAYBOOKS) for (const d of (pb.decisions || [])) {
       if (!costFactorCandidate(d)) continue;
       candidates++;
       if (!d.costFactors || !Object.keys(d.costFactors).length) without++;
     }
-    expect(candidates).toBe(152);
-    expect(without).toBe(101);
+    expect(candidates).toBe(153);
+    expect(without).toBe(102);
   });
 });
 
 describe('the picker can now aim at them', () => {
-  test('it offers 152 targets where it offered 51', () => {
+  test('it offers 153 targets where it offered 51', () => {
     let offered = 0;
     for (const pb of ALL_PLAYBOOKS) offered += getFieldPaths(pb).filter((p) => p.kind === 'cost-factor').length;
-    expect(offered).toBe(152);
+    expect(offered).toBe(153);
   });
 
   test('and a target with nothing yet says so in its label', () => {
