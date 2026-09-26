@@ -43,7 +43,7 @@ import { test, expect, settled } from './fixtures.mjs';
 // from the environment of the process running the test — those are different
 // machines' worth of state, and only one of them is what a host loads.
 const storeLayerOffered = (page) => page.evaluate(() => [...document.querySelectorAll('button')]
-  .some((x) => /Price this list at a store near you/i.test(x.innerText || '')));
+  .some((x) => /Check store prices/i.test(x.innerText || '')));
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -100,13 +100,22 @@ test('UNCONFIGURED BUILD PROMISES NOTHING — no button for a store it cannot re
   await openList(page, '21014');
   test.skip(await storeLayerOffered(page), 'configured bundle — the feature tests below cover it');
   const t = await bodyText(page);
-  expect(t).not.toMatch(/Price this list at a store near you/i);
+  expect(t).not.toMatch(/Check store prices/i);
   expect(t).not.toMatch(/priced at your store/i);
 });
 
 test('CONFIGURED BUILD OFFERS IT, and says what it will and will not do', async ({ page }) => {
   await openList(page, '21014');
   test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle — covered by the test above');
+  // ── THE CAVEATS MOVED INTO THE PICKER, 2026-09-26 ────────────────────────
+  // They used to run four lines above the groceries for every host, including
+  // every host who never taps. The rule they serve — state the limit BEFORE
+  // the host does the work — is satisfied better beside the ZIP field than
+  // above a list, because the work IS typing a ZIP. So this test follows them
+  // one tap in rather than dropping an assertion: every string it guarded is
+  // still guarded, and still guarded BEFORE any lookup runs.
+  await tapText(page, 'Check store prices');
+  await page.waitForTimeout(400);
   const t = await bodyText(page);
   expect(t).toMatch(/beside your estimate, never instead of it/i);
   // ── THE LIMIT IS STATED BEFORE THE HOST DOES THE WORK ────────────────────
@@ -121,7 +130,7 @@ test('CONFIGURED BUILD OFFERS IT, and says what it will and will not do', async 
 test('PICKER: opens with the venue ZIP prefilled', async ({ page }) => {
   await openList(page, '21014');
   test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle');
-  await tapText(page, 'Price this list at a store near you');
+  await tapText(page, 'Check store prices');
   await page.waitForTimeout(400);
   const zip = await page.evaluate(() => {
     const i = document.querySelector('input[aria-label="ZIP code to find a store near"]');
@@ -150,7 +159,7 @@ test('HAPPY PATH: a store is picked, the sheet says what it reached, the row sho
   });
   await openList(page, '21014');
   test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle');
-  await tapText(page, 'Price this list at a store near you');
+  await tapText(page, 'Check store prices');
   await page.waitForTimeout(300);
   await tapText(page, 'Find stores');
   await page.waitForTimeout(800);
@@ -194,7 +203,7 @@ test('HONEST FAILURE: no keys on the backend says so, and does not invent a pric
   }));
   await openList(page, '21014');
   test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle');
-  await tapText(page, 'Price this list at a store near you');
+  await tapText(page, 'Check store prices');
   await page.waitForTimeout(300);
   await tapText(page, 'Find stores');
   await page.waitForTimeout(900);
@@ -210,7 +219,7 @@ test('NO STORE NEARBY: named, not a spinner that stops', async ({ page }) => {
   }));
   await openList(page, '21014');
   test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle');
-  await tapText(page, 'Price this list at a store near you');
+  await tapText(page, 'Check store prices');
   await page.waitForTimeout(300);
   await tapText(page, 'Find stores');
   await page.waitForTimeout(900);
@@ -258,7 +267,7 @@ test('A LINE TOTAL, WITH ITS ARITHMETIC — and a reference where the units do n
   });
   await openList(page, '21014');
   test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle');
-  await tapText(page, 'Price this list at a store near you');
+  await tapText(page, 'Check store prices');
   await page.waitForTimeout(300);
   await tapText(page, 'Find stores');
   await page.waitForTimeout(800);

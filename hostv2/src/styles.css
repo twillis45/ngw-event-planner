@@ -484,9 +484,29 @@ button{font-family:inherit}
 .seat-tray.droptarget{outline:1px dashed var(--steel-soft); outline-offset:4px; border-radius:var(--r-md)}
 .tpuck.seatable{box-shadow:0 0 0 2px var(--steel-soft), 0 2px 8px -3px rgba(0,0,0,.5)}
 .floorplan-hint{position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:var(--t-caption-min); color:var(--faint); pointer-events:none}
+/* ── ONE FAMILY, ONE SIZE (owner, 2026-09-26) ────────────────────────────────
+   "I dont want super round pill and chips. they should match the style of the
+   Copy the shopping list button." That reverses the 2026-09-24 pill ruling
+   below on .mini, and knowingly: THAT ruling made actions match filters, this
+   one makes both match the primary. Both are parity; they differ on which
+   object is the reference, and the owner has now named it.
+
+   The type and padding move too, and that half came from a question about the
+   MOCKUP: "why do the filters look the tallest". Measured in a clean frame —
+   they are not. Buttons are border-box by default, so min-height:44px lands
+   identically on both. Filters read heavier from four differences stacking:
+   half a point more type, 2px more side padding, an outline where .mini had
+   none, and one of them solid-filled. Same box, four reasons to look bigger.
+   So the type size and the side padding are now shared, and a filter is told
+   apart from an action by its FILL alone.
+
+   The 14px side padding became var(--sp-3): 14 is off the spacing ladder and
+   12 is on it, so unifying downward removes an off-ladder literal instead of
+   adding one. spacingLadder's BASELINE drops 270 -> 269 in this commit — the
+   ratchet turning, which that file says is the only edit it should ever need. */
 .chip{
-  font-size:var(--t-chip); font-weight:650; color:var(--ink-soft); background:var(--card);
-  border:1px solid var(--line); border-radius:var(--r-pill); padding:7px 14px; cursor:pointer;
+  font-size:var(--t-btn); font-weight:650; color:var(--ink-soft); background:var(--card);
+  border:1px solid var(--line); border-radius:var(--r-md); padding:7px var(--sp-3); cursor:pointer;
   transition:all var(--ms-press) var(--ease-out);
 }
 .chip:hover{border-color:var(--steel)}
@@ -5972,8 +5992,15 @@ button.vc-pill::after{
    `.fmode` stays a soft rectangle rather than becoming a pill — it is a
    segmented TAB, and the segments have to read as a divided track, which a row
    of separate pills does not. It just uses the token now. */
-.mini{ border-radius:var(--r-pill); }
+.mini{ border-radius:var(--r-md); }
 .fmode{ border-radius:var(--r-sm); }
+
+/* The list drill-in's own secondary row. Same grammar as .shop-acts.chips
+   above — primary full width, the rest justified across one line — but this
+   row's children include the store-lookup PANELS (the picker, the chosen
+   store), which must span rather than sit beside a button. */
+.list-acts{ display:flex; flex-wrap:wrap; gap:var(--sp-2); margin:0 0 var(--sp-3); }
+.list-acts > div{ flex:1 0 100%; }
 
 /* ── ONE PRIMARY, THEN CHIPS (host choice, 2026-09-25) ──────────────────────
    Both layouts were built behind a flag and shown side by side on the real
@@ -6005,7 +6032,7 @@ button.vc-pill::after{
      Raising the baseline for a new decoration is exactly what that test exists
      to refuse. */
   padding:8px 16px;
-  border-radius:var(--r-pill);
+  border-radius:var(--r-md);
   background:none;
   border:1px solid var(--line);
   color:var(--steel-soft);

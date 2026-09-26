@@ -18803,6 +18803,50 @@ export default function HostShellV2() {
                     nine mid-Atlantic ZIPs returned no store at all. Which is why
                     this is a layer over the regional band and not a replacement
                     for it, and why the host is told so before they type a ZIP. */}
+                {/* ── THE PRIMARY COMES FIRST (owner, 2026-09-26) ───────────
+                    It used to sit BELOW the store-lookup offer, so the screen
+                    read chip -> primary -> chip and the shapes stopped encoding
+                    rank — against the 2026-09-25 "one primary, then chips"
+                    ruling this file already carries. Moving the button is the
+                    whole fix; no shape changed. */}
+                {/* ── THE SECONDARY ACTIONS, ON ONE JUSTIFIED ROW ───────────
+                    Both of these used to be full-bleed blocks stacked under the
+                    primary, each with its own bottom margin. They are one row
+                    now, sharing the width the way the summary sheet's chips do,
+                    so the block squares off under "Copy the shopping list"
+                    instead of trailing down the page.
+
+                    The IIFEs inside still return their big panels (the chosen
+                    store, the ZIP picker) — those take `flex:1 0 100%` from
+                    .list-acts so a panel spans the row rather than squeezing
+                    into a column beside a button. */}
+                {/* ── TAKE IT WITH YOU, FROM INSIDE THE LIST ─────────────────
+                    "Copy the shopping list" already existed, as a full-width
+                    action on the food summary — and it is HIDDEN the moment any
+                    drill-in opens, `foodSect.list` included. So the one host who
+                    could not reach it was the host actually looking at their
+                    list, which is the host about to walk out of the door.
+
+                    That matters more than it looks. Measured 2026-08-16: a warm
+                    visit then an offline reload gives a blank page — no service
+                    worker, and the board upheld that bar (see
+                    docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md). So the list
+                    the host carries into a shop with no signal is the one they
+                    took OUT of the app before they left. This is that door, put
+                    where they are standing when they need it.
+
+                    Same engines as the summary button and as legacy's copy path
+                    (foodShopItems + eventGeoQuery), so all three produce the
+                    identical list — a second list that disagreed would be worse
+                    than no second entry point. */}
+                {foodSect.list && !noKitchen && (
+                  <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-3)' }} onClick={() => {
+                    let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                    let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                    openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
+                  }}>Copy the shopping list</button>
+                )}
+                <div className="list-acts">
                 {foodSect.list && !noKitchen && isStorePricesConfigured() && (() => {
                   const lines = (foodPlan.list || []).filter(it => it && !it.skipped && it.item);
                   // ── PICKED: the store, and what it actually reached ────────
@@ -18851,6 +18895,33 @@ export default function HostShellV2() {
                           }}>{p.busy ? 'Looking…' : 'Find stores'}</button>
                           <button className="mini" onClick={() => setStorePicker(null)}>Cancel</button>
                         </div>
+                        {/* ── SAY THE LIMIT BEFORE THEY DO THE WORK ─────────
+                            Probed live 2026-09-23: Baltimore City, Rockville,
+                            McLean and Richmond each return three stores; Bel
+                            Air, Towson, Hagerstown and Wilmington return zero.
+                            One chain family, not every grocer, and a host who
+                            types a ZIP and gets nothing must have known that was
+                            possible — otherwise an accurate empty result reads
+                            as a broken feature.
+
+                            MOVED HERE 2026-09-26 from the offer below, where it
+                            ran four lines above the groceries for every host,
+                            including the ones who never tap. "Before they do the
+                            work" is satisfied better here, not worse: the work
+                            is typing a ZIP, and this sits against the field.
+
+                            EVERY FACT STAYS. The third one — "sits beside your
+                            estimate, never instead of it" — has a test on it and
+                            is the one sentence stopping a host from reading a
+                            shelf price as a replacement for the plan's band.
+                            Density is not a licence to drop a guarantee; that
+                            mistake has already been made twice on this block. */}
+                        <GuideLine gap={0} style={{ margin: '6px 0 0' }}>
+                          Checks {STORE_FAMILY_TEACH}.
+                        </GuideLine>
+                        <p className="grounding" style={{ margin: '3px 0 var(--sp-2)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
+                          Coverage is regional — there may be none near you. What it finds sits beside your estimate, never instead of it.
+                        </p>
                         {p.stores.length > 0 && (
                           <div className="srctier-list">
                             {p.stores.map(s => (
@@ -18905,90 +18976,23 @@ export default function HostShellV2() {
                     );
                   }
                   // ── THE OFFER ─────────────────────────────────────────────
+                  //
+                  // JUST THE OFFER (owner, 2026-09-26). Its two caveat lines
+                  // moved into the picker above. They are not gone and not
+                  // softened: the limit is still stated BEFORE the host does the
+                  // work, which is the whole reason the 2026-09-23 probe put
+                  // them here — they now sit beside the ZIP field, at the moment
+                  // the host is about to type one, instead of running four lines
+                  // above a list of groceries for every host, including every
+                  // host who never taps. threeLayersOfPrice follows them there
+                  // rather than losing an assertion. Board D carries no
+                  // explainer here at all; this keeps every fact and moves it.
                   return (
-                    <div style={{ margin: '0 0 var(--sp-3)' }}>
-                      <button className="mini" onClick={() => setStorePicker({ zip: venueFor(event).zip, stores: [], busy: false, reason: null })}>
-                        Price this list at a store near you
-                      </button>
-                      {/* ── SAY THE LIMIT BEFORE THEY DO THE WORK ─────────
-                          Probed live 2026-09-23: Baltimore City, Rockville,
-                          McLean and Richmond each return three stores; Bel Air,
-                          Towson, Hagerstown and Wilmington return zero. This is
-                          one chain family, not every grocer, and a host who
-                          types a ZIP and gets nothing should have known that was
-                          possible before they tapped — otherwise an accurate
-                          empty result reads as a broken feature. */}
-                      {/* CONDENSED 2026-09-24 (host: "clean up the checks Kroger
-                          message — copy is too dense and not laid out well").
-                          It ran 250 characters over FIVE lines of italic serif:
-                          the longest single block on the sheet, sitting above a
-                          list of actual groceries. Board D carries no explainer
-                          here at all — just the offer, then a compact store row
-                          once one is picked.
-
-                          Two of the three facts stay, because the reason above
-                          still holds: a host who types a ZIP into a one-chain
-                          lookup and gets nothing must have known that was
-                          possible, or an accurate empty result reads as broken.
-
-                          The third — "what it finds sits beside your estimate,
-                          never instead of it" — is dropped HERE and not lost: it
-                          is a fact about RESULTS, and `coverageNote` already
-                          says it at the moment there are results to qualify
-                          ("the rest are averages", "they are shelf references").
-                          Stated twice, the earlier telling is just length. */}
-                      {/* TWO SHORT LINES, NOT ONE LONG PARAGRAPH.
-                          The host's complaint was layout ("copy is too dense and
-                          not laid out well"), and my first pass answered it by
-                          DELETING the third fact — "what it finds sits beside
-                          your estimate, never instead of it". That clause has a
-                          test on it (threeLayersOfPrice: "says what it will and
-                          will not do"), and it is the one sentence that stops a
-                          host reading a shelf price as a replacement for the
-                          plan's band. Same mistake I made with the per-unit rate
-                          an hour earlier: density is not a licence to drop a
-                          guarantee.
-
-                          So every fact stays and the LAYOUT changes. What the
-                          lookup covers reads at guide weight; the two caveats
-                          drop to the muted caption where provenance lives. One
-                          five-line block becomes two short ones with a
-                          hierarchy. */}
-                      <GuideLine gap={0} style={{ margin: '6px 0 0' }}>
-                        Checks {STORE_FAMILY_TEACH}.
-                      </GuideLine>
-                      <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
-                        Coverage is regional — there may be none near you. What it finds sits beside your estimate, never instead of it.
-                      </p>
-                    </div>
+                    <button className="mini" style={{ flex: '1 1 auto' }} onClick={() => setStorePicker({ zip: venueFor(event).zip, stores: [], busy: false, reason: null })}>
+                      Check store prices
+                    </button>
                   );
                 })()}
-                {/* ── TAKE IT WITH YOU, FROM INSIDE THE LIST ─────────────────
-                    "Copy the shopping list" already existed, as a full-width
-                    action on the food summary — and it is HIDDEN the moment any
-                    drill-in opens, `foodSect.list` included. So the one host who
-                    could not reach it was the host actually looking at their
-                    list, which is the host about to walk out of the door.
-
-                    That matters more than it looks. Measured 2026-08-16: a warm
-                    visit then an offline reload gives a blank page — no service
-                    worker, and the board upheld that bar (see
-                    docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md). So the list
-                    the host carries into a shop with no signal is the one they
-                    took OUT of the app before they left. This is that door, put
-                    where they are standing when they need it.
-
-                    Same engines as the summary button and as legacy's copy path
-                    (foodShopItems + eventGeoQuery), so all three produce the
-                    identical list — a second list that disagreed would be worse
-                    than no second entry point. */}
-                {foodSect.list && !noKitchen && (
-                  <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-3)' }} onClick={() => {
-                    let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                    let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                    openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
-                  }}>Copy the shopping list</button>
-                )}
                 {/* Bulk price-lock — parity with legacy's "Use typical prices for
                     the other N items →" (App.js ~11040-11060). Locks every still-
                     estimated line to the ENGINE's own honest midpoint
@@ -19025,11 +19029,13 @@ export default function HostShellV2() {
                     setBulkPriced(ids);
                   };
                   return (
-                    <button className="mini" style={{ marginBottom: 10 }} onClick={priceAll}>
-                      Lock the rest to typical prices ({unpriced.length})
+                    <button className="mini" style={{ flex: '1 1 auto' }} onClick={priceAll}>
+                      Use typical prices ({unpriced.length})
                     </button>
                   );
                 })()}
+                </div>
+
                 {foodSect.list && (() => {
                   // Skipped lines stay IN the list (parity with legacy's toggleSkip —
                   // App.js:11145 — which keeps a skipped line visible with strikethrough

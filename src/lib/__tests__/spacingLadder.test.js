@@ -37,7 +37,13 @@ const LADDER = new Set([0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80]);
 // 271 -> 270 on 2026-09-24: the pinned total bar needed to cancel the sheet's
 // own bottom inset exactly, and repeating `28px` would have ADDED two
 // off-ladder literals. Naming it `--sheet-pad-b` once removed the original too.
-const BASELINE = 270;
+// 270 -> 269 on 2026-09-26: .chip's `padding:7px 14px` became
+// `7px var(--sp-3)` when the chip and button families were unified on one type
+// size and one side padding (owner: "they should match the style of the Copy
+// the shopping list button"). 14 is off the ladder and 12 is on it, so the
+// unification went DOWNWARD on purpose — matching .chip up to 14 would have
+// raised this number for a restyle, which is what the ratchet refuses.
+const BASELINE = 269;
 
 const PROP = /\b(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;{}]+)/g;
 

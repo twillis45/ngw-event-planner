@@ -33,7 +33,7 @@ const tapText = (page, src) => page.evaluate((s) => {
 const bodyText = (page) => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
 
 const storeLayerOffered = (page) => page.evaluate(() => [...document.querySelectorAll('button')]
-  .some((x) => /Price this list at a store near you/i.test(x.innerText || '')));
+  .some((x) => /Check store prices/i.test(x.innerText || '')));
 
 // `description` is the whole variable under test, so each run picks one and
 // every other field is held identical. Two lines are priced so the coverage
@@ -78,7 +78,7 @@ const openPriced = async (page, description) => {
   await page.waitForTimeout(1600);
   await settled(page);
   if (!(await storeLayerOffered(page))) return null;      // unconfigured bundle
-  await tapText(page, 'Price this list at a store near you');
+  await tapText(page, 'Check store prices');
   await page.waitForTimeout(300);
   await tapText(page, 'Find stores');
   await page.waitForTimeout(900);

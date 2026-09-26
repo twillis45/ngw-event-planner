@@ -127,7 +127,7 @@ test('the sheet stops counting a shop that is not happening', async ({ page }) =
   expect(t).toMatch(/Nothing to shop for/i);
   // And no action that operates on the withheld list survives.
   expect(t).not.toMatch(/Copy the shopping list/i);
-  expect(t).not.toMatch(/Lock the rest to typical prices/i);
+  expect(t).not.toMatch(/Use typical prices/i);
 });
 
 test('no restaurant number is invented to replace the grocery one', async ({ page }) => {
