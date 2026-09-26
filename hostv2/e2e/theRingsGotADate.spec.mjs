@@ -42,7 +42,11 @@ const draftChecklist = async (page, type, daysOut) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  }, [type, daysOut]);
+  // dateIn(daysOut), NOT daysOut. The addInitScript signature takes a DATE now,
+  // and this call site kept passing the DAY COUNT — so the event date was the
+  // literal number 70. Caught by the full e2e matrix, not by the 11-spec run I
+  // used to verify the conversion.
+  }, [type, dateIn(daysOut)]);
   await page.goto('?elegant=1');
   await settled(page);
   await tapText(page, 'Checklist');

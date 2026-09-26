@@ -16,7 +16,7 @@
 import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const boot = async (page, { id, type, choices }) => {
-  await page.addInitScript(([evId, evType, evChoices]) => {
+  await page.addInitScript(([evId, evType, evChoices, SEED_DATE]) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
@@ -170,7 +170,7 @@ test.describe('the air-travel invite floor reaches the shipping shell', () => {
           venueCity: 'Santa Fe', state: 'NM', isDestination: d,
           guests: [], vendors: [], budget: [], timeline: [],
         }]));
-      }, isDest);
+      }, [isDest, dateIn(300)]);
       await page.goto('?elegant=1');
       await settled(page);
       await openSection(page, 'Your checklist');

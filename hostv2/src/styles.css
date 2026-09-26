@@ -2967,6 +2967,19 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .printsheet .p-time.p-when{ letter-spacing:.1em; text-transform:lowercase }
   .printsheet .p-time:empty::after{ content:'Not set'; color:#8b9096; font-weight:500 }
   /* Was inline, so meta ran on after the segment; on paper it needs its own line. */
+  /* ── THE SHOPPING LIST'S OWN ROW (2026-09-26) ─────────────────────────────
+     Reuses .p-row so the two sheets share one rhythm. The gutter that carries a
+     TIME on the day sheet carries a TICK BOX here — same 62pt column would be
+     wasteful for a 9pt square, so this row overrides just the box width.
+     print-color-adjust is already exact on .printsheet, so the border prints. */
+  .printsheet .p-shoprow{ gap:8pt; align-items:flex-start; break-inside:avoid; }
+  .printsheet .p-box{
+    flex:0 0 9pt; width:9pt; height:9pt; margin-top:1.5pt;
+    border:0.6pt solid #14161a; border-radius:1pt; display:block;
+  }
+  /* Already bought, still printed. A host carrying the list wants to see that a
+     line is handled, not to find it missing. */
+  .printsheet .p-box-on{ background:#14161a; }
   .printsheet .p-meta{ display:block; font-size:8pt; line-height:1.35; font-weight:400;
     color:#5c626a; margin-top:1.5pt }
   .printsheet a{ color:#14161a; text-decoration:none }

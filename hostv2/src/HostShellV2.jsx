@@ -1141,6 +1141,30 @@ export default function HostShellV2() {
   // In-flight guard for the send-to-store button: the cart call is a network
   // round trip, and a second tap would open two tabs.
   const [sendingCart, setSendingCart] = useState(false);
+
+  // ── WHICH PAPER SHEET PRINTS ───────────────────────────────────────────────
+  //
+  // The print stylesheet works by hiding everything and re-showing `.printsheet`
+  // (styles.css @media print). That is one named element, so a second paper sheet
+  // cannot simply be added — both would print on every job.
+  //
+  // DEFAULTS TO 'day' ON PURPOSE. The host can print with Cmd+P or the browser
+  // menu and has been getting the day sheet that way since it shipped. Gating the
+  // day sheet on a button press would have silently removed that.
+  const [printKind, setPrintKind] = useState('day');
+  // `window.print()` blocks, so the sheet has to be in the DOM before it is
+  // called — a state set and a print in the same tick prints the OLD sheet. Two
+  // frames, then print; restore on afterprint so Cmd+P keeps meaning the day
+  // sheet. `afterprint` does not fire everywhere, so a timer backs it up.
+  const printSheet = (kind) => {
+    setPrintKind(kind);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const restore = () => setPrintKind('day');
+      try { window.addEventListener('afterprint', restore, { once: true }); } catch (_e) { /* older webviews */ }
+      setTimeout(restore, 4000);
+      try { window.print(); } catch (_e) { restore(); }
+    }));
+  };
   const [toastMsg, setToastMsg] = useState(null);
   // Money-move undo (Sprint 1): a toast can carry ONE inline action — a
   // single-level snapshot restore of just the fields the write changed. Not a
@@ -18607,6 +18631,35 @@ export default function HostShellV2() {
                           });
                       }}>Share the list</button>
                     )}
+                    {/* PRINT AND EMAIL — the two handoffs that need no service and
+                        no key. Both read the SAME engines as Copy and Instacart.
+
+                        Print renders a paper sheet from foodShopItems; email hands
+                        `draftShoppingList`'s own subject and body to the host's mail
+                        app through mailto, which is the only way to send mail from
+                        here without routing a host's list through a third party. */}
+                    <button className="food-act" onClick={() => {
+                      let items = []; try { items = foodShopItems(foodPlan, event) || []; } catch { items = []; }
+                      if (!items.length) { toast('Nothing to print yet.'); return; }
+                      printSheet('shop');
+                    }}>Print the list</button>
+                    <button className="food-act" onClick={() => {
+                      let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                      let subject = ''; let body = '';
+                      try {
+                        let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                        const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                        if (typeof d === 'string') { body = d; } else { subject = d.subject || ''; body = d.body || ''; }
+                      } catch (_e) { body = ''; }
+                      if (!body) { toast('Nothing to email yet.'); return; }
+                      // SYNCHRONOUS, like the Instacart and Share handlers: a
+                      // navigation assigned after an await has lost the transient
+                      // user activation and is refused silently. That cost a whole
+                      // session once — the button sat on "Sending..." forever.
+                      const href = 'mailto:?subject=' + encodeURIComponent(subject || `${event.name || 'Event'} shopping list`)
+                        + '&body=' + encodeURIComponent(body);
+                      try { window.location.href = href; } catch (_e) { toast('Couldn\u2019t open your mail app.'); }
+                    }}>Email the list</button>
                     {nudgeFor('food')}
                   </div>
                 )}
@@ -22579,8 +22632,13 @@ export default function HostShellV2() {
       )}
 
       {/* Print-only day sheet — a paper cue sheet a helper can hold (window.print
-          from The Day). Same effectiveRos truth, nothing screen-only. */}
-      {ros.length > 0 && (
+          from The Day). Same effectiveRos truth, nothing screen-only.
+
+          GATED ON printKind 2026-09-26, when the shopping list got its own sheet.
+          The print stylesheet re-shows `.printsheet` and nothing else, so two
+          sheets in the DOM both print on every job. printKind defaults to 'day',
+          so Cmd+P and the browser menu still print this one. */}
+      {printKind === 'day' && ros.length > 0 && (
         <div className="printsheet" aria-hidden="true">
           <h1>{event.name}</h1>
           <p className="p-sub">
@@ -22675,6 +22733,74 @@ export default function HostShellV2() {
           })()}
         </div>
       )}
+
+      {/* ── PRINT-ONLY SHOPPING LIST (2026-09-26) ──────────────────────────────
+          A paper list for the aisle, off the SAME `foodShopItems(foodPlan, event)`
+          the Copy, Instacart and Share actions read — so the paper and the phone
+          cannot disagree. Rendered only while printKind is 'shop'; see printSheet.
+
+          HONESTY, following the day sheet's own rules:
+          - A checkbox is drawn for every line, because the point of paper is to
+            tick it. `got` lines print pre-ticked rather than hidden: a host who
+            already bought something still wants it on the list they carry.
+          - The price band prints only when the engine HAS one. A line with no
+            band prints the quantity alone rather than "$0" or a dash.
+          - `basis` (the per-guest rate behind a quantity) prints as the meta line,
+            the same place the day sheet puts its own reasoning. It is already
+            gated on qtyOverridden upstream, so a host's own number never gets a
+            rate printed under it as if we derived it.
+          - NO ESTIMATE TOTAL. The screen's pinned total counts what it prices and
+            says so; reproducing a single number on paper without that context is
+            exactly the overclaim the shopping hero was rebuilt to remove. */}
+      {printKind === 'shop' && (() => {
+        let items = [];
+        try { items = foodShopItems(foodPlan, event) || []; } catch (_e) { items = []; }
+        if (!items.length) return null;
+        const money = (lo, hi) => {
+          const a = Math.round(Number(lo) || 0); const b = Math.round(Number(hi) || 0);
+          if (!a && !b) return '';
+          return a === b ? `$${a}` : `$${a}\u2013${b}`;
+        };
+        // Grouped in the order the list itself groups them, so the paper reads
+        // like the screen rather than in a second arrangement nobody chose.
+        const groups = [];
+        for (const it of items) {
+          const key = it.category || 'Other';
+          let g = groups.find((x) => x.key === key);
+          if (!g) { g = { key, rows: [] }; groups.push(g); }
+          g.rows.push(it);
+        }
+        return (
+          <div className="printsheet" aria-hidden="true">
+            <h1>{event.name || 'Shopping list'}</h1>
+            <p className="p-sub">
+              Shopping list
+              {event.date ? ` \u00b7 for ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
+              {` \u00b7 ${items.length} item${items.length === 1 ? '' : 's'}`}
+            </p>
+            {groups.map((g) => (
+              <Fragment key={g.key}>
+                <div className="p-head">{g.key}</div>
+                {g.rows.map((it, i) => (
+                  <div className="p-row p-shoprow" key={(it.name || '') + i}>
+                    <span className={'p-box' + (it.got ? ' p-box-on' : '')} aria-hidden="true" />
+                    <span>
+                      <b>{it.name}</b>
+                      {it.qty ? ` \u00b7 ${it.qty}${it.unit ? ` ${it.unit}` : ''}` : ''}
+                      {money(it.costLow, it.costHigh) ? ` \u00b7 ${money(it.costLow, it.costHigh)}` : ''}
+                      {(it.basis || it.bulkRecommendation) && (
+                        <span className="p-meta">
+                          {[it.basis, it.bulkRecommendation && String(it.bulkRecommendation)].filter(Boolean).join(' \u00b7 ')}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </Fragment>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Boot splash overlay — last child so it paints over dock/toast/sheet */}
       {splashEl}
