@@ -80,6 +80,35 @@ jobs:
       # so a stale artifact reports as itself rather than as a confusing test failure.
       - run: npm run gate:knowledge
       - run: CI=true npx react-scripts test --watchAll=false
+      # ── THE SAME SUITE, IN A TIMEZONE WHOSE CALENDAR DAY IS NOT UTC'S ───────
+      #
+      # MEASURED 2026-09-26. Five tests failed every night between 8pm and
+      # midnight Eastern and passed by morning, and three sessions read that as
+      # flake. It was not flake. `dates.getToday` is LOCAL (setHours(0,0,0,0)),
+      # so a fixture date built with `toISOString().slice(0,10)` — which is UTC
+      # — is off by one whenever the two calendars disagree. In America/New_York
+      # they disagree for four hours a day, which is why CI (UTC, where they
+      # never disagree) was green the whole time.
+      #
+      # Pacific/Midway is UTC-11, so local and UTC ALWAYS disagree for most of
+      # the day. That reproduces the US-evening condition on every run instead
+      # of four hours in twenty-four.
+      #
+      # WHY A TIMEZONE RUN AND NOT A GREP FOR toISOString. There are 95
+      # occurrences in tests and 45 in lib, most of them harmless (provenance
+      # stamps, and parser paths already pinned to local noon). A count-the-calls
+      # gate would fail on all of them today, and worse, it can be satisfied by
+      # extracting a helper without fixing anything. This runs the behaviour: it
+      # cannot be gamed by refactoring, and it needs no allowlist.
+      #
+      # RED-PROOFED by restoring one UTC fixture helper in
+      # theRulingsOwnBarIsUnmet.test.js: 5 failures here, 0 in the step above.
+      #
+      # NOT YET GUARDED: the eastern hemisphere. TZ=Pacific/Kiritimati (UTC+14)
+      # fails 137 tests in 20 suites — the same class, the other direction, and
+      # far larger. Recorded in HANDOFF rather than gated, because closing it is
+      # a real piece of work and not a line in a workflow.
+      - run: TZ=Pacific/Midway CI=true npx react-scripts test --watchAll=false
 
   # ── SHARDED ACROSS TWO RUNNERS (2026-09-18) ────────────────────────────────
   # MEASURED off run 656, parsing all 1009 test timings out of the job log:

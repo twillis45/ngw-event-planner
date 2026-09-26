@@ -46,8 +46,14 @@
 // See docs/audits/2026-09-23_CLOSING_WINDOW_RULING.md.
 import { eventPlan, actionConsequence, latenessBoost } from '../../CommandCenter';
 import { SURFACES } from '../surfaceRegistry';
+import { addDaysISO } from '../dateChips';
 
-const iso = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
+// LOCAL calendar days, never toISOString(). The engine under test is local
+// throughout (`dates.getToday` uses setHours(0,0,0,0)), so a UTC-derived
+// fixture date is off by one whenever the two calendars disagree — 8pm to
+// midnight Eastern, and all day in most of the eastern hemisphere. This suite
+// failed exactly there and nowhere else. Reproduce with TZ=Pacific/Midway.
+const iso = (d) => addDaysISO(null, d);
 // The ruling's own case, rebuilt: a plan three days out with its vendors booked,
 // a stale certificate ask, and the reconfirm window open.
 const EV = () => ({

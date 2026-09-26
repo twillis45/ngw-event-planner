@@ -51,6 +51,7 @@ import { buildVendorCopilotContext, getRuleBasedPreview } from '../vendorCopilot
 import { transformVendorRows, validateVendorRows, applyVendorMerge } from '../csvParsers';
 import { deriveCommandCenterData, getCrossEventAttentionItems } from '../../CommandCenter';
 import { isVendorBooked, isVendorConfirmed } from '../workstreams';
+import { addDaysISO } from '../dateChips';
 
 // The stored ladder, plus the legacy synonyms the app still reads.
 const CONFIRMED = ['Confirmed', 'Booked', 'Paid'];        // fully locked in
@@ -61,7 +62,9 @@ const SHOPPING = ['Considering', 'Quoted'];
 // was read by three CommandCenter branches and written by nothing.
 const OFF_VOCABULARY = ['Partial', 'Pencilled in', 'Signed', 'Confirmed-ish'];
 
-const iso = (days) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+// LOCAL calendar days — see theRulingsOwnBarIsUnmet for the measurement.
+// `iso(0)` has to mean the host's today or the Event Day arm never fires.
+const iso = (days) => addDaysISO(null, days);
 
 // ── 0. THE ORACLE ────────────────────────────────────────────────────────────
 // If this block is wrong every fixture below is measured against the wrong

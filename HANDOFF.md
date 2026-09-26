@@ -360,22 +360,59 @@ the row that started this is a funeral meal.
 - **Layout B shipped** — the shopping actions are one primary plus a chip row,
   chosen by the host from two layouts built behind `?acts=chips` and shown on
   the real Shop tab. Harness deleted with the choice.
-- **A LATENT CLOCK BOMB, half-measured, and the same shape as the one this
-  file already records.** At 23:37 EDT five CRA tests failed —
-  `vendorStatusReadersReadOneVocabulary` and `theRulingsOwnBarIsUnmet` — and
-  were verified PRE-EXISTING via `git stash`. At 00:24 EDT the same suite ran
-  **549 suites / 7,799 passed / 0 failed**. Nothing between the two runs
-  touched them (a rebase brought in a HANDOFF-only commit; a comment block was
-  added to `storeUnitMap.js`). So the time-dependence is MEASURED and will
-  recur. **I earlier attributed it to crossing the UTC date boundary; that is
-  now contradicted** — 23:37 EDT and 00:24 EDT are both already the next day in
-  UTC, so the boundary cannot be what separates a red run from a green one. The
-  mechanism is UNKNOWN. `theClosingWindowLeads.spec.mjs` (same closing-window
-  ruling, e2e) went red in the same window and was still red at 00:21.
-  This is the `recordDedupStaysLive` `AS_OF` pattern recorded in the State
-  table above, which was green in CI on 2026-09-14 and red on 2026-09-17 with
-  no code change between. **OPEN, and it should be treated as a defect rather
-  than as test noise.**
+- **THE NIGHTLY CLOCK FAILURES: root-caused, fixed, and gated.** Five CRA tests
+  failed every night between 8pm and midnight Eastern and passed by morning.
+  Three sessions read that as flake. It was not.
+
+  **Reproduced on demand** — `TZ=Pacific/Midway` (UTC-11) fails exactly those 5;
+  `TZ=America/New_York` passes 113. One variable, no waiting for a clock.
+
+  **Mechanism.** `dates.getToday` is LOCAL (`setHours(0,0,0,0)`) and `daysUntil`
+  is local, so the ENGINE is correct. The two suites built fixture dates with
+  `new Date(Date.now() + d*86400000).toISOString().slice(0,10)` — which is UTC.
+  Whenever the local and UTC calendars disagree the fixture is off by one, so
+  `iso(0)` stops meaning today and the Event Day arm never fires. Both failures
+  were FIXTURES; no host-facing path on those two surfaces is affected.
+
+  **Fixed** by routing both helpers through `dateChips.addDaysISO`, which is
+  local — the invariant `dateChips.js` already declares for itself. Full suite
+  under `TZ=Pacific/Midway`: **549 suites / 7,799 passed / 0 failed**.
+
+  **A CORRECTION TO THIS FILE'S OWN EARLIER ENTRY.** An earlier draft said the
+  UTC-boundary explanation was "contradicted" because 23:37 and 00:24 EDT are
+  both already the next day in UTC. That reasoning was wrong: what matters is
+  whether the local and UTC dates AGREE, not whether UTC has rolled over. At
+  00:24 both read Sep 26; at 23:37 they did not. The original explanation was
+  right and was talked out of by a bad check rather than a measurement.
+
+  **GATED, and red-proofed.** `checks.yml` now runs the same suite a second
+  time under `TZ=Pacific/Midway`. Restoring one UTC fixture helper:
+
+  | | old CI step (UTC) | new gate (Midway) |
+  |---|---|---|
+  | fault present | **9 passed — blind** | **4 failed** |
+  | fault removed | 9 passed | 9 passed |
+
+  CI runs in UTC, where the calendars never disagree, so it was STRUCTURALLY
+  incapable of catching this. That is why five tests failed nightly for days
+  against a green CI.
+
+  **Why a timezone run and not a grep.** 95 occurrences in tests, 45 in lib,
+  most harmless (provenance stamps; parser paths already pinned to local noon).
+  A count-the-calls gate fails on all of them today and — per the same night's
+  board finding about row-shaped ratchets — can be satisfied by extracting a
+  helper without fixing anything. A behaviour run cannot be gamed by
+  refactoring and needs no allowlist.
+
+- **STILL OPEN: the eastern hemisphere, measured and much larger.**
+  `TZ=Pacific/Kiritimati` (UTC+14) fails **137 tests across 20 suites** —
+  `dates`, `smartParseEvent`, `moneyDates`, `lodgingIntel`, `eventPlan`,
+  `parseCorpusGolden` and 14 more. Same class, opposite direction, and
+  `dateChips.js` predicted it in its own comment: "east of Greenwich that
+  emits the previous day." NOT yet classified fixture-vs-product, and NOT
+  gated. Whether it matters commercially is an owner call — the app's hosts
+  are US — but the parser and money modules are in it, so the finding should
+  not be filed as foreign-only without someone reading those 20 suites.
 
 ## FIXED 2026-09-24/25 (thirty-fifth entry) — sixteen commits that had no entry, written from their own diffs
 
