@@ -154,6 +154,56 @@ describe('what the money screen can and cannot see', () => {
     expect(sp.committed).toBeGreaterThan(0);
   });
 
+  test('AND THE OPTIONAL MONEY NOW HAS A NUMBER — reported, never committed', () => {
+    // The ruling this file asked for, built 2026-09-26. `hostSpending` grew an
+    // EIGHTH term. It is the only one that is not a component of `committed`,
+    // because folding optional decor in would tell a host they had committed to
+    // party favors they may never buy — the invention the neighbours of
+    // hostSpending.js spent a day removing.
+    //
+    // So the contract has two halves and both are asserted: the money is
+    // VISIBLE, and the headline did not move to make it so.
+    const sp = hostSpending(evFor('Reunion'));
+    expect(sp.optionalLines).toBeGreaterThan(0);          // premise: there IS optional spend
+    expect(sp.optionalHigh).toBeGreaterThan(sp.optionalLow);
+    expect(sp.optionalEstimate).toBeGreaterThan(0);
+    // …and it is NOT inside any headline figure.
+    expect(sp.committed).toBeGreaterThan(sp.optionalEstimate);
+    expect(sp.committed - sp.spent).not.toBe(sp.optionalEstimate);
+  });
+
+  test('THE RED-PROOF: optional money moves the new term and NOTHING else', () => {
+    // The mirror of the decor perturbation above, and the reason this is a
+    // report rather than a fold. A hundredfold on the NON-ESSENTIAL lines must
+    // move `optionalHigh` and leave `committed`, `spent`, `committedEstimated`
+    // and `uncommitted` byte-identical. If a later change quietly folds
+    // optional spend into the headline, this is what goes red.
+    const pb = ALL_PLAYBOOKS.find((p) => p.type === 'Reunion');
+    const before = hostSpending(evFor('Reunion'));
+    const touched = [];
+    for (const p of (pb.purchases || [])) {
+      if (p.essential || p.category === 'food' || p.category === 'beverage') continue;
+      if (!Array.isArray(p.unitCostRange)) continue;
+      touched.push([p, p.unitCostRange]);
+      p.unitCostRange = [p.unitCostRange[0] * 100, p.unitCostRange[1] * 100];
+    }
+    let after;
+    try {
+      expect(touched.length).toBeGreaterThan(0);     // premise: Reunion prices optional lines
+      after = hostSpending(evFor('Reunion'));
+    } finally {
+      for (const [p, orig] of touched) p.unitCostRange = orig;   // always restore
+    }
+    expect(after.optionalHigh).toBeGreaterThan(before.optionalHigh * 5);
+    expect({
+      committed: after.committed, spent: after.spent,
+      committedEstimated: after.committedEstimated, uncommitted: after.uncommitted,
+    }).toEqual({
+      committed: before.committed, spent: before.spent,
+      committedEstimated: before.committedEstimated, uncommitted: before.uncommitted,
+    });
+  });
+
   test('OPTIONAL, NOT MISSING — 98 of the 103 are non-essential spend', () => {
     // The distinction that makes this a ruling rather than a patch. If this
     // ever flips — a line becoming essential, or an essential line losing its

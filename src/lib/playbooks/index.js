@@ -5141,21 +5141,30 @@ export function playbookFoodPlan(event, opts = {}) {
   // row functions as food (lock-before-checkoff, qty edit, skip/swap, per-unit,
   // where-links, alternatives). Kept OUT of the food $ total below; surfaced as
   // their own budget line. Same map shape as the food rows above.
-  for (const p0 of playbook.purchases) {
-    if (p0.category === 'food' || p0.category === 'beverage') continue;
-    if (!p0.essential || !p0.buyAt || !purchaseShown(p0) || !regionShown(p0)) continue;
-    // GOVERNANCE REACHES SUPPLIES TOO (Phase 5E.4). This loop iterated the AUTHORED
-    // purchase while the food loop above resolved through governedPurchase(), so the
-    // entire Supplies half of every shopping list was ungoverned: `unitCostRange`,
-    // `qtyPerGuest`, `qtyFlat` and `provenance` were all editable, publishable,
-    // versioned and approved on a supply line, and changing any of them moved
-    // nothing a host saw. Measured across 39 playbooks before the fix: 396 dead
-    // field/purchase pairs, every one of them a supply row.
-    //
-    // The comment below has always claimed these rows get "the EXACT same row
-    // functions as food". They did not, and the gap was invisible precisely because
-    // the rows LOOK identical on the surface — same qty, same price range, sourced
-    // from the authored file instead of the governed one.
+  // ── OPTIONAL SPEND IS COUNTED, NOT SILENTLY DROPPED ───────────────────────
+  //
+  // MEASURED 2026-09-26 across all 45 playbooks at 40 guests: of 630 priced
+  // purchase lines, 103 never reach this list because of the `essential` gate
+  // below, and 98 of those ($3,280) are simply OPTIONAL — centerpiece flowers,
+  // balloons and a banner, party favors, candles. That exclusion is correct:
+  // the shopping list carries what the host must buy, and folding optional
+  // decor into `committed` would claim a host has committed to favors they may
+  // never buy.
+  //
+  // What was wrong is that the money then existed NOWHERE. A host who buys the
+  // optional $3,280 has spent money the number they plan against has never
+  // heard of, and `hostSpending`'s seven terms could not see a dollar of it —
+  // the same shape as the $18,400 vendor gap recorded in that file's header.
+  //
+  // So it is REPORTED, NOT RESOLVED — the treatment `foodUnpriced` already
+  // gets. The total rides along on the plan; no surface is obliged to add it to
+  // anything, and `committed` deliberately does not.
+  //
+  // PRICED THROUGH THE SAME FORMULA as the essential rows below (`supplyCost`),
+  // not a parallel copy of it, and gated by the same `purchaseShown` /
+  // `regionShown` / `buyAt` checks — a decision-gated option is not spend the
+  // host is facing.
+  const supplyCost = (p0) => {
     const p = governedPurchase(playbook, p0);
     const baseQty = resolveQuantity(p, guests);
     const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
@@ -5168,6 +5177,33 @@ export function playbookFoodPlan(event, opts = {}) {
     const _supSrc = nonProteinFactor(sourcing);
     if (_supSrc !== 1) { uLow *= _supSrc; uHigh *= _supSrc; }
     const units = qty == null ? 1 : qty;
+    return { p, baseQty, qOver, qty, uLow, uHigh, units };
+  };
+  const optionalSpend = { lines: 0, low: 0, high: 0 };
+
+  for (const p0 of playbook.purchases) {
+    if (p0.category === 'food' || p0.category === 'beverage') continue;
+    if (!p0.buyAt || !purchaseShown(p0) || !regionShown(p0)) continue;
+    if (!p0.essential) {
+      const c = supplyCost(p0);
+      const lo = Math.round(c.units * c.uLow * pf);
+      const hi = Math.round(c.units * c.uHigh * pf);
+      if (lo > 0 || hi > 0) { optionalSpend.lines += 1; optionalSpend.low += lo; optionalSpend.high += hi; }
+      continue;
+    }
+    // GOVERNANCE REACHES SUPPLIES TOO (Phase 5E.4). This loop iterated the AUTHORED
+    // purchase while the food loop above resolved through governedPurchase(), so the
+    // entire Supplies half of every shopping list was ungoverned: `unitCostRange`,
+    // `qtyPerGuest`, `qtyFlat` and `provenance` were all editable, publishable,
+    // versioned and approved on a supply line, and changing any of them moved
+    // nothing a host saw. Measured across 39 playbooks before the fix: 396 dead
+    // field/purchase pairs, every one of them a supply row.
+    //
+    // The comment below has always claimed these rows get "the EXACT same row
+    // functions as food". They did not, and the gap was invisible precisely because
+    // the rows LOOK identical on the surface — same qty, same price range, sourced
+    // from the authored file instead of the governed one.
+    const { p, baseQty, qOver, qty, uLow, uHigh, units } = supplyCost(p0);
     list.push({
       id: p.id, group: 'Supplies', item: p.item, short: shortItem(p.item),
       qty, unit: shortUnit(p.unit, qty), essential: !!p.essential, where: [...new Set([...(p.where || []), ...extraSupplyStores(p.item)])],
@@ -5253,6 +5289,11 @@ export function playbookFoodPlan(event, opts = {}) {
     supplies,
     suppliesLow: Math.max(0, Math.round(supSum('low') / 5) * 5),
     suppliesHigh: Math.max(0, Math.round(supSum('high') / 5) * 5),
+    // Optional spend the list deliberately does NOT carry — see the ruling at
+    // `optionalSpend` above. Reported so a surface can name it; added to nothing.
+    optionalLow: Math.max(0, Math.round(optionalSpend.low)),
+    optionalHigh: Math.max(0, Math.round(optionalSpend.high)),
+    optionalLines: optionalSpend.lines,
     suppliesSpentLow: Math.max(0, Math.round(supGot('low') / 5) * 5),
     suppliesSpentHigh: Math.max(0, Math.round(supGot('high') / 5) * 5),
     suppliesCount: supItems.length,

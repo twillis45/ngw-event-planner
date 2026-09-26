@@ -21414,6 +21414,39 @@ export default function HostShellV2() {
                           you expect to spend on meals as your own budget line and it will count here.
                         </p>
                       ) : null}
+                      {/* ── THE OPTIONAL MONEY, WHICH HAD A NUMBER NOWHERE ───────
+                          Measured 2026-09-26 across 45 playbooks: 98 priced lines,
+                          $3,280, that the shopping list leaves off on purpose
+                          (centerpiece flowers, balloons and a banner, favors,
+                          candles) and that none of hostSpending's seven terms
+                          could see. A host who buys them has spent money the
+                          number they plan against never heard of.
+
+                          NO BAR AND NO GLYPH, both deliberate. The rows above
+                          paint a fill as a fraction of `money.planned`; this money
+                          is NOT in planned, so a bar would draw a claim on the
+                          budget that does not exist — the same trap the 4%-floor
+                          comment above warns about. And nothing in hostv2 lists
+                          these items (they are off the shopping list by
+                          definition), so there is nowhere honest to send a tap.
+
+                          It says "if you buy them" because that is the whole
+                          distinction: `committed` deliberately does not include
+                          this, and telling a host they have committed to favors
+                          they may never buy is the invention this refuses. */}
+                      {spend.optionalLines > 0 && spend.optionalHigh > 0 ? (
+                        <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 8, marginTop: 8 }}>
+                          <div className="line" style={{ padding: 0 }}>
+                            <span>Nice-to-haves, if you buy them</span>
+                            <span className="amt">~{fmt(spend.optionalLow)}–{fmt(spend.optionalHigh)}</span>
+                          </div>
+                          <p className="grounding" style={{ margin: '4px 0 0' }}>
+                            {spend.optionalLines} {spend.optionalLines === 1 ? 'item' : 'items'} your plan prices but leaves off the
+                            shopping list — decorations and extras nobody needs to pull the day off. Not counted above,
+                            because you haven’t said you want {spend.optionalLines === 1 ? 'it' : 'them'}.
+                          </p>
+                        </div>
+                      ) : null}
                     </>
                   )}
                   {recovery && recovery.status === 'recovery_available' && (

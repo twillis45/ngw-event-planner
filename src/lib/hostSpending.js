@@ -169,6 +169,30 @@ export function hostSpending(event, priceFactor, itemFactors) {
   // survive a no-kitchen stay, that is a change to the GATE — and the budget
   // follows it from here for free, which is the point of reading one accessor.
   const suppliesEstimate = hasRealCount && plan && !listWithheld ? mid(plan.suppliesLow, plan.suppliesHigh) : 0;
+
+  // ── THE EIGHTH TERM, AND THE ONLY ONE THAT IS NOT PART OF `committed` ──────
+  //
+  // Optional spend: what the playbook prices and the shopping list deliberately
+  // leaves off — centerpiece flowers, balloons and a banner, party favors,
+  // candles. Measured 2026-09-26 across 45 playbooks at 40 guests: 98 lines,
+  // $3,280, invisible to every one of this file's seven terms. A host who buys
+  // it has spent money the number they plan against never heard of.
+  //
+  // IT IS NOT ADDED TO `committed`, AND THAT IS THE POINT. Folding it in would
+  // tell a host they have committed to party favors they may never buy — the
+  // same invention this file's neighbours spent a day removing. A review board
+  // ruled it a reported figure with its own row, never a component of the
+  // headline and never in the hero, and that is what this is: `committed`,
+  // `spent`, `committedEstimated` and `uncommitted` are all byte-identical with
+  // this field present.
+  //
+  // Priced and gated inside playbookFoodPlan beside the essential rows it sits
+  // next to (one formula, one set of decision/region gates), so this file adds
+  // no math of its own — it carries the number the list already knows.
+  const optionalLow = plan && !listWithheld ? Math.max(0, num(plan.optionalLow)) : 0;
+  const optionalHigh = plan && !listWithheld ? Math.max(0, num(plan.optionalHigh)) : 0;
+  const optionalEstimate = mid(optionalLow, optionalHigh);
+  const optionalLines = plan && !listWithheld ? Math.max(0, num(plan.optionalLines)) : 0;
   const suppliesBought = hasRealCount && plan ? mid(plan.suppliesSpentLow, plan.suppliesSpentHigh) : 0;
   let cap = null;
   try { cap = hasRealCount ? playbookCapacity(ev) : null; } catch (_e) { cap = null; }
@@ -336,7 +360,7 @@ export function hostSpending(event, priceFactor, itemFactors) {
   const foodUnpriced = listWithheld && hasRealCount
     && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
 
-  return { priceBasis, total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  return { optionalLow, optionalHigh, optionalEstimate, optionalLines, priceBasis, total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;
