@@ -138,7 +138,11 @@ test.describe('the shopping list can leave the app', () => {
     await boot(page, { id: 'cart-probe', type: 'Birthday' });
     await openSection(page, 'The spread & shopping');
     const text = await sheetText(page);
-    expect(text).toContain('send the list to instacart');
+    // SHORTENED 2026-09-26 to fit three actions on one row at 390px; the verb
+    // is what this assertion is really about and the verb survived. Missed on
+    // the first pass because the sweep for the old label was case-SENSITIVE
+    // and this assertion lowercases the sheet text — the full matrix caught it.
+    expect(text).toContain('send to instacart');
     // …and the copy action it sits beside is still there — this is an addition,
     // not a replacement.
     expect(text).toContain('copy the shopping list');

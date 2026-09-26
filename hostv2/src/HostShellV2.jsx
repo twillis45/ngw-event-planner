@@ -4294,9 +4294,42 @@ export default function HostShellV2() {
   // a route restore — and inheriting the Y of whatever the host last touched,
   // minutes ago, would be worse than no origin at all. Past the window it
   // falls back to the 24px default, which is exactly today's behavior.
+  // ── AND IT IS AN ENTRANCE, NOT A RE-RENDER (2026-09-26) ──────────────────
+  //
+  // Host: "screen is bouncing again between plan and shop." Measured on the
+  // live sheet: switching tabs moved the sheet from top 0 to top 24 and eased
+  // it back over ten frames, every time.
+  //
+  // The restart below is deliberate and correct FOR AN OPEN — it is how the
+  // origin custom property gets picked up. The bug was the dependency list:
+  // `sheet.kind` flips between 'food' and 'foodplan' every time the host taps
+  // Plan or Shop, so a TAB SWITCH inside an already-open sheet replayed the
+  // whole entrance. `sheet.focus` did the same on any deep-link row change.
+  //
+  // The element never remounts — verified, same node, `sheetrise` simply
+  // restarted with currentTime 117ms — so no key or React change fixes this.
+  // The effect has to know the difference between opening and changing, which
+  // the dependency list alone cannot express.
+  //
+  // A sheet that swaps kind while open (a route change from another sheet)
+  // now also skips the rise. That is the better behaviour of the two: a lurch
+  // mid-session reads as a glitch, and the entrance has already been paid.
+  // SAME SURFACE, NOT SAME SHEET-OBJECT. The first cut of this guard skipped
+  // the rise whenever the sheet was already open, and motionContinuity caught
+  // that too: on a phone the host reaches a section by opening Sections and
+  // tapping a row, so a NEW sheet arrives as a `kind` change on an open one.
+  // That is a real entrance and must rise from the tapped row. Plan and Shop
+  // are the same surface wearing two kinds, and that is the only case that
+  // must not. Naming the pair is honest; guessing from "was it open" was not.
+  const sheetSurfaceRef = useRef(null);
+  const surfaceOf = (k) => (k === 'foodplan' ? 'food' : k);
   useLayoutEffect(() => {
     const el = sheetRef.current;
-    if (!el || !sheet) return;
+    if (!sheet) { sheetSurfaceRef.current = null; return; }
+    if (!el) return;
+    const surface = surfaceOf(sheet.kind);
+    if (sheetSurfaceRef.current === surface) return;   // a mode or focus change is not an entrance
+    sheetSurfaceRef.current = surface;
     const tap = lastTapRef.current;
     let fromY = 24;
     // MEASURED WITH THE ANIMATION OFF. The element mounts with `sheetrise`
@@ -4316,6 +4349,26 @@ export default function HostShellV2() {
       fromY = Math.max(0, Math.min(320, Math.round(tap.y - r.top)));
     }
     el.style.setProperty('--from-y', fromY + 'px');
+    // ── THE BOUNCE WAS SPEED, NOT SPRING (host: "why does the entrance
+    // bounce", 2026-09-26) ────────────────────────────────────────────────
+    // Measured: 300ms fixed, easing cubic-bezier(.2,0,0,1) whose control
+    // points both sit inside 0..1 — it CANNOT overshoot, so there is no
+    // spring here to remove. At the 320px clamp that is ~1,070px/s, with the
+    // panel at opacity .4 from the first frame, so the eye tracks a large
+    // bright object crossing a third of the screen. That is the lurch.
+    //
+    // MY FIRST FIX WAS TO CLAMP THE DISTANCE TO 112, AND motionContinuity
+    // CAUGHT IT: that spec asserts two taps at different heights produce two
+    // different origins, and a tight clamp collapses most taps onto the same
+    // value — it would have quietly killed the origin cue to fix its speed,
+    // which is the "shipped and does nothing" failure the spec was written
+    // for. The distance is the FEATURE; the velocity was the defect.
+    //
+    // So the travel keeps its full range and the DURATION scales with it,
+    // holding roughly 700px/s: 24px still opens in the 240ms floor, 320px now
+    // takes 457ms instead of 300. Far sheets read as travelling further
+    // rather than faster, which is what distance is supposed to mean.
+    el.style.setProperty('--sheet-ms', Math.round(Math.max(240, Math.min(520, fromY / 0.7))) + 'ms');
     el.style.animation = '';
   }, [sheet && sheet.kind, sheet && sheet.focus]);
   // The meaning sheet can be opened generically (Sections directory) which

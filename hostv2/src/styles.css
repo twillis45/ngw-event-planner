@@ -1525,7 +1525,18 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      is how a footer ends up 4px off the edge on one surface and not another. */
   --sheet-pad-b: 28px;
   padding:18px var(--sp-5) calc(var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px));
-  animation:sheetrise var(--ms-sheet) var(--ease-standard);
+  /* --sheet-ms is written per-open beside --from-y so a longer travel gets a
+     longer duration and the rise holds a constant velocity; it falls back to
+     the token for every path that sets no origin. */
+  /* `both`, like .palette above. Without a fill the animation leaves the
+     timeline the moment it ends, and anything asking the element where it rose
+     FROM — motionContinuity does exactly that — gets nothing back. That spec
+     was passing only because the entrance used to replay on every kind/focus
+     change, so a fresh animation always happened to be running when it looked.
+     Fixing the replay took the accident away; the fill is what the read
+     actually needed. The to-state is transform:none/opacity:1, so holding it
+     changes no pixels. */
+  animation:sheetrise var(--sheet-ms, var(--ms-sheet)) var(--ease-standard) both;
 }
 /* `--from-y` is written by the shell from the pointer that opened this sheet.
    The default keeps every un-originated path — keyboard, deep link, route
