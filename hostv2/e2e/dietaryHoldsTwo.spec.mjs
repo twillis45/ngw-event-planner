@@ -143,8 +143,13 @@ test('tapping a restriction marks the lines it applies to', async ({ page }) => 
   if (await shopTab.count()) { await shopTab.click(); await settled(page); }
   await sheet.getByText('The list', { exact: false }).first().click();
   await settled(page);
-  // The list is grouped; open Food to reach the item rows.
-  await sheet.getByText('7 items', { exact: false }).first().click();
+  // The list is grouped; open Food to reach the item rows. NOT the list row —
+  // that one now reads "N items" and is already open by this point. This is the
+  // GROUP header, which still carries its own fraction. A string-replace across
+  // this file when the list row's copy changed hit both and broke this one; the
+  // matrix caught it at desktop only, 30s timeout on a locator for text that
+  // was never here.
+  await sheet.getByText('0 of 7 bought', { exact: false }).first().click();
   await settled(page);
 
   // Blue crabs is the row that carries `decision open` AND `essential`, so it is

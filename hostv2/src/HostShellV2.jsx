@@ -2689,6 +2689,10 @@ export default function HostShellV2() {
   }, [event.id, vf.city, blsRegion]); // eslint-disable-line react-hooks/exhaustive-deps
   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
+  // "What's in the estimate" — the meta block's disclosure (owner picked board
+  // option C, 2026-09-26). Collapsed by default; holds the meal counts and the
+  // pricing provenance, which used to run as two grey lines under the band.
+  const [estOpen, setEstOpen] = useState(false);
   const [showMoreDiets, setShowMoreDiets] = useState(false); // dietary "other" fold (parity: App.js:10850)
   const [showMoreMoments, setShowMoreMoments] = useState(false); // heart-moments fold — the board leads with one
   const [dietOtherOpen, setDietOtherOpen] = useState(false); // "+ Other" custom-diet name entry
@@ -18023,68 +18027,69 @@ export default function HostShellV2() {
                     if (m && m !== '—') counts[m] = (counts[m] || 0) + 1;
                   });
                   const answered = Object.values(counts).reduce((a, b) => a + b, 0);
-                  if (!answered) return null;
-                  const un = gs.length - answered;
+                  const un = answered ? Math.max(0, gs.length - answered) : 0;
                   // Stable order: the invite's own meal choices first, then any
                   // free-text meals a CSV brought in.
                   const order = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
                   const keys = [...order.filter(k => counts[k]), ...Object.keys(counts).filter(k => !order.includes(k))];
                   return (
                     <>
-                    {/* ── ONE OF THESE FACTS IS A JOB (board option B) ────────
-                        Six facts sat under the big number as three cramped
-                        lines in three greys — owner: "it looks horrible". They
-                        do not share a job: one is money, ONE IS A TASK, two are
-                        reference and two are provenance. Flattening them into
-                        ·-runs hid the only one a host can act on.
+                    {/* ── ONE CHIP AND A DOOR (board option C, owner-picked) ──
+                        Six facts sat under the big number as three cramped grey
+                        lines — "it looks horrible". Option B ranked them into
+                        four; the owner picked C, which resting-states to ONE
+                        line: the job, and a way to the rest.
 
-                        The task is a row now, and it says what it MEANS —
-                        "haven't said what they eat", not a bare "unanswered".
-                        The counts stay plainly beneath it and the provenance
-                        follows under a rule. EVERY fact that was here is still
-                        here: the chip sketch drawn earlier was rejected because
-                        it dropped the four per-meal counts and the region
-                        qualifier while claiming it kept them. */}
-                    {un > 0 && (
-                      <div className="later-row" style={{ margin: '0 0 var(--sp-2)', background: 'var(--warn-tint)',
-                        border: 'none', borderRadius: 'var(--r-md)', padding: 'var(--sp-2) var(--sp-3)',
-                        flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
-                        <span className="t" style={{ color: 'var(--warn)', fontWeight: 600, flex: '1 1 auto' }}>
-                          {un} {un === 1 ? 'guest hasn’t' : 'guests haven’t'} said what they eat
-                        </span>
-                        <button className="mini" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
-                          Note what they eat
+                        THE CHIP IS A BUTTON, not a status pill. That is the one
+                        thing carried over from B: the unanswered count is the
+                        only fact here a host can act on, so it routes to
+                        Dietary needs (verified) rather than just colouring
+                        itself. A plain tag would have been prettier and dead.
+
+                        WHAT THIS COSTS, stated because it is a real cost: the
+                        meal counts and the pricing provenance now sit behind a
+                        tap, and a 2026-09-18 ruling in this file's neighbour
+                        says silence about a national average "reads as THESE
+                        ARE YOUR PRICES". The defence is that the door is
+                        visible and named — "What's in the estimate" is not
+                        silence — but if that reads as too thin a qualifier,
+                        moving the provenance line back out is a one-line
+                        change and this comment is where to start. */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)',
+                      flexWrap: 'wrap', margin: 'var(--sp-3) 0 0' }}>
+                      {un > 0 && (
+                        <button className="mini"
+                          style={{ color: 'var(--warn)', background: 'var(--warn-tint)', borderColor: 'var(--warn)' }}
+                          onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
+                          {un} meal{un === 1 ? '' : 's'} unanswered
                         </button>
-                      </div>
+                      )}
+                      <button type="button" onClick={() => setEstOpen(o => !o)}
+                        aria-expanded={estOpen}
+                        style={{ font: 'inherit', fontSize: 'var(--t-caption-min)', fontWeight: 600,
+                          color: 'var(--steel-soft)', background: 'none', border: 'none', padding: 0,
+                          cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+                        {estOpen ? 'Hide what’s in the estimate' : 'What’s in the estimate'}
+                      </button>
+                    </div>
+                    {estOpen && answered > 0 && (
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
+                        {/* NON-BREAKING inside each pair (2026-09-24, host: "hard to
+                            read with wrapping"): the count is the whole point of the
+                            pair, so a break between a meal and its number makes the
+                            reader reassemble it. */}
+                        Meals: {keys.map(k => `${k}\u00A0${counts[k]}`).join(' · ')}
+                      </p>
                     )}
-                    <p className="grounding" style={{ margin: '0 0 var(--sp-2)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
-                      {/* NON-BREAKING inside each pair (2026-09-24, host: "hard to
-                          read with wrapping"). A ·-separated run wraps wherever it
-                          runs out of room, which put "Fish" on one line and "1" on
-                          the next — the count is the whole point of the pair, so a
-                          break between them makes the reader reassemble it. The
-                          spaces WITHIN a pair are U+00A0 so lines break only at the
-                          separators. "so far" dropped: "Meals" plus a count of
-                          unanswered already says it is in progress. */}
-                      {/* ── ONE OF THESE FACTS IS A JOB (2026-09-26) ────────
-                          The whole line renders at --faint, so "3 unanswered" —
-                          the only part the host can DO something about — sits in
-                          exactly the same grey as the counts, which are just a
-                          readout. Nothing is cut and nothing is restyled except
-                          the actionable fragment, which takes the warn colour
-                          the rest of the app already uses for "this needs you".
-                          Still one line, still every number. */}
-                      Meals: {keys.map(k => `${k}\u00A0${counts[k]}`).join(' · ')}
-                    </p>
                     </>
                   );
                 })()}
-                    {/* PROVENANCE IS A FOOTNOTE AND NOW SITS LIKE ONE. It used
-                        to run directly under the per-head band, above the meal
-                        counts, in the same grey — three unrelated sentences
-                        stacked with no hierarchy. It qualifies everything above
-                        it, so it goes last, under a rule. Same text, same owner
-                        (geoPlanNote); the string is not split. */}
+                    {/* PROVENANCE, NOW BEHIND THE DOOR. It qualifies the band
+                        above it, and under option C it joins the meal counts
+                        inside "What's in the estimate" rather than running as a
+                        third grey line. Same text, same owner (geoPlanNote);
+                        the string is not split. */}
+                    {estOpen && (
                     <p className="grounding" style={{ margin: 'var(--sp-3) 0 0', paddingTop: 'var(--sp-2)', borderTop: '1px solid var(--line-soft)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
                       {/* The vintage suffix is the NATIONAL branch's stamp. When a
                           regional factor actually applied, geoPlanNote already ends
@@ -18104,6 +18109,7 @@ export default function HostShellV2() {
                           the next one whole. */}
                       {fSpan ? fSpan.text + ' · ' : ''}{priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
                     </p>
+                    )}
                     {/* ── WHERE WE ARE SHOPPING (host, 2026-09-24, board D) ─────
                         "we need to include which stores are under umbrella or
                         that Kroger is parent" — and, with it, where the host is
