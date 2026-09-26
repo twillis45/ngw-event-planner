@@ -7,14 +7,19 @@
 
 import { eventPlan, selectEventNextAction, taskTiming, deriveCommandCenterData, _stripLeadingDateClause } from '../../CommandCenter';
 import { playbookAreaNextStep } from '../playbooks';
+import { localISO } from '../dates';
 
 beforeEach(() => { try { localStorage.clear(); } catch {} });
 
 // A future date ~40 days out so the engine isn't in any urgent buy/compression window.
+// LOCAL formatter from dates, never toISOString(). MEASURED 2026-09-26 at
+// TZ=Pacific/Noumea (UTC+11): a local midnight printed with toISOString() is UTC,
+// so east of Greenwich it emits the PREVIOUS day and every offset came back one
+// short. The engine was right; the fixture was a day off.
 const future = (days) => {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 };
 
 const baseBBQ = (over = {}) => ({
@@ -39,7 +44,7 @@ describe('eventPlan — shape & progress', () => {
   });
 
   test('PAST-EVENT-1: a 6-year-past event never surfaces "N things need you" — agrees with the phase engine\'s "this one is behind you"', () => {
-    const sixYearsAgo = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 6); return d.toISOString().slice(0, 10); })();
+    const sixYearsAgo = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 6); return localISO(d); })();
     const plan = eventPlan(baseBBQ({ date: sixYearsAgo, guests: [], vendors: [], budget: [] }));
     expect(plan.nextActions).toEqual([]);
     expect(plan.planningState.currentPriority).toBeNull();
@@ -52,7 +57,7 @@ describe('eventPlan — shape & progress', () => {
   });
 
   test('PAST-EVENT-1: today (day 0) is not treated as past — still surfaces real actions', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localISO(new Date());
     const plan = eventPlan(baseBBQ({ date: today, guests: [], vendors: [], budget: [] }));
     expect(plan.nextActions.length).toBeGreaterThan(0);
   });
@@ -332,7 +337,7 @@ const isoForOffset = (days) => {
   // returns a YYYY-MM-DD date `days` from today (negative = past).
   const d = new Date(); d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);   // LOCAL — see the note above
 };
 
 describe('taskTiming — label derived from the real event date, never a static phase', () => {

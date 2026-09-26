@@ -1,9 +1,19 @@
-import { getToday, daysUntil, eventDateStatus, targetMonthLabel, saturdaysOfMonth } from '../dates';
+import { getToday, daysUntil, eventDateStatus, targetMonthLabel, saturdaysOfMonth, localISO } from '../dates';
 
+// LOCAL FORMATTER, NOT toISOString. MEASURED 2026-09-26 at TZ=Pacific/Noumea
+// (UTC+11): this helper built a LOCAL midnight with getToday() and then printed
+// it with `toISOString()`, which is UTC — so east of Greenwich it emitted the
+// PREVIOUS day and `iso(0)` meant yesterday. `daysUntil(iso(0))` returned -1,
+// and the 14-day boundary this file exists to pin returned 13.
+//
+// The module under test was never wrong. The fixture was, in the canonical
+// module's own test — exactly the trap dateChips.js documents: "built a LOCAL
+// midnight and then formatted it with toISOString() — east of Greenwich that
+// emits the previous day."
 const iso = (offsetDays) => {
   const d = getToday();
   d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 };
 
 describe('dates — canonical day-count (single source of truth)', () => {

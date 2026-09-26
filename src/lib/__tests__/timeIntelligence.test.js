@@ -1,10 +1,14 @@
 // TIME INTELLIGENCE — eventDateStatus + taskTimeStatus.
 // One source for "is this date usable, and what's its standing?" Built on daysUntil.
-import { eventDateStatus, taskTimeStatus } from '../dates';
+import { eventDateStatus, taskTimeStatus, localISO } from '../dates';
 
+// LOCAL formatter from ../dates, never toISOString(). MEASURED 2026-09-26 at
+// TZ=Pacific/Noumea (UTC+11): a local midnight printed with toISOString() is UTC,
+// so east of Greenwich it emits the PREVIOUS day and every offset came back one
+// short. The engine was right; the fixture was a day off.
 const iso = (offsetDays) => {
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 };
 
 describe('eventDateStatus', () => {

@@ -22,11 +22,18 @@
 // Every helper takes an optional trailing `now` (the dates.getToday convention):
 // time you cannot pin is time you cannot check.
 
-import { getToday } from './dates';
+import { getToday, localISO } from './dates';
 
-/** A Date → its LOCAL YYYY-MM-DD. The only formatter on the chip paths. */
-export const localISO = (d) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// IMPORTED, NOT REDEFINED AND NOT RE-EXPORTED (2026-09-26). This module had its
+// own copy of the local formatter and declared the invariant for itself; the
+// formatter now lives in ./dates, which calls itself the one source of truth for
+// calendar-day math.
+//
+// It is deliberately NOT re-exported. engineReachesTheShippingShell classifies
+// reachability PER EXPORTED SYMBOL and does not follow `export { x }`, so a
+// re-export made `dates.localISO` look CRA-only and that test failed naming
+// `dates`. A re-export is a second import path for one definition anyway —
+// callers take it from ./dates.
 
 /** Today's LOCAL calendar date. Never rolls to tomorrow at 8pm ET again. */
 export const today8601 = (now) => localISO(getToday(now));

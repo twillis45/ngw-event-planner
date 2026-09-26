@@ -5,12 +5,17 @@
 // no playbook file and shouldn't be the model — see the destination-celebration
 // research board for the full audit).
 import { playbookDecisionBoard, playbookChecklist, playbookDecisionOptions, eventHasKids } from '../index';
+import { localISO } from '../../dates';
 
 // Wave-2b note: this suite tests destination-decision MEMBERSHIP/routing, not the
 // active/deferred partition. `future` is 300 days out — a long-runway "standard" event,
 // so horizon-awareness now parks these far-future windows in `board.deferred`. Membership
 // checks therefore read open ∪ locked ∪ deferred (the decision still exists on the board).
-const future = (() => { const d = new Date('2026-01-01T00:00:00'); d.setDate(d.getDate() + 300); return d.toISOString().slice(0, 10); })();
+// LOCAL formatter from dates, never toISOString(). MEASURED 2026-09-26 at
+// TZ=Pacific/Noumea (UTC+11): a local midnight printed with toISOString() is UTC,
+// so east of Greenwich it emits the PREVIOUS day and every offset came back one
+// short. The engine was right; the fixture was a day off.
+const future = (() => { const d = new Date('2026-01-01T00:00:00'); d.setDate(d.getDate() + 300); return localISO(d); })();
 const ev = (extra) => ({ id: 'e', type: 'Birthday', date: future, guestCount: 30, ...extra });
 
 describe('destination decisions are purely additive, gated on isDestination', () => {

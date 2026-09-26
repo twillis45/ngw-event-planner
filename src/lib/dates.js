@@ -14,6 +14,30 @@
 // cannot pin is time you cannot check.
 export const getToday = (now) => { const d = now ? new Date(now) : new Date(Date.now()); d.setHours(0, 0, 0, 0); return d; };
 
+// ─── THE LOCAL FORMATTER, GIVEN A HOME (2026-09-26) ─────────────────────────
+//
+// A Date -> its LOCAL YYYY-MM-DD. The inverse of this module's parsing rule, and
+// it belongs here for the reason stated at the top: this file is the ONE source
+// of truth for calendar-day math, and a formatter that lives anywhere else is
+// one an author has to re-derive.
+//
+// WHY THIS EXISTS AS AN EXPORT RATHER THAN A THIRTEENTH COPY. Measured today:
+// ELEVEN inline copies of this exact template across src/lib — including TWO in
+// this file, at saturdaysOfMonth and rsvpDeadlineFor — plus `localISO` in
+// dateChips.js. Every copy is correct. The copies are not the defect; they are
+// the EVIDENCE of it. With nothing canonical to import, each author writes the
+// formatter again, and whoever reaches for `toISOString().slice(0, 10)` instead
+// gets a UTC date and a bug that only appears for part of the day.
+//
+// That bug has now been fixed FOUR times, module by module — dateChips,
+// dayAlerts, experienceContext, and two test fixtures this morning — and each
+// fix stayed inside its own module, which is why there was a fifth.
+//
+// `toISOString()` is UTC. Using it to make a calendar date is the bug; there is
+// no case in this repo where it is the right tool for a YYYY-MM-DD.
+export const localISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 // Whole CALENDAR days from today until `d`. Both sides are midnight, so the result
 // is an exact integer and the clock never moves the date: the day before the event
 // answers 1 at dawn and at 11pm alike.
@@ -116,7 +140,7 @@ export const saturdaysOfMonth = (year, month) => {
   const d = new Date(y, m, 1);
   while (d.getMonth() === m) {
     if (d.getDay() === 6) {
-      out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      out.push(localISO(d));
     }
     d.setDate(d.getDate() + 1);
   }
@@ -157,7 +181,7 @@ export const rsvpDeadlineFor = (event) => {
   if (dte < 7) return { iso: null, days: dte, hard: false, source: 'soon' };
   const base = new Date(String(event.date).slice(0, 10) + 'T00:00:00');
   base.setDate(base.getDate() - 7);
-  const iso = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
+  const iso = localISO(base);
   return { iso, days: daysUntil(iso), hard: true, source: 'derived' };
 };
 

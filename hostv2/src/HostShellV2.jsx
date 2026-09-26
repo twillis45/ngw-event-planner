@@ -78,7 +78,7 @@ import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/l
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
-import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth } from '@app/lib/dates';
+import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth, localISO } from '@app/lib/dates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
@@ -2177,7 +2177,7 @@ export default function HostShellV2() {
         let due = null, dd = null;
         if (lead != null && event.date) {
           const d0 = new Date(event.date + 'T12:00:00'); d0.setDate(d0.getDate() + lead);
-          due = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-${String(d0.getDate()).padStart(2, '0')}`;
+          due = localISO(d0);   // LOCAL date from @app/lib/dates — never toISOString()
           try { dd = daysUntil(due); } catch { dd = null; }
         }
         const dte = (() => { try { return daysUntil(event.date); } catch { return null; } })();
@@ -8210,7 +8210,7 @@ export default function HostShellV2() {
                               // LOCAL format, not toISOString (UTC): east of Greenwich the UTC
                               // slice shifts a local-midnight Saturday to FRIDAY's date — the
                               // chip would say Saturday and write the day before.
-                              if (d.getDay() === 6) sats.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+                              if (d.getDay() === 6) sats.push(localISO(d));
                               d.setDate(d.getDate() + 1);
                             }
                             return (
@@ -9392,7 +9392,7 @@ export default function HostShellV2() {
                 let snoozePickMin = null, snoozePickMax = null;
                 if (snoozeProposed) {
                   const t0 = new Date(); t0.setHours(0, 0, 0, 0); t0.setDate(t0.getDate() + 1);
-                  const tomorrowIso = `${t0.getFullYear()}-${String(t0.getMonth() + 1).padStart(2, '0')}-${String(t0.getDate()).padStart(2, '0')}`;
+                  const tomorrowIso = localISO(t0);
                   try {
                     snoozePickMin = clampSnoozeUntil(event, tomorrowIso, { leadDays: a.leadDays });
                     snoozePickMax = clampSnoozeUntil(event, '9999-12-31', { leadDays: a.leadDays });

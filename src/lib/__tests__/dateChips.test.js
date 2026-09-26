@@ -7,10 +7,8 @@
 // and compute every expectation from LOCAL components — no hardcoded UTC
 // assumptions, so they hold in any test-runner timezone.
 
-import {
-  localISO, today8601, addDaysISO, nextWeekendISO, followingWeekendISO,
-  addMonthsISO, nextFridayISO, extendSnoozeUntil,
-} from '../dateChips';
+import { today8601, addDaysISO, nextWeekendISO, followingWeekendISO, addMonthsISO, nextFridayISO, extendSnoozeUntil } from '../dateChips';
+import { localISO } from '../dates';
 
 // Local-constructed instants: same LOCAL calendar date/day-of-week in every TZ.
 // 2026-07-17 is a Friday.
