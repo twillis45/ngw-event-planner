@@ -18870,6 +18870,13 @@ export default function HostShellV2() {
                     openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
                   }}>Copy the shopping list</button>
                 )}
+                {/* Gated on the same condition as BOTH its children. Without
+                    it the wrapper rendered on the summary tab as an empty grid
+                    — zero height, but still its own margin — which measured as
+                    a stray 14px gap under the action row where the ladder says
+                    12 or 16. An empty layout box is invisible until you measure
+                    the rhythm, which is the point of measuring it. */}
+                {foodSect.list && !noKitchen && (
                 <div className="list-acts">
                 {foodSect.list && !noKitchen && isStorePricesConfigured() && (() => {
                   const lines = (foodPlan.list || []).filter(it => it && !it.skipped && it.item);
@@ -19059,6 +19066,7 @@ export default function HostShellV2() {
                   );
                 })()}
                 </div>
+                )}
 
                 {foodSect.list && (() => {
                   // Skipped lines stay IN the list (parity with legacy's toggleSkip —
@@ -19975,7 +19983,7 @@ export default function HostShellV2() {
                     sheet.kind === 'foodplan' ? null : (
                     /* Adding a line to the shopping list is a SHOP act; on the
                        Plan tab it was a third copy of the same door. */
-                    <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setFoodAddOpen(true)}>
+                    <button className="fold-btn" style={{ marginTop: 'var(--sp-3)' }} onClick={() => setFoodAddOpen(true)}>
                       + Add an item you’re bringing or buying<span className="chev" aria-hidden="true">›</span>
                     </button>
                     )

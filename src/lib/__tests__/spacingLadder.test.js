@@ -69,6 +69,57 @@ const offLadder = (css) => {
   return out;
 };
 
+// ─── AND THE HALF OF THE PROBLEM THE GATE COULD NOT SEE (2026-09-26) ───────
+//
+// The ratchet above scans styles.css. Measured today, HostShellV2.jsx carries
+// 312 MORE off-ladder spacing values in inline `style={{...}}` objects —
+// `margin: 6px` x85, `margin: 10px` x48, `gap: 6px` x36, `margin: 14px` x30 —
+// and not one of them has ever been counted. The class the board froze in the
+// stylesheet has been regrowing in the JSX the whole time, which is exactly
+// how it accrued there in the first place: one honest local decision at a time.
+//
+// Found by measuring a gap rather than reading code. After the Shop sheet's
+// action rows were rebuilt, the vertical rhythm read 12 / 12 / 14 / 16, and
+// the 14 traced to `style={{ marginTop: 14 }}` on a .fold-btn — overriding
+// that element's own `margin: var(--break-section)`, a TOKEN, with a literal.
+// The stylesheet was already right; the JSX was overruling it.
+//
+// SAME RATCHET, SAME REASON. 314 rewrites in one pass is the enormous untested
+// visual diff this file's header refuses, so the number is frozen instead and
+// may only fall. One came off in the commit that added this gate.
+const JSX_BASELINE = 312;   // measured with stripComments applied, as the gate does
+
+const offLadderInline = (src) => {
+  const out = [];
+  const re = /\b(margin|padding|gap)(?:Top|Right|Bottom|Left|Block|Inline)?\s*:\s*'?(\d+)(?:px)?'?/g;
+  let m;
+  while ((m = re.exec(stripComments(src)))) {
+    const n = Number(m[2]);
+    if (!LADDER.has(n)) out.push({ prop: m[1], value: n });
+  }
+  return out;
+};
+
+describe('the JSX cannot reintroduce what the stylesheet gave up', () => {
+  test('off-ladder INLINE spacing never increases', () => {
+    const jsx = fs.readFileSync(
+      path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8',
+    );
+    const found = offLadderInline(jsx);
+    // A rise means a new literal was typed where a token exists. Lower the
+    // baseline when you remove one; never raise it to let one in.
+    expect(found.length).toBeLessThanOrEqual(JSX_BASELINE);
+  });
+
+  test('the inline gate actually bites', () => {
+    // Guard against a dead ratchet — the same guard the CSS half carries,
+    // because a scanner that silently matches nothing passes forever.
+    expect(offLadderInline("style={{ marginTop: 14 }}").length).toBe(1);
+    expect(offLadderInline("style={{ marginTop: 'var(--sp-3)' }}").length).toBe(0);
+    expect(offLadderInline('style={{ padding: 16 }}').length).toBe(0);
+  });
+});
+
 describe('spacing sits on the ratified ladder', () => {
   const cssPath = path.resolve(__dirname, '../../..', 'hostv2/src/styles.css');
   const css = fs.readFileSync(cssPath, 'utf8');
