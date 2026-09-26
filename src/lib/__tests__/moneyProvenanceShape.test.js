@@ -40,7 +40,7 @@ import {
   METRO_MARKETS, METRO_MARKETS_PROVENANCE, RUSH_FACTOR_PROVENANCE, getRushFactor,
 } from '../vendorEstimator';
 import {
-  SOURCING_TIERS, CANONICAL_PROTEIN_PRICES, NONPROTEIN_CHANNEL_FACTOR,
+  SOURCING_TIERS, CANONICAL_PROTEIN_PRICES, comparableRows, NONPROTEIN_CHANNEL_FACTOR,
   SOURCING_TIERS_PROVENANCE, NONPROTEIN_CHANNEL_PROVENANCE,
 } from '../sourcing';
 
@@ -439,9 +439,16 @@ describe('estimateTotalRange reports the constants that built each figure', () =
 
 describe('sourcing.tiers — the note is arithmetic, not an opinion', () => {
   const mid = ([lo, hi]) => (lo + hi) / 2;
-  const meanRatio = (channel) => CANONICAL_PROTEIN_PRICES
+  // ONLY ROWS THAT CARRY BOTH SIDES. `fryfish` and `crawfish` (2026-09-26)
+  // carry `grocery` only — no butcher sells live crawfish by the sack and no
+  // Costco source exists for whiting or porgy, so those tiers are absent rather
+  // than invented. A row with one side cannot contribute a ratio; including it
+  // crashed on destructuring undefined. The derived numbers below are unchanged
+  // because the two new rows never had a butcher figure to compare against.
+  const paired = comparableRows;
+  const meanRatio = (channel) => paired(channel)
     .map((p) => mid(p[channel]) / mid(p.butcher))
-    .reduce((a, b) => a + b, 0) / CANONICAL_PROTEIN_PRICES.length;
+    .reduce((a, b) => a + b, 0) / paired(channel).length;
 
   test('the shipped factors do NOT reproduce from the table said to back them', () => {
     const shipped = Object.fromEntries(SOURCING_TIERS.map((t) => [t.id, t.factor]));

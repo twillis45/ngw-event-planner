@@ -38,7 +38,7 @@
 import fs from 'fs';
 import path from 'path';
 import {
-  SOURCING_TIERS, CANONICAL_PROTEIN_PRICES, SOURCING_TIERS_PROVENANCE,
+  SOURCING_TIERS, CANONICAL_PROTEIN_PRICES, comparableRows, rowBreadth, SOURCING_TIERS_PROVENANCE,
 } from '../sourcing';
 import { getRushFactor, RUSH_FACTOR_PROVENANCE } from '../vendorEstimator';
 import { isGroundedMoneyFactor } from '../budgetEstimator/moneyProvenance';
@@ -56,19 +56,26 @@ const VENDOR_SRC = read('vendorEstimator.js');
 
 const mid = ([lo, hi]) => (lo + hi) / 2;
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+// A CHANNEL RATIO NEEDS BOTH SIDES. `fryfish` and `crawfish` (2026-09-26) carry
+// `grocery` only — a butcher does not sell live crawfish by the sack and Costco
+// does not stock whiting or porgy, and no source was found for either, so those
+// tiers are deliberately absent rather than invented. A row missing a side
+// cannot contribute a ratio; including it crashed on destructuring undefined.
+// Every derivation below therefore runs over the rows that HAVE both.
+const pairs = comparableRows;
 const BASES = {
-  meanOfRatios: (ch) => mean(CANONICAL_PROTEIN_PRICES.map((p) => mid(p[ch]) / mid(p.butcher))),
-  ratioOfMeans: (ch) => mean(CANONICAL_PROTEIN_PRICES.map((p) => mid(p[ch])))
-                      / mean(CANONICAL_PROTEIN_PRICES.map((p) => mid(p.butcher))),
+  meanOfRatios: (ch) => mean(pairs(ch).map((p) => mid(p[ch]) / mid(p.butcher))),
+  ratioOfMeans: (ch) => mean(pairs(ch).map((p) => mid(p[ch])))
+                      / mean(pairs(ch).map((p) => mid(p.butcher))),
   medianOfRatios: (ch) => {
-    const s = CANONICAL_PROTEIN_PRICES.map((p) => mid(p[ch]) / mid(p.butcher)).sort((a, b) => a - b);
+    const s = pairs(ch).map((p) => mid(p[ch]) / mid(p.butcher)).sort((a, b) => a - b);
     const h = s.length / 2;
     return s.length % 2 ? s[Math.floor(h)] : (s[h - 1] + s[h]) / 2;
   },
-  loBounds: (ch) => mean(CANONICAL_PROTEIN_PRICES.map((p) => p[ch][0]))
-                  / mean(CANONICAL_PROTEIN_PRICES.map((p) => p.butcher[0])),
-  hiBounds: (ch) => mean(CANONICAL_PROTEIN_PRICES.map((p) => p[ch][1]))
-                  / mean(CANONICAL_PROTEIN_PRICES.map((p) => p.butcher[1])),
+  loBounds: (ch) => mean(pairs(ch).map((p) => p[ch][0]))
+                  / mean(pairs(ch).map((p) => p.butcher[0])),
+  hiBounds: (ch) => mean(pairs(ch).map((p) => p[ch][1]))
+                  / mean(pairs(ch).map((p) => p.butcher[1])),
 };
 const shippedFactor = (id) => SOURCING_TIERS.find((t) => t.id === id).factor;
 const derivations = (ch) => Object.values(BASES).map((f) => f(ch));
@@ -84,11 +91,77 @@ const CLAIMS_BACKING = (text) => /\b(is|are)\s+(honestly\s+)?(backed|supported|j
 // Every test below describes a specific table and a specific pair of shipped
 // numbers. If either is gone, this file is guarding a story rather than code.
 
-describe('(premise) the table and the factors the claim was made about', () => {
-  test('(premise) CANONICAL_PROTEIN_PRICES still carries 10 URL-bearing per-channel rows', () => {
-    expect(CANONICAL_PROTEIN_PRICES.length).toBe(10);
+// ── BREADTH AGAINST SOURCES, FROZEN ────────────────────────────────────────
+//
+// `seafood` priced NINE species — crawfish, crab, lobster, oyster, scallop,
+// salmon and three fish words — from ONE citation, and that citation was a
+// Costco SHRIMP guide. It was wrong by 2x on every row anyone measured, and
+// nothing in this repo could see it, because no check related how MUCH a row
+// claims to price to how much evidence stands behind it.
+//
+// WHY THIS IS A CENSUS AND NOT A THRESHOLD. The obvious gate is "no row may
+// span more than N terms on one source." It does not work: `sausage` spans 8
+// on one source and is FINE, because every sausage really does cost about the
+// same, while `seafood` spanning 9 was not fine, because whiting and Chilean
+// sea bass do not. Breadth alone cannot tell those apart, so a threshold would
+// be a proxy metric — the exact shape the 2026-09-25 board rejected in the
+// research ratchet — and it would license the next 9-term row at N=9.
+//
+// So this pins the actual pairs. It cannot be satisfied by refactoring: the
+// only way to lower a row's breadth is to genuinely narrow its regex, and the
+// only way to raise its source count is to add a real URL. Widening a row or
+// adding a broad one CHANGES THIS TABLE, in the diff, where a reviewer sees
+// the ratio and has to defend it.
+//
+// The four rows with breadth >= 6 on a single source are named, not hidden.
+// They are not claimed to be correct — they are claimed to be KNOWN.
+describe('how much each row claims to price, against how much backs it', () => {
+  test('breadth and source count are what they were, row by row', () => {
+    const census = Object.fromEntries(
+      CANONICAL_PROTEIN_PRICES.map((p) => [p.key, `${rowBreadth(p)} terms / ${p.sources.length} src`]),
+    );
+    expect(census).toEqual({
+      ribs:     '5 terms / 2 src',
+      brisket:  '1 terms / 2 src',
+      chicken:  '6 terms / 1 src',   // broad, single-sourced — UNMEASURED
+      sausage:  '8 terms / 1 src',   // broad, single-sourced — UNMEASURED
+      beef:     '7 terms / 2 src',
+      pork:     '6 terms / 1 src',   // broad, single-sourced — UNMEASURED
+      shrimp:   '2 terms / 1 src',
+      fryfish:  '8 terms / 2 src',   // split out of seafood 2026-09-26, fetched
+      crawfish: '3 terms / 3 src',   // split out of seafood 2026-09-26, fetched
+      seafood:  '9 terms / 1 src',   // STILL the shrimp page, for crab/lobster/
+                                     // oyster/clam/mussel/scallop/salmon. The
+                                     // measured species came out; these did not,
+                                     // because nobody has priced them.
+      turkey:   '1 terms / 1 src',
+      lamb:     '3 terms / 1 src',
+    });
+  });
+
+  test('every row carries at least one real source, whatever its breadth', () => {
+    // The floor. Breadth is a judgment; having ANY evidence is not.
     for (const p of CANONICAL_PROTEIN_PRICES) {
+      expect(p.sources.length).toBeGreaterThan(0);
+      for (const u of p.sources) expect(u).toMatch(/^https:\/\//);
+    }
+  });
+});
+
+describe('(premise) the table and the factors the claim was made about', () => {
+  test('(premise) CANONICAL_PROTEIN_PRICES still carries 12 URL-bearing rows, 10 of them full', () => {
+    // 10 -> 12 on 2026-09-26: `seafood` priced eleven species off one Costco
+    // SHRIMP page, so `fryfish` and `crawfish` were split out with their own
+    // fetched sources. Both carry `grocery` ONLY, on purpose — see the note on
+    // `pairs` above. EVERY row still carries a real https source, which is the
+    // property this premise exists to hold; the per-channel completeness check
+    // now applies to the rows that claim a channel.
+    expect(CANONICAL_PROTEIN_PRICES.length).toBe(12);
+    expect(CANONICAL_PROTEIN_PRICES.filter((p) => p.butcher && p.costco && p.grocery).length).toBe(10);
+    for (const p of CANONICAL_PROTEIN_PRICES) {
+      expect(Array.isArray(p.grocery) && p.grocery.length === 2).toBe(true);
       for (const ch of ['butcher', 'costco', 'grocery']) {
+        if (p[ch] === undefined) continue;
         expect(Array.isArray(p[ch]) && p[ch].length === 2).toBe(true);
       }
       expect(p.sources.length).toBeGreaterThan(0);

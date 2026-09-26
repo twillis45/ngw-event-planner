@@ -140,10 +140,75 @@ export const CANONICAL_PROTEIN_PRICES = [
   { key: 'beef',    re: /\b(burger|ground beef|patty|patties|steak|beef|meatball)\b/i, butcher: [5, 8], costco: [3, 6],  grocery: [5, 8],  sources: ['https://www.beyondforest.org/post/costco-meat-prices-list-2025', 'https://www.thekitchn.com/costco-kirkland-90-10-ground-beef-review-23776246'] },
   { key: 'pork',    re: /\b(pork|pulled pork|boston butt|shoulder|bacon|ham)\b/i,    butcher: [3, 6], costco: [2, 4],  grocery: [3, 6],  sources: ['https://www.eatlikenoone.com/costco-pork-guide.htm'] },
   { key: 'shrimp',  re: /\b(shrimp|prawn)\b/i,                                       butcher: [8, 13], costco: [6, 10], grocery: [9, 14], sources: ['https://www.eatlikenoone.com/costco-shrimp-guide.htm'] },
-  { key: 'seafood', re: /\b(fish|salmon|tilapia|catfish|seafood|crab|crawfish|lobster|oyster|clam|mussel|scallop)\b/i, butcher: [7, 13], costco: [6, 11], grocery: [8, 14], sources: ['https://www.eatlikenoone.com/costco-shrimp-guide.htm'] },
+  // ── FRY FISH AND CRAWFISH CAME OUT OF `seafood` (board, 2026-09-25) ────────
+  //
+  // `seafood` priced ELEVEN species — crawfish, crab, lobster, oyster, scallop
+  // and five fish — from ONE citation, and that citation is a Costco SHRIMP
+  // guide. Two practitioner seats fetched real prices and the band was wrong by
+  // 2x on both rows anyone had complained about:
+  //
+  //   live crawfish, by the sack   table $8-14   sourced $2.90-6.00 (3 LA sources)
+  //   whiting / catfish / porgy    table $9-14   sourced $3.30-5.99 (2 Baltimore)
+  //
+  // Every crawfish price above $6 either seat could find was BOILED, sold by the
+  // plate — a prepared product, and these lines say live. And a third DMV
+  // counter stocks no whiting, porgy, croaker or catfish at all; its cheapest
+  // fish is $18.99. Fry fish and center-of-plate fish are sold by DIFFERENT
+  // BUSINESSES, so one band across both is the midpoint of two counters and
+  // wrong at each — 2x high for the fry counter, 3x low for the other.
+  //
+  // These two rows carry `grocery` ONLY, on purpose. A butcher does not sell
+  // live crawfish by the sack and Costco does not stock whiting or porgy, and
+  // no source was found for either. `canonicalProteinPrice` returns null for a
+  // missing tier, which leaves the line on its own authored band — the honest
+  // answer, and better than inventing a warehouse number to fill the column.
+  //
+  // PROVENANCE OF THIS BLOCK, because the row it replaces failed exactly here.
+  // The prices were fetched by two board seats on 2026-09-25 and I re-fetched
+  // two of the four sources MYSELF on 2026-09-26 rather than relay them:
+  //   acadiacrawfish  five live sacks, $3.50 / $3.67 / $4.17 / $4.50 / $4.67 a lb
+  //   hopkinsseafood  whiting "$3.30 /per pound", the unit stated on the page
+  // The mdseafoodmarket listing (catfish $3.99, whiting $5.99, porgy $4.99,
+  // perch/tilapia/mullet $4.99) is CONFIRMED as to its figures and AMBIGUOUS as
+  // to its unit — the page does not say per pound. Hopkins does, at $3.30, and
+  // the two agree, which is why the band stands. Recorded rather than smoothed:
+  // the whole reason the old row was wrong is that somebody checked a citation
+  // existed instead of reading what it said.
+  //
+  // NOT FIXED HERE, and still listed in aPoundPriceNeedsAPoundLine's
+  // KNOWN_BAND_DISAGREEMENTS: `seafood` below still prices crab, lobster,
+  // oyster, clam, mussel, scallop and salmon off the same shrimp page. Those
+  // were not measured, so they are left visible rather than quietly adjusted.
+  { key: 'fryfish', re: /\b(whiting|porgy|porgies|croaker|catfish|tilapia|mullet|perch)\b/i, grocery: [3, 6],
+    sources: ['https://www.mdseafoodmarket.com/collections/fresh-whole-fish-cleaned-to-preference', 'https://hopkinsseafood.com/seafood-shop/fresh-whole-whiting/'] },
+  { key: 'crawfish', re: /\b(crawfish|crayfish|mudbug)\b/i, grocery: [3, 6],
+    sources: ['https://www.acadiacrawfish.com/product-category/crawfish/live-crawfish/', 'https://kpel965.com/lafayette-crawfish-prices-january-2026-season/', 'https://louisianaradionetwork.com/2026/04/09/46093/'] },
+  { key: 'seafood', re: /\b(fish|salmon|seafood|crab|lobster|oyster|clam|mussel|scallop)\b/i, butcher: [7, 13], costco: [6, 11], grocery: [8, 14], sources: ['https://www.eatlikenoone.com/costco-shrimp-guide.htm'] },
   { key: 'turkey',  re: /\b(turkey)\b/i,                                             butcher: [2, 5], costco: [1.5, 3], grocery: [2, 5],  sources: ['https://www.beyondforest.org/post/costco-meat-prices-list-2025'] },
   { key: 'lamb',    re: /\b(lamb|oxtail|goat)\b/i,                                   butcher: [7, 14], costco: [6, 11], grocery: [8, 16], sources: ['https://www.eatlikenoone.com/price-guide-to-buying-beef-at-costco.htm'] },
 ];
+
+// ── ONE DEFINITION OF "COMPARABLE ON THIS CHANNEL" ─────────────────────────
+//
+// A channel ratio needs BOTH sides. Rows that carry `grocery` only (fryfish,
+// crawfish — no source exists for a butcher sack price or a Costco porgy)
+// cannot contribute to a costco-vs-butcher or grocery-vs-butcher ratio.
+//
+// This lives HERE, beside the table, because two separate test files each grew
+// their own copy of the filter the day the partial rows landed — and a rule
+// about the table that lives away from the table is the same duplication this
+// repo keeps paying for. Every derivation reads this one function.
+export const comparableRows = (channel) => CANONICAL_PROTEIN_PRICES.filter(
+  (p) => Array.isArray(p[channel]) && Array.isArray(p.butcher),
+);
+
+// How many distinct species/cut words a row's regex claims to price. Used by
+// the breadth census in backedByATableThatSaysOtherwise: breadth is not a
+// defect by itself, but breadth on a single source is how `seafood` came to
+// price nine species off one Costco shrimp page.
+export const rowBreadth = (row) => String(row.re)
+  .replace(/^\/\\b\(?|\)?\\b\/i$/g, '')
+  .split('|').length;
 
 // canonicalProteinPrice(name, tier) → [lo,hi] per-channel range, or null. Used as the
 // ENGINE fallback for proteins lacking their own sourcingPrices, on NON-default tiers.

@@ -81,26 +81,40 @@ describe('a pound price only re-prices a pound line', () => {
     expect(lowG).toBeLessThanOrEqual(Math.max(5, lowB * 2));
   });
 
-  // THREE LINES ARE STILL OUT, AND THEY ARE A DIFFERENT PROBLEM. Each is a
-  // genuine protein sold by the pound, so neither guard applies; what is wrong
-  // is that the SHARED table's band does not fit this particular protein:
+  // ── ONE LINE IS STILL OUT. TWO CAME OFF, AND I HAD FROZEN THEM WRONGLY ─────
   //
-  //   Fish Fry      · whiting / catfish / porgies   $3-7/lb authored,
-  //                   quoted the table's $9-14/lb seafood band. Those are
-  //                   cheap fish; $9-14 is shrimp and crab.
-  //   Crawfish Boil · live crawfish BY THE SACK     same shape — sack pricing
-  //                   is not retail-seafood pricing.
-  //   Sunday Dinner · whole chicken / fryer         table chicken band.
+  // This list said THREE, and called all three "a RESEARCH question, not a code
+  // one" because "the authored bands carry their own cited sources and so does
+  // the table." That test was whether each side HAD a citation. Nobody read
+  // what the citations SAID. Two practitioner seats did, on 2026-09-25:
   //
-  // Which number is right is a RESEARCH question, not a code one: the authored
-  // bands carry their own cited sources and so does the table, and picking a
-  // winner here would be a product decision wearing a bug fix's clothes. So
-  // they are named, frozen, and visible — the same treatment this repo gives
-  // NO_SINGLE_GATEWAY and AMBIGUOUS_BARE. A FOURTH one fails this test.
+  //   Fish Fry      · whiting / catfish / porgies   table $9-14/lb
+  //                   sourced $3.30-5.99 at two Baltimore counters, and a third
+  //                   DMV counter does not stock these fish AT ALL.
+  //   Crawfish Boil · live crawfish BY THE SACK     table $8-14/lb
+  //                   sourced $2.90-6.00 across three Louisiana sources. Every
+  //                   price above $6 was BOILED, sold by the plate.
+  //
+  // Both traced to one cause: `CANONICAL_PROTEIN_PRICES.seafood` priced eleven
+  // species from a single Costco SHRIMP page. It was never a tie between two
+  // researched bands — one side was researched and the other was a shrimp page
+  // wearing a citation. `fryfish` and `crawfish` are now their own keys with
+  // their own fetched sources, and both rows fall inside 2x.
+  //
+  // WHAT REMAINS, and it is a real disagreement:
+  //
+  //   Sunday Dinner · whole chicken / fryer         the table's chicken band.
+  //
+  // Unmeasured. Left named, frozen and visible — the treatment this repo gives
+  // NO_SINGLE_GATEWAY and AMBIGUOUS_BARE. A SECOND one fails this test.
+  //
+  // Also unmeasured and deliberately not touched: `seafood` still prices crab,
+  // lobster, oyster, clam, mussel, scallop and salmon off that same shrimp
+  // page. No line currently blows past 2x on it, so this test cannot see it.
+  // That is a gap in this test, recorded here rather than left to be
+  // rediscovered — the absence of a failure is not evidence the band is right.
   const KNOWN_BAND_DISAGREEMENTS = [
-    'Fish Fry · Fresh fish (whiting, catfish, porgies)',
     'Sunday Dinner · Whole chicken or cut-up fryer pieces (the main)',
-    'Crawfish Boil · Live crawfish (by the sack, ~30-35 lb/sack)',
   ];
 
   test('NO food line anywhere multiplies when the channel changes', () => {
