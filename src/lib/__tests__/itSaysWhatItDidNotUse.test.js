@@ -94,3 +94,153 @@ describe('it generalises past the sentence that found it', () => {
     expect(out).not.toContain('adults only');
   });
 });
+
+// ─── AND IT CANNOT GO BACK TO NEEDING THE HOST'S COMMAS ─────────────────────
+//
+// The disclosure above shipped 2026-09-23 and went SILENT two days later on a
+// sentence a host actually typed:
+//
+//   "50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb
+//    accomodations"
+//
+// It returned [] — a clean bill of health — because clauses were split on
+// commas, "and" and semicolons, and that sentence has none. One clause meant
+// "nothing to compare against", so the function bailed. Add commas to the
+// IDENTICAL words and it answered correctly. The self-knowledge was intact and
+// gated on punctuation the host never typed, which is the worst version of this
+// bug: the mechanism built to stop silent drops was itself silently dropping.
+//
+// A review board raised this sentence on 2026-09-26 as an unconsumed clause —
+// "the parser hears '2 excursions' and hands it to nothing." That reading is
+// wrong, and measuring it is how the board's own doctrine says to find out:
+// `unusedClauses` IS the consumer, HostShellV2 renders it under "Didn't make it
+// into the plan", and the host is told the plan won't know about it. What was
+// actually missing was a test on THIS sentence — the per-word fallback was
+// built, shipped and never pinned, so the fix could regress in silence exactly
+// the way the bug did.
+//
+// SO THIS PINS PUNCTUATION-INDEPENDENCE, not excursions. Three spellings of one
+// sentence must produce the same answer; a splitter that needs commas fails the
+// first and passes the others, which is precisely the shape of the regression.
+//
+// RED-PROOFED by restoring the pre-fix behaviour — returning [] whenever the
+// comma split yields fewer than two clauses. The no-punctuation case went red
+// and the comma'd cases stayed green, which is the bug reproducing on demand.
+describe('the disclosure does not depend on how the host punctuated', () => {
+  const WORDS = '50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb accomodations';
+  const SHAPES = {
+    'no punctuation at all, as the host typed it': WORDS,
+    'commas between every fact': '50th birthday, nov 2027, 8 couples, 5 nights, '
+      + 'Disneyland, 2 excursions, airbnb accomodations',
+    'commas and an "and"': '50th birthday nov 2027, 8 couples, 5 nights Disneyland, '
+      + '2 excursions and airbnb accomodations',
+  };
+
+  test('(premise) the parser reads almost all of this sentence', () => {
+    // Without this, "it reports one unused clause" could be passing over a
+    // sentence the parser failed outright — a different bug with the same
+    // result. Measured: eight fields land, including a landmark resolved to a
+    // city and "8 couples" doubled to a headcount.
+    const p = parseSmartEventText(WORDS);
+    expect(p.guests).toBe(16);
+    expect(p.nights).toBe(5);
+    expect(p.venueCity).toBe('Anaheim');
+    expect(p.lodgingKind).toBe('rental');
+    expect(p.isDestination).toBe(true);
+  });
+
+  test('every punctuation shape hands back the same one clause', () => {
+    for (const [name, text] of Object.entries(SHAPES)) {
+      expect({ [name]: unusedClauses(text) }).toEqual({ [name]: ['2 excursions'] });
+    }
+  });
+
+  test('NEGATIVE CONTROL: it never claims to have missed what it read', () => {
+    // The couples, the nights, the landmark and the lodging kind all reached
+    // the plan. Naming any of them here would be the trust-destroying failure
+    // this whole mechanism exists to avoid — and "accomodations" sits beside
+    // "airbnb", which WAS read, so a naive per-word test would report it.
+    for (const text of Object.values(SHAPES)) {
+      const out = unusedClauses(text).join(' | ');
+      expect(out).not.toMatch(/couple|night|Disneyland|airbnb|accomodation/i);
+    }
+  });
+});
+
+// ─── AND IT DOES NOT TELL A HOST IT LOST THE YEAR IT USED ───────────────────
+//
+// MEASURED 2026-09-26 while pinning the punctuation fix above, and it is the
+// failure this whole file calls worse than the original bug. Every ordinary US
+// date format puts a comma before the year, which made the year its own clause;
+// removing it changed nothing, because "June 14" already resolves to the next
+// June 14 and that IS 2027. So the clause passed the unused test while the
+// plan's date was 2027-06-14, and the host was told the plan would not know
+// about a year it was actively using.
+//
+// `alreadyInThePlan` in unusedClauses now asks the other question — is this
+// clause ABSENT from the parse — because only that one licenses the sentence
+// "the plan won't know about it".
+//
+// WHAT THE PREMISE TEST CAUGHT, worth keeping. This block first listed four
+// dated sentences and asserted all four stopped reporting the year. Two of them
+// do not resolve a year AT ALL: "birthday party November, 2027" returns
+// date null AND monthYear null — the comma between a bare month and its year
+// breaks the date parse outright. For those, "2027" really did not make it into
+// the plan, and reporting it is the mechanism working. Had the premise test not
+// been there, the guard could have been widened until it silenced them too, and
+// the bug it was built to fix would have been re-created in the fix.
+//
+// (That the comma'd bare month-year parses to nothing is a separate parser gap.
+// It is left alone here and stays HONEST rather than silent, which is the whole
+// doctrine — but it is a gap, and the split below is where somebody will find
+// it.)
+//
+// RED-PROOFED by deleting the `alreadyInThePlan` guard from unusedClauses: both
+// sentences in the first test below reported ["2027"] again, "2 excursions" was
+// unaffected, and the two no-date sentences did not move — the bug reproducing
+// on demand and nothing else moving with it.
+describe('a fact the plan is holding is never reported as dropped', () => {
+  // The year IS read in these two — a comma before the year is the ordinary way
+  // to write a full US date.
+  const YEAR_READ = [
+    'birthday party on June 14, 2027, 30 people, in Austin TX',
+    'wedding May 2, 2027, 120 people, Austin TX',
+  ];
+  // The year is NOT read in these two — the comma after a bare month breaks the
+  // date parse, so the host genuinely lost it.
+  const YEAR_LOST = [
+    'birthday party November, 2027, 30 people, in Austin TX',
+    'birthday party nov, 2027, 30 people, in Austin TX',
+  ];
+
+  test('(premise) the two groups really do differ in whether the year landed', () => {
+    // This is the assertion that stopped the guard from being widened into the
+    // original bug. Without it, "the year is not reported" would pass over a
+    // parser that never read the year.
+    for (const s of YEAR_READ) expect(parseSmartEventText(s).date).toMatch(/^2027-/);
+    for (const s of YEAR_LOST) {
+      const p = parseSmartEventText(s);
+      expect({ date: p.date, monthYear: p.monthYear }).toEqual({ date: null, monthYear: null });
+    }
+  });
+
+  test('a year the plan is using is NOT handed back as dropped', () => {
+    for (const s of YEAR_READ) expect({ [s]: unusedClauses(s) }).toEqual({ [s]: [] });
+  });
+
+  test('…and a year the plan really lost still IS handed back', () => {
+    // The other half of the guard. Silencing these would re-create the exact
+    // bug this file exists to close, in the fix for its false alarm.
+    for (const s of YEAR_LOST) expect({ [s]: unusedClauses(s) }).toEqual({ [s]: ['2027'] });
+  });
+
+  test('NEGATIVE CONTROL: the guard silences redundancy, not genuine misses', () => {
+    // The guard can only remove reports, so the risk it carries is over-
+    // silencing. A clause whose words are absent from the parse must survive it
+    // — including one sitting in the same sentence as a comma'd year.
+    expect(unusedClauses('birthday party on June 14, 2027, 30 people, in Austin TX, '
+      + 'she uses a walker')).toEqual(['she uses a walker']);
+    expect(unusedClauses('50th birthday nov 2027 8 couples 5 nights Disneyland '
+      + '2 excursions airbnb accomodations')).toEqual(['2 excursions']);
+  });
+});

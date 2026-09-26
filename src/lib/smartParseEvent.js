@@ -1241,13 +1241,45 @@ export function unusedClauses(text, opts = {}) {
     return same(p, full);
   };
 
+  // ── A CLAUSE THE PLAN STILL CARRIES IS REDUNDANCY, NOT A MISS ─────────────
+  //
+  // MEASURED 2026-09-26, on the most ordinary US date format there is:
+  //
+  //   "birthday party on June 14, 2027, 30 people, in Austin TX"  ->  ["2027"]
+  //
+  // The host was told the YEAR did not make it into the plan while the plan's
+  // date was 2027-06-14. Removing "2027" genuinely changes nothing — June 14
+  // already resolves to the next June 14, which IS 2027 — so the
+  // unchanged-output test is satisfied and the host-facing sentence is still
+  // false. Four date shapes were probed ("November, 2027", "nov, 2027",
+  // "June 14, 2027", "May 2, 2027") and all four reported it.
+  //
+  // This is the ruling the per-word branch below already makes for
+  // "accomodations" sitting beside "airbnb" — a fact we honoured is not a fact
+  // we dropped — applied to whole clauses. Contributing nothing to the OUTPUT
+  // and being absent FROM the output are different questions, and only the
+  // second one licenses the sentence "the plan won't know about it".
+  //
+  // It can only ever remove reports, which is the direction this function is
+  // deliberately biased in: a miss we stay quiet about costs the host one fact,
+  // a false alarm costs them the belief that the list means anything.
+  const carried = JSON.stringify(full || {}).toLowerCase();
+  const alreadyInThePlan = (clause) => {
+    const toks = String(clause).toLowerCase().match(/[a-z0-9]+/g) || [];
+    if (!toks.length) return false;
+    // Short connective words carry no fact, so they cannot keep a clause alive
+    // ("on", "in", "at"); every token that DOES carry one must be in the parse.
+    return toks.every((tk) => ((tk.length > 2 || /^\d+$/.test(tk)) ? carried.includes(tk) : true));
+  };
+
   // Punctuated input keeps the original clause reading — a host who wrote
   // commas told us where the boundaries are, and that beats guessing them.
   const clauses = t.split(_CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length > 2);
   if (clauses.length >= 2) {
     const out = [];
     for (const c of clauses) {
-      if (unchanged(t.split(c).join(' ').replace(/\s{2,}/g, ' ').trim())) out.push(c);
+      if (unchanged(t.split(c).join(' ').replace(/\s{2,}/g, ' ').trim())
+        && !alreadyInThePlan(c)) out.push(c);
     }
     return out;
   }
@@ -1289,7 +1321,8 @@ export function unusedClauses(text, opts = {}) {
     const leftUsed = runStart > 0 && used[runStart - 1];
     const rightUsed = endExclusive < words.length && used[endExclusive];
     const standsAlone = !leftUsed && !rightUsed;
-    if (meaty && (run.length > 1 || standsAlone)) out.push(run.join(' '));
+    const phrase = run.join(' ');
+    if (meaty && (run.length > 1 || standsAlone) && !alreadyInThePlan(phrase)) out.push(phrase);
     run = []; runStart = -1;
   };
   for (let i = 0; i < words.length; i += 1) {
