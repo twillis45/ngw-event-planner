@@ -779,13 +779,70 @@ export function parseSmartEventText(text, opts = {}) {
   // read as a destination. Same over-capture that made the venue parser read
   // "New Mexico June" as a state. Trailing non-place words are dropped.
   const inM = t.match(/\bin\s+([A-Z][\w.'’-]+(?:\s+[A-Z][\w.'’-]+){0,2})\b/);
-  const spokenPlace = (() => {
-    if (!inM) return '';
-    const words = inM[1].trim().split(/\s+/);
+  const trimPlace = (raw) => {
+    const words = String(raw || '').trim().split(/\s+/).filter(Boolean);
     while (words.length && NOT_A_PLACE.test(words[words.length - 1])) words.pop();
     if (!words.length || NOT_A_PLACE.test(words[0])) return '';
     return words.join(' ');
-  })();
+  };
+  const spokenPlace = inM ? trimPlace(inM[1]) : '';
+
+  // ── A HOST TYPING FAST DOES NOT CAPITALISE (2026-09-26) ───────────────────
+  //
+  // The capture above requires an initial capital, so measured on the pinned
+  // corpus: "birthday in Chicago june 14" resolved the town and "birthday in
+  // miami june 14" returned venueCity null. Same sentence, same city, one
+  // shift key. The town is what gates weather, the shopping list, lodging
+  // search and maps, so a host who lowercases loses all four.
+  //
+  // WHY A SECOND PASS RATHER THAN DROPPING THE [A-Z]. That capital is doing
+  // two jobs, and only one of them is finding a city. `placeName` below feeds
+  // the DESTINATION gate off the raw captured words whether or not they
+  // resolve, so the capital is also a cheap proper-noun test standing between
+  // "in the backyard" and a fabricated destination event. Loosening it in
+  // place would have admitted every lowercase noun after "in" to that gate.
+  //
+  // So the lowercase pass is whitelist-ONLY: it exists purely to be handed to
+  // resolveSpokenCity, which admits a name solely by membership in the curated
+  // usCities list and invents no state. A word that is not a known city
+  // resolves to nothing and reaches nothing — the loosening cannot produce a
+  // place the strict path would have refused, only recover one it dropped for
+  // want of a capital letter.
+  //
+  // TWO-LETTER STATE ABBREVIATIONS ARE DELIBERATELY NOT PART OF THIS, and that
+  // is not an oversight. Thirteen of the fifty are ordinary lowercase English
+  // words — al co de hi id in la me ma ne ok or pa — so a case-insensitive
+  // abbreviation match turns "in the park or the hall" into Park, OR. The
+  // capital letter is the only thing separating a state from a conjunction
+  // there, and it stays. "in Austin TX" resolves the state; "in austin tx"
+  // recovers the CITY through the whitelist below and leaves the state for the
+  // host, which is this file's standing rule anyway: never invent a state.
+  const inLowerM = t.match(/\bin\s+([a-z][\w.'’-]+(?:\s+[a-z][\w.'’-]+){0,2})\b/);
+
+  // ── AND THE SAME LOSS ON "trip to" / "flying to" ─────────────────────────
+  //
+  // Measured in the same sweep: "trip to Nashville" carried the town and "trip
+  // to nashville" did not, while "flying to denver" lost the town AND flipped
+  // isDestination to false — deleting the entire travel stack (lodging,
+  // transport, the reveal's lodging stage) that this file's own header calls
+  // the costlier failure, over a shift key.
+  const awayLowerM = t.match(new RegExp(
+    '\\b(?:trip|getaway|retreat|flying|driving|heading|going|traveling)\\s+'
+    + '(?:up\\s+|down\\s+|out\\s+|back\\s+|over\\s+)?to\\s+([a-z][\\w.\'’-]+(?:\\s+[a-z][\\w.\'’-]+){0,2})\\b'));
+
+  // A trailing word the whitelist cannot use must not sink the town with it:
+  // "in austin tx" and "to nashville aug 3" both carry the city in the FIRST
+  // word(s). Try the longest phrase first so "las vegas" and "winston salem"
+  // win over their own first words, then shorten. Whitelist-gated at every
+  // step, so a shorter prefix can no more invent a place than the full phrase.
+  const resolveLoose = (raw) => {
+    const words = trimPlace(raw).split(/\s+/).filter(Boolean);
+    for (let n = words.length; n > 0; n -= 1) {
+      const hit = resolveSpokenCity(words.slice(0, n).join(' '));
+      if (hit) return hit;
+    }
+    return null;
+  };
 
   // ── THE TOWN SHE NAMED, CARRIED (2026-09-18) ─────────────────────────────
   // Both captures above end with the same sentence — "it never becomes
@@ -810,12 +867,24 @@ export function parseSmartEventText(text, opts = {}) {
   //
   // "in <Town>" and "trip to <Town>" only — never a bare "at <X>", which in
   // host speech names a VENUE ("at Hilton", "at the clubhouse"), not a town.
+  // THE CAPITALISED PATHS GET THE SAME SHORTENING, because they had the same
+  // bug and it was louder there: "reunion flying to Denver Aug 3 2027" carried
+  // NO city, while the lowercase spelling of that sentence carried Denver — the
+  // capture took "Denver Aug" and the whitelist, correctly, does not know it.
+  // One resolver for all four captures, so a trailing word cannot sink a town
+  // on one path and not another.
   const spokenCity = loc ? null
-    : (resolveSpokenCity(spokenPlace) || resolveSpokenCity(awayPlace));
+    : (resolveLoose(spokenPlace) || resolveLoose(awayPlace)
+      || (inLowerM ? resolveLoose(inLowerM[1]) : null)
+      || (awayLowerM ? resolveLoose(awayLowerM[1]) : null));
 
   const normCity = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
   const homeCity = normCity(opts.homeCity);
-  const placeName = (loc && loc.city) || awayPlace || spokenPlace || '';
+  // A lowercase town only reaches placeName once the WHITELIST has vouched for
+  // it — never the raw captured words, which is what keeps "in the backyard"
+  // out of the destination gate.
+  const placeName = (loc && loc.city) || awayPlace || spokenPlace
+    || (spokenCity && spokenCity.city) || '';
   // WITH NO KNOWN HOME, A BARE RESOLVED CITY STILL FLAGS — this is deliberate,
   // tested "prior behaviour" (destinationDetection.test.js, destinationBarePlace
   // .test.js): a miss here silently deletes the whole travel stack (lodging,
@@ -838,7 +907,13 @@ export function parseSmartEventText(text, opts = {}) {
     namedPrivateHome ? (!!homeCity && normCity(placeName) !== homeCity)
                       : (!homeCity || normCity(placeName) !== homeCity)
   );
-  const isDestination = travelSaid || ((!!loc || !!awayPlace || !!spokenPlace) && placeAway);
+  // `spokenCity` is in this list so that CASE CANNOT CHANGE THE ANSWER. Without
+  // it, "in Chicago" flagged a destination and "in miami" — city resolved, same
+  // sentence shape — did not, which is the same defect one layer down. It is
+  // the whitelist-vouched city, never the raw captured words, so nothing
+  // reaches this gate that resolveSpokenCity has not already admitted.
+  const isDestination = travelSaid
+    || ((!!loc || !!awayPlace || !!spokenPlace || !!spokenCity) && placeAway);
 
   // Why it was decided, for the "· heard" chip and any later explanation. Never
   // a silent commit: the host still confirms via the toggle.

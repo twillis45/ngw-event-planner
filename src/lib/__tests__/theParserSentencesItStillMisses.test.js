@@ -30,8 +30,8 @@
 // ── DEFECT 2: THE CITY RESOLVER IS CASE-SENSITIVE, AND ONE PATH IS INCOHERENT ─
 //
 //   "in Chicago june 14"  ->  venueCity "Chicago"  isDestination true    OK
-//   "in miami june 14"    ->  venueCity null       isDestination false   MISS
-//   "in vegas june 14"    ->  venueCity null       isDestination false   MISS
+//   "in miami june 14"    ->  venueCity null       isDestination false   MISS  [FIXED 9/26]
+//   "in vegas june 14"    ->  venueCity null       isDestination false   MISS  [vocabulary]
 //   "in Vegas june 14"    ->  venueCity null       isDestination TRUE    INCOHERENT
 //
 // Lowercase city names do not resolve at all, which matters because a host
@@ -90,12 +90,58 @@ describe('what the parser reads today', () => {
     expect(f("mom's 80th birthday, 30 people", 'milestone')).toBe('80th');
   });
 
-  test('KNOWN GAP 2: lowercase cities do not resolve', () => {
-    expect(f('birthday in miami june 14 2027, 30 people', 'venueCity')).toBeNull();
+  // ── GAP 2 CLOSED 2026-09-26, AND NARROWED TO WHAT IS LEFT ─────────────────
+  //
+  // The header above described this as one gap about "case handling and
+  // vocabulary". It was two, and separating them is what made it fixable.
+  //
+  // CASE was a single `[A-Z]` in the "in <Place>" capture in smartParseEvent.
+  // resolveSpokenCity had been case-insensitive the whole time — it lowercases
+  // its key — so the town was being thrown away one layer before the resolver
+  // ever saw it. A whitelist-only lowercase second pass now recovers it, and
+  // `spokenCity` joined the destination gate so that case cannot change
+  // isDestination either. The capital stays on the path that feeds the
+  // destination gate raw, where it is doing a second job as a proper-noun test.
+  //
+  // VOCABULARY is what remains, and it is not about case at all: "vegas" and
+  // "Vegas" both fail, because the curated usCities list holds "Las Vegas" and
+  // no nicknames. That is pinned below and in 2b.
+  test('lowercase cities resolve now — case is not the gap any more', () => {
+    expect(f('birthday in miami june 14 2027, 30 people', 'venueCity')).toBe('Miami');
+    expect(f('reunion in asheville aug 3 2027, 30 people', 'venueCity')).toBe('Asheville');
+    expect(f('birthday in las vegas june 14 2027, 30 people', 'venueCity')).toBe('Las Vegas');
+    // Capitalised gives the identical answer — the property that matters is
+    // that the shift key cannot change what the app understood.
+    for (const c of ['miami', 'Miami', 'chicago', 'Chicago']) {
+      const p = parseSmartEventText(`birthday in ${c} june 14 2027, 30 people`);
+      expect({ city: p.venueCity, dest: p.isDestination })
+        .toEqual({ city: c[0].toUpperCase() + c.slice(1), dest: true });
+    }
+  });
+
+  test('NEGATIVE CONTROL: the lowercase pass did not admit non-places', () => {
+    // The risk the fix carried. The capital letter was also keeping ordinary
+    // lowercase nouns after "in" out of the destination gate, so the second
+    // pass is whitelist-only: a word resolveSpokenCity does not know reaches
+    // nothing. If this ever goes red, "in the backyard" is inventing a trip.
+    for (const s of ['cookout in the backyard for 20 people',
+      'birthday in my house june 14 2027, 30 people',
+      'birthday in the church hall june 14 2027, 30 people',
+      'party in the park june 14 2027, 30 people']) {
+      const p = parseSmartEventText(s);
+      expect({ [s]: { city: p.venueCity, dest: p.isDestination } })
+        .toEqual({ [s]: { city: null, dest: false } });
+    }
+  });
+
+  test('KNOWN GAP 2, WHAT IS LEFT: nicknames are not in the vocabulary', () => {
+    // Not a case problem — both spellings fail, and the curated list holds the
+    // full name. Closing this means deciding whether "Vegas", "Philly", "NYC"
+    // and "DC" earn alias entries, which is a data ruling, not a parser fix.
     expect(f('birthday in vegas june 14 2027, 30 people', 'venueCity')).toBeNull();
-    // Capitalised and in the vocabulary — the control that proves the miss is
-    // about case and vocabulary, not about the sentence shape.
-    expect(f('birthday in Chicago june 14 2027, 30 people', 'venueCity')).toBe('Chicago');
+    expect(f('birthday in Vegas june 14 2027, 30 people', 'venueCity')).toBeNull();
+    // …while the full name resolves, which is what makes this vocabulary.
+    expect(f('birthday in las vegas june 14 2027, 30 people', 'venueCity')).toBe('Las Vegas');
   });
 
   test('KNOWN GAP 2b, THE WORSE HALF: a destination with nowhere to go', () => {
