@@ -438,9 +438,24 @@ describe('a term buys a shelf reference, never a total', () => {
       if (!fp) continue;
       for (const l of (fp.list || [])) real.add(`${l.id}\u0000${String(l.item || '').trim()}`);
     }
-    for (const [id, item] of SEARCH_ONLY_CASES) {
-      expect(real.has(`${id}\u0000${item}`)).toBe(true);
-    }
+    // NAME THE ORPHANS. This asserted `.toBe(true)` per line, so a red build
+    // printed "Expected: true / Received: false" and nothing else — the
+    // maintainer got a failure and no worklist, and had to bisect the list by
+    // hand to find which term had come loose.
+    //
+    // THIS IS THE GUARD THAT CATCHES A DE-STACKING SPLIT. `TERMS` is keyed on
+    // (id, item), so renaming an item — which is exactly what splitting a
+    // bundled line does — orphans its curated search term and drops that line
+    // from the 96%-match cohort to the 12% one. MEASURED 2026-09-26 by renaming
+    // The Cookout's `p_buns`: this test fails and the full suite goes red.
+    //
+    // Recorded because a board finding on 2026-09-25 said a split orphans the
+    // term with "the suite stays green". It does not. The gate existed; what it
+    // lacked was the ability to say what broke.
+    const orphaned = SEARCH_ONLY_CASES
+      .filter(([id, item]) => !real.has(`${id}\u0000${item}`))
+      .map(([id, item]) => `${id} · ${item}`);
+    expect(orphaned).toEqual([]);
   });
 
   test('THEY GET A TERM — the whole point, since the display text matched nothing', () => {

@@ -320,10 +320,14 @@ It corrected three premises I gave it:
 
 Three live findings nobody had:
 
-- **`TERMS` is keyed on `key(id, item)`, so a split ORPHANS the curated search
-  term.** Red-proofed on `The Cookout.p_buns`: term -> null, `SEARCH_TERM_LINES`
-  unchanged at 52, suite stays green. 12 bundled lines exposed. A split done the
-  repast way can move a line from the 96% cohort into the 12%. **OPEN.**
+- ~~`TERMS` is keyed on `key(id, item)`, so a split ORPHANS the curated search
+  term with no gate objecting.~~ **CORRECTED 2026-09-26 — the board was wrong on
+  the consequence.** The keying is real, but `theUnitMap.test.js` already
+  asserts every curated line exists in the corpus exactly as written, and a
+  rename trips it: re-tested by renaming `The Cookout.p_buns`, the full suite
+  goes 1 failed / 548 passed. The 12 lines were never silently exposed. The real
+  defect was the message — `Expected: true / Received: false`, naming nothing —
+  now a list of orphans. **CLOSED.**
 - **A single-source undated price and a corroborated dated one render the SAME
   WORDS.** `claimBasis.js:309` branches on which AXIS is cited, never on source
   count or date. 37 uncorroborated rows read `Directly sourced` x36; corroborated

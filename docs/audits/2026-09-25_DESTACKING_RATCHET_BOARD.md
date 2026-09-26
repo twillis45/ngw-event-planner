@@ -88,13 +88,41 @@ lb/sack)', 'grocery')` returns `null`, and `Fresh fish (whiting, catfish,
 porgies)` grocery high `<= 8`. Red-proof: restore the merged `seafood` row;
 both go red naming the rows.
 
-### D2 — A split orphans curated search terms
+### D2 — A split orphans curated search terms — CORRECTED 2026-09-26, the board was wrong
 
-`TERMS` in `storeUnitMap.js` is keyed on `key(id, item)`. A split renames the
-item, so the term is lost and no gate objects. Red-proofed on
-`The Cookout.p_buns`: term `"hamburger buns"` → `null`, `SEARCH_TERM_LINES`
-unchanged at 52, suite stays green. **12 bundled lines are exposed.** A split
-done the repast way can silently move a line from the 96% cohort into the 12%.
+The board reported: `TERMS` is keyed on `key(id, item)`, a split renames the
+item, the term is lost, **"and no gate objects — the suite stays green."** The
+mechanism is real. The conclusion was not.
+
+Re-tested 2026-09-26 by renaming `The Cookout.p_buns` the way a split would:
+
+```
+✕ (premise) every search-only line REALLY EXISTS in the corpus, exactly as written
+Full suite: 1 failed, 548 passed, 549 suites
+```
+
+**The gate exists and it fires.** `theUnitMap.test.js` already asserted that
+every curated line is present in the corpus exactly as written, and a rename
+trips it. 12 bundled lines are NOT silently exposed.
+
+What was genuinely wrong is narrower and now fixed: the assertion was
+`expect(real.has(key)).toBe(true)` per line, so the failure printed
+`Expected: true / Received: false` and named nothing. A maintainer got a red
+build and no worklist. It now collects the orphans and asserts the list is
+empty, so the failure reads:
+
+```
++   "p_buns · Burger + hot dog buns / bread",
+```
+
+Red-proofed both ways.
+
+**Why this correction matters beyond the one finding.** The board caught me
+twice for arguing from a mechanism I had not measured. This is the same error
+in the other direction: a real mechanism, a plausible consequence, and no run
+to confirm the consequence. A subagent's finding is a hypothesis, including
+when it is inconvenient to me — and this one was convenient, because it
+supported holding the split.
 
 ### D3 — A single-source undated price and a corroborated dated one say the
 same words to the host
