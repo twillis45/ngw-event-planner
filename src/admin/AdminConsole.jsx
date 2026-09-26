@@ -19,6 +19,7 @@ import { getLastSyncTime } from '../lib/api';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { buildPlaybookRegistry, HEALTH } from '../lib/playbooks/playbookRegistry';
 import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
+import { recordResearchRun } from '../lib/knowledge/researchEvidence';
 import { syncIntake, loadKCRs, loadLocalKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
@@ -5200,35 +5201,32 @@ function KcrStudioPanel() {
             if (resourceType === 'decisions' && updatedPlaybook.decisions) {
               const decisionIdx = updatedPlaybook.decisions.findIndex(d => d.id === cleanId);
               if (decisionIdx >= 0 && updatedPlaybook.decisions[decisionIdx].costFactorProvenance) {
-                updatedPlaybook.decisions[decisionIdx].costFactorProvenance = {
-                  ...updatedPlaybook.decisions[decisionIdx].costFactorProvenance,
-                  verificationStatus: 'researched',
-                  tier: 'researched',
-                  sources: result.providersUsed || [],
-                  researchedAt: asOf,
-                };
+                // OWNER RULING 2026-09-26 (B+C): a research run records what
+                // it found under its own name and claims nothing. It used to
+                // write `sources: providersUsed` — display labels into a field
+                // every reader treats as registry ids — which dropped the row's
+                // badge to "Needs confirmation" and pushed the uncorroborated
+                // baseline up, on a SUCCESSFUL run. See researchEvidence.js.
+                updatedPlaybook.decisions[decisionIdx].costFactorProvenance = recordResearchRun(
+                  updatedPlaybook.decisions[decisionIdx].costFactorProvenance,
+                  { providers: result.providersUsed, at: asOf, evidenceCount: result.result?.evidence?.length },
+                );
                 playbookChanged = true;
               }
             } else if (resourceType === 'purchases' && updatedPlaybook.purchases) {
               const purchaseIdx = updatedPlaybook.purchases.findIndex(p => p.id === cleanId);
               if (purchaseIdx >= 0) {
                 if (gapData.fieldPath.includes('.costFactors') && updatedPlaybook.purchases[purchaseIdx].costFactorProvenance) {
-                  updatedPlaybook.purchases[purchaseIdx].costFactorProvenance = {
-                    ...updatedPlaybook.purchases[purchaseIdx].costFactorProvenance,
-                    verificationStatus: 'researched',
-                    tier: 'researched',
-                    sources: result.providersUsed || [],
-                    researchedAt: asOf,
-                  };
+                  updatedPlaybook.purchases[purchaseIdx].costFactorProvenance = recordResearchRun(
+                    updatedPlaybook.purchases[purchaseIdx].costFactorProvenance,
+                    { providers: result.providersUsed, at: asOf, evidenceCount: result.result?.evidence?.length },
+                  );
                   playbookChanged = true;
                 } else if (gapData.fieldPath.includes('.unitCostRange') && updatedPlaybook.purchases[purchaseIdx].costProvenance) {
-                  updatedPlaybook.purchases[purchaseIdx].costProvenance = {
-                    ...updatedPlaybook.purchases[purchaseIdx].costProvenance,
-                    verificationStatus: 'researched',
-                    tier: 'researched',
-                    sources: result.providersUsed || [],
-                    researchedAt: asOf,
-                  };
+                  updatedPlaybook.purchases[purchaseIdx].costProvenance = recordResearchRun(
+                    updatedPlaybook.purchases[purchaseIdx].costProvenance,
+                    { providers: result.providersUsed, at: asOf, evidenceCount: result.result?.evidence?.length },
+                  );
                   playbookChanged = true;
                 }
               }
