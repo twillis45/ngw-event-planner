@@ -132,7 +132,7 @@ test.describe('the shopping list can leave the app', () => {
     //
     // The LABEL is the assertion that matters. The Instacart key lives on the
     // server and is not set, so every host today takes the fallback — copy the
-    // list, open the store, paste. "Send the list to Instacart" is true on both
+    // list, open the store, paste. "Send to Instacart" is true on both
     // paths; a label promising a filled cart would be false on the only one that
     // currently runs.
     await boot(page, { id: 'cart-probe', type: 'Birthday' });

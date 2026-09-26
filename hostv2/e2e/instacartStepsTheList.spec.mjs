@@ -2,9 +2,11 @@
 //
 // The only e2e coverage this button had was
 //
-//     expect(text).toContain('send the list to instacart');
+//     expect(text).toContain('send the list to instacart');   // the label of the day
 //
-// which asserts a LABEL. The owner asked whether the button had been driven
+// which asserts a LABEL — and the label has since been shortened to "Send to
+// Instacart" (2026-09-26, to fit the three actions on one row at 390px), which
+// is exactly how much a label assertion is worth. The owner asked whether the button had been driven
 // end to end. It had not — by any test, or by me. Driving it by hand on
 // 2026-09-26 found the handler works and produces a sticky stepper toast:
 //
@@ -57,7 +59,7 @@ test('(premise) the button is there and the list has something in it', async ({ 
   // Without both, every assertion below passes over an empty stepper — the
   // failure mode that made three "absent" findings in this project wrong.
   const sheet = await boot(page);
-  await expect(sheet.getByRole('button', { name: /Send the list to Instacart/i })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: /Send to Instacart/i })).toBeVisible();
   await expect(sheet.getByText(/of \d+ bought/).first()).toBeVisible();
 });
 
@@ -68,7 +70,7 @@ test('THE STEPPER RUNS: tapping it names the first item and how many there are',
   // Refusing the popup at the context level is what a real blocker does.
   await page.context().route('**instacart.com/**', (r) => r.abort());
 
-  await sheet.getByRole('button', { name: /Send the list to Instacart/i }).click();
+  await sheet.getByRole('button', { name: /Send to Instacart/i }).click();
   await settled(page);
 
   // "1 of N — <item>. Add it, then come back." — the contract the host holds.
@@ -82,7 +84,7 @@ test('and it offers the NEXT item, so the run is a queue and not one tap', async
   // and no way back into the list, which is the shape this replaced.
   const sheet = await boot(page);
   await page.context().route('**instacart.com/**', (r) => r.abort());
-  await sheet.getByRole('button', { name: /Send the list to Instacart/i }).click();
+  await sheet.getByRole('button', { name: /Send to Instacart/i }).click();
   await settled(page);
   await expect(page.getByText(/^Next: /).first()).toBeVisible();
 });
@@ -93,7 +95,7 @@ test('NEGATIVE CONTROL: the notice is STICKY — it survives, it does not flash'
   // nothing, and would still have passed the assertions above.
   const sheet = await boot(page);
   await page.context().route('**instacart.com/**', (r) => r.abort());
-  await sheet.getByRole('button', { name: /Send the list to Instacart/i }).click();
+  await sheet.getByRole('button', { name: /Send to Instacart/i }).click();
   await settled(page);
   await expect(page.getByText(/Add it, then come back/)).toBeVisible();
   await page.waitForTimeout(6000);   // well past any ordinary toast lifetime

@@ -18,7 +18,7 @@
 //
 // THE CONTRACT: never a broken promise. Ask the backend for a real cart; if one
 // comes back, open it. If not, copy the list, open Instacart's search, and SAY
-// SO. The label says "Send the list to Instacart", which is the act either way —
+// SO. The label says "Send to Instacart", which is the act either way —
 // a label promising a filled cart would be false exactly when the key is
 // missing, which is to say always, today.
 

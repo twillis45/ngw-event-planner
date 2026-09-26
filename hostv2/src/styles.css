@@ -2531,8 +2531,21 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .srctier.on .srctier-badge{color:var(--ok)}
 .srctier-sub{font-size:var(--t-note); color:var(--muted); line-height:1.36}
 /* Action row as bordered pills (378:84): primary tinted + steel border, secondary outline. */
+/* min-height 44: MEASURED 2026-09-26 and it was the reference control that
+   failed. Probing the Shop sheet's hit areas with elementFromPoint (never
+   getBoundingClientRect — a clipped ::after reports 44 and passes any geometry
+   assertion, which is how this class hid here before) found every .mini, .chip
+   and .fmode at a true 44, and the .food-act family alone under it: the PRIMARY
+   "Copy the shopping list" at 40, and Instacart / Print / Email at 34.
+
+   .food-act is not in the ::after tap-expander list at ~1609, so nothing was
+   rescuing them — 34 is the whole target, 10px under the bar UX_05 sets.
+   Raising the floor here fixes all six usages at once rather than per button.
+   The 11px padding stays: it still sets the roomy default, and min-height only
+   catches the compact ones (the .shop-acts chips at 8px) that fell short. */
 .food-act{display:inline-flex; align-items:center; justify-content:center; font-family:inherit;
   font-size:var(--t-btn); font-weight:600; padding:11px 16px; border-radius:var(--r-md); cursor:pointer;
+  min-height:44px;
   white-space:nowrap; background:var(--steel-tint); border:1px solid var(--steel-soft); color:var(--ink)}
 .food-act.sec{background:none; border-color:var(--line); color:var(--steel-soft)}
 .food-act:hover{filter:brightness(1.06)}
@@ -5973,10 +5986,19 @@ button.vc-pill::after{
 
    The FIRST child stays full-width (it is the primary); every later action
    becomes an inline pill that wraps. */
+/* JUSTIFIED (owner, 2026-09-26). The chips flowed inline with right margins, so
+   the row ended ragged and the gap after the last one was dead space — three
+   actions of unequal importance reading as unequal by accident of label length.
+   The row is a flex container now and each chip takes an equal share of what is
+   left, so the block squares off under the full-width primary above it.
+   `flex:1 1 auto` not `1 1 0`: a chip never shrinks below its own label, so a
+   long one still wraps the row rather than clipping (white-space:nowrap). */
+.shop-acts.chips{ display:flex; flex-wrap:wrap; gap:var(--sp-2); }
 .shop-acts.chips > .food-act:not(:first-of-type){
   width:auto !important;
   display:inline-flex;
-  margin:0 var(--sp-2) var(--sp-2) 0;
+  flex:1 1 auto;
+  margin:0;
   /* ON THE LADDER (spacingLadder.test.js). The first cut used `9px 14px`,
      copied off a neighbouring control, and both numbers are off the 0/1/2/4/8/
      12/16/20/24 ladder — the ratchet caught it at 272 against a 270 baseline.
@@ -5989,4 +6011,4 @@ button.vc-pill::after{
   color:var(--steel-soft);
   font-weight:600;
 }
-.shop-acts.chips > .food-act:first-of-type{ margin-bottom:var(--sp-3); }
+.shop-acts.chips > .food-act:first-of-type{ flex:1 0 100%; margin:0 0 var(--sp-1); }

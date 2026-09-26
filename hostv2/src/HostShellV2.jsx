@@ -18398,7 +18398,17 @@ export default function HostShellV2() {
                     it's sourced they are answers to a question nobody asked. */}
                 {sheet.kind !== 'foodplan' && !(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && !noKitchen && (
                   <div className="shop-acts chips">
-                    <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-2)' }} onClick={() => {
+                    {/* NO INLINE WIDTH OR MARGIN ON THESE TWO (2026-09-26).
+                        The row became a flex container when the chips were
+                        justified, and both still carried `width:100%;
+                        margin-bottom` from when it was inline flow. The margin
+                        was not cosmetic: a flex line's cross size counts each
+                        item's MARGIN, so 8px here made the line 52 tall and
+                        stretched Print and Email to 52 while this button
+                        stayed 44 — three same-class buttons, one row, two
+                        heights. Width and spacing belong to .shop-acts.chips
+                        now; one owner. */}
+                    <button className="food-act" onClick={() => {
                       // foodShopItems/eventGeoQuery are the same shared engines legacy's
                       // "Copy the shopping list" reads (App.js:10614-10615), so both apps
                       // build the identical list.
@@ -18419,7 +18429,6 @@ export default function HostShellV2() {
                         label promising a filled cart would be false exactly when
                         the key is missing, which is today. */}
                     <button className="food-act" disabled={sendingCart}
-                      style={{ width: '100%', marginBottom: 'var(--sp-2)' }}
                       onClick={async () => {
                         if (sendingCart) return;
                         // ── NO KEY? THEN NO AWAIT AT ALL. ─────────────────────────
@@ -18578,7 +18587,22 @@ export default function HostShellV2() {
                             : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and paste it.',
                             null, null, { sticky: true });
                         }
-                      }}>{sendingCart ? 'Sending…' : 'Send the list to Instacart'}</button>
+                      /* SHORTENED 2026-09-26 (owner: "can it be condensed to save
+                         space?"). MEASURED at 390px, where the row has 350px:
+                         "Send the list to Instacart" / "Print the list" /
+                         "Email the list" are 194 + 113 + 117 and wrap to TWO
+                         rows. Shortening this label ALONE buys nothing — 146 +
+                         113 + 117 still wraps — so all three gave up "the
+                         list", and 146 + 65 + 69 fits one row.
+
+                         "the list" was the redundant half: these sit directly
+                         under a THE LIST header and the primary above them
+                         still says "Copy the shopping list" in full. The VERB
+                         stays on every one of them, which is the part the CTA
+                         rule is about (UX_05: buttons carry verbs about the
+                         work, not nouns) — a bare "Instacart" would have been
+                         93px and the wrong cut. */
+                      }}>{sendingCart ? 'Sending…' : 'Send to Instacart'}</button>
                     {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
                         Host asked for print, email, and "integration with anylist
                         or other apps". Researched 2026-09-24, and the honest
@@ -18642,7 +18666,7 @@ export default function HostShellV2() {
                       let items = []; try { items = foodShopItems(foodPlan, event) || []; } catch { items = []; }
                       if (!items.length) { toast('Nothing to print yet.'); return; }
                       printSheet('shop');
-                    }}>Print the list</button>
+                    }}>Print</button>
                     <button className="food-act" onClick={() => {
                       let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
                       let subject = ''; let body = '';
@@ -18686,7 +18710,7 @@ export default function HostShellV2() {
                         window.location.href = href;
                         toast('Opening your mail app \u00b7 the full list is on your clipboard too');
                       } catch (_e) { toast('Couldn\u2019t open your mail app \u2014 the list is on your clipboard.'); }
-                    }}>Email the list</button>
+                    }}>Email</button>
                     {nudgeFor('food')}
                   </div>
                 )}
