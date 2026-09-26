@@ -3269,7 +3269,25 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   50%{transform:translate(8px,232px) scale(1.16)}
   100%{transform:translate(-10px,220px) scale(1.1)}
 }
-.sp-stack{position:absolute; left:0; right:0; top:30%; display:flex; flex-direction:column; align-items:center; gap:8px}
+/* ── THE WORDMARK IS NOT FULL BLEED, AND ITS LINES SHARE A LEFT EDGE ────────
+   Owner, 2026-09-26: "splash no guesswork on each line … have the 'no' on same
+   as guesswork", then "copy on splash shouldn't be full bleed".
+
+   MEASURED at 390: `.sp-l1` was a 390px box — edge to edge, no gutter — holding
+   "No Guesswork" at 72.5px, which does not fit on one line at any phone width,
+   so it wrapped. Centred, that put a 2-character word floating in the middle of
+   the frame above a 9-character one: the two halves of one name reading as two
+   unrelated lines.
+
+   align-items:center -> flex-start with a gutter fixes both complaints with one
+   change: every line now starts at the same x (measured 16 / 16 / 16 for "No",
+   "Guesswork" and "Events"), and nothing touches the frame edge.
+
+   THIS EDITS A LOCKED SURFACE. docs record a brand lock on the splash spec;
+   the owner asked for this directly, which is the only thing that opens it.
+   The caps lockup and the tagline below are NOT in this stack and stay centred
+   — the change is the wordmark's alignment, not the splash's composition. */
+.sp-stack{position:absolute; left:0; right:0; top:30%; display:flex; flex-direction:column; align-items:flex-start; padding-inline:var(--sp-4); gap:8px}
 .sp-l2row{display:flex; align-items:flex-end; gap:0}
 /* THE INVERSION (10+ audit, item 10): the bead is the protagonist, not a
    flourish tacked onto the end. It's lit and alone in the dark from frame
@@ -3324,7 +3342,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    still 312px of wordmark in 288px of usable width, so the old minimum was
    itself a clipping guarantee. The 100px ceiling is unchanged — it governs
    wide frames, which never had this problem. */
-.sp-l1{font-size:clamp(40px, 18.6vw, 100px);
+.sp-l1{font-size:clamp(40px, 18.6vw, 100px); text-align:left;
   animation:sp-resolve 3600ms cubic-bezier(.16,1,.3,1) var(--ms-micro) both}
 /* +var(--ms-fast) stagger vs "Event" (audit item): same keyframes, delay offset only
    — "Boss" resolves a beat after "Event" instead of both popping as one
@@ -6025,6 +6043,18 @@ button.vc-pill::after{
   width:auto !important;
   display:inline-flex;
   flex:1 1 auto;
+  /* ── NO BUTTON TAKES MORE THAN HALF A ROW ─────────────────────────────
+     FOUND IN THE iOS SIMULATOR, 2026-09-26, and only there: real Safari has
+     the Web Share API, so a phone shows FOUR actions here (Share the list
+     joins Instacart / Print / Email) where the desktop browser pane shows
+     three. Four wrapped 3 + 1 and the orphan, growing on flex:1 1 auto, took
+     the whole last row — an ordinary secondary action rendered at exactly the
+     width and weight of the primary above it.
+
+     The cap also improves the four-up case into a 2x2 rather than 3 + 1, and
+     leaves the three-up case alone: measured at 390px those are 164 / 83 / 87
+     against a half-row of 171, so none of them is touched. */
+  max-width:calc(50% - var(--sp-1));
   margin:0;
   /* ON THE LADDER (spacingLadder.test.js). The first cut used `9px 14px`,
      copied off a neighbouring control, and both numbers are off the 0/1/2/4/8/

@@ -18048,7 +18048,16 @@ export default function HostShellV2() {
                           spaces WITHIN a pair are U+00A0 so lines break only at the
                           separators. "so far" dropped: "Meals" plus a count of
                           unanswered already says it is in progress. */}
-                      Meals: {keys.map(k => `${k}\u00A0${counts[k]}`).join(' · ')}{un > 0 ? ` · ${un}\u00A0unanswered` : ''}
+                      {/* ── ONE OF THESE FACTS IS A JOB (2026-09-26) ────────
+                          The whole line renders at --faint, so "3 unanswered" —
+                          the only part the host can DO something about — sits in
+                          exactly the same grey as the counts, which are just a
+                          readout. Nothing is cut and nothing is restyled except
+                          the actionable fragment, which takes the warn colour
+                          the rest of the app already uses for "this needs you".
+                          Still one line, still every number. */}
+                      Meals: {keys.map(k => `${k}\u00A0${counts[k]}`).join(' · ')}
+                      {un > 0 ? <> · <span style={{ color: 'var(--warn)', fontWeight: 650 }}>{un}&nbsp;unanswered</span></> : ''}
                     </p>
                   );
                 })()}
@@ -18256,11 +18265,26 @@ export default function HostShellV2() {
                           </span>
                         </button>
                       )}
+                      {/* ── THE COUNT IS ALREADY PINNED (2026-09-26) ────────
+                          "N of M bought" rendered HERE and again in the .ftotal
+                          bar at the foot of the same sheet — the same sentence
+                          twice on one screen, which is the duplication the host
+                          called out on 2026-09-24 ("check for duplication of
+                          info and choices between shop/bringing/plan sections")
+                          and which the bar's own comment below already answers
+                          for the hero.
+
+                          The bar keeps the fraction: it is PINNED, and
+                          totalSurvivesScroll exists to keep it on screen through
+                          the whole list. So this row says what the list IS,
+                          which is what a row you are about to open should say.
+                          Done still reads done — that is a state, not a repeat
+                          of the tally. */}
                       {!planTab && (
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, list: true }))}>
                         <span className="fstat-l">The list</span>
                         <span className="fstat-v" style={listDone ? { color: 'var(--ok)' } : null}>
-                          {shopTally.bought} of {shopTally.total} bought
+                          {listDone ? 'all bought' : `${shopTally.total} item${shopTally.total === 1 ? '' : 's'}`}
                           <span className="fstat-chev" aria-hidden="true">›</span>
                         </span>
                       </button>
@@ -18637,7 +18661,7 @@ export default function HostShellV2() {
                         when there is nothing to share to. Neither is a failure,
                         so neither gets an error toast. */}
                     {canShareLists && (
-                      <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-2)' }} onClick={() => {
+                      <button className="food-act" onClick={() => {
                         let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
                         let text = '';
                         try {

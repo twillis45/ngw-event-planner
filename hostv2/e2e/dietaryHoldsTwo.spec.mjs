@@ -144,7 +144,7 @@ test('tapping a restriction marks the lines it applies to', async ({ page }) => 
   await sheet.getByText('The list', { exact: false }).first().click();
   await settled(page);
   // The list is grouped; open Food to reach the item rows.
-  await sheet.getByText('0 of 7 bought', { exact: false }).first().click();
+  await sheet.getByText('7 items', { exact: false }).first().click();
   await settled(page);
 
   // Blue crabs is the row that carries `decision open` AND `essential`, so it is

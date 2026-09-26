@@ -84,7 +84,7 @@ const openList = async (page, pick) => {
   await tapText(page, '^Done$');
   await page.waitForTimeout(1200);
   await settled(page);
-  await tapText(page, 'The list[\\s\\S]*bought');
+  await tapText(page, 'The list[\\s\\S]*item');
   await page.waitForTimeout(1500);
   await settled(page);
 };
@@ -194,7 +194,7 @@ test('NEGATIVE CONTROL: a LOCAL event is untouched by any of it', async ({ page 
   await tapText(page, '^Done$');
   await page.waitForTimeout(1200);
   await settled(page);
-  await tapText(page, 'The list[\\s\\S]*bought');
+  await tapText(page, 'The list[\\s\\S]*item');
   await page.waitForTimeout(1500);
   await settled(page);
   const t = await bodyText(page);

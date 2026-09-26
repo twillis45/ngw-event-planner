@@ -79,7 +79,7 @@ const openList = async (page, venueCity) => {
   await tapText(page, "what you.?re serving");
   await page.waitForTimeout(1600);
   await settled(page);
-  await tapText(page, 'The list[\\s\\S]*bought');
+  await tapText(page, 'The list[\\s\\S]*item');
   await page.waitForTimeout(1600);
   await settled(page);
 };

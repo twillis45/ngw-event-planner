@@ -74,7 +74,7 @@ const openPriced = async (page, description) => {
   await tapText(page, "what you.?re serving");
   await page.waitForTimeout(1600);
   await settled(page);
-  await tapText(page, 'The list[\\s\\S]*bought');
+  await tapText(page, 'The list[\\s\\S]*item');
   await page.waitForTimeout(1600);
   await settled(page);
   if (!(await storeLayerOffered(page))) return null;      // unconfigured bundle
