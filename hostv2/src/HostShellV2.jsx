@@ -21194,7 +21194,19 @@ export default function HostShellV2() {
                             — and this is the surface that exists to be honest
                             about money, so it says so in full rather than
                             leaving the host to infer it from the rows. */}
-                        <b>{fmt(money.committed)}</b> spoken for, of a <b>{fmt(money.planned)}</b> budget{money.committedEstimated > 0 ? <> (<b>{fmt(money.committedEstimated)}</b> of that still an estimate)</> : null}{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</> : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
+                        <b>{fmt(money.committed)}</b> spoken for, of a <b>{fmt(money.planned)}</b> budget{money.committedEstimated > 0 ? (money.committedEstimated === money.committed
+                          /* SAY "ALL OF IT" RATHER THAN THE NUMBER AGAIN (2026-09-26).
+                             Measured over all 45 playbooks at 30 guests: committedEstimated
+                             EQUALS committed on 45 of 45 — every event, because before a host
+                             records any actual spend the whole figure is an estimate. So this
+                             parenthetical printed the same number twice in one breath on every
+                             event a host has ever opened: "$1,240 spoken for, of a $1,000
+                             budget ($1,240 of that still an estimate)". The partial case is
+                             real once money starts being recorded and keeps its figure. */
+                          ? <> — all of it still an estimate</>
+                          : <> (<b>{fmt(money.committedEstimated)}</b> of that still an estimate)</>) : null}{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? (money.spentEstimated === money.spent
+                          ? <> — all of it still estimated</>
+                          : <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</>) : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
                       </>}
                     />
                     );
