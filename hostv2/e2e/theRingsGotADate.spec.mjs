@@ -15,7 +15,7 @@
 // DRIVEN, BECAUSE JEST CANNOT EXECUTE hostv2, and because the checklist is not
 // rendered until the host drafts it — a claim about "the task exists" proves
 // nothing about the screen until that button is pressed.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -30,8 +30,8 @@ const bodyText = (page) => page.evaluate(() => document.body.innerText.replace(/
 
 const draftChecklist = async (page, type, daysOut) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addInitScript(([t, d]) => {
-    const date = new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
+  // LOCAL calendar date from Node (fixtures.dateIn); toISOString is UTC.
+  await page.addInitScript(([t, date]) => {
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
       id: 'e2e-rings', name: 'Our Elopement', type: t,
       date, venueCity: 'Asheville, NC',

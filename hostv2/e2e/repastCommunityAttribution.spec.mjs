@@ -18,13 +18,14 @@
 // fallback, so a plain localStorage write after load loses a race with the
 // sync — driven by hand first and watched the server restore a different event
 // over the seed, twice. addInitScript runs before the app boots and wins.
-import { test, expect, settled, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, dateIn } from './fixtures.mjs';
 
 const REPAST_ID = 'e2e-repast-community';
 
 const boot = async (page) => {
-  await page.addInitScript((id) => {
-    const d = new Date(Date.now() + 21 * 864e5).toISOString().slice(0, 10);
+  // `d` is a LOCAL calendar date computed in Node and passed in — see
+  // fixtures.dateIn. Deriving it in the page with toISOString() is UTC.
+  await page.addInitScript(([id, d]) => {
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
       id, name: 'A repast for Deacon Willie Hayes', type: 'Repast',
       date: d, venueCity: 'Annapolis', venueState: 'MD',
@@ -35,7 +36,7 @@ const boot = async (page) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  }, REPAST_ID);
+  }, [REPAST_ID, dateIn(21)]);
   await page.goto('?elegant=1');
   await settled(page);
   // The SPREAD sheet, not the seating one. The first cut of this opened

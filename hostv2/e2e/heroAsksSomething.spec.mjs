@@ -18,10 +18,13 @@
 // The engine gate proves the rate is 0. This file proves a HOST sees it, on the
 // three states that were broken, because "the engine returns the right string"
 // has never been the same claim as "the screen shows it".
-import { test, expect } from './fixtures.mjs';
+import { test, expect, dateIn } from './fixtures.mjs';
 
 const EV = 'test-day-before-vendors';
-const isoIn = (d) => { const x = new Date(); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+// The noon trick (setHours(12) before toISOString) is safe only while the UTC
+// offset is inside +/-12. At UTC+14 (Pacific/Kiritimati) it still slides a day,
+// so this uses the local formatter like every other spec.
+const isoIn = (d) => dateIn(d);
 
 // The wedding's expectation CHANGED on 2026-08-21 and the change is correct.
 // Before the checklist reconcile, the wedding's own budget task was never on

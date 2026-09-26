@@ -19,13 +19,13 @@
 // WHY THE EXPAND. The ranked rows below the hero live behind "The rest of your
 // plan"; a body-text assertion without it passes on a page that never showed the
 // row. Learned by writing this test the wrong way first.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, dateIn } from './fixtures.mjs';
 
 const EV = 'test-day-before-vendors';
 
 const isoIn = (days) => {
   const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return dateIn(Math.round((d - new Date()) / 864e5));
 };
 
 // A refund window 4 days out — inside the raiser's 14-day window.

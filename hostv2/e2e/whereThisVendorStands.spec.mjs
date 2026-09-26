@@ -22,9 +22,9 @@
 //
 // DRIVEN, BECAUSE JEST CANNOT EXECUTE hostv2. The unit test proves the engine
 // filter; only a browser proves a host is shown it.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
-const iso = (d) => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
+const iso = (d) => dateIn(d);
 
 // A plan three weeks out with three vendors, each parked on a different axis:
 //   Ironwood   — confirmed, no contract on file        → paperwork

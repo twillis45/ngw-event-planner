@@ -14,7 +14,7 @@
 //      clears them.
 //   4. FOLD PEEK (W9 class): on future-event ask screens the see-all pull
 //      handle intersects the first viewport.
-import { test, expect, settled, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, dateIn } from './fixtures.mjs';
 
 const COI_PATCH = {
   vendors: [
@@ -36,7 +36,7 @@ const COI_PATCH = {
 // first fix declared it noSettle — which would have excluded day-of from this
 // probe permanently. Revert by deleting the two venue keys.
 const VENUE = { venue: 'The Ironwood Room', venueCity: 'Annapolis, MD' };
-const DAY_OF_PATCH = { date: new Date().toISOString().slice(0, 10), ...VENUE };
+const DAY_OF_PATCH = { date: dateIn(0), ...VENUE };
 
 const STATES = [
   // noSettle carries a REASON, never a bare true. A declaration without one is
@@ -55,7 +55,7 @@ const STATES = [
   // Third fixture-drift finding in a row, same shape each time: a state's
   // LABEL claims something its data no longer is. See the guard below.
   { id: 'ev-x-repast',             label: 'Repast T-3 (solemn)',               weather: false, future: true,
-    patch: { date: (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.toISOString().slice(0, 10); })() } },
+    patch: { date: dateIn(3) } },
   // noSettle: a state that legitimately has nothing to settle in place, so a
   // zero-step walk is the correct outcome rather than a missing one. A PAST
   // event has no decisions left to make. Every other state must produce at
@@ -102,8 +102,7 @@ const behaviourOnly = (testInfo) =>
     `behaviour test — runs on ${BEHAVIOUR_GEOMETRIES.join(' + ')} only (see the note above; this file was 73% of the matrix)`);
 
 const stageWeather = async (page) => {
-  const day = new Date(); day.setDate(day.getDate() + 2);
-  const iso = day.toISOString().slice(0, 10);
+  const iso = dateIn(2);
   const noon = new Date(iso + 'T12:00:00');
   const hourly = [];
   for (let h = 8; h < 22; h++) {

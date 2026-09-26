@@ -90,9 +90,26 @@ jobs:
       # they disagree for four hours a day, which is why CI (UTC, where they
       # never disagree) was green the whole time.
       #
-      # Pacific/Midway is UTC-11, so local and UTC ALWAYS disagree for most of
-      # the day. That reproduces the US-evening condition on every run instead
-      # of four hours in twenty-four.
+      # Pacific/Midway is UTC-11, which reproduces the US-evening condition — but
+      # NOT on every run, and the first version of this comment claimed it did.
+      #
+      # MEASURED 2026-09-26 at 12:15 UTC: under TZ=Pacific/Midway the browser and
+      # node both reported localDate 2026-09-26 and utcDate 2026-09-26. THEY
+      # AGREED, so a red-proof run at that hour passed with the fault restored.
+      # No fixed timezone disagrees with UTC all day — that is arithmetic, not a
+      # bug. A UTC-11 zone disagrees only while UTC time-of-day is before 11:00.
+      #
+      #   TZ=Pacific/Midway     (UTC-11)  diverges UTC 00:00-11:00   (11/24)
+      #   TZ=Pacific/Kiritimati (UTC+14)  diverges UTC 10:00-24:00   (14/24)
+      #
+      # The union is the whole day, so the complete gate is BOTH. Kiritimati is
+      # not added yet because it currently fails 139 tests in 21 suites — the
+      # same class in the other direction, including the noon-trick idiom
+      # (`setHours(12)` before `toISOString()`), which is safe only inside +/-12.
+      #
+      # So THIS STEP HAS A BLIND WINDOW of UTC 11:00-24:00, stated rather than
+      # implied. Closing it is what the +14 work buys, and that is the reason to
+      # do the +14 work — not the foreign-user case, which is commercially thin.
       #
       # WHY A TIMEZONE RUN AND NOT A GREP FOR toISOString. There are 95
       # occurrences in tests and 45 in lib, most of them harmless (provenance

@@ -35,7 +35,8 @@ const VIEWPORTS = [
 
 const stageWeather = async (page) => {
   const day = new Date(); day.setDate(day.getDate() + 2);
-  const iso = day.toISOString().slice(0, 10);
+  // LOCAL calendar date; toISOString() is UTC and slides a day in the evening.
+  const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
   const noon = new Date(iso + 'T12:00:00');
   const hourly = [];
   for (let h = 8; h < 22; h++) {

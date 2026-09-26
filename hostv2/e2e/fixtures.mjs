@@ -51,6 +51,33 @@ export { expect };
 // railBoundaryMatchesApp.test.js fails if it ever drifts from viewport.js.
 export const RAIL_MIN_WIDTH = 1024;
 
+// ─── EVENT FIXTURE DATES ARE LOCAL CALENDAR DAYS, NEVER toISOString ─────────
+//
+// MEASURED 2026-09-26. `theClosingWindowLeads.spec.mjs` failed in the nightly
+// full run and passed on a re-run seven hours later with no code change. It
+// built its event date with `toISOString().slice(0, 10)`, which is UTC, while
+// the board's day arithmetic (`dates.getToday`, `setHours(0,0,0,0)`) is LOCAL.
+// Whenever the two calendars disagree — 8pm to midnight Eastern, and most of
+// the day across the eastern hemisphere — three-days-out became four and the
+// rows the spec ranks never both appeared.
+//
+// CI runs in UTC, where they never disagree, so CI could not reproduce it.
+//
+// 15 sites across 12 specs carried the same idiom. They all come here, so the
+// rule has ONE home rather than a per-file idiom: the CRA side already learned
+// this lesson three times module by module (dateChips, dayAlerts,
+// experienceContext), and each fix stayed local to its module.
+//
+// For a spec whose date is computed INSIDE `addInitScript` (browser context, no
+// imports), call this in Node and pass the string through as an argument —
+// never re-derive it in the page.
+/** A LOCAL calendar date `days` from today, as YYYY-MM-DD. */
+export const dateIn = (days = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() + Number(days || 0));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 /** True where the section rail is rendered and can be used as the door. */
 export const hasRail = (viewport) => !!viewport && viewport.width >= RAIL_MIN_WIDTH;
 

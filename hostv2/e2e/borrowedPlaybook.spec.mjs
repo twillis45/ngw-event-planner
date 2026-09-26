@@ -6,20 +6,20 @@
 // list presented as the type's own is the app claiming knowledge it does not
 // have. So this asserts the sentence reaches the screen, and just as
 // importantly that it stays off the 39 authored types.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const boot = async (page, type) => {
-  await page.addInitScript((t) => {
+  await page.addInitScript(([t, SEED_DATE]) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
     localStorage.setItem('ngw-hostv2-last-event', 'borrow-probe');
-    const date = new Date(Date.now() + 45 * 864e5).toISOString().slice(0, 10);
+    const date = SEED_DATE;   // LOCAL, from fixtures.dateIn — toISOString is UTC
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
       id: 'borrow-probe', type: t, name: `${t} probe`, date, guestCount: 40,
       guests: [], vendors: [], budget: [], timeline: [],
     }]));
-  }, type);
+  }, [type, dateIn(45)]);
   await page.goto('?elegant=1');
   await settled(page);
 };

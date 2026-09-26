@@ -13,7 +13,7 @@
 // "Event Boss", and "Ask the Boss" survived the sweep in five host-visible
 // places because the guard proving the rename read the frozen CRA shell and
 // matched the two-word name only. This is the screen it was wrong about.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const boot = async (page, { id, type, choices }) => {
   await page.addInitScript(([evId, evType, evChoices]) => {
@@ -30,14 +30,14 @@ const boot = async (page, { id, type, choices }) => {
     // seed rewrites the event after the app has already changed it — the trap
     // dayOfChecklist.spec.mjs documents, which cost a false data-loss report.
     if (!localStorage.getItem('ngw-hostv2-custom-events')) {
-      const date = new Date(Date.now() + 40 * 864e5).toISOString().slice(0, 10);
+      const date = SEED_DATE;   // LOCAL, from fixtures.dateIn
       localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
         id: evId, type: evType, name: `${evType} probe`, date, guestCount: 30,
         guests: [], vendors: [], budget: [], timeline: [],
         ...(evChoices ? { foodChoices: evChoices } : {}),
       }]));
     }
-  }, [id, type, choices || null]);
+  }, [id, type, choices || null, dateIn(40)]);
   await page.goto('?elegant=1');
   await settled(page);
 };
@@ -159,12 +159,12 @@ test.describe('the air-travel invite floor reaches the shipping shell', () => {
     const dueFor = async (isDest) => {
       const ctx = await browser.newContext();
       const page = await ctx.newPage();
-      await page.addInitScript((d) => {
+      await page.addInitScript(([d, SEED_DATE]) => {
         localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
         localStorage.setItem('ngw-welcomed', '1');
         localStorage.setItem('ngw-v2-welcomed', '1');
         localStorage.setItem('ngw-hostv2-last-event', 'airfloor');
-        const date = new Date(Date.now() + 300 * 864e5).toISOString().slice(0, 10);
+        const date = SEED_DATE;   // LOCAL, from fixtures.dateIn
         localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
           id: 'airfloor', type: 'Birthday', name: 'Santa Fe 80th', date, guestCount: 10,
           venueCity: 'Santa Fe', state: 'NM', isDestination: d,

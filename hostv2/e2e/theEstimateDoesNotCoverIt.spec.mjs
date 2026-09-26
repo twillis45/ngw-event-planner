@@ -14,7 +14,7 @@
 // DRIVEN, BECAUSE JEST CANNOT EXECUTE hostv2 — and because WHERE this lands is
 // the whole point. A true sentence three screens away from the "Use $300"
 // button would not have prevented the tap.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -29,8 +29,8 @@ const bodyText = (page) => page.evaluate(() => document.body.innerText.replace(/
 
 const openBudget = async (page, type, guestCount) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addInitScript(([t, g]) => {
-    const d = new Date(Date.now() + 120 * 864e5).toISOString().slice(0, 10);
+  await page.addInitScript(([t, g, SEED_DATE]) => {
+    const d = SEED_DATE;   // LOCAL, from fixtures.dateIn — toISOString is UTC
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
       id: 'e2e-sf', name: 'The Question', type: t, date: d,
       venueCity: 'Baltimore, MD', guestMode: 'count', guestCount: g,
@@ -40,7 +40,7 @@ const openBudget = async (page, type, guestCount) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  }, [type, guestCount]);
+  }, [type, guestCount, dateIn(120)]);
   await page.goto('?elegant=1');
   await settled(page);
   await tapText(page, 'Set your budget');

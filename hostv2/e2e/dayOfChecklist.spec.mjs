@@ -5,15 +5,15 @@
 // list that answers "what has to be true before the doors open" reached nobody
 // — and this repo has now found three engines in that exact state, which is
 // why the wiring gets a gate and not just a render.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const boot = async (page, type) => {
-  await page.addInitScript((t) => {
+  await page.addInitScript(([t, SEED_DATE]) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
     localStorage.setItem('ngw-hostv2-last-event', 'dayof-probe');
-    const date = new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10);
+    const date = SEED_DATE;   // LOCAL, from fixtures.dateIn — toISOString is UTC
     // GUARDED, and this guard is the whole lesson of this file.
     //
     // `addInitScript` re-runs on EVERY navigation, including `reload()`. With
@@ -30,7 +30,7 @@ const boot = async (page, type) => {
         guests: [], vendors: [], budget: [], timeline: [],
       }]));
     }
-  }, type);
+  }, [type, dateIn(10)]);
   await page.goto('?elegant=1');
   await settled(page);
   await toTheDay(page);

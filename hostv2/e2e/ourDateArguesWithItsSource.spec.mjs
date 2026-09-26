@@ -27,7 +27,7 @@
 // DRIVEN, BECAUSE JEST CANNOT EXECUTE hostv2. The unit tests in
 // src/lib/knowledge/timingProvenance.test.js prove the carry, the sentence and
 // the empty population; only a browser proves a host is no longer shown it.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -50,8 +50,8 @@ const openDecisionCard = async (page, type, rowLabel) => {
   await page.setViewportSize({ width: 390, height: 844 });
   // The date is relative, not literal: a fixed date rots the day it passes, and
   // a decision parked past its window would stop rendering where this looks.
-  await page.addInitScript((t) => {
-    const d = new Date(Date.now() + 52 * 864e5).toISOString().slice(0, 10);
+  await page.addInitScript(([t, SEED_DATE]) => {
+    const d = SEED_DATE;   // LOCAL, from fixtures.dateIn — toISOString is UTC
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
       id: 'e2e-timing', name: 'The Party', type: t,
       date: d, venueCity: 'Baltimore, MD',
@@ -62,7 +62,7 @@ const openDecisionCard = async (page, type, rowLabel) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  }, type);
+  }, [type, dateIn(52)]);
   await page.goto('?elegant=1');
   await settled(page);
   await tapText(page, 'Calls to make');
