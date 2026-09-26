@@ -1,0 +1,718 @@
+################ agent-a2b98d61c76563d73  base 9de1b3a9 (2026-07-10)
+diff --git a/hostv2/src/HostShellV2.jsx b/hostv2/src/HostShellV2.jsx
+index 1efdad8e..c7a1b9d5 100644
+--- a/hostv2/src/HostShellV2.jsx
++++ b/hostv2/src/HostShellV2.jsx
+@@ -4431,21 +4431,41 @@ export default function HostShellV2() {
+                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
+                         const allBought = r.est > 0 && r.got >= r.est;
+                         return (
+-                          <button className="brow" key={r.label}
+-                            style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--line-soft)', font: 'inherit', color: 'inherit', cursor: 'pointer', animation: `cardin 300ms var(--ease-out) ${i * 40}ms both` }}
+-                            onClick={r.go} aria-label={'Open ' + r.label}>
+-                            <div className="line" style={{ padding: '0 0 5px' }}>
+-                              <span>{r.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
+-                              {/* "$0 bought" ×3 before any buying is noise — the
+-                                  bought figure earns its place once buying starts */}
+-                              {allBought
+-                                ? <span className="amt" style={{ color: 'var(--ok)' }}>{fmt(r.got)} <span className="of" style={{ color: 'var(--ok)' }}>bought</span></span>
+-                                : r.got > 0
+-                                  ? <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
+-                                  : <span className="amt">~{fmt(r.est)}</span>}
+-                            </div>
+-                            <div className="bline"><i style={{ width: Math.max(alloc, 4) + '%' }}><b style={{ width: got + '%' }} /></i></div>
+-                          </button>
++                          <div key={r.label}>
++                            <button className="brow"
++                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--line-soft)', font: 'inherit', color: 'inherit', cursor: 'pointer', animation: `cardin 300ms var(--ease-out) ${i * 40}ms both` }}
++                              onClick={r.go} aria-label={'Open ' + r.label}>
++                              <div className="line" style={{ padding: '0 0 5px' }}>
++                                <span>{r.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
++                                {/* "$0 bought" ×3 before any buying is noise — the
++                                    bought figure earns its place once buying starts */}
++                                {allBought
++                                  ? <span className="amt" style={{ color: 'var(--ok)' }}>{fmt(r.got)} <span className="of" style={{ color: 'var(--ok)' }}>bought</span></span>
++                                  : r.got > 0
++                                    ? <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
++                                    : <span className="amt">~{fmt(r.est)}</span>}
++                              </div>
++                              <div className="bline"><i style={{ width: Math.max(alloc, 4) + '%' }}><b style={{ width: got + '%' }} /></i></div>
++                            </button>
++                            {/* Food-cost detail (audit gap fix): per-head cost, real-priced
++                                vs. still-estimated item count, and the regional pricing
++                                note — the same facts the legacy Food & Drink card
++                                (App.js HostSpendingPlan) surfaces, read from the SAME
++                                already-computed foodPlan/foodPP, no new math. */}
++                            {r.kind === 'food' && foodPlan && foodPlan.itemCount > 0 && (
++                              <div className="v-meta" style={{ padding: '0 0 10px' }}>
++                                {foodPlan.guests > 0 && foodPlan.foodHigh > 0 && (
++                                  <>≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head × {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
++                                )}
++                                {foodPlan.lockedCount > 0
++                                  ? <>{foodPlan.lockedCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
++                                  : <>All {foodPlan.itemCount} item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — lock a real price as you shop.</>}
++                                {foodPP.priceContext && (
++                                  <> Prices adjusted for the {foodPP.priceContext.split(' · ')[0]} region.</>
++                                )}
++                              </div>
++                            )}
++                          </div>
+                         );
+                       })}
+                     </>
+---- untracked ----
+
+################ agent-a4d4d69fe2640e2f0  base 0cecf3bf (2026-07-10)
+diff --git a/src/lib/playbooks/data/retirementParty.js b/src/lib/playbooks/data/retirementParty.js
+index 157ad752..913d3b87 100644
+--- a/src/lib/playbooks/data/retirementParty.js
++++ b/src/lib/playbooks/data/retirementParty.js
+@@ -92,7 +92,7 @@ const retirementParty = {
+     { id: 't_memory_stage', milestoneId: 'rp_setup', phase: 'setup', label: 'Stage the memory/photo display, the signing card + pens, and the slideshow screen at a visible spot', when: 'T0 -2h' },
+     { id: 't_mic_test', milestoneId: 'rp_setup', phase: 'setup', label: 'Test the mic + speaker and cue the slideshow; set music volume so the speeches will be heard', when: 'T0 -1h' },
+     { id: 't_clean_pre', milestoneId: 'rp_setup', phase: 'cleanup', label: 'Pre-clean: empty dishwasher, stage a bus tub + trash/recycling for bottles', when: 'T0 -2h' },
+-    { id: 't_arrival', milestoneId: 'event', phase: 'program', label: 'SURPRISE choreography: guests in + quiet by the arrive-by time; co-conspirator brings the honoree in on cue', when: 'T0 -10m' },
++    { id: 't_arrival', milestoneId: 'event', phase: 'program', label: 'Guests in and settled by the arrive-by time; greet the honoree when they arrive', copyByAnswer: { surprise: { 'Full surprise': 'SURPRISE choreography: guests in + quiet by the arrive-by time; co-conspirator brings the honoree in on cue', 'Soft surprise (honoree knows, not the details)': 'Guests in and settled by the arrive-by time; co-conspirator times the honoree\'s arrival so the room is ready' } }, when: 'T0 -10m' },
+     { id: 't_serve', milestoneId: 'event', phase: 'food', label: 'Open the buffet/apps once the honoree has greeted people; keep stations stocked and the bar flowing', when: 'T0 +0:20' },
+     { id: 't_tribute', milestoneId: 'event', phase: 'program', label: 'Gather the room, pour the toast, run the slideshow + speeches in order — THE TRIBUTE', when: 'T0 +1:15' },
+     { id: 't_card', milestoneId: 'event', phase: 'program', label: 'Make sure everyone signs the card / leaves a note before they drift off; hand it to the honoree at the end', when: 'ongoing' },
+@@ -133,8 +133,8 @@ const retirementParty = {
+ 
+   vendors: [
+     { category: 'Catering / Buffet', required: false, altToDIY: 'Drop-off buffet catering for 40-50 removes the biggest cook load; DIY warehouse-store trays are the cheaper path', when: 'T-21d', costRange: [15, 40], costUnit: 'per guest' },
+-    { category: 'Bar / Bartender', required: false, altToDIY: 'A bartender (~$250-400) frees the host to run the surprise + the speeches; self-serve beer/wine on ice is the free alt', when: 'T-18d', costRange: [250, 450], costUnit: 'flat' },
+-    { category: 'Photographer', required: false, altToDIY: 'A 1-2h photographer captures the surprise reaction + group + honoree portraits; a designated phone-photographer friend is the free alt', when: 'T-14d', costRange: [200, 600], costUnit: 'flat' },
++    { category: 'Bar / Bartender', required: false, altToDIY: 'A bartender (~$250-400) frees the host to run the party and the speeches; self-serve beer/wine on ice is the free alt', copyByAnswer: { surprise: { 'Full surprise': 'A bartender (~$250-400) frees the host to run the surprise + the speeches; self-serve beer/wine on ice is the free alt', 'Soft surprise (honoree knows, not the details)': 'A bartender (~$250-400) frees the host to run the arrival and the speeches; self-serve beer/wine on ice is the free alt' } }, when: 'T-18d', costRange: [250, 450], costUnit: 'flat' },
++    { category: 'Photographer', required: false, altToDIY: 'A 1-2h photographer captures the honoree\'s reaction, group shots, and portraits; a designated phone-photographer friend is the free alt', copyByAnswer: { surprise: { 'Full surprise': 'A 1-2h photographer captures the surprise reaction + group + honoree portraits; a designated phone-photographer friend is the free alt', 'Soft surprise (honoree knows, not the details)': 'A 1-2h photographer captures the honoree\'s arrival reaction + group + honoree portraits; a designated phone-photographer friend is the free alt' } }, when: 'T-14d', costRange: [200, 600], costUnit: 'flat' },
+     { category: 'Venue / Private Room', required: false, altToDIY: 'A restaurant private room or hall covers tables, staff, and cleanup but costs a room/F&B minimum; home/office is free but more host work', when: 'T-32d', costRange: [200, 1500], costUnit: 'flat' },
+     { category: 'AV / Slideshow Tech', required: false, altToDIY: 'Some venues rent a mic + screen (~$75-200); a borrowed Bluetooth speaker + a wheeled-in TV is the DIY alt', when: 'T-14d', costRange: [75, 250], costUnit: 'flat' },
+     { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet at home', when: 'T-7d', costRange: [120, 180], costUnit: 'flat' },
+@@ -180,7 +180,7 @@ const retirementParty = {
+       { when: 'T0 -3h', what: 'Set the room: ample accessible seating, clear walkways, buffet table (≤36" reach), bar, cake/display tables; reserve front-row seats near the speakers' },
+       { when: 'T0 -2h', what: 'Stage the memory/photo display, the signing card + pens, and the slideshow screen; place coffee/tea station, decor, centerpieces' },
+       { when: 'T0 -1h', what: 'Test the mic + speaker and the slideshow on the actual screen; set music volume; pre-clean — empty dishwasher, stage bus tub + recycling bin' },
+-      { when: 'T0 -30m', what: 'SURPRISE prep: get guests in and quiet, brief the co-conspirator and the lookout, position the surprise guest out of sight, first appetizers out' },
++      { when: 'T0 -30m', what: 'Final setup check: greet early arrivals, confirm the buffet/bar and seating are ready, first appetizers out', copyByAnswer: { surprise: { 'Full surprise': 'SURPRISE prep: get guests in and quiet, brief the co-conspirator and the lookout, position the surprise guest out of sight, first appetizers out', 'Soft surprise (honoree knows, not the details)': 'Get guests settled in and greeted, quietly confirm arrival timing with your co-conspirator for the honoree, first appetizers out' } } },
+     ],
+     cleanup: [
+       { when: 'during', what: 'Bus empties/plates into the staged tub continuously; keep the recycling bin and to-go containers visible; do NOT wash mid-party' },
+diff --git a/src/lib/playbooks/index.js b/src/lib/playbooks/index.js
+index 87346da7..edc3e583 100644
+--- a/src/lib/playbooks/index.js
++++ b/src/lib/playbooks/index.js
+@@ -461,6 +461,29 @@ export function choiceShown(event, whenChoice) {
+   return v == null ? true : (Array.isArray(whenChoice.in) ? whenChoice.in : []).includes(v);
+ }
+ 
++// ── Decision-ANSWERED copy override (never assume an unconfirmed default) ─────
++// A schedule/task/vendor entry's instructional text (`what` / `label` / `altToDIY`)
++// may carry `copyByAnswer: { [decisionId]: { [answeredValue]: overrideText } }` so
++// copy that assumes a specific CHOREOGRAPHY (e.g. retirementParty's Day-of "brief
++// the co-conspirator and the lookout" surprise staging) only fires when the host
++// actually picked that option. Deliberately distinct from choicePickFor()/
++// choiceShown() above (which fall back to the playbook's authored default so
++// quantities/visibility render sensibly before any pick is made) — this reads
++// ONLY event.foodChoices[decisionId], mirroring the Decisions board's isLocked()
++// predicate (picks[d.id], never the default), so an unanswered decision never
++// silently reads as though the host chose the default option. No-op (returns
++// `base` unchanged) for any entry without `copyByAnswer` — every other
++// playbook/entry is unaffected.
++export function resolveAnsweredCopy(base, copyByAnswer, event) {
++  if (!copyByAnswer) return base;
++  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
++  for (const decisionId of Object.keys(copyByAnswer)) {
++    const answered = picks[decisionId];
++    if (answered && copyByAnswer[decisionId][answered] != null) return copyByAnswer[decisionId][answered];
++  }
++  return base;
++}
++
+ // ── Food approach: caterer vs the host handling food themselves ───────────────
+ // THE single-source lever for "is a caterer in scope for this event?" Every caterer
+ // reference (readiness warnings, vendor suggestions, timeline tips, the reconciliation
+@@ -544,7 +567,7 @@ export function playbookChecklist(event, asOf) {
+     const eventDay = offset != null && offset >= 0;
+     rows.push({
+       id: `pbt-${event.id}-${t.id}`,
+-      task: t.label,
++      task: resolveAnsweredCopy(t.label, t.copyByAnswer, event),
+       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
+       category: eventDay ? 'event-day' : 'planning',
+       phase: t.phase || 'planning',
+@@ -869,7 +892,7 @@ export function playbookRunOfShow(event) {
+         id: `pb-ros-${event.id}-${kind.key}-${seq++}`,
+         time: `${rosPad2(Math.floor(total / 60))}:${String(((total % 60) + 60) % 60).padStart(2, '0')}`,
+         _min: total,
+-        segment: entry.what,
++        segment: resolveAnsweredCopy(entry.what, entry.copyByAnswer, event),
+         location: '',
+         type: kind.segType,
+         owner: 'Host',
+diff --git a/src/lib/vendorPlan.js b/src/lib/vendorPlan.js
+index cb05dc04..8188551c 100644
+--- a/src/lib/vendorPlan.js
++++ b/src/lib/vendorPlan.js
+@@ -16,7 +16,7 @@
+ //   - every multiplier applied is named in `factorsApplied` so the UI can
+ //     always answer "why is this more/less expensive than the base range"
+ 
+-import { getPlaybook } from './playbooks';
++import { getPlaybook, resolveAnsweredCopy } from './playbooks';
+ 
+ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+ const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
+@@ -86,7 +86,7 @@ export function buildVendorPlan(event, opts = {}) {
+       category: cat.category,
+       required: !!cat.required,
+       when: cat.when || null,
+-      altToDIY: cat.altToDIY || null,
++      altToDIY: resolveAnsweredCopy(cat.altToDIY, cat.copyByAnswer, ev) || null,
+       costUnit: perGuest ? 'per guest' : 'flat',
+       baseRange: Array.isArray(cat.costRange) ? cat.costRange : null,
+       estimateLow,
+---- untracked ----
+src/lib/playbooks/__tests__/retirementSurprise.test.js
+
+################ agent-a5b630c90ad677921  base 9de1b3a9 (2026-07-10)
+diff --git a/hostv2/src/HostShellV2.jsx b/hostv2/src/HostShellV2.jsx
+index 1efdad8e..0f545162 100644
+--- a/hostv2/src/HostShellV2.jsx
++++ b/hostv2/src/HostShellV2.jsx
+@@ -669,6 +669,17 @@ export default function HostShellV2() {
+   }, []);
+   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
+   const [foodGroupsOpen, setFoodGroupsOpen] = useState({}); // spread accordion
++  // Host-authored dish/item — closes the remove/add asymmetry legacy already fixed
++  // (App.js ~10538-10570, ~11415-11457): a named line the host commits ("Aunt
++  // Carol's potato salad", "extra ice — $15"), owner + cost both optional. Writes
++  // the same event.foodAdd shape legacy writes, merged by the shared engine
++  // (lib/playbooks/index.js ~2192-2210) — no engine change needed, single source
++  // of truth between the two apps.
++  const [foodAddOpen, setFoodAddOpen] = useState(false);
++  const [foodAddName, setFoodAddName] = useState('');
++  const [foodAddOwner, setFoodAddOwner] = useState('');
++  const [foodAddCost, setFoodAddCost] = useState('');
++  const [foodAddGroup, setFoodAddGroup] = useState(null); // Food/Drinks/Supplies override; null = auto-guess
+   const [shopStore, setShopStore] = useState(null); // shopping-run mode: 'I'm at X' filter (session-only)
+   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
+   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
+@@ -1131,7 +1142,11 @@ export default function HostShellV2() {
+   // panel instead — an estimate never gets to pose as spend.
+   const toggleGot = (it, cost) => {
+     const cur = !!(event.foodGot || {})[it.id];
+-    if (!cur && it.locked == null) {
++    // Host-added dishes/items are exempt from the gate below — their cost was
++    // already committed at add time (event.foodAdd's cost, possibly a real $0
++    // for a potluck dish), not a playbook estimate. Matches legacy's identical
++    // exemption (App.js ~11172-11175: "&& !i.added").
++    if (!cur && it.locked == null && !it.added) {
+       setFoodTune(it.id);
+       toast('What did ' + (it.short || it.item) + ' actually cost? Set the real price first — bought is real money, not an estimate.');
+       return;
+@@ -1142,6 +1157,41 @@ export default function HostShellV2() {
+     patchEvent({ foodGot: next },
+       (cur ? 'Put back ' : 'Bought ') + (it.short || it.item) + ' (' + fmt(cost) + ')' + (ns !== null ? ' — spent is now ' + fmt(ns) + '.' : '.'));
+   };
++  // Ported from App.js's guessFoodCategory (~10549-10559): auto-categorize a
++  // typed item name into Food/Drinks/Supplies + a rough aisle, so a host-added
++  // line sorts into the right spread section instead of always landing in
++  // "Food". Pure UI-sort helper — no engine dependency, no search list (board
++  // ruling), same word lists as legacy so the guess behaves identically in
++  // both apps.
++  const guessFoodCategory = (nm) => {
++    const n = String(nm || '').toLowerCase();
++    const has = (...ws) => ws.some((w) => n.includes(w));
++    if (has('beer', 'wine', 'soda', ' pop', 'cola', 'water', 'tea', 'coffee', 'juice', 'lemonade', 'cocktail', 'liquor', 'vodka', 'whiskey', 'rum', 'champagne', 'punch', 'cider', 'seltzer', 'kombucha', 'drink')) return { group: 'Drinks', cat: 'beverages' };
++    if (has('plate', 'cup', 'napkin', 'fork', 'knife', 'spoon', 'utensil', 'cutlery', 'foil', 'wrap', 'ziploc', 'baggie', 'ice', 'cooler', 'chest', 'tablecloth', 'tent', 'chair', 'table', 'light', 'candle', 'decor', 'balloon', 'trash', 'paper towel', 'charcoal', 'propane', 'lighter', 'sunscreen', 'bug spray', 'tongs', 'skewer', 'platter')) return { group: 'Supplies', cat: 'supplies' };
++    if (has('salad', 'slaw', 'corn', 'potato', 'tomato', 'lettuce', 'fruit', 'watermelon', 'berr', 'greens', 'veg', 'onion', 'pepper', 'cucumber')) return { group: 'Food', cat: 'produce' };
++    if (has('crab', 'shrimp', 'fish', 'chicken', 'beef', 'pork', 'sausage', 'burger', 'hot dog', 'meat', 'rib', 'steak', 'turkey', 'ham', 'lobster', 'clam', 'oyster', 'bacon', 'wing')) return { group: 'Food', cat: 'proteins' };
++    if (has('cheese', 'milk', 'cream', 'yogurt', 'egg', 'dairy', 'butter')) return { group: 'Food', cat: 'dairy' };
++    if (has('bread', 'roll', 'bun', 'chip', 'cracker', 'cookie', 'cake', 'pie', 'dessert', 'snack', 'pretzel', 'pasta', 'rice', 'bean', 'sauce', 'condiment', 'oil', 'seasoning', 'spice', 'old bay', 'dip', 'dressing')) return { group: 'Food', cat: 'other' };
++    return { group: 'Food', cat: 'other' };
++  };
++  // Ported from App.js's commitAdd (~10560-10570): writes a new named line to
++  // event.foodAdd, which playbookFoodPlan already merges into foodPlan.list —
++  // no engine change required. Cost is optional; blank/unparsed stays 0, the
++  // honest "no cost yet / they're bringing it" framing (never a fake number).
++  const commitFoodAdd = () => {
++    const name = foodAddName.trim();
++    if (!name) return;
++    const id = 'add-' + Date.now().toString(36);
++    const guess = guessFoodCategory(name);
++    patchEvent({
++      foodAdd: [...(event.foodAdd || []), {
++        id, name, owner: foodAddOwner.trim(),
++        cost: Math.max(0, Math.round(Number(foodAddCost) || 0)),
++        group: foodAddGroup || guess.group, cat: guess.cat,
++      }],
++    }, name + ' added to the plan.');
++    setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); setFoodAddOpen(false);
++  };
+ 
+   // Roster quick-add: paste names, one per line — a REAL guest list, which is
+   // what unlocks RSVP intelligence, yes-counts, and the drift detector.
+@@ -4007,6 +4057,9 @@ export default function HostShellV2() {
+                               <span className="f-main">
+                                 <span className="f-name">
+                                   {it.short || it.item}
++                                  {/* Host-added line (event.foodAdd) — who's bringing it, if named. */}
++                                  {it.added && it.owner ? <span className="tag plan">{it.owner}</span> : null}
++                                  {it.added && !it.owner ? <span className="tag plan">yours</span> : null}
+                                   {it.swappedFrom ? <span className="tag plan">swapped</span> : null}
+                                   {undecidedAffects[it.id] ? <span className="tag essential" title={undecidedAffects[it.id]}>decision open</span> : null}
+                                   {it.essential && !got ? <span className="tag essential">essential</span> : null}
+@@ -4061,9 +4114,17 @@ export default function HostShellV2() {
+                                   onClick={e => { e.stopPropagation(); setTuneCost(''); setFoodTune(it.id); }}
+                                   onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setTuneCost(''); setFoodTune(it.id); } }}
+                                   title="Tap to enter the real price">
+-                                  {foodPlan.hasRealCount
+-                                    ? (it.locked != null ? fmt(it.locked) : fmt(it.low) + '–' + fmt(it.high))
+-                                    : '—'}
++                                  {/* Host-added lines carry a single committed cost (event.foodAdd's
++                                      cost — never a range), so no invented spread. Blank/$0 at add
++                                      time is an honest state, not a fake number: framed as "they're
++                                      bringing it" when someone's named, "no cost yet" otherwise —
++                                      never displayed as "$0–$0". Same honesty rule legacy's money()
++                                      helper applies (App.js ~11246-11250). */}
++                                  {it.locked != null
++                                    ? fmt(it.locked)
++                                    : it.added
++                                      ? (it.low > 0 ? fmt(it.low) : (it.owner ? it.owner + ' is bringing it' : 'no cost yet'))
++                                      : (foodPlan.hasRealCount ? fmt(it.low) + '–' + fmt(it.high) : '—')}
+                                 </span>
+                               )}
+                               <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
+@@ -4071,6 +4132,25 @@ export default function HostShellV2() {
+                                 onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setFoodTune(tuning ? null : it.id); } }}>
+                                 {tuning ? 'more' : 'tune'}
+                               </span>
++                              {/* Host-added lines are fully deletable (not just skippable) —
++                                  parity with legacy's removeAdded (App.js ~11122). */}
++                              {it.added && (
++                                <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
++                                  title={'Remove ' + (it.short || it.item)}
++                                  onClick={e => {
++                                    e.stopPropagation();
++                                    patchEvent({ foodAdd: (event.foodAdd || []).filter(a => a.id !== it.id) },
++                                      (it.short || it.item) + ' removed.');
++                                  }}
++                                  onKeyDown={e => {
++                                    if (e.key !== 'Enter') return;
++                                    e.stopPropagation();
++                                    patchEvent({ foodAdd: (event.foodAdd || []).filter(a => a.id !== it.id) },
++                                      (it.short || it.item) + ' removed.');
++                                  }}>
++                                  remove
++                                </span>
++                              )}
+                             </button>
+                             {tuning && (
+                               <div className="brow" style={{ margin: '2px 0 8px', paddingLeft: 30 }}>
+@@ -4175,6 +4255,55 @@ export default function HostShellV2() {
+                     Dietary: {foodPlan.specialDiets.map(d => d.count + ' ' + d.diet).join(', ')} — a real named main is sized into the totals for them.
+                   </p>
+                 )}
++                {/* Add your own line — closes the remove/add asymmetry legacy already
++                    fixed (App.js ~11415-11457): a dish someone's bringing, or anything
++                    off-playbook the host is buying. Name required; who's bringing it +
++                    cost both optional and honest — no invented number. */}
++                <div style={{ marginTop: 4 }}>
++                  {foodAddOpen ? (
++                    <div className="brow" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 12 }}>
++                      <div className="shelf-label" style={{ marginBottom: 8 }}>Add your own item</div>
++                      <input className="field" style={{ maxWidth: 'none' }} autoFocus
++                        placeholder="e.g. Aunt Carol's potato salad, extra ice"
++                        value={foodAddName} onChange={e => setFoodAddName(e.target.value)}
++                        onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
++                      <div className="actions-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
++                        <input className="field" style={{ maxWidth: 220, flex: 1 }} placeholder="Who's bringing it (optional)"
++                          value={foodAddOwner} onChange={e => setFoodAddOwner(e.target.value)}
++                          onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
++                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--line)', borderRadius: 10, padding: '0 10px' }}>
++                          <span className="of">$</span>
++                          <input type="number" inputMode="decimal" min="0" placeholder="cost (optional)"
++                            style={{ width: 100, background: 'none', border: 'none', outline: 'none', color: 'var(--ink)', fontSize: 14, fontWeight: 650, fontFamily: 'inherit', padding: '9px 4px' }}
++                            value={foodAddCost} onChange={e => setFoodAddCost(e.target.value)}
++                            onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
++                        </span>
++                      </div>
++                      {/* Where it belongs — auto-guessed from the name; tap to override
++                          (same word list as legacy's guessFoodCategory, ported above). */}
++                      <div className="actions-row" style={{ marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
++                        <span className="of">Goes in:</span>
++                        {['Food', 'Drinks', 'Supplies'].map(g => {
++                          const active = (foodAddGroup || guessFoodCategory(foodAddName).group) === g;
++                          return (
++                            <button key={g} className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={active}
++                              onClick={() => setFoodAddGroup(g)}>{g}</button>
++                          );
++                        })}
++                      </div>
++                      <div className="actions-row" style={{ marginTop: 10 }}>
++                        <button className="cta" disabled={!foodAddName.trim()} style={!foodAddName.trim() ? { opacity: .45 } : undefined}
++                          onClick={commitFoodAdd}>Add to the plan</button>
++                        <button className="mini" onClick={() => { setFoodAddOpen(false); setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); }}>Cancel</button>
++                      </div>
++                      <p className="grounding" style={{ marginTop: 8 }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.</p>
++                    </div>
++                  ) : (
++                    <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setFoodAddOpen(true)}>
++                      + Add an item you’re bringing or buying<span className="chev">›</span>
++                    </button>
++                  )}
++                </div>
+               </>
+             ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No spread to build for this kind of event yet.</div>)}
+             {sheet.kind === 'vendors' && (() => {
+---- untracked ----
+src/lib/playbooks/__tests__/foodAdd.test.js
+
+################ agent-a7065de1194a9c2e6  base 188465d1 (2026-07-01)
+---- untracked ----
+build-verify/asset-manifest.json
+build-verify/favicon.ico
+build-verify/index.html
+build-verify/manifest.json
+build-verify/sample-contracts/bluebell-venue-contract.pdf
+build-verify/sample-contracts/fork-flower-catering-contract.pdf
+build-verify/sample-contracts/petal-stem-contract.pdf
+build-verify/sample-contracts/wild-bloom-florals-contract.pdf
+build-verify/static/css/main.49ddbfc7.css
+build-verify/static/css/main.49ddbfc7.css.map
+build-verify/static/js/107.057cff8f.chunk.js
+build-verify/static/js/107.057cff8f.chunk.js.map
+build-verify/static/js/17.66502abf.chunk.js
+build-verify/static/js/17.66502abf.chunk.js.map
+build-verify/static/js/175.da36a6c8.chunk.js
+build-verify/static/js/175.da36a6c8.chunk.js.map
+build-verify/static/js/221.58b6e926.chunk.js
+build-verify/static/js/221.58b6e926.chunk.js.map
+build-verify/static/js/227.1a504bb5.chunk.js
+build-verify/static/js/227.1a504bb5.chunk.js.map
+build-verify/static/js/32.7a7b2ebf.chunk.js
+build-verify/static/js/32.7a7b2ebf.chunk.js.map
+build-verify/static/js/331.4ab98ab3.chunk.js
+build-verify/static/js/331.4ab98ab3.chunk.js.map
+build-verify/static/js/348.72899c00.chunk.js
+build-verify/static/js/348.72899c00.chunk.js.map
+build-verify/static/js/636.ed9ffeef.chunk.js
+build-verify/static/js/636.ed9ffeef.chunk.js.map
+build-verify/static/js/680.ca746173.chunk.js
+build-verify/static/js/680.ca746173.chunk.js.map
+build-verify/static/js/686.1374e7ca.chunk.js
+build-verify/static/js/686.1374e7ca.chunk.js.LICENSE.txt
+build-verify/static/js/686.1374e7ca.chunk.js.map
+build-verify/static/js/702.20d4127a.chunk.js
+build-verify/static/js/702.20d4127a.chunk.js.map
+build-verify/static/js/706.ddef8141.chunk.js
+build-verify/static/js/706.ddef8141.chunk.js.map
+build-verify/static/js/778.bbbf3066.chunk.js
+build-verify/static/js/778.bbbf3066.chunk.js.map
+build-verify/static/js/780.ea9f0bb8.chunk.js
+build-verify/static/js/780.ea9f0bb8.chunk.js.map
+build-verify/static/js/791.16ba24cf.chunk.js
+build-verify/static/js/791.16ba24cf.chunk.js.map
+build-verify/static/js/816.b534d624.chunk.js
+build-verify/static/js/816.b534d624.chunk.js.map
+build-verify/static/js/888.b4350232.chunk.js
+build-verify/static/js/888.b4350232.chunk.js.map
+build-verify/static/js/946.c583fb1c.chunk.js
+build-verify/static/js/946.c583fb1c.chunk.js.map
+build-verify/static/js/main.d7ad9f1a.js
+build-verify/static/js/main.d7ad9f1a.js.LICENSE.txt
+build-verify/static/js/main.d7ad9f1a.js.map
+build-verify/templates/ngw-guests-import.csv
+build-verify/templates/ngw-vendors-import.csv
+build-verify/templates/paperless-post-guests-import.csv
+build-verify/templates/theknot-guests-import.csv
+build-verify/templates/zola-guests-import.csv
+
+################ agent-a9c5e108c92f4bdbc  base 9de1b3a9 (2026-07-10)
+diff --git a/hostv2/src/HostShellV2.jsx b/hostv2/src/HostShellV2.jsx
+index 1efdad8e..b9a105b8 100644
+--- a/hostv2/src/HostShellV2.jsx
++++ b/hostv2/src/HostShellV2.jsx
+@@ -668,6 +668,11 @@ export default function HostShellV2() {
+     return () => app.removeEventListener('scroll', onScroll);
+   }, []);
+   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
++  // Bulk price-lock — parity with legacy's "Use typical prices for the other
++  // N items →" (App.js ~11040-11060). ids just locked by the bulk action, kept
++  // local (never persisted to the event) so a one-tap undo can unwind exactly
++  // those writes without touching anything locked by hand before or after.
++  const [bulkPriced, setBulkPriced] = useState(null);
+   const [foodGroupsOpen, setFoodGroupsOpen] = useState({}); // spread accordion
+   const [shopStore, setShopStore] = useState(null); // shopping-run mode: 'I'm at X' filter (session-only)
+   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
+@@ -3948,6 +3953,44 @@ export default function HostShellV2() {
+                     <p className="grounding" style={{ marginBottom: 10 }}>The tier re-prices the proteins and changes where each line says to buy.</p>
+                   </>
+                 )}
++                {/* Bulk price-lock — parity with legacy's "Use typical prices for
++                    the other N items →" (App.js ~11040-11060). Locks every still-
++                    estimated line to the ENGINE's own honest midpoint
++                    ((low+high)/2) — never a new number. Skips supplies, custom
++                    (added) items, skipped lines, and anything already locked or
++                    unpriced (no low/high at all) — same gate as legacy, so both
++                    apps agree on which lines qualify. */}
++                {(() => {
++                  const supplGroup = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
++                  const unpriced = (foodPlan.list || []).filter(it => it && !it.skipped && it.group !== supplGroup && it.locked == null && !it.added && (Number(it.low) || Number(it.high)));
++                  if (bulkPriced && bulkPriced.length > 0) {
++                    const undo = () => {
++                      const next = { ...(event.foodLocked || {}) };
++                      bulkPriced.forEach(id => delete next[id]);
++                      patchEvent({ foodLocked: next }, 'Undid the typical-price lock.');
++                      setBulkPriced(null);
++                    };
++                    return (
++                      <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
++                        <span className="of" style={{ color: 'var(--ok)', fontWeight: 700 }}>Used typical prices for {bulkPriced.length}</span>
++                        <button className="mini" onClick={undo}>Undo</button>
++                      </div>
++                    );
++                  }
++                  if (unpriced.length < 2) return null;
++                  const priceAll = () => {
++                    const next = { ...(event.foodLocked || {}) };
++                    const ids = unpriced.map(it => it.id);
++                    unpriced.forEach(it => { next[it.id] = Math.round(((Number(it.low) || 0) + (Number(it.high) || 0)) / 2); });
++                    patchEvent({ foodLocked: next }, 'Locked ' + ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' to typical prices.');
++                    setBulkPriced(ids);
++                  };
++                  return (
++                    <button className="mini" style={{ marginBottom: 10 }} onClick={priceAll}>
++                      Lock the rest to typical prices ({unpriced.length}) →
++                    </button>
++                  );
++                })()}
+                 {(() => {
+                   const allItems = (foodPlan.list || []).filter(it => it && !it.skipped);
+                   // ── Shopping-run mode: "I'm at X" — the list collapses to THIS
+---- untracked ----
+
+################ agent-aacb31dfe0470acae  base 9de1b3a9 (2026-07-10)
+diff --git a/hostv2/src/HostShellV2.jsx b/hostv2/src/HostShellV2.jsx
+index 1efdad8e..095aa6e1 100644
+--- a/hostv2/src/HostShellV2.jsx
++++ b/hostv2/src/HostShellV2.jsx
+@@ -32,7 +32,7 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
+ import { hostSpending } from '@app/lib/hostSpending';
+ import { expectedFromPlanned } from '@app/lib/attendanceModel';
+ import { estimateTotalRange } from '@app/lib/budgetEstimator';
+-import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests } from '@app/lib/playbooks';
++import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
+ import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
+ import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
+ import { computeDayAlerts } from '@app/lib/dayAlerts';
+@@ -3997,7 +3997,13 @@ export default function HostShellV2() {
+                         const got = !!(event.foodGot || {})[it.id];
+                         const cost = it.locked != null ? Number(it.locked) : ((Number(it.low) || 0) + (Number(it.high) || 0)) / 2;
+                         const tuning = foodTune === it.id;
+-                        const alts = (it.alternatives || []).map(a => (a && (a.name || a.label)) || (typeof a === 'string' ? a : null)).filter(Boolean).slice(0, 4);
++                        // Keep the FULL normalized alt (name + unitCostRange) — not just its
++                        // name — so the chip below can show what picking it would cost, not
++                        // just its label. Same parser the engine's own swap re-pricing uses
++                        // (lib/playbooks/index.js normalizeAlternative), so a plain-string
++                        // alt (no unitCostRange) and a priced object alt both land in one shape.
++                        const alts = (it.alternatives || []).map(normalizeAlternative).filter(a => a.name).slice(0, 4);
++                        const activeSwapName = (event.foodSwap || {})[it.id] || null;
+                         return (
+                           <div key={it.id}>
+                             <button className={'frow' + (got ? ' got' : '')}
+@@ -4129,11 +4135,29 @@ export default function HostShellV2() {
+                                         patchEvent({ foodSwap: m }, 'Back to ' + it.swappedFrom + ' — original pricing restored.');
+                                       }}>back to {it.swappedFrom}</button>
+                                     )}
+-                                    {alts.map(name => (
+-                                      <button key={name} className="chip" onClick={() => patchEvent({ foodSwap: { ...(event.foodSwap || {}), [it.id]: name } }, 'Swapped to ' + name + ' — priced with its own real range.')}>
+-                                        {name}
+-                                      </button>
+-                                    ))}
++                                    {alts.map(na => {
++                                      const name = na.name;
++                                      const isActive = activeSwapName === name;
++                                      // A plain-string alt (no unitCostRange) keeps the line's
++                                      // current cost when swapped — no delta to show, honestly.
++                                      // A priced alt re-prices to units × ITS OWN range, the same
++                                      // math the engine applies on swap (playbookFoodPlan). Only
++                                      // shown when there's a real quantity + current cost to
++                                      // compare against (same honest-empty rule as the sourcing-
++                                      // tier delta above) and it isn't the alt already active.
++                                      const altCost = (!isActive && foodPlan.hasRealCount && Array.isArray(na.unitCostRange) && it.units)
++                                        ? (Number(it.units) || 0) * ((Number(na.unitCostRange[0]) || 0) + (Number(na.unitCostRange[1]) || 0)) / 2
++                                        : null;
++                                      const delta = (altCost != null && cost) ? Math.round(altCost - cost) : null;
++                                      const deltaLabel = (delta != null && delta !== 0)
++                                        ? (delta < 0 ? ' · saves ~' + fmt(Math.abs(delta)) : ' · ~' + fmt(Math.abs(delta)) + ' more')
++                                        : '';
++                                      return (
++                                        <button key={name} className="chip" onClick={() => patchEvent({ foodSwap: { ...(event.foodSwap || {}), [it.id]: name } }, 'Swapped to ' + name + ' — priced with its own real range.')}>
++                                          {name}{deltaLabel}
++                                        </button>
++                                      );
++                                    })}
+                                   </div>
+                                 )}
+                               </div>
+diff --git a/src/lib/playbooks/__tests__/reader.test.js b/src/lib/playbooks/__tests__/reader.test.js
+index 0bf43bbc..53e5f0b2 100644
+--- a/src/lib/playbooks/__tests__/reader.test.js
++++ b/src/lib/playbooks/__tests__/reader.test.js
+@@ -675,6 +675,20 @@ describe('playbookFoodPlan (the food-choice surface data)', () => {
+       expect(after.short).toBe('Mustard greens');
+       expect(after.high).toBe(before.high); // no price data on the string alt → unchanged
+     });
++    // The swap-chip cost delta shown in the UI (HostShellV2.jsx) reuses the item's own
++    // `units` × the alternative's normalized unitCostRange — never a UI-side re-derivation
++    // of the engine's price factors. This confirms that math actually lines up with what
++    // the engine produces once the swap is applied, so the UI's delta reads a real number.
++    test('a priced alternative\'s low/high matches units × its own unitCostRange (the UI delta\'s basis)', () => {
++      const { normalizeAlternative } = require('../index');
++      const before = playbookFoodPlan(base).list.find((i) => i.id === 'p_ribs');
++      const alt = (before.alternatives || []).map(normalizeAlternative).find((a) => a.name === 'Pork shoulder');
++      expect(alt.unitCostRange).toEqual([3, 6]);
++      const after = playbookFoodPlan({ ...base, foodSwap: { p_ribs: 'Pork shoulder' } }).list.find((i) => i.id === 'p_ribs');
++      expect(after.low).toBe(Math.round(before.units * alt.unitCostRange[0]));
++      expect(after.high).toBe(Math.round(before.units * alt.unitCostRange[1]));
++      expect(after.low).toBeLessThan(before.low);
++    });
+   });
+ 
+   // 1597-2 — protein SOURCING tier reshapes the protein lines (not the sides).
+---- untracked ----
+
+################ agent-ac9f24532f8d8fdab  base f6167a53 (2026-08-21)
+---- untracked ----
+docs/audits/2026-08-21_MARKETING_SHOT_SET.md
+hostv2/review-shots/marketing/1024x768/10-day-of-run-of-show.png
+hostv2/review-shots/marketing/1440x900/01-decision-hero.png
+hostv2/review-shots/marketing/1440x900/02-command-surface-full.png
+hostv2/review-shots/marketing/1440x900/03-readiness-derived.png
+hostv2/review-shots/marketing/1440x900/04-decision-why.png
+hostv2/review-shots/marketing/1440x900/05-send-ledger-handed-off.png
+hostv2/review-shots/marketing/1440x900/05b-send-ledger-honest-failure.png
+hostv2/review-shots/marketing/1440x900/06-checklist-follows-decisions.png
+hostv2/review-shots/marketing/1440x900/07-money-way-back-under.png
+hostv2/review-shots/marketing/1440x900/08-provenance-every-line.png
+hostv2/review-shots/marketing/1440x900/09-provenance-sourced-quantity.png
+hostv2/review-shots/marketing/1440x900/10-day-of-run-of-show.png
+hostv2/review-shots/marketing/1440x900/11-risks-with-a-source.png
+hostv2/review-shots/marketing/1440x900/12-roster-the-caterer-can-use.png
+hostv2/review-shots/marketing/1440x900/14-day-of-safety-brief.png
+hostv2/review-shots/marketing/1920x1080/01-decision-hero.png
+hostv2/review-shots/marketing/1920x1080/05-send-ledger-handed-off.png
+hostv2/review-shots/marketing/1920x1080/08-provenance-every-line.png
+hostv2/review-shots/marketing/1920x1080/13-rail-one-frame-one-measure.png
+hostv2/review-shots/marketing/390x844/01-decision-hero.png
+hostv2/review-shots/marketing/390x844/02-command-surface-full.png
+hostv2/review-shots/marketing/390x844/03-readiness-derived.png
+hostv2/review-shots/marketing/390x844/04-decision-why.png
+hostv2/review-shots/marketing/390x844/05-send-ledger-handed-off.png
+hostv2/review-shots/marketing/390x844/05b-send-ledger-honest-failure.png
+hostv2/review-shots/marketing/390x844/06-checklist-follows-decisions.png
+hostv2/review-shots/marketing/390x844/07-money-way-back-under.png
+hostv2/review-shots/marketing/390x844/08-provenance-every-line.png
+hostv2/review-shots/marketing/390x844/09-provenance-sourced-quantity.png
+hostv2/review-shots/marketing/390x844/10-day-of-run-of-show.png
+hostv2/review-shots/marketing/390x844/11-risks-with-a-source.png
+hostv2/review-shots/marketing/390x844/14-day-of-safety-brief.png
+hostv2/review-shots/marketing/430x932/01-decision-hero.png
+hostv2/review-shots/marketing/768x1024/01-decision-hero.png
+hostv2/review-shots/marketing/768x1024/12-roster-the-caterer-can-use.png
+
+################ agent-aca628b69bf1b860e  base 0cecf3bf (2026-07-10)
+diff --git a/hostv2/src/HostShellV2.jsx b/hostv2/src/HostShellV2.jsx
+index dc92950e..44878214 100644
+--- a/hostv2/src/HostShellV2.jsx
++++ b/hostv2/src/HostShellV2.jsx
+@@ -1928,11 +1928,13 @@ export default function HostShellV2() {
+               <div className="hero">
+               {/* Event masthead — kicker / readable title / quiet venue.
+                   (The old all-caps eyebrow crushed long names into three
+-                  unreadable letterspaced lines.) */}
++                  unreadable letterspaced lines.) Theme/colors (event.theme)
++                  rides the same quiet line as venue — real host-entered data,
++                  shown only when set, no new row added. */}
+               <div className="ev-head">
+                 <div className="ev-kicker">{event.type}</div>
+                 <div className="ev-title">{event.name}</div>
+-                {event.venue ? <div className="ev-venue">{event.venue}</div> : null}
++                {(event.venue || event.theme) ? <div className="ev-venue">{[event.venue, event.theme].filter(Boolean).join(' · ')}</div> : null}
+               </div>
+               <div className="mega">
+                 {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : `${daysAnim} days`}
+diff --git a/src/App.js b/src/App.js
+index 37fd45b2..41710ca6 100644
+--- a/src/App.js
++++ b/src/App.js
+@@ -44423,6 +44423,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
+           <span style={{ fontSize: T.secondary, color: C.muted, fontWeight: FW.medium, whiteSpace: 'nowrap' }}>
+             {event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}
+             {event.honoree ? ` · for ${event.honoree}` : ''}
++            {event.theme ? ` · ${event.theme} theme` : ''}
+             {event.date ? ` · ${new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}
+             {days !== null && event.date ? ' · ' : ''}
+           </span>
+---- untracked ----
+
+################ agent-ad23b8275c29eb4ef  base 2ecce0fc (2026-07-01)
+---- untracked ----
+build-verify/asset-manifest.json
+build-verify/favicon.ico
+build-verify/index.html
+build-verify/manifest.json
+build-verify/sample-contracts/bluebell-venue-contract.pdf
+build-verify/sample-contracts/fork-flower-catering-contract.pdf
+build-verify/sample-contracts/petal-stem-contract.pdf
+build-verify/sample-contracts/wild-bloom-florals-contract.pdf
+build-verify/static/css/main.49ddbfc7.css
+build-verify/static/css/main.49ddbfc7.css.map
+build-verify/static/js/107.057cff8f.chunk.js
+build-verify/static/js/107.057cff8f.chunk.js.map
+build-verify/static/js/17.66502abf.chunk.js
+build-verify/static/js/17.66502abf.chunk.js.map
+build-verify/static/js/175.da36a6c8.chunk.js
+build-verify/static/js/175.da36a6c8.chunk.js.map
+build-verify/static/js/221.58b6e926.chunk.js
+build-verify/static/js/221.58b6e926.chunk.js.map
+build-verify/static/js/227.1a504bb5.chunk.js
+build-verify/static/js/227.1a504bb5.chunk.js.map
+build-verify/static/js/32.7a7b2ebf.chunk.js
+build-verify/static/js/32.7a7b2ebf.chunk.js.map
+build-verify/static/js/331.4ab98ab3.chunk.js
+build-verify/static/js/331.4ab98ab3.chunk.js.map
+build-verify/static/js/348.72899c00.chunk.js
+build-verify/static/js/348.72899c00.chunk.js.map
+build-verify/static/js/636.ed9ffeef.chunk.js
+build-verify/static/js/636.ed9ffeef.chunk.js.map
+build-verify/static/js/680.ca746173.chunk.js
+build-verify/static/js/680.ca746173.chunk.js.map
+build-verify/static/js/686.1374e7ca.chunk.js
+build-verify/static/js/686.1374e7ca.chunk.js.LICENSE.txt
+build-verify/static/js/686.1374e7ca.chunk.js.map
+build-verify/static/js/702.20d4127a.chunk.js
+build-verify/static/js/702.20d4127a.chunk.js.map
+build-verify/static/js/706.ddef8141.chunk.js
+build-verify/static/js/706.ddef8141.chunk.js.map
+build-verify/static/js/778.bbbf3066.chunk.js
+build-verify/static/js/778.bbbf3066.chunk.js.map
+build-verify/static/js/780.ea9f0bb8.chunk.js
+build-verify/static/js/780.ea9f0bb8.chunk.js.map
+build-verify/static/js/791.16ba24cf.chunk.js
+build-verify/static/js/791.16ba24cf.chunk.js.map
+build-verify/static/js/816.b534d624.chunk.js
+build-verify/static/js/816.b534d624.chunk.js.map
+build-verify/static/js/888.b4350232.chunk.js
+build-verify/static/js/888.b4350232.chunk.js.map
+build-verify/static/js/946.c583fb1c.chunk.js
+build-verify/static/js/946.c583fb1c.chunk.js.map
+build-verify/static/js/main.7f498555.js
+build-verify/static/js/main.7f498555.js.LICENSE.txt
+build-verify/static/js/main.7f498555.js.map
+build-verify/templates/ngw-guests-import.csv
+build-verify/templates/ngw-vendors-import.csv
+build-verify/templates/paperless-post-guests-import.csv
+build-verify/templates/theknot-guests-import.csv
+build-verify/templates/zola-guests-import.csv
+

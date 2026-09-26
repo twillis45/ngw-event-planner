@@ -1,6 +1,14 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-25 (thirty-fifth entry:
+**Measured reality, not intentions.** Updated 2026-09-26 (thirty-sixth entry:
+a per-pound price was re-pricing lines that are not sold by the pound — $72 of
+appetizer became $1,080 the moment a host left the default sourcing tier — and
+an eight-seat board then found the table behind it prices ELEVEN species off
+one Costco shrimp page. The 321-line harvest below is no longer only here; it
+is recorded in `storeUnitMap.js` with its store and its date. See the
+thirty-sixth entry.)
+
+Before that, on 2026-09-25 (thirty-fifth entry:
 sixteen commits landed with NO handoff entry — two `Stamp HANDOFF to current
 SHA` commits moved the SHA without writing the record, and the freshness gate
 went red nine commits behind anyway. This entry is reconstructed from those
@@ -13,8 +21,8 @@ takes one query. Worth carrying forward: three defects reached a commit and
 were caught by a phone ($NaN on a real handset), by CI (five e2e timeouts after
 a tab moved), and by an e2e spec (a non-breaking space) — never by the unit
 suite, which is four more data points for the standing rule that jest cannot
-execute hostv2. And a 321-line live-store harvest exists that is IN NO REPO.
-See the thirty-fifth entry.)
+execute hostv2. And a 321-line live-store harvest existed that was IN NO REPO —
+recovered and recorded 2026-09-26, see the thirty-sixth entry.)
 Before that, on 2026-09-24 (thirty-fourth entry:
 the Kroger pipeline already pulled real shelf prices on request and threw every
 one away; they are now kept as KAS observations, attributable or not kept at all.
@@ -204,11 +212,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `5b433ed1` |
+| Branch / HEAD | `main` @ `3c7afa35` + 3 local (per-pound guard, layout B, this entry) |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,794 passed**, 1 skipped, **0 failed**, **548 suites** (re-measured 2026-09-25 after the thirty-fifth entry; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **7,799 passed**, 1 skipped, **0 failed**, **549 suites** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **21 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -220,6 +228,154 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-25/26 (thirty-sixth entry) — a price that multiplied, a table sourced from a shrimp page, and a harvest that lived nowhere
+
+### The defect a host could have paid: $72 of appetizer priced at $1,080
+
+`canonicalProteinPrice` returns researched dollars **per pound**. `srcTierRange`
+handed that figure to any food line matching `isProteinItem` and never checked
+the line was measured in pounds. Four shipped lines are not. Measured at 30
+guests on a non-default sourcing tier:
+
+| line | authored | butcher | grocery |
+|---|---|---|---|
+| Engagement Party · Crostini & deviled eggs | 4 bites/guest @ $0.60-1.80 | $72 | **$1,080** |
+| Engagement Party · Meatballs & sliders | | $90 | **$450** |
+| Low Country Boil · Old Bay / crab boil | $0.40-1 a SERVING | | **$8-14** |
+
+$36 a head, of appetizer, because shrimp is $9-14 A POUND and 120 BITES were
+multiplied by it. The Old Bay line is worse in kind: "crab boil" satisfied
+`isProteinItem`, so a SEASONING was priced as shellfish.
+
+**Why it survived.** `srcTierRange` returns null on the DEFAULT tier, so none of
+it fires until a host changes sourcing. The butcher default was hiding it —
+which is also why the change this investigation began as (defaulting hosts to
+Costco or grocery, the owner's stated priority #1) had to wait: it would have
+shipped these numbers to every affected host at once.
+
+**The guard is on the UNIT, not on a list of names** (`aPoundPriceNeedsAPoundLine.test.js`).
+A name blocklist needs editing every time a playbook adds an appetizer, and the
+next "crab boil" arrives unannounced. A line priced in bites cannot take a price
+quoted in pounds, whatever it is called. A `CONDIMENT_RE` also now excludes
+seasoning/rub/marinade/sauce/broth from `isProteinItem`.
+
+### And then the board found the table itself is wrong
+
+Three rows were frozen as `KNOWN_BAND_DISAGREEMENTS` — "a research question, not
+a code one," on the grounds that both the authored band and the canonical table
+carried citations. **That framing was wrong and it was mine.** I verified both
+sides HAD sources. I did not read what the sources SAID.
+
+`CANONICAL_PROTEIN_PRICES.seafood` (`sourcing.js:143`) spans crawfish, crab,
+lobster, oyster, scallop and five fish at one band on ONE citation:
+`eatlikenoone.com/costco-shrimp-guide.htm`. **A shrimp page is pricing live
+crawfish.** Fetched 2026-09-25 by two practitioner seats:
+
+| row | authored | table | sourced live |
+|---|---|---|---|
+| Live crawfish, by the sack | $3-7/lb | $8-14 | **$2.90-6.00** (3 LA sources) |
+| Whiting / catfish / porgy | $3-7/lb | $9-14 | **$3.30-5.99** (2 Baltimore counters) |
+
+Every crawfish price above $6 either seat could find was *boiled, sold by the
+plate*. A third DMV counter stocks no whiting, porgy, croaker or catfish at all
+— its cheapest fish is $18.99. Fry fish and center-of-plate fish are sold by
+different businesses; the table is the midpoint of two counters and wrong at
+both. **The authored bands were right.** OPEN: the split of that key is not yet
+built.
+
+### The harvest is no longer nowhere
+
+The thirty-fifth entry recorded a 321-line live-store harvest that was **in no
+repo**. The raw rows were printed once, truncated in the terminal, and never
+written to a file. Recovered from the session transcript 2026-09-26 and written
+into `storeUnitMap.js` as an observation carrying its store and its date:
+
+    lines probed 321 · matched 76 (24%)
+      with a curated term  43 of 45  (96%)
+      without one          33 of 276 (12%)
+    soldBy 66 UNIT / 10 WEIGHT · 76 of 76 matches carry a size
+
+Twelve named product rows are recorded so a reader can check the shape rather
+than take the rate. **The aggregate counts and the named rows are first-hand;
+the "roughly 12% wrong" figure is the probing session's characterization,
+carried forward with its three examples and not recounted.** One Harris Teeter,
+one metro, one morning — and Costco is not a Kroger banner and has no public
+product API, so warehouse pack sizes are unreachable by this route and stay at
+a separate evidence tier.
+
+### The board that sat on de-stacking, and what it corrected
+
+Eight seats, three panels, in `docs/audits/2026-09-25_DESTACKING_RATCHET_BOARD.md`.
+It corrected three premises I gave it:
+
+1. **The ratchet has been raised ONCE, not twice, and is DOWN 2 net** since the
+   2026-08-07 freeze (lowered 39->36 / 43->40 on 09-17, raised to 37/41 on
+   09-24). I used `git log -S`, which counts string occurrences and cannot see
+   a digit change. Use `-p`.
+2. **The 96%/12% figure is curated-vs-uncurated**, not bundled-vs-split. The
+   repast commit added no curated terms. The split is a PRECONDITION for
+   curating, not the lever.
+3. `KNOWN_BAND_DISAGREEMENTS` is not a set of ties — see above.
+
+Three live findings nobody had:
+
+- **`TERMS` is keyed on `key(id, item)`, so a split ORPHANS the curated search
+  term.** Red-proofed on `The Cookout.p_buns`: term -> null, `SEARCH_TERM_LINES`
+  unchanged at 52, suite stays green. 12 bundled lines exposed. A split done the
+  repast way can move a line from the 96% cohort into the 12%. **OPEN.**
+- **A single-source undated price and a corroborated dated one render the SAME
+  WORDS.** `claimBasis.js:309` branches on which AXIS is cited, never on source
+  count or date. 37 uncorroborated rows read `Directly sourced` x36; corroborated
+  dated rows read the same. The 36-vs-37 argument is about a number that never
+  reaches a host — and splitting multiplies the rows wearing the label. **OPEN.**
+- **The ratchet counts provenance SLOTS, not rows** (1,181 slots). `Fish Fry ·
+  p_fish` is dated+corroborated on cost and undated+single-sourced on quantity.
+  Option 2 as written would green-light half-green rows. **OPEN.**
+
+Measured for the first time: only **~19 dirty parents** exist, so option 2
+captures **~90% of the split at zero ratchet movement**; and of 289 bundled
+priced lines corpus-wide only **15** are the weak kind that move the counters.
+
+**Nobody endorses raising the number under the current metric.** Two seats
+propose replacing it — count distinct provenance OBJECTS (a split shares one,
+so it moves nothing), and count COVERAGE (uncited priced food rows / all priced
+food rows), because the cheapest way to satisfy today's gate is to **downgrade
+a real citation to `synthesized`**, deleting a source to get under a number. The
+test's own header predicts that outcome and calls it worse than the problem.
+**OWNER RULING OPEN.**
+
+Cultural neutrality, measured: corpus-wide the disproportion is NOT there
+(7.8% cultural vs 7.5% generic undated; claim rates 52.3% vs 52.5%; the two
+worst offenders are Vow Renewal and Anniversary, neither culturally specific).
+**On food lines alone it is 12.0% vs 4.9%**, and food is the slice being split.
+The seat declined to call 13-of-108 a pattern and declined to wave it off.
+
+**Carried because the roster requires it:** seating an insider lens is not
+community consent. Nothing here has been seen by anyone who hosts a repast, and
+the row that started this is a funeral meal.
+
+### Also this pass
+
+- **Layout B shipped** — the shopping actions are one primary plus a chip row,
+  chosen by the host from two layouts built behind `?acts=chips` and shown on
+  the real Shop tab. Harness deleted with the choice.
+- **A LATENT CLOCK BOMB, half-measured, and the same shape as the one this
+  file already records.** At 23:37 EDT five CRA tests failed —
+  `vendorStatusReadersReadOneVocabulary` and `theRulingsOwnBarIsUnmet` — and
+  were verified PRE-EXISTING via `git stash`. At 00:24 EDT the same suite ran
+  **549 suites / 7,799 passed / 0 failed**. Nothing between the two runs
+  touched them (a rebase brought in a HANDOFF-only commit; a comment block was
+  added to `storeUnitMap.js`). So the time-dependence is MEASURED and will
+  recur. **I earlier attributed it to crossing the UTC date boundary; that is
+  now contradicted** — 23:37 EDT and 00:24 EDT are both already the next day in
+  UTC, so the boundary cannot be what separates a red run from a green one. The
+  mechanism is UNKNOWN. `theClosingWindowLeads.spec.mjs` (same closing-window
+  ruling, e2e) went red in the same window and was still red at 00:21.
+  This is the `recordDedupStaysLive` `AS_OF` pattern recorded in the State
+  table above, which was green in CI on 2026-09-14 and red on 2026-09-17 with
+  no code change between. **OPEN, and it should be treated as a defect rather
+  than as test noise.**
 
 ## FIXED 2026-09-24/25 (thirty-fifth entry) — sixteen commits that had no entry, written from their own diffs
 

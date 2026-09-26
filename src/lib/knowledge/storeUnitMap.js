@@ -518,3 +518,78 @@ const trimNum = (n) => {
   const r = Math.round(Number(n) * 100) / 100;
   return String(r);
 };
+
+/**
+ * ── THE CORPUS-WIDE HARVEST, 2026-09-25 ────────────────────────────────────
+ *
+ * Every priced line in the corpus was sent to a live store on one morning, to
+ * answer the question this file's allowlist could only answer twelve lines at
+ * a time: how far does a curated term actually carry, across all of it.
+ *
+ *     lines probed              321
+ *     matched                    76  (24%)
+ *       with a curated term      43 of 45   (96%)
+ *       without one              33 of 276  (12%)
+ *
+ *     soldBy on matches         66 UNIT / 10 WEIGHT
+ *     matches carrying a size   76  (100%)
+ *
+ * TWO FINDINGS, AND THEY PULL IN OPPOSITE DIRECTIONS.
+ *
+ * The first is the case FOR curating: a term moves the match rate eight-fold,
+ * 12% -> 96%. That is the strongest evidence this file has for its own
+ * existence, and it is the reason de-stacking a bundled line is worth doing —
+ * not because splitting prices anything by itself, but because a split line
+ * can finally be given a term.
+ *
+ * The second is the case for NOT trusting the other 12%. Roughly one match in
+ * eight was wrong, and every wrong one shares a shape — a bundled or vague
+ * line, the same population the de-stacking census flags:
+ *
+ *     "Wine"                  -> Innovine(TM) Wine POURER AND STOPPER  $12.99
+ *     "Beer, soda & water"    -> Hiyo Peach Mango organic tonic        $13.99
+ *     "Baked beans ingredients" -> a bag of millet
+ *
+ * A pourer is not wine. These are the same failure as the injera/shoe-insert
+ * match recorded above, and the same mitigation applies: the store layer shows
+ * WHAT it priced, and `lineIsMultipliable` refuses to let any of them become a
+ * line total.
+ *
+ * NAMED SAMPLES, so a reader can check the shape rather than take the rate:
+ *
+ *     Bread / rolls        Nature's Own Honey Wheat        20 oz     UNIT   $4.59
+ *     Ice                  Reddy Ice Premium Packaged      7 lb      UNIT   $2.99
+ *     Buns / bread         HT 3.75" White Hamburger Buns   8 ct/11oz UNIT   $2.49
+ *     Chips                Frito-Lay Classic Mix Variety   18 pk     UNIT  $13.69
+ *     Salad                Fresh Express Chopped Caesar    10.4 oz   UNIT   $5.49
+ *     Cake or cupcakes     Fresh Foods Iced Yellow Cake    12 ct     UNIT  $10.99
+ *     Sheet cake/cupcakes  HT Fresh Foods Market           1 ct      UNIT  $31.99
+ *     Chicken wings        Whole Fresh Chicken Wings       3.25 lb   UNIT  $10.00
+ *     Salsa                HT Thick & Chunky Mild          16 oz     UNIT   $2.69
+ *     Soft drinks          Liquid Death Doctor Death Soda  6 ct      UNIT   $9.39
+ *     Whole chicken        Harris Teeter Whole Chicken     1 lb      WEIGHT $1.99
+ *     Potato salad         HT Fresh Foods Original         16 oz     UNIT   $5.99
+ *
+ * ── WHAT THIS IS NOT ───────────────────────────────────────────────────────
+ *
+ * ONE Harris Teeter, ONE metro, ONE morning. Pack sizes are regional and
+ * prices are not even weekly — two of the rows above carry a promo price under
+ * the shelf price. So this is an OBSERVATION with a store and a date on it,
+ * never a universal fact, and nothing here is wired into a price. It is
+ * recorded so the next session inherits the measurement instead of re-running
+ * the morning.
+ *
+ * AND IT CANNOT BE EXTENDED TO COSTCO BY THIS ROUTE. Costco is not a Kroger
+ * banner and exposes no public product API, so warehouse pack sizes are not
+ * reachable from the probe that produced everything above. Costco currently
+ * exists in this app as a 0.85 multiplier and as researched per-pound bands —
+ * a different evidence tier, and it must stay separately labelled rather than
+ * blended with probed numbers.
+ *
+ * PROVENANCE OF THIS BLOCK: the raw 321-row result was printed once, truncated
+ * in the terminal, and never written to a file; the figures and samples above
+ * were recovered from the session transcript on 2026-09-26. The aggregate
+ * counts and the twelve named rows are first-hand. The "roughly 12% wrong"
+ * figure is the probing session's own characterization, carried forward with
+ * its three named examples and not independently recounted here.
+ */
