@@ -32,7 +32,13 @@ const bodyText = (page) => page.evaluate(() => document.body.innerText.replace(/
 const openBoard = async (page) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
-    const d = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
+    // LOCAL calendar date, never toISOString(). MEASURED 2026-09-26: this spec
+    // failed in the nightly full run and passed on a re-run seven hours later
+    // with no code change. `toISOString()` is UTC, the board's day arithmetic
+    // is local, so three-days-out became four whenever the two calendars
+    // disagree — 8pm to midnight Eastern. CI runs in UTC and never sees it.
+    const t = new Date(Date.now() + 3 * 864e5);
+    const d = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
       id: 'e2e-cw', name: 'Probe', type: 'Wedding', date: d,
       startTime: '3:00 PM', startTimeSource: 'host',
