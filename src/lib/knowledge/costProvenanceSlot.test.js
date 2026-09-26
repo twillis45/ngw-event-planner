@@ -13,16 +13,33 @@ import { axisForField, axesForField, wouldGround, validateSourcesFor } from './s
 import { QTY_SOURCES } from './quantityProvenance';
 import { ALL_PLAYBOOKS } from '../playbooks/index';
 import { COST_SOURCES, isGroundedCost } from './costProvenance';
+import { RESEARCH_POLICIES } from './researchPolicies';
 
 const SOURCED = new Set(SOURCED_LABELS);
-const costBlock = () => ({
+// ── THESE FIXTURES NOW STATE THEIR STRENGTH, NOT JUST THEIR AXIS ───────────
+//
+// They carried ONE source and NO date, which was enough when the only question
+// was WHICH AXIS is cited. Since 2026-09-26 the unqualified `Directly sourced`
+// also requires each axis to clear `RESEARCH_POLICIES.pricing` —
+// `minCorroboration` sources and a date — because the badge was certifying a
+// standard using a weaker test than the standard.
+//
+// So the default fixture is POLICY-STRONG, which keeps every assertion in this
+// file testing the axis question it was written for. `weak: true` produces the
+// old single-source undated shape, and the tests at the bottom of this describe
+// pin what it renders. Strengthening the fixture rather than relaxing the rule:
+// the axis guarantee is untouched, a second guarantee is added beside it.
+const twoOf = (reg) => Object.keys(reg).slice(0, 2);
+const costBlock = ({ weak = false } = {}) => ({
   tier: 'researched', confidence: 'high', verificationStatus: 'cited',
-  sources: [Object.keys(COST_SOURCES)[0]],
+  sources: weak ? [Object.keys(COST_SOURCES)[0]] : twoOf(COST_SOURCES),
+  ...(weak ? {} : { lastVerified: '2026-08-18' }),
   claim: 'A test cost claim citing a registered cost source',
 });
-const qtyBlock = () => ({
+const qtyBlock = ({ weak = false } = {}) => ({
   tier: 'researched', confidence: 'high', verificationStatus: 'cited',
-  sources: [Object.keys(QTY_SOURCES)[0]],
+  sources: weak ? [Object.keys(QTY_SOURCES)[0]] : twoOf(QTY_SOURCES),
+  ...(weak ? {} : { lastVerified: '2026-08-18' }),
   claim: 'A test quantity claim citing a registered quantity source',
 });
 
@@ -45,6 +62,45 @@ describe('the cost block is additive — nothing reclassifies without one', () =
 
   test('BOTH axes cited is the only thing that earns the unqualified label', () => {
     expect(classifyClaim(qtyBlock(), costBlock()).hostLabel).toBe(HOST_LABELS.DIRECTLY_SOURCED);
+  });
+
+  // ── AND BOTH MUST CLEAR THE POLICY, NOT JUST THE REGISTRY (2026-09-26) ────
+  //
+  // `isGroundedCost` / `isGroundedItemQty` accept ONE source and no date;
+  // `RESEARCH_POLICIES.pricing` demands `minCorroboration` and freshness. A host
+  // could not tell a price backed by two checked sources from one backed by a
+  // single undated source, because both rendered the identical words.
+  //
+  // MEASURED over the 634 priced units the research ratchet walks: 0 rows are
+  // backed ONLY by weak evidence, and 41 are MIXED — one axis clears the policy,
+  // the other does not, and the unqualified badge vouched for both. Those 41 now
+  // name the axis that is actually corroborated.
+  test('a WEAK quantity axis loses the unqualified label and names the price', () => {
+    expect(classifyClaim(qtyBlock({ weak: true }), costBlock()).hostLabel)
+      .toBe(HOST_LABELS.PRICE_SOURCED);
+  });
+
+  test('a WEAK cost axis loses it too, and names the amount', () => {
+    expect(classifyClaim(qtyBlock(), costBlock({ weak: true })).hostLabel)
+      .toBe(HOST_LABELS.AMOUNT_SOURCED);
+  });
+
+  test('NOTHING IS DOWNGRADED TO A DOUBT — a weak citation is still a citation', () => {
+    // The lie in the other direction, and the one the research ratchet's own
+    // header warns creates an incentive to relabel claims. A single undated
+    // source must NOT read as "Needs confirmation"; it reads as the narrower
+    // true thing.
+    const both = classifyClaim(qtyBlock({ weak: true }), costBlock({ weak: true })).hostLabel;
+    expect(both).not.toBe(HOST_LABELS.NEEDS_CONFIRMATION);
+    expect(both).toBe(HOST_LABELS.PRICE_SOURCED);
+  });
+
+  test('the threshold is READ FROM THE POLICY, never written in the classifier', () => {
+    // A second copy of `minCorroboration` is how the badge and the policy
+    // drifted apart in the first place. If the policy moves, the badge moves.
+    expect(RESEARCH_POLICIES.pricing.minCorroboration).toBe(2);
+    const threeSource = { ...costBlock(), sources: Object.keys(COST_SOURCES).slice(0, 3) };
+    expect(classifyClaim(qtyBlock(), threeSource).hostLabel).toBe(HOST_LABELS.DIRECTLY_SOURCED);
   });
 
   test('the quantity claim SURVIVES the cost citation — the point of the ruling', () => {

@@ -64,8 +64,20 @@ describe('the badge describes the number on screen', () => {
     expect(cheap.low).toBeLessThan(unpicked.low);
     expect(dear.low).toBeGreaterThan(unpicked.low);
 
-    // Untouched by any factor, the sourced claim stands exactly as before.
-    expect(labelOf(unpicked)).toBe(HOST_LABELS.DIRECTLY_SOURCED);
+    // Untouched by any factor, the sourced claim stands exactly as before —
+    // except that "as before" got MORE PRECISE on 2026-09-26, and this row is
+    // the clearest example in the corpus of why. Measured on p_grown_folks:
+    //
+    //   price    (costProvenance)  6 sources, dated 2026-08-18
+    //   quantity (provenance)      1 source, UNDATED  [bar-provision-2026]
+    //
+    // The old badge read "Directly sourced" and vouched for both axes on the
+    // strength of one. The unqualified label now requires each axis to clear
+    // `RESEARCH_POLICIES.pricing`, so this row says "Price directly sourced" —
+    // which is exactly what is true of it. Nothing was downgraded: the price
+    // claim is as strong as it ever was, and the ~1 drink/guest/hour rate is
+    // still cited, just no longer spoken for by a badge about price.
+    expect(labelOf(unpicked)).toBe(HOST_LABELS.PRICE_SOURCED);
     // Moved by a synthesized factor, it states its true scope.
     expect(labelOf(cheap)).toBe(HOST_LABELS.SOURCED_THEN_ADJUSTED);
     expect(labelOf(dear)).toBe(HOST_LABELS.SOURCED_THEN_ADJUSTED);

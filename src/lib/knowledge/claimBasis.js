@@ -28,6 +28,7 @@ import { isGroundedItemQty } from './quantityProvenance';
 // The cost axis of the same question — a purchase line's PRICE claim resolves
 // against COST_SOURCES, not the quantity registry. See directCitationEligible.
 import { isGroundedCost } from './costProvenance';
+import { RESEARCH_POLICIES } from './researchPolicies';
 
 // ─── Dimension 1: EVIDENCE BASIS ─────────────────────────────────────────────
 //
@@ -277,6 +278,38 @@ export function classifyClaim(prov, costProv, applied) {
   // resolve in its own registry, so this widens the axis, not the bar. A cost
   // claim is judged by the cost registry, a quantity claim by the quantity one,
   // and a line citing something registered nowhere still fails both.
+  // ── "DIRECTLY SOURCED" MUST MEAN WHAT THE POLICY MEANS (2026-09-26) ───────
+  //
+  // `isGroundedCost` and `isGroundedItemQty` accept ONE source and no date.
+  // `RESEARCH_POLICIES.pricing` demands `minCorroboration: 2` and a freshness
+  // window. So the badge was certifying a standard this repo defines, using a
+  // weaker test than the standard — and a host could not tell a price backed by
+  // two checked sources from one backed by a single undated source, because
+  // both rendered the same words.
+  //
+  // MEASURED over the 634 priced units the research ratchet walks:
+  //   0   backed ONLY by weak evidence   (so nothing is being downgraded)
+  //   41  MIXED — one axis meets the policy, the other does not, and the
+  //       unqualified badge vouched for both. 36 read "Directly sourced",
+  //       5 read "Price directly sourced".
+  //
+  // The repair needs no new word. `PRICE_SOURCED` and `AMOUNT_SOURCED` already
+  // exist, added in 2026-08-15 and 2026-09-19 for this same reason one layer
+  // up: state the claim at its true scope. A row whose cost is corroborated and
+  // whose quantity is a single undated source now says "Price directly
+  // sourced" — true — instead of "Directly sourced" — half true.
+  //
+  // THRESHOLDS ARE READ FROM THE POLICY, never written here. If
+  // `minCorroboration` moves, this moves with it; a second copy of the number
+  // is how the badge and the policy drifted apart in the first place.
+  const PRICING = RESEARCH_POLICIES.pricing;
+  const meetsPolicy = (prov, grounded) => {
+    if (!grounded) return false;
+    const n = Array.isArray(prov && prov.sources) ? prov.sources.length : 0;
+    if (n < (PRICING.minCorroboration || 2)) return false;
+    return Boolean(prov && (prov.lastVerified || prov.researchedAt));
+  };
+
   const qtyCited = isGroundedItemQty(pq.obj);
   // Cost grounding is read from the COST block when there is one, and otherwise
   // from the shared slot — which is where every cost citation in the corpus lives
@@ -284,6 +317,13 @@ export function classifyClaim(prov, costProv, applied) {
   // day and without any line losing its badge in between.
   const costCited = isGroundedCost(costProv) || isGroundedCost(pq.obj);
   const directCitationEligible = qtyCited || costCited;
+
+  // Which axes clear the POLICY, not merely the registry. Eligibility to be
+  // labelled at all is unchanged above — this only decides how wide the label
+  // may be, so no line loses its badge, and none is downgraded to a doubt.
+  const qtyStrong = meetsPolicy(pq.obj, qtyCited);
+  const costStrong = meetsPolicy(costProv, isGroundedCost(costProv))
+    || meetsPolicy(pq.obj, isGroundedCost(pq.obj));
 
   // Ordered so that the label always names the most INFORMATIVE true thing. Basis
   // beats verification: `cultural-tradition / established-consensus` reads as
@@ -309,8 +349,13 @@ export function classifyClaim(prov, costProv, applied) {
   if (directCitationEligible && !(culturalBasis && !qtyCited)) {
     // Unqualified only when BOTH axes are actually cited. Otherwise the label
     // says which one — see HOST_LABELS above for the measurement behind this.
-    hostLabel = (qtyCited && costCited) ? HOST_LABELS.DIRECTLY_SOURCED
-      : costCited ? HOST_LABELS.PRICE_SOURCED
+    // Unqualified ONLY when both axes clear the policy. Otherwise name the axis
+    // that does; and when neither does, keep naming the axis that is cited —
+    // downgrading a real citation to a doubt would be the lie in the other
+    // direction, and would create exactly the incentive the research ratchet's
+    // own header warns about (relabel a claim to get under a number).
+    hostLabel = (qtyStrong && costStrong) ? HOST_LABELS.DIRECTLY_SOURCED
+      : (costStrong || (costCited && !qtyStrong)) ? HOST_LABELS.PRICE_SOURCED
         : HOST_LABELS.AMOUNT_SOURCED;
   } else if (offLadder) {
     hostLabel = HOST_LABELS.NEEDS_CONFIRMATION;
