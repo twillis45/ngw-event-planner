@@ -22790,9 +22790,28 @@ export default function HostShellV2() {
         };
         // Grouped in the order the list itself groups them, so the paper reads
         // like the screen rather than in a second arrangement nobody chose.
+        // GROUP BY WHAT THE SCREEN GROUPS BY (2026-09-26, found by driving it).
+        // This grouped on `it.category` and printed the raw corpus values —
+        // "food", "beverage", "decor", "rental", "cleanup" — lowercase, while
+        // the screen's own headings are Food / Drinks / Supplies. Paper and
+        // phone disagreeing about the sections is the same defect class the
+        // list itself exists to avoid. `foodShopItems` does not carry `group`,
+        // so the plan row is the source for it and the category is the fallback.
+        // MATCHED ON NAME, NOT ID, AND THAT IS NOT A SHORTCUT. `foodShopItems`
+        // returns no `id` at all (measured: zero occurrences in the file) — its
+        // rows are {name, qty, unit, got, category, where, buyAt, forgotten,
+        // costLow, costHigh, basis}. My first fix matched `l.id === it.id`,
+        // which is undefined === undefined for every row, so every lookup
+        // "succeeded" at nothing and silently fell through to the raw category.
+        // The seam's own label rule is `short || item`, so both are tried.
+        const groupOf = (it) => {
+          const row = ((foodPlan && foodPlan.list) || [])
+            .find((l) => l && (l.short === it.name || l.item === it.name));
+          return (row && row.group) || it.category || 'Other';
+        };
         const groups = [];
         for (const it of items) {
-          const key = it.category || 'Other';
+          const key = groupOf(it);
           let g = groups.find((x) => x.key === key);
           if (!g) { g = { key, rows: [] }; groups.push(g); }
           g.rows.push(it);
@@ -22815,11 +22834,20 @@ export default function HostShellV2() {
                       <b>{it.name}</b>
                       {it.qty ? ` \u00b7 ${it.qty}${it.unit ? ` ${it.unit}` : ''}` : ''}
                       {money(it.costLow, it.costHigh) ? ` \u00b7 ${money(it.costLow, it.costHigh)}` : ''}
-                      {(it.basis || it.bulkRecommendation) && (
-                        <span className="p-meta">
-                          {[it.basis, it.bulkRecommendation && String(it.bulkRecommendation)].filter(Boolean).join(' \u00b7 ')}
-                        </span>
-                      )}
+                      {/* `bulkRecommendation` is an OBJECT
+                          ({qty, unit, totalUnits, unitLabel, price}), and
+                          String() on it printed a literal "[object Object]" on
+                          the host's paper — measured by driving Print on a Crab
+                          Feast: "Blue crabs - 6 dozens - $192-1128[object Object]".
+                          `unitLabel` is the human string the engine already
+                          writes ("2 full bushels"); anything else prints nothing
+                          rather than a shape. */}
+                      {(() => {
+                        const bulk = it.bulkRecommendation && typeof it.bulkRecommendation === 'object'
+                          ? it.bulkRecommendation.unitLabel : null;
+                        const meta = [it.basis, bulk].filter(Boolean).join(' \u00b7 ');
+                        return meta ? <span className="p-meta">{meta}</span> : null;
+                      })()}
                     </span>
                   </div>
                 ))}
