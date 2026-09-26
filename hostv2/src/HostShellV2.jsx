@@ -21435,12 +21435,12 @@ export default function HostShellV2() {
                           this, and telling a host they have committed to favors
                           they may never buy is the invention this refuses. */}
                       {spend.optionalLines > 0 && spend.optionalHigh > 0 ? (
-                        <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 8, marginTop: 8 }}>
+                        <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
                           <div className="line" style={{ padding: 0 }}>
                             <span>Nice-to-haves, if you buy them</span>
                             <span className="amt">~{fmt(spend.optionalLow)}–{fmt(spend.optionalHigh)}</span>
                           </div>
-                          <p className="grounding" style={{ margin: '4px 0 0' }}>
+                          <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>
                             {spend.optionalLines} {spend.optionalLines === 1 ? 'item' : 'items'} your plan prices but leaves off the
                             shopping list — decorations and extras nobody needs to pull the day off. Not counted above,
                             because you haven’t said you want {spend.optionalLines === 1 ? 'it' : 'them'}.
