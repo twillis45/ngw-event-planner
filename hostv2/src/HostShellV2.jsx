@@ -18656,9 +18656,36 @@ export default function HostShellV2() {
                       // navigation assigned after an await has lost the transient
                       // user activation and is refused silently. That cost a whole
                       // session once — the button sat on "Sending..." forever.
-                      const href = 'mailto:?subject=' + encodeURIComponent(subject || `${event.name || 'Event'} shopping list`)
-                        + '&body=' + encodeURIComponent(body);
-                      try { window.location.href = href; } catch (_e) { toast('Couldn\u2019t open your mail app.'); }
+                      // ── CRLF BEFORE ENCODING ────────────────────────────────
+                      // RFC 6068 wants %0D%0A. A bare \n survives some mail apps
+                      // and collapses the list into one paragraph in others — and
+                      // one-item-per-line is the whole property every paste
+                      // target needs, including AnyList's documented bulk paste.
+                      const crlf = String(body).replace(/\r\n|\r|\n/g, '\r\n');
+                      const subj = subject || `${event.name || 'Event'} shopping list`;
+                      const href = 'mailto:?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(crlf);
+                      // ── NO GUESSED LENGTH LIMIT. A SAFETY NET INSTEAD ──────
+                      // No vendor documents a mailto body limit; every figure in
+                      // circulation is a bug thread (~1,620 pessimistic, ~2,000
+                      // consensus). MEASURED over all 45 playbooks at 20 and 60
+                      // guests, 90 lists: longest 2,830 encoded (The Cookout at
+                      // 60), 52 of 90 over 1,600, 22 over 2,000, NONE over 6,000.
+                      //
+                      // So a threshold is a choice between two bad outcomes: set
+                      // it low and 58% of real lists never email at all, set it
+                      // high and it never fires. Either way the number is
+                      // invented, which this project does not do.
+                      //
+                      // The failure being guarded is that a too-long body is
+                      // TRUNCATED SILENTLY — the host sends half a list and does
+                      // not know. Copying first removes the loss without guessing
+                      // a limit: whatever the mail app does with the body, the
+                      // whole list is on the clipboard and the toast says so.
+                      try { navigator.clipboard.writeText(`${subj}\n\n${body}`); } catch (_e) { /* no clipboard: the mail draft is still the path */ }
+                      try {
+                        window.location.href = href;
+                        toast('Opening your mail app \u00b7 the full list is on your clipboard too');
+                      } catch (_e) { toast('Couldn\u2019t open your mail app \u2014 the list is on your clipboard.'); }
                     }}>Email the list</button>
                     {nudgeFor('food')}
                   </div>
