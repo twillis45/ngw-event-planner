@@ -1266,9 +1266,25 @@ button.later-row{ -webkit-appearance:none; appearance:none; background:none; bor
   border-top:1px solid var(--line-soft); font:inherit; color:var(--ink-soft); }
 button.later-row .f-name{ color:var(--ink); }
 button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; margin-left:auto; }
+/* ── FILL IS THE ONLY DIFFERENCE (owner, 2026-09-26: "match the board") ─────
+   The squaring pass earlier today unified the corner, the type size and the
+   side padding across .mini and .chip, and the review board's own claim for
+   that work was that "a filter is told apart from an action by its FILL
+   alone". Measured afterwards, that was not yet true: .mini still carried
+   weight 700 and no border against .chip's 650 and an outline — two of the
+   four differences that made the two families read as different sizes of
+   thing were still there.
+
+   So the action takes the primary's treatment: ink text on the steel tint,
+   inside a steel-soft outline, at the same weight as a filter. A filter keeps
+   the recessive card fill and the dim line. Fill, and nothing else.
+
+   THE PADDING STAYS 12, not the board's 14. "One padding" is what the board
+   asked for and both families have it; 14 is off the spacing ladder and 12 is
+   on it, and raising BASELINE for a restyle is what that ratchet refuses. */
 .mini{
-  font-size:var(--t-btn); font-weight:700; color:var(--steel-soft); background:var(--steel-tint);
-  border:none; border-radius:var(--r-sm); padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
+  font-size:var(--t-btn); font-weight:650; color:var(--ink); background:var(--steel-tint);
+  border:1px solid var(--steel-soft); border-radius:var(--r-sm); padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
 }
 
 /* ── A FOLDED CONFLICT KID (host click-through, 2026-07-28) ──────────────────

@@ -19868,12 +19868,25 @@ export default function HostShellV2() {
                       {stores.length > 1 && (
                         <>
                         <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Shopping at</div>
+                        {/* ── THESE ARE ORDINARY CHIPS (2026-09-26) ─────────────
+                            They carried `padding:5px 11px; fontSize:--t-pill`
+                            inline, which undid the chip/button unification the
+                            moment it shipped: every other chip in the app is
+                            13.5px on 7px/12px, and these five alone were
+                            smaller. Both 5 and 11 are off the spacing ladder,
+                            and inline styles are exactly where that class hides
+                            — spacingLadder only scans styles.css.
+
+                            Dropping the overrides also hands them the 44px tap
+                            target the .chip::after expander gives every other
+                            chip; at 5px vertical padding these were the
+                            smallest touch targets on the sheet. */}
                         <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center', flexWrap: 'wrap' }}>
                           {stores.slice(0, 5).map(s => (
-                            <button key={s} className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={shopStore === s}
+                            <button key={s} className="chip" aria-pressed={shopStore === s}
                               onClick={() => setShopStore(shopStore === s ? null : s)}>{shopStore === s ? 'At ' + s : s}</button>
                           ))}
-                          {shopStore && <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} onClick={() => setShopStore(null)}>Everything</button>}
+                          {shopStore && <button className="chip" onClick={() => setShopStore(null)}>Everything</button>}
                         </div>
                         </>
                       )}
