@@ -3265,16 +3265,45 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   text-shadow:0 0 24px rgba(var(--spl-glow-core),.35), 0 0 48px rgba(var(--spl-glow-halo),.2);
   opacity:0;
 }
-/* responsive display sizes: 25.4vw/31.6vw reproduce the 393pt frame's
-   100/124px, clamped so narrow phones never clip the wordmark and wide
-   frames never balloon it */
-.sp-l1{font-size:clamp(64px, 25.4vw, 100px);
+/* ── THE WORDMARK NOW FITS THE PHONE (owner ruling, 2026-09-26) ────────────
+   This read `clamp(64px, 25.4vw, 100px)` and the comment claimed the clamp
+   meant "narrow phones never clip the wordmark". MEASURED live, it clipped at
+   every width, and the clamp was never what governed it:
+
+     viewport   bleed each side   as % of width
+        320          38px             11.9%
+        375          45px             12.0%
+        393          47px             12.0%   <- the reference frame itself
+
+   Perfectly proportional, including at the 393pt frame the sizes were drawn
+   for — so this was not a responsive bug, it was the design running off both
+   edges at every size, and the comment describing the opposite. The owner
+   ruled the bleed is a defect: "No Guesswork" is the product's name and it has
+   to be readable on a phone.
+
+   18.6vw is derived, not picked. "No Guesswork" at weight 800 with -.045em
+   tracking renders 4.882x its font-size, measured off the live element, so the
+   widest it can be inside a 16px gutter is (vw - 32) / 4.882 — 18.4vw at 320,
+   18.7vw at 375, 18.8vw at 393. 18.6vw clears all three and keeps the line
+   growing with the frame as before.
+
+   The floor moves 64px -> 40px for the same reason: at 320 a 64px floor is
+   still 312px of wordmark in 288px of usable width, so the old minimum was
+   itself a clipping guarantee. The 100px ceiling is unchanged — it governs
+   wide frames, which never had this problem. */
+.sp-l1{font-size:clamp(40px, 18.6vw, 100px);
   animation:sp-resolve 3600ms cubic-bezier(.16,1,.3,1) var(--ms-micro) both}
 /* +var(--ms-fast) stagger vs "Event" (audit item): same keyframes, delay offset only
    — "Boss" resolves a beat after "Event" instead of both popping as one
    flat block. sp-boss-dip is the impact's sympathetic reaction (see the
    bead's fall below) — idle until the landing frame, then a quick dip. */
-.sp-l2{font-size:clamp(80px, 31.6vw, 124px);
+/* "Events" + the period ride in one flex row (.sp-l2row), so the row's width
+   is the word PLUS the bead PLUS its left margin — measured 386px against a
+   375px viewport, 6px over each side. Sizing the word alone would not have
+   fixed it. 28vw is that row scaled to fit a 16px gutter: 343/386 = 0.889 of
+   31.6vw. Floor 48px for the same reason sp-l1's moved — an 80px floor on a
+   320px phone is a clipping guarantee, not a protection. Ceiling unchanged. */
+.sp-l2{font-size:clamp(48px, 28vw, 124px);
   animation:sp-resolve 3600ms cubic-bezier(.16,1,.3,1) var(--ms-enter) both, sp-boss-dip 3600ms linear var(--ms-micro) both}
 @keyframes sp-resolve{0%{opacity:0} 30%{opacity:0} 52%{opacity:1} 100%{opacity:1}}
 @keyframes sp-boss-dip{

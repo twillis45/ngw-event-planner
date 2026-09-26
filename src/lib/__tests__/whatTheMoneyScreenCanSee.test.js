@@ -32,9 +32,21 @@
 //
 // THE RED-PROOF THAT MAKES THIS REAL, run before writing the test: inflating
 // Reunion's decor line `p_games` from $30-90 to $3,000-9,000 — a hundredfold —
-// moved `hostSpending.committed` by exactly ZERO ($1,226 before and after).
-// The same perturbation on the food line `p_protein` moved it $1,226 ->
-// $16,818. The harness can see money; it cannot see decor.
+// moved `hostSpending.committed` by exactly ZERO. The same perturbation on the
+// food line `p_protein` moved it by an order of magnitude. The harness can see
+// money; it cannot see decor.
+//
+// FIGURES CORRECTED 2026-09-26 by a review board that could not reproduce them.
+// This header first said "$1,226 before and after" and "$1,226 -> $16,818".
+// Those are the SIXTY-guest numbers; every test in this file runs at FORTY
+// (GUESTS below), where the same event is $915 and $11,310. The direction and
+// the conclusion were right and the numbers were from a different event shape
+// than the harness underneath them — an unreproducible number in a committed
+// comment, which is the exact thing a reader is entitled to check.
+//
+// So the absolute figures are now deliberately NOT in this prose. The
+// perturbation runs as an assertion below instead, where it cannot drift away
+// from the fixture it describes.
 //
 // WHAT THIS FILE IS FOR. Not to force a fix — the fix needs a ruling. It pins
 // the BOUNDARY so the split cannot drift unnoticed: if a category silently
@@ -98,6 +110,32 @@ describe('what the money screen can and cannot see', () => {
     // caterer for a host who is cooking.
     const { gated } = census();
     expect(gated.length).toBe(36);
+  });
+
+  test('THE RED-PROOF, IN THE TEST: perturbing decor moves nothing, food moves a lot', () => {
+    // Lives here rather than in the header because a number in prose drifts
+    // away from the fixture it describes — which is exactly what happened to
+    // this file's first draft. No absolute figures asserted: the CONTRACT is
+    // that one is unmoved and the other is not, at whatever the fixture costs.
+    const base = hostSpending(evFor('Reunion')).committed;
+    const pb = ALL_PLAYBOOKS.find((p) => p.type === 'Reunion');
+    const bump = (cat, mult) => {
+      const touched = [];
+      for (const p of (pb.purchases || [])) {
+        if (p.category !== cat || !Array.isArray(p.unitCostRange)) continue;
+        touched.push([p, p.unitCostRange]);
+        p.unitCostRange = [p.unitCostRange[0] * mult, p.unitCostRange[1] * mult];
+      }
+      const after = hostSpending(evFor('Reunion')).committed;
+      for (const [p, orig] of touched) p.unitCostRange = orig;   // always restore
+      return { n: touched.length, after };
+    };
+    const decor = bump('decor', 100);
+    expect(decor.n).toBeGreaterThan(0);          // premise: Reunion prices decor
+    expect(decor.after).toBe(base);              // 100x decor moves NOTHING
+    const food = bump('food', 100);
+    expect(food.n).toBeGreaterThan(0);
+    expect(food.after).toBeGreaterThan(base * 5); // the harness CAN see money
   });
 
   test('THE CONSEQUENCE, stated as money: a decor price cannot move the total', () => {
