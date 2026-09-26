@@ -19012,7 +19012,7 @@ export default function HostShellV2() {
                   // rather than losing an assertion. Board D carries no
                   // explainer here at all; this keeps every fact and moves it.
                   return (
-                    <button className="mini" style={{ flex: '1 1 auto' }} onClick={() => setStorePicker({ zip: venueFor(event).zip, stores: [], busy: false, reason: null })}>
+                    <button className="mini" onClick={() => setStorePicker({ zip: venueFor(event).zip, stores: [], busy: false, reason: null })}>
                       Check store prices
                     </button>
                   );
@@ -19053,7 +19053,7 @@ export default function HostShellV2() {
                     setBulkPriced(ids);
                   };
                   return (
-                    <button className="mini" style={{ flex: '1 1 auto' }} onClick={priceAll}>
+                    <button className="mini" onClick={priceAll}>
                       Use typical prices ({unpriced.length})
                     </button>
                   );

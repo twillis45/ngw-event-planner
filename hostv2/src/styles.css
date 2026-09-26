@@ -6017,8 +6017,8 @@ button.vc-pill::after{
    above — primary full width, the rest justified across one line — but this
    row's children include the store-lookup PANELS (the picker, the chosen
    store), which must span rather than sit beside a button. */
-.list-acts{ display:flex; flex-wrap:wrap; gap:var(--sp-2); margin:0 0 var(--sp-3); }
-.list-acts > div{ flex:1 0 100%; }
+.list-acts{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:var(--sp-2); margin:0 0 var(--sp-3); }
+.list-acts > div{ grid-column:1 / -1; }   /* the store panels span, they do not sit in a column */
 
 /* ── ONE PRIMARY, THEN CHIPS (host choice, 2026-09-25) ──────────────────────
    Both layouts were built behind a flag and shown side by side on the real
@@ -6038,23 +6038,30 @@ button.vc-pill::after{
    left, so the block squares off under the full-width primary above it.
    `flex:1 1 auto` not `1 1 0`: a chip never shrinks below its own label, so a
    long one still wraps the row rather than clipping (white-space:nowrap). */
-.shop-acts.chips{ display:flex; flex-wrap:wrap; gap:var(--sp-2); }
+/* ── EVERY SECONDARY ACTION IS THE SAME WIDTH ───────────────────────────────
+   Owner, 2026-09-26: "email is one of the smallest words but is wider than
+   send to instacart". True, and it was my own cap doing it: flex:1 1 auto grew
+   each chip to fill its line, so a chip that wrapped ALONE grew to the whole
+   remainder — "Email" at the 50% ceiling, wider than the longest label on the
+   row above. Width was encoding wrap position, which is nothing.
+
+   A two-column grid removes the variable. Four actions read 2x2, three read
+   2 + 1, and every chip is the same size either way, so width says nothing at
+   all — which is correct, because these are peers.
+
+   IT CANNOT CLIP: a column at 390 is (350 - 8) / 2 = 171, leaving 137 of
+   content, and the longest label ("Send to Instacart") measures 112. That is
+   the check exact THIRDS failed — 111px columns left 77 of content and
+   overflowed it by 35 — which is why this is two columns and not three. */
+.shop-acts.chips{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:var(--sp-2); }
 .shop-acts.chips > .food-act:not(:first-of-type){
+  /* A grid cell already sizes this; the old `width:100%` inline styles that
+     used to fight it are gone from the JSX. The iOS Simulator is what proved
+     four of these exist at once — real Safari has the Web Share API, so a
+     phone shows Share alongside Instacart / Print / Email where the desktop
+     pane shows three. */
   width:auto !important;
   display:inline-flex;
-  flex:1 1 auto;
-  /* ── NO BUTTON TAKES MORE THAN HALF A ROW ─────────────────────────────
-     FOUND IN THE iOS SIMULATOR, 2026-09-26, and only there: real Safari has
-     the Web Share API, so a phone shows FOUR actions here (Share the list
-     joins Instacart / Print / Email) where the desktop browser pane shows
-     three. Four wrapped 3 + 1 and the orphan, growing on flex:1 1 auto, took
-     the whole last row — an ordinary secondary action rendered at exactly the
-     width and weight of the primary above it.
-
-     The cap also improves the four-up case into a 2x2 rather than 3 + 1, and
-     leaves the three-up case alone: measured at 390px those are 164 / 83 / 87
-     against a half-row of 171, so none of them is touched. */
-  max-width:calc(50% - var(--sp-1));
   margin:0;
   /* ON THE LADDER (spacingLadder.test.js). The first cut used `9px 14px`,
      copied off a neighbouring control, and both numbers are off the 0/1/2/4/8/
@@ -6068,4 +6075,4 @@ button.vc-pill::after{
   color:var(--steel-soft);
   font-weight:600;
 }
-.shop-acts.chips > .food-act:first-of-type{ flex:1 0 100%; margin:0 0 var(--sp-1); }
+.shop-acts.chips > .food-act:first-of-type{ grid-column:1 / -1; margin:0 0 var(--sp-1); }
