@@ -3,6 +3,10 @@
 // `taskDueLabel` turns a lead into a sentence a host reads. Its failure mode is
 // not being wrong; it is being exactly right in a way that reads as a defect.
 import { taskDueLabel } from '../taskLead';
+// LOCAL calendar dates, never toISOString() — that is UTC and slides a day
+// wherever the two calendars disagree. Measured at TZ=Pacific/Kiritimati
+// (UTC+14) on 2026-09-26; the engines were right, this fixture was a day off.
+import { localISO } from '../dates';
 
 
 describe('a window that closed before the host could reach it', () => {
@@ -14,7 +18,7 @@ describe('a window that closed before the host could reach it', () => {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
     d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
+    return localISO(d);
   };
 
   test('a wedding inside a short runway is not told it is 280 days late', () => {

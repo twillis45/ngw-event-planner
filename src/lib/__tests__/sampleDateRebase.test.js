@@ -108,7 +108,17 @@ describe('Figma parity — the boards verify against this event', () => {
 describe('the shift itself', () => {
   test('anchor is a plain date and a zero delta is a no-op', () => {
     expect(SAMPLE_ANCHOR).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    const onAnchor = new Date(`${SAMPLE_ANCHOR}T12:00:00.000Z`);
+    // LOCAL noon, not UTC noon. `rebaseDelta` asks "how many days from the anchor
+    // to the day the HOST is living in", so it reads the local components of the
+    // instant it is given — the module says so where `localDateOnly` is defined.
+    // A UTC-noon instant is 02:00 the NEXT local day at UTC+14, so this fixture
+    // reported a delta of 1 on the anchor day itself. Measured at
+    // TZ=Pacific/Kiritimati, 2026-09-26. The engine was right.
+    //
+    // Note the module uses BOTH conventions on purpose, correctly: `shiftIso`
+    // moves an anchored date in UTC noon (same calendar day in every real zone),
+    // while `rebaseDelta` reads TODAY locally. Only the fixture was mixed.
+    const onAnchor = new Date(`${SAMPLE_ANCHOR}T12:00:00`);
     expect(rebaseDelta(onAnchor)).toBe(0);
     const arr = [{ date: '2026-01-01' }];
     expect(rebaseSampleEvents(arr, onAnchor)).toBe(arr);   // identity, not a clone

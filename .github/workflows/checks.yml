@@ -80,52 +80,41 @@ jobs:
       # so a stale artifact reports as itself rather than as a confusing test failure.
       - run: npm run gate:knowledge
       - run: CI=true npx react-scripts test --watchAll=false
-      # ── THE SAME SUITE, IN A TIMEZONE WHOSE CALENDAR DAY IS NOT UTC'S ───────
+      # ── THE SAME SUITE AT BOTH ENDS OF THE WORLD ───────────────────────────
       #
       # MEASURED 2026-09-26. Five tests failed every night between 8pm and
       # midnight Eastern and passed by morning, and three sessions read that as
-      # flake. It was not flake. `dates.getToday` is LOCAL (setHours(0,0,0,0)),
-      # so a fixture date built with `toISOString().slice(0,10)` — which is UTC
-      # — is off by one whenever the two calendars disagree. In America/New_York
-      # they disagree for four hours a day, which is why CI (UTC, where they
-      # never disagree) was green the whole time.
+      # flake. It was not. `dates.getToday` is LOCAL (setHours(0,0,0,0)), so a
+      # date built with `toISOString().slice(0,10)` — which is UTC — is off by one
+      # whenever the two calendars disagree. CI runs in UTC, where they NEVER
+      # disagree, so CI could not reproduce it at all.
       #
-      # Pacific/Midway is UTC-11, which reproduces the US-evening condition — but
-      # NOT on every run, and the first version of this comment claimed it did.
+      # NO FIXED TIMEZONE DISAGREES WITH UTC ALL DAY. That is arithmetic, and an
+      # earlier version of this gate shipped with one zone and a comment claiming
+      # otherwise — a red-proof at 12:15 UTC passed with the fault restored,
+      # because Pacific/Midway and UTC agreed at that hour.
       #
-      # MEASURED 2026-09-26 at 12:15 UTC: under TZ=Pacific/Midway the browser and
-      # node both reported localDate 2026-09-26 and utcDate 2026-09-26. THEY
-      # AGREED, so a red-proof run at that hour passed with the fault restored.
-      # No fixed timezone disagrees with UTC all day — that is arithmetic, not a
-      # bug. A UTC-11 zone disagrees only while UTC time-of-day is before 11:00.
+      #   TZ=Pacific/Midway     (UTC-11)  diverges UTC 00:00-11:00   11/24
+      #   TZ=Pacific/Kiritimati (UTC+14)  diverges UTC 10:00-24:00   14/24
       #
-      #   TZ=Pacific/Midway     (UTC-11)  diverges UTC 00:00-11:00   (11/24)
-      #   TZ=Pacific/Kiritimati (UTC+14)  diverges UTC 10:00-24:00   (14/24)
+      # The union is the whole day, so BOTH run and there is no blind hour. They
+      # also fail in OPPOSITE directions — a UTC date reads one day early west of
+      # Greenwich and one day late east of it — so between them they catch either
+      # sign of the mistake.
       #
-      # The union is the whole day, so the complete gate is BOTH. Kiritimati is
-      # not added yet because it currently fails 139 tests in 21 suites — the
-      # same class in the other direction, including the noon-trick idiom
-      # (`setHours(12)` before `toISOString()`), which is safe only inside +/-12.
+      # Kiritimati started at 139 failures in 21 suites and is now green. Getting
+      # there fixed 13 product sites in the parser plus moneyDates and
+      # lodgingIntel, and 14 test fixtures; it also found two modules whose UTC
+      # use is CORRECT and must be left alone (spanEdit, sampleDateRebase — both
+      # parse UTC noon and format UTC, a matched pair). The defect is never
+      # `toISOString` by itself, it is a MISMATCHED PAIR.
       #
-      # So THIS STEP HAS A BLIND WINDOW of UTC 11:00-24:00, stated rather than
-      # implied. Closing it is what the +14 work buys, and that is the reason to
-      # do the +14 work — not the foreign-user case, which is commercially thin.
+      # Verified green at UTC-12, UTC-11, UTC-4, UTC+1, UTC+5:30 and UTC+14.
       #
-      # WHY A TIMEZONE RUN AND NOT A GREP FOR toISOString. There are 95
-      # occurrences in tests and 45 in lib, most of them harmless (provenance
-      # stamps, and parser paths already pinned to local noon). A count-the-calls
-      # gate would fail on all of them today, and worse, it can be satisfied by
-      # extracting a helper without fixing anything. This runs the behaviour: it
-      # cannot be gamed by refactoring, and it needs no allowlist.
-      #
-      # RED-PROOFED by restoring one UTC fixture helper in
-      # theRulingsOwnBarIsUnmet.test.js: 5 failures here, 0 in the step above.
-      #
-      # NOT YET GUARDED: the eastern hemisphere. TZ=Pacific/Kiritimati (UTC+14)
-      # fails 137 tests in 20 suites — the same class, the other direction, and
-      # far larger. Recorded in HANDOFF rather than gated, because closing it is
-      # a real piece of work and not a line in a workflow.
+      # RED-PROOFED: restore one UTC fixture helper and the matching step fails
+      # while the UTC step above stays green.
       - run: TZ=Pacific/Midway CI=true npx react-scripts test --watchAll=false
+      - run: TZ=Pacific/Kiritimati CI=true npx react-scripts test --watchAll=false
 
   # ── SHARDED ACROSS TWO RUNNERS (2026-09-18) ────────────────────────────────
   # MEASURED off run 656, parsing all 1009 test timings out of the job log:

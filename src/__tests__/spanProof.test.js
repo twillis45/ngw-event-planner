@@ -13,10 +13,14 @@ import { spanEnd, spanNights, isDuringEvent, dayIndexOf, daysUntilEnd } from '..
 import { parseSmartEventText } from '../lib/smartParseEvent';
 import { isPastEvent } from '../lib/closeoutIntel';
 import { deriveEventPhaseProgress } from '../lib/phaseProgress';
+// LOCAL calendar dates, never toISOString() — that is UTC and slides a day
+// wherever the two calendars disagree. Measured at TZ=Pacific/Kiritimati
+// (UTC+14) on 2026-09-26; the engines were right, this fixture was a day off.
+import { localISO } from '../lib/dates';
 
 // Pin the clock: mid-span of a Jun 12–14 event.
 const NOW = new Date('2026-06-13T15:00:00');
-const iso = (d) => d.toISOString().slice(0, 10);
+const iso = (d) => localISO(d);
 const shift = (days) => { const d = new Date(NOW); d.setDate(d.getDate() + days); d.setHours(12); return iso(d); };
 
 describe('dates.js span helpers', () => {

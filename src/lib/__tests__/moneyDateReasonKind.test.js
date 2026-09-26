@@ -30,10 +30,14 @@
 import { raiseAll } from '../surfaceRegistry';
 import { getActionReason } from '../actionReason';
 import { moneyDatesFor } from '../moneyDates';
+// LOCAL calendar dates, never toISOString() — that is UTC and slides a day
+// wherever the two calendars disagree. Measured at TZ=Pacific/Kiritimati
+// (UTC+14) on 2026-09-26; the engines were right, this fixture was a day off.
+import { localISO } from '../dates';
 
 const isoIn = (days) => {
   const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 };
 
 const EV = (moneyDates) => ({

@@ -3,9 +3,13 @@
 // the synthesized collect-by cushion, and the settle-up draft's real-facts rule.
 
 import { moneyDatesFor, settleUpDraft } from '../moneyDates';
+// LOCAL calendar dates, never toISOString() — that is UTC and slides a day
+// wherever the two calendars disagree. Measured at TZ=Pacific/Kiritimati
+// (UTC+14) on 2026-09-26; the engines were right, this fixture was a day off.
+import { localISO } from '../dates';
 
 const NOW = new Date('2026-07-27T12:00:00');
-const d = (n) => { const x = new Date(NOW); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+const d = (n) => { const x = new Date(NOW); x.setDate(x.getDate() + n); return localISO(x); };
 
 describe('moneyDatesFor', () => {
   test('irrelevant with nothing entered', () => {

@@ -30,6 +30,20 @@ const at = (iso) => {
   return Number.isFinite(t) ? t : null;
 };
 
+// ── DELIBERATELY UTC, AND DELIBERATELY NOT localISO (2026-09-26) ───────────
+// `at` above parses a YYYY-MM-DD to UTC NOON on purpose — its own comment says
+// why: a local parse lands on the previous day in half the world's timezones.
+// This formats that same instant back, so the pair is UTC in and UTC out and
+// the round trip is exact at every offset.
+//
+// I converted this to localISO while sweeping the tree and BROKE IT: at
+// TZ=Pacific/Kiritimati (UTC+14) a UTC-noon instant is 02:00 the NEXT day
+// locally, so a one-day span counted two. spanEdit.test.js caught it.
+//
+// The lesson, recorded because the sweep nearly repeated it elsewhere: the
+// defect is never `toISOString` by itself, it is a MISMATCHED PAIR — parsing
+// local and formatting UTC, or the reverse. A pair that is UTC at both ends is
+// correct and must be left alone.
 const iso = (t) => new Date(t).toISOString().slice(0, 10);
 
 /** The last day of the event: `endDate` when it is real and after the start,

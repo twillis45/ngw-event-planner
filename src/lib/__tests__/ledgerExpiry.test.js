@@ -5,12 +5,16 @@
 // without saying "until when" is making a claim with a fuse. `nextLedgerChange` is
 // that fuse, named and derived — board finding 2026-08-03.
 import { deriveEventPhaseProgress } from '../phaseProgress';
+// LOCAL calendar dates, never toISOString() — that is UTC and slides a day
+// wherever the two calendars disagree. Measured at TZ=Pacific/Kiritimati
+// (UTC+14) on 2026-09-26; the engines were right, this fixture was a day off.
+import { localISO } from '../dates';
 
 const NOW = new Date('2026-08-03T12:00:00Z');
 const iso = (daysFromNow) => {
   const d = new Date(NOW);
   d.setDate(d.getDate() + daysFromNow);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 };
 
 // An event with food + a headcount is the case where shopping WILL join the ledger.

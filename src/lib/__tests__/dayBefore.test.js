@@ -3,6 +3,10 @@
 
 import { buildDayBeforePlan } from '../dayBefore';
 import { playbookFoodPlan } from '../playbooks';
+// LOCAL calendar dates, never toISOString() — that is UTC and slides a day
+// wherever the two calendars disagree. Measured at TZ=Pacific/Kiritimati
+// (UTC+14) on 2026-09-26; the engines were right, this fixture was a day off.
+import { localISO } from '../dates';
 
 // LOCAL date parts — toISOString() is UTC and drifts a day ahead of local
 // between 8 PM and midnight Eastern, making the window tests time-of-day flaky.
@@ -140,7 +144,7 @@ describe('the copy tells the truth about WHICH day it is', () => {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
     d.setDate(d.getDate() + daysOut);
-    return d.toISOString().slice(0, 10);
+    return localISO(d);
   };
   const cuesLabelFor = (daysOut) => {
     const plan = buildDayBeforePlan({

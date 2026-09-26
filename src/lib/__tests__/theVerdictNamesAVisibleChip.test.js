@@ -30,8 +30,11 @@ import {
   HOST_READINESS_AXES,
   getHostHighestRiskVendor,
 } from '../vendorIntelligence';
+import { localISO } from '../dates';
 
-const iso = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
+// LOCAL calendar date — toISOString() is UTC and slides a day wherever the two
+// calendars disagree (measured at TZ=Pacific/Kiritimati, 2026-09-26).
+const iso = (d) => localISO(new Date(Date.now() + d * 86400000));
 const CUT = ['scope', 'timeline', 'dayOf'];
 
 // The sweep the scoping decision was made on, rebuilt. Every assertion about a

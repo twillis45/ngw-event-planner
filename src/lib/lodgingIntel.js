@@ -36,6 +36,10 @@ import { googleTravelTs } from './googleTravelTs';
 // dragged the entire 1.4MB playbook corpus onto the guest invite path,
 // because InviteV2 imports this module. See destLodgingOptions.js.
 import { DEST_LODGING_OPTIONS } from './destLodgingOptions';
+// LOCAL calendar date, from the canonical formatter in ./dates. `toISOString()`
+// is UTC and slides a day whenever the two calendars disagree — measured at
+// TZ=Pacific/Kiritimati (UTC+14) on 2026-09-26.
+import { localISO } from './dates';
 
 // ─── A PHOTO VIEWER IS NOT A DIFFERENT HOUSE ────────────────────────────────
 // Opening a listing's gallery keeps the listing URL and swaps the title, so a
@@ -1536,7 +1540,7 @@ export function lodgingSearchLinks(event) {
     if (iso && iso !== start) return iso;
     const d = new Date(start + 'T12:00:00');
     d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
+    return localISO(d);
   })();
   const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || (Array.isArray(ev.guests) ? ev.guests.length : 0) || null;
   const budget = Number(ev.totalBudget) > 0 ? Math.round(Number(ev.totalBudget)) : null;

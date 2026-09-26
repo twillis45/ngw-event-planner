@@ -19,6 +19,10 @@
 // number, same class as totalBudget; never per-guest money).
 
 import { daysUntil } from './dates';
+// LOCAL calendar date, from the canonical formatter in ./dates. `toISOString()`
+// is UTC and slides a day whenever the two calendars disagree — measured at
+// TZ=Pacific/Kiritimati (UTC+14) on 2026-09-26.
+import { localISO } from './dates';
 
 const iso = (v) => {
   const s = String(v || '').slice(0, 10);
@@ -55,7 +59,7 @@ export function moneyDatesFor(event, now) {
   if (refund && !refund.passed) {
     const d = new Date(refund.date + 'T12:00:00');
     d.setDate(d.getDate() - 3);
-    const c = d.toISOString().slice(0, 10);
+    const c = localISO(d);
     if ((daysUntil(c, now) ?? -1) >= 0) collectBy = c;
   }
 

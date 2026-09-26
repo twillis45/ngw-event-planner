@@ -64,6 +64,12 @@ export function rebaseDelta(now = new Date()) {
 export function shiftIso(value, days) {
   if (ISO_DATE.test(value)) {
     const d = new Date(noonUTC(value) + days * DAY_MS);
+    // DELIBERATELY UTC, matching `noonUTC` above — see that comment. UTC noon in,
+    // UTC out, so the round trip is exact at every offset. I converted this to
+    // localISO while sweeping the tree and broke it: at UTC+14 a UTC-noon instant
+    // is 02:00 the next day locally. This module already uses BOTH conventions
+    // correctly — `rebaseDelta` reads TODAY locally, `shiftIso` shifts an anchored
+    // date in UTC — and that is the distinction, not a preference for one.
     return d.toISOString().slice(0, 10);
   }
   if (ISO_INSTANT.test(value)) {

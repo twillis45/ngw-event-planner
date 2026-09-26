@@ -16,6 +16,21 @@ import { matchLandmark } from './knowledge/landmarkGazetteer';
 import { resolveCanonicalType, GENERIC_GATHERING_WORDS } from './eventTaxonomyAdapter';
 import { parseVenueLocation, resolveSpokenCity, US_STATE_NAME_TO_ABBR } from './cityText';
 import { resolveHoliday } from './holidayDates.mjs';
+// ── EVERY DATE THIS PARSER EMITS IS A LOCAL CALENDAR DATE ───────────────────
+//
+// It used `toISOString().slice(0, 10)` at THIRTEEN sites, four of them behind
+// `setHours(12)` — the noon trick, which is safe only while the UTC offset is
+// inside +/-12 and slides a day beyond it. The other nine had no guard at all.
+//
+// MEASURED 2026-09-26 at TZ=Pacific/Kiritimati (UTC+14): this parser's own suite
+// plus parseCorpusGolden, howPeopleActuallyWriteIt, guestCountNouns,
+// dateSpanIntake, vidaIntakeParse and destinationBarePlace all failed on dates
+// one day off. A host who says "tomorrow" means a day on THEIR calendar, which
+// is what `localISO` returns; `toISOString()` answers in UTC.
+//
+// The `setHours(12)` calls are left alone. They are no longer load-bearing for
+// the formatting, and removing them would be a second change riding along.
+import { localISO } from './dates';
 
 // Occasion choices = the REAL playbook catalog: every type the engine ships a
 // full playbook for, minus the business types a host never plans.
@@ -201,21 +216,21 @@ export function parseSmartEventText(text, opts = {}) {
   // DID say the date, in the one form the parser didn't recognize.
   const rel = t.match(/\bin\s+(\d+)\s+(day|week|month)s?\b/i);
   if (/\btoday\b|\btonight\b/i.test(t)) {
-    const d = new Date(now); d.setHours(12); date = d.toISOString().slice(0, 10);
+    const d = new Date(now); d.setHours(12); date = localISO(d);
   } else if (rel) {
     const d = new Date(now); const n = parseInt(rel[1], 10);
     if (rel[2].toLowerCase() === 'day') d.setDate(d.getDate() + n);
     else if (rel[2].toLowerCase() === 'week') d.setDate(d.getDate() + n * 7);
     else d.setMonth(d.getMonth() + n);
-    d.setHours(12); date = d.toISOString().slice(0, 10);
+    d.setHours(12); date = localISO(d);
   } else if (/\btomorrow\b/i.test(t)) {
-    const d = new Date(now); d.setDate(d.getDate() + 1); d.setHours(12); date = d.toISOString().slice(0, 10);
+    const d = new Date(now); d.setDate(d.getDate() + 1); d.setHours(12); date = localISO(d);
   } else {
     const wd = t.match(/\b(?:next|this)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
     if (wd) {
       const d = new Date(now); const target = DAYS.indexOf(wd[1].toLowerCase());
       let add = (target - d.getDay() + 7) % 7; if (add === 0) add = 7;
-      d.setDate(d.getDate() + add); d.setHours(12); date = d.toISOString().slice(0, 10);
+      d.setDate(d.getDate() + add); d.setHours(12); date = localISO(d);
     }
   }
   // ── Date RANGE — "June 12–14", "June 12 to 14", "June 30 to July 2" ─────
@@ -246,8 +261,8 @@ export function parseSmartEventText(text, opts = {}) {
       if (end < start && rng[3] && m2 !== m1) end.setFullYear(end.getFullYear() + 1);
       // A same-month "range" running backwards ("June 14-12") is noise, not a span.
       if (!isNaN(start) && !isNaN(end) && end > start) {
-        date = start.toISOString().slice(0, 10);
-        endDate = end.toISOString().slice(0, 10);
+        date = localISO(start);
+        endDate = localISO(end);
       }
     }
     // Numeric ranges — "11/13-11/16", "11/13/2026 - 11/16/2026" (host live
@@ -267,8 +282,8 @@ export function parseSmartEventText(text, opts = {}) {
         // month with no typed year; "11/16-11/13" stays noise, never rescued.
         if (!nrng[6] && end < start && Number(nrng[4]) < Number(nrng[1])) end.setFullYear(end.getFullYear() + 1);
         if (!isNaN(start) && !isNaN(end) && end > start) {
-          date = start.toISOString().slice(0, 10);
-          endDate = end.toISOString().slice(0, 10);
+          date = localISO(start);
+          endDate = localISO(end);
         }
       }
     }
@@ -294,7 +309,7 @@ export function parseSmartEventText(text, opts = {}) {
     const cand = new Date(saidY || now.getFullYear(),
       MONTHS.indexOf(dmOf[2].slice(0, 3).toLowerCase()), parseInt(dmOf[1], 10), 12);
     if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-    date = cand.toISOString().slice(0, 10);
+    date = localISO(cand);
   }
 
   const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
@@ -302,14 +317,14 @@ export function parseSmartEventText(text, opts = {}) {
     const saidY = dm[3] ? parseInt(dm[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
     if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-    date = cand.toISOString().slice(0, 10);
+    date = localISO(cand);
   } else if (!date) {
     const sm2 = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
     if (sm2) {
       const y = sm2[3] ? (sm2[3].length === 2 ? 2000 + Number(sm2[3]) : Number(sm2[3])) : now.getFullYear();
       const cand = new Date(y, Number(sm2[1]) - 1, Number(sm2[2]), 12);
       if (!sm2[3] && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-      if (!isNaN(cand)) date = cand.toISOString().slice(0, 10);
+      if (!isNaN(cand)) date = localISO(cand);
     }
   }
   // "The weekend of June 12" — extremely common for a trip, and it was parsing
@@ -334,7 +349,7 @@ export function parseSmartEventText(text, opts = {}) {
     if (dow === 5 || dow === 6) {                 // Friday or Saturday
       const e = new Date(s);
       e.setDate(e.getDate() + (7 - dow));         // forward to that Sunday
-      endDate = e.toISOString().slice(0, 10);
+      endDate = localISO(e);
     }
     // Sunday -> already the last day. Mon-Thu -> not a weekend; do not guess.
   }
@@ -349,7 +364,7 @@ export function parseSmartEventText(text, opts = {}) {
       if (nights > 0 && nights <= 30) {
         const e = new Date(date + 'T12:00:00');
         e.setDate(e.getDate() + nights);
-        endDate = e.toISOString().slice(0, 10);
+        endDate = localISO(e);
       }
     }
   }

@@ -18,6 +18,10 @@ import { buildDayBeforePlan } from '../lib/dayBefore';
 import { rainPlanStatus } from '../lib/weather';
 import { isVendorConfirmed } from '../lib/workstreams';
 import { effectiveDone } from '../lib/taskEngine';
+// LOCAL calendar dates, never toISOString() — that is UTC and slides a day
+// wherever the two calendars disagree. Measured at TZ=Pacific/Kiritimati
+// (UTC+14) on 2026-09-26; the engines were right, this fixture was a day off.
+import { localISO } from '../lib/dates';
 
 const mkEvent = (pb, plusDays, extras = {}) => {
   const d = new Date(); d.setDate(d.getDate() + plusDays); d.setHours(12);
@@ -25,7 +29,7 @@ const mkEvent = (pb, plusDays, extras = {}) => {
   const ev = {
     id: 'cov-' + pb.type.toLowerCase().replace(/[^a-z]+/g, '-'),
     type: pb.type, name: 'Coverage ' + pb.type,
-    date: d.toISOString().slice(0, 10),
+    date: localISO(d),
     venue: 'Backyard', venueKind: 'home',
     guestMode: 'count', guestCount: 0, guestEstimate: typical,
     budget: [], vendors: [], timeline: [],

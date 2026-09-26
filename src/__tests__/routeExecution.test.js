@@ -20,6 +20,7 @@
 
 import { raiseAll, SURFACES } from '../lib/surfaceRegistry';
 import { resolveRoute, ROUTESHEET_TABS } from '../lib/routeResolver';
+import { localISO } from '../lib/dates';
 
 // NOW tracks the REAL clock on purpose — do not freeze it again.
 // raiseAll(event) takes no asOf: every surface reads today itself, deep in the
@@ -32,7 +33,10 @@ import { resolveRoute, ROUTESHEET_TABS } from '../lib/routeResolver';
 // tomorrow, so the battery stays honest on any date. If raiseAll ever accepts an
 // asOf, inject it and freeze BOTH together — never one without the other.
 const NOW = (() => { const d = new Date(); d.setHours(12, 0, 0, 0); return d; })();
-const iso = (d) => { const x = new Date(NOW); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+// LOCAL calendar date — toISOString() is UTC. MEASURED at TZ=Etc/GMT+12 (UTC-12):
+// the offsets came back a day short and a whole surface dropped out of the
+// anti-vacuity battery, so the test reported a missing route rather than a date.
+const iso = (d) => { const x = new Date(NOW); x.setDate(x.getDate() + d); return localISO(x); };
 
 // ── The fixture battery: one event per shape the brief named, tuned so its
 //    target surfaces actually RAISE (an empty state proves nothing). ──────────
