@@ -39,3 +39,31 @@ CRA shell had, riding the shared `src/lib/demoSeed.js` builder.
   on the next hydrate.
 - The bar is deliberately un-styled QA chrome (never Studio Matte), so it
   can't be mistaken for product UI.
+
+## If the app opens an OLD plan (offline shell)
+
+Added 2026-09-27 with the offline shell. Full decision:
+`docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md`.
+
+hostv2 installs a service worker that caches the app shell, so the app opens
+with no signal. It shows a line at the top when it does:
+
+> No signal — showing your saved plan. · Last updated 3 hours ago.
+
+**That line is the whole contract.** If a host reports a stale or wrong screen
+and that line is NOT showing, the cache is not the cause — look elsewhere.
+
+**Turn it off on one device:** open `<site>/hostv2/?nosw=1`. This unregisters
+the worker and clears its caches BEFORE any registration runs, so it works even
+when the cached shell is the thing that is broken. The host stays signed in and
+keeps their plan; only the offline copy goes.
+
+**Turn it off for everyone:** publish `sw-kill.txt` containing the word `kill`
+at the site root. Every installed worker removes itself on its next activation,
+with no action from any host.
+
+**A fix reaches a host on their SECOND page load, not their first.** There is no
+`skipWaiting`: a new worker installs on one load and takes over on the next. A
+host who opens the app once a week is a week behind. Say "close it and open it
+again" when walking someone through a fix, and use the kill file rather than
+waiting when a bad shell is already out.

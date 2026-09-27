@@ -11,6 +11,25 @@ import './styles.css';
 // surface of its own: a vendor's link must never answer with a host shell.
 // (lib/vendorBriefPublicUrl returns null on dev roots, where the parent path
 // isn't the legacy app — there the shell renders exactly as before.)
+// ── THE OFFLINE SHELL (host ruling 2026-09-27) ─────────────────────────────
+// Registered LAST, after the app has mounted, so a worker can never be on the
+// critical path of a first paint. Everything about why this exists — and the
+// two boards that banned its predecessor — is in src/offline/ and in
+// docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md.
+//
+// The escape hatch is a URL a host can be read over the phone:
+//   <site>/hostv2/?nosw=1   turns it off on that device and keeps it off.
+import { registerOfflineShell } from './offline/register';
+
+// ORDER IS LOAD-BEARING: this redirect must stay ABOVE the service-worker
+// registration at the foot of this file. A vendor opening an emailed brief
+// link is sent one directory UP, out of this bundle, and must never be given
+// a worker on the way past. Measured in the built bundle 2026-09-27: the
+// redirect sits at offset 316321 and the registration at 317747, and the
+// registration is inside a `load` listener that a synchronous replace()
+// pre-empts. Nothing enforces that but this comment and
+// offlineRedirectOrder.test.mjs — moving the registration earlier for a
+// faster install would break it silently.
 const briefUrl = legacyVendorBriefUrl(window.location.href);
 if (briefUrl) window.location.replace(briefUrl);
 
@@ -62,5 +81,20 @@ if (!briefUrl) {
     // it must be reported, because a host who sees this sees a dead app.
     captureError(err, { where: 'main.chunkLoad', rsvp: Boolean(rsvpCode), demo });
     mount(<div style={{ padding: 24, fontFamily: 'system-ui', color: '#9aa7b2' }}>Couldn’t load — please refresh.</div>);
+  });
+}
+
+// After mount, and never awaited: a failed or slow registration must not be
+// able to delay or break the app the host already has.
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    registerOfflineShell(
+      new URL('sw.js', document.baseURI).href,
+      window.location,
+      // A newer shell is installed and waiting for the next load. The shell
+      // says so itself rather than us documenting the two-load rule and
+      // hoping a host reads it.
+      () => window.dispatchEvent(new Event('ngw-shell-update-waiting')),
+    ).catch(() => {});
   });
 }

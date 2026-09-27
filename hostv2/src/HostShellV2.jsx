@@ -142,6 +142,7 @@ import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_N
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { confirmedCovers } from '@app/lib/confirmedCovers';
+import { markSignal, lastSignalNote } from './offline/lastSignal';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
@@ -3684,6 +3685,75 @@ export default function HostShellV2() {
   // turned up in eight places across four files; a fourth correct copy is
   // still a copy. lib/confirmedCovers.js owns the question now.
   const confirmedHeads = confirmedCovers(event);
+
+  // ── WHEN THIS SCREEN LAST HAD SIGNAL ─────────────────────────────────────
+  // The Grandmother seat's condition on the offline shell, and the only one
+  // she has ever attached to a ruling. She declined to block the worker —
+  // "if it does not work in the shop I would just have written a list on
+  // paper" — and objected to its side effect instead:
+  //
+  //   "If the app opened and showed me my plan and I did not know it was
+  //    old — that would be worse than it not opening."
+  //
+  // Today no signal means a blank screen, which is ugly and HONEST: she can
+  // see something is wrong. Once the shell is cached, no signal means her
+  // plan opens looking completely normal, and nothing on it distinguishes a
+  // live render from one served out of a cache that could be a week old. The
+  // feature that helps her in the aisle is the one that can quietly lie to
+  // her, so the screen has to say so.
+  //
+  // IT ONLY SPEAKS WHEN IT MATTERS. Online, this renders nothing — a
+  // permanent "last updated" line is noise on the 99% of loads that are
+  // live, and noise is how a real notice gets ignored.
+  const [isOffline, setIsOffline] = useState(() => {
+    try { return typeof navigator !== 'undefined' && navigator.onLine === false; } catch { return false; }
+  });
+  useEffect(() => {
+    const down = () => setIsOffline(true);
+    const up = () => { setIsOffline(false); markSignal(); };
+    window.addEventListener('offline', down);
+    window.addEventListener('online', up);
+    return () => { window.removeEventListener('offline', down); window.removeEventListener('online', up); };
+  }, []);
+  // ── AND IT HAS TO KEEP TICKING, WHICH IT DID NOT ─────────────────────────
+  // Recomputing per render is not enough, and driving it proved that: the
+  // line read "Last updated 3 hours ago" and STAYED there while the stored
+  // timestamp was changed underneath it, because nothing else re-rendered.
+  // An idle offline session has no renders at all — which is the whole
+  // situation this exists for — so a line that only refreshes when something
+  // else happens would sit at "4 minutes ago" for an hour.
+  //
+  // That is the Grandmother objection in miniature: a stale number wearing a
+  // current one's clothes. I wrote the warning in this comment and shipped
+  // the bug under it.
+  //
+  // A minute is the right cadence: the phrase's finest grain is minutes, and
+  // the interval only runs while OFFLINE, so an online app pays nothing.
+  // ── "CLOSE IT AND OPEN IT AGAIN", SAID ONLY WHEN IT IS TRUE ──────────────
+  // The offline shell has no skipWaiting, so a fix reaches a host on their
+  // SECOND page load. The 2026-08-16 board ordered that stated in host-facing
+  // copy, and a permanent "updates arrive eventually" would not have been a
+  // statement — it would have been a disclaimer. This fires only when a newer
+  // shell is actually installed and waiting, which is the one moment the
+  // sentence is both true and actionable.
+  const [updateWaiting, setUpdateWaiting] = useState(false);
+  useEffect(() => {
+    const on = () => setUpdateWaiting(true);
+    window.addEventListener('ngw-shell-update-waiting', on);
+    return () => window.removeEventListener('ngw-shell-update-waiting', on);
+  }, []);
+  const [signalTick, setSignalTick] = useState(0);
+  useEffect(() => {
+    if (!isOffline) return undefined;
+    const t = setInterval(() => setSignalTick(n => n + 1), 60000);
+    return () => clearInterval(t);
+  }, [isOffline]);
+  const signalNote = useMemo(
+    () => (isOffline ? lastSignalNote() : null),
+    // signalTick is the point: it is what makes the phrase coarsen over a
+    // long offline sit. eslint would call it unnecessary; it is load-bearing.
+    [isOffline, signalTick],
+  );
   // lib/attendanceModel — likely turnout, WITH the playbook's own attendance
   // overrides (a crab feast's turnout curve isn't a wedding's).
   //
@@ -8208,6 +8278,34 @@ export default function HostShellV2() {
                   URL.revokeObjectURL(a.href);
                 } catch { /* nothing more we can offer */ }
               }}>Download a copy</button>
+            </div>
+          )}
+          {/* ── NO SIGNAL, AND WHEN THERE LAST WAS ────────────────────────
+              Grandmother's condition on the offline shell. Same slot and the
+              same persistence as the save-failure notice above, for the same
+              reason its comment gives — a message that disappears is how a
+              silent problem stays silent.
+              role="status", not "alert": being offline is a STATE, not an
+              error, and a screen reader should hear it without interruption.
+              It says the age rather than "offline" alone, because knowing the
+              connection dropped is not the useful part — knowing the numbers
+              on screen are from last Tuesday is. */}
+          {isOffline && (
+            <div className="no-signal" role="status">
+              <span>No signal — showing your saved plan.</span>
+              {signalNote
+                ? <span className="no-signal-r">{signalNote}</span>
+                : <span className="no-signal-r">This device has not been online yet.</span>}
+            </div>
+          )}
+          {/* Not an alert and not a warning: nothing is wrong, and the plan on
+              screen is correct. It is an instruction, and the only one a host
+              can act on — there is no "update now" button because taking over
+              mid-session would swap the code under a host's hands. */}
+          {updateWaiting && !isOffline && (
+            <div className="shell-update" role="status">
+              <span>An update is ready.</span>
+              <span className="shell-update-r">Close the app and open it again.</span>
             </div>
           )}
           <header className={'appbar' + (elegantMode ? ' appbar-elegant' : '')}>

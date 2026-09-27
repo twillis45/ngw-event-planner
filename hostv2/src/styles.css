@@ -4595,6 +4595,30 @@ button.pill::after, .pill[role="button"]::after, a.pill::after{
    disappears is how a silent failure stays silent. --warn is the existing
    urgency token; this is not an error state to panic about, it is a fact she
    needs in front of her with the one action that preserves her work. */
+/* NO SIGNAL — the Grandmother seat's condition on the offline shell. Shaped
+   like .save-failed because it sits in the same slot and has the same job:
+   persistent, not a toast. Toned DOWN from it though — the steel line, not
+   the warn border — because being offline is a state the host can do nothing
+   about, and an alarm she cannot act on is just anxiety. */
+.no-signal{
+  display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); flex-wrap:wrap;
+  margin:var(--sp-2) 0 0; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-row);
+  background:var(--bg-band); border:1px solid var(--line); color:var(--ink);
+  font:600 13px/1.4 Inter,sans-serif;
+}
+.no-signal-r{ font-weight:400; color:var(--muted); }
+
+/* UPDATE WAITING — same shape, same slot, same restraint. It carries no colour
+   of its own: an update being ready is the least urgent true thing the app can
+   say, and the host's plan on screen is correct either way. */
+.shell-update{
+  display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); flex-wrap:wrap;
+  margin:var(--sp-2) 0 0; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-row);
+  background:var(--bg-band); border:1px solid var(--line); color:var(--ink);
+  font:600 13px/1.4 Inter,sans-serif;
+}
+.shell-update-r{ font-weight:400; color:var(--muted); }
+
 .save-failed{
   display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
   margin:8px 0 0; padding:10px 14px; border-radius:var(--r-row);

@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { SITE_BASE, HOSTV2_BASE } from './deployBase.mjs';
+import offlineShell from './src/offline/vitePluginOfflineShell.mjs';
 
 // ── __dirname, DERIVED RATHER THAN INHERITED ───────────────────────────────
 // This config is real ESM (hostv2 is "type": "module"), and Vite's planned
@@ -40,6 +41,13 @@ export default defineConfig(({ command, mode }) => {
     base: command === 'build' || process.env.E2E_BASE ? HOSTV2_BASE : '/',
     plugins: [
       react(),
+      // ── THE OFFLINE SHELL (host ruling 2026-09-27) ────────────────────
+      // Emits sw.js with a precache manifest read off the bundle vite
+      // actually produced. See src/offline/ — and read
+      // docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md before changing any
+      // of it: a board banned a hand-rolled worker and named the three
+      // conditions this one is built to.
+      offlineShell({ base: HOSTV2_BASE, siteBase: SITE_BASE }),
       // index.html's manifest and touch-icon live at the SITE root, one level
       // ABOVE this bundle's base — so vite's own %BASE_URL% is the wrong value
       // for them and they cannot be left hardcoded either. This substitutes the

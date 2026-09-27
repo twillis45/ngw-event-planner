@@ -23,10 +23,22 @@
          have launched the FROZEN App.js shell. This manifest is hostv2's own:
          start_url and scope both point here, so the icon on her home screen
          opens the app she was actually using.
-         Deliberately NOT shipped, per the same ruling: no service worker (this
-         deploy pipeline should not grow one), and no Web Share Target — it does
-         not work on iOS at any version (WebKit bug 194593, open since 2019),
-         so shipping it would be a promise the phone cannot keep. -->
+         The same ruling also barred a service worker ("this deploy pipeline
+         should not grow one") and a Web Share Target.
+
+         THE SERVICE WORKER BAN WAS LIFTED 2026-09-27, by the host, after the
+         reason for it was checked and found expired. That ban rested on a
+         pipeline that could ship a stale bundle; it cannot any more. Nothing
+         prebuilt is tracked, the laptop gh-pages flow and pages.yml went on
+         2026-08-03, and pages-from-source.yml fails the build unless the
+         artifact carries GITHUB_SHA. The worker is generated at build time by
+         src/offline/ — read docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md and
+         its 2026-09-27 revisit note before touching any of it.
+
+         THE WEB SHARE TARGET BAN STANDS, and for a reason that has not
+         expired: it does not work on iOS at any version (WebKit bug 194593,
+         open since 2019), so shipping it would be a promise the phone cannot
+         keep. -->
     <link rel="manifest" href="%SITE_BASE%hostv2-manifest.json" />
     <link rel="apple-touch-icon" href="%SITE_BASE%icon-192.png" />
     <meta name="theme-color" content="#141518" />
