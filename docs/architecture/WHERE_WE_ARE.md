@@ -1,5 +1,71 @@
 # Where We Are -- live status board
 
+## 2026-09-27 — three honest data sources, two parser defects, and a ruling that had expired
+
+Eleven commits. jest **7,926 / 561**, vitest **43 / 4**. HEAD `f7cdc1bd`, two
+unpushed, the offline shell uncommitted and unproven.
+
+### Three data sources, none of them wired
+
+GSA lodging caps (296 localities), DOT city-pair fares (184 cities), Inside
+Airbnb nightly bands (34 regions × 5 sizes). Each mirrors `geoCostIndex`'s
+refusal shape — `standard: true` / `null` rather than a silent fallback — and
+each is named for what it actually is:
+
+* GSA is a **cap**, in their own words "a maximum amount". Never "price".
+* DOT is a **ten-percent sample of tickets already sold**, six months stale,
+  reported as a band because DOT says a particular fare is unlikely to match it.
+* Inside Airbnb is **asking price before fees**, which their own documentation
+  does not state — measured out of the raw quote JSON: cleaning_fee null in
+  6,196 of 6,196, service_fee null in 6,196 of 6,196, taxes set in 10. It
+  understates, always in the same direction.
+
+**They reach no host yet, and cannot without a copy change:**
+`budgetEstimator/confidence.js` lists "Airfare and ground transfers" among the
+things every destination estimate excludes. Surfacing a fare contradicts shipped
+copy, so both must move in one slice.
+
+### The parser had two relation-vocabulary defects, and the report named neither
+
+`"at grandfather's home"` was not a home while `"at grandma's house"` was — two
+copies of the relation vocabulary, 20 words against 36. And
+`"Mom and Dad's 50th anniversary"` returned the honoree **"Dad"**: a wrong
+answer on an invite for both parents, because the capitalised-possessive branch
+takes CONSECUTIVE capitalised words and the lower-case "and" breaks the run.
+
+A census had named three other phrasings as broken. Two already worked. The
+three real shape defects — plural possessive, two-word slot, hyphen — it did not
+mention. **An agent's report is a hypothesis; probe before fixing what it says
+is broken.**
+
+### The offline shell, and why a ruling needs a re-check date
+
+The 2026-08-16 board banned a service worker, citing a pipeline that could ship
+stale bundles. That fault was fixed **2026-07-30** and the duplicate deploy path
+deleted **2026-08-03** — both before the board sat. Nothing prebuilt is tracked
+and CI now fails unless the artifact carries `GITHUB_SHA`.
+
+Built to the board's own conditions, with the safety case structural rather than
+asserted: **navigation is network-first**, so a cached shell can never out-rank
+a working network. Two independent kill switches. Scope confined to the hostv2
+bundle, so it cannot reach the frozen CRA shell.
+
+**It is not proven.** The in-app browser cannot fetch a service worker script at
+all, so the offline reload — the drive the previous attempt failed — is written
+and unrun. It does not ship until that is green.
+
+### The pattern worth keeping
+
+Six times today the CHECK was the thing that was wrong, in six different ways:
+four red-proofs silently failed to apply their mutation and "passed"; two tests
+were blind to the faults they existed to catch; two assertions failed while the
+product was right; a negative control found a second bug; a monotonicity
+assertion was an assumption; and a board ruling rested on an expired fact.
+
+**A green gate is a claim about the gate as much as about the code.** The
+corollary that cost the most time: if a mutation script asserts, read the
+assert — not the test result underneath it.
+
 ## 2026-09-23 — the vendor cockpit's first slice reaches a host
 
 525 suites / 7,478 tests. `verify:push` 5/5. 7/7 in Chromium at 390px.

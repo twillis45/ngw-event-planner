@@ -1,6 +1,18 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-26 (thirty-sixth entry:
+**Measured reality, not intentions.** Updated 2026-09-27 (thirty-seventh entry:
+a long session against the spread sheet, the parser and the honesty of three
+new data sources — and the thread running through all of it is that the CHECK
+kept being the thing that was wrong. Four red-proofs silently failed to apply
+their own mutation and "passed"; two of my tests were blind to the faults they
+existed to catch and only re-proofing found them; two assertions failed and the
+PRODUCT was right; a negative control written to confirm nothing had broken
+discovered a second bug; and a six-week-old board ruling turned out to rest on
+a pipeline fault that had been fixed two weeks before the board sat. Worth
+carrying forward: a green gate is a claim about the gate as much as the code.
+See the thirty-seventh entry.)
+
+Before that, on 2026-09-26 (thirty-sixth entry:
 a per-pound price was re-pricing lines that are not sold by the pound — $72 of
 appetizer became $1,080 the moment a host left the default sourcing tier — and
 an eight-seat board then found the table behind it prices ELEVEN species off
@@ -212,12 +224,12 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `3c7afa35` + 3 local (per-pound guard, layout B, this entry) |
+| Branch / HEAD | `main` @ `f7cdc1bd`, **2 unpushed** (relation de-dup, couple honoree) + the offline shell uncommitted. 11 commits landed 2026-09-27 |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,799 passed**, 1 skipped, **0 failed**, **549 suites** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
-| vitest (hostv2 seam) | **21 passed** — the only runner that EXECUTES the host shell (new 2026-09-03) |
+| Jest | **7,926 passed**, 1 skipped, **0 failed**, **561 suites** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| vitest (hostv2 seam) | **43 passed / 4 files** (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
@@ -228,6 +240,96 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-27 (thirty-seventh entry) — eleven commits, and six times the CHECK was the thing that was wrong
+
+**HEAD `f7cdc1bd`, 2 unpushed, offline shell uncommitted. jest 7,926 / 561. vitest 43 / 4.**
+
+### What shipped
+
+| | |
+|---|---|
+| `e3381cd5` | Six of Kwanzaa's seven symbols were `essential: true`; the mkeka and the zawadi were not. All three (plus the Repast photo table) now reach the host's shopping list |
+| `7cc96940` | A typed date span survived the host correcting the start. There was no `fEndDate` field ANYWHERE in creation |
+| `51cea187` | The crash screen stopped saying "Something went wrong" — which UX_06 lists under Bad, by name |
+| `3eb8fd38` | The pinned bar rides all three food tabs; the Plan drill-in trap closed at its source |
+| `f19e4554` `8432e94b` `ad2612b6` | GSA lodging caps, DOT fares, Inside Airbnb nightly bands. **Not wired to any surface** |
+| `8f66969b` `f7cdc1bd` | Two relation-vocabulary defects in the parser |
+| uncommitted | The offline shell, after a six-week-old ban was checked and found expired |
+
+### The thread: the check kept being wrong
+
+Six separate times, and they are different failures:
+
+1. **Four red-proofs silently did not apply their mutation** and reported green. A
+   red-proof that does not mutate proves nothing and looks exactly like success.
+   All four were redone. If a mutation script asserts, READ THE ASSERT — do not
+   read the test result underneath it.
+2. **Two tests were blind to the faults they existed to catch.** A smaller-bucket
+   fallback passed because the fixture city HAD the bucket; a same-state city
+   substitution passed because neither fixture state was covered. Rewritten
+   against Albany (missing the bucket) and Sacramento (absent while seven other
+   CA cities are present). Red-proofing is what found this, not review.
+3. **Two assertions failed and the PRODUCT was right.** An end-date field
+   UNMOUNTS rather than emptying; an overnight chip is not raised at all when
+   there is no basis. Corrected to what the app does.
+4. **A negative control found a second bug.** A test written only to confirm the
+   couple-honoree branch had not stolen the venue failed — because
+   `at Mom and Dad's house` had NEVER been a home. Same defect, other seam.
+5. **A monotonicity assertion was my assumption, not a finding.** p25 and p75
+   rise with size across all 34 Airbnb cities; exactly one median does not, on
+   22 listings. Pinned as the only one so a second gets looked at.
+6. **A six-week-old board ruling rested on an expired fact.** See below.
+
+### The offline shell, and a ruling that decayed
+
+`docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md` upheld a ban on a service worker.
+Its strongest argument was *"this pipeline has already shipped stale bundles."*
+
+That was **not true when the board sat.** Nothing prebuilt is tracked, the laptop
+`gh-pages` flow and `pages.yml` were deleted **2026-08-03**, and
+`pages-from-source.yml` fails the build unless the artifact carries `GITHUB_SHA`.
+The fix landed **2026-07-30**. The board was **2026-08-16**.
+
+The repo's own memory of that trap was equally stale and has been corrected. **A
+fact about infrastructure decays faster than the ruling resting on it, and a
+ruling carries no re-check date.** This one decided a product question for six
+weeks.
+
+Built to the board's own condition 4 — build-time precache manifest, tested
+update path, two independent kill switches — with the safety case structural
+rather than asserted: **navigation is network-first**, so a cached shell can
+never out-rank a working network. `sw.js` ships inside the hostv2 bundle, so its
+scope cannot reach the frozen CRA shell.
+
+**NOT YET PROVEN.** The in-app browser cannot fetch a service worker script at
+all (`TypeError`, on both the preview server and a plain static one), so the
+offline reload — the drive the previous attempt FAILED — is written
+(`e2e/theShellOpensWithoutSignal.spec.mjs`) and unrun. It does not ship green
+until that is driven. Saarinen's "not as a side quest" is also NOT honoured:
+this was built inside a working session, not separately reviewed.
+
+### Traps worth carrying
+
+- **Rebuilding `dist` mid-matrix invalidates the run from that point.** Done twice
+  today, the second time an hour after flagging it. matrix5 was killed at 2,047
+  clean tests and restarted.
+- **`git checkout --` does not restore an UNTRACKED file.** A red-proof mutation
+  to a new data file survived the "restore" and the next run was red for that.
+- **The in-app browser cannot register service workers.** Use Playwright.
+- **An agent's report is a hypothesis.** A parser census named three broken
+  phrasings; two already worked, and three real defects it did not name were the
+  actual bugs. Probe before fixing what a report says is broken.
+
+### Next
+
+1. Drive `theShellOpensWithoutSignal.spec.mjs`; the worker does not ship until it is green.
+2. Push the two parser commits once matrix6 reports.
+3. The three data sources are UNUSED until one is wired to a surface — which
+   requires rewriting `TRAVEL_LOGISTICS_NOT_INCLUDED` in `budgetEstimator/confidence.js`,
+   since it currently states airfare is excluded from every destination estimate.
+
+---
 
 ## FIXED 2026-09-25/26 (thirty-sixth entry) — a price that multiplied, a table sourced from a shrimp page, and a harvest that lived nowhere
 
