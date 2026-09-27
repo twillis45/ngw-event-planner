@@ -20063,7 +20063,23 @@ export default function HostShellV2() {
                             target the .chip::after expander gives every other
                             chip; at 5px vertical padding these were the
                             smallest touch targets on the sheet. */}
-                        <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* ── ONE ROW THAT SCROLLS (owner: "let's try scroll") ──
+                            Wrapping put five store filters on two or three
+                            lines — ~108px of vertical on the densest sheet in
+                            the app, most of the last row empty.
+
+                            THE RECORDED RISK, carried here so it is not
+                            rediscovered: a horizontal carousel was REMOVED from
+                            the occasion picker earlier in this project after a
+                            host reported it as a mis-tap risk. Two things
+                            answer that. The rail BLEEDS to the screen edge
+                            (negative margin + matching padding), so a partly
+                            cut chip is always the affordance rather than a
+                            clean edge that looks like the end; and
+                            `touch-action:pan-x pan-y` keeps the sheet's own
+                            vertical scroll alive, which is the gesture a
+                            sideways rail otherwise competes with. */}
+                        <div className="chiprail">
                           {stores.slice(0, 5).map(s => (
                             <button key={s} className="chip" aria-pressed={shopStore === s}
                               onClick={() => setShopStore(shopStore === s ? null : s)}>{shopStore === s ? 'At ' + s : s}</button>

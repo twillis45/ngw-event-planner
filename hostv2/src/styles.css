@@ -6093,6 +6093,32 @@ button.vc-pill::after{
    left, so the block squares off under the full-width primary above it.
    `flex:1 1 auto` not `1 1 0`: a chip never shrinks below its own label, so a
    long one still wraps the row rather than clipping (white-space:nowrap). */
+/* ── A CHIP RAIL: ONE ROW, SCROLLED, BLED TO THE EDGE ──────────────────────
+   Owner 2026-09-27: "let's try scroll". Five store filters wrapped to two or
+   three lines; this is one row of ~44px instead.
+
+   The bleed is the safety feature, not decoration. A rail that stops neatly at
+   the content gutter looks like the end of the list, so the host never learns
+   there is more — and a carousel nobody scrolls is worse than a wrap. Pulling
+   the rail out to the screen edge and padding it back in means the first chip
+   still lines up with the copy above it while the last one is visibly cut.
+
+   `touch-action: pan-x pan-y` keeps the sheet's vertical scroll working from
+   inside the rail. Without it a thumb that starts on a chip and moves down
+   fights the rail — which is the mis-tap complaint that got the occasion
+   picker's carousel removed, and the reason this is worth writing down. */
+.chiprail{ display:flex; flex-wrap:nowrap; align-items:center; gap:var(--sp-2);
+  overflow-x:auto; overflow-y:hidden; touch-action:pan-x pan-y;
+  scrollbar-width:none; -ms-overflow-style:none;
+  /* The bottom margin lives HERE, not inline: an inline `margin` shorthand
+     beats a stylesheet `margin-inline` longhand, so the first attempt kept the
+     rail at the content gutter (measured x:20 w:350 instead of x:0 w:390) and
+     the bleed silently did nothing. */
+  margin:0 calc(var(--sp-5) * -1) 10px; padding-inline:var(--sp-5);
+  scroll-padding-inline:var(--sp-5); }
+.chiprail::-webkit-scrollbar{ display:none; }
+.chiprail > *{ flex:0 0 auto; }
+
 /* ── EVERY SECONDARY ACTION IS THE SAME WIDTH ───────────────────────────────
    Owner, 2026-09-26: "email is one of the smallest words but is wider than
    send to instacart". True, and it was my own cap doing it: flex:1 1 auto grew
