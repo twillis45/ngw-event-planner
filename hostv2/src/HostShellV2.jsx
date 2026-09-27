@@ -3039,6 +3039,11 @@ export default function HostShellV2() {
   // bury the surface it is warning about.
   useEffect(() => {
     if (isCustomEventId(eventId)) return;
+    // Nor while the welcome gate is up, for the same reason: this wrote
+    // `ngw-hostv2-patch-ev-x-retirement-party` on a wiped device before the
+    // host had touched the screen. An empty patch is still a record that the
+    // host was working on that event, and they were not.
+    if (welcome) return;
     try {
       localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch));
       saveFailedRef.current = false;
@@ -3096,9 +3101,32 @@ export default function HostShellV2() {
   }, [customs]);
   // Reload lands back where the host was — creation and switching both flow
   // through eventId, so ONE writer covers them.
+  //
+  // NOT WHILE THE WELCOME GATE IS UP (2026-09-27). The shell mounts underneath
+  // that overlay on BOOT_EVENT_ID, which on a brand-new device is the first
+  // roster SAMPLE. Measured after wiping storage and loading once, having
+  // tapped nothing: the retirement sample was already "where the host was".
+  // Tapping "Start my event" then left it pointing there until the new plan
+  // finished building, so a reload mid-creation landed the host inside a demo
+  // they had never opened. The host has not been anywhere yet; recording that
+  // they have is the bug.
+  //
+  // AND NOT WHILE THEY ARE BUILDING THEIR FIRST ONE. Dismissing the gate with
+  // "Start my event" un-suppressed this while the shell was STILL sitting on
+  // the sample, so the sample was recorded a beat after the host declined it —
+  // the gate alone left the original symptom in place, which the drive caught.
+  //
+  // The condition is ownership, not stage: a host creating a SECOND event
+  // already has a real event loaded, and recording that one is right. Only a
+  // creation with nothing of the host's underneath it stays silent.
+  const eventIsTheHostsOwn = isCustomEventId(eventId)
+    || REAL_EVENTS.some(e => e && e.id === eventId)
+    || hydratedEvents.some(e => e && e.id === eventId);
   useEffect(() => {
+    if (welcome) return;
+    if (stage === 'create' && !eventIsTheHostsOwn) return;
     if (eventId) { try { localStorage.setItem(LS_LAST_EVENT, eventId); } catch {} }
-  }, [eventId]);
+  }, [eventId, welcome, stage, eventIsTheHostsOwn]);
   useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
 
 
@@ -4159,12 +4187,17 @@ export default function HostShellV2() {
   useEffect(() => {
     try {
       const base = BRAND.full;
-      if (stage === 'plan' && askMode && heroAskText) document.title = heroAskText + ' — ' + base;
+      // A HOST WHO HAS NOT ARRIVED HAS NO ASK. The tab read "Pay your
+      // caterer." while the welcome screen was still up — the sample's task,
+      // announced in the one piece of chrome the overlay cannot cover, and
+      // the first thing a screen reader says on a brand-new device.
+      if (welcome) document.title = base;
+      else if (stage === 'plan' && askMode && heroAskText) document.title = heroAskText + ' — ' + base;
       else if (stage === 'plan' && listIsCalm) document.title = 'All quiet — ' + base;
       else document.title = base;
     } catch { /* title is cosmetic */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, askMode, listIsCalm, heroAskText, queue.length && queue[0] && queue[0].id, event.id]);
+  }, [stage, askMode, listIsCalm, heroAskText, queue.length && queue[0] && queue[0].id, event.id, welcome]);
   useEffect(() => {
     try {
       const crit = queue.filter(a => a && a.level === 'critical').length;
@@ -4219,6 +4252,12 @@ export default function HostShellV2() {
   const [returnLine, setReturnLine] = useState(null);
   useEffect(() => {
     try {
+      // The third writer the welcome gate has to hold back. This one stamped
+      // `ngw-return-snap-ev-x-retirement-party` on a wiped device before the
+      // host tapped anything — and worse than a stray key, it would have made
+      // their FIRST real visit to that sample look like a return, because the
+      // snapshot is the anti-repeat basis for "since you were last here".
+      if (welcome) return;
       const prev = readReturnSnapshot(event.id);
       const n = deriveReturnNarration(event, prev);
       writeReturnSnapshot(event.id, buildReturnSnapshot(event));
@@ -4238,7 +4277,7 @@ export default function HostShellV2() {
         setReturnLine(n);
       } else setReturnLine(null);
     } catch { setReturnLine(null); }
-  }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event.id, welcome]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [lens, setLens] = useState('all');
   const lensSet = [...new Set(queue.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
