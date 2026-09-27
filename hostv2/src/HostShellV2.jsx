@@ -18085,7 +18085,19 @@ export default function HostShellV2() {
                         change and this comment is where to start. */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)',
                       flexWrap: 'wrap', margin: 'var(--sp-3) 0 0' }}>
-                      {un > 0 && (
+                      {/* NOT ON THE PLAN TAB (owner: "no need to duplicate").
+                          Plan already carries a Dietary needs row, and this
+                          chip's CTA opens exactly that row — two affordances,
+                          one destination, one screen.
+
+                          They are not quite the same FACT, which is worth
+                          recording so nobody "restores" one for the other:
+                          `anyDietFlagged` counts recorded RESTRICTIONS, this
+                          counts guests who have named no MEAL. A host can have
+                          zero restrictions and three silent guests. On Shop
+                          there is no dietary row, so the chip is the only way
+                          that gap is said at all, and it stays. */}
+                      {un > 0 && sheet.kind !== 'foodplan' && (
                         <button className="mini"
                           style={{ color: 'var(--warn)', background: 'var(--warn-tint)', borderColor: 'var(--warn)' }}
                           onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
