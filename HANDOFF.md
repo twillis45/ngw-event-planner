@@ -1,6 +1,16 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-27 (thirty-seventh entry:
+**Measured reality, not intentions.** Updated 2026-09-27 (thirty-eighth entry:
+the offline shell ships after a third board lifted a two-board ban, two
+onboarding faults close — a host's own event was at index 15 of 17 behind
+thirteen samples, and a wiped device recorded a sample nobody had opened — and
+the full matrix found a live pricing untruth that one pushed commit lit up
+without touching any pricing code. Worth carrying forward: three wrong claims
+this session came from reasoning off an adjacent mechanism instead of
+measuring, including a "4x matrix slowdown" that did not exist, quoted from a
+stale benchmark in my own notes. See the thirty-eighth entry.)
+
+Before that, on 2026-09-27 (thirty-seventh entry:
 a long session against the spread sheet, the parser and the honesty of three
 new data sources — and the thread running through all of it is that the CHECK
 kept being the thing that was wrong. Four red-proofs silently failed to apply
@@ -240,6 +250,88 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-27 (thirty-eighth entry) — the offline shell ships, two onboarding faults close, and the matrix found a live pricing untruth
+
+**HEAD `41eed734`, 10 unpushed. jest 7,981 / 566. vitest 47 / 4.
+Matrix: NOT green — 14 known failures, cause found, ruling needed (see below).**
+
+### What shipped
+
+| | |
+|---|---|
+| Offline shell | `35b3b30f`. Third board lifted a two-board ban with three conditions; all met. Network-first navigation, build-time precache, two independent kill switches. |
+| "No signal — showing your saved plan · Last updated 3 hours ago" | Grandmother's condition, the last blocker. Rendered, driven, 5/5, red-proofed four ways. |
+| "An update is ready. Close the app and open it again." | Recovery is two page loads (no skipWaiting). Said only when a worker is genuinely waiting — a permanent disclaimer would have met the letter of the order and not the order. |
+| Her own event is row 1 of her own list | `68caa98b`. Was at index 15 of 17, behind 13 samples. |
+| A wiped device records nothing | `d4553cfe`. Four writers were running for an event the host had never opened. |
+| The verification date is back on regional plans | `41eed734`. |
+
+### The thread: three of today's faults were LATENT, and one commit lit all three
+
+`f558376c` "The sheet asked for a state it then ignored" (01:54, **pushed**)
+made the state actually apply. It changed no pricing code. It simply started
+running a regional path that three separate pieces of code had been wrong
+about for days:
+
+1. **The price vintage vanished.** The hero suppressed the corpus verification
+   date whenever a regional `priceContext` existed — landed 09-24, harmless
+   only because no test event had a state. FIXED. Both months read "Aug 2026"
+   today, which is why nobody saw it: the screen was unchanged and the claim
+   underneath it had changed source.
+2. **Ice is priced regionally with no regional basis.** `geoAdjust('ice', …)`
+   returns factor 1, `national: true`, basis *"no BLS regional series — this
+   is the national band, not a south price"*, and the sheet renders
+   $0.20–$0.39 against an authored $0.20–$0.40. The code and the basis string
+   contradict each other and a host can read only the string. **NOT FIXED —
+   needs a ruling**, two options in
+   `docs/audits/2026-09-27_ICE_TAKES_A_REGIONAL_FACTOR_IT_HAS_NO_BASIS_FOR.md`.
+   `aRateIsNotFree` is red (2 tests × 7 viewports) until it is answered.
+3. **A latent flake in my own new spec** surfaced in all seven projects at
+   once — the helper waited for the service worker to take control, not for
+   React to mount, so a dispatched event could land before its listener
+   existed. Seven-for-seven is a race, not luck. Fixed and re-run clean.
+
+### Worth carrying forward
+
+**A benchmark in a memory note is a measurement with an expiry date.** A note
+said the matrix takes 13.9 minutes. Measuring 35 tests/min against it, I
+reported a "4× slowdown" to the host and blamed the new service worker for
+installing in every test context. Then I measured it: **9.93s with the worker,
+9.93s without.** There was no slowdown. matrix6 took 1.1 hours for 2,159
+tests; the suite roughly doubled since August and the per-test rate never
+changed. Quoting a stale benchmark as current is the same false green as a
+check that never ran.
+
+**Three wrong claims came from reasoning off an adjacent mechanism** — the
+slowdown, then "every price is doubled by a 1.96 factor" (it was base 2.00 ×
+0.98, and ice was on screen the whole time one cent light), then the
+assumption that geo scaling explained ice (it does not; the per-item factor is
+1). Each was settled in one measurement that cost less than the argument.
+
+**A green matrix can be a stale-dist artifact.** matrix6 reported 2,159 passed
+/ 0 failed at 12:30. Those two specs were already broken at HEAD by then; that
+run served a bundle built before the breaking source. The runner serves the
+EXISTING dist.
+
+**I invalidated a 40-minute matrix with my own compile check** — `npx vite
+build` writes to `dist`. Third time this session. A compile check needs its
+own outDir.
+
+**Red-proofing caught two of my own blind gates.** A negative control that
+counted delete buttons could not fail on the fault it existed for, because
+with one host-owned row the count is 1 either way; it tests DOM position now.
+And a case-sensitive `/^Samples\b/` found nothing, because CSS uppercases the
+label — the test failed on its own premise.
+
+### Open
+
+| | |
+|---|---|
+| **Ice ruling** | Blocks a green matrix. Two options written up. |
+| 10 unpushed commits | Nothing pushed this session. |
+| Lodging basis ladder | Built, tested, wired to no surface. |
+| A real deploy producing a waiting worker | Not driven in a browser; routing cannot reach the update check. Recorded in the board audit. |
 
 ## FIXED 2026-09-27 (thirty-seventh entry) — eleven commits, and six times the CHECK was the thing that was wrong
 

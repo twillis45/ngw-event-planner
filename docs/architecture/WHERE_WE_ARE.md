@@ -1,5 +1,56 @@
 # Where We Are -- live status board
 
+## 2026-09-27 — the offline shell ships, onboarding stops lying to a new device, and one pushed commit lit three latent faults
+
+**HEAD `41eed734`, 10 unpushed. jest 7,981 / 566 · vitest 47 / 4 · matrix NOT
+green: 14 known failures with the cause found and a ruling outstanding.**
+
+### Shipped
+
+**The offline shell.** Two boards banned a service worker; a third lifted the
+ban with three conditions — build-time precache, a tested update path, and a
+kill switch that works from outside the worker. All met. Navigation is
+network-first, so a cache can only answer when the network did not, and the
+poisoned-cache drive proves that rather than asserting it. The board's
+strongest argument turned out to have been obsolete when it was made: the
+stale-ship pipeline fault it rested on was fixed two weeks before the board
+sat.
+
+The Grandmother seat's condition — a cached plan must not look identical to a
+live one — is met by a line that names the age of what is on screen. Driving
+it found a bug every test had passed over: the phrase only recomputed when
+something else re-rendered, and an idle offline session has no other renders,
+so it sat at "3 hours ago" while the timestamp moved underneath it.
+
+**"Your events" puts the host's own event first.** It was at index 15 of 17,
+behind thirteen samples, with "Delete this event" directly under it. Not an
+ordering mistake: `REAL_EVENTS` excludes stored customs by construction, so an
+event created on the device could only render in the sample list. Storage is
+not ownership.
+
+**A new device records nothing it was not told to.** Four writers — patch,
+last-event, return snapshot, document title — were running for a sample the
+host had never opened, before they tapped anything.
+
+### The structural lesson: latent faults wait for a switch
+
+`f558376c` (pushed, 01:54) made the state actually apply. It changed no
+pricing code and broke two things and exposed a third, because three separate
+pieces of code had been wrong for days in a path nothing exercised.
+
+That is the shape to watch for. A conditional that is only wrong on a branch
+no test takes is not "working" — it is untested, and the commit that finally
+takes that branch gets blamed for faults it did not write.
+
+### Outstanding ruling — a national band priced as a regional one
+
+`geoAdjust('ice', …)` returns factor 1, `national: true`, and the basis string
+*"no BLS regional series — this is the national band, not a south price"*. The
+sheet prices it regionally anyway. The code and the basis string contradict
+each other, and the host can read only the string. Two options written up in
+`docs/audits/2026-09-27_ICE_TAKES_A_REGIONAL_FACTOR_IT_HAS_NO_BASIS_FOR.md`;
+`aRateIsNotFree` stays red until one is chosen.
+
 ## 2026-09-27 — three honest data sources, two parser defects, and a ruling that had expired
 
 Eleven commits. jest **7,926 / 561**, vitest **43 / 4**. HEAD `f7cdc1bd`, two
