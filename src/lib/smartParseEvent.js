@@ -464,7 +464,41 @@ export function parseSmartEventText(text, opts = {}) {
   // one guard serves both branches. (Measured: with a bare lower-case `day`,
   // "Mother's Day brunch" still returned the honoree "Mother".)
   const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool)\\b)';
-  const hm = t.match(new RegExp('([A-Z][a-zA-Z]+(?:\\s+[A-Z][a-zA-Z]+)?)[\u2019\']s\\b' + NOT_WHO))
+  // ── A COUPLE IS TWO PEOPLE, AND WE WERE NAMING ONE ────────────────────
+  //
+  // "Mom and Dad's 50th anniversary" returned the honoree "Dad". Not a
+  // miss — a WRONG ANSWER, and the honoree reaches the event name and the
+  // invite, so one parent's 50th was announced without the other.
+  //
+  // Measured 2026-09-27, every couple form did it: "Grandma and Grandpa's
+  // 60th" -> Grandpa, "Denise and Robert's 50th" -> Robert, "Mom & Dad's"
+  // -> Dad. The branch below takes one or two CONSECUTIVE capitalised
+  // words, and "Mom and Dad" is not consecutive — the lower-case "and"
+  // breaks the run — so the match simply restarted at the second name. For
+  // a 50th anniversary a couple is not an edge case, it is the ordinary one.
+  //
+  // TWO PATTERNS, NOT ONE, for the reason the NOT_WHO comment above already
+  // records: this cannot be one case-insensitive regex, because /i would
+  // make [A-Z] match lower case and the name-versus-word distinction this
+  // file rests on would collapse. Relations match the closed vocabulary
+  // case-insensitively; names match case-sensitively. Exactly as the
+  // singular branches below already do it.
+  const COUPLE_JOIN = '\\s*(?:and|&)\\s*';
+  const hm = (() => {
+    const rel = t.match(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + COUPLE_JOIN
+      + REL_WORDS + ')[\u2019\']s\\b' + NOT_WHO, 'i'));
+    if (rel) {
+      const pair = rel[1].replace(/\s*&\s*/, ' and ').replace(/\s+/g, ' ').toLowerCase();
+      const titled = pair.split(' ')
+        .map((w) => (w === 'and' ? 'and' : w.charAt(0).toUpperCase() + w.slice(1)))
+        .join(' ');
+      return [rel[0], titled];
+    }
+    const nm = t.match(new RegExp('\\b([A-Z][a-zA-Z]+' + COUPLE_JOIN + '[A-Z][a-zA-Z]+)[\u2019\']s\\b' + NOT_WHO));
+    if (nm) return [nm[0], nm[1].replace(/\s*&\s*/, ' and ').replace(/\s+/g, ' ')];
+    return null;
+  })()
+    || t.match(new RegExp('([A-Z][a-zA-Z]+(?:\\s+[A-Z][a-zA-Z]+)?)[\u2019\']s\\b' + NOT_WHO))
     // "for Vida", "honoring Marcus" — the honoree named without a possessive
     // (host report 2026-07-27: "Birthday celebration for Vida" dropped the name).
     // Months/weekdays/pronouns/articles are excluded so "for November" or
@@ -513,6 +547,8 @@ export function parseSmartEventText(text, opts = {}) {
   // place" need no venue booking, which is the distinction venueKind exists to
   // draw. The possessive form is required, so a bare "the club" or "the hall"
   // cannot slip in.
+  const REL_ONE = '(?:' + REL_WORDS + '|parents?|folks)';
+  const REL_PAIR = '(?:' + REL_ONE + '(?:\\s*(?:and|&)\\s*' + REL_ONE + ')?)';
   const home = /backyard|back\s?yard|at home|my (?:place|house|home|crib|spot)|our (?:house|home|place)|the (?:house|crib)/i.test(t)
     // ── ONE LIST OF RELATIONS, NOT TWO ──────────────────────────────────
     // This was a second, shorter copy of REL_WORDS written inline: 20 words
@@ -531,7 +567,11 @@ export function parseSmartEventText(text, opts = {}) {
     //
     // Closed kinship terms only, so this cannot widen onto venue names:
     // "at Anderson's Farm" and "at Sarah's house" both stay null, checked.
-    || new RegExp('\\b(?:at|in)\\s+(?:my\\s+)?(?:' + REL_WORDS + '|parents?|folks)'
+    // A COUPLE HERE TOO. "at Mom and Dad's house" was not a home, for the
+    // same reason "Mom and Dad's 50th" named only Dad: the relation slot
+    // took one person. Found by the honoree fix's own negative control,
+    // which asserted the place still resolved and discovered it did not.
+    || new RegExp('\\b(?:at|in)\\s+(?:my\\s+)?' + REL_PAIR
       + '(?:[\'\u2019]?s)?\\s+(?:house|place|home|yard|backyard)\\b', 'i').test(t);
   // Venue phrase kept VERBATIM — "my brother's backyard" is the venue, not a
   // generic "Backyard". Guests read this in invites and rain notes.
