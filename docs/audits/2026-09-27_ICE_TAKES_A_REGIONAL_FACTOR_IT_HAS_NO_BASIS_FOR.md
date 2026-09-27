@@ -170,3 +170,70 @@ line. **This is exactly why the regional seat was added.**
 
 **Not ruled:** whether to adopt B anyway on simplicity grounds. That is the
 owner's, and the operator's dissent is the argument for it.
+
+---
+
+# CORRECTION, same day — finding #4 is WITHDRAWN
+
+**It was mine, and it was wrong.** The board recorded that `geoCostIndex.geoAdjust`
+and `playbooks.factorFor` hold two different policies for an unmapped item with
+nothing saying which is authoritative, and the Next Maintainer seat called it
+unresolvable at 2am.
+
+Measured afterwards: `geoItemForPurchase` returns **null** for ice. The
+allowlist is eleven entries - beer, wine, bread. `priceLayers` only calls
+`applyGeo` when that lookup yields a key, so **ice never reaches the index at
+all**, and only `factorFor` ever prices the line.
+
+The "no BLS regional series for ice - this is the national band" string that
+the whole two-policy story rested on came from a probe calling
+`geoAdjust('ice', 'MD')` **directly, with a string that is not a key in the
+map**. Production never makes that call. The modules do not disagree; they
+operate on disjoint inputs by construction.
+
+**This is the fourth claim this session built by measuring an adjacent
+mechanism** - after a matrix "slowdown" that did not exist, a "1.96 multiplier"
+that was 2.00 x 0.98, and a geo scaling that turned out to be factor 1. The
+pattern is consistent enough to name: reaching for the nearest function that
+sounds like the one in question, and reading its answer as the system's.
+
+**What replaced it.** The disjointness was a real invariant that nothing wrote
+down, so it is now a gate:
+`src/lib/knowledge/__tests__/unmappedLinesNeverReachTheIndex.test.js`. It walks
+every priced line in every playbook and asserts that any key the map yields is
+one the index can answer without disclaiming. Red-proofed by adding ice to the
+allowlist against a key with no series - 2 of 3 fail, which is precisely the
+defect the withdrawn finding imagined. If anyone ever makes it real, it is
+caught.
+
+**Finding #1 is unaffected.** That one was verified by driving the surface, not
+by probing a function: the disclosure was genuinely absent from the screen and
+is now rendered.
+
+## Queue status after this correction
+
+| # | Finding | State |
+|---|---|---|
+| 1 | Per-line regional disclosure never rendered | **FIXED + gated + red-proofed** |
+| 2 | Ice priced per pound; sold in bags | **OPEN - blocked on a grounded bag size, see below** |
+| 3 | `aRateIsNotFree` asserted a national band on a regional plan | **FIXED** - literals replaced by the rules they stood for |
+| 4 | Two modules, two policies | **WITHDRAWN** - never true; invariant gated instead |
+| 5 | Does the disclosure earn its density? | **RULED by owner** - approved, then built small (two words per row, sentence once) |
+| 6 | Rounded national band vs precise imputed one | still (c) - only real hosts can award it |
+
+## Why #2 is not being built
+
+The regional seat is right that nobody buys 46 pounds of ice; it is sold in
+bags. Implementing it means choosing a bag size, and **that is authoring data,
+not fixing code**. Common retail sizes are 7lb, 10lb, 16lb and 20lb, and which
+one a host meets depends on the store - picking one to make the arithmetic
+tidy would fabricate a fact, which is the thing this corpus most consistently
+refuses to do.
+
+`normalizeBuyable` also does NOT cover it by oversight: it fires only on the
+banned `slice` unit, and its comment says it is "intentionally narrow ... to
+avoid over-reach on legitimate serving units like 'serving' / 'piece' / 'lb'".
+
+**What it needs:** a grounded bag size with a source, the same as any other
+priced fact here. Then the conversion is mechanical and preserves the total,
+the way the pizza/loaf/cake conversions already do.
