@@ -213,6 +213,12 @@ export function geoHonestyLine(itemKey, state) {
  */
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// The one clause in this note that is an ASK rather than a statement. Exported
+// so the surface can render it as a control without splitting the sentence on a
+// guessed substring: the producer and the renderer read the same constant, so
+// the text cannot drift out from under the link that carries it.
+export const ADD_STATE_NUDGE = 'add your state for local prices';
+
 export function geoPlanNote(state, appliedBasis, zip) {
   // The state is the stronger fact and wins when present; a typed ZIP is the
   // fallback, and only names a region it can actually resolve.
@@ -288,7 +294,7 @@ export function geoPlanNote(state, appliedBasis, zip) {
   // the restatement ("prices", already implied by a row of dollar figures) and
   // "localizing them", which is our word, not a host's.
   if (!region) {
-    return 'National average · add your state for local prices';
+    return `National average · ${ADD_STATE_NUDGE}`;
   }
   return `National average · not yet adjusted for ${REGION_LABEL[region]}`;
 }

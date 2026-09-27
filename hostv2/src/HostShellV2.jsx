@@ -138,7 +138,7 @@ import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
-import { geoPlanNote, regionForZip, regionForAddress, priceStateFor } from '@app/lib/knowledge/geoCostIndex';
+import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
@@ -18158,7 +18158,39 @@ export default function HostShellV2() {
                           A non-breaking space is width-independent and month-
                           independent: the date either fits on the line or moves to
                           the next one whole. */}
-                      {fSpan ? fSpan.text + ' · ' : ''}{priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
+                      {/* ── THE ASK IS A DOOR, NOT A SENTENCE (2026-09-27) ────
+                          The note ends "…· add your state for local prices" and
+                          there is no state field on this screen: the host has to
+                          leave, find the venue, and come back. That is the thing
+                          this app's own row-level-CTA rule refuses — name the
+                          act, then route to the exact field.
+
+                          Split on ADD_STATE_NUDGE, the constant geoCostIndex
+                          exports and geoPlanNote composes WITH, so the producer
+                          and the renderer read one string and the copy cannot
+                          drift out from under the link. If the clause ever
+                          changes, the split simply stops matching and the
+                          sentence renders whole — it degrades to today's
+                          behaviour rather than to a broken fragment. */}
+                      {fSpan ? fSpan.text + ' · ' : ''}
+                      {(() => {
+                        const note = priceNote();
+                        const at = note.indexOf(ADD_STATE_NUDGE);
+                        if (at < 0) return note;
+                        return (
+                          <>
+                            {note.slice(0, at)}
+                            <button type="button" onClick={() => setSheet({ kind: 'venue' })}
+                              style={{ font: 'inherit', color: 'var(--steel-soft)', background: 'none',
+                                border: 'none', padding: 0, cursor: 'pointer',
+                                textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+                              {ADD_STATE_NUDGE}
+                            </button>
+                            {note.slice(at + ADD_STATE_NUDGE.length)}
+                          </>
+                        );
+                      })()}
+                      {fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
                     </p>
                     {/* ── WHERE WE ARE SHOPPING (host, 2026-09-24, board D) ─────
                         "we need to include which stores are under umbrella or
