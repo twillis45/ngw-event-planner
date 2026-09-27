@@ -93,3 +93,33 @@ test('the sentence is said ONCE, not on every row', async ({ page }) => {
   expect((txt.match(/basket stood in/g) || []).length).toBe(1);
   expect(txt).not.toMatch(/no published price for this line itself[\s\S]*no published price for this line itself/);
 });
+
+test('THE REGIONAL SEAT\'S FINDING: ice tells the host what to actually buy', async ({ page }) => {
+  // Nobody buys 46 pounds of ice. The board's Maryland crab-house operator was
+  // the only seat that saw it, and it is the reason a regional practitioner
+  // was added to a panel about arithmetic.
+  //
+  // The line is STILL priced per pound — that is what its cost evidence
+  // measured (ice-retail-2026 / ice-warehouse-2026, five of six cited bags at
+  // 20lb) — so no total moves. This asserts the hint is beside the quantity
+  // AND that the money did not change with it.
+  await openList(page);
+  const ice = await page.evaluate(() => [...document.querySelectorAll('.sheet .fitem, .sheet li, .sheet .frow')]
+    .map((e) => (e.innerText || '').replace(/\s+/g, ' '))
+    .find((t) => /^Ice\b/i.test(t)) || '');
+  expect(ice).toMatch(/\d+ lbs?/);                       // still priced by weight
+  expect(ice).toMatch(/about \d+ × 20 lb bags?/);        // …and shoppable
+  expect(ice).toMatch(/\$0\.\d{2}–\$0\.\d{2}\/lb/);      // the rate is untouched
+});
+
+test('NEGATIVE CONTROL: nothing else priced by the pound grew a bag', async ({ page }) => {
+  // The guardrail this repo already keeps: "serving", "piece" and "lb" are
+  // legitimate units and a blanket re-uniting would be over-reach. Ribs are
+  // bought by the pound at a counter.
+  await openList(page);
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.sheet .fitem, .sheet li, .sheet .frow')]
+    .map((e) => (e.innerText || '').replace(/\s+/g, ' ')));
+  const withBags = rows.filter((t) => /× 20 lb bag/.test(t));
+  expect(withBags.length).toBe(1);
+  expect(withBags[0]).toMatch(/^Ice\b/i);
+});

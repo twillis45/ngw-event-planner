@@ -142,6 +142,7 @@ import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_N
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { confirmedCovers } from '@app/lib/confirmedCovers';
+import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
@@ -20056,6 +20057,16 @@ export default function HostShellV2() {
                                       it"). */}
                                   {[
                                     it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
+                                    // …AND WHAT THAT IS TO BUY. The regional seat at the
+                                    // 2026-09-27 ice board: nobody buys 46 pounds of ice,
+                                    // it comes in bags, and a host in a Royal Farms cannot
+                                    // do the division. The line stays priced per pound —
+                                    // that is what its cost evidence measured — and this
+                                    // only says what to carry to the till. Ice only, and
+                                    // only in pounds; `shoppingHint` refuses everything
+                                    // else, because ribs by the pound are bought by the
+                                    // pound and a "bag" of them is nonsense.
+                                    shoppingHint(it, it.qty),
                                     // RESTORED 2026-09-24, same day I removed it. I cut
                                     // this as trivia while collapsing the row to board
                                     // D's three lines, reasoning that the line total

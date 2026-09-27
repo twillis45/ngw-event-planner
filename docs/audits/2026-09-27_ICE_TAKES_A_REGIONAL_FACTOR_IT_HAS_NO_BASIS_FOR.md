@@ -215,7 +215,7 @@ is now rendered.
 | # | Finding | State |
 |---|---|---|
 | 1 | Per-line regional disclosure never rendered | **FIXED + gated + red-proofed** |
-| 2 | Ice priced per pound; sold in bags | **OPEN - blocked on a grounded bag size, see below** |
+| 2 | Ice priced per pound; sold in bags | **FIXED + gated + red-proofed** - the grounded size was already in the repo, see below |
 | 3 | `aRateIsNotFree` asserted a national band on a regional plan | **FIXED** - literals replaced by the rules they stood for |
 | 4 | Two modules, two policies | **WITHDRAWN** - never true; invariant gated instead |
 | 5 | Does the disclosure earn its density? | **RULED by owner** - approved, then built small (two words per row, sentence once) |
@@ -237,3 +237,47 @@ avoid over-reach on legitimate serving units like 'serving' / 'piece' / 'lb'".
 **What it needs:** a grounded bag size with a source, the same as any other
 priced fact here. Then the conversion is mechanical and preserves the total,
 the way the pizza/loaf/cake conversions already do.
+
+
+---
+
+# #2 CLOSED — and the grounded number was already here
+
+I said this was blocked on a bag size with a source, and went to the web for
+one. **The repo already had it.** The ice line's own `costProvenance` -
+`ice-retail-2026` / `ice-warehouse-2026`, lastVerified 2026-08-16 - prices
+"a 20lb bag ... at Sams Club, $1.80-2.50 at Costco; BJs and 7-Eleven 20lb
+about $4.49-4.79, Giant 20lb $4.99, Publix 16lb $4.99". Five of six cited bags
+are 20lb, and those are the bags the $0.20-$0.40/lb range was derived from.
+
+The web answer was different and would have been worse. Reddy Ice, the largest
+US packager, sells 5/7/16lb and says the 7lb is its top seller - true, and
+about a different channel. Dropping 7lb in beside a per-pound range built from
+20lb warehouse and grocery bags would have made the hint contradict its own
+price basis. **Reaching outside for a fact the corpus had already verified is
+its own failure mode**, and it nearly happened here.
+
+**What shipped:** the line stays priced per pound, no total moves, and a hint
+sits beside the quantity - `46 lbs · about 3 × 20 lb bags · $0.20-$0.39/lb`.
+Narrow on `id === 'p_ice'`, because the buyable-unit guardrail is narrow for
+the same reason: ribs by the pound are bought by the pound.
+
+**The count rounds UP** - you cannot buy 2.3 bags - so three bags is 60lb
+against a 46lb need. That surplus is real and the corpus says buy over; what
+it must not do is change what the host is charged, and it does not.
+
+## The defect inside the fix, worth more than the fix
+
+The first guard tested `/^ice$/i` against `item`. In production the authored
+item is **"Ice (coolers + drinks + red drink)"** - only the row's `short`
+label reads "Ice" - so `shoppingHint` returned null on every line and the
+feature rendered nothing at all.
+
+**The jest test passed the whole time**, because I wrote its fixture from
+imagination: `{ item: 'Ice' }`. An invented fixture tests the invention. The
+e2e caught it, as the only instrument looking at a real plan.
+
+Same class as the finding this board was convened over - a green test standing
+in for a claim nobody checked - one layer further down, and mine. The fixture
+is now the measured shape, and the guard matches the stable `p_ice` id, which
+cannot drift with copy.
