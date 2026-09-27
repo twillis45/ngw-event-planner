@@ -436,7 +436,35 @@ export function parseSmartEventText(text, opts = {}) {
   }
 
   // ── Honoree + venue ─────────────────────────────────────────────────────
-  const hm = t.match(/([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)[’']s\b/)
+  //
+  // ── THE RELATIONSHIP VOCABULARY, WRITTEN ONCE ────────────────────────────
+  // It already existed, case-insensitively, on the "for mom" branch below —
+  // and only there. The POSSESSIVE branch above it required a capital, so
+  // "Mom's 80th" resolved and "mom's 80th" did not, which is how a host types
+  // it in a hurry. Same list, both constructions, one definition.
+  const REL_WORDS = '(?:great[\\s-]*)?(?:grand)?(?:mom|mommy|mama|momma|mother|dad|daddy|father|pop|pops|ma|grandma|granny|grandmother|grandad|granddad|grandpa|grandfather|auntie|aunt|uncle|sister|brother|cousin|wife|husband|son|daughter|nephew|niece|godmother|godfather|bestie|best\\s+friend|partner|fianc[\u00e9e]e?)';
+  //
+  // ── AND A POSSESSIVE IS NOT ALWAYS AN HONOREE ───────────────────────────
+  // Measured 2026-09-27, on the CAPITALISED path that already shipped:
+  //
+  //   "birthday at Grandma's house"  ->  honoree "Grandma"   (that is a VENUE)
+  //   "party at Mom's place"         ->  honoree "Mom"       (a venue)
+  //   "Mother's Day brunch"          ->  honoree "Mother"    (a HOLIDAY)
+  //   "Father's Day cookout"         ->  honoree "Father"
+  //
+  // Four false honorees, and the honoree reaches the event name and the invite
+  // — so extending the pattern to lower case without this guard would have
+  // quadrupled a bug rather than fixed one. A possessive followed by a place
+  // noun names where, and one followed by "Day" names a holiday; neither names
+  // who. The guard applies to BOTH cases, so the capitalised path is fixed on
+  // the way past rather than left wrong in the name of a small diff.
+  // Each initial is a CHARACTER CLASS rather than relying on the /i flag: the
+  // capitalised branch below cannot take /i — it would make its own [A-Z]
+  // match lower case and the whole distinction collapse. Written this way the
+  // one guard serves both branches. (Measured: with a bare lower-case `day`,
+  // "Mother's Day brunch" still returned the honoree "Mother".)
+  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool)\\b)';
+  const hm = t.match(new RegExp('([A-Z][a-zA-Z]+(?:\\s+[A-Z][a-zA-Z]+)?)[\u2019\']s\\b' + NOT_WHO))
     // "for Vida", "honoring Marcus" — the honoree named without a possessive
     // (host report 2026-07-27: "Birthday celebration for Vida" dropped the name).
     // Months/weekdays/pronouns/articles are excluded so "for November" or
@@ -458,7 +486,19 @@ export function parseSmartEventText(text, opts = {}) {
     // possessive "my" is dropped so the label reads "for Mom" rather than
     // "for my mom".
     || (() => {
-      const m = t.match(/\b(?:for|honoring|celebrating)\s+(?:my\s+|our\s+)?((?:great[\s-]*)?(?:grand)?(?:mom|mommy|mama|momma|mother|dad|daddy|father|pop|pops|ma|grandma|granny|grandmother|grandad|granddad|grandpa|grandfather|auntie|aunt|uncle|sister|brother|cousin|wife|husband|son|daughter|nephew|niece|godmother|godfather|bestie|best\s+friend|partner|fianc[ée]e?))\b/i);
+      const m = t.match(new RegExp('\\b(?:for|honoring|celebrating)\\s+(?:my\\s+|our\\s+)?(' + REL_WORDS + ')\\b', 'i'));
+      if (!m) return null;
+      const word = m[1].replace(/\s+/g, ' ').toLowerCase();
+      return [m[0], word.charAt(0).toUpperCase() + word.slice(1)];
+    })()
+    // ── THE POSSESSIVE, IN LOWER CASE — the gap this file has pinned since
+    // 2026-09-23. "Mom's 80th" resolved; "mom's 80th" did not, and a host
+    // typing fast does not capitalise. The same closed vocabulary gates it, so
+    // a lower-case NAME still resolves to nothing: there is no whitelist of
+    // first names, and guessing one would invent a person. "my mom's" and
+    // "our grandma's" drop the pronoun the way the "for" branch does.
+    || (() => {
+      const m = t.match(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + ')[\u2019\']s\\b' + NOT_WHO, 'i'));
       if (!m) return null;
       const word = m[1].replace(/\s+/g, ' ').toLowerCase();
       return [m[0], word.charAt(0).toUpperCase() + word.slice(1)];

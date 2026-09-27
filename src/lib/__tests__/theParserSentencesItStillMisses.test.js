@@ -16,16 +16,33 @@
 //    because it asserted nothing, the suite would have stayed green and nobody
 //    would have learned it was gone. Found by a review board, 2026-09-26.
 //
-// ── DEFECT 1: THE POSSESSIVE LOSES THE HONOREE ─────────────────────────────
+// ── DEFECT 1: THE POSSESSIVE LOST THE HONOREE — FIXED 2026-09-27 ──────────
 //
-// "birthday party for mom"  ->  honoree "Mom"        WORKS
-// "mom's 80th birthday"     ->  honoree null         DOES NOT
+// AND THIS HEADER WAS WRONG, which is worth keeping visible. It said "every
+// possessive form returns null", measured "across the whole family". Every
+// example it measured was LOWER CASE. Re-measured before fixing:
 //
-// Measured across the whole family — `mom's`, `moms`, `my mom's`, `dad's`,
-// `grandma's` — every possessive form returns null. Only the `for <person>`
-// construction is read. "Mom's 80th birthday" is not an edge case; it is how
-// people say this out loud, and the milestone IS extracted from the same
-// string, so the parser reads the sentence and drops the person in it.
+//   "Mom's 80th birthday"    ->  "Mom"      worked all along
+//   "mom's 80th birthday"    ->  null       the actual defect
+//   "Aisha's 40th birthday"  ->  "Aisha"    worked all along
+//   "aisha's 40th birthday"  ->  null
+//
+// So it was never "the possessive" — it was CASE, the same family as the
+// lowercase-city gap fixed the day before. A sample of five that happen to
+// share a property will happily report that property as a law.
+//
+// THE FIX REUSED WHAT WAS ALREADY THERE. The relationship vocabulary (mom,
+// dad, grandma, …) already existed, already case-insensitive, wired only to
+// the "for mom" construction. One definition now serves both, so a lower-case
+// NAME still resolves to nothing — there is no whitelist of first names and
+// guessing one would invent a person.
+//
+// AND IT CARRIED A GUARD, because extending the pattern without one would have
+// quadrupled a bug instead of fixing one. Measured on the CAPITALISED path
+// that had already shipped: "birthday at Grandma's house" -> "Grandma", "party
+// at Mom's place" -> "Mom", "Mother's Day brunch" -> "Mother", "Father's Day
+// cookout" -> "Father". A possessive followed by a place noun names WHERE and
+// one followed by "Day" names a HOLIDAY; neither names who.
 //
 // ── DEFECT 2: THE CITY RESOLVER IS CASE-SENSITIVE, AND ONE PATH IS INCOHERENT ─
 //
@@ -73,21 +90,35 @@ describe('what the parser reads today', () => {
     expect(f('birthday party in Las Vegas NV june 14 2027, 30 people', 'venueCity')).toBe('Las Vegas');
   });
 
-  test('KNOWN GAP 1: every possessive form loses the honoree', () => {
-    // If any of these starts returning a name, the gap is closing and this
-    // test should be narrowed to whatever is left — it must not be deleted
-    // wholesale, or the remaining forms go unwatched again.
-    const possessives = [
-      "mom's 80th birthday, 30 people",
-      'moms 80th birthday, 30 people',
-      "my mom's 80th birthday, 30 people",
-      "dad's retirement, 30 people",
-      "grandma's 90th, 30 people",
-    ];
-    expect(possessives.map((s) => f(s, 'honoree'))).toEqual([null, null, null, null, null]);
-    // …while the milestone IS read out of the same string, which is what makes
-    // this a dropped field rather than an unparsed sentence.
+  test('GAP 1 CLOSED: a lower-case relationship possessive names the honoree', () => {
+    expect(f("mom's 80th birthday, 30 people", 'honoree')).toBe('Mom');
+    expect(f("my mom's 80th birthday, 30 people", 'honoree')).toBe('Mom');
+    expect(f("dad's retirement, 30 people", 'honoree')).toBe('Dad');
+    expect(f("grandma's 90th, 30 people", 'honoree')).toBe('Grandma');
+    // Capitalised still works — the fix added a branch, it did not move one.
+    expect(f("Mom's 80th birthday, 30 people", 'honoree')).toBe('Mom');
+    // …and the milestone is still read from the same string.
     expect(f("mom's 80th birthday, 30 people", 'milestone')).toBe('80th');
+  });
+
+  test('WHAT IS LEFT: a lower-case NAME still resolves to nothing', () => {
+    // Deliberate, not an oversight. Relationships are a closed vocabulary and
+    // can be whitelisted; first names cannot, and admitting a bare lower-case
+    // word as a person is how "food is on me" became a town two days ago.
+    expect(f("aisha's 40th birthday, 30 people", 'honoree')).toBeNull();
+    expect(f('moms 80th birthday, 30 people', 'honoree')).toBeNull();   // no apostrophe
+    // The capitalised name is the control that proves this is about case.
+    expect(f("Aisha's 40th birthday, 30 people", 'honoree')).toBe('Aisha');
+  });
+
+  test('NEGATIVE CONTROL: a possessive that names a PLACE or a HOLIDAY is not a person', () => {
+    // These four were all wrong on the capitalised path before this change, so
+    // this guards a fix as well as the extension that made it necessary.
+    expect(f("birthday at Grandma's house, 20 people", 'honoree')).toBeNull();
+    expect(f("party at Mom's place june 14 2027, 20 people", 'honoree')).toBeNull();
+    expect(f("cookout at my mom's backyard, 20 people", 'honoree')).toBeNull();
+    expect(f("Mother's Day brunch, 12 people", 'honoree')).toBeNull();
+    expect(f("Father's Day cookout, 20 people", 'honoree')).toBeNull();
   });
 
   // ── GAP 2 CLOSED 2026-09-26, AND NARROWED TO WHAT IS LEFT ─────────────────
