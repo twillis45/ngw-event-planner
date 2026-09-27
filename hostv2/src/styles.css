@@ -5968,6 +5968,34 @@ button.vc-pill::after{
    would. Negative margins cancel the sheet's own padding so the bar spans edge
    to edge and eats the bottom inset, and it carries the safe-area padding
    itself so the last line clears the home indicator. */
+/* ── THE PINNED BAR REACHES THE BOTTOM ON A SHORT SHEET TOO ────────────────
+   Owner: "viewport on shop needs spacing". Measured at 390x844: the Shop
+   summary left EIGHTY-THREE pixels of dead space under the total bar. The bar
+   is `position:sticky` with a negative bottom, which pins it correctly while
+   the sheet SCROLLS — and does nothing at all when the content is shorter than
+   the viewport, because there is nothing to stick against. It simply sat where
+   the flow left it, at 761 of 844.
+
+   The sheet is a flex column now, with a `::after` spacer that eats the free
+   space and an `order` on the bar so the spacer lands between them. Three
+   things that measurement forced, none of which are obvious:
+
+   1. `flex-shrink:0` on the children. WITHOUT IT THE FIX SILENTLY SQUASHES
+      LONG SHEETS: flex items shrink by default, and the drill-in went from
+      scrollHeight 916 to 844 — 72px of content compressed away, scrolling
+      lost, and it looks fine in a screenshot.
+   2. A `::after` spacer rather than `margin-top:auto` on the bar. An auto
+      margin resolves to ZERO once content overflows, which would have taken
+      away the bar's own 16px gap on exactly the sheets that scroll.
+   3. `order` — the spacer is a pseudo-element and cannot be placed before the
+      last child any other way.
+
+   Verified both states: short sheet 761 -> 844 (flush), long sheet still
+   scrolls (942 > 844) with the bar pinned and its 16px gap intact. */
+.sheet{ display:flex; flex-direction:column; }
+.sheet > *{ flex-shrink:0; }
+.sheet::after{ content:''; flex:1 0 0; order:1; }
+.sheet > .ftotal{ order:2; }
 .ftotal{ position:sticky; bottom:calc((var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px)) * -1);
   margin:var(--sp-4) calc(var(--sp-5) * -1) calc((var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px)) * -1);
   padding:12px var(--sp-5) calc(12px + env(safe-area-inset-bottom, 0px));

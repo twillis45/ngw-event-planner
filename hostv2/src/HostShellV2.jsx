@@ -18084,12 +18084,23 @@ export default function HostShellV2() {
                     </>
                   );
                 })()}
-                    {/* PROVENANCE, NOW BEHIND THE DOOR. It qualifies the band
-                        above it, and under option C it joins the meal counts
-                        inside "What's in the estimate" rather than running as a
-                        third grey line. Same text, same owner (geoPlanNote);
-                        the string is not split. */}
-                    {estOpen && (
+                    {/* PROVENANCE STAYS ON SCREEN — the specs outvoted me.
+                        Option C put this line behind "What's in the estimate"
+                        with the meal counts, and the commit that shipped it said
+                        out loud that a 2026-09-18 ruling nearby calls silence
+                        about a national average "reads as THESE ARE YOUR
+                        PRICES". My defence was that a named door is not silence.
+                        The full matrix disagreed with 21 assertions across seven
+                        viewports: priceVintageIsDerived wants the vintage stamp
+                        ON the hero ("the month it shows is the month the corpus
+                        says, ON THE SAME SCREEN") and threeLayersOfPrice's happy
+                        path reads it from the sheet body.
+
+                        Three specs written against a defect beat one argument
+                        for a layout, so the line comes back out. The meal COUNTS
+                        stay behind the door — nothing asserts those, and they are
+                        reference, not a qualifier on the number above them.
+                        Resting state is still two lines instead of four. */}
                     <p className="grounding" style={{ margin: 'var(--sp-3) 0 0', paddingTop: 'var(--sp-2)', borderTop: '1px solid var(--line-soft)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
                       {/* The vintage suffix is the NATIONAL branch's stamp. When a
                           regional factor actually applied, geoPlanNote already ends
@@ -18109,7 +18120,6 @@ export default function HostShellV2() {
                           the next one whole. */}
                       {fSpan ? fSpan.text + ' · ' : ''}{priceNote()}{fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
                     </p>
-                    )}
                     {/* ── WHERE WE ARE SHOPPING (host, 2026-09-24, board D) ─────
                         "we need to include which stores are under umbrella or
                         that Kroger is parent" — and, with it, where the host is
