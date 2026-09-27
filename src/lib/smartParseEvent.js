@@ -514,10 +514,41 @@ export function parseSmartEventText(text, opts = {}) {
   // draw. The possessive form is required, so a bare "the club" or "the hall"
   // cannot slip in.
   const home = /backyard|back\s?yard|at home|my (?:place|house|home|crib|spot)|our (?:house|home|place)|the (?:house|crib)/i.test(t)
-    || /\b(?:at|in)\s+(?:my\s+)?(?:mom|mama|momma|mother|dad|father|pop|grandma|granny|grandmother|grandad|grandpa|auntie|aunt|uncle|sister|brother|cousin|parents?|folks)(?:['’]?s)?\s+(?:house|place|home|yard|backyard)\b/i.test(t);
+    // ── ONE LIST OF RELATIONS, NOT TWO ──────────────────────────────────
+    // This was a second, shorter copy of REL_WORDS written inline: 20 words
+    // against that constant's 36. It was missing mommy, daddy, pops, ma,
+    // granddad, GRANDFATHER, wife, husband, son, daughter, nephew, niece,
+    // godmother, godfather, bestie, best friend, partner and fiancé(e), plus
+    // the whole great-/grand- prefix machinery. So "at grandfather's home"
+    // was not a home while "at grandma's house" was, and the honoree branch
+    // — which reads the real constant — knew every one of the missing words.
+    // One sentence, two answers, from the same file.
+    //
+    // It carries `parents` and `folks`, which REL_WORDS does not. They are
+    // added HERE rather than to REL_WORDS because that constant also drives
+    // honoree detection, where "Parents" as a person's name is a separate
+    // question nobody has ruled on.
+    //
+    // Closed kinship terms only, so this cannot widen onto venue names:
+    // "at Anderson's Farm" and "at Sarah's house" both stay null, checked.
+    || new RegExp('\\b(?:at|in)\\s+(?:my\\s+)?(?:' + REL_WORDS + '|parents?|folks)'
+      + '(?:[\'\u2019]?s)?\\s+(?:house|place|home|yard|backyard)\\b', 'i').test(t);
   // Venue phrase kept VERBATIM — "my brother's backyard" is the venue, not a
   // generic "Backyard". Guests read this in invites and rain notes.
-  const vm = t.match(/\b(?:in|at)\s+((?:my|our|his|her|their)\s+[a-z]+(?:['’]s)?\s+(?:backyard|back\s?yard|house|place|yard|home|garden|farm|cabin|lake house))\b/i)
+  // THE RELATION SLOT IS A SHAPE, NOT A WORD LIST — which is why "my
+  // daughter's house" and "my niece's place" already worked. What it could
+  // not read was three shapes, all of them ordinary (probed 2026-09-27):
+  //
+  //   my parents' house      a PLURAL possessive — the apostrophe comes
+  //   my folks' place        after the s, and `['’]s` demanded one after it
+  //   my best friend's house TWO words in the slot
+  //   my great-grandma's     a HYPHEN, which [a-z]+ stops at
+  //
+  // So the slot takes an optional second word joined by a space or a
+  // hyphen, and the possessive accepts 's, s' and the curly forms. It is
+  // still capped at two words: widening further starts swallowing sentences
+  // rather than naming a place.
+  const vm = t.match(/\b(?:in|at)\s+((?:my|our|his|her|their)\s+[a-z]+(?:[\s-][a-z]+)?(?:['’]s|s['’])?\s+(?:backyard|back\s?yard|house|place|yard|home|garden|farm|cabin|lake house))\b/i)
     || t.match(/\b(?:in|at)\s+(the\s+(?:park|beach|clubhouse|pavilion|community center))\b/i)
     // ── THE ROOMS PEOPLE ACTUALLY RENT ────────────────────────────────────
     // The 80th-birthday drive typed "at the church hall in Baltimore" and the
