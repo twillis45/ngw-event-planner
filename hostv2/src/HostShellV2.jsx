@@ -138,7 +138,7 @@ import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
-import { geoPlanNote, regionForZip, regionForAddress } from '@app/lib/knowledge/geoCostIndex';
+import { geoPlanNote, regionForZip, regionForAddress, priceStateFor } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
@@ -2673,8 +2673,28 @@ export default function HostShellV2() {
     || null);
   useEffect(() => {
     let dead = false;
-    const m = /,\s*([A-Za-z]{2})\s*$/.exec(vf.city);
-    const state = (m ? m[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
+    // ── THE NUDGE ASKED FOR THE ONE INPUT THAT DID NOTHING (2026-09-27) ────
+    //
+    // The sheet tells a host "National average · add your state for local
+    // prices". They add it, the line acknowledges the region — "not yet
+    // adjusted for the South" — and the prices never move.
+    //
+    // MEASURED: geoPlanNote reads `vf.state`, and this effect did not. It
+    // parsed a state out of a trailing ", XX" on `vf.city` instead — and
+    // venueFor SPLITS exactly that pattern into city + state on the way past
+    // (its 2026-08-03 ruling), so the regex matched almost nothing a real
+    // event carries:
+    //
+    //   {venueCity:'Austin', venueState:'TX'} -> city "Austin"  NO MATCH
+    //   {venue:'Santa Fe, NM'}                -> city "Santa Fe" NO MATCH
+    //   {venueCity:'Austin, TX'}              -> city "Austin"  NO MATCH (split)
+    //
+    // So the factor only ever arrived from a ZIP or the host's PROFILE state,
+    // and the one field the copy names was read by the message and ignored by
+    // the engine. The venue's own state goes first now — it is where the event
+    // happens, which beats where the host lives — and the regex stays behind it
+    // as a fallback for any stored shape venueFor does not normalise.
+    const state = priceStateFor(vf, profile);
     if (!isFoodPricesConfigured() || (!state && !blsRegion)) { setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); return undefined; }
     (async () => {
       try {
@@ -2686,7 +2706,10 @@ export default function HostShellV2() {
       } catch { if (!dead) setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); }
     })();
     return () => { dead = true; };
-  }, [event.id, vf.city, blsRegion]); // eslint-disable-line react-hooks/exhaustive-deps
+    // vf.state joins the deps with it: reading a field the effect never watched
+    // would have fixed a first render and gone stale the moment a host typed
+    // the state in, which is the exact moment this is for.
+  }, [event.id, vf.city, vf.state, blsRegion]); // eslint-disable-line react-hooks/exhaustive-deps
   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   // "What's in the estimate" — the meta block's disclosure (owner picked board
@@ -16388,8 +16411,13 @@ export default function HostShellV2() {
               // POP-1E: the reusable procurement estimate — an explained band
               // (assumptions/pricing model/region/confidence/cost reducers) plus
               // pickup/storage/cooking logistics. Region from the event's state.
-              const _pm = /,\s*([A-Za-z]{2})\s*$/.exec(vf.city);
-              const _pstate = (_pm ? _pm[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
+              // SAME RULE, SECOND COPY — and it carried the same defect. Its
+              // own comment says "Region from the event's state" while it read
+              // the CITY, so a crab order in Annapolis, MD priced off a
+              // national basket exactly like the shopping sheet did. One owner
+              // now: priceStateFor, in the module that already owns the geo
+              // reasoning. Two inline copies of a rule is how they drift.
+              const _pstate = priceStateFor(vf, profile);
               const proc = (() => { try { return buildCrabProcurement(event, { state: _pstate }); } catch { return null; } })();
               return (
                 <>

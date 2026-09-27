@@ -292,3 +292,43 @@ export function geoPlanNote(state, appliedBasis, zip) {
   }
   return `National average · not yet adjusted for ${REGION_LABEL[region]}`;
 }
+
+// ─── WHICH STATE THE PRICE FACTOR SHOULD ASK FOR ────────────────────────────
+//
+// `geoPlanNote` above decides what the host is TOLD about the pricing basis.
+// This decides what the engine is ASKED for. They disagreed, and the disagreement
+// pointed the wrong way: the note read the venue's state, the factor did not.
+//
+// MEASURED 2026-09-27. The shopping sheet says "National average · add your
+// state for local prices". A host adds it, the note upgrades to "not yet
+// adjusted for the South", and the prices never move — because the factor
+// effect parsed a state out of a trailing ", XX" on the CITY string, and
+// venueFor splits exactly that pattern into city + state before any reader sees
+// it (its 2026-08-03 ruling). Every ordinary event therefore missed:
+//
+//   {venueCity:'Austin', venueState:'TX'}  -> city "Austin"    no match
+//   {venue:'Santa Fe, NM'}                 -> city "Santa Fe"  no match
+//   {venueCity:'Austin, TX'}               -> city "Austin"    no match (split)
+//
+// So the only paths that ever produced a regional factor were a ZIP or the
+// host's PROFILE state. The nudge named the one input that was ignored.
+//
+// ORDER, AND WHY. The venue's state is where the EVENT happens and wins; the
+// host's profile is where the HOST lives and is the fallback for an event whose
+// venue has no state yet. The legacy city regex sits between them — it costs
+// nothing and still serves any stored shape venueFor does not normalise.
+//
+// Returns an upper-case two-letter state, or null. Never guesses: a value that
+// is not two letters is not a state, and a bare city never becomes one.
+export function priceStateFor(venue, profile) {
+  const v = venue || {};
+  const two = (x) => {
+    const t = String(x == null ? '' : x).trim().toUpperCase();
+    return /^[A-Z]{2}$/.test(t) ? t : null;
+  };
+  const fromCity = /,\s*([A-Za-z]{2})\s*$/.exec(String(v.city || ''));
+  return two(v.state)
+    || (fromCity ? two(fromCity[1]) : null)
+    || two(profile && profile.state)
+    || null;
+}
