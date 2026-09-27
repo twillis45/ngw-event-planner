@@ -165,24 +165,58 @@ describe('what the parser reads today', () => {
     }
   });
 
-  test('KNOWN GAP 2, WHAT IS LEFT: nicknames are not in the vocabulary', () => {
-    // Not a case problem — both spellings fail, and the curated list holds the
-    // full name. Closing this means deciding whether "Vegas", "Philly", "NYC"
-    // and "DC" earn alias entries, which is a data ruling, not a parser fix.
-    expect(f('birthday in vegas june 14 2027, 30 people', 'venueCity')).toBeNull();
-    expect(f('birthday in Vegas june 14 2027, 30 people', 'venueCity')).toBeNull();
-    // …while the full name resolves, which is what makes this vocabulary.
+  test('GAP 2 CLOSED: the four admitted nicknames are in the vocabulary now', () => {
+    // 2026-09-27: the data ruling this test used to be waiting on was made.
+    // CITY_NICKNAMES (cityText.js) admits a nickname only if it names exactly
+    // ONE US city nationally in written use, is not two letters (the state slot),
+    // is not an airport code, and has its referent verbatim in the curated list.
+    // Four rows passed. They resolve in either case, and they carry a STATE —
+    // which a bare city name still never does.
+    expect(f('birthday in vegas june 14 2027, 30 people', 'venueCity')).toBe('Las Vegas');
+    expect(f('birthday in Vegas june 14 2027, 30 people', 'venueCity')).toBe('Las Vegas');
+    expect(f('birthday in Vegas june 14 2027, 30 people', 'venueState')).toBe('NV');
+    expect(f('birthday in philly june 14 2027, 30 people', 'venueCity')).toBe('Philadelphia');
+    expect(f('birthday in NYC june 14 2027, 30 people', 'venueCity')).toBe('New York');
+    expect(f('birthday in NOLA june 14 2027, 30 people', 'venueCity')).toBe('New Orleans');
+    // …and the full name still resolves, unchanged, with no state invented.
     expect(f('birthday in las vegas june 14 2027, 30 people', 'venueCity')).toBe('Las Vegas');
+    expect(f('birthday in asheville june 14 2027, 30 people', 'venueState')).toBeNull();
   });
 
-  test('KNOWN GAP 2b, THE WORSE HALF: a destination with nowhere to go', () => {
+  test('WHAT IS LEFT: the nicknames the ruling REFUSED still resolve to nothing', () => {
+    // This half is not a bug to fix later — it is the ruling holding. "DC",
+    // "LA", "SF" and "KC" are two letters and a bare two-letter token in these
+    // sentences sits in the STATE slot ("in greenbelt md"); "ATL"/"LAX" are
+    // airport codes with no natural edge to the set; "Chi-town" is a spoken
+    // sobriquet with no settled spelling; "Frisco" has two plausible referents
+    // (Frisco, TX is itself in the curated list) so it resolves as the literal
+    // town it names and never as San Francisco. If any of these starts
+    // resolving, a row was added without meeting the rule.
+    for (const nick of ['DC', 'LA', 'SF', 'KC', 'ATL', 'LAX', 'Chi-town']) {
+      const s = `birthday in ${nick} june 14 2027, 30 people`;
+      expect({ [s]: f(s, 'venueCity') }).toEqual({ [s]: null });
+    }
+    expect(f('birthday in Frisco june 14 2027, 30 people', 'venueCity')).toBe('Frisco');
+    expect(f('birthday in Frisco june 14 2027, 30 people', 'venueState')).toBeNull();
+  });
+
+  test('KNOWN GAP 2b, STILL OPEN: a destination with nowhere to go', () => {
     // `isDestination: true` with `venueCity: null` tells every downstream
     // reader — lodgingFloor, the travel_led band, the destination checklist —
     // that this is a trip, while refusing to say where. A plain miss would be
     // safer than this.
-    const r = parseSmartEventText('birthday in Vegas june 14 2027, 30 people');
-    expect(r.isDestination).toBe(true);
-    expect(r.venueCity).toBeNull();
+    //
+    // 2026-09-27: closing gap 2 did NOT close this one, it only moved which
+    // words trigger it. "Vegas" now resolves, so the incoherent pair is shown
+    // with a capitalised nickname the ruling deliberately REFUSES — and since
+    // the ruling refuses those on purpose, this gap cannot be closed by adding
+    // rows. The fix belongs at the destination gate, which fires on a
+    // capitalised unknown word ('place-named') with no town to go with it.
+    for (const nick of ['DC', 'ATL', 'SF']) {
+      const r = parseSmartEventText(`birthday in ${nick} june 14 2027, 30 people`);
+      expect({ [nick]: { dest: r.isDestination, city: r.venueCity } })
+        .toEqual({ [nick]: { dest: true, city: null } });
+    }
   });
 
   test('NEGATIVE CONTROL: the incoherent pair is NOT how a resolved city behaves', () => {

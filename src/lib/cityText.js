@@ -105,7 +105,9 @@ export function parseVenueLocation(v) {
 //      not the same as resolving it, and the state stays hers to supply.
 //
 // Returns { city, state: null } or null. `city` is the LIST's spelling of the
-// name ("St. Louis", "Winston-Salem"), never a new string.
+// name ("St. Louis", "Winston-Salem"), never a new string. THE ONE EXCEPTION to
+// state: null is a nickname hit — see CITY_NICKNAMES below, which explains why a
+// nickname's state is part of what the word means rather than something guessed.
 const MAJOR_CITY_BY_NAME = (() => {
   const idx = new Map();
   for (const entry of US_CITIES) {
@@ -119,11 +121,79 @@ const MAJOR_CITY_BY_NAME = (() => {
   return idx;
 })();
 
+// ─── CITY_NICKNAMES — a DATA RULING, not a convenience (2026-09-27) ──────────
+//
+// Measured before writing this: "vegas", "philly", "NYC", "DC" and "NOLA" all
+// resolved to NOTHING, through resolveSpokenCity and through the whole parser.
+// The host named her town in the form she actually types it and the app heard
+// no town at all, which is the same loss resolveSpokenCity was written for one
+// layer up.
+//
+// A NICKNAME TABLE IS A RULING ABOUT PLACES, so the table is short and every
+// row has to earn its place against the rule below. A wrong row here does not
+// degrade gracefully: it publishes a city AND a state the host never typed,
+// which is precisely what parseVenueLocation exists to refuse.
+//
+// INCLUSION RULE — a nickname is admitted only if ALL FOUR hold:
+//
+//   1. It names exactly ONE US city nationally, in ordinary WRITTEN American
+//      use. Not a sobriquet ("Bean Town", "The Big Easy", "Chi-town",
+//      "Nashvegas") — those are spoken affection, not what a host types into a
+//      planner field, and their spelling has no settled form to match.
+//   2. It is NOT two letters. In this parser's sentences a bare two-letter
+//      token sits in the STATE slot ("in greenbelt md"), and US_STATE_ABBR
+//      above already claims DC, LA, MD and 48 more. Admitting one would let a
+//      state be read as a city. This is why DC and LA and SF are absent —
+//      deliberately, not by oversight.
+//   3. It is NOT a three-letter airport code (ATL, LAX, ORD). Admitting one
+//      invites the whole set, several of which are ambiguous or are English
+//      words, and the set has no natural edge to stop at.
+//   4. Its referent appears VERBATIM in the curated usCities list, so an alias
+//      can never publish a place the rest of the app does not already know.
+//
+// REJECTED under the rule, recorded so the next person does not re-litigate:
+// DC, LA, SF, KC (rule 2 — and KC is ambiguous twice over: the list holds both
+// Kansas City, KS and Kansas City, MO); ATL/LAX/ORD (rule 3); Chi-town,
+// Nashvegas, Bean Town, The Big Easy, Motor City (rule 1); Frisco (rule 1 —
+// Frisco, TX is a real city of ~240k in the curated list itself, so "Frisco"
+// has two plausible referents and is left unheard rather than guessed).
+//
+// THE STATE HERE IS NOT A GUESS, which is the one way this differs from
+// resolveSpokenCity's state: null rule. That rule refuses to infer a state
+// from a bare city name because "Arlington" genuinely names several places.
+// A nickname admitted under rule 1 names ONE place; its state is part of what
+// the word means, not something derived from a list's contents. If a candidate
+// ever needs the state guessed, it has already failed rule 1 and does not go in.
+const CITY_NICKNAMES = new Map([
+  ['vegas', { city: 'Las Vegas', state: 'NV' }],
+  ['philly', { city: 'Philadelphia', state: 'PA' }],
+  ['nyc', { city: 'New York', state: 'NY' }],
+  ['nola', { city: 'New Orleans', state: 'LA' }],
+]);
+
+// THE TABLE ITSELF is exported, not just a lookup over it, so its gate can hold
+// the REAL rows to the rule above rather than a copy of them pasted into a test.
+// A row added here is checked by that gate the moment it appears.
+export function cityNicknameEntries() {
+  return [...CITY_NICKNAMES.entries()].map(([nick, r]) => [nick, r.city, r.state]);
+}
+
+// Returns { city, state } or null.
+export function resolveCityNickname(v) {
+  const key = String(v || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const hit = CITY_NICKNAMES.get(key);
+  return hit ? { city: hit.city, state: hit.state } : null;
+}
+
 export function resolveSpokenCity(v) {
   const s = String(v || '').trim().replace(/\s+/g, ' ');
   if (!s) return null;
   if (s.includes(',')) return null;        // "City, ST" is parseVenueLocation's job, not this one
   if (!isPlausibleCityText(s)) return null; // digits / dashes / absurd length, same shared gate
+  // A nickname is tried FIRST and is the only way a state is ever returned from
+  // here — see CITY_NICKNAMES above for why that is not a guess.
+  const nick = resolveCityNickname(s);
+  if (nick) return nick;
   const name = MAJOR_CITY_BY_NAME.get(s.toLowerCase());
   if (!name) return null;
   return { city: name, state: null };

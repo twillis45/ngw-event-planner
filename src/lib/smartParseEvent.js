@@ -368,6 +368,55 @@ export function parseSmartEventText(text, opts = {}) {
       }
     }
   }
+  // ── "<WEEKDAY> TO <WEEKDAY>" — THE END DAY, ONCE A START IS KNOWN (2026-09-27)
+  //
+  // Measured before writing this, with now = Sun 2026-09-27:
+  //   "reunion Friday to Sunday"        -> date null,       endDate null
+  //   "reunion next Friday to Sunday"   -> date 2026-10-02, endDate NULL  <- the gap
+  //   "reunion Friday to Sunday, July 10" -> date 2027-07-10, endDate null
+  //
+  // The middle row is the defect: the start resolved, the host said where the
+  // plan ends, and the end was dropped on the floor — the same silent-range-loss
+  // class as the numeric and word-month ranges above.
+  //
+  // THE BARE-WEEKDAY RULING IS NOT TOUCHED. The date block above deliberately
+  // requires "next"/"this" before a weekday, because "Friday" alone does not say
+  // which Friday. A sentence whose ONLY date words are "Friday to Sunday" still
+  // resolves to nothing, and must: this block cannot run without a `date`, so it
+  // can never be the thing that invents a start. It reads an END off a start that
+  // some other, stricter matcher already earned.
+  //
+  // A CONTRADICTED START PRODUCES NO SPAN. "Friday to Sunday, July 10" resolves
+  // July 10 2027, which is a SATURDAY — the host's two facts disagree, and there
+  // is no honest way to pick one: moving the start to Friday overrides a date she
+  // typed outright, and keeping Saturday while treating "Friday" as the span's
+  // first day mislabels her own word. Both invent a fact. So the span is left
+  // unheard and the start she typed stands alone, which is the recoverable
+  // failure — she can still say the end date, and nothing wrong was written down.
+  //
+  // SAME WEEKDAY BOTH SIDES IS NOT A SPAN. "next Friday to Friday" gives an end
+  // equal to the start; emitting endDate === date would read downstream
+  // (lib/dates spanNights, `overnight`) as a zero-night multi-day event, which is
+  // a fabricated shape. "To the following Friday" is a week, and she did not say
+  // "following", so it stays unheard rather than guessed at 0 or 7.
+  if (date && !endDate) {
+    const _WD = '(sunday|saturday|thursday|wednesday|tuesday|monday|friday|sun|sat|thurs|thur|thu|wed|tues|tue|mon|fri)\\.?';
+    const span = t.match(new RegExp(`\\b${_WD}\\s*(?:to|through|thru|until|-|–|—)\\s*${_WD}\\b`, 'i'));
+    if (span) {
+      const _dow = (w) => DAYS.findIndex((d) => d.startsWith(String(w).toLowerCase().replace(/\.$/, '').slice(0, 3)));
+      const fromDow = _dow(span[1]);
+      const toDow = _dow(span[2]);
+      const start = new Date(date + 'T12:00:00');
+      if (fromDow >= 0 && toDow >= 0 && !isNaN(start) && start.getDay() === fromDow) {
+        const add = (toDow - fromDow + 7) % 7;
+        if (add > 0) {
+          const e = new Date(start);
+          e.setDate(e.getDate() + add);
+          endDate = localISO(e);
+        }
+      }
+    }
+  }
   // Month + year, no day ("June of 2028", "June 2028") — a real signal the
   // host gave, but never precise enough to silently commit as their actual
   // date. We never invent a day for them — same as the type picker offers
@@ -1427,10 +1476,18 @@ export function parseSmartEventText(text, opts = {}) {
     // (it carries a real state, so it outranks the next one), then the bare
     // town she named — which carries NO state, because none was said
     // (resolveSpokenCity, cityText.js).
+    //
+    // ONE EXCEPTION, added 2026-09-27: a CITY NICKNAME ("vegas", "philly",
+    // "NYC", "NOLA") carries a real state out of resolveSpokenCity, because a
+    // nickname admitted to that table names exactly one city nationally and the
+    // state is part of what the word means — see CITY_NICKNAMES in cityText.js
+    // for the inclusion rule and the rows it rejects. A bare real city name
+    // still carries state null, unchanged; `spokenCity.state` is simply null in
+    // that case, so this reads it rather than hard-coding the old null.
     venueCity: loc ? (loc.zip || loc.city)
       : (area ? area.hubTown : (landmark ? landmark.city : (spokenCity ? spokenCity.city : null))),
     venueState: loc ? (loc.state || null)
-      : (area ? area.state : (landmark ? landmark.state : null)),
+      : (area ? area.state : (landmark ? landmark.state : (spokenCity ? (spokenCity.state || null) : null))),
     vacationArea: area ? area.id : null,
     // "No kids." / "adults only" → the invite policy InviteV2 + doItForMe already
     // consume; never invented — only when the host said it.
