@@ -6001,6 +6001,9 @@ button.vc-pill::after{
   padding:12px var(--sp-5) calc(12px + env(safe-area-inset-bottom, 0px));
   background:var(--bg); border-top:1px solid var(--line);
   display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+/* The bar baseline-aligns two runs of text; a button in the right slot has to
+   centre against them instead, or it hangs low by its own descender space. */
+.ftotal-exit{ align-items:center; }
 .ftotal-l{ font-size:14px; font-weight:600; color:var(--ink); }
 .ftotal-r{ font-size:13px; font-weight:400; color:var(--muted); text-align:right; }
 

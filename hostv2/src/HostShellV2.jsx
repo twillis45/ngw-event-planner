@@ -5579,6 +5579,71 @@ export default function HostShellV2() {
     return { bought, total, done: total > 0 && bought >= total };
   }, [foodPlan]);
 
+  // ── "A DRILL-IN IS OPEN" IS ASKED ONCE ───────────────────────────────────
+  // The spread sheet has four drill-ins — dietary needs, your choices, where
+  // you are shopping, and the list itself — and each one's own `Done` sits at
+  // the TOP of the panel it closes. Measured on the sim 2026-09-27 with the
+  // Drinks section open: the sheet is 1,556px of scroll against an 844px
+  // screen and `Done` is at y=312, so a host who walks the list downward is
+  // ~700px BELOW the only way out. They scroll back up past everything they
+  // just ticked to press it.
+  //
+  // The pinned bar is already down there and already sticky. So while a
+  // drill-in is open it becomes the exit: progress stays on the left, and the
+  // money text on the right gives way to `Done`. A SWAP, not an addition —
+  // "$255 in the cart · $135 to go" is 173px of a 390px bar and there is no
+  // room beside it.
+  //
+  // WHY THIS IS A NAMED CONSTANT AND NOT A THIRD INLINE COPY. This exact
+  // expression was already written twice (the hero's `return null` guard and
+  // the summary-rows condition below). A third copy would mean the next
+  // drill-in somebody adds appears in the panel but never reaches the bar's
+  // exit — the bar would silently stop offering a way out for it. Both
+  // existing copies now read this.
+  // `sheet` is useState(null) and this runs on EVERY render, unlike the two
+  // copies it replaced, which only ever ran inside a live sheet. The first
+  // draft read `sheet.focus` and took the whole app to the error boundary.
+  const drillOpen = !!(foodSect.diet || (sheet && sheet.focus === 'diet') || foodSect.choices
+    || foodSect.sourced || foodSect.list);
+  // ── AND ONLY ONE `Done` IS ON SCREEN AT A TIME ───────────────────────────
+  // Each drill-in also carries a `Done` in its own header. With the bar now
+  // offering one too, a host at the top of a section saw two identical buttons
+  // four inches apart. The bar's is strictly better — sticky, so it is
+  // reachable from anywhere in the section, where the header's only exists if
+  // you happen to be scrolled to the top.
+  //
+  // BUT IT CANNOT SIMPLY BE DELETED. Driven on the sim 2026-09-27: open the
+  // list on Shop, switch to Plan, and the list drill-in is STILL RENDERED —
+  // `{foodSect.list && (` carries no tab guard — while the bar is NOT, because
+  // the bar requires `sheet.kind !== 'foodplan'`. Removing the header button
+  // outright leaves a host inside the list on the Plan tab with no way out.
+  // Same for a no-kitchen event and for an empty plan.
+  //
+  // So the two are expressed as ONE fact with two readers: when the bar is the
+  // exit, the headers drop theirs; when it is not, they keep it. Neither "both"
+  // nor "neither" is reachable, which a pair of independent conditions could
+  // not promise.
+  const barIsExit = drillOpen && sheet && sheet.kind !== 'foodplan' && !noKitchen
+    && !!(foodPlan && foodPlan.itemCount > 0);
+
+  // ATTENTION ON THE WAY OUT TRAVELS WITH THE EXIT. The Your Choices `Done`
+  // carries a `lit-done` glow and an --ok tone once every choice is settled —
+  // asked for by the host 2026-09-24, for exactly the complaint this whole
+  // change addresses ("the host answers the last question at the BOTTOM of a
+  // scrolling panel and the way out is a small button at the top"). Taking
+  // that header button away without bringing the signal along would delete a
+  // feature while claiming to improve it. Same rule as there: green only when
+  // ALL are settled (UX_02 — green means complete), and the label carries the
+  // meaning either way so colour is never the only carrier.
+  const choicesAllSettled = !!(foodPlan && (foodPlan.choices || []).length > 0
+    && (foodPlan.choices || []).every(d => (event.foodChoices || {})[d.id]));
+
+  const closeDrill = useCallback(() => {
+    setFoodSect(m => ({ ...m, diet: false, choices: false, sourced: false, list: false }));
+    setChoiceOpen(null);
+    setSheet(s => (s && s.focus === 'diet' ? { ...s, focus: null } : s));
+  }, []);
+
   // ── ONE PLACE ANSWERS "WHAT PRICED THESE NUMBERS" ────────────────────────
   // Same rule as foodSpanNote above, applied to the thing that broke this
   // morning: the sheet and the money readout each answered "were these
@@ -18314,7 +18379,7 @@ export default function HostShellV2() {
                     <div className={'brow' + (sheet.focus === 'diet' ? ' rowfocus' : '')} style={{ marginBottom: 'var(--sp-3)', borderRadius: 'var(--r-md)', padding: 'var(--sp-2) 6px' }}>
                       <div className="shelf-label" style={{ marginBottom: 6 }}>
                         Dietary needs {anyDiet ? '' : '— none counted yet'}
-                        <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={closeDiet}>Done</button>
+                        {!barIsExit && <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={closeDiet}>Done</button>}
                       </div>
                       {active.length > 0 && (
                         <>
@@ -18388,16 +18453,14 @@ export default function HostShellV2() {
                 {(() => {
                   const dc = event.dietCounts || {};
                   const anyDiet = anyDietFlagged(event);  // lib/dietRows — was hand-rolled here twice, identically
-                  const dietOpen = !!foodSect.diet || sheet.focus === 'diet';
                   const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
-                  const choicesOpen = !!foodSect.choices;
                   const hasChoices = (foodPlan.choices || []).length > 0;
                   const hasSourcing = (foodPlan.sourcingTiers || []).length > 0;
                   const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
                   const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
                   const listDone = shopTally.done;
                   const planTab = sheet.kind === 'foodplan';
-                  if (dietOpen || choicesOpen || foodSect.sourced || foodSect.list) return null; // a drill-in panel is open below
+                  if (drillOpen) return null; // a drill-in panel is open below
                   // Progressive disclosure (port of Figma 391:60) — the heavy sections
                   // (sourcing, the shopping list) fold to summary rows; each drills in
                   // on tap. Hairline rows, value neutral until resolved (378:72 treatment).
@@ -18499,8 +18562,10 @@ export default function HostShellV2() {
                         // answer — a glow after every pick would be decoration.
                         const allSettled = settled === foodPlan.choices.length && foodPlan.choices.length > 0;
                         return (
-                          <button className={'mini' + (allSettled ? ' lit-done' : '')} style={{ marginLeft: 'var(--sp-2)', ...tone }}
-                            onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>Done</button>
+                          barIsExit ? null : (
+                            <button className={'mini' + (allSettled ? ' lit-done' : '')} style={{ marginLeft: 'var(--sp-2)', ...tone }}
+                              onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>Done</button>
+                          )
                         );
                       })()}
                     </div>
@@ -18594,7 +18659,7 @@ export default function HostShellV2() {
                     "Send the list to Instacart" are the aisle's two actions; on a
                     tab whose whole content is Your choices / Dietary needs / How
                     it's sourced they are answers to a question nobody asked. */}
-                {sheet.kind !== 'foodplan' && !(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && !noKitchen && (
+                {sheet.kind !== 'foodplan' && !drillOpen && !noKitchen && (
                   <div className="shop-acts chips">
                     {/* NO INLINE WIDTH OR MARGIN ON THESE TWO (2026-09-26).
                         The row became a flex container when the chips were
@@ -18919,7 +18984,7 @@ export default function HostShellV2() {
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>How it’s sourced</span>
-                      <button className="mini" onClick={() => setFoodSect(m => ({ ...m, sourced: false }))}>Done</button>
+                      {!barIsExit && <button className="mini" onClick={() => setFoodSect(m => ({ ...m, sourced: false }))}>Done</button>}
                     </div>
                     {/* Figma 378:94 parity — each sourcing tier is a full-width
                         bordered CARD (name + current/switch badge + a grounded sub),
@@ -18970,7 +19035,7 @@ export default function HostShellV2() {
                 {foodSect.list && (
                   <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>The list</span>
-                    <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>Done</button>
+                    {!barIsExit && <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>Done</button>}
                   </div>
                 )}
                 {/* ── LAYER 2: PRICE THIS LIST AT A REAL STORE ───────────────
@@ -20197,7 +20262,7 @@ export default function HostShellV2() {
                     subtotal that quietly included an unreconciled shelf price is
                     the exact defect the board caught in the prototype. */}
                 {sheet.kind !== 'foodplan' && !noKitchen && foodPlan.itemCount > 0 ? (
-                  <div className="ftotal">
+                  <div className={'ftotal' + (drillOpen ? ' ftotal-exit' : '')}>
                     <span className="ftotal-l">
                       {shopTally.bought} of {shopTally.total} bought
                     </span>
@@ -20216,13 +20281,30 @@ export default function HostShellV2() {
 
                         The store figure keeps precedence when there is one,
                         because a real shelf subtotal beats both. */}
-                    <span className="ftotal-r">
-                      {priceCoverage.storeTotal > 0
-                        ? `${fmt(priceCoverage.storeSum)} priced at your store`
-                        : shopTally.bought > 0
-                          ? `${fmt((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))} in the cart · ${fmt(Math.max(0, ((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0)) - ((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))))} to go`
-                          : 'nothing in the cart yet'}
-                    </span>
+                    {/* ── AND WHILE A DRILL-IN IS OPEN, THE BAR IS THE EXIT ────
+                        The money line gives way to `Done`. It is a SWAP because
+                        the text it replaces runs to 173px of a 390px bar and
+                        there is nothing to spare beside it — and because a host
+                        inside a section is reading the section, not the running
+                        total. The progress fraction on the left is the one thing
+                        that stays, so pressing Done is never a blind exit.
+
+                        No glyph: this settles in place, it does not route. */}
+                    {drillOpen ? (
+                      <button type="button"
+                        className={'mini' + (foodSect.choices && choicesAllSettled ? ' lit-done' : '')}
+                        style={foodSect.choices && choicesAllSettled
+                          ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                        onClick={closeDrill}>Done</button>
+                    ) : (
+                      <span className="ftotal-r">
+                        {priceCoverage.storeTotal > 0
+                          ? `${fmt(priceCoverage.storeSum)} priced at your store`
+                          : shopTally.bought > 0
+                            ? `${fmt((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))} in the cart · ${fmt(Math.max(0, ((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0)) - ((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))))} to go`
+                            : 'nothing in the cart yet'}
+                      </span>
+                    )}
                   </div>
                 ) : null}
               </>
