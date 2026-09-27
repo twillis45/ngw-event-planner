@@ -1224,6 +1224,7 @@ export default function HostShellV2() {
   const [fCity, setFCity] = useState(''); // town for weather + maps, asked at creation
   const [fType, setFType] = useState(null);
   const [fDate, setFDate] = useState('');
+  const [fEndDate, setFEndDate] = useState('');   // the span's last day — see effEndDate
   const [fGuests, setFGuests] = useState(null);
   const [fBudget, setFBudget] = useState(null);
   const [fIsDestination, setFIsDestination] = useState(null);
@@ -1599,10 +1600,31 @@ export default function HostShellV2() {
   const pbTypical = effType ? playbookTypicalGuests(effType) : null;
   const effGuests = (fGuests ?? parsed.guests) ?? pbTypical;
   const effDate = fDate || parsed.date || '';
-  // Range end rides ONLY while the start it was heard with still stands — a
-  // manually corrected start date can't keep a parsed end that no longer means
-  // anything (R1 span ruling, 2026-07-26).
-  const effEndDate = (parsed.endDate && effDate === parsed.date) ? parsed.endDate : '';
+  // ── THE SPAN'S LAST DAY, AND WHY THE OLD RULE WAS A TRAPDOOR ─────────────
+  //
+  // R1 (span ruling, 2026-07-26) said the parsed end rides only while the
+  // start it was heard with still stands, because "a manually corrected start
+  // date can't keep a parsed end that no longer means anything". The reasoning
+  // is right and the implementation had no floor under it.
+  //
+  // DRIVEN 2026-09-27, host report. Type "family reunion July 10-13 in
+  // Charleston": the chip reads Jul 10 – Jul 13, correctly. Open the date
+  // editor — it offers ONE date, because there was no `fEndDate` anywhere in
+  // creation — and move the start to the 11th. The end date is gone, the chip
+  // reads "Jul 11", and there is no field in which to put it back. The host's
+  // own sentence still says July 10-13 on the screen above.
+  //
+  // TWO THINGS WERE WRONG.
+  //
+  //   1. `effDate === parsed.date` drops the end on ANY start edit, including
+  //      one that leaves the span perfectly coherent. Moving 10 -> 11 with an
+  //      end of the 13th is still a real three-day event. An end only stops
+  //      meaning anything when it is no longer AFTER the start, and that is
+  //      what this now tests.
+  //   2. R1 presupposed somewhere to re-enter it. There wasn't one. A rule
+  //      that discards a host's input is only safe if the host can give it
+  //      again, so the input below exists now and this reads it first.
+  const effEndDate = fEndDate || (parsed.endDate && parsed.endDate > effDate ? parsed.endDate : '');
   const effName = fName || parsed.honoree || '';
   // A real "in Santa Fe, New Mexico" match pre-fills the town field the same
   // way a typical guest count pre-fills — visible, editable, never silently
@@ -1627,7 +1649,22 @@ export default function HostShellV2() {
   // Host answer wins over the heard hint, which wins over nothing. Staying null
   // is a real state — it means "we have not been told", and the decisions that
   // depend on it stay out rather than being gated on a guess.
-  const effOvernight = fOvernight ?? parsed.overnight ?? null;
+  // ── AND THE OVERNIGHT CLAIM CANNOT OUTLIVE THE SPAN IT CITES ─────────────
+  //
+  // `parsed` is a pure function of the TEXT, so `parsed.overnight` stayed true
+  // after the span was dropped above — the text still said "July 10-13". The
+  // chip went on rendering "Staying overnight · from your dates" while the
+  // only date on screen was a single day: it cited dates it was no longer
+  // showing. Not cosmetic — overnight is what turns on the lodging and travel
+  // stack, so the plan was built for a multi-night stay on a one-day event.
+  //
+  // Said-so still beats derived, exactly as smartParseEvent decided on
+  // 2026-08-06: a host who wrote "hotel" or "3 nights" told us, and that does
+  // not depend on any date surviving. What is DERIVED from a span is now
+  // derived from the EFFECTIVE span, so it falls away with it and the chip
+  // honestly reverts to the unanswered "Staying over?".
+  const saidOvernight = parsed.overnightBasis === 'said-so';
+  const effOvernight = fOvernight ?? ((saidOvernight || !!effEndDate) ? true : null);
   const effTravelMode = fTravelMode ?? parsed.travelMode ?? null;
   const dstatC = eventDateStatus(effDate || null);
   const expectC = expectedFromPlanned(effGuests, effType, (() => { try { return effType ? getPlaybook(effType) : null; } catch { return null; } })());
@@ -8288,10 +8325,16 @@ export default function HostShellV2() {
                                 ('said-so' vs 'multi-day-span') the whole time,
                                 with a comment saying it was built FOR this chip,
                                 and the shell read it zero times. */}
+                            {/* The suffix reads the SAME two facts the value above
+                                reads — `saidOvernight` and the EFFECTIVE span — so the
+                                label cannot name a basis the value no longer has. It
+                                used to read parsed.overnightBasis, which survived the
+                                span being dropped and said "from your dates" over a
+                                single date (2026-09-27). */}
                             {effOvernight === true
                               ? 'Staying overnight' + (fOvernight != null ? ''
-                                : parsed.overnightBasis === 'said-so' ? ' · heard'
-                                  : parsed.overnightBasis === 'multi-day-span' ? ' · from your dates' : '')
+                                : saidOvernight ? ' · heard'
+                                  : effEndDate ? ' · from your dates' : '')
                               : effOvernight === false ? 'Same day, no stay' : 'Staying over?'}
                           </button>
                         ) : null}
@@ -8395,10 +8438,44 @@ export default function HostShellV2() {
                               </>
                             );
                           })()}
-                          <input className="field" type="date" value={effDate} onChange={e => setFDate(e.target.value)} aria-label="Event date" />
+                          <input className="field" type="date" value={effDate} onChange={e => setFDate(e.target.value)}
+                            aria-label={effEndDate ? 'First day' : 'Event date'} />
                           {effDate && dstatC.status !== 'ok' && (
                             <p className="grounding" style={dstatC.blocking ? { color: 'var(--danger)' } : { color: 'var(--warn)' }}>{dstatC.reason}</p>
                           )}
+                          {/* ── THE LAST DAY, WHICH USED TO HAVE NOWHERE TO GO ──────────
+                              A host who typed a range got one, and lost it the moment
+                              she corrected the start, with no field to put it back in.
+                              This is that field.
+
+                              It appears when a span is already in play — heard in the
+                              sentence, set here, or implied by an overnight the host
+                              stated — rather than on every event, because most events
+                              are one day and a permanently empty second date input is
+                              dead chrome on the first screen of the app.
+
+                              `runs` is the quiet way IN for the rest: one line, only
+                              once a start exists, and it disappears the moment there is
+                              an end to show. */}
+                          {effDate && (effEndDate || fEndDate !== '' || saidOvernight) ? (
+                            <>
+                              <input className="field" type="date" value={effEndDate}
+                                min={effDate} onChange={e => setFEndDate(e.target.value)}
+                                style={{ marginTop: 'var(--sp-2)' }} aria-label="Last day" />
+                              {effEndDate && effEndDate <= effDate && (
+                                <p className="grounding" style={{ color: 'var(--warn)' }}>
+                                  The last day needs to be after {new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.
+                                </p>
+                              )}
+                            </>
+                          ) : effDate ? (
+                            <button type="button" onClick={() => setFEndDate(effDate)}
+                              style={{ font: 'inherit', color: 'var(--steel-soft)', background: 'none',
+                                border: 'none', padding: 'var(--sp-2) 0 0', cursor: 'pointer',
+                                textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+                              Runs more than one day?
+                            </button>
+                          ) : null}
                         </div>
                       )}
                       {createEdit === 'name' && (
