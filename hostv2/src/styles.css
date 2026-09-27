@@ -4016,6 +4016,20 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    the ratified ladder, grandfathered under the baseline count, and a ratchet
    gate counts copies. 8 is the ladder value nearest it and the rhythm is
    indistinguishable at this size. */
+/* …and this is the class that comment describes. It was never written: the
+   resting delete shipped as a bare `.mini`, which in this slot renders as a
+   full-width bordered control. Buried at the bottom of the sample list that
+   read as clutter; moved up beside the host's own event on 2026-09-27 it
+   became THE SECOND THING ON THE SCREEN, louder than her plan. UX_05 is
+   explicit — a destructive control is "never as primary style" — so it is a
+   tertiary text control: no border, no fill, muted, sized to its words. */
+.delrow{
+  margin:2px 0 8px 12px; padding:0; border:none; background:none;
+  color:var(--steel-soft); font-size:var(--t-caption); font-weight:500;
+  align-self:flex-start; width:auto; cursor:pointer;
+}
+.delrow:hover{ text-decoration:underline; }
+
 .frow-confirm{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:2px 0 8px 12px; }
 .frow-confirm .v-meta{ margin-right:2px; }
 .mini.danger{ color:var(--danger); border-color:var(--danger); }

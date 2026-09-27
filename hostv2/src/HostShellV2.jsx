@@ -16710,10 +16710,36 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'events' && (
               <>
-                {(REAL_EVENTS.length > 0 || hydratedEvents.length > 0) && (
+                {/* ── WHAT COUNTS AS "YOURS" ─────────────────────────────────
+                    A host's own event used to be the hardest row to find in
+                    this list. Measured 2026-09-27: 17 rows, 13 tagged Sample,
+                    and "My Graduation · current" at index 15 — past a
+                    Retirement Party, a Wedding, a Repast, a Crab Feast, The
+                    Cookout, Game Night, a Team Retreat, a Dinner Party and two
+                    Reunions to reach the only real event on the device. Sitting
+                    directly under it: "Delete this event."
+
+                    It was not an ordering mistake. REAL_EVENTS is built with
+                    `!isStoredCustomId(e.id)`, so an event the host CREATED HERE
+                    is excluded from this shelf by construction and can only
+                    render in the sample list below. The old comment down there
+                    said "a locally-created event is no less the host's" while
+                    putting it last.
+
+                    Storage is not ownership. Synced, seeded-real, or minted on
+                    this phone five minutes ago — if it is the host's, it is on
+                    this shelf, and nothing of theirs renders under "Samples". */}
+                {(REAL_EVENTS.length > 0 || hydratedEvents.length > 0 || customs.length > 0) && (
                   <>
                     <div className="shelf-label" style={{ margin: '0 0 6px' }}>Yours{hydratedEvents.length ? ' — synced to your account' : ' — on this device'}</div>
-                    {[...REAL_EVENTS, ...hydratedEvents.filter(he => !REAL_EVENTS.some(re => re.id === he.id))].map((e, i) => {
+                    {(() => {
+                      const seen = new Set();
+                      return [
+                        ...REAL_EVENTS,
+                        ...hydratedEvents,
+                        ...customs.map(c => ({ ...c, _custom: true })),
+                      ].filter(e => e && e.id && !seen.has(e.id) && seen.add(e.id));
+                    })().map((e, i) => {
                       const isActive = e.id === eventId;
                       const d = daysUntil(e.date);
                       // RUN IT AGAIN sits only on events that have ALREADY HAPPENED — the
@@ -16741,28 +16767,42 @@ export default function HostShellV2() {
                             Run it again
                           </button>
                         )}
+                        {/* DELETE — moved up with the events it acts on. Still the
+                            host's own only, still two steps, and still NAMING the
+                            event: "Delete?" with a bare Yes is how the wrong plan
+                            goes from a list where four rows look alike. */}
+                        {e._custom && (confirmDelete === e.id ? (
+                          <span className="frow-confirm">
+                            <span className="v-meta">Delete “{e.name || 'this event'}” for good?</span>
+                            <button className="mini danger" onClick={() => deleteThisEvent(e)}
+                              aria-label={'Delete ' + (e.name || 'this event') + ' for good'}>Delete it</button>
+                            <button className="mini" onClick={() => setConfirmDelete(null)}>Keep it</button>
+                          </span>
+                        ) : (
+                          <button className="delrow" onClick={() => setConfirmDelete(e.id)}
+                            aria-label={'Delete ' + (e.name || 'this event')}>Delete this event</button>
+                        ))}
                         </Fragment>
                       );
                     })}
                     <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Samples</div>
                   </>
                 )}
-                {[...ROSTER, ...customs.map(c => ({ ...c, _custom: true }))].map((e, i) => {
+                {/* ROSTER ONLY. The host's own events all render on the shelf
+                    above now, including the ones minted on this device, so
+                    nothing here belongs to anybody. Every `_custom` branch this
+                    block used to carry went up with them. */}
+                {ROSTER.map((e, i) => {
                   const isActive = e.id === eventId;
                   const src = e;
                   const d = daysUntil(src.date);
-                  const label = e._custom ? (e.name || 'Yours') : (e === MY_CRAB_FEAST ? 'My Crab Feast' : eventTypeLabel(e));
+                  const label = e === MY_CRAB_FEAST ? 'My Crab Feast' : eventTypeLabel(e);
                   // DISAMBIGUATION-1: a seed/sample event can share a name+venue with the
                   // host's own real event (e.g. both default to "My Crab Feast" / "Backyard"),
-                  // reading as an unlabeled duplicate. Every row in this "Samples & tests"
-                  // shelf is synthetic EXCEPT MY_CRAB_FEAST when it's been promoted to the
-                  // host's real crab-feast event (appCrab) — a real "Sample" tag, not invented.
-                  const isSample = !e._custom && !(e === MY_CRAB_FEAST && appCrab);
-                  // Run it again belongs to the HOST'S OWN past events, which live here as
-                  // well as in the cloud shelf above — a locally-created event is no less
-                  // the host's. Samples are excluded: copying a seeded demo would produce a
-                  // second demo, not a plan the host has any stake in.
-                  const canRunAgain = !!e._custom && d !== null && d < 0;
+                  // reading as an unlabeled duplicate. Every row on this shelf is synthetic
+                  // EXCEPT MY_CRAB_FEAST when it's been promoted to the host's real
+                  // crab-feast event (appCrab) — a real "Sample" tag, not invented.
+                  const isSample = !(e === MY_CRAB_FEAST && appCrab);
                   return (
                     <Fragment key={e.id}>
                     <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: rowEnter(i, 30) }}
@@ -16773,34 +16813,6 @@ export default function HostShellV2() {
                       </span>
                       <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                     </button>
-                    {canRunAgain && (
-                      <button className="mini runagain" onClick={() => runItAgain(src)}
-                        aria-label={'Start a new event from ' + (src.name || label)}>
-                        Run it again
-                      </button>
-                    )}
-                    {/* DELETE — the host's OWN events only. A sample is not theirs
-                        to lose and a row that offers to delete one is offering a
-                        meaningless act. SIBLING of the row, never nested, for the
-                        same reason "Run it again" is: a button inside a button is
-                        invalid and reads unpredictably to a screen reader.
-
-                        Two steps, and the second one NAMES THE EVENT. "Delete?"
-                        with a bare Yes is how the wrong plan gets deleted from a
-                        list where four rows look alike. No modal: this shell has
-                        no white surfaces, and a sheet over a sheet to ask one
-                        question is heavier than the question. */}
-                    {e._custom && (confirmDelete === src.id ? (
-                      <span className="frow-confirm">
-                        <span className="v-meta">Delete “{src.name || label}” for good?</span>
-                        <button className="mini danger" onClick={() => deleteThisEvent(src)}
-                          aria-label={'Delete ' + (src.name || label) + ' for good'}>Delete it</button>
-                        <button className="mini" onClick={() => setConfirmDelete(null)}>Keep it</button>
-                      </span>
-                    ) : (
-                      <button className="mini" onClick={() => setConfirmDelete(src.id)}
-                        aria-label={'Delete ' + (src.name || label)}>Delete this event</button>
-                    ))}
                     </Fragment>
                   );
                 })}
