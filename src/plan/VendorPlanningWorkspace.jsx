@@ -63,6 +63,7 @@ import { memoryOn, latestRationaleForSubject, decisionPayoffSummary } from '../l
 import { draftVendorPaymentReminder } from '../lib/doItForMe';
 // Sprint 58G — Event Memory: the private per-vendor track record, surfaced at the pick.
 import { vendorMemoryFor, summarizeVendorMemory } from '../lib/eventMemory';
+import { confirmedCoversOrZero } from '../lib/confirmedCovers';
 import {
   buildVendorCopilotContext,
   getRuleBasedPreview,
@@ -2741,7 +2742,11 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
 // ── Caterer drift banner (Sprint 51 — preserved at top of cockpit body) ─────
 function CatererDriftBanner({ vendor, event, onMarkCatererUpdated }) {
   const isCatering = vendor.category === 'Catering';
-  const confirmedCount = event ? (event.guests || []).filter(g => g.rsvp === 'Yes').length : 0;
+  // COVERS, NOT ROWS. This banner's "Update to N" button WRITES N into
+  // event.catererCount, so a row count here told the caterer to cook for the
+  // wrong number of people — 5 instead of 7 on the retirement fixture, whose
+  // roster carries a row asking for two kids' meals. See lib/confirmedCovers.js.
+  const confirmedCount = confirmedCoversOrZero(event);
   const show = isCatering
     && event
     && event.catererCount !== undefined

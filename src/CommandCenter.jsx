@@ -50,7 +50,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
-import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
+import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard, attendanceBand } from './lib/playbooks';
 import { deriveEventPhaseProgress, cueActionLabel } from './lib/phaseProgress';
 import { startTimeIsConfirmed } from './lib/startTime';
 import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
@@ -93,6 +93,7 @@ import { daysUntil } from './lib/dates';
 // is misread as an unsent draft and the next action wrongly says "send it" /
 // "Waiting on: You" when it's really "nudge the client" / "Waiting on: Client".
 import { milestoneActionRoute, checklistRouteFor } from './lib/taskRoute';
+import { confirmedCovers } from './lib/confirmedCovers';
 export { milestoneActionRoute };
 const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
 
@@ -404,7 +405,24 @@ export function deriveCommandCenterData(event, foodPP = null) {
   // planner's last-confirmed catererCount no longer matches yesGuests, surface
   // it on the catering vendor's row in Command Center as a HEADCOUNT MISMATCH
   // signal. Doesn't duplicate the Vendors workspace — it routes there.
-  const yesGuestsCount = guests.filter(g => g.rsvp === 'Yes').length;
+  // A ROSTER ROW IS NOT A COVER (audit 2026-09-27). `catererCount` is a number of
+  // PLATES — the fixture note behind the measured case reads "Plated dinner for 60
+  // + 2 vegetarian/GF counts". This compared it to `guests.filter(rsvp==='Yes').length`,
+  // a count of ROWS, and a row is one invited adult: its filled `plusOne` is another
+  // adult and its `kids` are additive mouths. Both attendanceBand() and
+  // crabPlan.rosterHeadcount() already fixed exactly this collision (2026-07-27) and
+  // count people; this predicate was the last reader still counting rows. MEASURED on
+  // ev-x-retirement-party: the hero said "5 guests have said yes" while the canonical
+  // band resolved 7 confirmed — and one of those rows asks for "Two kids' meals".
+  //   AND A HEADCOUNT-MODE HOST HAS NO YESES AT ALL. Same measurement, guestMode
+  // 'count' with guestCount 40 and catererCount 40 — two numbers in perfect agreement
+  // — produced catererDrift === true off 0 yes rows. The caterer holds the host's
+  // planned number in that mode, so that is what it must be compared against.
+  const _band = attendanceBand(event);
+  // Delegated to lib/confirmedCovers.js rather than derived here. This was the
+  // first correct version of the rule and it was still a copy — the same
+  // concept had eight implementations across four files. One reader owns it.
+  const confirmedHeadcount = confirmedCovers(event);
   // isVendorBooked, not a private 5-value list: "the caterer is committed" is
   // exactly the canonical booked question. The old list omitted 'Paid' and
   // carried the phantom 'Partial'. MEASURED: with catererCount 10 and 2 yes
@@ -416,8 +434,11 @@ export function deriveCommandCenterData(event, foodPP = null) {
   const catererDrift = !!cateringVendor
     && event.catererCount !== undefined
     && event.catererCount !== null
-    && event.catererCount !== yesGuestsCount;
-  const cateringDriftDelta = catererDrift ? (yesGuestsCount - (event.catererCount || 0)) : 0;
+    // No number on the guest side at all: there is nothing to disagree WITH, and a
+    // mismatch claimed against an absent count is a claim about nothing.
+    && confirmedHeadcount !== null
+    && event.catererCount !== confirmedHeadcount;
+  const cateringDriftDelta = catererDrift ? (confirmedHeadcount - (event.catererCount || 0)) : 0;
 
   const vendorRows = vendors.slice(0, 6).map(v => {
     const overduePayment = v.payDueDate && daysFrom(v.payDueDate) < 0 && !v.balancePaid;
@@ -437,7 +458,7 @@ export function deriveCommandCenterData(event, foodPP = null) {
       statusLabel: (driftOverride || badge).label,
       statusColor: (driftOverride || badge).color,
       driftNote: driftOverride
-        ? `Caterer holds ${event.catererCount}; ${yesGuestsCount} confirmed (${cateringDriftDelta > 0 ? '+' : ''}${cateringDriftDelta})`
+        ? `Caterer holds ${event.catererCount}; ${confirmedHeadcount} confirmed (${cateringDriftDelta > 0 ? '+' : ''}${cateringDriftDelta})`
         : null,
     };
   });
@@ -609,7 +630,7 @@ export function deriveCommandCenterData(event, foodPP = null) {
     // vendor/paperwork sections at all (reveal-when-data, like the host nav).
     isHost: _isHost, hasVendors: _hasVendors, hasDocs: _hasDocs,
     // Sprint 51 Path B: caterer drift surfacing data
-    catererDrift, cateringVendor, cateringDriftDelta, yesGuestsCount,
+    catererDrift, cateringVendor, cateringDriftDelta, confirmedHeadcount,
   };
 }
 
@@ -3221,7 +3242,7 @@ export function _selectEventNextActionInner(event) {
       level: 'attention',
       category: 'caterer',
       title: 'Confirm final catering count.',
-      consequence: `The caterer is set for ${event.catererCount}, but ${d.yesGuestsCount} ${d.yesGuestsCount === 1 ? 'guest has' : 'guests have'} said yes. Until those match, seating, meal counts, and the day's timing are all working from the wrong number.`,
+      consequence: `The caterer is set for ${event.catererCount}, but your count now comes to ${d.confirmedHeadcount}. Until those match, seating, meal counts, and the day's timing are all working from the wrong number.`,
       primaryCta: 'Fix catering count',
       primaryRoute: { tab: 'Vendors', vendorId: d.cateringVendor.id },
       contextLine: daysSub,

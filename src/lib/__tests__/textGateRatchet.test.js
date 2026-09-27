@@ -196,7 +196,32 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // The behaviour half is deliberately NOT here. That the stamp renders the
 // derived month is a claim about what a host reads, and it is driven in
 // hostv2/e2e/priceVintageIsDerived.spec.mjs.
-const MAX_HOSTV2_TEXT_GATES = 48;
+// 48 -> 49 on 2026-09-27 for aRowIsNotACover.test.js, with the reason this
+// ratchet asks for.
+//
+// The claim is that no surface in HostShellV2 derives a confirmed count from
+// ROSTER ROWS and lets it reach `catererCount`, which counts PLATES. Five
+// sites did, and one of them WROTE the row count into the event when the host
+// tapped "Match confirmed yeses (N)" — so a host following the app's own
+// suggestion would have told her caterer 5 and left two children, who are on
+// the roster asking for kids' meals, without one.
+//
+// Why an e2e cannot carry it: the claim is that NO site does this, and a
+// behaviour test only reaches the branches it renders. The five sites sit
+// behind different sheets, modes and drift states; the 2026-09-18 entry above
+// records exactly this failure — six copies of a rule, a behaviour test
+// reaching one. Counting the shape in the source is direct evidence of "none
+// remain"; a drive is evidence about the one path it walked.
+//
+// The gate is also deliberately NOT a ban on row counts. Two readouts pair
+// "N confirmed" with "M invited" — rows against rows, describing the roster —
+// and the gate asserts those SURVIVE, because converting only the first would
+// print "7 confirmed · 8 invited" and read as seven of eight people replying.
+//
+// The behaviour half is owed and is NOT smuggled in here: that the hero states
+// the cover count is a claim about what a host reads, and it belongs in
+// hostv2/e2e. It is not written yet — recorded as owed rather than implied.
+const MAX_HOSTV2_TEXT_GATES = 49;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

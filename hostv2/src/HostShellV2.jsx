@@ -141,6 +141,7 @@ import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
+import { confirmedCovers } from '@app/lib/confirmedCovers';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
@@ -3647,6 +3648,42 @@ export default function HostShellV2() {
     ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0, kind: 'crabs' }] : []),
   ].filter(r => r.est > 0 || r.got > 0);
   const guests = guestNumber(event);
+
+  // ── A ROSTER ROW IS NOT A PERSON ─────────────────────────────────────────
+  // FOUND 2026-09-27, and it is the FOURTH instance of this repo's documented
+  // "one field, two meanings" defect. Five places in this file derived the
+  // confirmed count as `guests.filter(rsvp === 'Yes').length` — a count of
+  // ROWS — and compared it to `catererCount`, which counts PLATES.
+  //
+  // On the demo event that is 5 against 60, and the hero said so. The
+  // canonical reader says 7: `attendanceBand` returns
+  // {confirmed: 5, kids: 2, low: 7}, and the row driving the difference
+  // literally asks for "Two kids' meals (ages 6, 9)".
+  //
+  // THE WRITE WAS THE DANGEROUS PART. `countResolutionRows` offered "Match
+  // confirmed yeses (N)" and PATCHED that row count into `catererCount`. A
+  // host taking the app's own suggestion would have told the caterer 5 and
+  // left two children without a meal.
+  //
+  // The rule was already settled twice, in engines this file imports:
+  // playbooks/index.js attendanceBand ("a filled plusOne is a real adult
+  // riding this row's answer"), crabPlan.js rosterHeadcount ("10 adults each
+  // bringing 3 kids read as 10 heads"), and seatingPlan.js seatsFor. This is
+  // the same rule, applied to the caterer.
+  //
+  // WHAT IS DELIBERATELY LEFT AS A ROW COUNT. Two readouts pair "N confirmed"
+  // with "M invited" (the past-event recap and the reply-timing panel). Both
+  // sides of those are rows, which is coherent — it describes the ROSTER, not
+  // the plates. Converting only the first would print "7 confirmed · 8
+  // invited" and read as seven of eight people replying. Rows against rows is
+  // fine; rows against PLATES was the bug.
+  //
+  // null, never 0, when there is no guest number at all — a mismatch claimed
+  // against an absent count is the other way to be wrong here.
+  // Delegated, not re-derived. This was an inline copy until the same concept
+  // turned up in eight places across four files; a fourth correct copy is
+  // still a copy. lib/confirmedCovers.js owns the question now.
+  const confirmedHeads = confirmedCovers(event);
   // lib/attendanceModel — likely turnout, WITH the playbook's own attendance
   // overrides (a crab feast's turnout curve isn't a wedding's).
   //
@@ -6138,7 +6175,11 @@ export default function HostShellV2() {
   // catering-drift detector read.
   const setRsvpValue = (i, value) => {
     const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: value } : g);
-    const yes = gs.filter(g => g && g.rsvp === 'Yes').length;
+    // COVERS, not rows, and computed against the NEW roster rather than the
+    // stale `event` — this receipt fires on the same tap that changes it.
+    // It said "5 confirmed" on a roster whose confirmed rows bring two kids,
+    // which is the same defect as the caterer's, in a toast.
+    const yes = confirmedCovers({ ...event, guests: gs }) || 0;
     patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + (value || 'no reply') + ' — ' + yes + ' confirmed.' + (value === 'Maybe' ? ' Maybes stay pending until they land.' : ''));
   };
 
@@ -6755,7 +6796,7 @@ export default function HostShellV2() {
   // report behind W14b ("doesn't have a next step after selection", 2026-07-22):
   // both resolutions fired their receipt and left the same hero standing.
   const countResolutionRows = (onSettled) => {
-    const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+    const yes = confirmedHeads;   // COVERS, not rows — see confirmedHeads
     const matchYes = () => { patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.'); setChoiceOpen(null); if (onSettled) onSettled(); };
     const holdGuests = () => { patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — noted as your call; it won’t re-ask today.'); setChoiceOpen(null); if (onSettled) onSettled(); };
     return (
@@ -6924,7 +6965,7 @@ export default function HostShellV2() {
               yeses, the real fix is the count resolution — offer it right here instead
               of dead-ending on a stepper about a different number. */}
           {(() => {
-            const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+            const yes = confirmedHeads;   // COVERS, not rows — see confirmedHeads
             const drift = event.catererCount != null && event.catererCount !== yes;
             if (!drift) return null;
             return (
@@ -6994,7 +7035,7 @@ export default function HostShellV2() {
       );
     }
     if (kind === 'lockcount') {
-      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+      const yes = confirmedHeads;   // COVERS, not rows — see confirmedHeads
       const planned = guests || 0;
       const confirmedAt = event.guestMode === 'count' ? Number(event.guestCount) || 0 : 0;
       if (confirmedAt > 0) {
@@ -7217,7 +7258,7 @@ export default function HostShellV2() {
       // file, fold to a line showing it (green if it now matches, amber if
       // the host chose to hold anyway) instead of leaving both chips sitting
       // there looking unclicked.
-      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+      const yes = confirmedHeads;   // COVERS, not rows — see confirmedHeads
       const held = event.catererCount;
       // BRING THE ACTION IN PLACE (host "fix this", 2026-07-21): only collapse to
       // the settled line when the count MATCHES the confirmed yeses (the resolved
@@ -7942,7 +7983,7 @@ export default function HostShellV2() {
   const dayWhispers = useMemo(() => {
     if (!liveDay) return [];
     const w = [];
-    const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+    const yes = confirmedHeads;   // COVERS, not rows — see confirmedHeads
     if (yes > 0) w.push(yes + ' confirmed');
     else if (guests) w.push('planned for ' + guests);
     if (foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount) w.push('food shopped');
