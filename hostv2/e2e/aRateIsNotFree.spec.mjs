@@ -87,16 +87,51 @@ test('NOT ONE ROW SAYS $0 — the defect this spec exists for', async ({ page })
 test('ICE IS TWENTY CENTS A POUND, and the sheet now says so', async ({ page }) => {
   // The concrete row. It read "$0–$0/lb" — a host was being told the ice was
   // free. The corpus authors it at 0.20–0.40 and always has.
+  //
+  // THE LITERAL MOVED, AND WHY IT IS NOT A FUDGE. This asserted the exact
+  // string "$0.20–$0.40/lb" until 2026-09-27, when f558376c made the event's
+  // state actually resolve and the regional path started running. Ice has no
+  // BLS series of its own, so the plan engine imputes the region's basket
+  // mean (~0.98) and the top of the band renders $0.39. That is the authored
+  // corpus value, regionally adjusted — not a lost cent.
+  //
+  // Editing the number alone would have written today's behaviour into the
+  // gate, which the board named as the trap. So the band is asserted as a
+  // RANGE around the authored value, and the claim that makes the adjustment
+  // honest is asserted with it: a line adjusted from the basket must say so.
+  // A silent re-scaling now fails here even when the arithmetic is right.
   await openList(page);
   const r = await rates(page);
-  expect(r).toContain('$0.20–$0.40/lb');
+  const ice = r.find((x) => /^\$0\.(19|20|21)–\$0\.(3[5-9]|40|41)\/lb$/.test(x));
+  expect(ice, `no ice rate near the authored $0.20–$0.40 band in ${JSON.stringify(r)}`).toBeTruthy();
+
+  const iceRow = await page.evaluate(() => [...document.querySelectorAll('.sheet .fitem, .sheet li, .sheet .frow')]
+    .map((e) => (e.innerText || '').replace(/\s+/g, ' '))
+    .find((t) => /^Ice\b/i.test(t)) || '');
+  expect(iceRow, 'an adjusted line names the basis of its adjustment').toMatch(/area average/);
 });
 
 test('sub-dollar rates keep their cents, whole-dollar rates stay whole', async ({ page }) => {
   // Both halves of the rule on one screen, so a future "just use toFixed(2)"
   // that turns "$3–$8/drinks" into "$3.00–$8.00/drinks" fails here.
+  // LITERALS REPLACED BY THE RULE THEY STOOD FOR, 2026-09-27. These pinned
+  // "$0.30–$0.60/buns" and "$3.20–$8/drinks" — exact strings that only held
+  // while no regional factor applied. Once f558376c let the state resolve,
+  // the same rows render $0.29–$0.59 and the test failed on arithmetic that
+  // was correct. The rule it exists for never mentioned those numbers: a rate
+  // under a dollar must keep its cents, and a whole-dollar rate must not grow
+  // a fake ".00". Both are now asserted as properties of every rate on the
+  // screen, so they survive any legitimate re-pricing and still catch the
+  // "just use toFixed(2)" regression.
   const r = await openList(page).then(() => rates(page));
-  expect(r).toContain('$0.30–$0.60/buns');   // was "$0–$1/buns"
-  expect(r).toContain('$3.20–$8/drinks');    // was "$3–$8/drinks"
+  expect(r.length).toBeGreaterThan(8);
+
+  const bounds = r.flatMap((s) => s.match(/\$[\d,]+(?:\.\d{2})?/g) || []);
+  const subDollar = bounds.filter((b) => /^\$0(?:\.|$)/.test(b));
+  expect(subDollar.length, `no sub-dollar rate on screen to test the rule with: ${JSON.stringify(r)}`)
+    .toBeGreaterThan(0);
+  // A sub-dollar bound that lost its cents reads "$0" — the original defect.
+  for (const b of subDollar) expect(b).toMatch(/^\$0\.\d{2}$/);
+  // …and nothing grew a decorative ".00".
   for (const s of r) expect(s).not.toMatch(/\.00(?:[–/]|$)/);
 });

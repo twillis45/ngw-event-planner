@@ -72,3 +72,101 @@ Should an item flagged `national: true` be exempt from the basket-mean factor?
 
 Either way something has to change: today the code and the basis string
 contradict each other, and a host can read only the string.
+
+---
+
+# THE BOARD, 2026-09-27 — and the question changed twice before it sat
+
+**Seats (confirmed by owner):** Don Norman; Monica Rogati; James Bach / Michael
+Bolton; The Next Maintainer (mandatory, build); "Grandmother" (mandatory,
+player); Mindy Weiss (practitioner override); a Maryland crab-house operator
+(regional, added by the owner); The Price-Index Methodologist (archetype, not a
+real person - no credential is claimed for this seat).
+
+**Recorded against the process:** this board was proposed on a premise that did
+not survive measurement, stood down, and then re-convened when a second
+measurement revived it in a different form. The author took all measurements;
+no seat re-ran them.
+
+## What is actually true, measured
+
+| Fact | Instrument |
+|---|---|
+| Ice has no BLS series; `geoAdjust` returns factor 1, `national: true` | the repo's own `applyGeo` |
+| The plan engine imputes it the region's basket mean instead (~0.98) | `factorFor` in `playbooks/index.js:4383` |
+| That produces $0.20-$0.39 against an authored $0.20-$0.40 | rendered rates array, driven |
+| An honest per-line sentence EXISTS for exactly this case | `priceLayers.js:291` |
+| It is rendered NOWHERE - the shell draws the layer only when it is 'store' | `HostShellV2.jsx:20106`, and a driven probe: `saysRegionalAverage: false` |
+| The only regional claim a host sees is one global line | driven: "Adjusted for the South - BLS Aug 2026 - est. prices Aug 2026" |
+
+**So the engine is honest, the unit suite is satisfied, and the screen is not.**
+`threeLayersOfPrice.test.js:160` asserts that sentence and passes. Nobody can
+read it.
+
+## RULING - option A: render the disclosure. Not B.
+
+Unanimous on A over C. **B carries real dissent, preserved below.**
+
+**Bach/Bolton, and this is the finding of the sitting:** a green test on a
+string no surface renders is a check that cannot fail on the thing that
+matters. The composition was tested; the DELIVERY never was. Note also the
+trap in the obvious fix - editing the spec's literal to $0.39 would encode
+today's behaviour as intent. Acceptable only if the replacement also pins the
+disclosure, which nothing currently does.
+
+**The Price-Index Methodologist:** imputing an unpriced item from a related
+basket is ordinary practice in official statistics - it is roughly how CPI
+handles items it does not price directly. **So B is not the more accurate
+answer, it is a different estimator**, and the board should not adopt it on
+accuracy grounds. What official practice does NOT permit is publishing an
+imputed figure under a label that implies direct measurement. That is precisely
+the defect: not the 0.98, the unlabelled 0.98.
+
+**Norman:** a single global signifier over heterogeneous provenance is the lie.
+Two lines on the same sheet got two different qualities of answer and wear the
+same badge.
+
+**Rogati:** nothing needs to be authored. The data layer already carries
+`scope`. The UI throws it away. Surface what exists.
+
+**Grandmother:** "Adjusted for the South" over a number means, to her, that
+someone found out what ice costs in the South. She cannot tell 2% from 200%,
+and she should not have to.
+
+**Mindy Weiss (override):** a planner quoting $0.39/lb and asked "why 39
+cents?" has no answer. False precision costs credibility that a round number
+with a stated basis keeps.
+
+**The Next Maintainer:** two modules hold two policies for an unmapped item -
+`geoAdjust` refuses to scale, `factorFor` imputes and labels. Neither file says
+which is authoritative. That is unresolvable at 2am, and it is how this
+morning's fault happened.
+
+### DISSENT, preserved per the standing amendment
+
+**The Maryland crab-house operator dissents and argues for B.** A 2% southern
+basket factor on ice is noise against real local variation - the same bag runs
+$1.50 to $3.00 across two Baltimore blocks. He would drop the regional claim on
+ice entirely rather than explain it, on the grounds that an explanation of a
+meaningless adjustment is still clutter. **The Methodologist's reply, which did
+not persuade him:** dropping it makes the number no truer, only less labelled.
+
+**He also raised a finding nobody else saw, and it may outrank the ruling:**
+nobody buys ice by the pound. It is sold in 7lb and 20lb bags. A per-pound rate
+for ice is a unit a host cannot shop with, and this repo already owns a
+buyable-unit guardrail (`normalizeBuyable`) that is evidently not reaching this
+line. **This is exactly why the regional seat was added.**
+
+## Findings, ranked, tagged
+
+| # | Finding | Tag | Check |
+|---|---|---|---|
+| 1 | The per-line regional disclosure is composed, unit-tested, and never rendered | **(a) code** | e2e asserts a basket-scoped line shows "no published price for this line itself"; red-proof by restoring the `L.layer !== 'store'` early return |
+| 2 | Ice is priced per pound; it is sold in bags | **(a) code**, needs confirming | assert no rate renders `/lb` for a bagged commodity; red-proof by reverting the normalisation |
+| 3 | `aRateIsNotFree` asserts the national band on a regional plan | **(a) code** | update to the adjusted band AND the disclosure; red-proof both |
+| 4 | Two modules, two policies for an unmapped item, neither authoritative | **(a) code** | one exported policy, both call sites read it |
+| 5 | Does a per-line disclosure earn its density on a 390px sheet? | **(b) owner** | taste call; Rams tension is real |
+| 6 | Would a host rather see a rounded national band than a precise imputed one? | **(c) players** | nobody at this table can award it |
+
+**Not ruled:** whether to adopt B anyway on simplicity grounds. That is the
+owner's, and the operator's dissent is the argument for it.

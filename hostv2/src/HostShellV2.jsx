@@ -18689,6 +18689,10 @@ export default function HostShellV2() {
                           priceVintageIsDerived.spec.mjs caught it; 28 failures
                           across 7 viewports. */}
                       {fVintage ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
+                      {/* …and ONCE, here, what the per-row marker means. The
+                          rows carry two words; this carries the sentence. Said
+                          in one place instead of sixteen. */}
+                      {foodPP.priceContext ? ' · “area average” means the region’s basket stood in — BLS publishes no price for that line itself' : ''}
                     </p>
                     {/* ── WHERE WE ARE SHOPPING (host, 2026-09-24, board D) ─────
                         "we need to include which stores are under umbrella or
@@ -20101,6 +20105,41 @@ export default function HostShellV2() {
                                     The size travels with it, always. "$18.49"
                                     alone invites a host to read it as the cost of
                                     this LINE; "$18.49 · 12 pk" cannot be. */}
+                                {/* ── WHICH REGIONAL ANSWER THIS LINE GOT ─────
+                                    Board ruling 2026-09-27, option A. Two lines
+                                    on this sheet can both be "adjusted for the
+                                    South" and not be the same quality of claim:
+                                    one has its own published BLS series, the
+                                    other took the region's basket mean because
+                                    BLS prices nothing like it. Ice is the
+                                    second kind — no series at all — and it was
+                                    rendering $0.20–$0.39 under a header that
+                                    said "Adjusted for the South" and nothing
+                                    else.
+
+                                    The sentence is NOT written here. It has
+                                    existed in priceLayers since the layers
+                                    landed, and threeLayersOfPrice.test.js has
+                                    been asserting it the whole time — against a
+                                    string no surface rendered. That is the
+                                    finding the board called the important one:
+                                    the composition was tested and the DELIVERY
+                                    never was. Printed verbatim so the test and
+                                    the screen cannot drift apart again.
+
+                                    Deliberately NOT gated on priceIdx, unlike
+                                    the shelf price below it: a host who has not
+                                    picked a store still got a regional number
+                                    and is still owed its basis. */}
+                                {(() => {
+                                  const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
+                                  if (L.layer !== 'regional') return null;
+                                  return (
+                                    <span className="v-meta" style={{ display: 'block', marginTop: 2, opacity: .8 }}>
+                                      {L.scopeLabel}
+                                    </span>
+                                  );
+                                })()}
                                 {priceIdx && (() => {
                                   const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
                                   if (L.layer !== 'store') return null;

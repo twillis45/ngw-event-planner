@@ -282,6 +282,16 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
       exact: null, size: null, onSale: false, was: null, product: null,
       total: null, packs: null, math: null, band: null,
       scope: geoBasis.scope === 'item' ? 'item' : 'basket',
+      // THE SAME FACT, SHORT ENOUGH TO SIT ON A ROW. `because` is the full
+      // sentence and belongs where there is room for one; on a 390px shopping
+      // line, sixteen copies of it doubled the list and read louder than the
+      // prices it qualifies — the identical failure this repo already fixed
+      // once on the food hero (HostShellV2 ~18505: "the longest block reads
+      // loudest"). Both strings live HERE, in one module, for the reason the
+      // 2026-09-27 board named: `because` was asserted by jest for weeks while
+      // no surface rendered it, and a second copy in the shell would let the
+      // test and the screen drift apart again.
+      scopeLabel: geoBasis.scope === 'item' ? 'own BLS price' : 'area average',
       // The two regional answers are NOT the same quality and are not described
       // as if they were. One is this commodity's own published series; the other
       // is the region's basket mean standing in for a line BLS prices nothing
