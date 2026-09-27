@@ -101,7 +101,17 @@ describe('what the money screen can and cannot see', () => {
       Object.entries(byCategory).map(([k, v]) => [k, v.length]).sort((a, b) => b[1] - a[1]),
     );
     // Named, not counted: a failure here has to say WHICH category moved.
-    expect(shape).toEqual({ decor: 58, logistics: 41, rental: 4 });
+    //
+    // 2026-09-27, decor 58->56 and logistics 41->40. Three lines left this
+    // census because they became `essential: true` and the food plan's list
+    // then CARRIED them, so `inList.has(p.id)` skips them here: the Kwanzaa
+    // mkeka and zawadi (six of the seven symbols were already essential; those
+    // two were the odd ones out) and the Repast photo table (a stated host
+    // assumption, written into that item's note). Verified by driving
+    // playbookFoodPlan with this file's own evFor shape and reading the list:
+    // all three now appear on the host's shopping list. See
+    // playbooks/__tests__/theSymbolsAreNotOptional.test.js.
+    expect(shape).toEqual({ decor: 56, logistics: 40, rental: 4 });
   });
 
   test('and the food/beverage lines held out are DECISION-gated, not dropped', () => {
@@ -204,7 +214,7 @@ describe('what the money screen can and cannot see', () => {
     });
   });
 
-  test('OPTIONAL, NOT MISSING — 98 of the 103 are non-essential spend', () => {
+  test('OPTIONAL, NOT MISSING — 95 of the 100 are non-essential spend', () => {
     // The distinction that makes this a ruling rather than a patch. If this
     // ever flips — a line becoming essential, or an essential line losing its
     // buyAt — the shape below moves and somebody has to look.
@@ -220,6 +230,12 @@ describe('what the money screen can and cannot see', () => {
         if (!p.essential) notEssential += 1; else essentialButOut += 1;
       }
     }
-    expect({ notEssential, essentialButOut }).toEqual({ notEssential: 98, essentialButOut: 5 });
+    // 98 -> 95 on 2026-09-27, and essentialButOut deliberately UNCHANGED at 5:
+    // the three lines did not cross from one bucket to the other, they left
+    // the census, because becoming essential put them on the food plan's list
+    // and the `inList` guard above skips those. That is the intended result —
+    // the point of the flag change was to make them visible to the host, not
+    // to move them between two invisible buckets.
+    expect({ notEssential, essentialButOut }).toEqual({ notEssential: 95, essentialButOut: 5 });
   });
 });
