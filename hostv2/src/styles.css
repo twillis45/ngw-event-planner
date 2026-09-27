@@ -6113,10 +6113,30 @@ button.vc-pill::after{
   /* The bottom margin lives HERE, not inline: an inline `margin` shorthand
      beats a stylesheet `margin-inline` longhand, so the first attempt kept the
      rail at the content gutter (measured x:20 w:350 instead of x:0 w:390) and
-     the bleed silently did nothing. */
-  margin:0 calc(var(--sp-5) * -1) 10px; padding-inline:var(--sp-5);
+     the bleed silently did nothing.
+
+     And the value became var(--sp-3), not the 10px it was inline: moving a
+     literal from JSX into styles.css moves it INTO the spacing ratchet's
+     sight, and 10 is off the ladder. The gate caught it — after I had already
+     written "spacing ladder green" in a commit message, which it was not. */
+  margin:0 calc(var(--sp-5) * -1) var(--sp-3); padding-inline:var(--sp-5);
   scroll-padding-inline:var(--sp-5); }
 .chiprail::-webkit-scrollbar{ display:none; }
+/* ── AND A FADE, BECAUSE THE CUT ALONE IS NOT A SIGNAL ────────────────────
+   Owner asked the right question: "does a user know that scrolls?" Measured
+   at rest on a real event — the chip at the edge ("Grocery", x:321 right:400
+   against a 390 viewport) was clipped by TEN PIXELS. That reads as a
+   rendering quirk, not as more content, and with different store names it
+   could land flush and look like the end of the list. The bleed guarantees
+   the rail REACHES the edge; it guarantees nothing about a visible cut.
+
+   The fade is exactly the gutter width, which is the point: at rest it turns
+   whatever is clipped into a soft edge, and scrolled to the END the last chip
+   stops at the gutter (measured right:370) so it sits clear of the fade and
+   is never dimmed. A rail that fades its own last item would be telling the
+   host there is more when there is not. */
+.chiprail{ -webkit-mask-image:linear-gradient(to right, #000 calc(100% - var(--sp-5)), transparent);
+  mask-image:linear-gradient(to right, #000 calc(100% - var(--sp-5)), transparent); }
 .chiprail > *{ flex:0 0 auto; }
 
 /* ── EVERY SECONDARY ACTION IS THE SAME WIDTH ───────────────────────────────
