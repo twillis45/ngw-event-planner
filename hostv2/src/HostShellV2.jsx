@@ -18671,7 +18671,24 @@ export default function HostShellV2() {
                           </>
                         );
                       })()}
-                      {fVintage && !foodPP.priceContext ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
+                      {/* TWO MONTHS, TWO CLAIMS — and this used to print only
+                          one of them. `priceContext.month` is the BLS Average
+                          Price index used to SCALE these prices for the region;
+                          `fVintage` is the oldest date on which the prices
+                          themselves were VERIFIED. Suppressing the second
+                          whenever the first exists (05759fc0, 2026-09-24) was
+                          harmless only while test events carried no state —
+                          f558376c made states actually apply on 2026-09-27 and
+                          the vintage vanished from every regional plan, leaving
+                          a freshness date sourced from the wrong thing.
+                          They both read "Aug 2026" today, which is exactly what
+                          made it invisible: the screen was unchanged and the
+                          claim underneath it was not. When BLS publishes
+                          September and the corpus still says August, a host
+                          would read a verification date no priced row supports.
+                          priceVintageIsDerived.spec.mjs caught it; 28 failures
+                          across 7 viewports. */}
+                      {fVintage ? ` · est. prices ${String(fVintage.label).replace(/ /g, '\u00A0')}` : ''}
                     </p>
                     {/* ── WHERE WE ARE SHOPPING (host, 2026-09-24, board D) ─────
                         "we need to include which stores are under umbrella or
