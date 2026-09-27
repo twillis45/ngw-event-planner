@@ -5660,8 +5660,6 @@ export default function HostShellV2() {
   // exit, the headers drop theirs; when it is not, they keep it. Neither "both"
   // nor "neither" is reachable, which a pair of independent conditions could
   // not promise.
-  const barIsExit = drillOpen && sheet && sheet.kind !== 'foodplan' && !noKitchen
-    && !!(foodPlan && foodPlan.itemCount > 0);
 
   // ATTENTION ON THE WAY OUT TRAVELS WITH THE EXIT. The Your Choices `Done`
   // carries a `lit-done` glow and an --ok tone once every choice is settled —
@@ -5672,8 +5670,95 @@ export default function HostShellV2() {
   // feature while claiming to improve it. Same rule as there: green only when
   // ALL are settled (UX_02 — green means complete), and the label carries the
   // meaning either way so colour is never the only carrier.
-  const choicesAllSettled = !!(foodPlan && (foodPlan.choices || []).length > 0
-    && (foodPlan.choices || []).every(d => (event.foodChoices || {})[d.id]));
+  // ── EACH TAB'S OWN PROGRESS, COUNTED ONCE ────────────────────────────────
+  // The pinned bar now rides on all three tabs, so each needs a tally, and
+  // "how many choices are settled" was already written inline twice (as
+  // `openN`). A third copy is how the bar and the panel come to disagree
+  // about the same number on the same screen — the class that has cost this
+  // repo twice today. Asked here, once, and read by everyone.
+  const choicesTally = useMemo(() => {
+    const chs = (foodPlan && foodPlan.choices) || [];
+    const picks = event.foodChoices || {};
+    return { settled: chs.filter(c => picks[c.id]).length, total: chs.length };
+  }, [foodPlan, event.foodChoices]);
+  const choicesAllSettled = choicesTally.total > 0 && choicesTally.settled === choicesTally.total;
+
+  // "Spoken for" on the Bringing tab: a dish counts once somebody's name is
+  // against it, the host's override winning over the engine's authored owner
+  // — the same precedence the Bringing surface itself uses.
+  const bringingTally = useMemo(() => {
+    const rows = ((foodPlan && foodPlan.list) || []).filter(i => i && i.broughtByCommunity);
+    const owner = event.foodOwner || {};
+    return {
+      named: rows.filter(r => String(owner[r.id] || r.owner || '').trim()).length,
+      total: rows.length,
+    };
+  }, [foodPlan, event.foodOwner]);
+
+  // ORDER MATTERS AND WAS WRONG ONCE: this block reads choicesTally and
+  // bringingTally, and sat ABOVE both on the first pass. Shop never noticed —
+  // its branch returns before touching either — so the app looked fine until
+  // the Plan tab hit the temporal dead zone and went to the error boundary.
+  // Same shape as `sheet.focus` on a null sheet an hour earlier: an ordering
+  // assumption that only one code path disproves.
+  // ── WHAT THE BAR SAYS, AND THEREFORE WHETHER IT IS THERE ────────────────
+  //
+  // One place answers both, because they are the same question: the bar
+  // exists to report a tab's progress, so a tab with nothing to count has no
+  // bar. Splitting "does it show" from "what does it say" is how a bar comes
+  // to render an empty left slot.
+  //
+  // Each tab counts ITS OWN work, in its own surface's words — "spoken for"
+  // is lifted from the Bringing screen rather than invented beside it.
+  //
+  // The right-hand slot stays EMPTY on Plan and Bringing when no drill-in is
+  // open, and that is deliberate. The Shop bar earned its money line by
+  // carrying something the screen did not already say; on Plan the estimate
+  // is the headline and the open-meals count is a chip under it, and on
+  // Bringing "nothing here costs you anything" is already in the grounding
+  // line. There is nothing left to put there that would not be the same fact
+  // twice — the duplication the host called out on 2026-09-24 and again on
+  // 2026-09-27.
+  const barTally = (() => {
+    if (!sheet || !foodPlan) return null;
+    if (sheet.kind === 'bringing') {
+      if (bringingTally.total === 0) return null;
+      // "Everyone is spoken for." is the Bringing screen's own completion
+      // line, which moved here with the count rather than being deleted
+      // alongside it. At completion the fraction and the sentence are the
+      // same fact, so the bar says the warmer one and says it once.
+      return bringingTally.named === bringingTally.total
+        ? 'Everyone is spoken for'
+        : `${bringingTally.named} of ${bringingTally.total} spoken for`;
+    }
+    if (sheet.kind === 'foodplan') {
+      return choicesTally.total > 0
+        ? `${choicesTally.settled} of ${choicesTally.total} decided` : null;
+    }
+    if (sheet.kind === 'food') {
+      return (!noKitchen && foodPlan.itemCount > 0)
+        ? `${shopTally.bought} of ${shopTally.total} bought` : null;
+    }
+    return null;
+  })();
+  const barShows = !!barTally;
+
+  // THE BAR IS ON ALL THREE FOOD TABS NOW (host, 2026-09-27: "do bar for plan
+  // and bringing"), which also dissolves the trap this condition used to
+  // guard: it excluded 'foodplan' because the bar was absent there, so the
+  // drill-in headers had to keep their own exit. They no longer do — the one
+  // exit is the bar, on every tab it can reach.
+  // …BUT ONLY ON A TAB THAT ACTUALLY HOSTS ONE. `foodSect` is component
+  // state and does not reset when the host changes tab, so opening the list
+  // on Shop and switching to Bringing left `drillOpen` true while the panel
+  // it refers to is not on screen — the Bringing bar offered a `Done` that
+  // closed something invisible. Driven on a repast 2026-09-27; the code alone
+  // read fine, and the phantom button only showed up on the device.
+  //
+  // The four drill-ins all live in the food/foodplan branch, so those are the
+  // two tabs where the bar can be an exit. Bringing gets the bar for its
+  // count and nothing more.
+  const barIsExit = drillOpen && barShows && sheet.kind !== 'bringing';
 
   const closeDrill = useCallback(() => {
     setFoodSect(m => ({ ...m, diet: false, choices: false, sourced: false, list: false }));
@@ -5705,6 +5790,59 @@ export default function HostShellV2() {
       .map(it => layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx }));
   }, [foodPlan, priceIdx]);
   const priceCoverage = useMemo(() => layerCoverage(priceLayerRows), [priceLayerRows]);
+
+  // ── THE PINNED BAR, WRITTEN ONCE FOR ALL THREE TABS ─────────────────────
+  // It used to live inside the `food || foodplan` branch of the sheet, which
+  // is why extending it to Bringing could not be done by changing a
+  // condition: the markup was not reachable from that branch at all. Copying
+  // it there would have made a second bar to keep in step with the first —
+  // the duplication class that has cost this repo twice today. One value,
+  // rendered by each branch that has a tally to show.
+  const pinnedBar = barShows ? (
+
+    <div className={'ftotal' + (barIsExit ? ' ftotal-exit' : '')}>
+      <span className="ftotal-l">{barTally}</span>
+      {/* ── IT STOPS REPEATING THE HERO (host, 2026-09-24) ────────
+          "check for duplication of info and choices between
+          shop/bringing/plan sections." The sharpest one was on a
+          single screen at a single moment: the hero read
+          "$100–$400" and this bar, four inches below it, read
+          "$100–$400 estimated". The same number, twice, in the two
+          most prominent slots on the sheet.
+
+          Board D's footer is `$11.21 spent · $30.24 to go` — not
+          the estimate again. A pinned bar in a shopping aisle is
+          for PROGRESS: what has gone in the cart and what is left.
+          The estimate is the headline and is stated once, up top.
+
+          The store figure keeps precedence when there is one,
+          because a real shelf subtotal beats both. */}
+      {/* ── AND WHILE A DRILL-IN IS OPEN, THE BAR IS THE EXIT ────
+          The money line gives way to `Done`. It is a SWAP because
+          the text it replaces runs to 173px of a 390px bar and
+          there is nothing to spare beside it — and because a host
+          inside a section is reading the section, not the running
+          total. The progress fraction on the left is the one thing
+          that stays, so pressing Done is never a blind exit.
+
+          No glyph: this settles in place, it does not route. */}
+      {barIsExit ? (
+        <button type="button"
+          className={'mini' + (foodSect.choices && choicesAllSettled ? ' lit-done' : '')}
+          style={foodSect.choices && choicesAllSettled
+            ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+          onClick={closeDrill}>Done</button>
+      ) : sheet.kind !== 'food' ? null : (
+        <span className="ftotal-r">
+          {priceCoverage.storeTotal > 0
+            ? `${fmt(priceCoverage.storeSum)} priced at your store`
+            : shopTally.bought > 0
+              ? `${fmt((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))} in the cart · ${fmt(Math.max(0, ((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0)) - ((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))))} to go`
+              : 'nothing in the cart yet'}
+        </span>
+      )}
+    </div>
+  ) : null;
   const priceNote = () => {
     // A ZIP the host has ALREADY GIVEN names the region when no state does.
     // Host directive 2026-09-24: the sheet was telling a host to "add your
@@ -17932,7 +18070,6 @@ export default function HostShellV2() {
                 UI the density work spent the morning removing. */}
             {sheet.kind === 'bringing' && foodPlan ? (() => {
               const rows = (foodPlan.list || []).filter((i) => i && i.broughtByCommunity);
-              const named = rows.filter((r) => String((event.foodOwner || {})[r.id] || r.owner || '').trim()).length;
               const who = (rows[0] && rows[0].broughtByLabel) || 'The community';
               return (
                 <>
@@ -17943,10 +18080,21 @@ export default function HostShellV2() {
                     <GuideLine>
                       {`${who} is carrying the food. You are buying the table around it.`}
                     </GuideLine>
+                    {/* THE COUNT MOVED TO THE PINNED BAR (2026-09-27), so this
+                        line stops saying it. Driven on a Repast the moment the
+                        bar reached this tab: the grounding read "0 of 11 spoken
+                        for · nothing here costs you anything" and the bar four
+                        inches below read "0 of 11 spoken for" — the same
+                        sentence twice on one screen, which is the duplication
+                        the bar's own comment cites as the reason its right slot
+                        stays empty here. I put it in the left slot instead.
+
+                        The bar keeps the count because the bar does not scroll
+                        away; this line keeps the fact the bar cannot carry, and
+                        which a host reading a list of other people's dishes
+                        actually needs to hear — that none of it is her bill. */}
                     <Grounding gap={ASK_RHYTHM.valueToWhy}>
-                      {named === rows.length
-                        ? 'Everyone is spoken for.'
-                        : `${named} of ${rows.length} spoken for · nothing here costs you anything`}
+                      nothing here costs you anything
                     </Grounding>
                   </div>
                   {/* A CONTROL THAT PERFORMS THE ACT IT NAMES (UX_07). The first
@@ -18020,6 +18168,7 @@ export default function HostShellV2() {
                   <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>
                     This is a note of what you were told. Nothing here is sent to anyone.
                   </p>
+                  {pinnedBar}
                 </>
               );
             })() : null}
@@ -18520,7 +18669,7 @@ export default function HostShellV2() {
                   );
                 })()}
                 {(foodPlan.choices || []).length > 0 && (() => {
-                  const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
+                  const openN = choicesTally.total - choicesTally.settled;
                   const open = !!foodSect.choices;
                   void openN;
                   return null; // folded into the status strip below
@@ -18530,7 +18679,7 @@ export default function HostShellV2() {
                 {(() => {
                   const dc = event.dietCounts || {};
                   const anyDiet = anyDietFlagged(event);  // lib/dietRows — was hand-rolled here twice, identically
-                  const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
+                  const openN = choicesTally.total - choicesTally.settled;
                   const hasChoices = (foodPlan.choices || []).length > 0;
                   const hasSourcing = (foodPlan.sourcingTiers || []).length > 0;
                   const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
@@ -19457,6 +19606,38 @@ export default function HostShellV2() {
                     if (!lo && !hi) return '';
                     return String(Math.round((lo + hi) / 2));
                   };
+                  // ── TWO GROUPS, ONE LETTER ─────────────────────────────
+                  // The badge was `g.charAt(0)`, so Drinks and Dessert both
+                  // rendered "D" and the monogram stopped identifying
+                  // anything — on a repast they sit one above the other.
+                  //
+                  // Only the groups that actually CLASH get extended, and only
+                  // as far as it takes to separate them, so every other badge
+                  // keeps its single letter. Computed from the groups on
+                  // screen rather than a fixed map, so a playbook that adds a
+                  // group is handled without anyone remembering to.
+                  const groupGlyph = (() => {
+                    const out = {}; const byFirst = {};
+                    for (const g of groups) {
+                      const k = String(g).trim().charAt(0).toUpperCase();
+                      (byFirst[k] = byFirst[k] || []).push(g);
+                    }
+                    for (const k of Object.keys(byFirst)) {
+                      const gs = byFirst[k];
+                      if (gs.length === 1) { out[gs[0]] = k; continue; }
+                      let n = 2;
+                      const pref = (g) => {
+                        const t = String(g).trim();
+                        return t.charAt(0).toUpperCase() + t.slice(1, n).toLowerCase();
+                      };
+                      // Stop at three: past that the badge is a word, not a
+                      // monogram, and two groups that agree for three letters
+                      // are better told apart by the label beside it.
+                      while (n < 3 && new Set(gs.map(pref)).size < gs.length) n += 1;
+                      for (const g of gs) out[g] = pref(g);
+                    }
+                    return out;
+                  })();
                   const groupRows = groups.map(g => {
                     const gItems = items.filter(it => (it.group || 'Other') === g);
                     if (!gItems.length) return null;
@@ -19478,7 +19659,7 @@ export default function HostShellV2() {
                     return (
                     <div key={g} className={'fgroup' + (isOpen ? ' open' : '')}>
                       <button className="fg-head" onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
-                        <div className={'fg-badge' + (gDone ? ' done' : '')} aria-hidden>{g.trim().charAt(0).toUpperCase()}</div>
+                        <div className={'fg-badge' + (gDone ? ' done' : '')} aria-hidden>{groupGlyph[g] || g.trim().charAt(0).toUpperCase()}</div>
                         <div className="fg-id">
                           <div className="fg-label">{g}
                             {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 'var(--sp-2)' }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
@@ -20296,7 +20477,14 @@ export default function HostShellV2() {
                           (same word list as legacy's guessFoodCategory, ported above). */}
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                         <span className="of">Goes in:</span>
-                        {['Food', 'Drinks', 'Supplies'].map(g => {
+                        {/* Same four groups the list renders, in the same
+                            order (playbooks/index.js `groups`). This omitted
+                            Dessert, so a host adding a cake could not file it
+                            where the cakes live — she could only put it in
+                            Food, next to the chicken. Found while reordering
+                            the display 2026-09-27; it is the second copy of a
+                            list that should have been one. */}
+                        {['Food', 'Drinks', 'Dessert', 'Supplies'].map(g => {
                           const active = (foodAddGroup || guessFoodCategory(foodAddName).group) === g;
                           return (
                             <button key={g} className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={active}
@@ -20338,52 +20526,7 @@ export default function HostShellV2() {
                     only appears when the unit map resolved something, because a
                     subtotal that quietly included an unreconciled shelf price is
                     the exact defect the board caught in the prototype. */}
-                {sheet.kind !== 'foodplan' && !noKitchen && foodPlan.itemCount > 0 ? (
-                  <div className={'ftotal' + (drillOpen ? ' ftotal-exit' : '')}>
-                    <span className="ftotal-l">
-                      {shopTally.bought} of {shopTally.total} bought
-                    </span>
-                    {/* ── IT STOPS REPEATING THE HERO (host, 2026-09-24) ────────
-                        "check for duplication of info and choices between
-                        shop/bringing/plan sections." The sharpest one was on a
-                        single screen at a single moment: the hero read
-                        "$100–$400" and this bar, four inches below it, read
-                        "$100–$400 estimated". The same number, twice, in the two
-                        most prominent slots on the sheet.
-
-                        Board D's footer is `$11.21 spent · $30.24 to go` — not
-                        the estimate again. A pinned bar in a shopping aisle is
-                        for PROGRESS: what has gone in the cart and what is left.
-                        The estimate is the headline and is stated once, up top.
-
-                        The store figure keeps precedence when there is one,
-                        because a real shelf subtotal beats both. */}
-                    {/* ── AND WHILE A DRILL-IN IS OPEN, THE BAR IS THE EXIT ────
-                        The money line gives way to `Done`. It is a SWAP because
-                        the text it replaces runs to 173px of a 390px bar and
-                        there is nothing to spare beside it — and because a host
-                        inside a section is reading the section, not the running
-                        total. The progress fraction on the left is the one thing
-                        that stays, so pressing Done is never a blind exit.
-
-                        No glyph: this settles in place, it does not route. */}
-                    {drillOpen ? (
-                      <button type="button"
-                        className={'mini' + (foodSect.choices && choicesAllSettled ? ' lit-done' : '')}
-                        style={foodSect.choices && choicesAllSettled
-                          ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                        onClick={closeDrill}>Done</button>
-                    ) : (
-                      <span className="ftotal-r">
-                        {priceCoverage.storeTotal > 0
-                          ? `${fmt(priceCoverage.storeSum)} priced at your store`
-                          : shopTally.bought > 0
-                            ? `${fmt((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))} in the cart · ${fmt(Math.max(0, ((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0)) - ((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))))} to go`
-                            : 'nothing in the cart yet'}
-                      </span>
-                    )}
-                  </div>
-                ) : null}
+                {pinnedBar}
               </>
             ) : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No spread to build for this kind of event yet.</div>)}
             {sheet.kind === 'vendors' && (() => {

@@ -123,15 +123,26 @@ test('and it actually closes the section', async ({ page }) => {
   expect(await countDone(page)).toBe(0);
 });
 
-test('THE TRAP: on Plan the bar is gone, so the header keeps its exit', async ({ page }) => {
-  // The case that makes "just delete the header button" wrong. The list
-  // drill-in has no tab guard and survives the switch; the bar does not.
+test('THE TRAP, NOW CLOSED AT THE SOURCE: Plan has the bar too', async ({ page }) => {
+  // This test used to assert the OPPOSITE — that the bar was absent on Plan,
+  // so the drill-in headers had to keep their own exit. That was true and it
+  // was the trap: the list drill-in has no tab guard and survives the switch,
+  // while the bar required `sheet.kind !== 'foodplan'`.
+  //
+  // 2026-09-27, host: "do bar for plan and bringing". The bar is now on every
+  // food tab, so the trap is gone at its source rather than worked around.
+  // The PROPERTY this file exists for is unchanged and is why the rewrite was
+  // safe to make: always exactly one way out, wherever you are.
   await openTheList(page);
   await tapText(page, '^Plan$');
   await page.waitForTimeout(1200);
   await settled(page);
 
   const hasBar = await page.evaluate(() => !!document.querySelector('.ftotal'));
-  expect(hasBar).toBe(false);          // premise: the bar really is absent here
-  expect(await countDone(page)).toBe(1);  // …and the host is still not stranded
+  expect(hasBar).toBe(true);
+  expect(await countDone(page)).toBe(1);
+  // …and it is the bar's, not a header's.
+  const inBar = await page.evaluate(() => [...document.querySelectorAll('.ftotal button')]
+    .some((x) => /^done$/i.test((x.innerText || '').trim())));
+  expect(inBar).toBe(true);
 });

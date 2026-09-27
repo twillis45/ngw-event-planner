@@ -5298,7 +5298,12 @@ export function playbookFoodPlan(event, opts = {}) {
     suppliesSpentHigh: Math.max(0, Math.round(supGot('high') / 5) * 5),
     suppliesCount: supItems.length,
     suppliesBought: supItems.filter((s) => got[s.id]).length,
-    groups: ['Food', 'Drinks', 'Supplies', 'Dessert'].filter((g) => list.some((i) => i.group === g)),
+    // ORDER IS THE HOST'S READING ORDER, not the engine's. Dessert sat last,
+    // below Supplies, which put the paper plates between the mac and cheese
+    // and the cake. Host ruling 2026-09-27: the edible groups run together and
+    // Supplies closes the list, because Supplies is the only one that is not
+    // food and is the only one a host shops differently.
+    groups: ['Food', 'Drinks', 'Dessert', 'Supplies'].filter((g) => list.some((i) => i.group === g)),
     // Sourcing card (1597-2): current tier, the tier list, + the key protein's baseline
     // cost so the UI shows each option's re-priced "~$X ribs".
     sourcing,
