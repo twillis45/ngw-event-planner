@@ -68,6 +68,13 @@
   --field-y:10px;                             /* field vertical padding role */
   --field-compact:6px 10px;                   /* the small inline input size (was 6/10, 5/10, 5/8 — now one) */
   --field:10px var(--sp-3);                   /* the medium inline input size (was 10/12, 10/14, 10/6) */
+  /* ── THE TAP FLOOR, AS A TOKEN (2026-09-27) ────────────────────────────
+     UX_03 sets 44px and this file honoured it in a dozen places as a raw
+     literal, so nothing could state the rule or be swept when it moved. It
+     is a token now, and it is the SHELL's floor — not a cockpit's, not a
+     sheet's. A control that presses uses it; a thing that only displays
+     does not. */
+  --tap-min:44px;
   --break-major:44px;                         /* the LARGE break — major sections & day nodes (was 44/48) */
   --pad-empty:14px 2px;                        /* the empty-state / v-meta block padding (was inline ×10) */
 
@@ -1604,7 +1611,10 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
    snap-scroll, no off-screen options, nothing to mis-tap. */
 .typebrowser{display:flex; flex-direction:column}
 .shelf-wrap{margin-top:var(--sp-4)}
-.shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--faint); margin-bottom:var(--sp-2)}
+/* Overlines name sections; at --faint they measured 4.85:1 and read as small
+   print. Lit to the primary ink 2026-09-27 (host) — same change as the
+   cockpit's .lc-label, because the two carry the same job on two surfaces. */
+.shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--ink); margin-bottom:var(--sp-2)}
 .shelf{
   display:flex; flex-wrap:wrap; gap:var(--gap-chip);
 }
