@@ -7,7 +7,7 @@
 //
 // Engine proof: src/lib/__tests__/thirteenSteppersOrTwoAndADoor.test.js. What
 // is driven HERE is the thing jest cannot see — that both SCREENS now read it.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -48,8 +48,7 @@ const seed = async (page, dietCounts) => {
 const openCalls = async (page, dietCounts) => {
   await seed(page, dietCounts);
   await tapText(page, 'Calls to make');
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
 };
 
 test('(premise) the Calls screen really does carry the dietary steppers', async ({ page }) => {
@@ -82,8 +81,7 @@ test('opening the door brings the rest back', async ({ page }) => {
   // A fold that cannot be opened is a deletion.
   await openCalls(page, null);
   await tapText(page, '\\+ 11 more');
-  await page.waitForTimeout(1200);
-  await settled(page);
+  await sheetSettled(page);
   const t = await bodyText(page);
   expect(t).toMatch(/Kosher\s*−\s*0\s*\+/);
   expect(t).toMatch(/Diabetic-friendly\s*−\s*0\s*\+/);
@@ -103,8 +101,7 @@ test('NEGATIVE CONTROL: the food sheet still folds exactly as it did', async ({ 
   // right must not have changed.
   await seed(page, null);
   await tapText(page, "what you.?re serving|dietary needs on the food plan");
-  await page.waitForTimeout(1500);
-  await settled(page);
+  await sheetSettled(page);
   // DIETARY NEEDS MOVED TO THE PLAN TAB (2026-09-24). The spread sheet split
   // into Plan / Bringing / Shop, and the planning rows — Your choices, Dietary
   // needs, How it's sourced — left the shopping tab, which is what stopped it
@@ -115,8 +112,7 @@ test('NEGATIVE CONTROL: the food sheet still folds exactly as it did', async ({ 
   await page.waitForTimeout(600);
   await settled(page);
   await tapText(page, 'Dietary needs');
-  await page.waitForTimeout(1200);
-  await settled(page);
+  await sheetSettled(page);
   const t = await bodyText(page);
   expect(t).toMatch(/Vegetarian/);
   expect(t).toMatch(/\+ 11 more/i);

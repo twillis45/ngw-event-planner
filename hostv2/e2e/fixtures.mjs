@@ -118,6 +118,31 @@ export const settled = (page) =>
     return !!app && (app.innerText || '').trim().length > 120;
   }, null, { timeout: 20_000 });
 
+// ─── AND A SHEET OPENING IS NOT THE APP BOOTING ─────────────────────────────
+//
+// `settled` above answers "has the app finished starting" — splash gone, shell
+// populated. It says nothing about a SHEET, so every spec that taps one open
+// guarded it with a guess: `waitForTimeout(1600)` appears across this
+// directory more than any other line. Measured 2026-09-28: 192 fixed sleeps,
+// 3.6 minutes of dead wall-clock per pass, and — per playwright.config.mjs —
+// "the actual flake source". One of them produced the single flaky test in
+// matrix14.
+//
+// A sheet is open when it EXISTS, has finished animating in, and has content.
+// All three matter: the element mounts before the transition runs, and an
+// assertion against a sheet at opacity 0.4 mid-slide reads a box that is
+// still moving — which is how a geometry spec goes flaky without ever being
+// wrong about the product.
+export const sheetSettled = (page, timeout = 15_000) =>
+  page.waitForFunction(() => {
+    const sh = document.querySelector('.sheet');
+    if (!sh) return false;
+    const cs = getComputedStyle(sh);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    if (parseFloat(cs.opacity) < 0.99) return false;        // still sliding in
+    return (sh.innerText || '').trim().length > 40;          // and it has content
+  }, null, { timeout });
+
 // ─── THE SECTION DOOR MOVES WITH THE VIEWPORT ───────────────────────────────
 //
 // Below the rail band, the way into a section is two taps: the eyebrow menu,

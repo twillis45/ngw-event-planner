@@ -16,7 +16,7 @@
 //
 // So this file gates the DELIVERY. jest can prove the sentence exists; only a
 // browser can prove a host sees it.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -44,11 +44,9 @@ const openList = async (page) => {
   await page.goto('?elegant=1');
   await settled(page);
   await tapText(page, "what you.?re serving");
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
   await page.evaluate(() => [...document.querySelectorAll('.fg-head')].forEach((h) => h.click()));
   await page.waitForTimeout(900);
 };

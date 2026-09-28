@@ -32,7 +32,7 @@
 //
 // So the two are one fact with two readers (`barIsExit` in HostShellV2), and
 // this asserts the property that fact exists to guarantee: ALWAYS EXACTLY ONE.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -77,14 +77,12 @@ const openTheList = async (page) => {
   await page.goto('?elegant=1');
   await settled(page);
   await tapText(page, "what you.?re serving|dietary needs on the food plan");
-  await page.waitForTimeout(1500);
-  await settled(page);
+  await sheetSettled(page);
   await tapText(page, '^Done$');          // back out of any dietary drill-in
   await page.waitForTimeout(1200);
   await settled(page);
   await tapText(page, 'The list[\\s\\S]*item');
-  await page.waitForTimeout(1500);
-  await settled(page);
+  await sheetSettled(page);
 };
 
 test('(premise) with no section open the bar shows money, not an exit', async ({ page }) => {
@@ -92,8 +90,7 @@ test('(premise) with no section open the bar shows money, not an exit', async ({
   // always shows Done, which would be its own defect.
   await openTheList(page);
   await tapText(page, '^Done$');
-  await page.waitForTimeout(1200);
-  await settled(page);
+  await sheetSettled(page);
   expect(await countDone(page)).toBe(0);
 });
 
@@ -135,8 +132,7 @@ test('THE TRAP, NOW CLOSED AT THE SOURCE: Plan has the bar too', async ({ page }
   // safe to make: always exactly one way out, wherever you are.
   await openTheList(page);
   await tapText(page, '^Plan$');
-  await page.waitForTimeout(1200);
-  await settled(page);
+  await sheetSettled(page);
 
   const hasBar = await page.evaluate(() => !!document.querySelector('.ftotal'));
   expect(hasBar).toBe(true);

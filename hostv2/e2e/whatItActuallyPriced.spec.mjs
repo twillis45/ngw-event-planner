@@ -19,7 +19,7 @@
 //
 // DRIVEN, BECAUSE JEST CANNOT EXECUTE hostv2. src/lib/__tests__/threeLayersOfPrice.test.js
 // proves the gate; only a browser proves the sheet obeys it.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -72,18 +72,16 @@ const openPriced = async (page, description) => {
   await page.goto('?elegant=1');
   await settled(page);
   await tapText(page, "what you.?re serving");
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
   if (!(await storeLayerOffered(page))) return null;      // unconfigured bundle
   await tapText(page, 'Check store prices');
   await page.waitForTimeout(300);
   await tapText(page, 'Find stores');
   await page.waitForTimeout(900);
   await tapText(page, 'Harris Teeter');
-  await page.waitForTimeout(1200);
+  await sheetSettled(page);
   await page.evaluate(() => [...document.querySelectorAll('.fg-head')].forEach((h) => h.click()));
   await page.waitForTimeout(700);
   await settled(page);

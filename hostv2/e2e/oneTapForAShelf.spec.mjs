@@ -18,7 +18,7 @@
 // A section is COLLAPSED by default, so the control only exists once its header
 // is tapped — which is also why an earlier spec that read the landing page
 // "proved" the list was absent. That test could not fail.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
 // Click by visible text. `getByRole` cannot see these — the labels are
 // multi-line and the accessible name does not match the innerText.
@@ -53,11 +53,9 @@ const openList = async (page) => {
   await page.goto('?elegant=1');
   await settled(page);
   await tapText(page, "what you.?re serving");
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
 };
 
 test('(premise) the shopping list really opens, with its sections and store chips', async ({ page }) => {
@@ -78,8 +76,7 @@ test('a section offers one tap for the whole shelf, and it undoes', async ({ pag
   expect((await labels(page)).some((x) => /^Check off all \d+/i.test(x))).toBe(true);
 
   await tapText(page, 'Check off all');
-  await page.waitForTimeout(1500);
-  await settled(page);
+  await sheetSettled(page);
   // The section header is the independent witness — it counts from `foodGot`,
   // which is the same storage the row taps write.
   const after = await labels(page);
@@ -88,8 +85,7 @@ test('a section offers one tap for the whole shelf, and it undoes', async ({ pag
   expect(after.some((x) => /^Uncheck all 3/i.test(x))).toBe(true);
 
   await tapText(page, 'Uncheck all');
-  await page.waitForTimeout(1200);
-  await settled(page);
+  await sheetSettled(page);
   expect((await labels(page)).some((x) => /Drinks 0 of 3 bought/i.test(x))).toBe(true);
 });
 
@@ -100,8 +96,7 @@ test('with a store chosen, the tap covers that store only', async ({ page }) => 
   // list itself and not by arithmetic of mine.
   await openList(page);
   await tapText(page, '^Liquor store$');
-  await page.waitForTimeout(1200);
-  await settled(page);
+  await sheetSettled(page);
 
   const before = await labels(page);
   // The chip is now the active run: "At Liquor store".
@@ -114,8 +109,7 @@ test('with a store chosen, the tap covers that store only', async ({ page }) => 
   expect(before.some((x) => /^S Supplies/i.test(x))).toBe(false);
 
   await tapText(page, 'Check off all');
-  await page.waitForTimeout(1400);
-  await settled(page);
+  await sheetSettled(page);
   const after = await labels(page);
   expect(after.some((x) => /Drinks all 1 bought/i.test(x))).toBe(true);
   expect(after.some((x) => /^Uncheck all 1$/i.test(x))).toBe(true);
@@ -134,8 +128,7 @@ test('skip sits on the row, not behind it', async ({ page }) => {
   expect(before.some((x) => /^skip it$/i.test(x))).toBe(true);
 
   await tapText(page, '^skip it$');
-  await page.waitForTimeout(1300);
-  await settled(page);
+  await sheetSettled(page);
   const after = await labels(page);
   // The row says what happened, and the section count drops — the same
   // `foodSkip` storage the tune-panel control writes.

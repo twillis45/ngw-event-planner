@@ -37,7 +37,7 @@
 //     && npx playwright test --config playwright.config.mjs e2e/threeLayersOfPrice.spec.mjs
 //
 // Measured 2026-09-23, all 7 viewport projects green on the configured build.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
 // Is layer 2 reachable in the bundle under test? Read from the running app, not
 // from the environment of the process running the test — those are different
@@ -76,12 +76,14 @@ const openList = async (page, venueCity) => {
   }, venueCity);
   await page.goto('?elegant=1');
   await settled(page);
+  // WAITING ON THE SHEET, NOT ON A NUMBER. These were waitForTimeout(1600)
+  // twice — 3.2s of guess per test, in a file with sixteen such calls. The
+  // sleep was not even measuring the right thing: `settled` answers "the app
+  // booted", and what happens after these taps is a SHEET opening.
   await tapText(page, "what you.?re serving");
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
-  await page.waitForTimeout(1600);
-  await settled(page);
+  await sheetSettled(page);
 };
 
 test('(premise) the list really opened — and the bundle says whether layer 2 is reachable', async ({ page }) => {

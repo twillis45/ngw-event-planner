@@ -30,7 +30,7 @@
 //
 // The kitchen answer is `foodChoices.dest_lodging`, the control the host presses,
 // and `kitchenSignal` ranks a told answer above any inference from a listing URL.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
 // ── THE HERO'S SIGNATURE STRING CHANGED (2026-09-24) ──────────────────
 //
@@ -77,16 +77,13 @@ const openList = async (page, pick) => {
   await settled(page);
   // Whichever label the food row is wearing for THIS fixture — see the header.
   await tapText(page, "what you.?re serving|dietary needs on the food plan");
-  await page.waitForTimeout(1500);
-  await settled(page);
+  await sheetSettled(page);
   // Back out of the dietary drill-in. A no-op on the untold fixture, whose menu
   // carries no "Done" at all — which is exactly why it is safe to always send.
   await tapText(page, '^Done$');
-  await page.waitForTimeout(1200);
-  await settled(page);
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
-  await page.waitForTimeout(1500);
-  await settled(page);
+  await sheetSettled(page);
 };
 
 test('(premise) a whole-home rental really does render the shopping list', async ({ page }) => {
@@ -189,14 +186,11 @@ test('NEGATIVE CONTROL: a LOCAL event is untouched by any of it', async ({ page 
   await page.goto('?elegant=1');
   await settled(page);
   await tapText(page, "what you.?re serving|dietary needs on the food plan");
-  await page.waitForTimeout(1500);
-  await settled(page);
+  await sheetSettled(page);
   await tapText(page, '^Done$');
-  await page.waitForTimeout(1200);
-  await settled(page);
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
-  await page.waitForTimeout(1500);
-  await settled(page);
+  await sheetSettled(page);
   const t = await bodyText(page);
   expect(t).not.toMatch(/no kitchen to cook in/i);
   expect(t).toMatch(/Drinks \d+ of \d+ bought/i);
