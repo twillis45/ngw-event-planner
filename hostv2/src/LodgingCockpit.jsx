@@ -1906,10 +1906,22 @@ function StayContact({ event, patch }) {
 // way to send it.
 //
 // Offered, never sent — UX_07 Level 5. The host reads it and sends it herself.
+// The same store the shell writes (HostShellV2 keeps `ngw-profile`), read
+// here because the cockpit is its own page and shares no React state with it.
+// Read at render rather than cached: a host who fills in their name in
+// settings and comes back should not have to reload to be on their own note.
+function readProfile() {
+  try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; }
+}
+
 function GuestNote({ event }) {
   const [copied, setCopied] = useState('');
   let note = null;
-  try { note = draftLodgingNote(event); } catch { note = null; }
+  // HOST CARRIED TO ANYTHING OUTGOING (host, 2026-09-28). This is the one
+  // thing on this surface that leaves the app — a host copies it into the
+  // group chat — and it was going out unsigned while every other draft in
+  // doItForMe already ended with the host's name.
+  try { note = draftLodgingNote(event, readProfile()); } catch { note = null; }
   if (!note || !String(note.body || '').trim()) return null;
   return (
     <Panel label="WHAT THE GROUP GETS TOLD">

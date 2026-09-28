@@ -15573,7 +15573,7 @@ export default function HostShellV2() {
                       real answer. Sits at the foot of the sheet (Figma 430). */}
                   {hasNoteMaterial && (
                     <div className="actions-row" style={{ marginTop: 14 }}>
-                      <button className="cta soft" onClick={() => { try { openDraft('The getting-around note', draftRidesNote(event)); } catch { toast('Couldn’t draft it.'); } }}>
+                      <button className="cta soft" onClick={() => { try { openDraft('The getting-around note', draftRidesNote(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>
                         Draft the getting-around note
                       </button>
                     </div>
@@ -15824,7 +15824,7 @@ export default function HostShellV2() {
                       real dates. Sits at the foot of the sheet (Figma 429). */}
                   {ar.airportOptions.length > 0 && (
                     <div className="actions-row" style={{ marginTop: 14 }}>
-                      <button className="cta soft" onClick={() => { try { openDraft('The getting-here note', draftGettingHereNote(event)); } catch { toast('Couldn’t draft it.'); } }}>
+                      <button className="cta soft" onClick={() => { try { openDraft('The getting-here note', draftGettingHereNote(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>
                         Draft the getting-here note
                       </button>
                     </div>
@@ -21829,7 +21829,7 @@ export default function HostShellV2() {
                           <div className="pill-grid" style={{ marginTop: 'var(--sp-3)' }}>
                             <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft note</button>
                             {Number(v.cost) > 0 && !v.balancePaid && (
-                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v, profile), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
                             )}
                             {(() => { try {
                               const m = getSuggestedPayMethod(v); if (!m) return null;
@@ -23168,7 +23168,7 @@ export default function HostShellV2() {
                         (when/where/parking/bring/dress/gifts), DRAFT-only per
                         UX_07: written for the host, sent by the host. */}
                     <button className="mini" onClick={() => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn’t draft it.'); } }}>Draft the guest brief</button>
-                    <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {})); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
+                    <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
                     {/* WAS "Nudge the quiet ones" — which promises the app will go and nudge
                         them. It cannot: this bulk draft has no recipient list, and its only
                         exits are share/copy (its sms: link has no number to address). The

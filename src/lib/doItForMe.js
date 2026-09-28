@@ -832,7 +832,21 @@ export function draftToast(event, profile) {
 // "our notes show … can you confirm this is still correct" — a question, not
 // a status claim. The words paid/unpaid/overdue never appear (test-banned).
 // No collections tone. Editable before copy; never sent; never public.
-export function draftVendorPaymentReminder(event, vendor) {
+// ── SIGNED, LIKE EVERY OTHER DRAFT HERE (host, 2026-09-28) ─────────────────
+// "need host carried to anything outgoing". Seven drafts in this file took no
+// profile and therefore COULD NOT sign, while the invite, the run-of-show and
+// the vendor notes have ended `— ${host}` since they were written. Every one
+// of the seven goes to a guest or a vendor: payment details, a brief ask,
+// a guest update, parking, rides, getting here, and where to stay.
+// `profile` is optional and the sign-off conditional, as everywhere else, so a
+// host with no name on file loses nothing.
+export function draftVendorPaymentReminder(event, vendor, profile = null) {
+  // Three return points, each composing its body from an array literal
+  // rather than the `lines` accumulator the rest of this file uses — so the
+  // sign-off is a tail appended to each, not a push. `sign` keeps that in
+  // one place; three copies of the same two lines is how one of them ends up
+  // forgotten.
+  const signTail = (() => { const h = hostName(profile); return h ? ['', `— ${h}`] : []; })();
   const v = vendor || {};
   const name = String(v.name || '').trim();
   const evName = String((event && event.name) || '').trim() || 'our event';
@@ -849,19 +863,19 @@ export function draftVendorPaymentReminder(event, vendor) {
   // Amount-bearing reminder: explicit pending deposit, or explicit remaining
   // balance (cost minus deposit — both host-entered fields), booked only.
   if (booked && dep > 0 && v.depositPaid !== true) {
-    return { subject: `Payment details — ${evName}`, body: [greeting, '', `Our notes show a deposit of ${money(dep)}${dueStr ? ` due by ${dueStr}` : ''}.`, '', closer, '', 'Thanks.'].join('\n') };
+    return { subject: `Payment details — ${evName}`, body: [greeting, '', `Our notes show a deposit of ${money(dep)}${dueStr ? ` due by ${dueStr}` : ''}.`, '', closer, '', 'Thanks.', ...signTail].join('\n') };
   }
   if (booked && cost > 0 && v.depositPaid === true && v.balancePaid !== true) {
     const bal = Math.max(0, cost - dep);
     if (bal > 0) {
-      return { subject: `Payment details — ${evName}`, body: [greeting, '', `Our notes show a remaining balance of ${money(bal)}${dueStr ? ` due by ${dueStr}` : ''}.`, '', closer, '', 'Thanks.'].join('\n') };
+      return { subject: `Payment details — ${evName}`, body: [greeting, '', `Our notes show a remaining balance of ${money(bal)}${dueStr ? ` due by ${dueStr}` : ''}.`, '', closer, '', 'Thanks.', ...signTail].join('\n') };
     }
   }
   // Everything else — including estimate-only and unbooked vendors — asks
   // instead of asserting.
   return {
     subject: `Payment details — ${evName}`,
-    body: [greeting, '', 'Can you confirm:', '', '- Any deposit or balance due', '- Due date', '- Preferred payment method', '- Any invoice or document we should have on file', '', 'Thanks.'].join('\n'),
+    body: [greeting, '', 'Can you confirm:', '', '- Any deposit or balance due', '- Due date', '- Preferred payment method', '- Any invoice or document we should have on file', '', 'Thanks.', ...signTail].join('\n'),
   };
 }
 
@@ -873,7 +887,7 @@ export function draftVendorPaymentReminder(event, vendor) {
 // no invented times, staff, power, load-in, payment, insurance, or "you
 // confirmed" claims (test-banned). Internal draft copy; never enters the
 // public brief payload; never auto-sends.
-export function draftVendorBriefAsk(event, vendor) {
+export function draftVendorBriefAsk(event, vendor, profile = null) {
   const v = vendor || {};
   const name = String(v.name || '').trim();
   const cat = String(v.category || '').toLowerCase();
@@ -903,6 +917,8 @@ export function draftVendorBriefAsk(event, vendor) {
     '',
     'Thanks.',
   ];
+  const host = hostName(profile);
+  if (host) lines.push('', `— ${host}`);
   return { subject: `Event brief details${name ? ` — ${name}` : ''}`, body: lines.join('\n').trim() };
 }
 
@@ -913,7 +929,7 @@ export function draftVendorBriefAsk(event, vendor) {
 // prompt, never an asserted fact. STRUCTURALLY guest-safe: no branch can emit
 // vendor/load-in/COI/payment/budget/planner content (test-banned). Editable in
 // the existing DraftSheet before the host copies/sends — never auto-sent.
-export function draftGuestUpdate(event, opts = {}) {
+export function draftGuestUpdate(event, opts = {}, profile = null) {
   const ev = event || {};
   const type = opts.type || 'general';
   const name = String(ev.name || '').trim();
@@ -968,6 +984,8 @@ export function draftGuestUpdate(event, opts = {}) {
     subject = `Event update${forName}`;
     lines = [`Hi everyone — a quick event update${forName}. Please review the details below before you head out.`, '', '[Add the update here]', '', outro];
   }
+  const host = hostName(profile);
+  if (host) lines.push('', `— ${host}`);
   return { subject, body: lines.join('\n').trim() };
 }
 
@@ -1013,7 +1031,15 @@ export function draftParkingInstructions(event) {
 // nothing real to point guests at, so the body comes back empty and the UI's
 // standard "nothing to draft yet" guard fires. Plain host language throughout:
 // "the group rate ends", never industry jargon.
-export function draftLodgingNote(event) {
+// ── AND IT IS SIGNED (host, 2026-09-28: "need host carried to anything
+// outgoing"). This took `event` alone, so it COULD NOT sign: the one draft in
+// the lodging cockpit that a host copies into a group chat went out unsigned
+// while every other draft in this file — invite, run-of-show, the vendor
+// notes at 190, 266, 407, 443 — already ended `— ${host}`. A note telling
+// sixteen people where to stay and what to pay, from nobody in particular.
+// `profile` is optional and the sign-off is conditional, exactly as it is
+// everywhere else here, so a host who has not given a name loses nothing.
+export function draftLodgingNote(event, profile = null) {
   const ev = event || {};
   const lo = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
   const hotel = String(lo.hotelName || '').trim();
@@ -1069,6 +1095,8 @@ export function draftLodgingNote(event) {
     });
   }
   lines.push('', 'Questions about rooms? Just reply here.');
+  const host = hostName(profile);
+  if (host) lines.push('', `— ${host}`);
   return { subject: `Where to stay${forName}`, body: lines.join('\n').trim() };
 }
 
@@ -1081,7 +1109,7 @@ export function draftLodgingNote(event) {
 // silence, never a guess. Nothing real to say → empty body (the UI's standard
 // "nothing to draft yet" guard). Ride matching stays HOST-MEDIATED: the note
 // invites replies for the host to pair up — it never assigns anyone a car.
-export function draftRidesNote(event) {
+export function draftRidesNote(event, profile = null) {
   const ev = event || {};
   const gt = (ev.groundTransport && typeof ev.groundTransport === 'object') ? ev.groundTransport : {};
   const note = String(gt.lastReturnNote || '').trim();
@@ -1105,6 +1133,10 @@ export function draftRidesNote(event) {
   blocks.push(td.providing === true
     ? 'Questions about getting around? Just reply here.'
     : 'Need a ride, or have seats to spare? Reply here and I’ll pair people up.');
+  // Signed like the rest. This one is wired to a real button in the
+  // shell (openDraft) and a host copies it straight to the group.
+  const host = hostName(profile);
+  if (host) blocks.push(`— ${host}`);
   return { subject: `Getting around${forName}`, body: blocks.join('\n\n').trim() };
 }
 
@@ -1119,7 +1151,7 @@ export function draftRidesNote(event) {
 // shuttle is silence. No airports means there is nothing real to point guests
 // at, so the body comes back empty (the UI's standard "nothing to draft yet"
 // guard). Block-join structure, same as draftRidesNote.
-export function draftGettingHereNote(event) {
+export function draftGettingHereNote(event, profile = null) {
   const ev = event || {};
   const airports = (Array.isArray(ev.airportOptions) ? ev.airportOptions : [])
     .filter(a => a && (String(a.name || '').trim() || String(a.code || '').trim()))
@@ -1150,6 +1182,10 @@ export function draftGettingHereNote(event) {
   if (td.providing === true) blocks.push('Once you land, we’re arranging a shuttle or van for the group — you won’t need a car of your own unless you want one.');
   else if (td.providing === false) blocks.push('Once you land, getting around is on your own wheels — plan on a rental car, or pair up with someone who has seats to spare.');
   blocks.push('Questions about flights or timing? Just reply here.');
+  // Signed like the rest. This one is wired to a real button in the
+  // shell (openDraft) and a host copies it straight to the group.
+  const host = hostName(profile);
+  if (host) blocks.push(`— ${host}`);
   return { subject: `Getting here${forName}`, body: blocks.join('\n\n').trim() };
 }
 
