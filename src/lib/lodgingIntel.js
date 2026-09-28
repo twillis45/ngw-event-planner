@@ -2258,7 +2258,14 @@ export function lodgingStage(event, intel) {
     },
     looking: {
       title: 'Go find some places.',
-      why: 'Three doors, opened with your own answers already in them. Bring back a link — or the whole results page.',
+      // SAID TWICE ON ONE SCREEN (host, 2026-09-27). "Opened with your own
+      // answers already in them" is restated eighty pixels below, under the
+      // doors, by a note that also carries the actual answers — "These open
+      // with your own answers already in it — Washington, DC · Jun 18–Jun 21
+      // · 10 guests." Only one of the two tells the host anything, so the
+      // subhead keeps the half that is an instruction and drops the half
+      // that is an echo.
+      why: 'Bring back a link — or the whole results page.',
       act: 'Search Airbnb',
     },
     weighing: {

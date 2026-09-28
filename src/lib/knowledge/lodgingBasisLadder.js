@@ -115,6 +115,9 @@ export function lodgingBasisFor(event) {
         perNight: true,
         source: 'Inside Airbnb',
         basis: bnb.basis,
+        // The one-line form, for surfaces with no room for nine facts. Both
+        // come from airbnbNightlyIndex so neither can drift from the other.
+        basisShort: bnb.basisShort || bnb.basis,
       };
     }
   }

@@ -97,6 +97,24 @@ export function airbnbNightlyFor(city, state, sleeps) {
     listings,
     bucket,
     snapshot: row[2],
+    // ── THE SAME FACTS, SHORT ENOUGH FOR A PHONE (host, 2026-09-27) ────
+    // `basis` below carries nine: source, snapshot, listing count, city,
+    // size bucket, the range, asking-not-paid, before-fees, and the licence.
+    // On the lodging cockpit that rendered as FIVE lines of grey under a
+    // headline that already said the range and the city — on a stage whose
+    // whole premise is one thing at a time. Host, seeing it on a phone:
+    // "too dense."
+    //
+    // This keeps the three the host cannot infer and the one the LICENCE
+    // requires: these are asking prices, they exclude fees, here is when,
+    // and Inside Airbnb under CC BY 4.0. Dropped from view — not from the
+    // record — are the listing count, the city and the size bucket, all of
+    // which the line above or the event itself already states.
+    //
+    // BOTH STRINGS LIVE HERE, in the module that owns the data, for the
+    // reason the ice board named hours earlier: a second copy written in the
+    // shell is how a tested sentence and a rendered one drift apart.
+    basisShort: `Asking prices, before fees · ${INSIDE_AIRBNB_ATTRIBUTION} · ${String(row[2]).slice(0, 7)}`,
     basis: `Inside Airbnb, ${row[2]} snapshot: across ${listings} entire places in `
       + `${row[0]}, ${st} ${sizeWords}, the middle half were listed at $${p25}–$${p75} a night. `
       + 'Asking prices, not what anyone paid, and BEFORE cleaning and service fees — '
