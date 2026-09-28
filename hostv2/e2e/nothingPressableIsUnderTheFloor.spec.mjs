@@ -69,13 +69,20 @@ const underFloor = (page) => page.evaluate(() => {
     return u + d + 1;
   };
   const out = [];
-  for (const el of document.querySelectorAll('button, a[href], [role=button], summary')) {
+  // INPUTS COUNT. The first version of this gate queried buttons, links and
+  // summaries only — and styles.css says why that is not enough at its own
+  // .field: "inputs can't use the ::after tap-expander (pseudo-elements don't
+  // render on <input>), so floor the height directly." A field under the
+  // floor is exactly the case the expander cannot rescue, so it is the case
+  // the gate most needed to see. It did not, and a 40px rule sat in the
+  // cockpit unjudged.
+  for (const el of document.querySelectorAll('button, a[href], [role=button], summary, input:not([type=hidden]), textarea, select')) {
     const r = el.getBoundingClientRect();
     if (r.height < 4 || r.width < 4) continue;
     const h = hit(el);
     if (h >= 0 && h < 44) {
       out.push({
-        cls: String(el.className).slice(0, 30) || el.tagName,
+        cls: (String(el.className).slice(0, 30) || el.tagName),
         label: (el.innerText || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 24),
         hit: h,
       });

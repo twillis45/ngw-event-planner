@@ -487,6 +487,25 @@ function Looking({ event, patch }) {
       return b.rung === 'listings' ? b : null;
     } catch (_) { return null; }
   }, [event]);
+  // ── AND WHEN THERE IS NO BAND, SAY SO (host, 2026-09-28) ─────────────────
+  // Norman's dissent at the lodging board: "silence is also a claim", and a
+  // host planning where we have no figure should not have to work out
+  // whether we looked. It landed hardest on the corpus's own flagship — the
+  // Disneyland 50th resolves to Anaheim, which Inside Airbnb does not cover,
+  // so the whole band vanished with no explanation at all.
+  //
+  // This is NOT the federal fallback wearing a hedge. The cap stays cut; the
+  // sentence says only that we have no regional figure, which is true and is
+  // the one thing the host cannot otherwise tell.
+  const noBandTown = useMemo(() => {
+    if (regionBand) return null;
+    try {
+      const v = venueFor(event) || {};
+      // The town alone is the condition: this stage only renders when the
+      // cockpit is relevant at all, and `travel` lives in the parent scope.
+      return String(v.city || '').trim() || null;
+    } catch (_) { return null; }
+  }, [regionBand, event]);
   const [text, setText] = useState('');
   // Clicking a door means "I have gone looking". On return the next act is to
   // bring something back, so the surface says so instead of leaving the host to
@@ -932,6 +951,12 @@ function Looking({ event, patch }) {
 
             NOTHING IS CONVERTED. A place-night is not a room-night is not a
             stay, and no rung is multiplied by nights to look like another. */}
+        {!regionBand && noBandTown && (
+          <p className="lc-note lc-noband">
+            No regional figure for {noBandTown} — Inside Airbnb doesn’t publish
+            one for here, so the doors above are the first real prices you’ll see.
+          </p>
+        )}
         {regionBand && (
           <div className="lc-band">
             <p className="lc-body">
@@ -2157,6 +2182,9 @@ const CSS = `
 .lc-fold summary::after{content:'▾';color:var(--steel-soft);font-size:11px;}
 .lc-fold[open] summary::after{content:'▴';}
 .lc-fold-body{margin-top:8px;}
+/* The no-regional line: a plain note, never styled like the band it replaces
+   — it is the absence of a number, not a quieter number. */
+.lc-noband{margin:var(--sp-3) 0 0;}
 .lc-venuegap em{font-style:italic;}
 .lc-venuegap .lc-link{margin-left:0;display:inline-block;margin-top:6px;}
 .lc-peek{font:400 12px/1.5 Inter,sans-serif;color:var(--muted);margin:16px 0 0;}
@@ -2332,9 +2360,22 @@ const CSS = `
    vocabulary that would drift the first time the atom changed. It now uses the
    real classes and styles only LAYOUT. */
 .cta.is-off{opacity:.5;}
-.lc-field{background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--ink);
-  padding:12px 14px;font:400 15px/1.3 Inter,sans-serif;min-height:46px;width:100%;min-width:0;}
-.lc-field-sm{max-width:190px;min-height:40px;}
+/* ── THE FIELD JOINS THE SHELL'S (2026-09-28) ─────────────────────────────
+   Raw 10px radius against --r-md (12), raw 15px against the scale, raw
+   padding against the spacing tokens. The 15px is the one that mattered:
+   --t-input is 16px and the scale calls it "the iOS 16px no-zoom floor",
+   because Safari zooms the page when a focused input is under it. Measured:
+   all three fields on this surface were 15px, on the stage whose whole job
+   is pasting a link from Airbnb — on a phone, with one hand.
+
+   Height floored directly rather than with the ::after expander, for the
+   reason styles.css gives at its own .field: pseudo-elements do not render
+   on <input>. That is also why the floor GATE missed these — it queried
+   buttons and links and never an input. Fixed there too. */
+.lc-field{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);color:var(--ink);
+  padding:var(--sp-3) var(--sp-4);font:650 var(--t-input)/1.3 Inter,sans-serif;
+  min-height:var(--tap-min);width:100%;min-width:0;}
+.lc-field-sm{max-width:190px;min-height:var(--tap-min);}
 .lc-area{resize:vertical;line-height:1.5;}
 .lc-row-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center;}
 .lc-row-form .lc-field{flex:1 1 200px;}
