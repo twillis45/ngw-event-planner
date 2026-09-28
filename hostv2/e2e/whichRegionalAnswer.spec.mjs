@@ -55,16 +55,41 @@ const openList = async (page) => {
 
 const sheetText = (page) => page.evaluate(() => (document.querySelector('.sheet') || {}).innerText || '');
 
-test('PREMISE: a regional adjustment really is in play', async ({ page }) => {
-  // Without this every assertion below could pass on a national plan, where
-  // there is no second quality of answer to disclose and nothing to get wrong.
-  await openList(page);
-  expect(await sheetText(page)).toMatch(/Adjusted for the South/i);
-});
+// ── WHETHER THIS PLAN WAS ADJUSTED AT ALL, AND IT DEPENDS ON THE BACKEND ──
+//
+// The regional factor comes from a live BLS proxy. CI builds against
+// `https://e2e-mock.invalid`, so the fetch fails and `foodPrices` correctly
+// degrades to factor 1 — the sheet then says "National average · NOT YET
+// adjusted for the South". A local build picks up `.env.local`, which points
+// at PROD, gets a real ~0.98, and says "Adjusted for the South".
+//
+// THE FIRST VERSION OF THIS FILE DID NOT KNOW THAT, and its premise test
+// matched /Adjusted for the South/i — which also matches "not yet ADJUSTED
+// FOR THE SOUTH". It passed in CI on the exact opposite of the condition it
+// claimed to establish, while three real assertions below it went red: 28
+// failures, all mine, on a suite that was green on this machine.
+//
+// So the invariant is CONDITIONAL, and that is the honest shape: whichever
+// way the network went, the sheet must not claim more than it did.
+const wasAdjusted = (txt) => !/not yet adjusted/i.test(txt) && /adjusted for the/i.test(txt);
 
-test('a line priced from the region’s basket says so, on the row', async ({ page }) => {
+test('PREMISE: the sheet states plainly whether it adjusted, one way or the other', async ({ page }) => {
   await openList(page);
   const txt = await sheetText(page);
+  expect(txt).toMatch(/adjusted for the/i);   // it says SOMETHING about region
+});
+
+test('a line priced from the region’s basket says so — and an unadjusted plan claims nothing', async ({ page }) => {
+  await openList(page);
+  const txt = await sheetText(page);
+  if (!wasAdjusted(txt)) {
+    // No factor, no second quality of answer, and therefore no marker. The
+    // negative half matters as much: an unadjusted plan must not wear a
+    // regional badge it did not earn.
+    expect(txt).not.toMatch(/area average/);
+    expect(txt).not.toMatch(/own BLS price/);
+    return;
+  }
   expect(txt).toMatch(/area average/);
 });
 
@@ -75,10 +100,12 @@ test('ICE — the line with no published price of its own — carries the marker
   // statistics handle an unpriced item — but an imputed number may not wear
   // a label implying it was measured.
   await openList(page);
+  const txt = await sheetText(page);
   const ice = await page.evaluate(() => [...document.querySelectorAll('.sheet .fitem, .sheet li, .sheet .frow')]
     .map((e) => (e.innerText || '').replace(/\s+/g, ' '))
     .find((t) => /^Ice\b/i.test(t)) || null);
   expect(ice, 'the ice row is on the screen at all').toBeTruthy();
+  if (!wasAdjusted(txt)) { expect(ice).not.toMatch(/area average/); return; }
   expect(ice).toMatch(/area average/);
 });
 
@@ -90,6 +117,7 @@ test('the sentence is said ONCE, not on every row', async ({ page }) => {
   // carry two words; the explanation is said once, in the header.
   await openList(page);
   const txt = await sheetText(page);
+  if (!wasAdjusted(txt)) { expect(txt).not.toMatch(/basket stood in/); return; }
   expect((txt.match(/basket stood in/g) || []).length).toBe(1);
   expect(txt).not.toMatch(/no published price for this line itself[\s\S]*no published price for this line itself/);
 });

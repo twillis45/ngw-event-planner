@@ -105,10 +105,18 @@ test('ICE IS TWENTY CENTS A POUND, and the sheet now says so', async ({ page }) 
   const ice = r.find((x) => /^\$0\.(19|20|21)–\$0\.(3[5-9]|40|41)\/lb$/.test(x));
   expect(ice, `no ice rate near the authored $0.20–$0.40 band in ${JSON.stringify(r)}`).toBeTruthy();
 
+  // ONLY WHEN THE PLAN WAS ACTUALLY ADJUSTED. The regional factor comes from a
+  // live BLS proxy; CI builds against e2e-mock.invalid, the fetch fails, and
+  // the sheet honestly reads "National average · not yet adjusted". Asserting
+  // the marker unconditionally reds CI on correct behaviour — it did, seven
+  // times, on this test.
+  const sheet = await page.evaluate(() => (document.querySelector('.sheet') || {}).innerText || '');
+  const adjusted = !/not yet adjusted/i.test(sheet) && /adjusted for the/i.test(sheet);
   const iceRow = await page.evaluate(() => [...document.querySelectorAll('.sheet .fitem, .sheet li, .sheet .frow')]
     .map((e) => (e.innerText || '').replace(/\s+/g, ' '))
     .find((t) => /^Ice\b/i.test(t)) || '');
-  expect(iceRow, 'an adjusted line names the basis of its adjustment').toMatch(/area average/);
+  if (adjusted) expect(iceRow, 'an adjusted line names the basis of its adjustment').toMatch(/area average/);
+  else expect(iceRow, 'an unadjusted line claims no regional basis').not.toMatch(/area average/);
 });
 
 test('sub-dollar rates keep their cents, whole-dollar rates stay whole', async ({ page }) => {
