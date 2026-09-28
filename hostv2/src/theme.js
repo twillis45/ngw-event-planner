@@ -9,7 +9,7 @@
 // properties (--t-*) in styles.css's :root block — that's the single type
 // source (UX_01 type-scale table names the tokens). theme.js stays colors
 // and motion only; do not mirror or move the type tokens into JS.
-import { dark, carbonNeutral } from '@app/theme/palette';
+import { dark, light, carbonNeutral } from '@app/theme/palette';
 import { durations, easings } from '@app/design/motion';
 import { color as dsColor } from '@app/design/tokens';
 
@@ -20,6 +20,29 @@ const tint = (hex, a) => {
   const [r, g, b] = [0, 2, 4].map(i => parseInt(n.slice(i, i + 2), 16));
   return `rgba(${r},${g},${b},${a})`;
 };
+
+// ── LIGHT, AND HOW IT TURNS ON (host, 2026-09-28) ─────────────────────────
+// Flipping ACTIVE_MODE never worked here because this file imported `dark`
+// and `carbonNeutral.mid` by name — the mode bundle was never consulted, so
+// the text went near-black and the surfaces stayed dark. Both ends are
+// selected by mode now, and the surface ramp finally has a light step to
+// select (palette.js carbonNeutral.light, added the same day).
+//
+// The switch is the URL and one stored key, not a rebuild: ?theme=light or
+// ?theme=dark sets it and it persists. Read defensively — a blocked or empty
+// store is dark, which is what every host has today.
+export const THEME_KEY = 'ngw-theme';
+
+export function currentTheme(search) {
+  try {
+    const q = new URLSearchParams(search != null ? search : window.location.search).get('theme');
+    if (q === 'light' || q === 'dark') {
+      try { localStorage.setItem(THEME_KEY, q); } catch (_) { /* private mode: this load still honours it */ }
+      return q;
+    }
+  } catch (_) { /* no URL: fall through to the stored answer */ }
+  try { return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (_) { return 'dark'; }
+}
 
 export function applyStudioMatte() {
   const r = document.documentElement.style;
@@ -40,7 +63,19 @@ export function applyStudioMatte() {
 
   // ── Host surfaces: the de-blued NEUTRAL CARBON ramp (the carbon gray the
   // production shell runs — palette.js carbonNeutral, user-locked 2026-06-23).
-  const c = carbonNeutral.mid; // the production default level
+  const theme = currentTheme();
+  const isLight = theme === 'light';
+  // `mid` is the production default and stays the dark answer; `light` is the
+  // step added 2026-09-28, built by inverting this ramp's own neutral
+  // character rather than importing the blue-led Figma values.
+  const c = isLight ? carbonNeutral.light : carbonNeutral.mid;
+  // The text/status bundle has to move with the surfaces or the two disagree
+  // — which is exactly the unreadable half-flip of 2026-09-27.
+  const bundle = isLight ? light : dark;
+  try {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.setProperty('color-scheme', theme);
+  } catch (_) { /* attribute is cosmetic; the vars below are the theme */ }
   set('--bg', c.bg);
   set('--bg-band', c.surface2);
   // ── --field: the ground BEHIND the stage at >=1024 (host, 2026-08-07) ──────
@@ -60,15 +95,15 @@ export function applyStudioMatte() {
   // literal string "undefined" and no layer treated that as an error.
   set('--field', carbonNeutral.deep.bg);
   set('--card', c.panel);
-  set('--ink', dark.textPrimary);
-  set('--ink-soft', dark.textSecondary);
+  set('--ink', bundle.textPrimary);
+  set('--ink-soft', bundle.textSecondary);
   // --muted was aliased to the SAME textSecondary as --ink-soft (and both
   // sit in the steel-blue hue family) — indistinguishable from each other
   // and from the identity accent everywhere they appear together (e.g. the
   // home quiet-index rows' label/value, found 2026-07-11). textMuted is now
   // a genuinely de-blued neutral gray in the palette — use it here so
   // "de-emphasized" reads as a different tone, not a dimmer blue.
-  // Color re-audit (path to 10): --muted (dark.textMuted #9a9ca0, L 0.332) and
+  // Color re-audit (path to 10): --muted (bundle.textMuted #9a9ca0, L 0.332) and
   // --ink-soft (#849eb8, L 0.328) had IDENTICAL luminance — the two text tiers
   // ranked by hue only, so in grayscale / for a colorblind host they read as one
   // tier. Darkened --muted to #909296 (L 0.287) so "de-emphasized meta" recedes a
@@ -86,15 +121,15 @@ export function applyStudioMatte() {
   set('--line-soft', tint(c.border, 0.55));
 
   // ── Identity: locked steel-blue (mode-independent) + the CTA gradient ──
-  set('--steel', dark.steelBlue);
-  set('--steel-dark', dark.steelBlueDark);
+  set('--steel', bundle.steelBlue);
+  set('--steel-dark', bundle.steelBlueDark);
   // --steel-soft carries vendor/logistics status pill TEXT on --steel-tint;
   // at the palette's #6F8794 that ran ≈3.8:1 (fails 4.5). Overridden here to a
   // lighter steel that clears 4.5 on the tint — set as a literal (not the
   // palette base) on purpose, so the shared --sheen material detail, which also
   // derives from steelBlueMuted, is left untouched (per-screen audit + brand-lock).
   set('--steel-soft', dsColor.text.onTint);       // text-legible steel on carbon (promoted 2026-08-18)
-  set('--steel-tint', tint(dark.steelBlue, 0.16));
+  set('--steel-tint', tint(bundle.steelBlue, 0.16));
   // Audit S1: steel was doing triple duty — identity, selection, AND the
   // "in progress" status tier (booked / renting / vendor-mid …), so a host
   // couldn't tell a status pill from a selected chip. --progress carries ONLY
@@ -110,7 +145,7 @@ export function applyStudioMatte() {
   // Overhead-light material response (brand direction, splash work 2026-07-11):
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the .app background radial.
-  set('--sheen', tint(dark.steelBlueMuted, 0.10));
+  set('--sheen', tint(bundle.steelBlueMuted, 0.10));
   // ── THE PRIMARY IS FLAT ────────────────────────────────────────────────────
   // Was linear-gradient(180deg, #4E6877 -> #3F5B6A) on every .cta and .tile-d;
   // now the flat top stop. The rule this follows — banned 180deg ramp, allowed
@@ -119,35 +154,35 @@ export function applyStudioMatte() {
   // the ANGLE, not the idea", with its evidence in the 2026-08-04 Mobbin read.
   // It used to be stated here instead, which made a doctrine change visible only
   // to someone reading this file. Amend the standard, not this comment.
-  set('--cta-grad', dark.steelBlueGradientTop);
+  set('--cta-grad', bundle.steelBlueGradientTop);
 
   // ── Status anchors (Dark calibrations) ──
-  set('--ok', dark.successGreen);
+  set('--ok', bundle.successGreen);
   // Dark green-ink for text ON the --ok fill (the all-quiet NEXT tile). Tokenized
   // (was a #0d2018 literal) — 6.2:1 on the green. (Color audit T2.)
   set('--on-ok', '#0d2018');
   // Status-pill TEXT (--ok on --ok-tint) ran 4.35:1 at α=0.14 — large-text-only.
   // Lightened the tint to α=0.10 (a subtler wash) → 4.64:1, clearing small-text
   // AA for the pill label without touching the green itself (2026-07-13 audit).
-  set('--ok-tint', tint(dark.successGreen, 0.10));
-  set('--warn', dark.amber);
+  set('--ok-tint', tint(bundle.successGreen, 0.10));
+  set('--warn', bundle.amber);
   // Audit I2: was α 0.15 while --ok-tint/--danger-tint are 0.10 — amber chips
   // rendered visibly denser than green/red beside them. Normalized to 0.10.
-  set('--warn-tint', tint(dark.amber, 0.10));
+  set('--warn-tint', tint(bundle.amber, 0.10));
   // --danger is the danger TEXT/accent color (severity tags, alert headlines,
   // risk labels, the danger pill). dangerRed was lightened in the palette so
   // this clears 4.5:1 on --danger-tint and on the card. --danger-solid keeps the
   // original deep red for the ONE place danger is a solid fill behind light text
   // (the alert banner) — lightening that fill would have dropped its white-text
   // contrast (per-screen audit cross-cutting fix).
-  set('--danger', dark.dangerRed);
+  set('--danger', bundle.dangerRed);
   // Same small-text fix as --ok-tint: the tint dropped α 0.14 → 0.10 for the
   // danger pill/label text. WAVE-6 CORRECTION: the "4.42:1 → 4.78:1" figures
   // this comment used to carry did not reproduce. Measured (WCAG relative
   // luminance, dangerRed #F27A70, α=0.10 composited): 5.27:1 over --card,
   // 4.82:1 over --bg-band, 6.71:1 over --carbon — all clear 4.5:1.
-  set('--danger-tint', tint(dark.dangerRed, 0.10));
-  set('--danger-solid', dark.dangerSolid);
+  set('--danger-tint', tint(bundle.dangerRed, 0.10));
+  set('--danger-solid', bundle.dangerSolid);
   // WAVE-6 AA REPAIR: danger TEXT on dark grounds gets its OWN token so text
   // legibility never rides on the fill anchors (--danger/--danger-solid are
   // fills/accents and stay untouched — dimming them would break the alert
@@ -160,12 +195,12 @@ export function applyStudioMatte() {
   set('--danger-text', '#F58B82');
 
   // ── The Day: Dark Standard Carbon ramp ──
-  set('--carbon', dark.carbonBody);
-  set('--carbon-panel', dark.carbonPanel);
-  set('--carbon-line', dark.carbonBorder);
-  set('--carbon-text', dark.textPrimary);
-  set('--carbon-muted', dark.textMuted);
-  set('--steel-muted', dark.steelBlueMuted);
+  set('--carbon', bundle.carbonBody);
+  set('--carbon-panel', bundle.carbonPanel);
+  set('--carbon-line', bundle.carbonBorder);
+  set('--carbon-text', bundle.textPrimary);
+  set('--carbon-muted', bundle.textMuted);
+  set('--steel-muted', bundle.steelBlueMuted);
 
   // ── Motion: choreography timings, no bounce ever ──
   set('--ease-out', easings.out || 'cubic-bezier(0,0,.2,1)');
