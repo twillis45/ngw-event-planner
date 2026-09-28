@@ -111,7 +111,24 @@ export function parseSmartEventText(text, opts = {}) {
     'students', 'staff', 'employees', 'players', 'members',
     'guys', 'girls', 'gals', 'ladies', 'dudes', 'bridesmaids', 'groomsmen',
   ].join('|');
-  const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i)
+  // ── "for 4 nights" IS NOT FOUR GUESTS (2026-09-28) ──────────────────────
+  // This alternative is a bare `for N`, and it runs FIRST, so it swallowed
+  // every duration a host wrote: "for 4 nights" set guests to 4 and then won
+  // over the real headcount further along the sentence, because `.match`
+  // takes the first ALTERNATIVE that fires, not the best one.
+  //
+  // Measured across ten phrasings, nine were wrong in BOTH orders —
+  // "with 12 of us for 4 nights", "for 4 nights with 12 guests",
+  // "12 people for 4 nights" all produced 4. Only "for 12 guests for 4
+  // nights" survived, and only because `for 12` happens to appear first.
+  // Guest count sizes the food, the budget, the capacity and the lodging, so
+  // this quietly mis-sized every plan that mentioned nights.
+  //
+  // The exclusion is durations and clock times, never the count nouns: "for
+  // 12 guests" still matches here, and anything this now declines falls
+  // through to the COUNT_NOUNS and "N of us" patterns below, which is where
+  // a headcount belongs.
+  const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b(?!\s*(?:nights?|nites?|days?|weeks?|wks?|months?|mos?|years?|yrs?|hours?|hrs?|minutes?|mins?|am|pm))/i)
     || t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
     // "12 of us", "20 of them" — the count with no noun at all.
     || t.match(/\b(\d{1,3})\s+of\s+(?:us|them)\b/i)
