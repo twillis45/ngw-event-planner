@@ -50,7 +50,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
-import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard, attendanceBand } from './lib/playbooks';
+import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
 import { deriveEventPhaseProgress, cueActionLabel } from './lib/phaseProgress';
 import { startTimeIsConfirmed } from './lib/startTime';
 import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
@@ -418,7 +418,6 @@ export function deriveCommandCenterData(event, foodPP = null) {
   // 'count' with guestCount 40 and catererCount 40 — two numbers in perfect agreement
   // — produced catererDrift === true off 0 yes rows. The caterer holds the host's
   // planned number in that mode, so that is what it must be compared against.
-  const _band = attendanceBand(event);
   // Delegated to lib/confirmedCovers.js rather than derived here. This was the
   // first correct version of the rule and it was still a copy — the same
   // concept had eight implementations across four files. One reader owns it.
