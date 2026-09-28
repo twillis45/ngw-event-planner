@@ -319,32 +319,32 @@ export default function LodgingCockpit() {
               room an hour from an unsigned venue. It just no longer answers
               the question "what am I doing here?" before the headline does. */}
           {addressUnsigned && (
-            <>{/* ── SIX LINES FOR A THING SHE CANNOT DO YET (host, 2026-09-27)
-                109px — the tallest block above the fold — warning about a
-                venue address on the screen whose entire job is finding
-                somewhere to stay. As the host put it: she will not have a
-                venue until she finishes this process. Leading with it made
-                the advice loud and premature at once.
+            <>{/* ── SHORT, BUT STILL THE WHOLE WARNING (host + board, 2026-09-27)
+                Six lines, 109pt, the tallest block above the fold — warning
+                about a venue address on the screen whose job is finding
+                somewhere to stay. The host: she will not have a venue until
+                she finishes this process.
 
-                The caution is not deleted, because it is true and it is
-                expensive to learn late: a room booked before the venue is
-                signed can be an hour away and non-refundable. It is now one
-                line, with the detail a tap away for a host who wants it. */}
-            <details className="lc-venuegap">
-              <summary>
-                <strong>No venue address yet.</strong>{' '}
-                <span className="lc-vg-more">Book rooms carefully</span>
-              </summary>
-              <p className="lc-vg-body">
-                Rooms booked now can end up an hour from the venue, and most
-                bookings aren’t refundable. Ask hotels to <em>hold</em> rooms — a
-                hold costs nothing and you can release it — and wait on the block
-                until the venue is signed.
-                <button type="button" className="lc-link" onClick={goAddVenue}>
-                  Add the venue address
-                </button>
-              </p>
-            </details></>
+                MY FIRST FIX WAS A FOLD, AND IT BROKE A BOARD RULING. The
+                event pros' spend guard requires three facts above the fold —
+                the gap, the money consequence, and the cheaper order (a hold
+                is not a booking) — because "a warning below the buying
+                controls is a warning the host meets after the money has
+                gone." Collapsing it hid two of the three and the CTA, and
+                lodgingSpendGuard.spec.mjs went red at desktop. The fold was
+                density bought with a ruling.
+
+                Shortening the SENTENCE costs neither: every fact the board
+                named is here, the CTA is visible, and it is three lines
+                instead of six. */}
+            <p className="lc-venuegap">
+              <strong>The venue address isn’t set yet.</strong>{' '}
+              Rooms booked now can be an hour away, and most aren’t
+              refundable — ask hotels to <em>hold</em> instead.
+              <button type="button" className="lc-link" onClick={goAddVenue}>
+                Add the venue address
+              </button>
+            </p></>
           )}
           <Body stage={stage} event={event} intel={intel} patch={patch} focus={focus} />
           <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
@@ -2141,12 +2141,7 @@ const CSS = `
 .lc-venuegap{font:400 13px/1.6 Inter,sans-serif;color:var(--ink-soft);margin:16px 0 0;
   border-left:2px solid var(--warn); padding:2px 0 2px 12px; max-width:62ch;}
 .lc-venuegap strong{color:var(--ink);font-weight:650;}
-.lc-venuegap summary{cursor:pointer;list-style:none;min-height:var(--tap-min);display:flex;
-  align-items:center;gap:var(--sp-1);flex-wrap:wrap;}
-.lc-venuegap summary::-webkit-details-marker{display:none;}
-.lc-vg-more{color:var(--steel-soft);text-decoration:underline;text-underline-offset:2px;}
-.lc-venuegap[open] .lc-vg-more{display:none;}
-.lc-vg-body{margin:6px 0 0;}
+
 /* The folded panel: its label IS the control, so it gets the tap target and a
    caret. Closed it costs one line; open it is the panel it always was. */
 .lc-fold summary{cursor:pointer;list-style:none;min-height:var(--tap-min);display:flex;

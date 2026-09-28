@@ -18,6 +18,23 @@
 // auto as well. Only a real probe saw it.
 import { test, expect, settled } from './fixtures.mjs';
 
+// ── WHERE THE FLOOR APPLIES, AND IT IS NOT EVERYWHERE ─────────────────────
+// UX_03 states 44px under "Mobile (< 640px)" — rule 2 — and repeats it for
+// tablet: "touch targets still 44px minimum." It says nothing of the kind for
+// desktop or wide, and the standard it comes from is a TOUCH standard.
+//
+// The first version of this file judged all seven viewports and failed on
+// desktop and wide, where the shell renders .chip at 32 and .frow / .mini /
+// .pill at 41. Those are real numbers and they are NOT violations of this
+// rule: a pointer is not a thumb, and WCAG's pointer-target minimum is 24.
+// Asserting 44 there would have invented a standard and then enforced it,
+// which is worse than not checking — it makes a gate that fails for reasons
+// doctrine does not support, and gates like that get disabled.
+//
+// Recorded rather than hidden: desktop and wide DO carry sub-44 controls. If
+// the bar should rise there, that is a ruling to take, not a test to widen.
+const TOUCH_ONLY = /mobile|landscape|tablet/;
+
 const EVENT = {
   id: 'e2e-tap', name: 'DC 70th', type: 'Birthday', date: '2027-06-18',
   endDate: '2027-06-21', isDestination: true, venueCity: 'Washington', state: 'DC',
@@ -77,7 +94,8 @@ test('PREMISE: there are pressable controls to judge', async ({ page }) => {
   expect(n).toBeGreaterThan(10);
 });
 
-test('the host shell has nothing under the floor', async ({ page }) => {
+test('the host shell has nothing under the floor', async ({ page }, testInfo) => {
+  test.skip(!TOUCH_ONLY.test(testInfo.project.name), 'UX_03 scopes the 44px floor to touch viewports');
   await seed(page);
   await page.goto('?elegant=1');
   await settled(page);
@@ -85,7 +103,8 @@ test('the host shell has nothing under the floor', async ({ page }) => {
   expect(await underFloor(page)).toEqual([]);
 });
 
-test('AND NEITHER DOES THE COCKPIT, which runs its own CSS', async ({ page }) => {
+test('AND NEITHER DOES THE COCKPIT, which runs its own CSS', async ({ page }, testInfo) => {
+  test.skip(!TOUCH_ONLY.test(testInfo.project.name), 'UX_03 scopes the 44px floor to touch viewports');
   // The surface the floor had never reached. Folds are opened so the
   // controls inside them are judged too — a closed <details> hides its
   // buttons from elementFromPoint entirely, and an unmeasured control is

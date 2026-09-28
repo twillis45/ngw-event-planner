@@ -59,10 +59,22 @@ test.describe('the lodging spend guard', () => {
     expect(text).toMatch(/refundable/i);
     expect(text).toMatch(/hold/i);
 
-    // It sits above the page's own headline, not tucked under it.
+    // ── ABOVE THE BUYING CONTROLS, WHICH IS WHAT THE RULING SAID ─────────
+    // This asserted `guard.y < h1.y` until 2026-09-27, when the host moved
+    // the hero to lead the stage — UX_04 gives every view one dominant
+    // element, and opening on a caution made the second-most-important thing
+    // the first thing read.
+    //
+    // The assertion is loosened against the HEADLINE and tightened against
+    // the thing that actually spends money. This test's own rationale, three
+    // lines up, is "a warning below the buying controls is a warning the host
+    // meets after the money has gone" — and the buying controls are the
+    // DOORS, not the h1. A guard under the headline and above the doors
+    // honours that in full; the old assertion was stricter than the reason
+    // given for it, and the hero ruling exposed the gap.
     const gy = (await guard.boundingBox()).y;
-    const hy = (await page.locator('.lc-h1').boundingBox()).y;
-    expect(gy).toBeLessThan(hy);
+    const doorsY = (await page.locator('.lc-doors, .lc-door').first().boundingBox()).y;
+    expect(gy).toBeLessThan(doorsY);
 
     // The act is named — never "Go" / "View" / "Do this" (CTA doctrine).
     const cta = guard.locator('button');
