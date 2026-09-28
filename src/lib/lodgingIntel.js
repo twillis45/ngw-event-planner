@@ -2083,9 +2083,29 @@ export function lodgingProvenance(option) {
     const v = o[k];
     return v != null && String(v).trim() !== '';
   };
+  // ── AND WHAT IT ACTUALLY SAYS (host, 2026-09-28) ───────────────────────
+  // These rows carried the field and where it came from and never the VALUE,
+  // so the card under the photo read "Total · read from the page you pasted"
+  // and never the total. The host: "when included the rows under image
+  // doesn't carry values." A provenance row that omits the thing it is
+  // vouching for is a citation with no quote.
+  //
+  // Formatted HERE, once, because the shell would otherwise re-derive money
+  // and lists per surface — the drift this module exists to prevent. Nothing
+  // is invented: `has` above already dropped every empty field, so every row
+  // that survives has something real to show.
+  const shown = (k, v) => {
+    if (Array.isArray(v)) return v.filter(Boolean).join(', ');
+    if (k === 'photoUrl') return 'on the card';           // the URL is not a fact a host reads
+    if (k === 'totalPrice' || k === 'pricePerNight' || k === 'fees') {
+      const n = Number(v);
+      return Number.isFinite(n) ? `$${Math.round(n).toLocaleString()}` : String(v);
+    }
+    return String(v).trim();
+  };
   const rows = Object.keys(LODGING_FIELD_LABELS)
     .filter(has)
-    .map((k) => ({ field: k, label: LODGING_FIELD_LABELS[k], source: src[k] || 'unknown' }));
+    .map((k) => ({ field: k, label: LODGING_FIELD_LABELS[k], source: src[k] || 'unknown', value: shown(k, o[k]) }));
   return {
     rows,
     read: rows.filter((r) => r.source === 'read').length,

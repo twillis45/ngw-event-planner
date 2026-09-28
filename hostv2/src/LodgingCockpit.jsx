@@ -25,6 +25,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 // shortlist and this surface already shows those; 3 and 4 are what there is
 // to say BEFORE they have one.
 import { lodgingBasisFor, isOwnEvidence } from '@app/lib/knowledge/lodgingBasisLadder';
+import { perHeadOf } from '@app/lib/perHead';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
@@ -1219,6 +1220,9 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
           const hist = (() => { try { return lodgingPriceHistory(o); } catch { return null; } })();
           const pv = (() => { try { return lodgingProvenance(o); } catch { return null; } })();
           const total = o.allIn != null ? o.allIn : o.totalPrice;
+          // The GROUP's number, not the host's. Null whenever it cannot be
+          // divided honestly — no total, or no headcount.
+          const perHead = (() => { try { return perHeadOf(total, event); } catch (_) { return null; } })();
           // A per-room rate has no honest stay total (see the allIn block in
           // lodgingIntel — a party of ten needs rooms we have not been told
           // about). Suppressing the total must not also hide the one number we
@@ -1259,6 +1263,28 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                         nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
                         .filter(Boolean).join(' · ')}
                     </p>
+                    {/* ── WHAT IT IS EACH (host, 2026-09-28) ─────────────────
+                        "per head to pass to group", and this is the moment
+                        worth passing: a host comparing places is about to tell
+                        people what it costs them. A total answers the host's
+                        question; a per-person answers the group's.
+
+                        Host-aware on purpose. perHeadOf divides by headsFor,
+                        which knows whether the host said they are IN the
+                        number — $4,200 is $263 across sixteen and $247 across
+                        seventeen. Until somebody asks, the line says so rather
+                        than picking one; that hedge is the whole reason the
+                        reader exists, and dropping it here would put a settled
+                        number on an unanswered question. */}
+                    {perHead && (
+                      <p className="lc-card-each">
+                        <span className="lc-each-n">{money(perHead.each)} each</span>
+                        <span className="lc-each-why">
+                          {` across ${perHead.heads}`}
+                          {perHead.stated ? '' : ' — nobody said if you’re in that number'}
+                        </span>
+                      </p>
+                    )}
                     <div className="lc-ctas lc-ctas-wrap" style={{ margin: '10px 0 0' }}>
                       <button className="cta" aria-label={`Pick ${o.label}`} onClick={() => onPick(o.id)}>Pick this place</button>
                       {String(o.url || '').trim() && (
@@ -1337,7 +1363,15 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                       <p className="lc-card-eyebrow">WHAT WE READ · WHAT YOU TYPED</p>
                       {known.map((r) => (
                         <div className="lc-pv" key={r.field}>
-                          <span className="lc-pv-label">{r.label}</span>
+                          <span className="lc-pv-label">
+                            {r.label}
+                            {/* THE VALUE, which these rows never showed. The
+                                card said "Total · read from the page you
+                                pasted" and never the total — a citation with
+                                no quote. Formatted in lodgingIntel so the
+                                shell cannot drift from it. */}
+                            {r.value ? <span className="lc-pv-val">{r.value}</span> : null}
+                          </span>
                           <span className="lc-pv-src">
                             {/* "read from the link" sat two inches under "No link"
                                 on the same hotel card — the card denying its own
@@ -2480,7 +2514,16 @@ const CSS = `
   margin:16px 0 2px;}
 .lc-pv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
   padding:10px 0;border-top:1px solid var(--hair);}
-.lc-pv-label{font:400 14px/1.35 Inter,sans-serif;color:var(--ink);min-width:0;}
+.lc-pv-label{font:400 14px/1.35 Inter,sans-serif;color:var(--ink);min-width:0;
+  display:flex;gap:var(--sp-2);align-items:baseline;flex-wrap:wrap;}
+/* The value leads; the field name labels it. Bolder than the label because
+   the number is what a host came to read. */
+.lc-pv-val{font-weight:650;color:var(--ink);}
+/* The per-person line: the number carries the weight, the caveat does not.
+   One line, so it never competes with the total above it. */
+.lc-card-each{margin:var(--sp-1) 0 0;font:400 var(--t-meta)/1.4 Inter,sans-serif;}
+.lc-each-n{font-weight:650;color:var(--ink);}
+.lc-each-why{color:var(--muted);}
 .lc-pv-src{font:400 12px/1.35 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
 .lc-dots{display:flex;gap:6px;justify-content:center;margin:12px 0 4px;}
 .lc-dot{width:6px;height:3px;border-radius:2px;background:var(--hair);transition:width .18s ease;}

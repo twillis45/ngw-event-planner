@@ -153,3 +153,71 @@ test('the three doors are the same width', async ({ page }) => {
   expect(widths.length).toBe(3);
   expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
 });
+
+// ─── WHAT IT IS EACH, AND WHETHER ANYONE ASKED WHO'S COUNTED ──────────────
+//
+// Host, 2026-09-28: "we need per head to pass to group", and "include cost
+// per head there too". A total answers the host's question; a per-person
+// answers the group's, and the weighing stage is where a host is about to
+// tell people what it costs them.
+//
+// The hedge is the point. $4,510 is $282 across sixteen and $265 across
+// seventeen, and the app has never asked whether the host is in the number —
+// the creation chip says "How many?" and the strings "including you" /
+// "counting you" appear nowhere in the repo. Until somebody answers, the line
+// says so rather than printing a settled figure.
+const WEIGHING = {
+  id: 'e2e-each', name: '50th at Disneyland', type: 'Birthday',
+  date: '2027-11-06', endDate: '2027-11-11', isDestination: true,
+  venueCity: 'Anaheim', state: 'CA', guestMode: 'count', guestCount: 16,
+  totalBudget: 12000, budget: [], vendors: [], guests: [],
+  lodgingOptions: [
+    { id: 'o1', label: 'The house on Rose Ave', url: 'https://www.airbnb.com/rooms/1',
+      sleeps: 10, beds: 4, totalPrice: 4200, pricePerNight: 840, fees: 310,
+      amenities: ['kitchen', 'pool'], nights: 5,
+      sources: { label: 'read', totalPrice: 'read', sleeps: 'typed', fees: 'read' } },
+    { id: 'o2', label: 'Casa Verde', url: 'https://www.airbnb.com/rooms/2',
+      sleeps: 12, totalPrice: 5100, nights: 5, sources: { label: 'read', totalPrice: 'read' } },
+  ],
+};
+
+const eachLines = (page) => page.evaluate(() => [...document.querySelectorAll('.lc-card-each')]
+  .map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+
+test('a place says what it is EACH, not only what it is', async ({ page }) => {
+  await openCockpit(page, WEIGHING);
+  const lines = await eachLines(page);
+  expect(lines.length).toBeGreaterThan(1);
+  expect(lines[0]).toMatch(/\$\d+ each across 16/);
+});
+
+test('UNASKED IS SAID, not silently resolved', async ({ page }) => {
+  await openCockpit(page, WEIGHING);
+  expect((await eachLines(page))[0]).toMatch(/nobody said if you’re in that number/);
+});
+
+test('answering it moves the money, and drops the hedge', async ({ page }) => {
+  // The whole reason the count is the urgent half: the same house is $282 or
+  // $265 depending on one unasked question.
+  await openCockpit(page, { ...WEIGHING, id: 'e2e-each-in', hostCounts: true });
+  const inCount = await eachLines(page);
+  expect(inCount[0]).toMatch(/across 16/);
+  expect(inCount[0]).not.toMatch(/nobody said/);
+
+  await openCockpit(page, { ...WEIGHING, id: 'e2e-each-out', hostCounts: false });
+  const plusHost = await eachLines(page);
+  expect(plusHost[0]).toMatch(/across 17/);
+  expect(plusHost[0]).not.toMatch(/nobody said/);
+  expect(plusHost[0]).not.toEqual(inCount[0]);
+});
+
+test('no total, no per-head — never a zero', async ({ page }) => {
+  await openCockpit(page, {
+    ...WEIGHING, id: 'e2e-each-none',
+    lodgingOptions: [
+      { id: 'n1', label: 'Just a link', url: 'https://www.airbnb.com/rooms/9', sources: { label: 'read' } },
+      { id: 'n2', label: 'Another link', url: 'https://www.airbnb.com/rooms/8', sources: { label: 'read' } },
+    ],
+  });
+  expect(await eachLines(page)).toEqual([]);
+});
