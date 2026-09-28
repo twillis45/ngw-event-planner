@@ -49,10 +49,37 @@ describe('the sharded reporter switch', () => {
     // `workers: 2` is the 2026-08-06 flake fix and sharding must not disturb
     // it — each shard still runs two workers on its own machine, which is the
     // entire reason sharding was chosen over raising the worker count.
+    //
+    // WHAT CHANGED, 2026-09-27: workers became `CI ? 2 : 4` after the full
+    // matrix was measured at 1.2h on two workers and 35.2m on four, both with
+    // zero failures and zero flaky, on a 14-core machine. CI KEEPS TWO — its
+    // runners are a fraction of those cores and these specs measure rendered
+    // geometry, which degrades under starvation rather than failing cleanly.
+    //
+    // So the assertion is now the RULE and not the number. Writing `toBe(4)`
+    // would have pinned whichever machine happened to run the suite, and
+    // pinning the literal is what made this test go red in the first place:
+    // it asserted 2 unconditionally, I changed the config, ran jest and the
+    // matrix, and never ran vitest. It was red for four pushes.
     delete process.env.PW_BLOB;
     const cfg = await load();
-    expect(cfg.workers).toBe(2);
+    expect(cfg.workers).toBe(process.env.CI ? 2 : 4);
     expect(cfg.retries).toBe(1);
     expect(cfg.projects.length).toBe(7);
+  });
+
+  it('CI IS THE CONSTRAINED ONE, and never gets more than two', async () => {
+    // The half that actually protects the gate: whatever the local number
+    // becomes, a CI runner must not be handed more workers than the flake
+    // fix allows.
+    delete process.env.PW_BLOB;
+    const prev = process.env.CI;
+    process.env.CI = '1';
+    try {
+      const cfg = await load();
+      expect(cfg.workers).toBe(2);
+    } finally {
+      if (prev === undefined) delete process.env.CI; else process.env.CI = prev;
+    }
   });
 });
