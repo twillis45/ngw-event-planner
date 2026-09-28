@@ -2132,8 +2132,15 @@ const CSS = `
    A taller box cannot be clipped by its parent's scroll. */
 .lc-step.is-done{color:var(--muted);border-bottom-color:var(--steel-soft);}
 .lc-step.is-on{color:var(--ink);border-bottom-color:var(--ok);font-weight:650;}
-.lc-h1{font:700 clamp(27px,5.2vw,40px)/1.12 Inter,sans-serif;letter-spacing:-.03em;margin:26px 0 0;text-wrap:balance;}
-.lc-why{font:italic 400 clamp(14px,1.9vw,17px)/1.5 Newsreader,Georgia,serif;color:var(--muted);margin:12px 0 0;max-width:52ch;}
+/* ── THE STAGE HERO TAKES THE SCALE'S HERO TIER (2026-09-28) ──────────────
+   These were bespoke clamps — 27/5.2vw/40 and 14/1.9vw/17 — and UX_01 names
+   the --t-* tokens as the single source of truth, with a raw font-size as a
+   review flag. Measured at 402pt the consequence was real, not academic: the
+   h1 sat at its 27px floor because 5.2vw is 21px there, a third under the
+   --t-display-l tier that renders 38px at the same width. The dominant
+   element of the stage was smaller than the scale's hero. */
+.lc-h1{font:700 var(--t-display-l)/1.12 Inter,sans-serif;letter-spacing:-.03em;margin:var(--sp-6) 0 0;text-wrap:balance;}
+.lc-why{font:italic 400 var(--t-sub)/1.5 Newsreader,Georgia,serif;color:var(--muted);margin:var(--sp-3) 0 0;max-width:52ch;}
 /* The spend guard. Amber per UX_02 ("needs attention, incomplete") — NOT crit:
    both event seats ruled a red gate here is alarm a host learns to ignore, and
    the colour budget allows one meaning per token. A hairline rule rather than a
@@ -2294,7 +2301,19 @@ const CSS = `
   padding:var(--sp-1) 0;background:none;border:none;color:var(--steel-soft);
   font:600 12px/1 Inter,sans-serif;cursor:pointer;min-height:var(--tap-min);}
 .lc-back:hover{color:var(--ink);}
-.lc-ctas-wrap{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;margin-top:12px;}
+/* ── THE LAST SHOP-SHEET RULING TO REACH THIS SURFACE (2026-09-28) ────────
+   d9c3a10b: "every secondary action the same width, on a two-column grid."
+   Its cause was flex — flex:1 1 auto grows a chip that wraps alone, so width
+   encoded WRAP POSITION, which is nothing. Owner then: "email is one of the
+   smallest words but is wider than send to instacart."
+   This row was still flex-wrap. Measured at 402pt: two peer actions at 157
+   and 212, the same defect one surface over. Four actions read 2x2, three
+   read 2 + 1, and every action is identical either way — correct, because
+   these are peers. Two columns and not three for the reason the ruling
+   gave: it cannot clip. */
+.lc-ctas-wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2);
+  overflow:visible;-webkit-mask-image:none;mask-image:none;margin-top:var(--sp-3);}
+.lc-ctas-wrap > *{margin:0;}
 .lc-staged{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;
   border-top:1px solid var(--line);padding:12px 0;cursor:pointer;text-align:left;}
 .lc-tick{flex:0 0 auto;width:18px;height:18px;border-radius:4px;border:1px solid var(--line);background:var(--card);}
