@@ -21,6 +21,10 @@
 // NOTHING HERE INVENTS DATA. Every number comes from the engines the live sheet
 // uses. A stage the data has not reached says so plainly.
 import { useMemo, useState, useCallback, useEffect } from 'react';
+// The published rungs of the lodging ladder. Rungs 1-2 are the host's own
+// shortlist and this surface already shows those; 3 and 4 are what there is
+// to say BEFORE they have one.
+import { lodgingBasisFor, isOwnEvidence } from '@app/lib/knowledge/lodgingBasisLadder';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
@@ -213,6 +217,27 @@ export default function LodgingCockpit() {
   // Back to the host shell, landing ON the venue field rather than a tab top
   // (row-level CTA doctrine). `demo=lodging` is what put us in the cockpit, so
   // clearing it is what leaves.
+  // ── THE WAY BACK (host, 2026-09-27) ──────────────────────────────────────
+  // The cockpit is its own page — `?demo=lodging` — and it had no exit. Every
+  // link on the looking stage went deeper or went OUT to Airbnb: five stage
+  // tabs, three doors, a paste box, and "Add the venue address". A host who
+  // opened "Where everyone stays" could reach the rest of their event only by
+  // the browser's back button, which is not an affordance the app offers and
+  // is gone entirely once a door has been opened in the same tab.
+  //
+  // Same mechanism as goAddVenue below and deliberately so: `demo=lodging` is
+  // what put us here, so clearing it is what leaves. No focus target — this
+  // one means "back to the whole plan", not to a row.
+  const goBackToPlan = () => {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete('demo');
+      u.searchParams.delete('focus');
+      window.location.href = u.toString();
+    } catch {
+      window.location.href = window.location.pathname;
+    }
+  };
   const goAddVenue = () => {
     try {
       const u = new URL(window.location.href);
@@ -229,6 +254,12 @@ export default function LodgingCockpit() {
     <Frame>
       <div className="lc-grid">
         <aside className="lc-rail-col">
+          {/* The exit sits ABOVE the title, where a back control is looked
+              for, and it NAMES where it goes — "Back" alone would be the
+              browser's job described twice. */}
+          <button className="lc-back" onClick={goBackToPlan}>
+            <span aria-hidden="true">‹</span> The rest of the plan
+          </button>
           <p className="lc-eyebrow">
             WHERE EVERYONE STAYS
             {/* A seeded example must SAY it is one, everywhere it is on screen —
@@ -273,20 +304,48 @@ export default function LodgingCockpit() {
               Amber, not red: UX_02 gives amber to "needs attention, incomplete",
               and both event seats ruled that a red gate here is alarm the host
               learns to ignore. */}
-          {addressUnsigned && (
-            <p className="lc-venuegap">
-              <strong>The venue address isn’t set yet.</strong>{' '}
-              Rooms booked now can end up an hour from the venue, and most bookings
-              aren’t refundable. Ask hotels to <em>hold</em> rooms — a hold costs
-              nothing and you can release it — and wait on the block until the
-              venue is signed.
-              <button type="button" className="lc-link" onClick={goAddVenue}>
-                Add the venue address
-              </button>
-            </p>
-          )}
           <h1 className="lc-h1">{copy.title}</h1>
           <p className="lc-why">{copy.why}</p>
+          {/* ── THE HERO LEADS, THE CAUTION FOLLOWS (host, 2026-09-27) ──────
+              The stage opened on a four-line warning about a venue address,
+              and the thing the screen is actually FOR — "Go find some places."
+              — came after it. UX_04 gives every view exactly one dominant
+              element, and this cockpit exists to render one stage at a time;
+              leading with the caution made the second-most-important thing on
+              the screen the first thing read.
+
+              The warning is not demoted in weight, only in ORDER: it still
+              sits above the doors, where it can still stop a host booking a
+              room an hour from an unsigned venue. It just no longer answers
+              the question "what am I doing here?" before the headline does. */}
+          {addressUnsigned && (
+            <>{/* ── SIX LINES FOR A THING SHE CANNOT DO YET (host, 2026-09-27)
+                109px — the tallest block above the fold — warning about a
+                venue address on the screen whose entire job is finding
+                somewhere to stay. As the host put it: she will not have a
+                venue until she finishes this process. Leading with it made
+                the advice loud and premature at once.
+
+                The caution is not deleted, because it is true and it is
+                expensive to learn late: a room booked before the venue is
+                signed can be an hour away and non-refundable. It is now one
+                line, with the detail a tap away for a host who wants it. */}
+            <details className="lc-venuegap">
+              <summary>
+                <strong>No venue address yet.</strong>{' '}
+                <span className="lc-vg-more">Book rooms carefully</span>
+              </summary>
+              <p className="lc-vg-body">
+                Rooms booked now can end up an hour from the venue, and most
+                bookings aren’t refundable. Ask hotels to <em>hold</em> rooms — a
+                hold costs nothing and you can release it — and wait on the block
+                until the venue is signed.
+                <button type="button" className="lc-link" onClick={goAddVenue}>
+                  Add the venue address
+                </button>
+              </p>
+            </details></>
+          )}
           <Body stage={stage} event={event} intel={intel} patch={patch} focus={focus} />
           <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
         </main>
@@ -301,7 +360,7 @@ function stageCopy(derived, stage) {
   if (stage === derived.stage) return derived;
   return ({
     'no-town': { title: 'Name the town.', why: 'Every search needs a place before it can open.' },
-    looking: { title: 'Go find some places.', why: 'Three doors, opened with your own answers already in them.' },
+    looking: { title: 'Go find some places.', why: 'Bring back a link — or the whole results page.' },
     weighing: { title: 'Weigh them side by side.', why: 'On the things you said matter — and nothing that was never said.' },
     picked: { title: 'Lock one in.', why: 'Choosing is not booking. This is where the pick becomes a reservation.' },
     booked: { title: 'On the books.', why: 'The refund window, the next payment, and who still needs a room.' },
@@ -390,6 +449,44 @@ const notesFor = (c) => [
 ].filter(Boolean).join(' · ');
 
 function Looking({ event, patch }) {
+  // Only the PUBLISHED rungs. Once the host has a shortlist, rungs 1-2 are
+  // their own evidence and this surface already shows the real listings —
+  // a regional average beside their own prices would be noise arguing with
+  // something better.
+  // ── RUNG 3 ONLY, AND RUNG 4 IS CUT ON PURPOSE (host, 2026-09-27) ────────
+  // The first build of this showed the federal cap wherever Inside Airbnb had
+  // no region — Santa Fe rendered "The federal cap here is $167 a night — for
+  // ONE room". The host stopped it, and was right.
+  //
+  // GSA's figure is a reimbursement ceiling for a government traveller's
+  // single hotel room. The person reading this is about to shop WHOLE HOUSES
+  // for ten people. The number is precise, official-sounding, and answers a
+  // question nobody asked — and a disclaimer does not undo an anchor. She
+  // reads $167, opens Airbnb, sees $437 for a whole place, and concludes
+  // either that the app is wrong or that she is overspending. Neither is
+  // true.
+  //
+  // The ladder's own header already forbids this: "the worst thing this code
+  // could do is let the weakest one wear the strongest one's authority", and
+  // its bottom rung is null — "Not a zero, not a guess." Rung 4 in a place
+  // where the host is shopping whole houses is rung 4 doing rung 3's job.
+  //
+  // So: the band speaks only when it can answer the question actually being
+  // asked, in the unit being asked about. Everywhere else it says nothing,
+  // and silence here is the design rather than a gap.
+  //
+  // OWN EVIDENCE ALSO SILENCES IT. Once the host has a shortlist, this
+  // surface shows their real listing prices, and a regional average beside
+  // them is noise arguing with something better. (Red-proofing caught that
+  // this was untested: mutating the check to show own evidence too passed
+  // all four tests. A gate that cannot fail on its own fault is not a gate.)
+  const regionBand = useMemo(() => {
+    try {
+      const b = lodgingBasisFor(event);
+      if (!b || isOwnEvidence(b)) return null;
+      return b.rung === 'listings' ? b : null;
+    } catch (_) { return null; }
+  }, [event]);
   const [text, setText] = useState('');
   // Clicking a door means "I have gone looking". On return the next act is to
   // bring something back, so the surface says so instead of leaving the host to
@@ -784,7 +881,7 @@ function Looking({ event, patch }) {
   return (
     <>
       <Panel label="THREE DOORS">
-        <div className="lc-ctas">
+        <div className="lc-ctas lc-doors">
           {/* THREE ON ONE LINE. "Search Airbnb / Open Vrbo / Search hotels" cannot
               fit 361pt at a legible size — the third fell past the mask. The
               heading above already says these are doors and the ↗ says they
@@ -814,6 +911,41 @@ function Looking({ event, patch }) {
           <p className="lc-note">Hotels open at the town only — set the dates and guests once you’re there.</p>
         )}
         {!links.length && <p className="lc-note">No doors yet — the town is missing.</p>}
+        {/* ── WHAT THE REGION ASKS, BEFORE THEY GO LOOKING ──────────────────
+            Lodging board 2026-09-27, finding #2, and Don Norman's dissent in
+            the same sitting: the board barred the published rungs from firing
+            a budget warning, and he would not accept that NOTHING replaced
+            it — "silence is also a claim", and a host planning in a region
+            they cannot afford should not find out by walking into it.
+            This is what replaces it, and it is deliberately here rather than
+            in the budget: the question a regional band can honestly answer is
+            "what will the rooms cost", which on a destination event is mostly
+            a question about what GUESTS will pay. The lodging form models a
+            room block — a rate, a code, a deadline — that guests book
+            themselves, so this is their number more often than the host's.
+
+            THE SENTENCE IS THE ENGINE'S, verbatim. It already says "asking
+            prices, not what anyone paid, and BEFORE cleaning and service
+            fees", which is the qualifier the board required. Writing a second
+            copy here is how a test and a screen drift apart — the exact
+            finding from the ice board hours earlier.
+
+            NOTHING IS CONVERTED. A place-night is not a room-night is not a
+            stay, and no rung is multiplied by nights to look like another. */}
+        {regionBand && (
+          <div className="lc-band">
+            <p className="lc-body">
+              Whole places around here were asking ${regionBand.low}–${regionBand.high} a night.
+            </p>
+            {/* THE SHORT FORM. The full sentence ran five lines of grey on a
+                390px phone, under a headline that already said the range and
+                the city — the densest block on a stage built for one thing at
+                a time. It still says what a host cannot infer (asking, before
+                fees, when) and what the licence requires (Inside Airbnb,
+                CC BY 4.0). Written in the engine, not here. */}
+            <p className="lc-note">{regionBand.basisShort || regionBand.basis}</p>
+          </div>
+        )}
       </Panel>
       <Panel label={wentLooking ? 'NOW BRING ONE BACK' : 'BRING ONE BACK'}>
         {/* Offered, never applied on its own: the host still decides that the
@@ -859,7 +991,10 @@ function Looking({ event, patch }) {
             extraction directly, so the act is: copy, paste, done. The button
             stays for a typed/dragged value and for keyboards that bypass the
             paste event. */}
-        <textarea className="lc-field lc-area" rows={4} value={text}
+        {/* TWO ROWS, NOT FOUR. Nothing is typed here — the host PASTES, and a
+            paste needs a target, not a page. 116px of empty field was the
+            second-largest block on the stage. */}
+        <textarea className="lc-field lc-area" rows={2} value={text}
           onChange={(e) => { setText(e.target.value); if (readErr) setReadErr(''); }}
           onPaste={(e) => {
             const pasted = (e.clipboardData && e.clipboardData.getData('text')) || '';
@@ -878,10 +1013,14 @@ function Looking({ event, patch }) {
             also read as a blanket promise across all three doors, but only
             Airbnb and Vrbo have a card reader; Hotels doesn't yet, and the
             error message that fires for it says so on its own. */}
+        {/* THREE LINES FOR ONE IDEA (host, 2026-09-27). ~50pt of explanation
+            under a box that is now 71. The privacy fact is the one a host
+            cannot infer and is worth keeping; "a bare link has to be fetched,
+            so it takes a moment" describes a delay they will simply
+            experience, and the reader already says so when it happens. */}
         <p className="lc-note">
-          Paste the whole Airbnb or Vrbo results page and every card on it is read
-          right here — nothing leaves your phone. A bare link has to be fetched, so
-          it takes a moment.
+          A whole results page works — every card is read right here, and nothing
+          leaves your phone.
         </p>
         {readErr && <p className={'lc-note' + (/^(Added|Got)/.test(readErr) ? '' : ' lc-warn')}>{readErr}</p>}
         {/* ONE BUTTON, TWO JOBS. Paste and read were two buttons side by side,
@@ -934,7 +1073,7 @@ function AlreadySorted({ event, patch }) {
     },
   });
   return (
-    <Panel label="ALREADY SORTED IT YOURSELF?">
+    <FoldPanel label="ALREADY SORTED IT YOURSELF?">
       {/* ── ASK, DO NOT ASSUME (2026-08-06, 3rd sitting) ──────────────────────
           The first cut of this panel invited BOTH "booked a block on the phone"
           and "know where everyone's staying" — then stamped every answer
@@ -964,7 +1103,7 @@ function AlreadySorted({ event, patch }) {
       <p className="lc-note">
         Only “held” counts as booked — it is what the rest of the plan reads when it says lodging is sorted.
       </p>
-    </Panel>
+    </FoldPanel>
   );
 }
 
@@ -1918,6 +2057,24 @@ const Panel = ({ label, children }) => (
   <section className="lc-panel"><p className="lc-label">{label}</p>{children}</section>
 );
 
+// ── A PANEL FOR THE PATH THE HOST IS NOT ON (host, 2026-09-27) ─────────────
+// Measured on the looking stage at 402pt: "ALREADY SORTED IT YOURSELF?" was
+// 306pt — the largest block on a screen whose whole premise is one thing at a
+// time, and it is an ESCAPE HATCH. It is for a host who is not doing this
+// flow: she already booked, and wants to record it rather than search.
+//
+// That is worth offering and not worth 306pt of a stage about searching. It
+// keeps its label, so a host who IS in that situation still finds it by
+// reading the screen, and costs one line until she asks for it.
+const FoldPanel = ({ label, children }) => (
+  <section className="lc-panel">
+    <details className="lc-fold">
+      <summary className="lc-label">{label}</summary>
+      <div className="lc-fold-body">{children}</div>
+    </details>
+  </section>
+);
+
 function EventPicker({ events, eventId, onPick }) {
   if (events.length < 2) return null;
   return (
@@ -1963,7 +2120,16 @@ const CSS = `
    a worse map. The scroll + edge mask above stays as the fallback for narrower
    handsets (320pt) and for longer labels later, so nothing wraps either way. */
 .lc-step{background:none;border:none;border-bottom:2px solid var(--line);padding:6px 5px 7px;
-  font:500 10px/1 Inter,sans-serif;letter-spacing:0;cursor:pointer;color:var(--faint);}
+  font:500 10px/1 Inter,sans-serif;letter-spacing:0;cursor:pointer;color:var(--faint);
+  min-height:var(--tap-min);}
+/* REAL HEIGHT, BECAUSE THE EXPANDER COULD NOT WORK HERE. First attempt gave
+   these tabs the sanctioned ::after that .sheet-x uses — and re-probing with
+   elementFromPoint showed 42 and 43 still, unchanged. The cause is one line
+   up: .lc-rail sets overflow-x:auto, which computes overflow-y to auto as
+   well, so the expander was clipped to the rail's own 25px. That is the
+   "computed geometry is not a tap target" trap exactly — a 44px ::after
+   clipped to nothing, invisible to every measurement except a real probe.
+   A taller box cannot be clipped by its parent's scroll. */
 .lc-step.is-done{color:var(--muted);border-bottom-color:var(--steel-soft);}
 .lc-step.is-on{color:var(--ink);border-bottom-color:var(--ok);font-weight:650;}
 .lc-h1{font:700 clamp(27px,5.2vw,40px)/1.12 Inter,sans-serif;letter-spacing:-.03em;margin:26px 0 0;text-wrap:balance;}
@@ -1975,6 +2141,20 @@ const CSS = `
 .lc-venuegap{font:400 13px/1.6 Inter,sans-serif;color:var(--ink-soft);margin:16px 0 0;
   border-left:2px solid var(--warn); padding:2px 0 2px 12px; max-width:62ch;}
 .lc-venuegap strong{color:var(--ink);font-weight:650;}
+.lc-venuegap summary{cursor:pointer;list-style:none;min-height:var(--tap-min);display:flex;
+  align-items:center;gap:var(--sp-1);flex-wrap:wrap;}
+.lc-venuegap summary::-webkit-details-marker{display:none;}
+.lc-vg-more{color:var(--steel-soft);text-decoration:underline;text-underline-offset:2px;}
+.lc-venuegap[open] .lc-vg-more{display:none;}
+.lc-vg-body{margin:6px 0 0;}
+/* The folded panel: its label IS the control, so it gets the tap target and a
+   caret. Closed it costs one line; open it is the panel it always was. */
+.lc-fold summary{cursor:pointer;list-style:none;min-height:var(--tap-min);display:flex;
+  align-items:center;gap:var(--sp-2);}
+.lc-fold summary::-webkit-details-marker{display:none;}
+.lc-fold summary::after{content:'▾';color:var(--steel-soft);font-size:11px;}
+.lc-fold[open] summary::after{content:'▴';}
+.lc-fold-body{margin-top:8px;}
 .lc-venuegap em{font-style:italic;}
 .lc-venuegap .lc-link{margin-left:0;display:inline-block;margin-top:6px;}
 .lc-peek{font:400 12px/1.5 Inter,sans-serif;color:var(--muted);margin:16px 0 0;}
@@ -1982,10 +2162,23 @@ const CSS = `
 .lc-link{background:none;border:none;color:var(--steel-soft);cursor:pointer;font:500 12px/1 Inter,sans-serif;padding:0 0 0 6px;text-decoration:underline;}
 .lc-panel{margin-top:clamp(20px,3vw,30px);}
 .lc-picker{border-top:1px solid var(--line);padding-top:14px;}
-.lc-label{font:500 10px/1 Inter,sans-serif;letter-spacing:.09em;color:var(--faint);margin:0 0 8px;}
+/* ── AN OVERLINE IS A TITLE AND WAS LIT LIKE A FOOTNOTE (host, 2026-09-27)
+   "THREE DOORS" and "BRING ONE BACK" name the sections of the stage, and at
+   --faint they measured 4.85:1 — legal for AA and read as small print. The
+   neutral text ramp has no middle step (#eef0f4, #9a9ca0, and a blue
+   #849eb8), and --faint sits within 2% alpha of --muted, so the only real
+   lift available without inventing a colour is the primary ink. */
+.lc-label{font:600 10px/1 Inter,sans-serif;letter-spacing:.09em;color:var(--ink);margin:0 0 var(--sp-2);}
 .lc-body{color:var(--ink-soft);margin:0 0 6px;}
 .lc-strong{font:650 17px/1.3 Inter,sans-serif;margin:0 0 6px;}
 .lc-note{font:400 11px/1.5 Inter,sans-serif;color:var(--faint);margin:10px 0 0;}
+/* The regional band, before the host has a shortlist. Banded like the rest of
+   this cockpit and deliberately QUIET: it is context for a search, not a
+   verdict on one, and the published rungs must never out-shout the host's own
+   listings when those arrive. */
+.lc-band{margin:var(--sp-3) 0 0;padding:var(--sp-2) var(--sp-3);border:1px solid var(--line);border-radius:var(--r-row);background:var(--bg-band);}
+.lc-band .lc-body{margin:0;color:var(--ink);}
+.lc-band .lc-note{margin:6px 0 0;}
 /* The search doors ride the same rule — inline, scrolled if they do not fit,
    never stacked into a ragged block. */
 .lc-ctas{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
@@ -2006,7 +2199,15 @@ const CSS = `
    links in a rail rather than a full-width primary key.
    The floor itself is not negotiable: 44px is the accessibility minimum, and
    shrinking the hit area to match the paint would fail it. */
-.lc-ctas .cta{font-size:14px;padding:7px 14px;min-height:34px;position:relative;}
+/* 44, NOT 34 — the Shop-sheet ruling, arriving late (2026-09-26 -> 09-27).
+   334896ad set min-height:44px on .food-act after finding it at 34: "ten
+   pixels under, on three buttons a host reaches for on the way out of the
+   door." The identical 34 lived here and did not get the pass, because this
+   cockpit runs its own .lc-* CSS with, by its own header, zero overlap with
+   styles.css. Every one of that redesign's five rulings stopped at that
+   boundary. The ::after below stays: it is belt and braces, and the visual
+   height is what the standard actually asks for. */
+.lc-ctas .cta{font-size:14px;padding:7px 14px;min-height:var(--tap-min);position:relative;}
 .lc-ctas .cta::after{content:"";position:absolute;left:0;right:0;top:50%;
   height:44px;transform:translateY(-50%);}
 /* A rail that must not scroll gets to spread; one that holds two actions wraps
@@ -2022,8 +2223,82 @@ const CSS = `
    row evenly; text-align centers each label inside its share. */
 .lc-door{border:1px solid var(--line);text-decoration:none;flex:1 1 0;text-align:center;
   justify-content:center;}
+/* ── THREE DOORS ARE NOT A CHIP ROW (host, 2026-09-27) ────────────────────
+   .lc-ctas is a masked horizontal SCROLLER — the right pattern for a long
+   row of chips, and the wrong one for exactly three doors that all have to
+   be visible and tappable. Its mask fades the last 10% of the row, so the
+   third door sat under the fade and read as narrower than the other two.
+   The host called it "different sizes", which is what it looks like: two
+   whole doors and a dimmed sliver.
+
+   I MEASURED THE WIDTHS AND CALLED IT NOT REPRODUCIBLE. They were
+   115/115/115 in both Chromium and WebKit — correct, and beside the point.
+   Layout width is not what is on screen. Only looking at the render found
+   it, and the host had to say it twice first.
+
+   NO BACKTICKS IN THIS BLOCK: it lives inside a JS template literal, and the
+   first draft of this comment quoted a class name in backticks, which closed
+   the string and broke the build.
+
+   A grid of three equal columns cannot overflow or scroll, so there is
+   nothing for a mask to fade: minmax(0,1fr) lets each door shrink below its
+   content width instead of widening the row. */
+.lc-doors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-2);
+  overflow:visible;-webkit-mask-image:none;mask-image:none;align-items:center;}
+/* AND EQUAL HEIGHTS, WHICH IS WHAT THE HOST ACTUALLY SAW. Measured in WebKit
+   at 402pt: 45 / 37 / 37. Every door ended at the same y, so the tall one
+   stuck UP and the row read ragged — "the buttons are different sizes". The
+   cause was the label wrapping its arrow onto a second line in the widest
+   word, not the box. nowrap stops the wrap; stretch makes the grid row give
+   all three the same height whatever the label does next. */
+.lc-doors .lc-door{min-width:0;white-space:nowrap;align-self:center;margin:0;
+  height:var(--tap-min);box-sizing:border-box;justify-content:space-between;text-align:left;}
+/* ── AND THE ROW HAS TO BE A STRAIGHT LINE (host, 2026-09-27) ─────────────
+   THE CAUSE WAS A MARGIN, and it took four wrong fixes to find because I
+   kept measuring the boxes instead of their offsets. Measured at last:
+   margin-top is 0 on the first door and 8px on the other two — a sibling
+   rule written for a VERTICAL stack of CTAs, doing exactly its job inside a
+   horizontal row. The first door sat 8px high; centering the row halved it
+   to 4 and hid the cause.
+   Widths, heights, padding, white-space, overflow and alignment were all
+   correct the whole time. Zeroing the margin is the fix; the rest of this
+   rule earns its place for other reasons and stays. */
+/* ── AND THE ROW HAS TO BE A STRAIGHT LINE (host, 2026-09-27) ─────────────
+   Equal boxes were not enough. Measured: all three 44 tall, and the first
+   sat 8px HIGHER than the other two — tops 321 / 329 / 329, bottoms
+   365 / 373 / 373. The grid row is 52 tall; with an explicit height, stretch
+   stops applying and the items fell back to different alignments inside it,
+   one to the top and two to the bottom.
+   Centering every door in the row makes the offset impossible whatever the
+   row height turns out to be — which matters because nothing here controls
+   that 52. */
+/* ── CENTRED TEXT IS WHAT MADE THEM LOOK CROOKED (host, 2026-09-27) ───────
+   The boxes were identical — 115 wide, 44 tall, 8px gaps, flush at both ends
+   — and the host still read the row as misaligned. Measured inside each box:
+   the labels were centred perfectly, insetL === insetR every time, but the
+   insets DIFFERED between doors because the words differ in length —
+   Airbnb 29, Vrbo 36, Hotels 30. Three labels starting at three different
+   places across three identical boxes.
+
+   Centring is the cause, not the cure. space-between anchors each label to
+   its box's left edge and each arrow to the right, so the labels share one
+   inset and the arrows share another: two straight columns instead of three
+   floating words. */
+/* THE HEIGHT IS STATED, NOT INHERITED. Measured in WebKit at 402pt the three
+   doors came out 45 / 37 / 37 with identical computed padding, line-height,
+   min-height, white-space and align-self, identical children, and one grid
+   row — the first was simply 8px taller and the archaeology was not worth
+   more of the host's evening. 44 is not a workaround number: it is the tap
+   target this repo's own QA bar requires, so stating it fixes the raggedness
+   and satisfies the rule at once. */
 .lc-warn{color:var(--warn);}
 .lc-demo{color:var(--warn);letter-spacing:.09em;}
+/* Quiet and tertiary: leaving is always available and never the point of the
+   screen. UX_05 — a navigation link is text, not a filled control. */
+.lc-back{display:inline-flex;align-items:center;gap:var(--sp-1);margin:0 0 var(--sp-2);
+  padding:var(--sp-1) 0;background:none;border:none;color:var(--steel-soft);
+  font:600 12px/1 Inter,sans-serif;cursor:pointer;min-height:var(--tap-min);}
+.lc-back:hover{color:var(--ink);}
 .lc-ctas-wrap{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;margin-top:12px;}
 .lc-staged{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;
   border-top:1px solid var(--line);padding:12px 0;cursor:pointer;text-align:left;}
