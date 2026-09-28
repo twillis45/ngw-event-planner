@@ -176,10 +176,26 @@ test('THE KILL SWITCH: ?nosw=1 removes it and it stays removed', async ({ page }
   }));
   expect(after).toEqual({ regs: 0, caches: 0, killed: '1' });
 
-  // …and a later ordinary visit does not quietly put it back.
+  // ── …AND A LATER ORDINARY VISIT DOES NOT QUIETLY PUT IT BACK ───────────
+  // FLAKY ONCE IN 2,643 (matrix14, 2026-09-28) and fixed at the cause rather
+  // than retried away. This was `waitForTimeout(2500)` then a single sample —
+  // the exact construction playwright.config.mjs names as "the actual flake
+  // source", and doubly wrong for asserting an ABSENCE: on a loaded machine
+  // the kill's unregister can still be in flight at 2500ms, so the one sample
+  // catches a registration that is mid-teardown. A shorter sleep would have
+  // passed vacuously and a longer one only hides it.
+  //
+  // Waiting on the CONDITION removes the guess, and then it is held: five
+  // polls across a second, because "gone once" and "stays gone" are different
+  // claims and this test's title promises the second one.
   await page.goto('?elegant=1');
-  await page.waitForTimeout(2500);
-  expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)).toBe(0);
+  const regs = () => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length);
+  await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistrations()).length === 0,
+    null, { timeout: 15000 });
+  for (let i = 0; i < 5; i++) {
+    expect(await regs(), `a registration came back on poll ${i + 1}`).toBe(0);
+    await page.waitForTimeout(200);
+  }
 });
 
 test('NEGATIVE CONTROL: it never caches a plan or a price', async ({ page }) => {
