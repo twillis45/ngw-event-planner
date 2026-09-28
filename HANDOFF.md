@@ -251,6 +251,67 @@ this file is the short answer to "where is it, is it green, what's next."
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
+## FIXED 2026-09-27 (thirty-ninth entry) — the lodging cockpit, live with the host on a phone, and four times the check was the thing that was wrong
+
+**HEAD `012a3892`, all pushed. jest 7,995 / 569. vitest 48 / 4.
+Matrix13 2,414 passed / 4 failed (all mine, all fixed); matrix14 confirming.**
+
+### What shipped
+
+| | |
+|---|---|
+| Lodging board | Ruled: published rungs never fire the budget flag. `budgetComparableTotal` refuses on TWO grounds — a room-night cannot become a stay without a room count nobody knows, and an asking band must not trigger a "budget blown" warning aimed at a wallet that may not be the host's. |
+| The cockpit gets an exit | It was a dead end: five stage tabs, three doors that leave for Airbnb, and nothing back to the event. |
+| The region's real number | Rung 3 only — "Whole places around here were asking $394–$762 a night", 322 real DC listings. **Rung 4 cut by the host**: a GSA per-room reimbursement ceiling shown to someone shopping whole houses is an anchor a disclaimer cannot undo. |
+| ~400pt of density | Venue warning 109→48 (shortened, not folded — see below), paste box halved, its note 3 lines→1, "Already sorted" 306pt→a folded row, subhead de-duplicated. |
+| `--tap-min` | The 44px floor was a raw literal in a dozen places. Now a token, with a gate that probes `elementFromPoint` rather than computing geometry. |
+| Overlines lit | 4.85:1 → 13.25:1. `--faint` sits within 2% alpha of `--muted`, so primary ink was the only real step available without inventing a colour. |
+
+### The thread: four times the check was wrong, and twice I overruled a ruling
+
+1. **A red vitest for four pushes.** `workers: CI ? 2 : 4` broke a test asserting
+   `workers === 2`. I ran jest and a 35-minute matrix after that change and never
+   ran vitest — the one suite covering the config I had just edited.
+2. **A CRA orphan.** `_band` left behind by the covers unification. The warning
+   count went DOWN (245→242) and the gate still failed, because it fingerprints
+   each warning instead of counting them. A count gate would have shipped it.
+3. **My fold broke the spend guard.** Collapsing the venue warning hid two of the
+   three facts the event pros required above the fold. Density bought with a
+   ruling is not density earned; shortening the sentence cost neither.
+4. **My new gate invented a standard.** It judged desktop and wide, where UX_03
+   says nothing — that floor is stated for mobile and tablet, and WCAG's pointer
+   minimum is 24. A gate that fails for reasons doctrine does not support is a
+   gate someone disables.
+
+### Worth carrying forward
+
+**Measure the thing described, not the thing you just changed.** The doors row
+took FOUR attempts. The host said "different sizes", then "the heights", then
+"not in a straight line"; each time I measured what I had last touched. Widths,
+heights, padding, white-space, overflow and alignment were all correct. The
+cause was `margin-top: 0` on the first door and `8px` on the other two — a
+sibling rule written for a vertical CTA stack, doing its job in a horizontal
+row. The host's screenshots out-diagnosed six measurement runs.
+
+**A computed 44 is not a 44.** The stage tabs got the sanctioned `::after`
+expander and the hit stayed 42: `.lc-rail` sets `overflow-x:auto`, which
+computes `overflow-y` to auto and clips it. Only `elementFromPoint` saw it.
+
+**The repo already had the number.** For the ice bags I went to the web and
+found 7lb; the corpus's own `costProvenance` cites 20lb bags at five named
+stores — the very bags the per-pound range was built from. Reaching outside for
+a fact already verified inside is its own failure mode.
+
+### Open
+
+| | |
+|---|---|
+| Lodging #4 | Do guests pay their own rooms? Decides whether lodging belongs in a host total at all. |
+| Lodging #2 | Rungs on the surface — partly done. Rogati's "wire it or delete it" still stands for rung 4. |
+| Desktop tap targets | `.chip` 32, `.frow`/`.mini`/`.pill` 41. Recorded, not a violation of UX_03 as written. A ruling to take. |
+| Light mode | Needs a light step in `carbonNeutral`; `ACTIVE_MODE` alone does nothing for hostv2. |
+| 187 `waitForTimeout` | 3.5 min of dead sleep per pass — beats raising workers again. |
+
 ## FIXED 2026-09-27 (thirty-eighth entry) — the offline shell ships, two onboarding faults close, and the matrix found a live pricing untruth
 
 **HEAD `41eed734`, 10 unpushed. jest 7,981 / 566. vitest 47 / 4.
