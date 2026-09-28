@@ -73,7 +73,29 @@ export default defineConfig({
   // rather than on a state. That is the actual flake source and it is named in
   // the path-to-9, not fixed here.
   retries: 1,
-  workers: 2,
+  // ── FOUR LOCALLY, TWO IN CI (2026-09-27, measured) ───────────────────────
+  // `workers: 2` above is the 2026-08-06 anti-flake setting and it stays in
+  // CI. Locally it was leaving a 14-core machine almost idle: the full matrix
+  // ran 1.2 HOURS at 2 workers (matrix10, 2,327 passed) and 35.2 MINUTES at 4
+  // (matrix12, 2,341 passed) — 2x, with ZERO failures and ZERO flaky in both.
+  //
+  // CI KEEPS 2 ON PURPOSE. Hosted runners are a fraction of this machine's
+  // cores, and these specs measure rendered geometry — they degrade under CPU
+  // starvation rather than failing cleanly, which is how the coin-flip gate
+  // happened in the first place. checks.yml already parallelises with two
+  // shards at 26m each and only 12% margin; raising workers inside a small
+  // runner is the opposite of what that margin wants.
+  //
+  // AND ONE CLEAN RUN IS ONE SAMPLE. The finding this setting exists for was
+  // precisely that a single green run proves the dice landed. 4 is adopted
+  // locally because the downside is a rerun and the upside is half an hour a
+  // cycle; it is NOT evidence that 8 would hold, and the honest next step if
+  // anyone wants more is repetition, not optimism.
+  //
+  // The real fix is still upstream and still not done: 187 `waitForTimeout`
+  // calls, 3.5 minutes of dead sleep per pass, waiting on the clock instead of
+  // on a state. That is both the flake source and the wall-clock floor.
+  workers: process.env.CI ? 2 : 4,
   // ── BLOB WHEN SHARDED, LIST OTHERWISE (2026-09-18) ───────────────────────
   // `blob` is the only reporter `merge-reports` can recombine, and CI now runs
   // two shards that have to produce ONE total. Gated on an env var rather than
