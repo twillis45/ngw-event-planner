@@ -175,6 +175,25 @@ export const carbonNeutral = {
   mid:    { bg: '#141518', panel: '#1E1F22', surface2: '#25262A', border: '#313338' }, // de-blued mid (default)
   soft:   { bg: '#1C1D20', panel: '#26272A', surface2: '#2D2F33', border: '#3B3D43' }, // mid↔light
   softer: { bg: '#242529', panel: '#2E2F33', surface2: '#36383D', border: '#46484F' }, // lighter still
+  // ── THE LIGHT STEP (2026-09-28, host) ──────────────────────────────────
+  // The comment four lines up has promised "four darkness levels between the
+  // deepest dark and the LIGHT THEME" since this ramp was written, and the
+  // light theme end was never there. That absence is exactly why flipping
+  // ACTIVE_MODE did nothing for hostv2: its surfaces come from HERE, not
+  // from the mode bundle, so the text went near-black and the background
+  // stayed dark — unreadable, and reverted on sight 2026-09-27.
+  //
+  // Built by INVERTING THIS RAMP'S OWN CHARACTER rather than importing the
+  // Figma Light values, which are blue-led (#e4ecf3 carries blue 15 over
+  // red) and would reintroduce the steel this ramp exists to remove. The
+  // user's 2026-06-23 rule is neutral carbon at roughly blue 3 over red;
+  // `deep` is #0D0E10 (13/14/16) and each step below holds that same +3.
+  //
+  // Ordered like the dark steps — bg recedes, panel comes forward — which on
+  // light means bg is the DARKER of the two and panel is white. Getting that
+  // backwards is the classic light-mode error: a white page with grey cards
+  // reads as a disabled screen.
+  light:  { bg: '#F7F8FA', panel: '#FFFFFF', surface2: '#EDEEF1', border: '#DCDDE1' },
 };
 
 // ── Approved brand-color presets ───────────────────────────────────────
