@@ -145,3 +145,47 @@ export function lodgingBasisFor(event) {
 export function isOwnEvidence(basis) {
   return !!basis && (basis.rung === 'picked' || basis.rung === 'cheapest');
 }
+
+// ─── WHAT MAY BE COMPARED AGAINST A BUDGET — AND IT IS NOT MOST OF THIS ────
+//
+// The 2026-09-27 lodging board's first finding, from the Next Maintainer
+// seat: rung 4 is a cap PER ROOM, the budget flag compares a WHOLE-EVENT
+// total, and nothing stopped the two meeting. "We remembered not to" is not a
+// guard. This is the guard.
+//
+// It refuses on TWO independent grounds, and either alone is enough:
+//
+//   UNITS. A room-night cannot become a stay total without a room count, and
+//   lodgingIntel refuses to guess one (2026-08-03: "we do not know the room
+//   count and will not guess one... couples, children, singles"). Multiplying
+//   a federal per-room ceiling by an invented room count would be that same
+//   invention wearing a GSA citation.
+//
+//   STANDING. The board ruled unanimously that a regional ASKING band must
+//   not fire "the stay alone exceeds your whole budget". Inside Airbnb asking
+//   data systematically overstates — vacancy, discounts and negotiated stays
+//   are invisible in it — and in many destination celebrations the guests
+//   book and pay their own rooms, so the warning may be aimed at a wallet
+//   that is not the host's. Shortlisting is an act of intent about money the
+//   host expects to spend. A regional average is not.
+//
+// So only the host's own evidence converts, and everything else returns null
+// BY CONSTRUCTION rather than by a caller's good manners.
+//
+// This is deliberately NOT the reader the ladder still needs. Rungs 3 and 4
+// belong on the lodging surface, shown with their units in context, which is
+// finding #2 and is not built. If that is never built, the honest move is to
+// delete the rungs rather than keep them as capability-shaped scenery.
+export function budgetComparableTotal(basis, nights = 0) {
+  if (!basis) return null;
+  // The only unit that is already a stay, and it only ever comes from rungs
+  // 1 and 2. Checked BOTH ways: a future rung that claimed 'stay' without
+  // being the host's own evidence would still be refused here.
+  if (basis.unit !== 'stay' || !isOwnEvidence(basis)) return null;
+  const n = Number(basis.low);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  // `nights` is accepted and deliberately unused for this unit: a stay total
+  // already spans the stay. Taking the argument keeps the signature honest
+  // for a caller holding a per-night basis, who will get null and should.
+  return Math.round(n);
+}
