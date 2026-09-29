@@ -578,6 +578,31 @@ const API_BASE = process.env.REACT_APP_API_BASE_URL;
 export const isUnfurlConfigured = () => Boolean(API_BASE);
 
 /**
+ * What a pasted row should say about itself when link lookup is switched off.
+ *
+ * WHY THIS EXISTS (host report 2026-09-29: "demo airbnb paste. not working").
+ * It was working. The DEMO release profile ships with no API base on purpose —
+ * pages-from-source.yml bakes REACT_APP_API_BASE_URL only for `live` and
+ * `services`, and has a step that proves the live values are absent from a
+ * demo bundle. Verified against the deployed artifact, not just the workflow:
+ * the string is not in it.
+ *
+ * So on the demo a pasted Airbnb link produced a row reading "Airbnb listing /
+ * no picture yet" instead of "Guesthouse in Saxlingham · 1 bedroom · 1 bed · 1
+ * bath", and NOTHING said why. The host reads a generic placeholder and
+ * concludes the paste failed. The sentence explaining it already existed —
+ * unfurlListing returns `reason: 'Reading listings isn't switched on here'` —
+ * but every caller checks isUnfurlConfigured() first and returns before that
+ * reason can reach a surface. An honest answer written and never delivered.
+ *
+ * A row subline, so it is shorter than that sentence and it names what the
+ * host can do instead. Returns null when lookup IS on, so the note can never
+ * appear on a build that would have filled the row.
+ */
+export const unfurlOffNote = (configured) =>
+  (configured ? null : 'link lookup is off here — add the name and beds yourself');
+
+/**
  * READ ONE LISTING PAGE (host decision 2026-07-28 — an explicit exception).
  *
  * The standing rule is that this app never contacts Airbnb or Vrbo. The host

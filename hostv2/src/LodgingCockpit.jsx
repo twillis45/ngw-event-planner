@@ -29,7 +29,7 @@ import { perHeadOf } from '@app/lib/perHead';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
-  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, looksLikeHotelDetailPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
+  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, looksLikeHotelDetailPage, unfurlListing, lodgingResults, isUnfurlConfigured, unfurlOffNote, rankCandidates,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
   STAY_FROM_CONFIRMATION, STAY_FROM_PLAN,
 } from '@app/lib/lodgingIntel';
@@ -1656,6 +1656,11 @@ function Weighing({ event, intel, patch }) {
                     // what is missing. A place with no picture says so wherever
                     // it appears — the rule was never "hide the gap".
                     noPhoto ? 'no picture yet' : null,
+                    // WHY the row is bare, when the reason is the build and not
+                    // the link. Without this the demo profile's unfilled row is
+                    // indistinguishable from a paste that failed — which is
+                    // exactly how it was reported.
+                    unfurlOffNote(isUnfurlConfigured()),
                     // "our unfurl parses, normalises and infers, and says
                     // nothing" — it says something now.
                     pv && pv.read ? `${pv.read} read from the page` : null,
