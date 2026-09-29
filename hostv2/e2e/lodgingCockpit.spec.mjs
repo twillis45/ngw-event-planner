@@ -297,6 +297,45 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     expect(contrast.tail).toBeGreaterThan(4.5);
   });
 
+  test('the deck opens on what the plan would pick, and says so', async ({ page }) => {
+    // Host, 2026-09-29: "default to most recommended based on needs for the
+    // event." The deck opened on whichever place was added first, so the card
+    // a host saw — on a phone, often the only card they saw — was an accident
+    // of paste order. The ranking that answers "which of these suits this
+    // event" already existed and was used only for a sentence BELOW the deck.
+    //
+    // The real assertion is AGREEMENT: the first card and the "what the plan
+    // would pick" panel must name the same place. Two surfaces disagreeing
+    // about the recommendation is worse than neither offering one, and a test
+    // that only checked "the deck is sorted" would not catch it.
+    let n = 0;
+    await page.route('**/api/lodging/unfurl**', (route) => {
+      n += 1;
+      // Two places, both fitting: the SECOND is the better one on price, so a
+      // deck that simply kept insertion order would lead with the wrong card.
+      return route.fulfill({ json: { ...UNFURL_MOCK, price: n === 1 ? 9000 : 2000, sleeps: 12 } });
+    });
+    await seed(page);
+    await paste(page, [
+      '<div><a href="/rooms/20421338"></a><span>Pricey place</span><span>4 bedrooms</span></div>',
+      '<div><a href="/rooms/20421339"></a><span>Better value place</span><span>4 bedrooms</span></div>',
+    ].join(''));
+    await page.getByRole('button', { name: /Add \d+ to the shortlist/i }).click({ timeout: 30_000 });
+    await expect(page.locator('.lc-h1')).toHaveText(/2 places/i, { timeout: 30_000 });
+
+    const first = (await page.locator('.lc-card .lc-card-name').allInnerTexts())[0];
+    const panel = await page.evaluate(() => {
+      const ps = [...document.querySelectorAll('.lc-body')].map((x) => x.innerText);
+      return ps.find((t) => /—/.test(t)) || '';
+    });
+    // Whatever the engine picked, the deck leads with it and the panel names it.
+    expect(panel.startsWith(first.split(' · ')[0])).toBe(true);
+
+    // And the leading card says WHY it leads, so the order is a proposal.
+    const chips = await page.locator('.lc-card').first().locator('.lc-fitchip').allInnerTexts();
+    expect(chips.join(' | ')).toMatch(/Best match for this event/);
+  });
+
   test('the shortlist can grow, and picking is not booking', async ({ page }) => {
     await mockUnfurl(page);
     await seed(page);

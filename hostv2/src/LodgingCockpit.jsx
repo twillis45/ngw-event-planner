@@ -1297,9 +1297,29 @@ function StayHero({ photoUrl, label, sub }) {
 // is rendered: the photo, the price, the nights it covers, the host's own
 // must-have count, the amenity chips those musts produce, and the per-field
 // provenance table, which is the point of the screen.
-function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto }) {
+function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, onPhoto }) {
   const [at, setAt] = useState(0);
-  const live = opts.filter((o) => o.status !== 'gone');
+  const unordered = opts.filter((o) => o.status !== 'gone');
+  // ── THE BEST ONE FIRST (host, 2026-09-29: "default to most recommended
+  // based on needs for the event") ────────────────────────────────────────
+  // The deck opened on whichever place happened to be added first, so the
+  // card a host saw — and on a phone, often the only card they saw — was an
+  // accident of paste order. The ranking that answers "which of these suits
+  // this event" already existed one component up and was used only to print a
+  // sentence BELOW the deck, under the fold.
+  //
+  // `scores` arrives already ranked (lodgingRecommendation sorts eligible
+  // first, then by score), so this is that order, not a second opinion. A
+  // place the ranking never saw keeps its position at the end rather than
+  // being dropped. On a TIE the engine returns no pick and this still orders
+  // by score — which is honest, because the order is real even when the
+  // winner is not.
+  const live = (() => {
+    if (!Array.isArray(scores) || !scores.length) return unordered;
+    const rank = new Map(scores.map((x, i) => [x.id, i]));
+    return [...unordered].sort((a, b) => (rank.has(a.id) ? rank.get(a.id) : Number.MAX_SAFE_INTEGER)
+      - (rank.has(b.id) ? rank.get(b.id) : Number.MAX_SAFE_INTEGER));
+  })();
   // ONE PLACE GETS THE BIG CARD TOO (host, 2026-09-29: "big photo deck for
   // all"). This was `< 2`, so a host who brought back a single listing got the
   // compact row and never saw the photo, the scrim, the per-head line or the
@@ -1447,6 +1467,13 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                             <span className={`lc-fitchip ${sc.mustsMet === sc.mustsTotal ? 'lc-fit-yes' : 'lc-fit-part'}`}>
                               {sc.mustsMet} of {sc.mustsTotal} musts
                             </span>
+                          ) : null}
+                          {/* Says WHY it leads, so the order is a proposal the
+                              host can disagree with rather than a mystery
+                              ranking. Absent on a tie: the engine returns no
+                              pick there, and a badge would invent one. */}
+                          {recPick && recPick.id === o.id ? (
+                            <span className="lc-fitchip lc-fit-pick">Best match for this event</span>
                           ) : null}
                         </p>
                       );
@@ -1698,7 +1725,8 @@ function Weighing({ event, intel, patch }) {
              pushing the one thing a host actually does off the first
              screen. They still exist, just after, not before. */}
       <Choices opts={opts} event={event} intel={intel}
-        scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone}
+        scores={rec && rec.scores ? rec.scores : null}
+        recPick={rec && !rec.tie ? rec.pick : null} onPick={pick} onGone={markGone}
         onPhoto={askPhoto} basis={basis} />
       {/* THE PANEL THAT NEVER RENDERED (found 2026-08-05, single-threaded
           re-test of the review-board pass — "which is the recommended?").
@@ -2764,6 +2792,10 @@ const CSS = `
 .lc-fit-part{color:var(--warn);}
 /* Not-told is not a state to colour. It is the absence of one. */
 .lc-fit-unknown{color:rgba(255,255,255,.82);}
+/* The pick reads as SELECTION, which is what steel means in this system
+   (UX_02: accent = structure, selection, the primary target) — not as a
+   fourth status colour. */
+.lc-fit-pick{color:var(--steel-soft);}
 .lc-lead-each-unit{font:400 13px/1.25 Inter,sans-serif;color:rgba(255,255,255,.85);}
 .lc-pv-src{font:400 12px/1.35 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
 .lc-dots{display:flex;gap:6px;justify-content:center;margin:12px 0 4px;}
