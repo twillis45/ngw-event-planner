@@ -93,7 +93,22 @@ export function applyStudioMatte() {
   // Declared here AND bundled, deliberately: --danger-solid was declared in
   // TOKENS and never added to bundleForMode(), so it reached the DOM as the
   // literal string "undefined" and no layer treated that as an error.
-  set('--field', carbonNeutral.deep.bg);
+  //
+  // AND IT HAS TO FLIP (2026-09-29). This was the ONE token in the bundle that
+  // did not branch on isLight — every line around it goes through `c` or
+  // `bundle` and this one was pinned to the dark ramp. Below 1024 the body
+  // takes --bg-band and light mode looked right; at 1024 and up the body takes
+  // THIS, so light mode painted dark-page-with-light-content on tablet-land,
+  // tablet-tall, desktop and wide. The exact unreadable half-flip the comment
+  // eight lines up says this bundle exists to prevent, reintroduced by the one
+  // line that opted out of it.
+  //
+  // The light value is the same relationship, inverted, in the ramp's own
+  // steps and with no new colour: the field is the MOST RECESSIVE plane, which
+  // on light is surface2 (#EDEEF1), and the composition still reads in three —
+  // field #EDEEF1 -> content ground #F7F8FA -> panel #FFFFFF — exactly as deep
+  // -> mid -> panel does in the dark.
+  set('--field', isLight ? carbonNeutral.light.surface2 : carbonNeutral.deep.bg);
   set('--card', c.panel);
   set('--ink', bundle.textPrimary);
   set('--ink-soft', bundle.textSecondary);
