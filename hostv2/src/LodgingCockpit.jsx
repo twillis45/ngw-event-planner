@@ -639,8 +639,26 @@ function Looking({ event, patch }) {
     // asked for by pasting them, and reading five is the same act as reading
     // one, five times. Capped at 8, the cap the older shell intake has always
     // used for exactly this.
+    //
+    // ── AND IT RUNS ON A RESULTS PAGE TOO (host, 2026-09-29) ──────────────
+    // "pull from a path that will give us what we need ... combine the best of
+    // both." Each paste path was giving half the record and neither half is
+    // the one the surface needs:
+    //
+    //   results page HTML  names + a DATED price off the cards, never `sleeps`
+    //   listing URLs       `sleeps`, amenities, rating, photo, never a price
+    //
+    // So a results paste could not compute `fits` (no sleeps) and a link paste
+    // could not compute per-head (no total to divide). The gate was
+    // `found.linksOnly`, which is exactly "only when the paste told us
+    // nothing" — the one case where the two could never be combined.
+    //
+    // THE MERGE RULE IS ONE LINE: the unfurl FILLS GAPS and never overwrites
+    // something the paste already read. The card's price is dated and the
+    // host saw it on the page they copied; the listing's own record is where
+    // sleeps lives. Neither read is silently replaced by the other.
     const UNFURL_MAX = 8;
-    if (found.linksOnly && cands.length <= UNFURL_MAX && isUnfurlConfigured()) {
+    if (cands.length <= UNFURL_MAX && isUnfurlConfigured()) {
       setReadErr('');
       setBusy(true);
       try {
@@ -664,15 +682,18 @@ function Looking({ event, patch }) {
           // is why every read row still said "no picture yet".
           const facts = (r.facts && typeof r.facts === 'object') ? r.facts : {};
           const shot = String(r.image || '').trim();
+          // GAPS ONLY. Every line reads "what the paste already had, else what
+          // the listing says" — the reverse of what this block did when it
+          // only ever ran on a paste that had nothing to protect.
           read.push({
             ...c,
-            name: r.title || c.name,
-            priceShown: r.price != null ? r.price : c.priceShown,
-            photo: shot || c.photo,
+            name: c.name || r.title,
+            priceShown: c.priceShown != null ? c.priceShown : r.price,
+            photo: c.photo || shot,
             // A COUNT OF BEDS, never mapped to `sleeps`: how many people a
             // place holds is not something a bed count settles.
-            beds: facts.beds != null ? facts.beds : c.beds,
-            bedrooms: facts.bedrooms != null ? facts.bedrooms : c.bedrooms,
+            beds: c.beds != null ? c.beds : facts.beds,
+            bedrooms: c.bedrooms != null ? c.bedrooms : facts.bedrooms,
             // ── THE FIELD THE COMPARISON WAS BLOCKED ON (2026-08-04) ──────
             // `sleeps` decides `fits`, and therefore "3 of 5 fit", the ranking
             // and the per-person split. A results card never carries it — D6/W3b
@@ -680,18 +701,21 @@ function Looking({ event, patch }) {
             // had to type. The LISTING page carries it, in the structured record
             // the unfurl reads. This is that number, not an inference from beds
             // or bedrooms.
-            sleeps: r.sleeps != null ? r.sleeps : c.sleeps,
-            rating: r.rating != null ? r.rating : c.rating,
-            ratingCount: r.ratingCount != null ? r.ratingCount : c.ratingCount,
+            sleeps: c.sleeps != null ? c.sleeps : r.sleeps,
+            rating: c.rating != null ? c.rating : r.rating,
+            ratingCount: c.ratingCount != null ? c.ratingCount : r.ratingCount,
             // The listing's OWN amenity words. Every must-have row read "—"
             // without them, even where the page said yes (host, 2026-08-06).
-            amenities: Array.isArray(r.amenities) && r.amenities.length
-              ? r.amenities : c.amenities,
+            amenities: (Array.isArray(c.amenities) && c.amenities.length)
+              ? c.amenities
+              : (Array.isArray(r.amenities) && r.amenities.length ? r.amenities : c.amenities),
           });
           if (r.title) anyTitle = true;
         }
         cands = read;
-        found = { ...found, linksOnly: !anyTitle };
+        // A results paste was never linksOnly; a link paste stops being one the
+        // moment a title arrives.
+        found = { ...found, linksOnly: found.linksOnly && !anyTitle };
         // Only when NOTHING came back — a reason shown beside four filled rows
         // would read as a failure the host can see is not one.
         if (lastReason && !anyTitle) setReadErr(lastReason);
@@ -908,10 +932,22 @@ function Looking({ event, patch }) {
             : ' Copy the results page itself (⌘A then ⌘C) and the names, beds and prices come with it.'}
         </p>
       )}
-      <p className="lc-note">
-        “sleeps —” because the results page never carries it. Type it once and the fit count works.
-        {staged.dupes ? ` ${staged.dupes} were already on your list.` : ''}
-      </p>
+      {/* ONLY WHEN IT IS STILL TRUE (2026-09-29). This line was unconditional,
+          which was fine while a multi-link paste was never read: every row
+          genuinely had no `sleeps` and the host genuinely had to type it. Now
+          that every pasted link is unfurled, `sleeps` usually arrives — and an
+          unconditional line tells the host to go and type a number the app
+          fetched a second ago, sitting directly above rows that already show
+          it. Advice that is wrong on the screen it appears on costs more than
+          advice that is missing. */}
+      {staged.cands.some((c) => c.sleeps == null) && (
+        <p className="lc-note">
+          “sleeps —” because the results page never carries it. Type it once and the fit count works.
+        </p>
+      )}
+      {staged.dupes ? (
+        <p className="lc-note">{staged.dupes} were already on your list.</p>
+      ) : null}
       <div className="lc-ctas lc-ctas-wrap">
         <button className="cta" onClick={commitStaged}>Add {staged.pick.size} to the shortlist</button>
         <button className="cta soft" onClick={() => setStaged(null)}>Cancel</button>

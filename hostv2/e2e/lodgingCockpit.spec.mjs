@@ -181,6 +181,49 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     await expect(page.locator('.lc-h1')).toHaveText(/3 that fit/i);
   });
 
+  test('a results page keeps its price AND gains the listing\'s sleeps', async ({ page }) => {
+    // Host, 2026-09-29: "pull from a path that will give us what we need ...
+    // combine the best of both."
+    //
+    // Each paste path carried half the record, and neither half was the one
+    // the surface needs:
+    //   results page   names + a DATED price off the cards, never `sleeps`
+    //   listing URLs   `sleeps`, amenities, rating, photo, never a price
+    // So a results paste could not compute `fits` and a link paste could not
+    // compute per-head. The unfurl was gated on `found.linksOnly` — precisely
+    // "only when the paste told us nothing", the one case where the two could
+    // never be combined.
+    //
+    // The merge rule is that the unfurl FILLS GAPS and never overwrites a
+    // value the paste already read. This test is that rule: the mock returns a
+    // DIFFERENT price from the card, and the card's must win.
+    let calls = 0;
+    await page.route('**/api/lodging/unfurl**', (route) => {
+      calls += 1;
+      return route.fulfill({ json: { ...UNFURL_MOCK, price: 99 } });
+    });
+    await seed(page);
+    // Two cards with real hrefs and real prices, in the shape the extractor
+    // reads — the same shape as the captured fixture, cut to two.
+    await paste(page, [
+      '<div><a href="/rooms/20421338"></a><span>Home in Santa Fe</span>',
+      '<span>4 bedrooms</span><span>$2,400 total</span></div>',
+      '<div><a href="/rooms/20421339"></a><span>Casita in Santa Fe</span>',
+      '<span>3 bedrooms</span><span>$1,800 total</span></div>',
+    ].join(''));
+
+    await expect(page.locator('.lc-h1')).toHaveText(/2 places/i, { timeout: 30_000 });
+    expect(calls, 'a results paste must unfurl its listings too').toBeGreaterThan(0);
+
+    // sleeps came from the listing — the card never carries it.
+    await expect(page.locator('.lc-h1')).toHaveText(/2 that fit|2 known to fit/i);
+
+    // ...and the CARD's price survived the merge. 99 would mean the unfurl
+    // overwrote a value the host had already seen on the page they copied.
+    const body = await page.evaluate(() => document.body.innerText);
+    expect(body).not.toMatch(/\$99\b/);
+  });
+
   test('the shortlist can grow, and picking is not booking', async ({ page }) => {
     await mockUnfurl(page);
     await seed(page);
