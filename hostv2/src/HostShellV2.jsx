@@ -6,6 +6,7 @@
 import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
+import { currentTheme, setStoredTheme } from './theme.js';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
@@ -6296,6 +6297,11 @@ export default function HostShellV2() {
   // ── Feedback layer: haptic tick on real state changes, the original app's
   // synthesized chime reserved for magic moments. Muted preference persists.
   const [muted, setMuted] = useState(() => { try { return localStorage.getItem('ngw-hostv2-muted') === '1'; } catch { return false; } });
+  // Light mode had no control anywhere in the app — it shipped 2026-09-28
+  // reachable only by typing ?theme=light, which is a mechanism, not a
+  // feature. Seeded from the same reader the boot path uses, so the row opens
+  // showing what is actually on screen rather than a default.
+  const [theme, setThemeState] = useState(() => { try { return currentTheme(); } catch { return 'dark'; } });
   useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);
   // Sound defaults ON, so most hosts never touch the toggle — priming only on
   // that click would leave the AudioContext unresumed for everyone else. Every
@@ -17211,6 +17217,27 @@ export default function HostShellV2() {
                     <span className="t">Sound</span>
                     <button className="mini" onClick={() => { primeMessageSound(); setMuted(m => !m); }}>
                       {muted ? 'Muted — tap for sound' : 'On — tap to mute'}
+                    </button>
+                  </div>
+                  {/* ── LIGHT MODE (host, 2026-09-29) ───────────────────────
+                      It shipped the day before with no control anywhere: the
+                      only way to reach it was to type ?theme=light into the
+                      address bar. That is a mechanism, not a feature.
+
+                      It sits HERE and not under "Make it yours", which I named
+                      first and which is wrong — that surface is the meaning of
+                      the EVENT ("What are we really protecting?", the toast,
+                      the day-before brief). How the app is painted is not part
+                      of the host's story about their day, and putting it there
+                      would be the duplicate-surface mistake the architecture
+                      rules exist to stop. Sound is the neighbour it belongs
+                      beside, and this is the same row, the same control, the
+                      same shape of label. */}
+                  <div className="later-row">
+                    <span className="t">Light mode</span>
+                    <button className="mini" aria-pressed={theme === 'light'}
+                      onClick={() => setThemeState(setStoredTheme(theme === 'light' ? 'dark' : 'light'))}>
+                      {theme === 'light' ? 'On — tap for dark' : 'Off — tap for light'}
                     </button>
                   </div>
                   {/* ── YOUR DATA (2026-09-02, review board) ─────────────────

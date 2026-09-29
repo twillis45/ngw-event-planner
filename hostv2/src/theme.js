@@ -44,7 +44,31 @@ export function currentTheme(search) {
   try { return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (_) { return 'dark'; }
 }
 
-export function applyStudioMatte() {
+// Write the host's choice and make the page follow it immediately.
+//
+// THE URL HAS TO GO. currentTheme() reads the query string FIRST and only then
+// the stored key — correct for a link someone opens, wrong the moment there is
+// a control on screen: the only way a host can reach light today IS ?theme=,
+// so their very first tap would be made with that parameter still in the
+// address bar, and the next read would hand the old answer straight back. The
+// toggle would work and then silently undo itself on reload. Dropping the
+// param with replaceState leaves one source of truth — the stored key — and
+// keeps the link behaviour intact for anyone arriving fresh.
+export function setStoredTheme(theme) {
+  const t = theme === 'light' ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, t); } catch (_) { /* private mode: this session still follows it */ }
+  try {
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('theme')) {
+      u.searchParams.delete('theme');
+      window.history.replaceState({}, '', u.pathname + (u.search || '') + u.hash);
+    }
+  } catch (_) { /* no history API: the stored key still wins on the next load */ }
+  applyStudioMatte(t);
+  return t;
+}
+
+export function applyStudioMatte(override) {
   const r = document.documentElement.style;
   // setProperty stringifies whatever it is handed, so a palette key that does not
   // exist writes the literal string "undefined" as the token's value. That is not
@@ -63,7 +87,9 @@ export function applyStudioMatte() {
 
   // ── Host surfaces: the de-blued NEUTRAL CARBON ramp (the carbon gray the
   // production shell runs — palette.js carbonNeutral, user-locked 2026-06-23).
-  const theme = currentTheme();
+  // An explicit argument is the host tapping the control this instant; with no
+  // argument this is a page load and the URL/stored answer stands.
+  const theme = (override === 'light' || override === 'dark') ? override : currentTheme();
   const isLight = theme === 'light';
   // `mid` is the production default and stays the dark answer; `light` is the
   // step added 2026-09-28, built by inverting this ramp's own neutral
