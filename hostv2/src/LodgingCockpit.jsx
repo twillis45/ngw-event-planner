@@ -1200,12 +1200,25 @@ function StayHero({ photoUrl, label, sub }) {
 function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto }) {
   const [at, setAt] = useState(0);
   const live = opts.filter((o) => o.status !== 'gone');
-  if (live.length < 2) return null;
+  // ONE PLACE GETS THE BIG CARD TOO (host, 2026-09-29: "big photo deck for
+  // all"). This was `< 2`, so a host who brought back a single listing got the
+  // compact row and never saw the photo, the scrim, the per-head line or the
+  // provenance table — the whole point of the screen — until they added a
+  // second. The first place is the one they are most likely to be looking at.
+  //
+  // The threshold is gone rather than lowered: "is there anything to show" is
+  // the rule, and it cannot drift from the parent's `deckShown`, which now
+  // asks the same question. Two copies of a NUMBER drift; two copies of
+  // "any" cannot.
+  if (!live.length) return null;
   const nights = intel && intel.nights ? intel.nights : 0;
   const money = (n) => (n == null ? null : `$${Math.round(n).toLocaleString()}`);
 
+  // Plural only when it is plural — one place is "the one", and the deck now
+  // renders for one. A label reading "the ones" over a single card is a small
+  // lie of exactly the kind this surface exists not to tell.
   return (
-    <Panel label="THE ONES THAT FIT">
+    <Panel label={live.length === 1 ? 'THE ONE YOU BROUGHT BACK' : 'THE ONES THAT FIT'}>
       <p className="lc-deck-head">
         <span className="lc-deck-name">{live[at] ? live[at].label : ''}</span>
         <span className="lc-deck-count">{at + 1} of {live.length}</span>
@@ -1448,7 +1461,11 @@ function Weighing({ event, intel, patch }) {
   // ONE definition of who is in the chooser, read by the deck and by the list
   // below it — two copies of this filter is precisely how they would disagree.
   const liveCount = (event.lodgingOptions || []).filter((o) => o && o.status !== 'gone').length;
-  const deckShown = liveCount >= 2;
+  // Must ask the SAME question as Choices' own guard above — this is what
+  // turns the list below from "make the call" (every option) into "no longer
+  // on the table" (only the ones struck out). If the two disagree, the same
+  // place renders twice: once as a card and once as a row.
+  const deckShown = liveCount > 0;
   const basis = (() => { try { return lodgingRankBasis(event, intel); } catch { return null; } })();
   let cmp = null; try { cmp = lodgingCompare(event, intel); } catch { cmp = null; }
   const kc = (() => { try { return kitchenConsequence(event); } catch { return null; } })();
@@ -2196,7 +2213,12 @@ const CSS = `
    a worse map. The scroll + edge mask above stays as the fallback for narrower
    handsets (320pt) and for longer labels later, so nothing wraps either way. */
 .lc-step{background:none;border:none;border-bottom:2px solid var(--line);padding:6px 5px 7px;
-  font:500 10px/1 Inter,sans-serif;letter-spacing:0;cursor:pointer;color:var(--faint);
+  /* 10px was UNDER this repo's own floor — styles.css calls --t-caption-min
+     (11px) "smallest legal type" and this was a raw 10. The >=1024 override
+     further down already used 12px, so the phone had the smallest copy of the
+     five words a host navigates this surface with. Tokenized to --t-overline,
+     which is that 12px, so the two breakpoints stop disagreeing. */
+  font:500 var(--t-overline)/1 Inter,sans-serif;letter-spacing:0;cursor:pointer;color:var(--faint);
   min-height:var(--tap-min);}
 /* REAL HEIGHT, BECAUSE THE EXPANDER COULD NOT WORK HERE. First attempt gave
    these tabs the sanctioned ::after that .sheet-x uses — and re-probing with
@@ -2249,7 +2271,7 @@ const CSS = `
    neutral text ramp has no middle step (#eef0f4, #9a9ca0, and a blue
    #849eb8), and --faint sits within 2% alpha of --muted, so the only real
    lift available without inventing a colour is the primary ink. */
-.lc-label{font:600 10px/1 Inter,sans-serif;letter-spacing:.09em;color:var(--ink);margin:0 0 var(--sp-2);}
+.lc-label{font:600 var(--t-caption-min)/1 Inter,sans-serif;letter-spacing:.09em;color:var(--ink);margin:0 0 var(--sp-2);}
 .lc-body{color:var(--ink-soft);margin:0 0 6px;}
 .lc-strong{font:650 17px/1.3 Inter,sans-serif;margin:0 0 6px;}
 .lc-note{font:400 11px/1.5 Inter,sans-serif;color:var(--faint);margin:10px 0 0;}
@@ -2549,7 +2571,7 @@ const CSS = `
 .lc-thumb{width:56px;height:56px;flex:0 0 auto;border-radius:10px;object-fit:cover;background:var(--sheen);border:1px solid var(--hair);}
 .lc-t-head{display:grid;column-gap:8px;align-items:end;}
 .lc-t-row{display:grid;column-gap:8px;border-top:1px solid var(--line);padding:10px 0;align-items:baseline;}
-.lc-col{font:650 10px/1.2 Inter,sans-serif;letter-spacing:.04em;color:var(--faint);text-align:right;
+.lc-col{font:650 var(--t-caption-min)/1.2 Inter,sans-serif;letter-spacing:.04em;color:var(--faint);text-align:right;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lc-t-val{font:650 13px/1.35 Inter,sans-serif;text-align:right;color:var(--ink);}
 .lc-t-val.is-gap{font-weight:400;color:var(--faint);}
@@ -2571,7 +2593,10 @@ const CSS = `
   .lc-grid{grid-template-columns:190px minmax(0,1fr);gap:clamp(28px,4vw,64px);}
   .lc-rail{flex-direction:column;align-items:flex-start;gap:0;position:sticky;top:clamp(20px,4vw,40px);
     overflow-x:visible;-webkit-mask-image:none;mask-image:none;}
-  .lc-step{border-bottom:none;border-left:2px solid var(--line);padding:10px 0 10px 12px;width:100%;text-align:left;font-size:12px;letter-spacing:.02em;}
+  /* Same token as the phone rule above, not a second raw 12 — the two
+     breakpoints were already agreeing on the number by coincidence, which is
+     the state a token exists to replace. */
+  .lc-step{border-bottom:none;border-left:2px solid var(--line);padding:10px 0 10px 12px;width:100%;text-align:left;font-size:var(--t-overline);letter-spacing:.02em;}
   .lc-step.is-done{border-left-color:var(--steel-soft);}
   .lc-step.is-on{border-left-color:var(--ok);}
 }

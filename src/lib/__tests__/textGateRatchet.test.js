@@ -221,7 +221,21 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // The behaviour half is owed and is NOT smuggled in here: that the hero states
 // the cover count is a claim about what a host reads, and it belongs in
 // hostv2/e2e. It is not written yet — recorded as owed rather than implied.
-const MAX_HOSTV2_TEXT_GATES = 49;
+//
+// 49 -> 50, 2026-09-29: nothingIsBelowTheFloor.test.js. It asserts file
+// CONTENT, which is the case this baseline is allowed to grow for. styles.css
+// declares --t-caption-min "smallest legal type — the 11px floor" and the
+// lodging cockpit's tab strip shipped at a raw 10px; the floor had never been
+// enforced anywhere, which is why one pixel under it survived to a host
+// asking about it.
+//
+// It cannot be an e2e. A raw value is introduced in SOURCE, and the rule has
+// to hold across every breakpoint of every surface — a rendered test would
+// have to visit all of them to say the same thing, and would still miss the
+// rules that only apply above 1024. The behaviour half (that a host can read
+// the words) is covered where it belongs: nothingIsUnreadableInLight.spec.mjs
+// walks the rendered page for contrast.
+const MAX_HOSTV2_TEXT_GATES = 50;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

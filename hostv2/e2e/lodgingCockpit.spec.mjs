@@ -115,7 +115,12 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     await paste(page, LISTING);
     // Bounded: unfurlListing aborts at 12s, so this can never hang the suite.
     await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
-    const row = page.locator('.lc-opt-name').first();
+    // WHERE THE NAME LANDS MOVED (2026-09-29, host: "big photo deck for all").
+    // A single listing used to render as a compact row and now renders as the
+    // deck card, so this asserted a selector that no longer exists on this
+    // screen. The FACT is unchanged — the name is read, not the fallback — so
+    // the locator covers both surfaces rather than pinning the test to one.
+    const row = page.locator('.lc-card-name, .lc-opt-name').first();
     // The name is READ, not "Airbnb listing" — that fallback means the read failed.
     await expect(row).toContainText(/Santa Fe/i);
     await expect(row).not.toHaveText(/^Airbnb listing$/);
@@ -155,7 +160,10 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     // The only route to a second place used to vanish at this stage.
     await expect(page.getByRole('button', { name: /Add another place/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /Make .* the pick/i }).first().click();
+    await // The deck card's button is labelled by aria-label ("Pick <the place>"), not
+    // by its visible "Pick this place" — getByRole matches the ACCESSIBLE name,
+    // so the alternation has to be the label, not the text.
+    page.getByRole('button', { name: /Make .* the pick|^Pick\s/i }).first().click();
     // CHOOSING IS NOT BOOKING — one press used to jump straight to "on the books".
     await expect(page.getByText(/Choosing is not booking/i)).toBeVisible();
     await expect(page.locator('.lc-step.is-on')).toHaveText(/The pick/i);
@@ -307,7 +315,10 @@ test.describe('a place with no photo can still be picked', () => {
     await seed(page);
     await paste(page, LISTING);
     await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
-    await page.getByRole('button', { name: /Make .* the pick/i }).first().click();
+    await // The deck card's button is labelled by aria-label ("Pick <the place>"), not
+    // by its visible "Pick this place" — getByRole matches the ACCESSIBLE name,
+    // so the alternation has to be the label, not the text.
+    page.getByRole('button', { name: /Make .* the pick|^Pick\s/i }).first().click();
     await expect(page.locator('.lc-step.is-on')).toHaveText(/The pick/i);
 
     // A SHORT VIEWPORT, DELIBERATELY. The first cut of this test asserted
