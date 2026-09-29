@@ -33,6 +33,24 @@ async function authHeaders() {
   return headers;
 }
 
+// A PLANNER READ-BACK WITH NO CREDENTIAL CAN ONLY 401 (2026-09-29).
+// authHeaders() returns {} when there is neither a Supabase session nor a dev
+// token, and the request went out anyway: the fetch handled the 401 politely
+// (returns []), but the BROWSER logs "Failed to load resource: 401" for it, on
+// every load of every event. That console error is what made
+// decisionIdentity flaky — the test snapshots console errors when it reads the
+// hero, so whether it failed depended on whether the 401 came back first.
+// Reproduced 6/6 once the URLs were logged; it had looked intermittent only
+// because the race was being observed, not because the call was.
+//
+// Same rule the unfurl already follows (isUnfurlConfigured): do not make a
+// request you know cannot succeed. Nothing is lost — an unauthenticated
+// read-back returned [] anyway.
+async function hasPlannerAuth() {
+  const h = await authHeaders();
+  return Boolean(h.Authorization || h['X-Planner-Token']);
+}
+
 // ── Planner: mint-or-reuse the active brief code for a vendor ─────────────────
 // Returns the short code string, or null when not configured / unauthorized /
 // errored. NEVER throws — the caller falls back to the legacy base64 URL.
@@ -92,6 +110,7 @@ export async function submitVendorBriefConfirmation(code, payload) {
 // nothing, exactly like an event with no confirmations.
 export async function fetchVendorConfirmations(eventId) {
   if (!BASE || !eventId) return [];
+  if (!(await hasPlannerAuth())) return [];
   try {
     const res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/vendor-confirmations`, {
       headers: await authHeaders(),

@@ -1747,9 +1747,30 @@ function Weighing({ event, intel, patch }) {
         </Panel>
       ) : rec.pick && (
         <Panel label="WHAT THE PLAN WOULD PICK">
-          <p className="lc-body">
-            {rec.pick.label}{rec.why && rec.why[0] ? ` — ${rec.why[0]}.` : '.'}
-          </p>
+          <p className="lc-body">{rec.pick.label}</p>
+          {/* ── IT SAYS WHY, ALL OF IT (host, 2026-09-29: "plan should tell
+              why its recommended in what the plan would pick") ────────────
+              This printed rec.why[0] and stopped — one clause out of a list
+              the engine had already built. The ranking weighs the gate, the
+              money, the cancellation terms, the host's own must-haves, step-
+              free access and kids; a host reading a single clause cannot tell
+              whether the pick won on price or on fit, and cannot disagree
+              with a reason they were never shown.
+
+              THE AGAINSTS STAY IN. reasons carries "doesn't mention step-free
+              access" and "$400 over your budget" alongside the wins, and
+              those are the lines that make this a recommendation rather than
+              an advertisement — a pick whose drawbacks are hidden is the kind
+              of claim this surface exists not to make. */}
+          {Array.isArray(rec.why) && rec.why.length > 0 && (
+            <ul className="lc-pickwhy">
+              {rec.why.map((r) => (
+                <li key={r} className={/doesn’t|doesn't|over your budget|total loss|of your/.test(r) ? 'lc-pickwhy-against' : undefined}>
+                  {r}
+                </li>
+              ))}
+            </ul>
+          )}
           {rec.unweighed && rec.unweighed.length > 0 && (
             <p className="lc-note">Couldn't weigh {rec.unweighed.join(' or ')} — none of your places say.</p>
           )}
@@ -2796,6 +2817,21 @@ const CSS = `
    (UX_02: accent = structure, selection, the primary target) — not as a
    fourth status colour. */
 .lc-fit-pick{color:var(--steel-soft);}
+/* NAMED AWAY FROM AN EXISTING CLASS (2026-09-29). This was lc-why, which this
+   file already used for three italic Newsreader paragraphs (:174, :204, :309)
+   and a details block — so these list rules were silently restyling copy that
+   had nothing to do with the recommendation, and a test looking for that class
+   matched a paragraph with no items in it. The failing test is the only reason
+   the collision was found.
+   NO BACKTICKS IN HERE: this whole block is one JS template literal (see
+   the CSS const and the style tag below). Quoting a class name the way I
+   would in prose closes the literal — the build still succeeded and the app
+   threw at runtime behind the error boundary, which is the worst of both. */
+.lc-pickwhy{margin:var(--sp-2) 0 0;padding:0 0 0 var(--sp-4);list-style:disc;}
+.lc-pickwhy li{font:400 var(--t-meta)/1.5 Inter,sans-serif;color:var(--ink-soft);margin:0 0 2px;}
+/* A drawback reads as one. Amber is "needs attention" in this system, which is
+   exactly what a reason-against is on a pick the host is about to make. */
+.lc-pickwhy li.lc-pickwhy-against{color:var(--warn);}
 .lc-lead-each-unit{font:400 13px/1.25 Inter,sans-serif;color:rgba(255,255,255,.85);}
 .lc-pv-src{font:400 12px/1.35 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
 .lc-dots{display:flex;gap:6px;justify-content:center;margin:12px 0 4px;}

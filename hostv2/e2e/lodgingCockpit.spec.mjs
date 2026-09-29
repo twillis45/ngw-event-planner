@@ -324,9 +324,16 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     await expect(page.locator('.lc-h1')).toHaveText(/2 places/i, { timeout: 30_000 });
 
     const first = (await page.locator('.lc-card .lc-card-name').allInnerTexts())[0];
+    // Read the panel BY ITS LABEL, not by hunting for an em-dash in any
+    // .lc-body — that worked only while the panel was one "Label — reason."
+    // sentence, and broke the moment the reasons became their own list.
     const panel = await page.evaluate(() => {
-      const ps = [...document.querySelectorAll('.lc-body')].map((x) => x.innerText);
-      return ps.find((t) => /—/.test(t)) || '';
+      const nodes = [...document.querySelectorAll('*')].filter(
+        (n) => n.children.length && /WHAT THE PLAN WOULD PICK/.test(n.innerText || ''),
+      );
+      const host = nodes[nodes.length - 1];
+      const body = host && host.querySelector('.lc-body');
+      return body ? body.innerText.trim() : '';
     });
     // Whatever the engine picked, the deck leads with it and the panel names it.
     expect(panel.startsWith(first.split(' · ')[0])).toBe(true);
@@ -334,6 +341,46 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     // And the leading card says WHY it leads, so the order is a proposal.
     const chips = await page.locator('.lc-card').first().locator('.lc-fitchip').allInnerTexts();
     expect(chips.join(' | ')).toMatch(/Best match for this event/);
+  });
+
+  test('the plan says WHY it picked, drawbacks included', async ({ page }) => {
+    // Host, 2026-09-29: "plan should tell why its recommended in what the plan
+    // would pick." The panel printed rec.why[0] and stopped — one clause out
+    // of a list the ranking had already built. A host reading a single clause
+    // cannot tell whether the pick won on price or on fit, and cannot
+    // disagree with a reason they were never shown.
+    //
+    // The assertion that matters is the AGAINST. reasons carries "doesn't
+    // mention X" and "$N over your budget" beside the wins, and a panel that
+    // showed only the wins would be an advertisement. So this asserts both a
+    // for and an against are present and that they are told apart.
+    let n = 0;
+    await page.route('**/api/lodging/unfurl**', (route) => {
+      n += 1;
+      return route.fulfill({ json: { ...UNFURL_MOCK, price: n === 1 ? 9000 : 2000, sleeps: 12 } });
+    });
+    await seed(page);
+    await paste(page, [
+      '<div><a href="/rooms/20421338"></a><span>Pricey place</span><span>4 bedrooms</span></div>',
+      '<div><a href="/rooms/20421339"></a><span>Better value place</span><span>4 bedrooms</span></div>',
+    ].join(''));
+    await page.getByRole('button', { name: /Add \d+ to the shortlist/i }).click({ timeout: 30_000 });
+    await expect(page.locator('.lc-h1')).toHaveText(/2 places/i, { timeout: 30_000 });
+
+    const why = page.locator('.lc-pickwhy').first();
+    await expect(why).toBeVisible();
+    const items = await why.locator('li').allInnerTexts();
+    // More than the one clause this used to print.
+    expect(items.length).toBeGreaterThan(1);
+    expect(items.join(' | ')).toMatch(/sleeps/i);
+
+    // At least one reason is marked as a drawback, and it is not the same
+    // element as the wins — colour alone would not survive a grayscale read,
+    // so the class is the claim.
+    const against = await why.locator('li.lc-pickwhy-against').count();
+    const forCount = items.length - against;
+    expect(against).toBeGreaterThan(0);
+    expect(forCount).toBeGreaterThan(0);
   });
 
   test('the shortlist can grow, and picking is not booking', async ({ page }) => {
