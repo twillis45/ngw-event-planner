@@ -181,8 +181,26 @@ const WEIGHING = {
   ],
 };
 
-const eachLines = (page) => page.evaluate(() => [...document.querySelectorAll('.lc-card-each')]
-  .map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+// THE PAIR, NOT THE ELEMENT (2026-09-29). Per-head used to be one line —
+// "$282 each across 16 — nobody said…" — inside .lc-card-each. It is now the
+// card's LEAD figure with the denominator and hedge welded underneath, because
+// the host asked for it to carry more weight. The FACT these tests protect is
+// unchanged: the figure and what it was divided by are both on screen and read
+// as one statement. So the helper reads the pair and joins it, rather than
+// pinning the assertions to which element happens to hold which half.
+const eachLines = (page) => page.evaluate(() => {
+  const cards = [...document.querySelectorAll('.lc-card')];
+  if (cards.length) {
+    return cards.map((c) => {
+      const lead = c.querySelector('.lc-card-lead-each');
+      const tail = c.querySelector('.lc-card-each');
+      return [lead && lead.innerText, tail && tail.innerText]
+        .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    }).filter(Boolean);
+  }
+  return [...document.querySelectorAll('.lc-card-each')]
+    .map((e) => e.innerText.replace(/\s+/g, ' ').trim());
+});
 
 test('a place says what it is EACH, not only what it is', async ({ page }) => {
   await openCockpit(page, WEIGHING);
