@@ -35,6 +35,27 @@ import {
 
 const BASE = '/ngw-event-planner/hostv2/';
 
+// ── `global.navigator = …` IS NODE-VERSION DEPENDENT (2026-09-29) ───────────
+//
+// Node 21 gave `globalThis` a real `navigator` — an accessor with a getter and
+// no setter — so a plain assignment throws:
+//
+//   TypeError: Cannot set property navigator of #<Object> which has only a getter
+//
+// Measured: 9 of this file's 23 tests fail on Node 22.22.2 and all 23 pass on
+// the Node 20 that CI pins (.github/workflows/checks.yml). So this is green in
+// CI and red on a developer machine or container one major ahead — the worst
+// shape for a gate, because `verify:push` goes red for a reason that has
+// nothing to do with the change being pushed.
+//
+// `defineProperty` sets it whether the slot is a data property or an accessor,
+// and `configurable` keeps each `beforeEach` able to replace it again. The
+// alternative — pinning the container to Node 20 — moves the problem to
+// whoever upgrades next.
+const setNavigator = (value) => {
+  Object.defineProperty(globalThis, 'navigator', { value, configurable: true, writable: true });
+};
+
 describe('CONDITION 1 — the precache manifest is built, not written', () => {
   const emitted = [
     'index.html', 'assets/index-abc123.js', 'assets/HostShellV2-def456.js',
@@ -156,12 +177,12 @@ describe('THE PAGE-SIDE KILL SWITCH, which works when the worker does not', () =
       keys: async () => ['ngw-shell-old', 'other'],
       delete: async (k) => { deleted.push(k); return true; },
     };
-    global.navigator = {
+    setNavigator({
       serviceWorker: {
         getRegistrations: async () => [{ unregister: async () => { unregistered += 1; return true; } }],
         register: vi.fn(async () => ({})),
       },
-    };
+    });
   });
 
   const loc = (search, protocol = 'https:', hostname = 'example.com') => ({ search, protocol, hostname });
@@ -238,9 +259,9 @@ describe('WHEN THIS SCREEN LAST HAD SIGNAL', () => {
 
   test('registering records the signal, and a KILLED worker still does', async () => {
     global.caches = { keys: async () => [], delete: async () => true };
-    global.navigator = {
+    setNavigator({
       serviceWorker: { getRegistrations: async () => [], register: vi.fn(async () => ({})) },
-    };
+    });
     await registerOfflineShell('/sw.js', { search: '?nosw=1', protocol: 'https:', hostname: 'x.com' });
     // The timestamp is about the PAGE reaching the network, not about the
     // worker. A host who turned the worker off still deserves an honest one.
@@ -307,7 +328,7 @@ describe('IT ONLY SAYS "CLOSE AND REOPEN" WHEN A WORKER IS ACTUALLY WAITING', ()
   let nav;
   beforeEach(() => {
     nav = { serviceWorker: { controller: {}, register: vi.fn(), getRegistrations: vi.fn(async () => []) } };
-    globalThis.navigator = nav;
+    setNavigator(nav);
   });
 
   // watchForWaitingWorker is module-private on purpose — it is reached the way

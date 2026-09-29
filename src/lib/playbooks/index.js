@@ -4608,13 +4608,30 @@ export function playbookFoodPlan(event, opts = {}) {
   // in bites simply cannot take a price quoted in pounds, whatever it is
   // called. Authored `sourcingPrices` are exempt: those are per-tier prices
   // written FOR that line, in that line's own unit.
+  // ── THE GUARD IS ON THE TABLE, NOT ON ONE CALLER (2026-09-29) ─────────────
+  //
+  // The fix above closed `srcTierRange` and left `perItemStoreRange` open, and
+  // the two reach the SAME `canonicalProteinPrice`. Measured on shipped code at
+  // 30 guests, Engagement Party, with a per-item store chip on one line:
+  //
+  //   p_apps_cold   default $72-216 · tier=grocery $85-255 · CHIP $1,080-1,680
+  //   p_apps_hot    unchanged control, no chip set
+  //
+  // Same 15x, same line, through the second door. A host who never touches the
+  // tier picker and taps "Grocery" on one appetizer row gets it. The reason the
+  // first fix missed it is the reason this is now one function: the rule is a
+  // property of the TABLE — its numbers are dollars per pound — so it belongs
+  // beside the lookup, not copied into each caller that happens to remember.
   const WEIGHT_UNIT_RE = /^(lb|lbs|pound|pounds|oz|ounce|ounces|kg)\b/i;
+  /** The canonical table's price for this line, or null when it cannot apply. */
+  const canonicalFor = (p, tier) => (
+    WEIGHT_UNIT_RE.test(String(p.unit || '')) ? canonicalProteinPrice(p.item, tier) : null
+  );
   const srcTierRange = (p) => {
     if (!(p.category === 'food' && isProteinItem(p.item))) return null;
     if (p.sourcingPrices && Array.isArray(p.sourcingPrices[sourcing])) return p.sourcingPrices[sourcing];
     if (sourcing === DEFAULT_SOURCING) return null;
-    if (!WEIGHT_UNIT_RE.test(String(p.unit || ''))) return null;
-    return canonicalProteinPrice(p.item, sourcing);
+    return canonicalFor(p, sourcing);
   };
   // Per-item store pick (event.foodWhere[id] = a chosen store name, written when
   // the host taps a specific store on ONE line — HostShellV2.jsx's per-item
@@ -4635,7 +4652,7 @@ export function playbookFoodPlan(event, opts = {}) {
     const tier = Object.keys(WHERE_TIER_RE).find((t) => WHERE_TIER_RE[t].test(picked));
     if (!tier) return null;
     if (p.sourcingPrices && Array.isArray(p.sourcingPrices[tier])) return p.sourcingPrices[tier];
-    return canonicalProteinPrice(p.item, tier);
+    return canonicalFor(p, tier);
   };
   // Channel factor: proteins use the deep meat factor (unless they have a tier range);
   // non-protein food + drinks use the modest Costco bulk factor (produce/dairy/staples).
@@ -5253,7 +5270,13 @@ export function playbookFoodPlan(event, opts = {}) {
     byTier: SOURCING_TIERS.reduce((acc, t) => {
       const range = (_kpP.sourcingPrices && Array.isArray(_kpP.sourcingPrices[t.id]))
         ? _kpP.sourcingPrices[t.id]
-        : ((t.id !== DEFAULT_SOURCING && canonicalProteinPrice(_kpP.item, t.id))
+        // THE THIRD DOOR to the same per-pound table (2026-09-29). The card
+        // shows "~$X ribs" per tier, and its key protein is whichever food line
+        // matches `isProteinItem` FIRST — on Engagement Party that is a line
+        // priced in bites. Same guard, so the card cannot quote a number the
+        // plan itself now refuses to use; the fall-through below is the
+        // authored band scaled by the tier factor, which is what the plan does.
+        : ((t.id !== DEFAULT_SOURCING && canonicalFor(_kpP, t.id))
           || (Array.isArray(_kpP.unitCostRange) ? _kpP.unitCostRange.map((v) => v * t.factor) : [0, 0]));
       acc[t.id] = Math.round((_keyProtein.units || 1) * ((range[0] + range[1]) / 2) * pf);
       return acc;

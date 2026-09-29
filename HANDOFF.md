@@ -1,6 +1,17 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-27 (thirty-eighth entry:
+**Measured reality, not intentions.** Updated 2026-09-29 (fortieth entry:
+the 2026-09-25 per-pound guard closed ONE of three callers into the same table.
+The per-item store chip still turned $72 of appetizer into $1,080, and the
+sourcing card — the only screen in the product that compares tiers — told every
+Engagement Party host grocery costs 4.3x butcher, by multiplying 120 bites by
+shrimp's price a pound. The rule now lives beside the table, not in the caller
+that happened to be under investigation. Also: a seam suite that is green on
+CI's Node 20 and 9-of-23 red on Node 22. Worth carrying forward: my own
+door-3 test passed with the fix reverted, because I picked a 5x threshold
+without measuring a 4.3x defect. See the fortieth entry.)
+
+Before that, on 2026-09-27 (thirty-eighth entry:
 the offline shell ships after a third board lifted a two-board ban, two
 onboarding faults close — a host's own event was at index 15 of 17 behind
 thirteen samples, and a wiped device recorded a sample nobody had opened — and
@@ -234,12 +245,12 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `f7cdc1bd`, **2 unpushed** (relation de-dup, couple honoree) + the offline shell uncommitted. 11 commits landed 2026-09-27 |
+| Branch / HEAD | `main` @ `f7cdc1bd`. Fast-forwarded 2026-09-29 onto `7b4cef1` — 79 commits from the local session, merged and re-measured here before anything below was written |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **7,926 passed**, 1 skipped, **0 failed**, **561 suites** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
-| vitest (hostv2 seam) | **43 passed / 4 files** (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
+| Jest | **8,031 passed**, 1 skipped, **0 failed**, **575 suites** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| vitest (hostv2 seam) | **48 passed / 4 files** (2026-09-29 — and see the fortieth entry: 9 of these fail on Node 22 until `Object.defineProperty` replaced `global.navigator = …`; CI pins Node 20, where all 48 always passed). Before that 43 / 4 (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
@@ -250,6 +261,103 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-09-29 (fortieth entry) — the unit guard held one door of three, and a seam test that is green only on Node 20
+
+**Two sessions were running against this repo at once — a cloud session and a
+local one — and the owner said so: "Im mixing sessions". This entry is written
+from the cloud session AFTER fast-forwarding onto everything the local session
+pushed (`3c7afa3..7b4cef1`, 79 commits). Everything below was re-measured on
+that merged tree, not relayed.**
+
+### The defect: a fix that closed one caller and left two open
+
+The thirty-sixth entry fixed a per-pound price landing on a per-bite line by
+guarding `srcTierRange`. Measured on shipped code today, the same
+`canonicalProteinPrice` table was still reachable through two other callers:
+
+| door | caller | Engagement Party, 30 guests, `p_apps_cold` |
+|---|---|---|
+| 1 | `srcTierRange` (tier picker) | guarded 2026-09-25 — `$72-216` → `$85-255` |
+| 2 | `perItemStoreRange` (per-item "where to buy" chip) | **`$72-216` → `$1,080-1,680`** |
+| 3 | `sourcingKey.byTier` (the sourcing card) | **butcher 158 · costco 450 · grocery 675** |
+
+Door 2 is the original 15x, intact, reached by a host who never opens the tier
+picker and taps "Grocery" on one appetizer row. Door 3 is worse in kind: that
+card is the ONLY screen in the product that compares tiers, and it was telling
+every Engagement Party host that grocery costs **4.3x butcher** — a number
+derived by multiplying 120 *bites* by shrimp's $9-14 *a pound*. It did not sit
+beside a right answer; it *was* the answer to "where should I shop".
+
+**The fix is one function, not three guards.** The rule — this table's numbers
+are dollars per pound — is a property of the TABLE, so `canonicalFor(p, tier)`
+now sits beside the lookup and every caller goes through it. The first fix
+missed two doors precisely because the rule was written into the caller that
+happened to be under investigation.
+
+After: door 2 `$72-216` (unchanged), door 3 `158 / 134 / 186`.
+
+**Named, not smoothed:** tapping a store chip on a bites line now moves
+*nothing*. Wrong number → no number is the right first step and is not the
+finished answer. Whether a per-item chip should carry the tier's factor is a
+product decision, and deciding it inside a bug fix would be freestyling. It is
+pinned in the guard's own comment.
+
+### My own check was vacuous, and only re-proofing found it
+
+`aPoundPriceNeedsAPoundLineEverywhere.test.js` door-3 test first asserted "no
+tier exceeds 5x the default". I red-proofed it by reverting the fix — and it
+**stayed green**, because the real defect is 4.3x. A threshold picked without
+measuring, on the one test whose entire job is to detect that defect. Re-measured
+and re-pinned to the literal figures `{ butcher: 158, costco: 134, grocery: 186 }`;
+both doors now go red when reverted, proved separately.
+
+Door 2's assertion was also wrong on the first pass — written as "the chip must
+equal the tier answer", red at `$72-216` vs `$85-255`. The fix was right and the
+assertion was not. That is twice in one file.
+
+### The seam suite is green in CI and red on Node 22
+
+`hostv2/test/offlineShell.test.mjs` assigns `global.navigator = {…}`. Node 21
+made `globalThis.navigator` a getter-only accessor, so that assignment throws
+`TypeError: Cannot set property navigator of #<Object> which has only a getter`.
+
+- **9 of 23 tests fail on Node 22.22.2** (this container)
+- **23 of 23 pass on the Node 20 that `checks.yml` pins** — all 7 job definitions
+
+Pre-existing at `7b4cef1` with my work stashed, so not caused by this change —
+but it is the worst shape a gate can take: `verify:push` goes red for a reason
+unrelated to the change being pushed, which trains a developer to push through
+it. Fixed with `Object.defineProperty`, which works whether the slot is a data
+property or an accessor. 23/23 on Node 22 now, and unchanged behaviour on 20.
+
+### Worth carrying forward
+
+1. **A guard written into a caller is not a guard on the thing.** Three callers,
+   one table, one rule — the rule belongs beside the table. Doors 2 and 3 were
+   open for four days because the 2026-09-25 fix was scoped to the symptom.
+2. **Red-proof every assertion in a file, not the file.** Three of four tests
+   passing on a reverted fix says nothing about the fourth. Both doors here had
+   to be reverted *separately* before either proof was worth anything.
+3. **A threshold you did not measure is a guess wearing a number.** "5x" felt
+   safely loose and sat directly above a 4.3x defect.
+4. **A green CI is a claim about CI's Node version.** Check the runner pin
+   before calling a local red an environment problem — this one was a real
+   portability defect that CI structurally could not see.
+
+### Open
+
+- **Butcher as the default sourcing tier** — still open, still the owner's call.
+  Measured, and the measurement moved this session: the tier `factor` values
+  (0.85 / 1.18) are decorative for proteins (41 protein lines: 6 authored, 35
+  canonical, **0 fall through**), and the sourcing card's tier comparison — the
+  one screen that argues for a tier — was quoting a 4.3x butcher advantage that
+  was an arithmetic error. That advantage is now 1.18x. Correcting my own
+  earlier statement: butcher does NOT "assert nothing about the host" — its
+  label reads 'Best flavor · pickup day-before', which assumes a dedicated
+  errand.
+- The three START HERE items below (deployed price-observation write, the
+  Kroger probe, the free BLS key) are unchanged and still open.
 
 ## FIXED 2026-09-27 (thirty-ninth entry) — the lodging cockpit, live with the host on a phone, and four times the check was the thing that was wrong
 
