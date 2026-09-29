@@ -8755,8 +8755,10 @@ export default function HostShellV2() {
                               </>
                             );
                           })()}
-                          <input className="field" type="date" value={effDate} onChange={e => setFDate(e.target.value)}
-                            aria-label={effEndDate ? 'First day' : 'Event date'} />
+                          <label className="field-lbl">
+                            <span>{effEndDate ? 'First day' : 'Event date'}</span>
+                            <input className="field" type="date" value={effDate} onChange={e => setFDate(e.target.value)} />
+                          </label>
                           {effDate && dstatC.status !== 'ok' && (
                             <p className="grounding" style={dstatC.blocking ? { color: 'var(--danger)' } : { color: 'var(--warn)' }}>{dstatC.reason}</p>
                           )}
@@ -8776,9 +8778,11 @@ export default function HostShellV2() {
                               an end to show. */}
                           {effDate && (effEndDate || fEndDate !== '' || saidOvernight) ? (
                             <>
-                              <input className="field" type="date" value={effEndDate}
-                                min={effDate} onChange={e => setFEndDate(e.target.value)}
-                                style={{ marginTop: 'var(--sp-2)' }} aria-label="Last day" />
+                              <label className="field-lbl" style={{ marginTop: 'var(--sp-2)' }}>
+                                <span>Last day</span>
+                                <input className="field" type="date" value={effEndDate}
+                                  min={effDate} onChange={e => setFEndDate(e.target.value)} />
+                              </label>
                               {effEndDate && effEndDate <= effDate && (
                                 <p className="grounding" style={{ color: 'var(--warn)' }}>
                                   The last day needs to be after {new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.

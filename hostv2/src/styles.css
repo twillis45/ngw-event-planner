@@ -1458,6 +1458,19 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 }
 .grounding{font-size:var(--t-meta); color:var(--muted); margin-top:6px; font-weight:550}
 
+/* ── FIELD LABEL ────────────────────────────────────────────────────────────
+   UX_05: above the input, always; 12px / 500 / muted; 4-6px gap; never inline.
+   Added for the creation step's two date inputs, which were two identical bare
+   boxes stacked on top of each other — the aria-label told a screen reader
+   which was which and told a sighted host nothing. The <label> wraps the
+   input, so the visible text IS the accessible name: one string, not two that
+   can drift. */
+.field-lbl{display:block}
+.field-lbl > span{
+  display:block; font-size:var(--t-overline); font-weight:500; color:var(--muted);
+  letter-spacing:-.005em; margin-bottom:5px;
+}
+
 /* ── The Day stage (Dark Standard Carbon) ── */
 .app.dark-stage{
   background-color:var(--carbon); color:var(--carbon-text);
