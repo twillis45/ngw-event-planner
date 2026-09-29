@@ -56,7 +56,7 @@ export const TOKENS = {
   // Steel-blue identity & CTA gradient ---------------------------------
   // Identity stays locked across modes — the steel-blue is the brand and
   // does not invert. Only carbon surfaces invert for Light mode.
-  steelBlue:               { dark: '#4E6877', mid: '#4E6877', light: '#4E6877' },
+  steelBlue:               { dark: '#4c6675', mid: '#4c6675', light: '#4c6675' },
   steelBlueDark:           { dark: '#3F5B6A', mid: '#3F5B6A', light: '#3F5B6A' },
   // light darkened 2026-08-18: #6F8794 measured 3.77:1 on white as text (fails
   // AA). Dark/mid keep the identity value — steel is identity, and on carbon it
@@ -70,7 +70,7 @@ export const TOKENS = {
   // which ran ≈3.6–4.1:1 as text on the danger tint/card (fails WCAG). Lightened
   // to #F27A70 → ≈4.9:1 on tint, ≈6:1 on card. dangerSolid preserves the deep
   // red for the one solid-fill use (the alert banner, white text on it).
-  dangerRed:    { dark: '#F27A70', mid: '#F27A70', light: '#c03838' },
+  dangerRed:    { dark: '#F27A70', mid: '#F27A70', light: '#bb3737' }, // light: 4.44 on its own tint -> 4.60
   dangerSolid:  { dark: '#E84036', mid: '#E84036', light: '#c03838' },
   // Light-mode AA pass 2026-08-18. Light is dormant (ACTIVE_MODE is 'dark' and
   // no caller requests light), so these values were never rendered and never
@@ -80,8 +80,28 @@ export const TOKENS = {
   // Corrected now, while nothing depends on them, so enabling light mode later
   // is not also a contrast regression. Hue and saturation preserved; only
   // lightness moved, by the minimum needed to clear 4.5:1.
-  amber:        { dark: '#ECA13F', mid: '#ECA13F', light: '#ac630d' }, // was #ef962e (2.31:1)
-  successGreen: { dark: '#4FAE7A', mid: '#4FAE7A', light: '#27854e' }, // was #298c52 (4.23:1)
+  //
+  // MEASURED ON THE RENDERED PAGE 2026-09-29, once light mode was real: both
+  // still failed, because that pass used the WRONG REFERENCE PLANE. It checked
+  // #ffffff — the CARD — and most body text in this shell does not sit on a
+  // card. It sits on --bg (#F7F8FA), which is darker, and against that ground
+  // the "corrected" values read 4.35 and 4.34. Two values, tuned twice, by the
+  // same method, both landing just under the bar on the surface that actually
+  // carries the text.
+  //
+  // AND THE TIGHTEST PLANE IS NOT THE PAGE. Third pass, same day: a status
+  // pill puts its colour on a 10% wash of ITSELF, so the ground is the
+  // composite (#eef6f1 and friends), not --bg. Against that, the values above
+  // read 4.02-4.44. The screen walk could not see it — neither viewport had a
+  // status pill on it — which is why the token gate computes each tint from
+  // its own base rather than trusting a rendered sample.
+  //
+  // The reference is now the TIGHTEST plane any text occupies, not the most
+  // flattering one. --field (#EDEEF1) is excluded on purpose: it is the gutter
+  // behind the stage at >=1024 and carries no text (verified by walking every
+  // rendered text node at 1440 and 390 — every one sat on #FFFFFF or #F7F8FA).
+  amber:        { dark: '#ECA13F', mid: '#ECA13F', light: '#99580c' }, // #ef962e 2.31 -> #ac630d 4.35 -> #a7600d 4.57 on --bg -> 4.60 on its own tint
+  successGreen: { dark: '#4FAE7A', mid: '#4FAE7A', light: '#237646' }, // #298c52 4.23 -> #27854e 4.34 -> #26814c 4.57 on --bg -> 4.61 on its own tint
 
   // Text ---------------------------------------------------------------
   textPrimary:   { dark: '#eef0f4', mid: '#e8edf2', light: '#0d0f12' },

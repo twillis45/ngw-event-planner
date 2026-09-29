@@ -125,13 +125,31 @@ export function applyStudioMatte() {
   // real luminance step below "secondary body" (card 5.29 vs 5.94), still AA on
   // the tight band (4.85). Scoped to the host shell here — the shared palette is
   // left alone so nothing else shifts.
-  set('--muted', '#909296');
+  //
+  // AND IT IS THE SECOND TOKEN THAT OPTED OUT OF THE MODE (2026-09-29). Same
+  // class as --field above: a literal, no isLight branch. On the light ground
+  // it reads 2.93:1 and on a card 3.12:1, and it is the single cause of 52 of
+  // the 57 sub-AA text nodes measured on the rendered light page — every rail
+  // label, every shelf heading, every chevron. Dark measured zero.
+  //
+  // The light value is solved, not picked: the LIGHTEST neutral holding this
+  // ramp's character (blue = red + 4) that still clears 4.5:1 on BOTH text
+  // planes — 4.55 on --bg, 4.83 on --card. Lightest, because in light mode
+  // de-emphasis runs upward, and this has to sit a real step ABOVE --ink-soft
+  // (#527088, 4.90 on --bg) in exactly the way the dark value sits below it.
+  set('--muted', isLight ? '#707274' : '#909296');
   // --faint carries small text (section labels, form-field labels, chevrons). A
   // tint of the now-darker --muted base; α 0.98 keeps it AA on the tight band
   // (≈4.7:1) while sitting a hair below --muted. (The 4.5:1 floor on the band
   // surface physically prevents three widely-spaced grey tiers — the important
   // fix is muted now ranking below ink-soft, above.)
-  set('--faint', tint('#909296', 0.98));
+  //
+  // In light the alpha step is not available: --muted is already ON the floor
+  // there, and α 0.98 over --bg lands at 4.35. So light runs TWO grey tiers,
+  // not three — which is the same conclusion the parenthetical above reaches
+  // for dark, stated outright instead of hidden behind an imperceptible 2%.
+  // A third tier that fails AA is not a third tier.
+  set('--faint', isLight ? '#707274' : tint('#909296', 0.98));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
 
@@ -143,7 +161,20 @@ export function applyStudioMatte() {
   // lighter steel that clears 4.5 on the tint — set as a literal (not the
   // palette base) on purpose, so the shared --sheen material detail, which also
   // derives from steelBlueMuted, is left untouched (per-screen audit + brand-lock).
-  set('--steel-soft', dsColor.text.onTint);       // text-legible steel on carbon (promoted 2026-08-18)
+  //
+  // "ON CARBON" IS THE WHOLE PROBLEM IN LIGHT (2026-09-29). The comment above
+  // names its ground and it is a dark one; on the light page this literal read
+  // 2.49:1. It is the fifth token that never branched on the mode, and the one
+  // that survived the first sweep because the other four accounted for 54 of
+  // the 57 failures and this one for 3.
+  //
+  // In light the correction runs the OTHER WAY. Legible-on-the-tint means
+  // LIGHTER against carbon and DARKER against a pale steel tint (#dce1e5),
+  // so light takes a deeper steel rather than a softer one. Measured 5.27:1
+  // on the tint over --bg and 6.53:1 on --bg itself — chosen for margin, not
+  // for the first value that squeaked past: the nearest passing candidate
+  // cleared the tint by 0.02, which is a rounding error, not a floor.
+  set('--steel-soft', isLight ? '#455d6a' : dsColor.text.onTint);
   set('--steel-tint', tint(bundle.steelBlue, 0.16));
   // Audit S1: steel was doing triple duty — identity, selection, AND the
   // "in progress" status tier (booked / renting / vendor-mid …), so a host
@@ -207,7 +238,14 @@ export function applyStudioMatte() {
   // as --steel-soft above. Measured: 6.40:1 on --bg-band; on danger-tint(.10)
   // 6.01:1 over --card, 5.50:1 over --bg-band, 7.66:1 over --carbon — every
   // ground clears small-text AA (4.5:1) with margin.
-  set('--danger-text', '#F58B82');
+  //
+  // Every measurement in the paragraph above is a DARK measurement — --bg-band
+  // and --carbon are dark grounds, and a literal chosen against them reads
+  // 2.36:1 on the light page. Light takes the danger accent itself (5.11 on
+  // --bg, 4.68 on --bg-band): the "one step lighter" refinement is a
+  // dark-ramp move, and repeating it in light would soften the value in the
+  // direction that costs contrast rather than the one that adds it.
+  set('--danger-text', isLight ? bundle.dangerRed : '#F58B82');
 
   // ── The Day: Dark Standard Carbon ramp ──
   set('--carbon', bundle.carbonBody);
