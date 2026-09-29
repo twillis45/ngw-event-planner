@@ -710,6 +710,25 @@ function Looking({ event, patch }) {
               ? c.amenities
               : (Array.isArray(r.amenities) && r.amenities.length ? r.amenities : c.amenities),
           });
+          // WHICH SIDE ANSWERED (2026-09-29). Both sources are reads, so both
+          // rendered as "read from the page you pasted" — and after the merge
+          // that sentence was false for every field the LISTING supplied. On a
+          // surface whose promise is per-field provenance, crediting the wrong
+          // read is the same defect as crediting no read.
+          //
+          // Recorded here because this is the only place that knows: at commit
+          // a filled field looks identical whichever side filled it.
+          read[read.length - 1]._lookedUp = [
+            !c.name && r.title ? 'label' : null,
+            c.sleeps == null && r.sleeps != null ? 'sleeps' : null,
+            c.beds == null && facts.beds != null ? 'beds' : null,
+            c.bedrooms == null && facts.bedrooms != null ? 'bedrooms' : null,
+            c.priceShown == null && r.price != null ? 'price' : null,
+            !c.photo && shot ? 'photoUrl' : null,
+            (!Array.isArray(c.amenities) || !c.amenities.length)
+              && Array.isArray(r.amenities) && r.amenities.length ? 'amenities' : null,
+            c.rating == null && r.rating != null ? 'rating' : null,
+          ].filter(Boolean);
           if (r.title) anyTitle = true;
         }
         cands = read;
@@ -809,17 +828,11 @@ function Looking({ event, patch }) {
       // Provenance is captured HERE or not at all — reconstructing it later
       // would be a guess, and lodgingProvenance deliberately reports an
       // unrecorded source as unknown rather than crediting either side.
-      sources: {
-        ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
-        ...(c.beds != null ? { beds: 'read' } : null),
-        ...(c.sleeps != null ? { sleeps: 'read' } : null),
-        ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: 'read' } : null),
-        ...(c.priceShown != null
-          ? (c.priceBasis === 'night' ? { pricePerNight: 'read' } : { totalPrice: 'read' })
-          : null),
-        ...(c.photo ? { photoUrl: 'read' } : null),
-        ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
-      },
+      // 'read' means the page the host pasted; 'looked-up' means the listing's
+      // own record, fetched because they pasted its link. Both are reads and
+      // neither is a guess — but they are different pages, and the card now
+      // names which one, per field.
+      sources: sourcesFor(c),
       // The first number the host ever recorded, kept so the price can say
       // "was $X when you saved it" — our own history, never a market claim.
       ...(c.priceShown != null ? { priceFirstSeen: c.priceShown } : null),
@@ -838,6 +851,42 @@ function Looking({ event, patch }) {
         : `Added ${next.length}.${drop}`);
     }
   };
+  // ONE STAMPER FOR BOTH COMMIT PATHS. `add()` and `commitStaged()` each held
+  // their own copy of this object; two copies of one rule is how the next
+  // field gets its provenance recorded in one path and not the other.
+  const sourcesFor = (c) => {
+    const up = new Set(Array.isArray(c._lookedUp) ? c._lookedUp : []);
+    const via = (k) => (up.has(k) ? 'looked-up' : 'read');
+    return {
+      ...(lodgingTitleIsReal(c) ? { label: via('label') } : null),
+      ...(c.beds != null ? { beds: via('beds') } : null),
+      ...(c.sleeps != null ? { sleeps: via('sleeps') } : null),
+      ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: via('amenities') } : null),
+      ...(c.priceShown != null
+        ? (c.priceBasis === 'night' ? { pricePerNight: via('price') } : { totalPrice: via('price') })
+        : null),
+      ...(c.photo ? { photoUrl: via('photoUrl') } : null),
+      // `notes` is ASSEMBLED from several fields, so it is looked-up only when
+      // every part that is actually present came from the listing. `place` and
+      // `starClass` only ever come off a pasted card, so either one present
+      // settles it as 'read'.
+      //
+      // The first cut of this tested `c.bedrooms == null`, which was wrong the
+      // moment the unfurl started supplying bedrooms: a links-only paste —
+      // where every part genuinely IS looked-up — still recorded 'read'.
+      // Caught by running the links-only case, not by reading the condition.
+      ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length)
+        ? {
+          notes: (!c.place && !c.starClass
+            && (c.bedrooms == null || up.has('bedrooms'))
+            && (c.rating == null || up.has('rating'))
+            && (!Array.isArray(c.amenities) || !c.amenities.length || up.has('amenities')))
+            ? 'looked-up' : 'read',
+        }
+        : null),
+    };
+  };
+
   // Commit only what is still ticked. Untick is the whole point of the review.
   const commitStaged = () => {
     const keep = staged.cands.filter((c) => staged.pick.has(c._k));
@@ -860,17 +909,11 @@ function Looking({ event, patch }) {
       // Provenance is captured HERE or not at all — reconstructing it later
       // would be a guess, and lodgingProvenance deliberately reports an
       // unrecorded source as unknown rather than crediting either side.
-      sources: {
-        ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
-        ...(c.beds != null ? { beds: 'read' } : null),
-        ...(c.sleeps != null ? { sleeps: 'read' } : null),
-        ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: 'read' } : null),
-        ...(c.priceShown != null
-          ? (c.priceBasis === 'night' ? { pricePerNight: 'read' } : { totalPrice: 'read' })
-          : null),
-        ...(c.photo ? { photoUrl: 'read' } : null),
-        ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
-      },
+      // 'read' means the page the host pasted; 'looked-up' means the listing's
+      // own record, fetched because they pasted its link. Both are reads and
+      // neither is a guess — but they are different pages, and the card now
+      // names which one, per field.
+      sources: sourcesFor(c),
       // The first number the host ever recorded, kept so the price can say
       // "was $X when you saved it" — our own history, never a market claim.
       ...(c.priceShown != null ? { priceFirstSeen: c.priceShown } : null),
@@ -1322,14 +1365,94 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
               {(() => {
                 const identity = (
                   <>
+                    {/* ── THE GROUP'S NUMBER LEADS (host, 2026-09-29: "per head
+                        is a major thrust and needs more prominent attention") ──
+                        This card led with the stay TOTAL and put per-head third,
+                        below the musts line, in page-tokened grey. But the total
+                        answers the host's question and the per-head answers the
+                        one they are about to be asked by nine other people —
+                        which is the moment this whole surface is built for.
+
+                        A SWAP, NOT AN ADDITION. UX_01: one loud thing, and "if a
+                        viewport shows two elements styled as page titles, one of
+                        them is wrong." So per-head takes the lead slot and the
+                        total steps down into the sub line — it is not lost, it
+                        is ranked. With no price to divide there is no per-head,
+                        and the total leads exactly as it used to. */}
                     <div className="lc-card-top">
                       <h3 className="lc-card-name">{o.label}</h3>
-                      {money(total)
-                        ? <span className="lc-card-price">{money(total)}</span>
-                        : perRoomRate ? <span className="lc-card-price lc-card-price-room">{perRoomRate}</span> : null}
+                      {perHead
+                        ? (
+                          <span className="lc-card-price lc-card-lead-each">
+                            {money(perHead.each)}<span className="lc-lead-each-unit"> each</span>
+                          </span>
+                        )
+                        : money(total)
+                          ? <span className="lc-card-price">{money(total)}</span>
+                          : perRoomRate ? <span className="lc-card-price lc-card-price-room">{perRoomRate}</span> : null}
                     </div>
+                    {/* ── FITMENT READS AS A STATE, NOT AS RUNNING TEXT (host,
+                        2026-09-29: "the fitment should be prominent as well") ──
+                        "Fits 2 of your 3 musts" was one clause in a grey
+                        sentence beside the nights, which is where a reader's eye
+                        goes last. Whether a house holds the group is the FIRST
+                        question this screen answers, and it is a STATE.
+                        UX_02: a state gets a semantic colour and a label saying
+                        why, never colour alone — so the chip carries the
+                        engine's own reason ("sleeps 14, 4 spare" / "sleeps 5 of
+                        your 10"), not a bare tick.
+                        It does not become a second loud NUMBER: per-head keeps
+                        the one lead slot, and this is ranked by colour.
+
+                        DEVIATION, STATED: UX_02 specifies a 12-15% tint as the
+                        chip's container. That assumes a page surface. These sit
+                        on a photograph, where a 12% wash of anything is whatever
+                        the photo underneath happens to be — so the container is
+                        a dark pill and the status colour carries in the TEXT.
+                        Same semantics, a ground that actually exists. */}
+                    {(() => {
+                      // FIT IS NOT A COMPARISON (found by driving it, 2026-09-29).
+                      // This first read the chip off `sc`, the RANKING score —
+                      // which only exists once there are places to rank. So the
+                      // host's very first place, the one the deck now shows,
+                      // had no fit state at all: `chips: 0` on a card whose
+                      // whole job is to answer "does this hold my group".
+                      // Whether one house sleeps ten is a fact about that house
+                      // and this event, and needs nothing else on the shortlist.
+                      const heads = perHead ? perHead.heads : (Number(event.guestCount) || 0);
+                      const unknown = o.sleeps == null;
+                      const fitsNow = !unknown && heads > 0 ? o.sleeps >= heads : null;
+                      const state = unknown || fitsNow == null ? 'unknown' : (fitsNow ? 'yes' : 'no');
+                      // The engine's own sentence when there IS a ranking; the
+                      // same sentence built from the same two numbers when
+                      // there is not. Never a third phrasing.
+                      const spare = (!unknown && heads > 0) ? o.sleeps - heads : null;
+                      const why = (sc && Array.isArray(sc.reasons)
+                        ? sc.reasons.find((r) => /^sleeps/i.test(r)) : null)
+                        || (unknown ? 'sleeps not known yet'
+                          : heads > 0
+                            ? (spare < 0 ? `sleeps ${o.sleeps} of your ${heads}`
+                              : spare === 0 ? `sleeps exactly your ${heads}`
+                                : `sleeps ${o.sleeps}, ${spare} spare`)
+                            : `sleeps ${o.sleeps}`);
+                      if (!why && !(sc && sc.mustsTotal)) return null;
+                      return (
+                        <p className="lc-card-fit">
+                          {why && (
+                            <span className={`lc-fitchip lc-fit-${state}`}>
+                              {why.charAt(0).toUpperCase() + why.slice(1)}
+                            </span>
+                          )}
+                          {sc && sc.mustsTotal ? (
+                            <span className={`lc-fitchip ${sc.mustsMet === sc.mustsTotal ? 'lc-fit-yes' : 'lc-fit-part'}`}>
+                              {sc.mustsMet} of {sc.mustsTotal} musts
+                            </span>
+                          ) : null}
+                        </p>
+                      );
+                    })()}
                     <p className="lc-card-sub">
-                      {[sc && sc.mustsTotal ? `Fits ${sc.mustsMet} of your ${sc.mustsTotal} musts` : null,
+                      {[perHead && money(total) ? `${money(total)} in total` : null,
                         nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
                         .filter(Boolean).join(' · ')}
                     </p>
@@ -1346,13 +1469,15 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                         than picking one; that hedge is the whole reason the
                         reader exists, and dropping it here would put a settled
                         number on an unanswered question. */}
+                    {/* The hedge stays WELDED to the number it qualifies. Moving
+                        the figure up without this would leave a settled-looking
+                        headline over an unanswered question — the exact thing
+                        perHeadOf refuses to do when it declines to pick a
+                        denominator. */}
                     {perHead && (
                       <p className="lc-card-each">
-                        <span className="lc-each-n">{money(perHead.each)} each</span>
-                        <span className="lc-each-why">
-                          {` across ${perHead.heads}`}
-                          {perHead.stated ? '' : ' — nobody said if you’re in that number'}
-                        </span>
+                        {`across ${perHead.heads}`}
+                        {perHead.stated ? '' : ' — nobody said if you’re in that number'}
                       </p>
                     )}
                     <div className="lc-ctas lc-ctas-wrap" style={{ margin: '10px 0 0' }}>
@@ -1449,7 +1574,9 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                                 was read; it was read off the PAGE she pasted, not
                                 from a per-place link. Say that, and the card stops
                                 contradicting itself. */}
-                            {r.source === 'read' ? 'read from the page you pasted' : 'you typed it'}
+                            {r.source === 'read' ? 'read from the page you pasted'
+                              : r.source === 'looked-up' ? 'read from the listing itself'
+                                : 'you typed it'}
                           </span>
                         </div>
                       ))}
@@ -2617,9 +2744,27 @@ const CSS = `
 .lc-pv-val{font-weight:650;color:var(--ink);}
 /* The per-person line: the number carries the weight, the caveat does not.
    One line, so it never competes with the total above it. */
-.lc-card-each{margin:var(--sp-1) 0 0;font:400 var(--t-meta)/1.4 Inter,sans-serif;}
-.lc-each-n{font-weight:650;color:var(--ink);}
-.lc-each-why{color:var(--muted);}
+/* OVER A PHOTO, NOT ON THE PAGE (2026-09-29). This line used --ink and
+   --muted, which are PAGE tokens, while every other line in this overlay
+   carries an explicit white and a shadow because it sits on a photograph. On a
+   bright listing photo the tail was effectively invisible — measured before
+   the host asked, and the same class of fault as the light-mode tokens that
+   never branched. Matches .lc-card-sub, which has always been correct. */
+.lc-card-each{margin:var(--sp-1) 0 0;font:400 var(--t-meta)/1.4 Inter,sans-serif;
+  color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6);}
+/* The lead number: same size as the name it sits beside, so the card still has
+   ONE loud thing rather than two competing ones. "each" rides at the sub size
+   so the figure reads first and the unit qualifies it. */
+.lc-card-lead-each{white-space:nowrap;}
+.lc-card-fit{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin:var(--sp-2) 0 0;}
+.lc-fitchip{font:650 var(--t-caption)/1.5 Inter,sans-serif;padding:2px var(--sp-2);
+  border-radius:999px;background:rgba(0,0,0,.55);white-space:nowrap;}
+.lc-fit-yes{color:var(--ok);}
+.lc-fit-no{color:var(--warn);}
+.lc-fit-part{color:var(--warn);}
+/* Not-told is not a state to colour. It is the absence of one. */
+.lc-fit-unknown{color:rgba(255,255,255,.82);}
+.lc-lead-each-unit{font:400 13px/1.25 Inter,sans-serif;color:rgba(255,255,255,.85);}
 .lc-pv-src{font:400 12px/1.35 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
 .lc-dots{display:flex;gap:6px;justify-content:center;margin:12px 0 4px;}
 .lc-dot{width:6px;height:3px;border-radius:2px;background:var(--hair);transition:width .18s ease;}

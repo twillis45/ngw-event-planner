@@ -132,7 +132,13 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     });
     expect(stored.sleeps, 'sleeps must come off the listing, not be typed').toBeGreaterThan(0);
     expect(String(stored.photoUrl || '')).toMatch(/^https:\/\//);
-    expect(stored.sources.sleeps).toBe('read');
+    // 'looked-up', not 'read' (2026-09-29). This asserted 'read' because that
+    // was the only word the provenance vocabulary had — and this test's own
+    // comment two lines up says what it actually meant: OFF THE LISTING. Once
+    // a results-page paste also gets unfurled, "read" stopped distinguishing
+    // the page the host pasted from the listing behind it, and the card was
+    // crediting the wrong one. The stronger claim is the one that was intended.
+    expect(stored.sources.sleeps).toBe('looked-up');
   });
 
   test('the kitchen claim says where it came from, and the host can overrule it', async ({ page }) => {
@@ -173,8 +179,15 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
       'https://www.airbnb.com/rooms/20421340',
     ].join('\n'));
 
-    await expect(page.locator('.lc-h1')).toHaveText(/3 places/i, { timeout: 30_000 });
+    // A MULTI-CANDIDATE PASTE STAGES; it does not auto-commit. Only a single
+    // listing skips this step, which is why the older test above lands
+    // straight on the headline and these two do not.
+    await expect(page.getByRole('button', { name: /Add 3 to the shortlist/i }))
+      .toBeVisible({ timeout: 30_000 });
     expect(calls, 'one unfurl per pasted link').toBe(3);
+    await page.getByRole('button', { name: /Add 3 to the shortlist/i }).click();
+
+    await expect(page.locator('.lc-h1')).toHaveText(/3 places/i, { timeout: 30_000 });
 
     // sleeps 10 against the example's 10 guests, so all three FIT — the count
     // the host was shown as zero.
@@ -212,8 +225,12 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
       '<span>3 bedrooms</span><span>$1,800 total</span></div>',
     ].join(''));
 
-    await expect(page.locator('.lc-h1')).toHaveText(/2 places/i, { timeout: 30_000 });
+    await expect(page.getByRole('button', { name: /Add \d+ to the shortlist/i }))
+      .toBeVisible({ timeout: 30_000 });
     expect(calls, 'a results paste must unfurl its listings too').toBeGreaterThan(0);
+    await page.getByRole('button', { name: /Add \d+ to the shortlist/i }).click();
+
+    await expect(page.locator('.lc-h1')).toHaveText(/2 places/i, { timeout: 30_000 });
 
     // sleeps came from the listing — the card never carries it.
     await expect(page.locator('.lc-h1')).toHaveText(/2 that fit|2 known to fit/i);
@@ -222,6 +239,62 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     // overwrote a value the host had already seen on the page they copied.
     const body = await page.evaluate(() => document.body.innerText);
     expect(body).not.toMatch(/\$99\b/);
+  });
+
+  test('the group\'s number leads the card, and fitment reads as a state', async ({ page }) => {
+    // Host, 2026-09-29: "per head is a major thrust and needs more prominent
+    // attention", then "the fitment should be prominent as well".
+    //
+    // The card led with the stay TOTAL and put per-head third, in page tokens
+    // (--ink/--muted) over a photograph — which is why the tail was invisible
+    // on a bright listing. Fitment was one clause in that same grey sentence.
+    //
+    // This asserts the RANKING, not the wording: per-head occupies the lead
+    // slot, the total is still present but demoted, and the fit chip carries
+    // the engine's own reason rather than a bare tick. UX_01 allows one loud
+    // thing, so a test that only checked "per-head is big" would pass on a
+    // card with two competing headline numbers.
+    await mockUnfurl(page);
+    await seed(page);
+    await paste(page, LISTING);
+    await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
+
+    const lead = page.locator('.lc-card-lead-each').first();
+    await expect(lead).toBeVisible();
+    await expect(lead).toHaveText(/\$\d[\d,]* each/);
+
+    // The total is ranked BELOW, not deleted.
+    await expect(page.locator('.lc-card-sub').first()).toHaveText(/in total/);
+
+    // One loud thing: the lead and the name share a size; nothing else on the
+    // card competes with them.
+    const sizes = await page.evaluate(() => {
+      const card = document.querySelector('.lc-card');
+      const n = (s) => parseFloat(getComputedStyle(card.querySelector(s)).fontSize);
+      return { lead: n('.lc-card-lead-each'), name: n('.lc-card-name'), sub: n('.lc-card-sub') };
+    });
+    expect(sizes.lead).toBe(sizes.name);
+    expect(sizes.sub).toBeLessThan(sizes.lead);
+
+    // Fitment is a state with a REASON, never a bare tick — UX_02: never
+    // communicate state by colour alone.
+    const chip = page.locator('.lc-fitchip').first();
+    await expect(chip).toBeVisible();
+    await expect(chip).toHaveText(/sleeps/i);
+
+    // And it is legible where it actually sits: over a photo, on its own pill,
+    // not in page tokens. 4.5:1 is the floor for both the chip and the hedge.
+    const contrast = await page.evaluate(() => {
+      const px = (c) => c.match(/[\d.]+/g).slice(0, 3).map(Number);
+      const L = (r) => { const f = r.map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; };
+      const ratio = (a, b) => { const [x, y] = [L(px(a)), L(px(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+      const on = 'rgb(0,0,0)';   // the pill/scrim ground these sit on
+      const c = document.querySelector('.lc-fitchip');
+      const t = document.querySelector('.lc-card-each');
+      return { chip: ratio(getComputedStyle(c).color, on), tail: t ? ratio(getComputedStyle(t).color, on) : 99 };
+    });
+    expect(contrast.chip).toBeGreaterThan(4.5);
+    expect(contrast.tail).toBeGreaterThan(4.5);
   });
 
   test('the shortlist can grow, and picking is not booking', async ({ page }) => {
