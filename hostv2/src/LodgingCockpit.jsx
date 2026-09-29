@@ -624,60 +624,81 @@ function Looking({ event, patch }) {
     // read server-side and comes back with its name and price filled. If it is
     // not, the link is still kept — losing it would be worse — and the surface
     // states exactly which parts are missing and who has to supply them.
-    if (found.linksOnly && cands.length === 1 && isUnfurlConfigured()) {
+    // ── AND MORE THAN ONE LINK IS STILL LINKS THE HOST CHOSE (2026-09-29) ──
+    // Host: "do a paste of airbnb properties that DO fit the requirements."
+    // Five real Santa Fe listings, every one of them sleeping 10-16 against a
+    // party of 10, pasted together — and the screen said "7 places, 0 known to
+    // fit". The listings were right. `cands.length === 1` was the gate: paste
+    // two or more and NOTHING was read, so `sleeps` never arrived, and `sleeps`
+    // is the field `fits` is computed from. The one number the comparison is
+    // blocked on was reachable and never fetched.
+    //
+    // The restraint that produced that gate is real and is kept: a SEARCH page
+    // is not crawled, and the searchOffer path below still asks first. But a
+    // list of listing URLs is not a crawl — it is N reads the host explicitly
+    // asked for by pasting them, and reading five is the same act as reading
+    // one, five times. Capped at 8, the cap the older shell intake has always
+    // used for exactly this.
+    const UNFURL_MAX = 8;
+    if (found.linksOnly && cands.length <= UNFURL_MAX && isUnfurlConfigured()) {
       setReadErr('');
       setBusy(true);
       try {
-        const r = await unfurlListing(cands[0].url);
-        if (r && r.ok) {
+        const read = [];
+        let anyTitle = false;
+        let lastReason = '';
+        for (const c of cands) {
+          let r = null;
+          // One bad link must not cost the host the other four.
+          try { r = await unfurlListing(c.url); } catch { r = null; }
+          if (!r || !r.ok) {
+            if (r && r.reason) lastReason = r.reason;
+            read.push(c);
+            continue;
+          }
           // ── THE UNFURL'S ANSWER WAS BEING THROWN ON THE FLOOR ────────────
-          // Driven 2026-08-04. Three breaks stacked in one line:
-          //   · it read `r.photo`; the endpoint returns `image`
-          //   · it wrote `photo`; photoList() reads `photos` and `photoUrl`
-          //     and has never looked at `photo`
-          //   · it ignored `facts` entirely — bedrooms, beds and baths came
-          //     back on every successful read and went nowhere
-          // So a picture could not arrive from an unfurl under ANY conditions,
-          // which is why every read row still said "no picture yet".
+          // Driven 2026-08-04. Three breaks stacked in one line: it read
+          // `r.photo` (the endpoint returns `image`), it wrote `photo` (photoList
+          // reads `photos`/`photoUrl`), and it ignored `facts` entirely. So a
+          // picture could not arrive from an unfurl under ANY conditions, which
+          // is why every read row still said "no picture yet".
           const facts = (r.facts && typeof r.facts === 'object') ? r.facts : {};
-          // `image` is what the endpoint returns; this read `r.photo`, which has
-          // never existed on that response — so a successful read still produced
-          // a row with no picture, every time (driven 2026-08-04). Stay on the
-          // CANDIDATE's own field names: `photo` and `beds` here become
-          // `photoUrl` and provenance at commit, a few lines below.
           const shot = String(r.image || '').trim();
-          cands = [{
-            ...cands[0],
-            name: r.title || cands[0].name,
-            priceShown: r.price != null ? r.price : cands[0].priceShown,
-            photo: shot || cands[0].photo,
-            // A COUNT OF BEDS, never mapped to `sleeps`: how many people a place
-            // holds is not something a bed count settles.
-            beds: facts.beds != null ? facts.beds : cands[0].beds,
-            bedrooms: facts.bedrooms != null ? facts.bedrooms : cands[0].bedrooms,
+          read.push({
+            ...c,
+            name: r.title || c.name,
+            priceShown: r.price != null ? r.price : c.priceShown,
+            photo: shot || c.photo,
+            // A COUNT OF BEDS, never mapped to `sleeps`: how many people a
+            // place holds is not something a bed count settles.
+            beds: facts.beds != null ? facts.beds : c.beds,
+            bedrooms: facts.bedrooms != null ? facts.bedrooms : c.bedrooms,
             // ── THE FIELD THE COMPARISON WAS BLOCKED ON (2026-08-04) ──────
             // `sleeps` decides `fits`, and therefore "3 of 5 fit", the ranking
             // and the per-person split. A results card never carries it — D6/W3b
             // says so in its own copy — so it has always been a number the host
             // had to type. The LISTING page carries it, in the structured record
-            // the unfurl now reads. This is that number, not an inference from
-            // beds or bedrooms.
-            sleeps: r.sleeps != null ? r.sleeps : cands[0].sleeps,
-            rating: r.rating != null ? r.rating : cands[0].rating,
-            ratingCount: r.ratingCount != null ? r.ratingCount : cands[0].ratingCount,
+            // the unfurl reads. This is that number, not an inference from beds
+            // or bedrooms.
+            sleeps: r.sleeps != null ? r.sleeps : c.sleeps,
+            rating: r.rating != null ? r.rating : c.rating,
+            ratingCount: r.ratingCount != null ? r.ratingCount : c.ratingCount,
             // The listing's OWN amenity words. Every must-have row read "—"
             // without them, even where the page said yes (host, 2026-08-06).
             amenities: Array.isArray(r.amenities) && r.amenities.length
-              ? r.amenities : cands[0].amenities,
-          }];
-          found = { ...found, linksOnly: !(r.title) };
-        } else if (r && r.reason) {
-          setReadErr(r.reason);
+              ? r.amenities : c.amenities,
+          });
+          if (r.title) anyTitle = true;
         }
+        cands = read;
+        found = { ...found, linksOnly: !anyTitle };
+        // Only when NOTHING came back — a reason shown beside four filled rows
+        // would read as a failure the host can see is not one.
+        if (lastReason && !anyTitle) setReadErr(lastReason);
       } catch { /* fall through to the honest keep-it path */ }
       // FINALLY, not a trailing line. The spinner is the host's only signal that
       // the app is still theirs; any path that leaves it spinning has taken the
-      // surface away from them. unfurlListing now bounds itself, but this makes
+      // surface away from them. unfurlListing bounds itself, but this makes
       // stranding impossible rather than merely unlikely.
       finally { setBusy(false); }
     }

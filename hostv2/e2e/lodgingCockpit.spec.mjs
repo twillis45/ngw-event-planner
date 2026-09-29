@@ -151,6 +151,36 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     await expect(page.getByText(/You said:/i)).toBeVisible();
   });
 
+  test('every link in one paste is read, not just the first', async ({ page }) => {
+    // Host, 2026-09-29: "do a paste of airbnb properties that DO fit the
+    // requirements." Five real Santa Fe listings sleeping 10-16, against a
+    // party of 10, pasted together — and the screen said "0 known to fit".
+    //
+    // The listings were right. `cands.length === 1` gated the unfurl, so two
+    // or more links were read ZERO times, `sleeps` never arrived, and `sleeps`
+    // is what `fits` is computed from. The comparison the whole surface exists
+    // for was blocked on a number sitting one fetch away.
+    //
+    // Counting the CALLS, not just the rendered names: a row can be named from
+    // the paste itself, so names alone would pass on a build that still read
+    // only the first link.
+    let calls = 0;
+    await page.route('**/api/lodging/unfurl**', (route) => { calls += 1; return route.fulfill({ json: UNFURL_MOCK }); });
+    await seed(page);
+    await paste(page, [
+      'https://www.airbnb.com/rooms/20421338',
+      'https://www.airbnb.com/rooms/20421339',
+      'https://www.airbnb.com/rooms/20421340',
+    ].join('\n'));
+
+    await expect(page.locator('.lc-h1')).toHaveText(/3 places/i, { timeout: 30_000 });
+    expect(calls, 'one unfurl per pasted link').toBe(3);
+
+    // sleeps 10 against the example's 10 guests, so all three FIT — the count
+    // the host was shown as zero.
+    await expect(page.locator('.lc-h1')).toHaveText(/3 that fit/i);
+  });
+
   test('the shortlist can grow, and picking is not booking', async ({ page }) => {
     await mockUnfurl(page);
     await seed(page);
