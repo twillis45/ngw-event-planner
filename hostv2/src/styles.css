@@ -1468,7 +1468,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .field-lbl{display:block}
 .field-lbl > span{
   display:block; font-size:var(--t-overline); font-weight:500; color:var(--muted);
-  letter-spacing:-.005em; margin-bottom:5px;
+  letter-spacing:-.005em; margin-bottom:var(--sp-1);
 }
 
 /* ── The Day stage (Dark Standard Carbon) ── */

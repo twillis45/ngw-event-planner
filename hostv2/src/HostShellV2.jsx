@@ -7749,6 +7749,20 @@ export default function HostShellV2() {
       // grounded start-time default below has a bucket to propose from — without this it was
       // dropped, and defaultStartTime had nothing to ground on for a brand-new event.
       ...(parsed.timeOfDay ? { timeOfDay: parsed.timeOfDay } : {}),
+      // HOW LONG, WHEN THE DATES CANNOT SAY IT (host report 2026-09-29).
+      // The parser has carried `nights` since 2026-09-25 and nothing wrote it
+      // down. On the owner's own Disneyland seed — "nov 2027 … 5 nights" — the
+      // month resolves and the day does not, so date→endDate has no start to
+      // count from and the host's five nights were dropped on the floor at
+      // persist. The reveal then said "Not picked yet." where the Santa Fe 80th,
+      // one sentence away in the same drive, said "3 nights to cover."
+      //
+      // ONLY when `effEndDate` is empty. With real dates the span IS the
+      // answer, and storing a second copy of it beside them is how two numbers
+      // for one fact start to drift. Named `statedNights` so no reader can
+      // mistake the host's own word for a derived span; lib/eventSpan ranks it
+      // below the dates for the same reason.
+      ...(!effEndDate && parsed.nights > 0 ? { statedNights: parsed.nights } : {}),
       // DUAL / compound event + theme (host report — parsed then dropped at build). secondaryType
       // makes it a real compound event; theme seeds the look. Only ever what the host actually said.
       ...(parsed.secondaryType ? { secondaryType: parsed.secondaryType } : {}),

@@ -349,7 +349,10 @@ function assemblePlanningDomains(event, profile, foodPP) {
         type: 'lodging',
         data: {
           stayLabel: String((chosen && chosen.label) || '').trim(),
-          nights: spanNights(event) || 0,
+          // The dates when they exist; the host's own stated count when they
+          // cannot (a month with no day — "nov 2027 … 5 nights"). Never both:
+          // spanNights wins wherever it can answer, so there is one number.
+          nights: spanNights(event) || Number(event.statedNights) || 0,
           // true | false | null — null is NOT TOLD, and stays null here.
           kitchen: lodgingKitchen(event)
         }

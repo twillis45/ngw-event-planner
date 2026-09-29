@@ -263,19 +263,31 @@ export function parseSmartEventText(text, opts = {}) {
     // 2028" parsed as the CURRENT year, failed the past check, and was bumped to
     // 2027 — a stated fact silently replaced with a wrong one, which is worse
     // than not hearing it. An explicit year is authoritative and never bumped.
-    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:-|–|—|to|through|thru)\s*(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
+    // A YEAR ON THE START SIDE TOO (host report 2026-09-29). The year was only
+    // ever captured after the END day, so "June 14 2027 to June 17 2027" — the
+    // most literal way there is to state a span — never reached the connector:
+    // the single-date matcher below ate the first half and the confirm screen
+    // told the host it had thrown "to June 17 2027" away. Four digits only, on
+    // both sides, so "June 12-14, 20 cousins" still cannot read a count as a year.
+    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\s*(?:-|–|—|to|through|thru)\s*(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
     if (rng) {
       const m1 = MONTHS.indexOf(rng[1].slice(0, 3).toLowerCase());
-      const m2 = rng[3] ? MONTHS.indexOf(rng[3].slice(0, 3).toLowerCase()) : m1;
-      const saidYear = rng[5] ? parseInt(rng[5], 10) : null;
+      const m2 = rng[4] ? MONTHS.indexOf(rng[4].slice(0, 3).toLowerCase()) : m1;
+      // Either side's year anchors the START — "June 12-14, 2028" writes the
+      // year once at the end and means it for both, and "June 14 2027 to June
+      // 17 2027" writes it twice. The END takes its own year when the host gave
+      // one ("Dec 30 2027 to Jan 2 2028"), otherwise it inherits the start's.
+      const y1 = rng[3] ? parseInt(rng[3], 10) : null;
+      const y2 = rng[6] ? parseInt(rng[6], 10) : null;
+      const saidYear = y1 || y2;
       const start = new Date(saidYear || now.getFullYear(), m1, parseInt(rng[2], 10), 12);
       if (!saidYear && start < now) start.setFullYear(start.getFullYear() + 1);
-      const end = new Date(start.getFullYear(), m2, parseInt(rng[4], 10), 12);
+      const end = new Date(y2 || start.getFullYear(), m2, parseInt(rng[5], 10), 12);
       // Year-straddling ranges ("Dec 30 – Jan 2") bump the end year — but ONLY
-      // when a second month was explicitly said; a same-month backwards "range"
-      // ("June 14-12") is noise and must fail the end>start check, not get
-      // rescued into next year.
-      if (end < start && rng[3] && m2 !== m1) end.setFullYear(end.getFullYear() + 1);
+      // when a second month was explicitly said AND the host did not state the
+      // end's own year; a same-month backwards "range" ("June 14-12") is noise
+      // and must fail the end>start check, not get rescued into next year.
+      if (end < start && rng[4] && m2 !== m1 && !y2) end.setFullYear(end.getFullYear() + 1);
       // A same-month "range" running backwards ("June 14-12") is noise, not a span.
       if (!isNaN(start) && !isNaN(end) && end > start) {
         date = localISO(start);
@@ -1252,7 +1264,16 @@ export function parseSmartEventText(text, opts = {}) {
   const nights = (() => {
     const explicit = t.match(/\b(\d{1,2})\s*(?:-|\s)?\s*nights?\b/i);
     if (explicit) return parseInt(explicit[1], 10);
-    const dayForm = t.match(/\b(\d{1,2})\s*(?:-|\s)?\s*days?\b/i);
+    // A COUNTDOWN IS NOT A DURATION (2026-09-29). "party in 5 days" says WHEN,
+    // and this read it as four nights. The date→endDate derivation above has
+    // always guarded on `rel` for exactly this reason; the field did not,
+    // which stayed invisible only because nothing read the field. It is read
+    // now, so the guard has to be here too.
+    //
+    // The guard is on the DAY form alone, deliberately. Only "N days" is
+    // ambiguous between a countdown and a length — nobody says "party in 5
+    // nights", so "in 3 weeks, 2 nights at the cabin" keeps its two nights.
+    const dayForm = rel ? null : t.match(/\b(\d{1,2})\s*(?:-|\s)?\s*days?\b/i);
     if (dayForm) {
       const d = parseInt(dayForm[1], 10);
       return d > 1 ? d - 1 : 0;     // 5 days is 4 nights
@@ -1624,9 +1645,20 @@ export function unusedClauses(text, opts = {}) {
   const alreadyInThePlan = (clause) => {
     const toks = String(clause).toLowerCase().match(/[a-z0-9]+/g) || [];
     if (!toks.length) return false;
-    // Short connective words carry no fact, so they cannot keep a clause alive
-    // ("on", "in", "at"); every token that DOES carry one must be in the parse.
-    return toks.every((tk) => ((tk.length > 2 || /^\d+$/.test(tk)) ? carried.includes(tk) : true));
+    // Connective words carry no fact, so they cannot keep a clause alive; every
+    // token that DOES carry one must be in the parse.
+    //
+    // The exemption was a LENGTH (<= 2 characters) and is now the file's own
+    // _FILLER list, because length is a proxy that misses the ordinary ones.
+    // Measured 2026-09-29, right after the range matcher learned to read a year
+    // on both sides: "June 14 2027 to June 17 2027" resolved correctly and the
+    // confirm screen still said it had ignored "2027 for" — each year is
+    // individually removable while the other anchors the span, so both read as
+    // unused, and "for" at three letters was one character too long to be
+    // excused. Naming a fact we honoured is the same lie as staying quiet about
+    // one we dropped, pointed the other way.
+    return toks.every((tk) => ((_FILLER.has(tk) || (tk.length <= 2 && !/^\d+$/.test(tk)))
+      ? true : carried.includes(tk)));
   };
 
   // Punctuated input keeps the original clause reading — a host who wrote

@@ -57,6 +57,31 @@ export function spanIntel(event) {
     };
   }
 
+  // 1b · The host said HOW LONG but not WHEN. "50th birthday nov 2027 8 couples
+  //      5 nights Disneyland" — a month, no day, and a night count stated
+  //      outright. date→endDate cannot carry that (there is no start to count
+  //      from), so before `statedNights` was persisted the app dropped the one
+  //      duration fact it had been given and then asked the host for it: the
+  //      signals below fired and this returned `unasked`, "Does this run more
+  //      than one day?", on an event whose host had already answered.
+  //
+  //      It ranks BELOW real dates on purpose — those are two facts where this
+  //      is one, and a stored count must never outrank the span the host's own
+  //      dates describe. `shouldAsk` stays true because a question is still
+  //      owed; it is just a different question. Nothing here invents a date.
+  const said = Number(ev.statedNights) || 0;
+  if (said > 0) {
+    return {
+      state: 'multi',
+      days: said + 1,
+      nights: said,
+      basis: 'host-nights',
+      shouldAsk: true, // we know how long; we still do not know when
+      signals: ['you said how many nights'],
+      why: `You said ${said} night${said === 1 ? '' : 's'} — pick the first day and the plan will cover all of them.`,
+    };
+  }
+
   // 2 · Collect the signals that suggest more than one day. Each is a real stored
   //     answer — absent means "not told", which is never read as a no.
   const signals = [];
