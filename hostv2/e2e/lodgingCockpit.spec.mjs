@@ -286,12 +286,41 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     // not in page tokens. 4.5:1 is the floor for both the chip and the hedge.
     const contrast = await page.evaluate(() => {
       const px = (c) => c.match(/[\d.]+/g).slice(0, 3).map(Number);
+      // ALPHA COUNTS. This used px() on the text colour and threw the alpha
+      // away, so rgba(255,255,255,.06) — invisible — measured as pure white
+      // and sailed past 4.5. Caught by red-proofing: I made the tail
+      // effectively transparent and all sixteen tests still passed. A
+      // translucent colour is composited over its ground first, which is what
+      // the eye does.
+      const alpha = (c) => { const m = String(c).match(/[\d.]+/g); return m && m.length > 3 ? Number(m[3]) : 1; };
+      const over = (fg, a, bg) => fg.map((v, i) => Math.round(v * a + bg[i] * (1 - a)));
       const L = (r) => { const f = r.map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; };
-      const ratio = (a, b) => { const [x, y] = [L(px(a)), L(px(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-      const on = 'rgb(0,0,0)';   // the pill/scrim ground these sit on
+      const ratio = (fgCss, bgCss) => {
+        const bg = px(bgCss);
+        const eff = over(px(fgCss), alpha(fgCss), bg);
+        const [x, y] = [L(eff), L(bg)].sort((p, q) => q - p);
+        return (x + 0.05) / (y + 0.05);
+      };
+      // THE GROUND EACH ONE ACTUALLY SITS ON, read from the DOM. This was
+      // hardcoded to rgb(0,0,0) back when the copy sat on a dark pill over a
+      // photo. The photo is inset now and the ground is --card, so a fixed
+      // black would keep passing while saying nothing about what a host sees.
+      const paint = (el) => {
+        let n = el;
+        while (n && n !== document.documentElement) {
+          const bg = getComputedStyle(n).backgroundColor;
+          const m = String(bg).match(/[\d.]+/g);
+          if (m && (m.length < 4 || Number(m[3]) > 0.85)) return bg;
+          n = n.parentElement;
+        }
+        return getComputedStyle(document.body).backgroundColor;
+      };
       const c = document.querySelector('.lc-fitchip');
       const t = document.querySelector('.lc-card-each');
-      return { chip: ratio(getComputedStyle(c).color, on), tail: t ? ratio(getComputedStyle(t).color, on) : 99 };
+      return {
+        chip: ratio(getComputedStyle(c).color, paint(c)),
+        tail: t ? ratio(getComputedStyle(t).color, paint(t)) : 99,
+      };
     });
     expect(contrast.chip).toBeGreaterThan(4.5);
     expect(contrast.tail).toBeGreaterThan(4.5);

@@ -1536,11 +1536,25 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                   </>
                 );
                 return o.photoUrl ? (
-                  <div className="lc-card-photo-wrap">
-                    <Thumb src={o.photoUrl} label={o.label} big />
-                    <div className="lc-card-scrim" aria-hidden="true" />
-                    <div className="lc-card-overlay">{identity}</div>
-                  </div>
+                  <>
+                  {/* ── THE PHOTO IS INSET; THE COPY IS NOT ON IT (host,
+                      2026-09-29: "make sure the copy ... is not transparent
+                      too", then "do the images of the properties and inset") ──
+                      Every line of this card used to sit on the photograph
+                      behind a gradient scrim. Measured against the REAL pixels
+                      — screenshot with the text, screenshot with it hidden,
+                      same box — the worst-case contrast ran 1.0 to 2.2:1
+                      against a 4.5 floor. Every one of them. A listing photo
+                      has bright regions wherever it likes, so no fixed text
+                      colour can be safe on it; the scrim only made the failure
+                      look deliberate.
+                      Contrast tuning cannot fix this — the ground is a
+                      photograph. So the photo becomes an inset element and the
+                      copy moves onto the card's own opaque surface, where a
+                      token means what it says. */}
+                  <div className="lc-card-shot"><Thumb src={o.photoUrl} label={o.label} big /></div>
+                  <div className="lc-card-facts">{identity}</div>
+                  </>
                 ) : (
                   <>
                     {/* UX_08: missing data says "missing," never nothing — a
@@ -2719,6 +2733,13 @@ const CSS = `
    clamp() keeps it real-estate-dominant across phone heights without ever
    pushing the price/CTA row below the fold on a short device. */
 .lc-card-photo-wrap{position:relative;height:clamp(240px,44vh,440px);width:100%;}
+/* The inset shot: the photo is a picture OF the place, not the page the copy
+   is written on. Shorter than the old full-bleed because the facts below it
+   now need room that the scrim used to borrow. */
+.lc-card-shot{margin:var(--sp-2);border-radius:var(--r-lg);overflow:hidden;
+  height:clamp(150px,26vh,240px);position:relative;}
+.lc-card-shot img{width:100%;height:100%;object-fit:cover;display:block;}
+.lc-card-facts{padding:0 var(--sp-3) var(--sp-3);}
 /* Standalone use (Picked/Booked — one stay, not a deck card): the rounding
    and clipping the deck got for free from .lc-card has to be stated here
    instead, and the height reads a touch calmer (36vh) since this is a
@@ -2760,8 +2781,9 @@ const CSS = `
 .lc-card-overlay{position:absolute;left:0;right:0;bottom:0;padding:14px;}
 .lc-card-body{padding:14px;}
 .lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
-.lc-card-name{font:600 17px/1.25 Inter,sans-serif;color:#fff;margin:0;min-width:0;
-  text-shadow:0 1px 3px rgba(0,0,0,.5);}
+/* OFF THE PHOTO, ONTO A SURFACE. No shadow, no hardcoded #fff, no alpha: the
+   ground is --card now, so --ink means what the token says it means. */
+.lc-card-name{font:600 17px/1.25 Inter,sans-serif;color:var(--ink);margin:0;min-width:0;}
 /* A room rate is a smaller claim than a stay total, and reads as one. */
 .lc-card-price-room{font-size:13px;font-weight:500;white-space:nowrap;}
 /* The guest note, shown as written. Wraps rather than scrolls sideways:
@@ -2769,9 +2791,9 @@ const CSS = `
 .lc-draft{white-space:pre-wrap;word-break:break-word;font:400 13px/1.55 Inter,sans-serif;
   color:var(--ink);background:var(--sheen);border:1px solid var(--hair);border-radius:10px;
   padding:12px;margin:0 0 10px;max-height:280px;overflow:auto;}
-.lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:#fff;flex:0 0 auto;
+.lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:var(--ink);flex:0 0 auto;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.5);}
-.lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:rgba(255,255,255,.85);margin:6px 0 0;}
+.lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:var(--ink-soft);margin:6px 0 0;}
 /* The no-photo card has no scrim to sit on — plain body text, not white on
    nothing. Same markup as the overlay identity block, different context. */
 .lc-card-identity-noPhoto .lc-card-name,.lc-card-identity-noPhoto .lc-card-price{
@@ -2800,19 +2822,22 @@ const CSS = `
    the host asked, and the same class of fault as the light-mode tokens that
    never branched. Matches .lc-card-sub, which has always been correct. */
 .lc-card-each{margin:var(--sp-1) 0 0;font:400 var(--t-meta)/1.4 Inter,sans-serif;
-  color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6);}
+  color:var(--ink-soft);}
 /* The lead number: same size as the name it sits beside, so the card still has
    ONE loud thing rather than two competing ones. "each" rides at the sub size
    so the figure reads first and the unit qualifies it. */
 .lc-card-lead-each{white-space:nowrap;}
 .lc-card-fit{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin:var(--sp-2) 0 0;}
+/* Back to the UX_02 chip: on a real surface the 12-15% tint IS the container,
+   which is what the doctrine says. The dark pill existed only because the
+   ground was a photograph. */
 .lc-fitchip{font:650 var(--t-caption)/1.5 Inter,sans-serif;padding:2px var(--sp-2);
-  border-radius:999px;background:rgba(0,0,0,.55);white-space:nowrap;}
+  border-radius:999px;background:var(--bg-band);white-space:nowrap;}
 .lc-fit-yes{color:var(--ok);}
 .lc-fit-no{color:var(--warn);}
 .lc-fit-part{color:var(--warn);}
 /* Not-told is not a state to colour. It is the absence of one. */
-.lc-fit-unknown{color:rgba(255,255,255,.82);}
+.lc-fit-unknown{color:var(--muted);}
 /* The pick reads as SELECTION, which is what steel means in this system
    (UX_02: accent = structure, selection, the primary target) — not as a
    fourth status colour. */
@@ -2832,7 +2857,7 @@ const CSS = `
 /* A drawback reads as one. Amber is "needs attention" in this system, which is
    exactly what a reason-against is on a pick the host is about to make. */
 .lc-pickwhy li.lc-pickwhy-against{color:var(--warn);}
-.lc-lead-each-unit{font:400 13px/1.25 Inter,sans-serif;color:rgba(255,255,255,.85);}
+.lc-lead-each-unit{font:400 13px/1.25 Inter,sans-serif;color:var(--ink-soft);}
 .lc-pv-src{font:400 12px/1.35 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
 .lc-dots{display:flex;gap:6px;justify-content:center;margin:12px 0 4px;}
 .lc-dot{width:6px;height:3px;border-radius:2px;background:var(--hair);transition:width .18s ease;}
