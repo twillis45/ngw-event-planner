@@ -50,7 +50,22 @@ describe('a single listing, pasted the way a host actually pastes it', () => {
     const out = extractListingCandidates(AIRBNB_SANTA_FE_RESULTS_HTML);
     expect(out.candidates).toHaveLength(6);
     expect(out.linksOnly).toBe(false);
-    expect(out.candidates[0].photo).toMatch(/^https:\/\/a0\.muscache\.com\//);
+    // PHOTOS ARE READ — but not from every card, and card 0 is why (2026-09-30).
+    // This asserted candidates[0].photo and broke when badge art stopped
+    // counting as a property photo: two of these six cards carry Airbnb's
+    // "Guest favourite" trophy in the image slot, and card 0 is one of them.
+    // Its photo is now '' on purpose. The premise here is that the parser
+    // reads photography off this page at all, so it asks THAT, and pins the
+    // badge behaviour separately below rather than on an index that can move.
+    const photos = out.candidates.map((c) => c.photo).filter(Boolean);
+    expect(photos.length).toBeGreaterThan(0);
+    photos.forEach((u) => expect(u).toMatch(/^https:\/\/a0\.muscache\.com\//));
+    // THREE, not two. I guessed two from the two trophies visible on screen;
+    // the captured page carries three badge images and the third card's photo
+    // arrives later from the unfurl, which is why the rendered deck shows six
+    // real houses while the EXTRACTOR alone leaves three blank.
+    expect(out.candidates.filter((c) => !c.photo).length).toBe(3);
+    expect(photos.join(' ')).not.toMatch(/airbnb-platform-assets/);
   });
 
   test('THE COMPLAINT: a recognised listing URL pulls no property and no image', () => {
