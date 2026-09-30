@@ -1383,7 +1383,7 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                   who scrolls further; nothing here is missing, only ordered
                   by whether picking needs it FIRST. */}
               {(() => {
-                const identity = (
+                const identityCaption = (
                   <>
                     {/* ── THE GROUP'S NUMBER LEADS (host, 2026-09-29: "per head
                         is a major thrust and needs more prominent attention") ──
@@ -1478,6 +1478,24 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                         </p>
                       );
                     })()}
+                  </>
+                );
+                // ── THE CAPTION RIDES ON A SOLID BAR (host, 2026-09-29: "B") ──
+                // The overlay is back, on the host's call, but not the way it
+                // was. The old one put every line straight onto the photograph
+                // behind a gradient — measured 1.0-2.2:1 against the real
+                // pixels, because a listing photo decides what is behind the
+                // text and no fixed colour survives that.
+                // A SOLID bar does survive it: the ground is opaque, so the
+                // same tokens that work on the card work here, and the number
+                // is checkable rather than hoped for. The gradient is what
+                // failed, not the idea of a caption.
+                // Only the caption rides up — name, the per-head lead, the fit
+                // chips. The rest stays on the card, because a bar deep enough
+                // to hold all of it would be a card with a photo behind it
+                // rather than a photo with a caption.
+                const identityRest = (
+                  <>
                     <p className="lc-card-sub">
                       {[perHead && money(total) ? `${money(total)} in total` : null,
                         nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
@@ -1552,8 +1570,11 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                       photograph. So the photo becomes an inset element and the
                       copy moves onto the card's own opaque surface, where a
                       token means what it says. */}
-                  <div className="lc-card-shot"><Thumb src={o.photoUrl} label={o.label} big /></div>
-                  <div className="lc-card-facts">{identity}</div>
+                  <div className="lc-card-shot">
+                    <Thumb src={o.photoUrl} label={o.label} big />
+                    <div className="lc-card-caption">{identityCaption}</div>
+                  </div>
+                  <div className="lc-card-facts">{identityRest}</div>
                   </>
                 ) : (
                   <>
@@ -1568,7 +1589,7 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                       <span className="lc-card-nophoto-add">+ Add a picture</span>
                       <span className="lc-card-nophoto-sub">no picture yet — this one's still real</span>
                     </button>
-                    <div className="lc-card-body lc-card-identity-noPhoto">{identity}</div>
+                    <div className="lc-card-body lc-card-identity-noPhoto">{identityCaption}{identityRest}</div>
                   </>
                 );
               })()}
@@ -2737,7 +2758,12 @@ const CSS = `
    is written on. Shorter than the old full-bleed because the facts below it
    now need room that the scrim used to borrow. */
 .lc-card-shot{margin:var(--sp-2);border-radius:var(--r-lg);overflow:hidden;
-  height:clamp(150px,26vh,240px);position:relative;}
+  height:clamp(190px,32vh,300px);position:relative;}
+/* OPAQUE, NOT A GRADIENT. The whole reason the old overlay failed is that its
+   ground was the photograph; --card is a ground, so every token above it
+   measures the same here as it does on the card body. */
+.lc-card-caption{position:absolute;left:0;right:0;bottom:0;background:var(--card);
+  padding:var(--sp-2) var(--sp-3) var(--sp-3);}
 .lc-card-shot img{width:100%;height:100%;object-fit:cover;display:block;}
 .lc-card-facts{padding:0 var(--sp-3) var(--sp-3);}
 /* Standalone use (Picked/Booked — one stay, not a deck card): the rounding
