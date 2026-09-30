@@ -1752,7 +1752,14 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                     they are counted in one line underneath, which is what a
                     host can actually act on. */}
                 {(() => {
-                  const known = pv ? pv.rows.filter((r) => r.source === 'read' || r.source === 'typed') : [];
+                  // EVERY RECORDED SOURCE, not two of the three. 'looked-up'
+                  // was added by the combined paste path and never added here,
+                  // so the rows it sourced were dropped from this table while
+                  // the "not recorded" count below stayed at zero — they went
+                  // missing in both directions at once. The label for them is
+                  // three lines down and was unreachable until today.
+                  const SOURCED = ['read', 'typed', 'looked-up'];
+                  const known = pv ? pv.rows.filter((r) => SOURCED.includes(r.source)) : [];
                   const unknown = pv ? pv.rows.length - known.length : 0;
                   if (!known.length && !unknown) return null;
                   return (

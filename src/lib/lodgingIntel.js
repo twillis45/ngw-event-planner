@@ -2209,7 +2209,28 @@ export function lodgingProvenance(option) {
     rows,
     read: rows.filter((r) => r.source === 'read').length,
     typed: rows.filter((r) => r.source === 'typed').length,
-    unknown: rows.filter((r) => r.source === 'unknown').length,
+    // ── 'looked-up' HAD NO BUCKET, SO IT HAD NO EXISTENCE ─────────────────
+    // Host, 2026-09-30: "how are we dealing with the other fields with no
+    // sources recorded." Measured while answering: fields that DO have a
+    // recorded source were the ones going missing.
+    //
+    // The combined paste path added a third provenance, 'looked-up' — the
+    // listing itself, as distinct from the results page the host pasted — and
+    // this function still bucketed into read / typed / unknown. A looked-up
+    // field therefore counted in NONE of the three. The cockpit filters rows
+    // to read-or-typed and shows the rest as a count, so an option whose beds
+    // and sleeps came from the lookup rendered a two-row table with no
+    // "not recorded" line either: those two facts did not appear as unsourced,
+    // they did not appear at all, and the label the card already carries for
+    // them ("read from the listing itself") was unreachable.
+    //
+    // Same shape as the disclosure sentence that was asserted for weeks and
+    // rendered for one layer only: the string existed, the branch existed, and
+    // an upstream filter meant nobody could read it.
+    lookedUp: rows.filter((r) => r.source === 'looked-up').length,
+    // Genuinely unrecorded, which is now the only thing this counts. It read
+    // 0 while two fields were invisible.
+    unknown: rows.filter((r) => !['read', 'typed', 'looked-up'].includes(r.source)).length,
   };
 }
 
