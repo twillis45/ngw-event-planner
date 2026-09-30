@@ -1287,10 +1287,36 @@ export function rankCandidates(candidates, event, opts) {
     const bedsShort = guests > 0 && c.beds != null && c.beds < guests;
     const overBudget = budget > 0 && c.priceShown != null && c.priceShown > budget;
 
+    // ── A LINK WE LEARNED NOTHING FROM ────────────────────────────────────
+    // Driven on a phone against the real backend, 2026-09-30: three real
+    // Santa Fe listings pasted, one lookup came back empty, and that row —
+    // "Airbnb listing / sleeps —" — sorted ABOVE the two we had actually
+    // read, under a header that says "best fit for this party first".
+    //
+    // The arithmetic did it honestly and got the wrong answer. Unknown scores
+    // 0; a place we know sleeps six against a party of ten scores
+    // 2*10 + 6 - 100 = -74. So knowing NOTHING beat knowing it is too small,
+    // and the row carrying the least information landed in the slot the host
+    // reads as the recommendation.
+    //
+    // A row is unread when nothing came back at all — not merely when a bed
+    // count is missing. A hotel card has no bed count and is not unread: it
+    // has a name, a rate, a rating and amenities, which is plenty to rank on.
+    const unread = !String(c.name || '').trim()
+      && c.beds == null && c.sleeps == null && c.bedrooms == null
+      && c.priceShown == null && c.rating == null
+      && !(Array.isArray(c.amenities) && c.amenities.length);
+
     return {
       ...c,
       matched,
       unknown,
+      unread,
+      // DELIBERATELY UNCHANGED. `clears` feeds the bookmarklet path's default
+      // tick set in HostShellV2, so making an unread link fail to clear would
+      // arrive with a link the host deliberately pasted already unticked —
+      // losing it, which is worse than mis-ordering it. Whether an unread row
+      // should count as clearing is a real question and a separate one.
       clears: !bedsShort && !overBudget,
       why: bedsShort ? `${c.beds} beds for ${guests} — someone's on a sofa`
         : overBudget ? `$${c.priceShown.toLocaleString()} is over the $${budget.toLocaleString()} you set`
@@ -1299,7 +1325,13 @@ export function rankCandidates(candidates, event, opts) {
     };
   });
 
-  scored.sort((a, b) => b.score - a.score);
+  // TIER BEFORE SCORE. Places we read and that fit, then places we read that
+  // do not, then links we learned nothing from. Within a tier the score
+  // decides, exactly as before. Sorting on score alone cannot express this:
+  // "unknown" and "known to be wrong" are not two points on one axis, and the
+  // whole reason this order exists is so the top row is the one to act on.
+  const tier = (x) => (x.unread ? 0 : x.clears ? 2 : 1);
+  scored.sort((a, b) => (tier(b) - tier(a)) || (b.score - a.score));
   return { ranked: scored, clearing: scored.filter((c) => c.clears), considered: scored.length };
 }
 

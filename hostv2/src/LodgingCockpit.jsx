@@ -1055,7 +1055,32 @@ function Looking({ event, patch }) {
                 const want = Array.isArray(c.matched) ? c.matched : [];
                 const all = Array.isArray(c.amenities) ? c.amenities.length : 0;
                 const rest = Math.max(0, all - want.length);
-                if (!want.length && !all) return null;
+                // ── THE THIRD LINE ALWAYS RENDERS ─────────────────────────
+                // Driven on a phone against the real backend, 2026-09-30: one
+                // of three real listings came back empty, and that row was 64px
+                // against 111px for the two that were read. UX_05: "all rows in
+                // a list must be the same height." The gate written the same
+                // morning passed anyway, because its fixture gave every row
+                // identical content — a green subset, not a green suite.
+                //
+                // A min-height would fix the pixels and say nothing. Instead
+                // every row gets the same THREE LINES, and the third one says
+                // something true when it has no chips to show — which is also
+                // the more useful answer, because "we could not read this link"
+                // is a thing the host can act on and an empty gap is not.
+                // Structural, so the heights match at every viewport without a
+                // magic number to re-measure.
+                if (!want.length) {
+                  return (
+                    <span className="lc-staged-has">
+                      <span className="lc-staged-more">
+                        {c.unread ? 'nothing read from this link'
+                          : all ? `nothing here matches your must-haves · ${all} listed`
+                            : 'no amenities listed'}
+                      </span>
+                    </span>
+                  );
+                }
                 return (
                   <span className="lc-staged-has">
                     {want.slice(0, 3).map((w) => (
@@ -2849,21 +2874,38 @@ const CSS = `
    floated to the right edge, where it collided with the name and won: a row
    truncated to "Casa Pequena . 4 ..." while the sentence beside it ran full
    width. Wrong priority, and it made every row a different height. */
-.lc-staged-fit{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-2);
+/* NOWRAP, and this is the second half of the equal-height fix. With wrap on,
+   "6 beds for 10 — someone's on a sofa · 6 bedrooms · 4.94/5" became two
+   visual lines on a phone, so a read row stood 111px against an unread row's
+   84px even after both were given three structural lines. UX_05 says
+   truncate, don't expand; the fit sentence holds its space and the quiet meta
+   after it is what gets cut, because the meta largely repeats what the title
+   already said ("Home in Santa Fe County · ★4.94 · 6 bedrooms"). */
+.lc-staged-fit{display:flex;flex-wrap:nowrap;align-items:baseline;gap:var(--sp-2);
+  min-width:0;overflow:hidden;white-space:nowrap;
   font:400 var(--t-caption)/1.4 Inter,sans-serif;color:var(--muted);}
+.lc-staged-fit > :first-child{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;}
 /* Short of beds or over budget is a real negative and gets the one colour this
    system uses for it. It is never colour ALONE (UX_02): the sentence beside it
    says "4 beds for 10 - someone's on a sofa" in words. */
 .lc-staged-fit.is-short{color:var(--warn);}
-.lc-staged-meta{color:var(--faint);}
+.lc-staged-meta{flex:0 0 auto;color:var(--faint);}
 /* Line 3 — what it has that this event asked for. Same chip as .lc-fitchip
    elsewhere on this surface, deliberately: one chip idiom per surface. */
-.lc-staged-has{display:flex;flex-wrap:wrap;gap:6px;}
+/* ONE LINE OF CHIPS. Measured on a phone: with wrap on, two chips plus the
+   "+8 more" tail stood 45px against an unread row's 17px, which is the whole
+   of the 111-vs-84 raggedness — not the fit line, which measured 16px on both.
+   The overflow is already expressed as a count, so wrapping bought nothing. */
+.lc-staged-has{display:flex;flex-wrap:nowrap;gap:6px;min-width:0;overflow:hidden;}
 .lc-staged-chip{font:650 var(--t-caption)/1.5 Inter,sans-serif;padding:2px var(--sp-2);
   border-radius:999px;background:var(--bg-band);color:var(--ok);white-space:nowrap;}
 /* The rest are a COUNT, not a list. Not a chip: it is not a thing the house
    has, it is how many more there are. */
-.lc-staged-more{font:400 var(--t-caption)/1.5 Inter,sans-serif;color:var(--faint);}
+/* Same box as a chip (2px padding on a 1.5 line-height), so a row whose third
+   line is a plain sentence is exactly as tall as one carrying chips. This is
+   what makes the heights match structurally instead of via a magic number. */
+.lc-staged-more{flex:0 1 auto;padding:2px 0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font:400 var(--t-caption)/1.5 Inter,sans-serif;color:var(--faint);}
 .lc-offer{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px solid var(--line);
   border-radius:var(--r-md);padding:12px;margin-bottom:12px;}
 .lc-offer .lc-body{margin:0;flex:1 1 100%;}

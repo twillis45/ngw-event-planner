@@ -38,10 +38,16 @@ const AMENITIES = ['Kitchen', 'Elevator', 'Free washer – In unit', 'Wifi',
 // the real case the host hit: "Casa Pequena · 4 ..." truncated on the phone.
 const LONG = 'Secluded adobe compound with mountain views and a walled garden';
 const BEDS = { 20421338: 4, 20421340: 8, 20421339: 12 };
+// A fourth link whose lookup returns nothing — the real case from the phone.
+const DEAD = '20421337';
 
 const stage = async (page, { theme } = {}) => {
   await page.route('**/api/lodging/unfurl**', (route) => {
     const id = (new URL(route.request().url()).searchParams.get('url') || '').match(/rooms\/(\d+)/);
+    // ONE LOOKUP COMES BACK EMPTY, because one did on the phone. The first cut
+    // of this file gave every row identical content, so the equal-height
+    // assertion could not fail — a green subset, not a green suite.
+    if (id && id[1] === DEAD) return route.fulfill({ json: { ok: false, reason: 'nothing there' } });
     const beds = (id && BEDS[id[1]]) || 6;
     return route.fulfill({ json: { ok: true,
       title: `${LONG} ${beds === 12 ? 'Cielo' : beds === 8 ? 'Verde' : 'Pequena'} · ${beds} beds`,
@@ -50,10 +56,10 @@ const stage = async (page, { theme } = {}) => {
   });
   await page.goto(theme === 'light' ? `${DEMO}&theme=light` : DEMO);
   await page.getByRole('button', { name: /Load the Santa Fe example/i }).click();
-  await page.locator('textarea').fill(Object.keys(BEDS)
+  await page.locator('textarea').fill([...Object.keys(BEDS), DEAD]
     .map((id) => `https://www.airbnb.com/rooms/${id}`).join('\n'));
   await page.getByRole('button', { name: /Read what I pasted/i }).click();
-  await expect(page.getByRole('button', { name: /Add 3 to the shortlist/i }))
+  await expect(page.getByRole('button', { name: /Add 4 to the shortlist/i }))
     .toBeVisible({ timeout: 30_000 });
 };
 
@@ -62,14 +68,41 @@ test.describe('what we read, laid out', () => {
     await stage(page);
     const boxes = await page.locator('.lc-staged').evaluateAll(
       (ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)));
-    expect(boxes.length).toBe(3);
-    // Identical, not merely close: these rows carry the same SHAPE of content,
-    // so any difference means something wrapped that should have truncated.
+    expect(boxes.length).toBe(4);
+    // Identical, and one of these four is an UNREAD row with no chips and no
+    // facts — which is exactly the case the first version of this test could
+    // not see. On the phone it stood 64px against 111px.
     expect(new Set(boxes).size, `row heights: ${boxes.join(', ')}`).toBe(1);
+  });
+
+  test('a link we learned nothing from sorts LAST, not first', async ({ page }) => {
+    // Driven on a phone against the real backend, 2026-09-30: three real Santa
+    // Fe listings, one lookup came back empty, and that row — "Airbnb listing
+    // / sleeps —" — sat ABOVE the two we had read, under a header promising
+    // "best fit for this party first".
+    //
+    // The scoring did it honestly and got the wrong answer. Unknown scores 0;
+    // a place known to sleep six against a party of ten scores
+    // 2*10 + 6 - 100 = -74. Knowing NOTHING beat knowing it was too small, and
+    // the row carrying the least information landed in the slot the host reads
+    // as the recommendation.
+    //
+    // Note what this does NOT assert: that the unread row is excluded, or
+    // unticked, or called a failure. It was pasted on purpose and it stays,
+    // with its own honest line. It simply stops outranking evidence.
+    await stage(page);
+    const names = await page.locator('.lc-staged-name').allInnerTexts();
+    expect(names[names.length - 1]).toMatch(/^Airbnb listing$/i);
+    // ...and it still says, in its own words, why it has nothing to show.
+    const last = page.locator('.lc-staged').last();
+    await expect(last.locator('.lc-staged-more')).toHaveText(/nothing read from this link/i);
+    // It is still ticked. Losing a link the host chose is worse than mis-ranking it.
+    await expect(page.getByRole('button', { name: /Add 4 to the shortlist/i })).toBeVisible();
   });
 
   test('the price has its own column and never wraps into the facts', async ({ page }) => {
     await stage(page);
+    // Three priced rows; the unread one has no price and renders no column.
     const prices = await page.locator('.lc-staged-price').allInnerTexts();
     expect(prices).toEqual(['$2,660', '$2,500', '$2,340']);
     // It must sit on the NAME line, right of it — not below, not inside the
