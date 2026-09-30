@@ -412,6 +412,43 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     expect(forCount).toBeGreaterThan(0);
   });
 
+  test('the photo opens the listing, and only when there is one to open', async ({ page }) => {
+    // Host, 2026-09-30: "click on image should take host to listing." Tapping
+    // a property photo to open the property is what every listing app on a
+    // phone does; this one made the host find the text link underneath.
+    //
+    // The second half is the part worth gating: a hotel candidate carries no
+    // url (extractHotelCandidates refuses Google's ad redirects), and a
+    // picture that looks tappable and is not is worse than one that never
+    // offered. So this asserts the link EXISTS with a url and is ABSENT
+    // without one.
+    await mockUnfurl(page);
+    await seed(page);
+    await paste(page, LISTING);
+    await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
+
+    const shot = page.locator('.lc-card-shot').first();
+    const link = shot.locator('a.lc-shot-link');
+    await expect(link).toHaveCount(1);
+    await expect(link).toHaveAttribute('href', /airbnb\.com\/rooms\//);
+    // A new tab, and no window.opener handed to a third-party page.
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', /noopener/);
+    // The picture itself is the target, not a sliver of it.
+    const covers = await page.evaluate(() => {
+      const s = document.querySelector('.lc-card-shot');
+      const a = s && s.querySelector('a.lc-shot-link');
+      if (!a) return 0;
+      const sr = s.getBoundingClientRect(); const ar = a.getBoundingClientRect();
+      return (ar.width * ar.height) / (sr.width * sr.height);
+    });
+    expect(covers).toBeGreaterThan(0.8);
+
+    // And it is a real anchor, so it survives long-press, middle-click and a
+    // screen reader's link list — a div with an onClick would not.
+    await expect(link).toHaveJSProperty('tagName', 'A');
+  });
+
   test('the shortlist can grow, and picking is not booking', async ({ page }) => {
     await mockUnfurl(page);
     await seed(page);

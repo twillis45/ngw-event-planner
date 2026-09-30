@@ -1570,8 +1570,24 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                       photograph. So the photo becomes an inset element and the
                       copy moves onto the card's own opaque surface, where a
                       token means what it says. */}
+                  {/* ── THE PICTURE IS A DOOR (host, 2026-09-30: "click on image
+                      should take host to listing") ──────────────────────────
+                      Tapping a property photo to open the property is what
+                      every listing app on the phone does, and this one made
+                      the host find the text link underneath instead. The
+                      "Open the listing" CTA stays — this is the same act, on
+                      the affordance a thumb reaches for first.
+                      Only when there IS a url: a hotel candidate has none
+                      (extractHotelCandidates refuses Google's ad redirects),
+                      and a picture that looks tappable and is not is worse
+                      than one that never offered. */}
                   <div className="lc-card-shot">
-                    <Thumb src={o.photoUrl} label={o.label} big />
+                    {o.url ? (
+                      <a className="lc-shot-link" href={o.url} target="_blank" rel="noopener noreferrer"
+                        aria-label={`Open ${o.label || 'this listing'} on the listing site`}>
+                        <Thumb src={o.photoUrl} label={o.label} big />
+                      </a>
+                    ) : <Thumb src={o.photoUrl} label={o.label} big />}
                     <div className="lc-card-caption">{identityCaption}</div>
                   </div>
                   <div className="lc-card-facts">{identityRest}</div>
@@ -2759,12 +2775,37 @@ const CSS = `
    now need room that the scrim used to borrow. */
 .lc-card-shot{margin:var(--sp-2);border-radius:var(--r-lg);overflow:hidden;
   height:clamp(190px,32vh,300px);position:relative;}
-/* OPAQUE, NOT A GRADIENT. The whole reason the old overlay failed is that its
-   ground was the photograph; --card is a ground, so every token above it
-   measures the same here as it does on the card body. */
-.lc-card-caption{position:absolute;left:0;right:0;bottom:0;background:var(--card);
-  padding:var(--sp-2) var(--sp-3) var(--sp-3);}
+/* TRANSPARENT, BUT NOT BARE (host, 2026-09-30: "the BACKGROUND of overlay
+   should be transparent").
+   The photo shows through — that is the ask. What it does NOT go back to is
+   the bare gradient that measured 1.0-2.2:1, because there the ground was
+   whatever the listing photographed and no colour could be safe on it.
+   A backdrop blur plus a tint keeps it see-through while making the ground
+   PREDICTABLE: the blur flattens local extremes, so a bright window behind the
+   text stops being a bright window. The tint sets the floor. Measured across
+   all six listing photos, worst case is reported in the commit — if a photo
+   ever beats it, the number moves, not the honesty.
+   -webkit- first: this shell is driven and shipped on WebKit. */
+.lc-card-caption{position:absolute;left:0;right:0;bottom:0;
+  padding:var(--sp-2) var(--sp-3) var(--sp-3);isolation:isolate;}
+/* The veil is a ::before, not a background on the caption, because opacity
+   on the caption would fade the TEXT with it — the thing we are protecting.
+   --card, so it follows the theme: a dark veil under light ink, a light veil
+   under dark ink. A fixed dark tint would have made light mode unreadable,
+   which is the same mistake the light-mode token sweep already paid for.
+   0.70 is solved, not chosen: 0.65 is the lowest alpha where --ink still
+   clears 4.5:1 in BOTH themes against the two worst photos there are, a
+   blown-out white and a pitch black. 0.70 gives 5.33:1 and leaves margin for
+   a future ink tweak. 30% of the photograph reads through. */
+.lc-card-caption::before{content:'';position:absolute;inset:0;z-index:-1;
+  background:var(--card);opacity:.70;
+  -webkit-backdrop-filter:blur(16px) saturate(115%);
+  backdrop-filter:blur(16px) saturate(115%);}
 .lc-card-shot img{width:100%;height:100%;object-fit:cover;display:block;}
+/* The link fills the shot so the whole picture is the target, not a strip of
+   it. It sits UNDER the caption in the stack, so the caption's own controls
+   keep their taps. */
+.lc-shot-link{display:block;width:100%;height:100%;}
 .lc-card-facts{padding:0 var(--sp-3) var(--sp-3);}
 /* Standalone use (Picked/Booked — one stay, not a deck card): the rounding
    and clipping the deck got for free from .lc-card has to be stated here
@@ -2883,7 +2924,11 @@ const CSS = `
 /* A drawback reads as one. Amber is "needs attention" in this system, which is
    exactly what a reason-against is on a pick the host is about to make. */
 .lc-pickwhy li.lc-pickwhy-against{color:var(--warn);}
-.lc-lead-each-unit{font:400 13px/1.25 Inter,sans-serif;color:var(--ink-soft);}
+/* --ink, not --ink-soft. The unit is the WEAKEST text in the caption and it
+   set the floor: on a white photo --ink-soft needs the veil at .85 to clear
+   4.5:1, which is not a transparent background any more. Size and weight
+   carry the distinction instead of colour, so the veil can stay see-through. */
+.lc-lead-each-unit{font:400 13px/1.25 Inter,sans-serif;color:var(--ink);opacity:.9;}
 .lc-pv-src{font:400 12px/1.35 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
 .lc-dots{display:flex;gap:6px;justify-content:center;margin:12px 0 4px;}
 .lc-dot{width:6px;height:3px;border-radius:2px;background:var(--hair);transition:width .18s ease;}
