@@ -747,7 +747,25 @@ function Looking({ event, patch }) {
           ].filter(Boolean);
           if (r.title) anyTitle = true;
         }
-        cands = read;
+        // ── RANK AGAIN, NOW THAT WE KNOW ANYTHING ABOUT THEM ─────────────
+        // Host, 2026-09-30: "sort what we read by matter of importance or
+        // priority." It already ranked — once, above, BEFORE the lookup ran.
+        // At that point every candidate a link paste produced had sleeps null,
+        // price null and no amenities, so the ranker was ordering rows it knew
+        // nothing about, and the order the host then read was effectively the
+        // order they happened to paste in. The lookup is the whole point of
+        // this block: it is what turns a bare URL into a place that sleeps 12
+        // for $2,400. Sorting has to happen after it, or the facts arrive too
+        // late to move anything.
+        //
+        // Same ranker, same event, same budget — this is not a second opinion,
+        // it is the first one asked with the evidence in hand. The deck and
+        // the shortlist already order by ranking; this makes the FIRST screen
+        // a host sees agree with them.
+        try {
+          const r2 = rankCandidates(read, event, { budget: Number(event.totalBudget || 0) || 0 });
+          cands = (r2 && r2.ranked && r2.ranked.length === read.length) ? r2.ranked : read;
+        } catch { cands = read; }
         // A results paste was never linksOnly; a link paste stops being one the
         // moment a title arrives.
         found = { ...found, linksOnly: found.linksOnly && !anyTitle };
@@ -950,7 +968,8 @@ function Looking({ event, patch }) {
   if (staged) return (
     <Panel label="FROM THE PAGE YOU PASTED">
       <p className="lc-body">
-        {staged.cands.length} found. Untick anything you were not really considering.
+        {staged.cands.length} found, best fit for this party first. Untick anything
+        you were not really considering.
       </p>
       {staged.cands.map((c) => {
         const on = staged.pick.has(c._k);
@@ -963,26 +982,94 @@ function Looking({ event, patch }) {
               return { ...st, pick };
             })}>
             <span className={'lc-tick' + (on ? ' is-on' : '')} aria-hidden="true" />
+            {/* ── THREE FIXED LINES, IN THE ORDER A HOST SCANS ─────────────
+                Host, 2026-09-30: "what we read could use a working and better
+                layout" and "the notes contain amenities we may or may not
+                need."
+
+                What was here: one run-on line at 11px --faint holding
+                bedrooms · price · rating · six amenities at equal weight, a
+                fit sentence floated right into it, and rows of two, three and
+                three lines. UX_05 is explicit — "all rows in a list must be
+                the same height ... if content varies, truncate, don't expand."
+
+                Now, top to bottom:
+                  1. WHO IT IS and WHAT IT COSTS — the two things a host
+                     actually compares. Price is promoted out of third place
+                     in a run-on and given its own column.
+                  2. WHY IT SITS HERE — the fit sentence the sort is based on,
+                     on its own line instead of colliding with the name.
+                  3. WHAT IT HAS THAT THIS EVENT ASKED FOR — see below. */}
             <span className="lc-staged-main">
-              <span className="lc-staged-name">{lodgingTitleFor(c) || 'Unnamed place'}</span>
-              <span className="lc-staged-sub">
-                {/* A hotel card carries star class, rating and amenity tags
-                    instead of bedrooms — extractHotelCandidates reads them
-                    off the real Google card (host, 2026-08-06). */}
+              <span className="lc-staged-top">
+                <span className="lc-staged-name">{lodgingTitleFor(c) || 'Unnamed place'}</span>
+                {c.priceShown != null && (
+                  <span className="lc-staged-price">${Math.round(c.priceShown).toLocaleString()}</span>
+                )}
+              </span>
+              {/* ── THE ONE FACT THE ORDER IS ABOUT ─────────────────────────
+                  These rows are sorted best-fit-first, so this line has to say
+                  what "fit" meant or the order is just an assertion.
+
+                  `why` — the row does NOT clear (too few beds for the party,
+                  over the budget the host set). rankCandidates already wrote
+                  the sentence; it outranks a capacity figure because it is the
+                  reason this row sank.
+
+                  `sleeps N` — the listing lookup filled it. This slot read
+                  "sleeps —" unconditionally until today, under a comment
+                  saying sleeps "is never on a results card" — true before the
+                  lookup existed, and the lookup's whole job is to supply it.
+
+                  `sleeps —` — genuinely unknown. A hotel candidate (it carries
+                  a rating) isn't measured in "sleeps N" the way a shared
+                  rental is, so it stays quiet rather than showing a dash the
+                  host reads as "it does not sleep anyone". */}
+              <span className={'lc-staged-fit' + (c.why ? ' is-short' : '')}>
+                {c.why ? c.why
+                  : c.sleeps != null ? `sleeps ${c.sleeps}`
+                    : c.rating == null ? 'sleeps —' : ''}
+                {/* A hotel card carries star class and a rating instead of a
+                    bed count — extractHotelCandidates reads them off the real
+                    Google card (host, 2026-08-06). Kept, one step quieter. */}
                 {[c.starClass ? `${c.starClass}-star` : null,
                   c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-                  c.priceShown != null ? `$${Math.round(c.priceShown).toLocaleString()}` : null,
-                  c.rating != null ? `${c.rating}/5${c.ratingCount ? ` (${c.ratingCount})` : ''}` : null,
-                  Array.isArray(c.amenities) && c.amenities.length ? c.amenities.join(', ') : null]
-                  .filter(Boolean).join(' · ') || 'no details on the card'}
+                  c.rating != null ? `${c.rating}/5` : null]
+                  .filter(Boolean).map((t) => <span key={t} className="lc-staged-meta">{t}</span>)}
               </span>
+              {/* ── AMENITIES WE MAY OR MAY NOT NEED ────────────────────────
+                  That was the host's phrasing, and it named the actual defect:
+                  all six were printed at one weight because nothing had
+                  decided which ones this event asked for. It could have —
+                  rankCandidates computes `matched` against the event's own
+                  must-haves, and as of today it reads the amenity list to do
+                  it (the match regexes ARE amenity vocabulary and the haystack
+                  used to be the name and the town).
+
+                  So: the ones asked for become chips, capped at three because
+                  UX_02 says four or more is chip soup. Everything else is a
+                  count, not a list — a host does not need "Wifi" spelled out
+                  to know the house has wifi, and the full list is one tap away
+                  on the listing itself. */}
+              {(() => {
+                const want = Array.isArray(c.matched) ? c.matched : [];
+                const all = Array.isArray(c.amenities) ? c.amenities.length : 0;
+                const rest = Math.max(0, all - want.length);
+                if (!want.length && !all) return null;
+                return (
+                  <span className="lc-staged-has">
+                    {want.slice(0, 3).map((w) => (
+                      <span key={w} className="lc-staged-chip">{w}</span>
+                    ))}
+                    {(want.length > 3 || rest > 0) && (
+                      <span className="lc-staged-more">
+                        +{want.length > 3 ? want.length - 3 + rest : rest} more
+                      </span>
+                    )}
+                  </span>
+                );
+              })()}
             </span>
-            {/* sleeps is never on a results card — say so rather than leave a
-                blank the host reads as "it does not sleep anyone". A hotel
-                candidate (identified by carrying a rating) isn't measured in
-                "sleeps N" the way a shared rental is, so this stays quiet
-                for those instead of showing a confusing dash. */}
-            {c.rating == null && <span className="lc-staged-fit">sleeps —</span>}
           </button>
         );
       })}
@@ -2740,10 +2827,36 @@ const CSS = `
   border-top:1px solid var(--line);padding:12px 0;cursor:pointer;text-align:left;}
 .lc-tick{flex:0 0 auto;width:18px;height:18px;border-radius:4px;border:1px solid var(--line);background:var(--card);}
 .lc-tick.is-on{background:var(--ok);border-color:var(--ok);}
-.lc-staged-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
-.lc-staged-name{font:500 15px/1.3 Inter,sans-serif;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.lc-staged-sub{font:400 11px/1.3 Inter,sans-serif;color:var(--faint);}
-.lc-staged-fit{flex:0 0 auto;font:400 12px/1 Inter,sans-serif;color:var(--faint);}
+.lc-staged-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;}
+/* Line 1 — identity on the left, cost on the right. The price used to sit
+   third inside a run-on metadata line; it is one of the two things a host
+   compares, so it gets a column and never wraps. The NAME is what truncates,
+   because a truncated name is still recognisable and a truncated price is a
+   different number. */
+.lc-staged-top{display:flex;align-items:baseline;gap:var(--sp-2);min-width:0;}
+.lc-staged-name{flex:1 1 auto;font:500 15px/1.3 Inter,sans-serif;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lc-staged-price{flex:0 0 auto;font:500 14px/1.3 Inter,sans-serif;color:var(--ink-soft);
+  font-variant-numeric:tabular-nums;}
+/* Line 2 — the fit the sort is based on, plus the card's quieter facts. It was
+   floated to the right edge, where it collided with the name and won: a row
+   truncated to "Casa Pequena . 4 ..." while the sentence beside it ran full
+   width. Wrong priority, and it made every row a different height. */
+.lc-staged-fit{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-2);
+  font:400 var(--t-caption)/1.4 Inter,sans-serif;color:var(--muted);}
+/* Short of beds or over budget is a real negative and gets the one colour this
+   system uses for it. It is never colour ALONE (UX_02): the sentence beside it
+   says "4 beds for 10 - someone's on a sofa" in words. */
+.lc-staged-fit.is-short{color:var(--warn);}
+.lc-staged-meta{color:var(--faint);}
+/* Line 3 — what it has that this event asked for. Same chip as .lc-fitchip
+   elsewhere on this surface, deliberately: one chip idiom per surface. */
+.lc-staged-has{display:flex;flex-wrap:wrap;gap:6px;}
+.lc-staged-chip{font:650 var(--t-caption)/1.5 Inter,sans-serif;padding:2px var(--sp-2);
+  border-radius:999px;background:var(--bg-band);color:var(--ok);white-space:nowrap;}
+/* The rest are a COUNT, not a list. Not a chip: it is not a thing the house
+   has, it is how many more there are. */
+.lc-staged-more{font:400 var(--t-caption)/1.5 Inter,sans-serif;color:var(--faint);}
 .lc-offer{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px solid var(--line);
   border-radius:var(--r-md);padding:12px;margin-bottom:12px;}
 .lc-offer .lc-body{margin:0;flex:1 1 100%;}

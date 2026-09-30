@@ -1265,7 +1265,20 @@ export function rankCandidates(candidates, event, opts) {
   const budget = Number((opts && opts.budget) || 0) || 0;
 
   const scored = list.map((c) => {
-    const hay = `${c.name || ''} ${c.kind || ''} ${c.place || ''}`;
+    // ── THE AMENITY LIST IS WHERE THOSE WORDS ACTUALLY LIVE ───────────────
+    // Host, 2026-09-30: "they contain amenities we may or may not need."
+    // Every match regex above is amenity vocabulary — /hot ?tub|jacuzzi/,
+    // /washer|laundry|dryer/, /parking|driveway|garage/ — and this haystack
+    // was the NAME, the kind and the town. A listing called "Casa Cielo" with
+    // "Hot tub" in its amenity list scored zero on a hot-tub must-have, and
+    // the surface then printed all six amenities at equal weight because
+    // nothing had decided which ones the event asked for.
+    //
+    // The amenities are the listing's OWN structured words, already read and
+    // already stored (normalizeLodgingOption keeps them verbatim). Reading
+    // them here is what makes `matched` mean anything.
+    const hay = [c.name, c.kind, c.place, c.notes,
+      ...(Array.isArray(c.amenities) ? c.amenities : [])].filter(Boolean).join(' ');
     const matched = wants.filter((w) => w.match && w.match.test(hay)).map((w) => w.label);
     const unknown = wants.filter((w) => !(w.match && w.match.test(hay))).map((w) => w.label);
 

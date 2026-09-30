@@ -194,6 +194,54 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     await expect(page.locator('.lc-h1')).toHaveText(/3 that fit/i);
   });
 
+  test('what we read is ordered by fit, and each row says what fit meant', async ({ page }) => {
+    // Host, 2026-09-30: "sort what we read by matter of importance or priority."
+    //
+    // It DID rank — once, before the lookup ran. At that moment a link paste
+    // had beds null, price null and no amenities on every candidate, so every
+    // score was identical and the sort was a no-op: the host read them back in
+    // the order they happened to paste. The lookup is what turns a bare URL
+    // into a place that sleeps twelve, and it landed after the only sort.
+    //
+    // Three links, deliberately pasted WORST FIRST, with the backend giving
+    // each a different bed count against the example's party of ten:
+    //   ...338  4 beds — short for ten, someone is on a sofa
+    //   ...340  8 beds
+    //   ...339  12 beds — the one that actually fits
+    // A build that ranks only before the lookup renders them 338, 340, 339.
+    const BEDS = { 20421338: 4, 20421340: 8, 20421339: 12 };
+    await page.route('**/api/lodging/unfurl**', (route) => {
+      const id = (new URL(route.request().url()).searchParams.get('url') || '').match(/rooms\/(\d+)/);
+      const beds = (id && BEDS[id[1]]) || 6;
+      return route.fulfill({ json: { ...UNFURL_MOCK,
+        title: `Home in Santa Fe · ${beds} beds`, facts: { beds, bedrooms: 4 } } });
+    });
+    await seed(page);
+    await paste(page, [
+      'https://www.airbnb.com/rooms/20421338',
+      'https://www.airbnb.com/rooms/20421340',
+      'https://www.airbnb.com/rooms/20421339',
+    ].join('\n'));
+    await expect(page.getByRole('button', { name: /Add 3 to the shortlist/i }))
+      .toBeVisible({ timeout: 30_000 });
+
+    // BEST FIT FIRST — the paste order reversed, which is the whole claim.
+    // The bed count rides in the NAME here (the lookup's own title); the sub
+    // line carries bedrooms/price/rating, which these mocks share.
+    const names = await page.locator('.lc-staged-name').allInnerTexts();
+    expect(names.length).toBe(3);
+    expect(names.map((t) => (t.match(/(\d+) beds/) || [])[1])).toEqual(['12', '8', '4']);
+
+    // AND THE ORDER SAYS WHY IT IS THE ORDER. A sort the host cannot read is
+    // an assertion; the row that sank names the reason it sank.
+    const fits = await page.locator('.lc-staged-fit').allInnerTexts();
+    expect(fits[fits.length - 1]).toMatch(/4 beds for 10/i);
+    // ...and the rows that clear show the capacity the lookup supplied. This
+    // slot read "sleeps —" unconditionally until today, throwing away the one
+    // number the lookup exists to fetch.
+    expect(fits[0]).toMatch(/sleeps 10/i);
+  });
+
   test('a results page keeps its price AND gains the listing\'s sleeps', async ({ page }) => {
     // Host, 2026-09-29: "pull from a path that will give us what we need ...
     // combine the best of both."
