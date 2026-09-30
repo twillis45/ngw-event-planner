@@ -33,6 +33,7 @@ import {
   kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
   extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, looksLikeHotelDetailPage, unfurlListing, lodgingResults, isUnfurlConfigured, unfurlOffNote, rankCandidates,
   warmUnfurl,
+  LODGING_PLATFORM_LABELS,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
   STAY_FROM_CONFIRMATION, STAY_FROM_PLAN,
 } from '@app/lib/lodgingIntel';
@@ -848,6 +849,8 @@ function Looking({ event, patch }) {
       // Airbnb's type+place pattern rather than "Option 1" — the paste has to
       // visibly produce something, or the host has no reason to believe it worked.
       url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities,
+      // A Google hotel has no url, so its door cannot be derived later.
+      ...(c.platform ? { platform: c.platform } : null),
       // A hotel card's number is a NIGHTLY rate; an Airbnb/Vrbo card's is the
       // stay total. `priceBasis` says which, set by the extractor that read it
       // (see extractHotelCandidates). Storing a nightly rate as a stay total
@@ -933,6 +936,8 @@ function Looking({ event, patch }) {
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
       url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities,
+      // A Google hotel has no url, so its door cannot be derived later.
+      ...(c.platform ? { platform: c.platform } : null),
       // A hotel card's number is a NIGHTLY rate; an Airbnb/Vrbo card's is the
       // stay total. `priceBasis` says which, set by the extractor that read it
       // (see extractHotelCandidates). Storing a nightly rate as a stay total
@@ -1433,7 +1438,7 @@ function StayHero({ photoUrl, label, sub }) {
 // is rendered: the photo, the price, the nights it covers, the host's own
 // must-have count, the amenity chips those musts produce, and the per-field
 // provenance table, which is the point of the screen.
-function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, onPhoto }) {
+function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, onPhoto, onFill }) {
   const [at, setAt] = useState(0);
   const unordered = opts.filter((o) => o.status !== 'gone');
   // ── THE BEST ONE FIRST (host, 2026-09-29: "default to most recommended
@@ -1535,8 +1540,26 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                         total steps down into the sub line — it is not lost, it
                         is ranked. With no price to divide there is no per-head,
                         and the total leads exactly as it used to. */}
+                    {/* ── WHICH DOOR THIS ONE CAME THROUGH ──────────────────
+                        Host, 2026-09-30: "host may combine the source of
+                        listings: Google, airbnb, vrbo, etc." A shortlist that
+                        mixes them was already possible — this surface opens
+                        three doors — and nothing on the card said which was
+                        which. It matters beyond labelling: a Google hotel rate
+                        buys ONE ROOM for one night and an Airbnb total buys
+                        the whole house for the stay, so two rows can show
+                        money that means different things. The badge is the
+                        first place a host can see why.
+
+                        `platform` is a field the normalizer has always
+                        written; it was simply never rendered here. No colour:
+                        a door is an identity, not a state, and UX_02 keeps
+                        colour for meaning. */}
                     <div className="lc-card-top">
                       <h3 className="lc-card-name">{o.label}</h3>
+                      {LODGING_PLATFORM_LABELS[o.platform] && (
+                        <span className="lc-card-door">{LODGING_PLATFORM_LABELS[o.platform]}</span>
+                      )}
                       {perHead
                         ? (
                           <span className="lc-card-price lc-card-lead-each">
@@ -1765,59 +1788,115 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                     {sc.met.slice(0, 3).map((m) => <span className="lc-chip" key={m}>{m}</span>)}
                   </div>
                 )}
-                {/* THE TABLE THAT WAS ALREADY COMPUTED. lodgingProvenance has
-                    returned per-field rows since it shipped and the cockpit
-                    rendered only the two counts — "4 read from the page" — so
-                    the host could see HOW MANY facts came off the page but
-                    never WHICH. This is that row set, unchanged. */}
-                {/* SOURCED ROWS ONLY. Listing every field with "not recorded"
-                    put three lines of noise in a seven-line table and buried
-                    the four that carry information — the board's card shows
-                    only rows with a real source. The unknowns are not hidden:
-                    they are counted in one line underneath, which is what a
-                    host can actually act on. */}
+                {/* ── WHERE THIS CAME FROM (host-designed, 2026-09-30) ──────
+                    Host: "what we read, what you typed needs a redesign. This
+                    wont be easy for host to digest." Three prototypes went up;
+                    this is the one that took the best of each.
+
+                    What it replaced, measured off the live card: the five
+                    words "read from the listing itself" repeated five times,
+                    filling the right column at the same weight as the data;
+                    "What it has" spelling out nine amenities as a five-line
+                    bold wall; and "Notes" printing those same nine again. The
+                    block was taller than the card it described.
+
+                    THE CLAIM leads, because one sentence is what this block
+                    exists to say. THE GAPS come next and are the only thing
+                    open by default — read facts are reassurance, missing facts
+                    are work, and a host can only act on the second. THE
+                    RECEIPTS fold away, grouped by source so the source is
+                    stated once per group rather than once per row, with the
+                    badge defined by its own group heading so there is no
+                    legend to learn. */}
                 {(() => {
-                  // EVERY RECORDED SOURCE, not two of the three. 'looked-up'
-                  // was added by the combined paste path and never added here,
-                  // so the rows it sourced were dropped from this table while
-                  // the "not recorded" count below stayed at zero — they went
-                  // missing in both directions at once. The label for them is
-                  // three lines down and was unreachable until today.
+                  if (!pv) return null;
                   const SOURCED = ['read', 'typed', 'looked-up'];
-                  const known = pv ? pv.rows.filter((r) => SOURCED.includes(r.source)) : [];
-                  const unknown = pv ? pv.rows.length - known.length : 0;
-                  if (!known.length && !unknown) return null;
+                  const groups = (pv.groups || []).filter((g) => SOURCED.includes(g.source));
+                  const shown = groups.reduce((n, g) => n + g.rows.length, 0);
+                  const gaps = pv.gaps || [];
+                  if (!shown && !gaps.length) return null;
+                  const fromListing = pv.lookedUp + pv.read;
                   return (
                     <>
-                      <p className="lc-card-eyebrow">WHAT WE READ · WHAT YOU TYPED</p>
-                      {known.map((r) => (
-                        <div className="lc-pv" key={r.field}>
-                          <span className="lc-pv-label">
-                            {r.label}
-                            {/* THE VALUE, which these rows never showed. The
-                                card said "Total · read from the page you
-                                pasted" and never the total — a citation with
-                                no quote. Formatted in lodgingIntel so the
-                                shell cannot drift from it. */}
-                            {r.value ? <span className="lc-pv-val">{r.value}</span> : null}
-                          </span>
-                          <span className="lc-pv-src">
-                            {/* "read from the link" sat two inches under "No link"
-                                on the same hotel card — the card denying its own
-                                link and citing it three times. The value really
-                                was read; it was read off the PAGE she pasted, not
-                                from a per-place link. Say that, and the card stops
-                                contradicting itself. */}
-                            {r.source === 'read' ? 'read from the page you pasted'
-                              : r.source === 'looked-up' ? 'read from the listing itself'
-                                : 'you typed it'}
-                          </span>
-                        </div>
-                      ))}
-                      {unknown > 0 && (
-                        <p className="lc-card-was">
-                          {unknown} other field{unknown === 1 ? '' : 's'} with no source recorded.
+                      <p className="lc-card-eyebrow">WHERE THIS CAME FROM</p>
+                      {shown > 0 && (
+                        <p className="lc-pv-claim">
+                          {fromListing > 0 && (
+                            <b>
+                              {fromListing === shown
+                                ? (shown === 1 ? 'This one fact was read off the listing.'
+                                  : `All ${shown} of these facts were read off the listing.`)
+                                : `${fromListing} of these ${shown} facts were read off the listing.`}
+                            </b>
+                          )}
+                          {pv.typed > 0 && (
+                            <>{fromListing > 0 ? ' ' : ''}You typed {pv.typed === shown ? 'all of it' : `${pv.typed === 1 ? 'one' : pv.typed} of them`}.</>
+                          )}
                         </p>
+                      )}
+                      {gaps.length > 0 && (
+                        <div className="lc-pv-gaps">
+                          {/* NOT --warn. Nothing is wrong here; it simply is
+                              not known yet, and colouring absence as a fault
+                              would be the surface lying in the other
+                              direction. */}
+                          <p className="lc-pv-gaps-h">
+                            <b>NOBODY HAS SAID</b>
+                            <span>
+                              {gaps.length === 1
+                                ? 'This one changes what the stay costs.'
+                                : 'These change what the stay costs.'}
+                            </span>
+                          </p>
+                          {gaps.map((g) => (
+                            <div className="lc-pv-gap" key={g.field}>
+                              <span className="lc-pv-gap-k">{g.label}</span>
+                              {/* Names the act, and the act is real — same
+                                  prompt-and-patch path the photo affordance on
+                                  this card already uses. A CTA that opened
+                                  nothing would be the thing UX_07 forbids. */}
+                              <button type="button" className="lc-pv-gap-a"
+                                onClick={() => onFill(o, g.field, g.label)}>
+                                {g.act}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {shown > 0 && (
+                        <details className="lc-pv-det">
+                          <summary className="lc-pv-sum">Field by field</summary>
+                          {groups.map((g) => (
+                            <div className="lc-pv-grp" key={g.source}>
+                              <p className="lc-pv-grp-h">
+                                <span className={'lc-pv-badge' + (g.source === 'typed' ? ' is-typed' : '')}>
+                                  {g.source === 'typed' ? 'Y' : g.source === 'read' ? 'P' : 'L'}
+                                </span>
+                                <b>
+                                  {g.source === 'read' ? 'Read from the page you pasted'
+                                    : g.source === 'looked-up' ? 'Read from the listing itself'
+                                      : 'You typed'}
+                                </b>
+                                <span>{g.rows.length}</span>
+                              </p>
+                              {g.rows.map((r) => (
+                                <div className="lc-pv-row" key={r.field}>
+                                  <span className="lc-pv-k">{r.label}</span>
+                                  {/* "What it has" used to spell out every
+                                      amenity. The card already knows which ones
+                                      this event asked for, so it says that
+                                      instead and the full list stays one tap
+                                      away on the listing. */}
+                                  <span className="lc-pv-v">
+                                    {r.field === 'amenities'
+                                      ? `${(o.amenities || []).length} things${sc && sc.met && sc.met.length ? `, ${sc.met.length} you asked for` : ''}`
+                                      : r.value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </details>
                       )}
                     </>
                   );
@@ -1874,6 +1953,33 @@ function Weighing({ event, intel, patch }) {
     if (!/^https:\/\//i.test(clean)) return;
     patch({ lodgingOptions: (event.lodgingOptions || []).map((x) => (x && x.id === o.id
       ? { ...x, photoUrl: clean, sources: { ...(x.sources || {}), photoUrl: 'typed' } }
+      : x)) });
+  };
+  // ── THE GAPS ARE AN ACT, NOT A LABEL ────────────────────────────────────
+  // "Add the fees" has to open something or it is exactly the untruthful CTA
+  // UX_07 forbids. Same window.prompt-and-patch shape askPhoto already uses on
+  // this card — deliberately the existing pattern rather than a new inline
+  // editor nobody asked for. Provenance is stamped 'typed', because it is.
+  const askFill = (o, field, label) => {
+    const raw = window.prompt(
+      field === 'cancellationTier'
+        ? 'Cancellation terms for this place — e.g. full refund until 30 days out'
+        : field === 'totalPrice'
+          ? 'What does the whole stay cost here?'
+          : 'What does this place charge in fees?',
+    );
+    const txt = String(raw == null ? '' : raw).trim();
+    if (!txt) return;
+    let value = txt;
+    if (field !== 'cancellationTier') {
+      const n = Number(txt.replace(/[$,\s]/g, ''));
+      // A number we cannot read is not stored as one — a NaN in a money field
+      // is how a total silently becomes "$NaN" three surfaces downstream.
+      if (!Number.isFinite(n) || n < 0) return;
+      value = n;
+    }
+    patch({ lodgingOptions: (event.lodgingOptions || []).map((x) => (x && x.id === o.id
+      ? { ...x, [field]: value, sources: { ...(x.sources || {}), [field]: 'typed' } }
       : x)) });
   };
   // ONE definition of who is in the chooser, read by the deck and by the list
@@ -1934,7 +2040,7 @@ function Weighing({ event, intel, patch }) {
       <Choices opts={opts} event={event} intel={intel}
         scores={rec && rec.scores ? rec.scores : null}
         recPick={rec && !rec.tie ? rec.pick : null} onPick={pick} onGone={markGone}
-        onPhoto={askPhoto} basis={basis} />
+        onPhoto={askPhoto} onFill={askFill} basis={basis} />
       {/* THE PANEL THAT NEVER RENDERED (found 2026-08-05, single-threaded
           re-test of the review-board pass — "which is the recommended?").
           lodgingRecommendation() returns {pick, why, unweighed, scores, tie}
@@ -3046,10 +3152,29 @@ const CSS = `
   background:linear-gradient(to top, rgba(10,12,16,.92) 0%, rgba(10,12,16,.6) 45%, rgba(10,12,16,0) 100%);}
 .lc-card-overlay{position:absolute;left:0;right:0;bottom:0;padding:14px;}
 .lc-card-body{padding:14px;}
-.lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+/* WRAPS, because three things do not fit on 312px and the NAME is the one
+   that was losing. Measured on a 430px phone: the price label reads "$212 a
+   night . one room" at 190px and the door badge 94px, both flex 0-0-auto and
+   neither able to shrink — so the name, the only flexible child, took every
+   pixel of shrinkage and rendered 8px wide across FIVE lines. The badge
+   merely spent the last of the slack; the room-rate label had already eaten
+   it. Wrapping lets the price and badge drop to a second line instead of
+   crushing the identity, and the min-width floor stops the name ever
+   collapsing again on a narrower phone. */
+.lc-card-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:10px;}
 /* OFF THE PHOTO, ONTO A SURFACE. No shadow, no hardcoded #fff, no alpha: the
    ground is --card now, so --ink means what the token says it means. */
-.lc-card-name{font:600 17px/1.25 Inter,sans-serif;color:var(--ink);margin:0;min-width:0;}
+/* flex 1-1-auto, and it is load-bearing. (No backticks in this block:
+   the whole stylesheet is a JS template literal and one ends it.) The name had min-width:0 but no
+   flex, so it defaulted to 0-1-auto: it could shrink but never grow, while
+   the price and the door badge beside it are both 0-0-auto and refuse to
+   shrink at all. The name therefore absorbed ALL the shrinkage — measured on
+   a 430px phone the moment the badge landed: 8 pixels wide, wrapping to FIVE
+   lines, 106px tall, which pushed the Pick button off the bottom of the
+   viewport and turned a real gate red. It claims the free space now and
+   gives way last. */
+.lc-card-name{flex:1 1 auto;font:600 17px/1.25 Inter,sans-serif;color:var(--ink);margin:0;
+  min-width:14ch;}
 /* A room rate is a smaller claim than a stay total, and reads as one. */
 .lc-card-price-room{font-size:13px;font-weight:500;white-space:nowrap;}
 /* The guest note, shown as written. Wraps rather than scrolls sideways:
@@ -3072,6 +3197,55 @@ const CSS = `
   border:1px solid var(--hair);border-radius:999px;}
 .lc-card-eyebrow{font:500 11px/1.2 Inter,sans-serif;letter-spacing:.08em;color:var(--muted);
   margin:16px 0 2px;}
+/* ── WHERE THIS CAME FROM · the claim, the gaps, then the receipts ─────── */
+.lc-pv-claim{font:400 15px/1.45 Inter,sans-serif;color:var(--ink);margin:0;}
+.lc-pv-claim b{font-weight:650;color:var(--ok);}
+/* The gaps sit on --bg-band, NOT --warn. Nothing is wrong; it is not known
+   yet, and colouring absence as a fault is the surface lying the other way. */
+/* A LEFT RULE, NOT A NESTED PANEL. The first cut filled this on --bg-band,
+   which is the established callout ground everywhere ELSE on this surface —
+   but here it sits INSIDE .lc-card, and a lighter panel nested in a panel
+   pushed --muted to 4.16:1 and --ink-soft to 4.49:1, both under the floor.
+   Measured, not guessed: the alpha-composited ground, because .lc-card's own
+   background is rgba(...,0.1) and reading it as opaque reports nonsense.
+   The rule is the same idiom .lc-note.lc-warn already uses two hundred lines
+   up, and it leaves every word on --card where the tokens were designed. */
+.lc-pv-gaps{margin:12px 0 0;padding:2px 0 2px 12px;border-left:2px solid var(--line);}
+.lc-pv-gaps-h{margin:0 0 8px;}
+/* Stacked, not a two-column flex: at 390px the heading and its reason both
+   wrapped and interleaved into a ragged block. */
+.lc-pv-gaps-h b{display:block;font:650 var(--t-caption)/1.5 Inter,sans-serif;color:var(--ink);
+  letter-spacing:.04em;}
+.lc-pv-gaps-h span{display:block;font:400 12px/1.4 Inter,sans-serif;color:var(--faint);margin-top:2px;}
+.lc-pv-gap{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:5px 0;}
+.lc-pv-gap + .lc-pv-gap{border-top:1px solid var(--line);}
+.lc-pv-gap-k{font:400 13px/1.4 Inter,sans-serif;color:var(--muted);}
+.lc-pv-gap-a{flex:0 0 auto;background:none;border:none;padding:0;cursor:pointer;
+  font:500 13px/1.4 Inter,sans-serif;color:var(--ink-soft);
+  text-decoration:underline;text-underline-offset:3px;}
+.lc-pv-det{margin:12px 0 0;}
+.lc-pv-sum{font:500 12px/1.4 Inter,sans-serif;color:var(--ink-soft);cursor:pointer;list-style:none;}
+.lc-pv-sum::-webkit-details-marker{display:none;}
+.lc-pv-sum::after{content:' ▾';}
+.lc-pv-det[open] .lc-pv-sum::after{content:' ▴';}
+.lc-pv-grp{margin:11px 0 0;}
+/* The group heading IS the legend — a separate one is a second thing to read,
+   so the badge is defined where it is first used. */
+.lc-pv-grp-h{display:flex;align-items:center;gap:7px;margin:0 0 5px;}
+.lc-pv-grp-h b{font:650 var(--t-caption)/1.5 Inter,sans-serif;color:var(--ink);}
+.lc-pv-grp-h span:last-child{font:400 var(--t-caption)/1.5 Inter,sans-serif;color:var(--faint);}
+.lc-pv-badge{flex:0 0 auto;width:18px;height:18px;border-radius:5px;display:grid;
+  place-items:center;font:650 var(--t-caption-min)/1 Inter,sans-serif;
+  background:var(--bg-band);color:var(--ok);}
+.lc-pv-badge.is-typed{color:var(--ink-soft);}
+.lc-pv-row{display:flex;justify-content:space-between;gap:12px;padding:5px 0 5px 25px;
+  border-top:1px solid var(--line);}
+.lc-pv-grp-h + .lc-pv-row{border-top:none;}
+.lc-pv-k{flex:0 0 auto;font:400 13px/1.4 Inter,sans-serif;color:var(--muted);}
+.lc-pv-v{font:500 13px/1.4 Inter,sans-serif;color:var(--ink);text-align:right;min-width:0;}
+/* The door this place came through. No colour: it is an identity, not a state. */
+.lc-card-door{flex:0 0 auto;font:650 var(--t-caption)/1.5 Inter,sans-serif;color:var(--muted);
+  background:var(--bg-band);padding:2px var(--sp-2);border-radius:999px;white-space:nowrap;}
 .lc-pv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
   padding:10px 0;border-top:1px solid var(--hair);}
 .lc-pv-label{font:400 14px/1.35 Inter,sans-serif;color:var(--ink);min-width:0;

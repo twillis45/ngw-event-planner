@@ -160,7 +160,20 @@ export function normalizeLodgingOption(raw, i = 0) {
     id: o.id || `lodge-${i + 1}`,
     label: String(o.label || '').trim() || `Option ${i + 1}`,
     url,
-    platform: lodgingPlatformFor(url),
+    // ── THE DOOR WITH NO URL ────────────────────────────────────────────
+    // Host, 2026-09-30: "need badges for where the listing came from. host
+    // may combine the source of listings: Google, airbnb, vrbo, etc."
+    //
+    // `platform` has existed since this normalizer shipped and is derived from
+    // the url, which is right for Airbnb and Vrbo and impossible for Google
+    // Hotels: extractHotelCandidates deliberately stores NO url, because every
+    // href on that page is an ad-click redirect rather than a stable per-hotel
+    // link. Those rows have therefore always come back platform:null.
+    //
+    // So a platform the caller states is honoured, and the url stays the
+    // derivation for everyone else. Derivation still wins when it can name
+    // one, because a url is evidence and a passed string is a claim.
+    platform: lodgingPlatformFor(url) || (String(o.platform || '').trim().toLowerCase() || null),
     sleeps: num(o.sleeps),
     beds: num(o.beds),
     pricePerNight: num(o.pricePerNight),
@@ -1083,6 +1096,9 @@ function extractHotelCandidates(toks) {
         // (`fees` is host-typed and absent here; Google's figure already
         // includes fees, so nothing double-counts unless the host adds them.)
         priceBasis: 'night',
+        // The one door that cannot be read back off a url — see the note in
+        // normalizeLodgingOption. Named here, where we still know it.
+        platform: 'google',
         priceShown, rating, ratingCount, starClass, amenities,
         // ── THE SAME GATE THE RENTAL PATH USES (2026-08-06, review board) ──
         // This stored `g.img` RAW while the Airbnb/Vrbo path one function down
@@ -1246,6 +1262,7 @@ function platformOf(url) {
   if (/booking\./i.test(url)) return 'Booking.com';
   return null;
 }
+
 
 /**
  * Rank pasted candidates against what the event says the house needs.
@@ -2201,6 +2218,13 @@ export function lodgingTrouble(event, intel) {
 // the page or the unfurl; `typed` means the host wrote it. A field with no
 // recorded source is reported as unknown rather than credited to either — we do
 // not backfill provenance we never captured.
+// How a door is named to a host. The stored value is a slug so nothing
+// downstream matches on display copy; 'other' and null never render a badge,
+// because "Other" tells a host nothing they did not already know.
+export const LODGING_PLATFORM_LABELS = {
+  airbnb: 'Airbnb', vrbo: 'Vrbo', booking: 'Booking.com', google: 'Google Hotels',
+};
+
 export const LODGING_FIELD_LABELS = {
   label: 'Name', beds: 'Beds', sleeps: 'Sleeps', amenities: 'What it has',
   totalPrice: 'Total', pricePerNight: 'A night', fees: 'Fees',
@@ -2234,7 +2258,48 @@ export function lodgingProvenance(option) {
     }
     return String(v).trim();
   };
+  // ── THE ABSENCES THAT COST MONEY ────────────────────────────────────────
+  // `has` above drops every empty field, so until now this function could
+  // only describe what the option HAS. It had no way to say what nobody has
+  // said — and that is the only part of this block a host can act on.
+  //
+  // Not every empty field is worth naming. A missing photo or a missing note
+  // is cosmetic; these three change what the stay costs or what happens if it
+  // falls through, which is why the surface leads with them.
+  //
+  // Each gap carries its own ACT, written out rather than derived from the
+  // label — deriving it produced "Add the a night" on the first drive, which
+  // is what you get for treating a noun phrase as a slot.
+  //
+  // Price is ONE gap, not two. Total and per-night are the same question
+  // asked two ways: an option carrying either is not missing "the price", and
+  // an option carrying neither should be asked once, not twice. The first cut
+  // suppressed each only when the OTHER was present, so a row with no price
+  // at all listed both.
+  const gaps = [];
+  if (!has('totalPrice') && !has('pricePerNight')) {
+    gaps.push({ field: 'totalPrice', label: 'Price', act: 'Add the price' });
+  }
+  if (!has('fees')) gaps.push({ field: 'fees', label: 'Fees', act: 'Add the fees' });
+  if (!has('cancellationTier')) {
+    gaps.push({ field: 'cancellationTier', label: 'Cancellation', act: 'Add the terms' });
+  }
+
   const rows = Object.keys(LODGING_FIELD_LABELS)
+    // ── NOTES REPEATS THE AMENITIES, VERBATIM ────────────────────────────
+    // Driven 2026-09-30: the card printed all nine amenities under "What it
+    // has" and then all nine again under "Notes", because notesFor() builds
+    // its string by joining bedrooms, rating and `amenities.join(', ')`. Two
+    // rows, one fact, and it inflated every count this block reports.
+    //
+    // Dropped where it is a duplicate, kept where it carries something of its
+    // own (a hand-typed note, a baths count).
+    .filter((k) => {
+      if (k !== 'notes') return true;
+      const am = Array.isArray(o.amenities) ? o.amenities.filter(Boolean) : [];
+      if (!am.length) return true;
+      return !String(o.notes || '').includes(am.join(', '));
+    })
     .filter(has)
     .map((k) => ({ field: k, label: LODGING_FIELD_LABELS[k], source: src[k] || 'unknown', value: shown(k, o[k]) }));
   return {
@@ -2260,6 +2325,13 @@ export function lodgingProvenance(option) {
     // rendered for one layer only: the string existed, the branch existed, and
     // an upstream filter meant nobody could read it.
     lookedUp: rows.filter((r) => r.source === 'looked-up').length,
+    // Grouped, because provenance is a property of a GROUP and saying it once
+    // per row is what made this block unreadable — five identical copies of
+    // "read from the listing itself" filling the right-hand column.
+    groups: ['looked-up', 'read', 'typed', 'unknown']
+      .map((src) => ({ source: src, rows: rows.filter((r) => r.source === src) }))
+      .filter((g) => g.rows.length),
+    gaps,
     // Genuinely unrecorded, which is now the only thing this counts. It read
     // 0 while two fields were invisible.
     unknown: rows.filter((r) => !['read', 'typed', 'looked-up'].includes(r.source)).length,
