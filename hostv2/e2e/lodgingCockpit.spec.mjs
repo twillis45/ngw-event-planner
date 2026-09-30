@@ -449,6 +449,39 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     await expect(link).toHaveJSProperty('tagName', 'A');
   });
 
+  test('an Airbnb badge never becomes the property photo', async ({ page }) => {
+    // Found by driving the real captured results page: two of six cards showed
+    // Airbnb's "Guest favourite" trophy as the house, because Airbnb serves
+    // its badge art from the same CDN as listing photography. It passed every
+    // check — it IS a real image on an allowed host.
+    //
+    // The unit test covers the predicate. THIS covers the wiring, which is the
+    // part that was actually wrong: isAllowedMedia was being asked a question
+    // it does not answer, in three different places.
+    await page.route('**/api/lodging/unfurl**', (route) => route.fulfill({
+      json: { ...UNFURL_MOCK, image: 'https://a0.muscache.com/im/pictures/miso/Hosting-9/original/real.jpeg' },
+    }));
+    await seed(page);
+    // A card whose only image is the badge.
+    await paste(page,
+      '<div><a href="/rooms/20421338"></a>'
+      + '<img src="https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-GuestFavorite"/>'
+      + '<span>Badge place</span><span>4 bedrooms</span></div>');
+    await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
+
+    const src = await page.evaluate(() => {
+      const img = document.querySelector('.lc-card-shot img');
+      return img ? img.src : '';
+    });
+    // The trophy is gone...
+    expect(src).not.toMatch(/airbnb-platform-assets/);
+    // ...and because the merge fills gaps, the LISTING's own photo takes the
+    // slot the badge was occupying. Blanking it would have been acceptable;
+    // this is better, and it only happens because rejecting the badge leaves
+    // a gap for the unfurl to fill.
+    expect(src).toMatch(/Hosting-9\/original\/real\.jpeg/);
+  });
+
   test('the shortlist can grow, and picking is not booking', async ({ page }) => {
     await mockUnfurl(page);
     await seed(page);

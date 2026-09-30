@@ -101,7 +101,7 @@ import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
-import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
+import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
@@ -14603,7 +14603,7 @@ export default function HostShellV2() {
                               const enrich = (x) => ({
                                 ...x,
                                 name: x.name || String(r.title || '').slice(0, 70),
-                                photo: x.photo || (isAllowedMedia(r.image) ? r.image : ''),
+                                photo: x.photo || (isListingPhoto(r.image) ? r.image : ''),
                                 beds: x.beds != null ? x.beds : (f.beds != null ? f.beds : null),
                                 bedrooms: x.bedrooms != null ? x.bedrooms : (f.bedrooms != null ? f.bedrooms : null),
                                 baths: x.baths != null ? x.baths : (f.baths != null ? f.baths : null),

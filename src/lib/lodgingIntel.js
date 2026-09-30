@@ -30,7 +30,7 @@
 import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
-import { isAllowedMedia } from './lodgingBookmarklet';
+import { isAllowedMedia, isListingPhoto } from './lodgingBookmarklet';
 import { googleTravelTs } from './googleTravelTs';
 // LEAF IMPORT ON PURPOSE (2026-08-16). Importing this from './playbooks'
 // dragged the entire 1.4MB playbook corpus onto the guest invite path,
@@ -1070,7 +1070,9 @@ function extractHotelCandidates(toks) {
         // A hotel row therefore arrives without a photo, and the card already
         // has honest words for that — "no picture yet, this one's still real"
         // — plus a paste-your-own-photo path if the host wants one.
-        photo: isAllowedMedia(g.img) ? String(g.img).trim() : '',
+        // isListingPhoto, not isAllowedMedia: Airbnb's own badge art is safe
+        // to load and is not the house (see the predicate's note).
+        photo: isListingPhoto(g.img) ? String(g.img).trim() : '',
       });
     }
   }
@@ -1166,7 +1168,7 @@ export function candidatesFromGroups(groups, hint) {
       place,
       // Gated on BOTH paths (paste and bookmarklet) by the one media allowlist —
       // the paste path reads arbitrary HTML too, so it needs the same guard.
-      photo: isAllowedMedia(img) ? String(img).trim() : '',
+      photo: isListingPhoto(img) ? String(img).trim() : '',
       bedrooms: numFrom(lines, /(\d+)\s*bedrooms?/i),
       beds: numFrom(lines, /(\d+)\s*beds?\b/i),
       baths: numFrom(lines, /(\d+(?:\.\d)?)\s*baths?\b/i),

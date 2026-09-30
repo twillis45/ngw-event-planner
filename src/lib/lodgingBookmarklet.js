@@ -65,6 +65,34 @@ export function isAllowedMedia(url) {
   return MEDIA_HOSTS.some((h) => host === h || host.endsWith('.' + h));
 }
 
+/**
+ * Does this image depict the PROPERTY, as opposed to being a real image on a
+ * real allowed host that happens not to be the house?
+ *
+ * SEPARATE FROM isAllowedMedia ON PURPOSE (2026-09-30). That one answers "is
+ * this safe to load" and must keep saying yes here — a badge is not a
+ * security problem, and folding the two together would mean every future
+ * tightening of one silently moved the other.
+ *
+ * Found by pasting the real captured Santa Fe results page: two of six cards
+ * showed Airbnb's "Guest favourite" trophy as the property photo, because
+ * Airbnb serves its own marketing art from the same CDN as listing
+ * photography. The house is /im/pictures/miso|hosting|prohost-api/Hosting-…;
+ * the trophy is /im/pictures/airbnb-platform-assets/…. It matters more since
+ * the photo became a tap target: a host tapping a trophy expecting the house
+ * is a worse miss than a blank frame, and UX_08 says missing data says
+ * missing — "+ Add a picture" is the honest state.
+ *
+ * Matched on its own PATH SEGMENT, so a listing whose photo id merely
+ * contains the words is not thrown away.
+ */
+const NOT_THE_PROPERTY = /\/(airbnb-platform-assets|airbnb-platform-assets-[a-z-]+)\//i;
+
+export function isListingPhoto(url) {
+  if (!isAllowedMedia(url)) return false;
+  return !NOT_THE_PROPERTY.test(String(url));
+}
+
 // Caps. The payload rides in a URL fragment, and a fragment is untrusted input
 // even when we wrote the code that produced it — a host could click the
 // bookmarklet on any page, and a crafted page could stuff it.

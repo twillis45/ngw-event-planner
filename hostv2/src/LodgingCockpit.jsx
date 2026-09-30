@@ -26,6 +26,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 // to say BEFORE they have one.
 import { lodgingBasisFor, isOwnEvidence } from '@app/lib/knowledge/lodgingBasisLadder';
 import { perHeadOf } from '@app/lib/perHead';
+import { isListingPhoto } from '@app/lib/lodgingBookmarklet';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
@@ -681,7 +682,10 @@ function Looking({ event, patch }) {
           // picture could not arrive from an unfurl under ANY conditions, which
           // is why every read row still said "no picture yet".
           const facts = (r.facts && typeof r.facts === 'object') ? r.facts : {};
-          const shot = String(r.image || '').trim();
+          // The unfurl's own image goes through the same question as a pasted
+          // card's: safe to load is not the same as depicts the house.
+          const shotRaw = String(r.image || '').trim();
+          const shot = isListingPhoto(shotRaw) ? shotRaw : '';
           // GAPS ONLY. Every line reads "what the paste already had, else what
           // the listing says" — the reverse of what this block did when it
           // only ever ran on a paste that had nothing to protect.
