@@ -26,6 +26,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 // to say BEFORE they have one.
 import { lodgingBasisFor, isOwnEvidence } from '@app/lib/knowledge/lodgingBasisLadder';
 import { perHeadOf } from '@app/lib/perHead';
+import PhotoStrip from './PhotoStrip.jsx';
 import { isListingPhoto } from '@app/lib/lodgingBookmarklet';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
@@ -694,6 +695,10 @@ function Looking({ event, patch }) {
             name: c.name || r.title,
             priceShown: c.priceShown != null ? c.priceShown : r.price,
             photo: c.photo || shot,
+            // The lookup returns ONE image; a paste of the results page is the
+            // only side that ever holds a gallery, so this is gaps-only too.
+            photos: (Array.isArray(c.photos) && c.photos.length) ? c.photos
+              : (shot ? [shot] : []),
             // A COUNT OF BEDS, never mapped to `sleeps`: how many people a
             // place holds is not something a bed count settles.
             beds: c.beds != null ? c.beds : facts.beds,
@@ -827,7 +832,11 @@ function Looking({ event, patch }) {
         // so nothing downstream multiplies it into a whole-party stay total.
         ? { pricePerNight: c.priceShown, rateBasis: 'room' }
         : { totalPrice: c.priceShown }),
-      photoUrl: c.photo, notes: notesFor(c),
+      photoUrl: c.photo,
+      // The rest of the card's own pictures, so the strip has something to
+      // advance through. normalizeLodgingOption re-reads photoUrl off this.
+      ...(Array.isArray(c.photos) && c.photos.length > 1 ? { photos: c.photos } : null),
+      notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
       // would be a guess, and lodgingProvenance deliberately reports an
@@ -908,7 +917,11 @@ function Looking({ event, patch }) {
         // so nothing downstream multiplies it into a whole-party stay total.
         ? { pricePerNight: c.priceShown, rateBasis: 'room' }
         : { totalPrice: c.priceShown }),
-      photoUrl: c.photo, notes: notesFor(c),
+      photoUrl: c.photo,
+      // The rest of the card's own pictures, so the strip has something to
+      // advance through. normalizeLodgingOption re-reads photoUrl off this.
+      ...(Array.isArray(c.photos) && c.photos.length > 1 ? { photos: c.photos } : null),
+      notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
       // would be a guess, and lodgingProvenance deliberately reports an
@@ -1528,6 +1541,19 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                         {`across ${perHead.heads}`}
                         {perHead.stated ? '' : ' — nobody said if you’re in that number'}
                       </p>
+                    )}
+                    {/* ── THE REST OF THE HOUSE (host, 2026-09-30: "are we able
+                        to import the whole gallery for each?") ──────────────
+                        The strip has existed since 2026-07-28 and renders on
+                        the old shell and on the GUEST INVITE — a guest could
+                        already flip through a house while the host comparing
+                        places could not. Same component, so the two sides see
+                        the same thing, which is the reason it was shared in
+                        the first place.
+                        Only past one: a strip of one is a second copy of the
+                        photo already filling the top of this card. */}
+                    {Array.isArray(o.photos) && o.photos.length > 1 && (
+                      <PhotoStrip photos={o.photos} alt={o.label} size={104} radius="8px" />
                     )}
                     <div className="lc-ctas lc-ctas-wrap" style={{ margin: '10px 0 0' }}>
                       <button className="cta" aria-label={`Pick ${o.label}`} onClick={() => onPick(o.id)}>Pick this place</button>

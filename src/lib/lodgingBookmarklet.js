@@ -100,6 +100,20 @@ export const MAX_CANDIDATES = 40;
 const MAX_LINES = 24;
 const MAX_LINE = 120;
 const MAX_URL = 400;
+// ── THE CAROUSEL IS THE GALLERY (host, 2026-09-30: "are we able to import the
+// whole gallery for each?") ────────────────────────────────────────────────
+// We cannot FETCH one: Airbnb's robots.txt disallows /rooms/*/photos, and
+// nothing here ever loads a listing page. But on the LIVE page the host is
+// standing on, each card's carousel has already put several <img> nodes in the
+// DOM, and this script was taking the first and dropping the rest.
+//
+// A paste cannot do this — every captured results page in __fixtures__ carries
+// exactly one <img> per card, measured 2026-09-30 — so the bookmarklet is the
+// only path where a second picture actually exists.
+//
+// Five, not twelve: this payload rides in a location hash, and an Airbnb image
+// URL is ~150 characters × up to 40 cards.
+const MAX_IMGS = 5;
 
 /**
  * The bookmarklet source, as a `javascript:` URL.
@@ -124,10 +138,14 @@ for(var i=0;i<L.length;i++){
   var p=L[i],b='';
   for(var j=0;j<6&&p;j++){p=p.parentElement;if(!p)break;var t=(p.innerText||'');if(t.length>b.length)b=t;if(b.length>60)break;}
   var lines=b.split('\\n').map(function(x){return x.replace(/\\s+/g,' ').trim();}).filter(Boolean).slice(0,${MAX_LINES});
-  var q=L[i],im=null;
-  for(var m=0;m<6&&q&&!im;m++){q=q.parentElement;if(q&&q.querySelector)im=q.querySelector('img');}
-  var isrc=im?(im.currentSrc||im.src||''):'';
-  O.push({url:u.slice(0,${MAX_URL}),lines:lines,img:(/^https:/.test(isrc)?isrc.slice(0,${MAX_IMG}):'')});
+  var q=L[i],ims=[];
+  for(var m=0;m<6&&q&&!ims.length;m++){q=q.parentElement;if(q&&q.querySelectorAll)ims=[].slice.call(q.querySelectorAll('img'));}
+  var srcs=[];
+  for(var n=0;n<ims.length&&srcs.length<${MAX_IMGS};n++){
+    var s1=ims[n].currentSrc||ims[n].src||'';
+    if(/^https:/.test(s1)&&srcs.indexOf(s1)<0)srcs.push(s1.slice(0,${MAX_IMG}));
+  }
+  O.push({url:u.slice(0,${MAX_URL}),lines:lines,img:srcs[0]||'',imgs:srcs});
   if(O.length>=${MAX_CANDIDATES})break;
 }
 if(!O.length){alert('No rental listings found on this page. Open a search results page or a listing, then click this again.');return;}
@@ -177,8 +195,14 @@ export function parseBookmarkletPayload(raw) {
       .filter(Boolean);
     // A photo is optional and never load-bearing: an option with no usable
     // image is a row without a picture, not a dropped listing.
-    const img = isAllowedMedia(row.img) ? String(row.img).trim() : '';
-    out.push({ url, lines, img });
+    // `img` alone is the shape an OLDER bookmarklet still in somebody's
+    // bookmarks bar sends, and it keeps working — nobody re-drags a bookmark
+    // because we shipped.
+    const imgs = (Array.isArray(row.imgs) ? row.imgs : [row.img])
+      .slice(0, MAX_IMGS)
+      .map((u2) => String(u2 == null ? '' : u2).trim())
+      .filter((u2) => isAllowedMedia(u2));
+    out.push({ url, lines, img: imgs[0] || '', imgs });
   }
   return out;
 }

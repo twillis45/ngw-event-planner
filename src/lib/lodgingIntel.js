@@ -939,7 +939,12 @@ export function extractListingCandidates(payload) {
     }
     if (!current) continue;
     // FIRST image per card wins — later ones are carousel frames or badges.
-    if (t.img !== undefined) { if (!imgByUrl.has(current) && t.img) imgByUrl.set(current, t.img); continue; }
+    // EVERY image per card, in page order — listingPhotos drops the badges
+    // and the first survivor is still the card's lead shot.
+    if (t.img !== undefined) {
+      if (t.img) { if (!imgByUrl.has(current)) imgByUrl.set(current, []); imgByUrl.get(current).push(t.img); }
+      continue;
+    }
     if (t.text) byUrl.get(current).push(t.text);
   }
 
@@ -977,7 +982,7 @@ export function extractListingCandidates(payload) {
   }
 
   const candidates = candidatesFromGroups(
-    [...byUrl].map(([url, lines]) => ({ url, lines, img: imgByUrl.get(url) || '' })), hint);
+    [...byUrl].map(([url, lines]) => ({ url, lines, imgs: imgByUrl.get(url) || [] })), hint);
   return { candidates, source: candidates.length ? platformOf(candidates[0].url) : null, linksOnly: false };
 }
 
@@ -990,10 +995,10 @@ function extractHotelCandidates(toks) {
   const groups = [];
   let cur = null;
   for (const t of toks) {
-    if (t.link !== undefined) { cur = { lines: [], img: '' }; groups.push(cur); continue; }
+    if (t.link !== undefined) { cur = { lines: [], imgs: [] }; groups.push(cur); continue; }
     if (!cur) continue;
     if (t.img !== undefined) {
-      if (!cur.img && t.img) cur.img = t.img.startsWith('//') ? `https:${t.img}` : t.img;
+      if (t.img) cur.imgs.push(t.img);
       continue;
     }
     if (t.text) cur.lines.push(t.text);
@@ -1011,6 +1016,7 @@ function extractHotelCandidates(toks) {
 
   const out = [];
   for (const g of groups) {
+    const shots = listingPhotos(g.imgs);
     let name = '';
     let priceShown = null;
     let rating = null;
@@ -1072,7 +1078,8 @@ function extractHotelCandidates(toks) {
         // — plus a paste-your-own-photo path if the host wants one.
         // isListingPhoto, not isAllowedMedia: Airbnb's own badge art is safe
         // to load and is not the house (see the predicate's note).
-        photo: isListingPhoto(g.img) ? String(g.img).trim() : '',
+        photo: shots[0] || '',
+        photos: shots,
       });
     }
   }
@@ -1090,9 +1097,34 @@ function extractHotelCandidates(toks) {
  *
  * @param {Array<{url:string, lines:string[]}>} groups
  */
+// ── EVERY PICTURE THE PASTE WAS GIVEN, NOT THE FIRST ONE ───────────────────
+// Host, 2026-09-30: "are we able to import the whole gallery for each?" We
+// cannot FETCH one — Airbnb's robots.txt disallows /rooms/*/photos, and this
+// file never fetches a listing page on principle. But the paste itself already
+// carries several images per card, and the reader was throwing all but the
+// first away ("later ones are carousel frames or badges"). Carousel frames ARE
+// the gallery; the badges are what isListingPhoto exists to drop.
+//
+// Capped because a results page can carry dozens per card and `photos` is on
+// the guest-published whitelist — the strip advances in place, so a host does
+// not need forty. Deduped because a carousel repeats its first frame.
+export function listingPhotos(imgs) {
+  const out = [];
+  for (const raw of (Array.isArray(imgs) ? imgs : [imgs])) {
+    const u = String(raw || '').trim();
+    if (!u) continue;
+    const abs = u.startsWith('//') ? `https:${u}` : u;
+    if (!isListingPhoto(abs)) continue;
+    if (out.includes(abs)) continue;
+    out.push(abs);
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
 export function candidatesFromGroups(groups, hint) {
   const candidates = [];
-  for (const { url, lines: raw, img } of (Array.isArray(groups) ? groups : [])) {
+  for (const { url, lines: raw, img, imgs } of (Array.isArray(groups) ? groups : [])) {
     if (!listingUrl(url, hint)) continue;
     // Collapse the accessibility duplicates ("8 beds" twice) while keeping order.
     const lines = [];
@@ -1161,6 +1193,7 @@ export function candidatesFromGroups(groups, hint) {
     const priceShown = current ? Number(current[1].replace(/,/g, ''))
       : money.length ? money[money.length - 1] : null;
 
+    const shots = listingPhotos(imgs && imgs.length ? imgs : [img]);
     candidates.push({
       url: listingUrl(url, hint) || url,
       name,
@@ -1168,7 +1201,9 @@ export function candidatesFromGroups(groups, hint) {
       place,
       // Gated on BOTH paths (paste and bookmarklet) by the one media allowlist —
       // the paste path reads arbitrary HTML too, so it needs the same guard.
-      photo: isListingPhoto(img) ? String(img).trim() : '',
+      // `img` is the older single-image shape this function still accepts.
+      photo: shots[0] || '',
+      photos: shots,
       bedrooms: numFrom(lines, /(\d+)\s*bedrooms?/i),
       beds: numFrom(lines, /(\d+)\s*beds?\b/i),
       baths: numFrom(lines, /(\d+(?:\.\d)?)\s*baths?\b/i),

@@ -14503,6 +14503,10 @@ export default function HostShellV2() {
                               beds: c.beds != null ? c.beds : undefined,
                               totalPrice: c.priceShown != null ? c.priceShown : undefined,
                               photoUrl: c.photo || undefined,
+                              // The carousel the bookmarklet captured, so the card's
+                              // strip has something to advance through.
+                              ...(Array.isArray(c.photos) && c.photos.length > 1
+                                ? { photos: c.photos } : null),
                               notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
                                 c.place ? `in ${c.place}` : null].filter(Boolean).join(' · ') || undefined,
                               status: 'option',

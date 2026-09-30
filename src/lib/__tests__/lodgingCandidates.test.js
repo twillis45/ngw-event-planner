@@ -321,8 +321,12 @@ describe('a card brings its own picture, from a host we verified', () => {
 
   test('the collector takes the card thumbnail, the receiver vets it', () => {
     const src = decodeURIComponent(buildBookmarklet('https://x.test/').slice('javascript:'.length));
-    expect(src).toMatch(/querySelector\('img'\)/);
-    expect(src).toMatch(/currentSrc\|\|im\.src/);
+    // querySelectorAll, not querySelector, since 2026-09-30: the carousel on
+    // the live page is the gallery, and taking the first frame threw it away.
+    // See theWholeCarouselComesAcross.test.js — this line still guards the
+    // part that matters here, that the collector reads a real rendered src.
+    expect(src).toMatch(/querySelectorAll\('img'\)/);
+    expect(src).toMatch(/currentSrc\|\|ims\[n\]\.src/);
 
     const good = 'https://a0.muscache.com/im/pictures/ok.jpg';
     const out = parseBookmarkletPayload(JSON.stringify([
