@@ -163,7 +163,19 @@ export function applyStudioMatte(override) {
   // planes — 4.55 on --bg, 4.83 on --card. Lightest, because in light mode
   // de-emphasis runs upward, and this has to sit a real step ABOVE --ink-soft
   // (#527088, 4.90 on --bg) in exactly the way the dark value sits below it.
-  set('--muted', isLight ? '#707274' : '#909296');
+  // ── TUNED FOR THE BAND, USED ON THE CARD (measured 2026-09-30) ──────────
+  // #707274 was chosen against --bg-band and clears there. It does NOT clear
+  // on .lc-card, whose background is a translucent rgba(...,0.1) over the page
+  // — a lighter ground in light mode — where it measures 4.04:1. That is not
+  // new and it is not the provenance block's doing: .lc-pv-src and
+  // .lc-card-was have sat at 4.04 on that card since they shipped. It only
+  // came to light because a gate finally composited the alpha instead of
+  // reading the translucent layer as opaque.
+  //
+  // #686A6C measures 4.54:1 on the same composited ground — headroom over the
+  // floor rather than sitting on it. Darkening can only raise contrast, so no
+  // existing >=4.5 gate can regress on it.
+  set('--muted', isLight ? '#686A6C' : '#909296');
   // --faint carries small text (section labels, form-field labels, chevrons). A
   // tint of the now-darker --muted base; α 0.98 keeps it AA on the tight band
   // (≈4.7:1) while sitting a hair below --muted. (The 4.5:1 floor on the band
@@ -175,7 +187,11 @@ export function applyStudioMatte(override) {
   // not three — which is the same conclusion the parenthetical above reaches
   // for dark, stated outright instead of hidden behind an imperceptible 2%.
   // A third tier that fails AA is not a third tier.
-  set('--faint', isLight ? '#707274' : tint('#909296', 0.98));
+  // ...and in light it is LITERALLY --muted, which is why it moves with it.
+  // It was written out as #707274 rather than referencing the base, so
+  // darkening --muted above silently split the two apart and left --faint
+  // alone at 4.04:1 on the card. Same value, stated once.
+  set('--faint', isLight ? '#686A6C' : tint('#909296', 0.98));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
 
