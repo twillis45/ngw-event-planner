@@ -625,6 +625,30 @@ export const unfurlOffNote = (configured) =>
 // that is exactly the case this bounds.
 const UNFURL_MS = 12000;
 
+// ── WAKE THE DYNO BEFORE THE HOST NEEDS IT ─────────────────────────────────
+// Measured 2026-09-30: a cold Render free dyno answers /health in 32.7s.
+// UNFURL_MS is 12s, so the FIRST paste of a session reliably aborts and the
+// host is told reading is switched off — which is false, and it is the exact
+// thing that happened during a live demo ("demo airbnb paste. not working").
+//
+// So: one cheap GET the moment a host opens the surface that will need it,
+// long before they have found a link to paste. Nothing waits on it, nothing
+// reads its answer, and a failure is not an error — the real call still runs
+// its own timeout and still says the honest thing if the backend is genuinely
+// down. Once per page load; a warm dyno costs one 200.
+let warmed = false;
+export function warmUnfurl() {
+  if (warmed || !API_BASE || typeof fetch !== 'function') return false;
+  warmed = true;
+  // No await, no abort: this is allowed to take the full cold start. Its whole
+  // job is to have already paid that cost by the time the host pastes.
+  try { fetch(`${API_BASE}/health`, { method: 'GET' }).catch(() => {}); } catch (_e) { /* never a failure */ }
+  return true;
+}
+
+/** Tests only — a module-level latch would otherwise leak between them. */
+export function _resetWarmUnfurl() { warmed = false; }
+
 /**
  * Read the listing LINKS off a results page the host is looking at.
  *

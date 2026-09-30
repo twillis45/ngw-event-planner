@@ -32,6 +32,7 @@ import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
   extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, looksLikeHotelDetailPage, unfurlListing, lodgingResults, isUnfurlConfigured, unfurlOffNote, rankCandidates,
+  warmUnfurl,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
   STAY_FROM_CONFIRMATION, STAY_FROM_PLAN,
 } from '@app/lib/lodgingIntel';
@@ -526,6 +527,12 @@ function Looking({ event, patch }) {
   // triggered, no read is attempted behind their back, and every failure path
   // is silent BY DESIGN: the one-tap button below is the floor, and this can
   // only ever save a tap, never become the thing the flow depends on.
+  // WAKE THE BACKEND WHILE THE HOST IS STILL READING. The dyno is cold for
+  // 32.7s and the unfurl gives up at 12s, so the first paste of a session used
+  // to fail and blame itself. Opening this surface is the earliest honest
+  // signal that a lodging read is coming. Nothing here waits on it.
+  useEffect(() => { warmUnfurl(); }, []);
+
   const [offer, setOffer] = useState('');
   useEffect(() => {
     if (!wentLooking) return undefined;
