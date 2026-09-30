@@ -18,7 +18,7 @@
 // The engine gate proves the rate is 0. This file proves a HOST sees it, on the
 // three states that were broken, because "the engine returns the right string"
 // has never been the same claim as "the screen shows it".
-import { test, expect, dateIn } from './fixtures.mjs';
+import { test, expect, dateIn, settled } from './fixtures.mjs';
 
 const EV = 'test-day-before-vendors';
 // The noon trick (setHours(12) before toISOString) is safe only while the UTC
@@ -54,7 +54,7 @@ const boot = async (page, patch) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, [EV, patch]);
   await page.goto('?elegant=1');
-  await page.waitForTimeout(3500);
+  await settled(page);
 };
 
 const heroText = (page) => page.evaluate(() => {

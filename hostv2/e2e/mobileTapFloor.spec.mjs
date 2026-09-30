@@ -19,6 +19,7 @@
 //     hit box is the element UNIONED with its pseudo-elements, so `.sheet-back`
 //     legitimately measures 16px tall and 44px tappable.
 import { test, expect } from '@playwright/test';
+import { settled } from './fixtures.mjs';
 
 const EV = {
   id: 'E2E_TEST_tapfloor', type: 'Birthday', name: 'Tap floor', isDestination: true,
@@ -110,7 +111,7 @@ async function boot(page) {
   }, EV);
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('./', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2500);
+  await settled(page);
 }
 
 test('the known-open pill is still really under the floor (premise)', async ({ page }) => {
@@ -156,7 +157,7 @@ test('the home surface with the food decision UNSETTLED clears it too', async ({
        isDestination: false, endDate: undefined });
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('./', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2500);
+  await settled(page);
   // The splash sits over the page after load and makes every hit test report the
   // overlay — which silently turns the sweep's new reachability probe into a
   // machine that finds nothing. Wait it out before measuring anything.

@@ -1,3 +1,4 @@
+import { settled } from './fixtures.mjs';
 // ─── THE TWO-COLUMN SPLIT MUST ALSO FIT (2026-08-06, board P0) ─────────────
 //
 // At 1024x768 landscape the ask/answer split fired into a ~680px content column
@@ -42,7 +43,7 @@ for (const [w, h] of WIDTHS) {
     }, EV);
     await page.setViewportSize({ width: w, height: h });
     await page.goto('./');
-    await page.waitForTimeout(2200);
+    await settled(page);
 
     const r = await page.evaluate(() => {
       const ask = document.querySelector('.ask');

@@ -15,7 +15,7 @@
 // first tap happens under a parameter that outranks it. Without the URL being
 // cleared the toggle appears to work and silently undoes itself on reload —
 // the kind of defect that reads as "the app forgot my setting".
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const lum = (c) => {
   const m = c.match(/[\d.]+/g).map(Number);
@@ -61,7 +61,7 @@ const row = (page) => page.locator('.later-row', { hasText: 'Light mode' }).firs
 test('the switch is in You & settings, and it is a real control', async ({ page }) => {
   await seed(page);
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1500);
+  await settled(page);
   await openSettings(page);
 
   const btn = row(page).locator('button');
@@ -75,7 +75,7 @@ test('the switch is in You & settings, and it is a real control', async ({ page 
 test('tapping it paints the page, and tapping it back undoes that', async ({ page }) => {
   await seed(page);
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1500);
+  await settled(page);
   await openSettings(page);
 
   await row(page).locator('button').click();
@@ -92,7 +92,7 @@ test('tapping it paints the page, and tapping it back undoes that', async ({ pag
 test('the choice survives a reload', async ({ page }) => {
   await seed(page);
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1500);
+  await settled(page);
   await openSettings(page);
   await row(page).locator('button').click();
   await page.waitForTimeout(400);
@@ -108,7 +108,7 @@ test('turning it OFF from a ?theme=light link stays off after a reload', async (
   // they arrived on outranks the choice they just made.
   await seed(page);
   await page.goto('?elegant=1&theme=light');
-  await page.waitForTimeout(1500);
+  await settled(page);
   expect(await pageLum(page)).toBeGreaterThan(0.7);
 
   await openSettings(page);

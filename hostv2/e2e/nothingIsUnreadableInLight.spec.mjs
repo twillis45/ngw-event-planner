@@ -15,7 +15,7 @@
 //
 // Dark is measured on the same pass, deliberately. The whole lesson of light
 // mode here is that one mode passing proves nothing about the other.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const AUDIT = () => {
   const px = (c) => { const m = String(c).match(/[\d.]+/g); return m ? m.slice(0, 3).map(Number) : null; };
@@ -42,6 +42,26 @@ const AUDIT = () => {
     if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.top > window.innerHeight) continue;
     const cs = getComputedStyle(el);
     if (cs.visibility === 'hidden' || cs.opacity === '0' || cs.display === 'none') continue;
+    // ── AND NOT BEHIND A FADING ANCESTOR ─────────────────────────────────
+    // The check above reads the NODE's own style. The splash wordmark is
+    // opacity 1 on itself while its .splash parent fades through 0.01, so a
+    // giant "No Guesswork" in dark-mode ink over a dark panel was being
+    // graded at 1.01:1 in a light-mode run — text no human can read, and no
+    // human was meant to.
+    //
+    // It only surfaced when this spec stopped sleeping 2000ms and started
+    // waiting on settled(), which releases the moment the splash is at
+    // opacity <= 0.01 rather than once it has left the DOM. The sleep was
+    // hiding a hole in the audit, not preventing one.
+    //
+    // Threshold, not zero: a node at 0.02 is as unreadable as one at 0, and
+    // an exact-equality test is what let this through in the first place.
+    let ghost = false;
+    for (let a = el; a && a !== document.documentElement; a = a.parentElement) {
+      const acs = getComputedStyle(a);
+      if (acs.visibility === 'hidden' || acs.display === 'none' || Number(acs.opacity) < 0.1) { ghost = true; break; }
+    }
+    if (ghost) continue;
     // Only nodes that own their text — otherwise a wrapper is judged on a
     // child's colour and every failure is reported once per ancestor.
     const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim())
@@ -77,7 +97,7 @@ for (const mode of ['light', 'dark']) {
   test(`every word on the plan clears AA — ${mode}`, async ({ page }) => {
     await seed(page);
     await page.goto(`?elegant=1&theme=${mode}`);
-    await page.waitForTimeout(2000);
+    await settled(page);
     const bad = await page.evaluate(AUDIT);
     expect(bad.join('\n') || 'none', `${bad.length} text nodes below AA in ${mode}`).toBe('none');
   });

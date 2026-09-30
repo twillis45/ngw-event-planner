@@ -23,7 +23,7 @@
 //
 // Reached the way a phone reaches it — eyebrow, then the "You &" directory row —
 // copied from mobileTapFloor.spec.mjs, which already drives this panel every run.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const EV = 'test-day-before-vendors';
 
@@ -37,7 +37,7 @@ const boot = async (page) => {
   }, EV);
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('./', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2500);
+  await settled(page);
   await page.waitForFunction(() => !document.querySelector('.splash'), null, { timeout: 15_000 });
 };
 

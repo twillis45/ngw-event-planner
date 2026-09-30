@@ -3,6 +3,7 @@
 // shell stops being a phone silhouette and the responsive canvases switch on.
 // The largest CSS feature in the repo had no coverage at all, and an audit
 // found three real defects there. These pin the ones that were fixed.
+import { settled } from './fixtures.mjs';
 import { test, expect } from '@playwright/test';
 
 const EV = {
@@ -20,7 +21,7 @@ const boot = async (page) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, EV);
   await page.goto('./');
-  await page.waitForTimeout(2200);
+  await settled(page);
 };
 
 test.skip(({ viewport }) => !viewport || viewport.width < 1280, 'above-1280 behaviour only');

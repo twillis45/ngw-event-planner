@@ -118,7 +118,7 @@ test('AND NEITHER DOES THE COCKPIT, which runs its own CSS', async ({ page }, te
   // not a passing one.
   await seed(page);
   await page.goto('?demo=lodging');
-  await page.waitForTimeout(2500);
+  await settled(page);
   await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
   await page.waitForTimeout(600);
   expect(await underFloor(page)).toEqual([]);

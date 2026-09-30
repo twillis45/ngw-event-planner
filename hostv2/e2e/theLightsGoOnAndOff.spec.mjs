@@ -10,7 +10,7 @@
 // surface ramp (carbonNeutral had four dark levels and none light), and BOTH
 // ends — surfaces and text — had to select by the same mode. This gate exists
 // because the failure mode is a half-flip that still "works" on one axis.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const lum = (c) => {
   const m = c.match(/[\d.]+/g).map(Number);
@@ -52,7 +52,7 @@ const paint = (page) => page.evaluate(() => {
 test('dark is what a host gets without asking', async ({ page }) => {
   await seed(page);
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1500);
+  await settled(page);
   const p = await paint(page);
   expect(p.attr).toBe('dark');
   expect(lum(p.bg)).toBeLessThan(0.2);
@@ -64,7 +64,7 @@ test('?theme=light turns it on, and BOTH ends move', async ({ page }) => {
   // did not follow.
   await seed(page);
   await page.goto('?elegant=1&theme=light');
-  await page.waitForTimeout(1500);
+  await settled(page);
   const p = await paint(page);
   expect(p.attr).toBe('light');
   expect(lum(p.bg)).toBeGreaterThan(0.7);      // the page really is light
@@ -76,13 +76,13 @@ test('?theme=light turns it on, and BOTH ends move', async ({ page }) => {
 test('it persists without the parameter, and ?theme=dark takes it back', async ({ page }) => {
   await seed(page);
   await page.goto('?elegant=1&theme=light');
-  await page.waitForTimeout(1200);
+  await settled(page);
   await page.goto('?elegant=1');               // no parameter this time
-  await page.waitForTimeout(1200);
+  await settled(page);
   expect((await paint(page)).attr).toBe('light');
 
   await page.goto('?elegant=1&theme=dark');
-  await page.waitForTimeout(1200);
+  await settled(page);
   const back = await paint(page);
   expect(back.attr).toBe('dark');
   expect(lum(back.bg)).toBeLessThan(0.2);
@@ -111,7 +111,7 @@ for (const mode of ['dark', 'light']) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await seed(page);
     await page.goto(`?elegant=1&theme=${mode}`);
-    await page.waitForTimeout(1500);
+    await settled(page);
 
     const planes = await page.evaluate(() => {
       const rs = getComputedStyle(document.documentElement);

@@ -35,7 +35,7 @@
 // `desktop` project and failed there, asserting a tablet rule against a surface
 // that never claimed it. Whether the >=1280 fold is right is a separate
 // question, recorded rather than smuggled in under a tablet gate.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const EV = 'test-day-before-vendors';
 
@@ -57,7 +57,7 @@ const boot = async (page) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, EV);
   await page.goto('./?elegant=1');
-  await page.waitForTimeout(2600);
+  await settled(page);
 };
 
 const geometry = (page) => page.evaluate(() => {

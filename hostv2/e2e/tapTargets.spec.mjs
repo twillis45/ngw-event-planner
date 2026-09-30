@@ -1,3 +1,4 @@
+import { settled } from './fixtures.mjs';
 // ─── THE 44px FLOOR IS A THUMB RULE (2026-08-06, board, mobile seat) ────────
 // A live sweep on a real iPhone profile found 12+ interactive controls under
 // UX_03's 44px minimum, including the hero Save that COMMITS the ask (56x30).
@@ -24,7 +25,7 @@ test('covered controls clear 44px on a phone', async ({ page }) => {
   }, EV);
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('./');
-  await page.waitForTimeout(2500);
+  await settled(page);
 
   const small = await page.evaluate(() => {
     // EFFECTIVE TARGET = the box, or a ::after overlay that extends it.

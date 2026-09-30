@@ -17,7 +17,7 @@
 // unreachable — goToLodgingCockpit navigates to ?demo=lodging before it can
 // open — and its own comment says so. Building this there would have rendered
 // it to nobody, which is the third time today that trap was available.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const openCockpit = async (page, event) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -29,7 +29,7 @@ const openCockpit = async (page, event) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, event);
   await page.goto('?demo=lodging');
-  await page.waitForTimeout(2500);
+  await settled(page);
 };
 
 const SANTA_FE = {
