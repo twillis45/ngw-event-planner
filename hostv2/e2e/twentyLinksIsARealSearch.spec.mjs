@@ -59,6 +59,23 @@ test('twenty links stage, and only the kept ones are read', async ({ page }) => 
   const rows = page.locator('.lc-staged');
   expect(await rows.count()).toBeGreaterThan(8);
 
+  // ── WHAT THE PROD DRIVE FOUND, 2026-09-30 ────────────────────────────
+  // Two things this test did not cover until a real search was driven on the
+  // live site with eighteen links staged.
+  //
+  // The rows said "no amenities listed" — the wrong sentence, and a worse
+  // one: nothing had been read, so there was no amenity list to be absent
+  // from. `unread` is stamped by rankCandidates, which this branch never
+  // calls, so it is stamped at the source now.
+  await expect(page.locator('.lc-staged-more').first())
+    .toHaveText(/nothing read from this link/i);
+
+  // And keeping more than UNFURL_MAX reads NONE of them — correct (eighteen
+  // sequential reads is a minute of spinner) but silent, which reproduces the
+  // empty result this whole fix exists to prevent, by a different door. The
+  // host is told the number while unticking is still the obvious move.
+  await expect(page.getByText(/untick down to 8 or fewer/i)).toBeVisible();
+
   // Untick down to a handful, the way the surface asks the host to.
   const ticks = await rows.count();
   for (let i = 3; i < ticks; i += 1) await rows.nth(i).click();

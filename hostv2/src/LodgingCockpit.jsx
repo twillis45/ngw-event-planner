@@ -1022,6 +1022,23 @@ function Looking({ event, patch }) {
         {staged.cands.length} found, best fit for this party first. Untick anything
         you were not really considering.
       </p>
+      {/* ── SAY WHAT UNTICKING IS FOR ──────────────────────────────────────
+          Driven against production 2026-09-30: a real Airbnb search staged
+          EIGHTEEN links. The reads happen on commit and are bounded at
+          UNFURL_MAX, so a host who keeps all eighteen gets eighteen rows and
+          no facts — the same empty result the read-on-commit fix exists to
+          prevent, reached by a different door.
+          The bound is right (eighteen sequential reads is a minute of
+          spinner). Leaving the host to discover it by getting nothing is
+          not. This says the number, before they commit, while unticking is
+          still the obvious move. */}
+      {staged.pick.size > UNFURL_MAX && (
+        <p className="lc-note">
+          Keeping {staged.pick.size}. I read up to {UNFURL_MAX} of them for
+          sleeps, price and amenities — untick down to {UNFURL_MAX} or fewer
+          and you get those facts for the ones you keep.
+        </p>
+      )}
       {staged.cands.map((c) => {
         const on = staged.pick.has(c._k);
         return (
@@ -1283,7 +1300,13 @@ function Looking({ event, patch }) {
               try {
                 const r = await lodgingResults(searchOffer.url);
                 if (r && r.ok && Array.isArray(r.links) && r.links.length) {
-                  const cands = r.links.map((u, i) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null, _k: u || `k${i}` }));
+                  // `unread: true` is stamped HERE because rankCandidates —
+                  // which normally sets it — is never called on this branch.
+                  // Driven against production 2026-09-30: eighteen links from
+                  // a real search each rendered "no amenities listed", which
+                  // is the wrong sentence and a worse one. Nothing had been
+                  // read, so there was no amenity list to be absent from.
+                  const cands = r.links.map((u, i) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null, unread: true, _k: u || `k${i}` }));
                   setSearchOffer(null);
                   setText('');
                   setStaged({ cands, dupes: [], pick: new Set(cands.map((c) => c._k)), linksOnly: true });
