@@ -249,6 +249,22 @@ export function normalizeLodgingOption(raw, i = 0) {
     amenities: Array.isArray(o.amenities)
       ? o.amenities.map((a) => String(a || '').trim()).filter(Boolean).slice(0, 40)
       : [],
+    // ── WHAT THE LISTING SAID IT DOES NOT HAVE (2026-10-01) ────────────────
+    // The backend has returned this since the amenity reader was written —
+    // `amenitiesAbsent`, the AmenityItem objects whose `available` field says
+    // false — and nothing on the client read it. Zero consumers in src/ or
+    // hostv2/src/, measured.
+    //
+    // Dropping it collapsed three different facts into one dash. A hot tub the
+    // listing explicitly DENIES and a hot tub the listing never mentioned read
+    // identically, so the host could not tell which gap was worth a message to
+    // the owner and which was already answered.
+    //
+    // This is the page's own denial, never an inference: absence from
+    // `amenities` still means "didn't say", exactly as before.
+    amenitiesAbsent: Array.isArray(o.amenitiesAbsent)
+      ? o.amenitiesAbsent.map((a) => String(a || '').trim()).filter(Boolean).slice(0, 40)
+      : [],
     status: o.status === 'chosen' ? 'chosen' : 'option',
   };
 }
@@ -2717,10 +2733,115 @@ export function lodgingCompare(event, intel) {
     push(m.id, m.label, (o) => (m.match.test(optionHay(o)) ? 'yes' : null));
   }
 
+  // ── "ITEMIZE THE WHAT IT HAS TO MAKE EASY COMPARISONS" (host, 2026-09-30) ─
+  // Until now only the host's own must-haves got a row, so a table comparing
+  // three houses showed three or four lines and said nothing about the forty
+  // other things the listings actually named. The host was left reading three
+  // separate amenity walls on three separate cards to answer "which one has a
+  // hot tub".
+  //
+  // THREE STATES, and this is the whole reason the row is worth drawing:
+  //   yes   the listing's own amenity list names it
+  //   no    the listing's own amenitiesAbsent names it — the page said no
+  //   —     the listing never mentioned it
+  // The third is NOT the second. Collapsing them is what the old table did,
+  // and it is the difference between a gap worth a message to the owner and a
+  // question already answered.
+  const amenityKey = (t) => String(t || '').toLowerCase()
+    // The listings do not agree with each other on wording — "Wifi" / "Free
+    // wifi", "Washer" / "Free washer – In unit" — and one row per spelling is
+    // not a comparison, it is the same wall with more whitespace. Grouping on
+    // a normalized key merges those; the LABEL stays a real listing phrase.
+    .replace(/\bfree\b|\bin unit\b|\bon premises\b|\bdedicated\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+
+  // Must-have rows already answer their own vocabulary, so an amenity that
+  // satisfies one must not also become a row of its own.
+  const spoken = new Set();
+  for (const m of musts) {
+    if (!m || !m.match) continue;
+    for (const o of cols) {
+      for (const a of (Array.isArray(o.amenities) ? o.amenities : [])) {
+        if (m.match.test(a)) spoken.add(amenityKey(a));
+      }
+    }
+  }
+
+  const seen = new Map();   // key → the label we will show
+  const note = (list) => {
+    for (const a of (Array.isArray(list) ? list : [])) {
+      const k = amenityKey(a);
+      if (!k || spoken.has(k)) continue;
+      // Shortest real phrasing wins: "Wifi" reads better as a row label than
+      // "Free wifi – whole home", and both are the listing's own words.
+      const prev = seen.get(k);
+      if (!prev || a.length < prev.length) seen.set(k, a);
+    }
+  };
+  for (const o of cols) { note(o.amenities); note(o.amenitiesAbsent); }
+
+  const answer = (o, key) => {
+    const has = (list) => (Array.isArray(list) ? list : []).some((a) => amenityKey(a) === key);
+    if (has(o.amenities)) return 'yes';
+    if (has(o.amenitiesAbsent)) return 'no';
+    return null;
+  };
+
+  const itemized = [...seen.entries()].map(([key, label]) => {
+    const vals = cols.map((o) => answer(o, key));
+    const known = vals.filter((v) => v !== null);
+    return {
+      key, label, vals,
+      // ── THREE TIERS, NOT TWO, AND THE TEST IS WHAT FOUND IT ──────────────
+      // The first cut sorted "columns disagree" above "columns agree", counting
+      // only answers the listings actually gave. That makes a yes-against-a-gap
+      // rank dead last, which is wrong — it is the second most useful row on
+      // the table. Ranking it as a full disagreement is wrong too, because a
+      // dash is not evidence of anything and the other house may well have it.
+      //
+      //   2  a real split — one listing says yes, another says NO. Both pages
+      //      answered and they answered differently. This decides things.
+      //   1  partial — someone says yes, someone never mentioned it. Worth
+      //      looking at, worth a message to the owner, not conclusive.
+      //   0  unanimous — every column that answered agrees. Reassurance.
+      tier: new Set(known).size > 1 ? 2 : (known.length < cols.length ? 1 : 0),
+      known: known.length,
+    };
+  })
+    // Nothing is learned from a row no column answered.
+    .filter((r) => r.known > 0)
+    .sort((a, b) => (b.tier - a.tier)
+      || (b.known - a.known)
+      || a.label.localeCompare(b.label));
+
+  // UX_03/UX_05: a table that runs past the fold stops being scannable. The
+  // rows that differ are the ones kept when there are too many, which is the
+  // same reason they sort first.
+  const AMENITY_ROWS = 12;
+  for (const r of itemized.slice(0, AMENITY_ROWS)) {
+    rows.push({
+      id: 'am-' + r.key.replace(/\s+/g, '-'),
+      label: r.label,
+      amenity: true,
+      values: r.vals.map((v) => (v === 'yes' ? 'yes' : v === 'no' ? 'no' : '—')),
+      flags: r.vals.map((v) => (v === 'no' ? 'denied' : null)),
+    });
+  }
+
   return {
-    columns: cols.map((o) => ({ id: o.id, label: o.label })),
+    // THE PHOTO HEADS THE COLUMN (prototype C1, host picked C 2026-09-30).
+    // A host comparing three houses recognises them by sight long before they
+    // parse three names, and the names are the one thing that truncates worst
+    // in a narrow column.
+    columns: cols.map((o) => ({
+      id: o.id,
+      label: o.label,
+      photo: o.photoUrl || (Array.isArray(o.photos) ? o.photos[0] : '') || '',
+    })),
     rows,
     guests,
+    // Said out loud, because a count the host cannot see is a claim.
+    amenitiesOver: Math.max(0, itemized.length - AMENITY_ROWS),
     // Stated on the surface so the dashes are never read as "the house lacks it".
     //
     // ── "THE NUMBERS YOU TYPED" WAS FALSE FOR MOST ROWS (2026-08-06) ────────

@@ -743,6 +743,7 @@ function Looking({ event, patch }) {
       // Airbnb's type+place pattern rather than "Option 1" — the paste has to
       // visibly produce something, or the host has no reason to believe it worked.
       url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities,
+      amenitiesAbsent: c.amenitiesAbsent,
       // A Google hotel has no url, so its door cannot be derived later.
       ...(c.platform ? { platform: c.platform } : null),
       // A hotel card's number is a NIGHTLY rate; an Airbnb/Vrbo card's is the
@@ -896,6 +897,14 @@ function Looking({ event, patch }) {
             amenities: (Array.isArray(c.amenities) && c.amenities.length)
               ? c.amenities
               : (Array.isArray(r.amenities) && r.amenities.length ? r.amenities : c.amenities),
+            // ── AND WHAT THE PAGE SAID IT HASN'T GOT (2026-10-01) ─────────
+            // The backend has always returned this beside `amenities`; the
+            // merge dropped it, so the side-by-side could never tell a listing
+            // that DENIED a hot tub from one that never mentioned it. Only a
+            // lookup can supply it — a results card carries neither list.
+            amenitiesAbsent: (Array.isArray(c.amenitiesAbsent) && c.amenitiesAbsent.length)
+              ? c.amenitiesAbsent
+              : (Array.isArray(r.amenitiesAbsent) ? r.amenitiesAbsent : c.amenitiesAbsent),
           });
           // WHICH SIDE ANSWERED (2026-09-29). Both sources are reads, so both
           // rendered as "read from the page you pasted" — and after the merge
@@ -995,6 +1004,7 @@ function Looking({ event, patch }) {
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
       url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities,
+      amenitiesAbsent: c.amenitiesAbsent,
       // A Google hotel has no url, so its door cannot be derived later.
       ...(c.platform ? { platform: c.platform } : null),
       // A hotel card's number is a NIGHTLY rate; an Airbnb/Vrbo card's is the
@@ -2826,18 +2836,44 @@ function Transpose({ cmp }) {
           comparison. */}
       <p className="lc-note lc-t-mobile-note">The places you swiped through above are this comparison — a wider screen shows it as one table instead.</p>
       <div className="lc-t-wide">
+        {/* ── THE PHOTO HEADS THE COLUMN (prototype C1, host picked C) ──────
+            A host comparing three houses recognises them by sight long before
+            they parse three names, and the name is the thing that truncates
+            worst in a narrow column. The frame keeps its height with no photo
+            so the columns stay aligned (UX_05: rows the same height) — an
+            empty frame, never a stock photo standing in for a real house. */}
         <div className="lc-t-head" style={grid}>
           <span />
-          {cmp.columns.map((c) => <span key={c.id} className="lc-col">{c.label}</span>)}
+          {cmp.columns.map((c) => (
+            <span key={c.id} className="lc-col-head">
+              <span className="lc-col-shot">
+                {c.photo
+                  ? <img src={c.photo} alt={c.label} loading="lazy" />
+                  : <span className="lc-col-shot-none">no picture</span>}
+              </span>
+              <span className="lc-col">{c.label}</span>
+            </span>
+          ))}
         </div>
         {cmp.rows.map((r) => (
-          <div key={r.id} className="lc-t-row" style={grid}>
+          <div key={r.id} className={'lc-t-row' + (r.amenity ? ' is-amenity' : '')} style={grid}>
             <span className="lc-row-label">{r.label}</span>
             {r.values.map((v, i) => (
-              <span key={i} className={'lc-t-val' + (v === '—' ? ' is-gap' : r.flags[i] === 'short' ? ' is-short' : '')}>{v}</span>
+              <span key={i} className={'lc-t-val'
+                + (v === '—' ? ' is-gap'
+                  : r.flags[i] === 'denied' ? ' is-denied'
+                    : r.flags[i] === 'short' ? ' is-short'
+                      : v === 'yes' ? ' is-yes' : '')}>{v}</span>
             ))}
           </div>
         ))}
+        {/* A count the host cannot see is a claim. Said out loud. */}
+        {cmp.amenitiesOver > 0 && (
+          <p className="lc-note">
+            {cmp.amenitiesOver} more {cmp.amenitiesOver === 1 ? 'amenity' : 'amenities'} the
+            listings named are not shown — the ones where these places differ come first.
+          </p>
+        )}
         <p className="lc-note">{cmp.note}</p>
       </div>
     </Panel>
@@ -3490,6 +3526,28 @@ const CSS = `
 /* GREY, NEVER RED (research rec #7): a house that is too small is
    disqualifying, not faulty. Red here would be a semantic lie under UX_02. */
 .lc-t-val.is-short{color:var(--muted);font-weight:400;font-size:12px;}
+/* ── THE ITEMIZED AMENITY ROWS (host: "itemize the what it has") ──────────
+   THREE answers, and each has to be legible as a different thing:
+     yes   the listing said so. A confirmation, so it reads on --ok, the one
+           token this app spends on "this is settled".
+     no    the listing said NO. Neutral, NOT red: a house without a hot tub is
+           not an error, and red here would be the same semantic lie UX_02
+           already rejected for is-short. The WORD carries the meaning, so
+           nothing is stated by colour alone.
+     dash  the listing never mentioned it. is-gap, unchanged. */
+.lc-t-val.is-yes{color:var(--ok);}
+.lc-t-val.is-denied{color:var(--muted);font-weight:400;}
+/* The amenity block is a quieter register than the money and sleeps rows
+   above it, which are the two things the host is really deciding on. */
+.lc-t-row.is-amenity .lc-row-label{font-weight:400;color:var(--muted);}
+.lc-t-row.is-amenity{padding:7px 0;}
+.lc-col-head{display:flex;flex-direction:column;gap:6px;min-width:0;}
+/* Fixed height with or without a photo, so the value rows below line up. */
+.lc-col-shot{display:flex;align-items:center;justify-content:center;
+  aspect-ratio:4/3;border-radius:var(--r-sm);overflow:hidden;
+  background:var(--field);border:1px solid var(--line);}
+.lc-col-shot img{width:100%;height:100%;object-fit:cover;display:block;}
+.lc-col-shot-none{font:400 var(--t-caption-min)/1.2 Inter,sans-serif;color:var(--faint);}
 /* UX_03 rule 5: no information-dense tables on a phone — the grid steps
    aside for the swipe deck below 640px. A real @media query, not
    @container: nothing in this file declares container-type on an ancestor,
