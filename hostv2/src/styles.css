@@ -74,7 +74,22 @@
      is a token now, and it is the SHELL's floor — not a cockpit's, not a
      sheet's. A control that presses uses it; a thing that only displays
      does not. */
-  --tap-min:44px;
+  /* ── 46, AND THE TWO EXTRA PIXELS ARE THE POINT ───────────────────────
+     UX_03's standard is 44. This is what we SHIP, and it is deliberately
+     two above it.
+     A control sitting at exactly 44 has zero tolerance, and the hit probe
+     in nothingPressableIsUnderTheFloor measures by walking out from a
+     ROUNDED centre — so a box of exactly 44px reports 43 or 44 depending on
+     where its sub-pixel edges land. That position moves with font metrics,
+     which is why the gate passed on macOS for weeks and failed on all of
+     CI's Linux shards: srail-row, lc-step and the ::after expander were all
+     pinned to 44 exactly.
+     The fix is not a looser gate. A thumb target that drops below the
+     documented minimum the moment a font resolves differently was never
+     really meeting it. Two pixels of headroom costs nothing — the expander
+     is transparent and the rows have room — and makes the floor true on
+     every machine rather than on the one it was authored on. */
+  --tap-min:46px;
   --break-major:44px;                         /* the LARGE break — major sections & day nodes (was 44/48) */
   --pad-empty:14px 2px;                        /* the empty-state / v-meta block padding (was inline ×10) */
 
@@ -1678,7 +1693,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .chip, .lens, .mini, .dock button, .sheet-x, .toast-undo, .vc-pill, .ev-kicker, button.tag, button.pill, .path-row, .counted-caret{ position:relative; }
 .chip::after, .lens::after, .mini::after, .dock button::after, .sheet-x::after, .toast-undo::after, .vc-pill::after, .ev-kicker::after, button.tag::after, button.pill::after, .path-row::after, .counted-caret::after{
   content:''; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
-  height:100%; min-height:44px;
+  height:100%; min-height:var(--tap-min);
 }
 /* Blocker fix: a .mini used as a deep-link nested in the META line of a tappable
    row (checklist step, food tune) would, via the 44px expander above, reach UP
@@ -4274,7 +4289,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      tapTargets spec runs at 1024 and would have failed it. Raised on the BOX
      here rather than with an ::after overlay because a rail row has room: it
      costs nothing but rail scroll, which the rail already handles. */
-  min-height:44px;
+  min-height:var(--tap-min);
   font-family:inherit; font-size:13.5px; font-weight:500; line-height:1.25;
   color:var(--muted);
   transition:color .14s var(--ease-out), background-color .14s var(--ease-out);
@@ -4530,6 +4545,22 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 
    `inline-flex` + `align-items:center` rather than raw padding, so the label
    stays optically centred instead of sitting high in a taller box. */
+/* ── THE TOUCH-RANGE TAP FLOOR ──────────────────────────────────────────
+   UX_03 sets 44px for mobile AND repeats it for tablet ("touch targets still
+   44px minimum"), so the floor belongs across the touch range rather than in
+   the phone block alone. .counted-caret is floored on its own BOX and not via
+   the ::after expander, because the expander is clipped here: measured box
+   37, hit 44-45 on landscape and both tablets, which is under the shipped
+   --tap-min and was failing CI's Linux shards while passing on macOS. */
+@media (max-width: 1024px){
+  .counted-caret{
+    min-height: var(--tap-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 480px){
   /* MEASURED, not assumed: a full sweep of every button/link/role=button on the
      home and create screens at 393px found these classes already clearing the
@@ -4548,7 +4579,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      the one the sweep measures, is its own box. It is transparent padding
      either way: the caret's type size does not change. */
   .counted-caret {
-    min-height: 44px;
+    min-height: var(--tap-min);
     display: inline-flex;
     align-items: center;
     justify-content: center;

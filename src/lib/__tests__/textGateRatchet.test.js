@@ -235,7 +235,23 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // rules that only apply above 1024. The behaviour half (that a host can read
 // the words) is covered where it belongs: nothingIsUnreadableInLight.spec.mjs
 // walks the rendered page for contrast.
-const MAX_HOSTV2_TEXT_GATES = 50;
+// 50 -> 51, 2026-10-01: aSelectorGroupIsNotAList.test.js. It asserts file
+// CONTENT, and uniquely so: the fault it catches is INVISIBLE at runtime.
+//
+// styles.css floors five phone controls with one selector group ending in
+// .counted-caret. Relocating that last member left the list dangling on a
+// comma, so the group adopted the next rule as its final selector and
+// .chip/.mini/.lc-door/.lens silently lost their phone floor. CSS accepts
+// this — the mangled group is valid — and nothing errored.
+//
+// IT CANNOT BE AN E2E, and I checked rather than assumed: the rendered floor
+// gate (nothingPressableIsUnderTheFloor) did NOT catch it, because those four
+// controls still measured over the floor via their ::after expander. The only
+// runtime symptom was a vendor-card height assertion 1,700 lines away going
+// from 2022/2022 to 1976/1969 — a real failure, but one that names neither
+// the cause nor the file. Group membership is a fact about the source, so the
+// source is where it is checked.
+const MAX_HOSTV2_TEXT_GATES = 51;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

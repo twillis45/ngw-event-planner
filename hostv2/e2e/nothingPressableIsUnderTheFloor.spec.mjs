@@ -53,7 +53,22 @@ const seed = async (page) => {
 
 // Every pressable thing on screen, measured by walking outward from its
 // centre until elementFromPoint stops answering with it.
+// ── IT JUDGES THE SHIPPED FLOOR, NOT THE BARE STANDARD ────────────────────
+// This read `h < 44` and so could not fail on the machine it was written on.
+// Measured 2026-10-01: srail-row, lc-step and the ::after expander all sat at
+// EXACTLY 44, which this probe reports as 43 or 44 depending on where the
+// sub-pixel edges land — and that position moves with font metrics. macOS
+// rounded up and passed for weeks; every Linux shard in CI rounded down and
+// failed. A gate that green-lights a control with zero tolerance is not
+// enforcing a floor, it is reporting the luck of one font stack.
+//
+// So it reads --tap-min, which is what the app actually ships (46, two above
+// UX_03's 44, and the token says why). A control pinned to the bare standard
+// now fails HERE, on the authoring machine, instead of three shards later.
 const underFloor = (page) => page.evaluate(() => {
+  const FLOOR = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--tap-min'),
+  ) || 44;
   const hit = (el) => {
     el.scrollIntoView({ block: 'center' });
     const r = el.getBoundingClientRect();
@@ -80,7 +95,7 @@ const underFloor = (page) => page.evaluate(() => {
     const r = el.getBoundingClientRect();
     if (r.height < 4 || r.width < 4) continue;
     const h = hit(el);
-    if (h >= 0 && h < 44) {
+    if (h >= 0 && h < FLOOR) {
       out.push({
         cls: (String(el.className).slice(0, 30) || el.tagName),
         label: (el.innerText || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 24),
