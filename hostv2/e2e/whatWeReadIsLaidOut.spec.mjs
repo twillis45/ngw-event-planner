@@ -102,9 +102,22 @@ test.describe('what we read, laid out', () => {
 
   test('the price has its own column and never wraps into the facts', async ({ page }) => {
     await stage(page);
-    // Three priced rows; the unread one has no price and renders no column.
+    // ── PER HEAD LEADS, THE TOTAL STAYS REACHABLE (host, 2026-09-30) ─────
+    // "With the redesign we've lost all the pricing per head." It was there
+    // before the layout rescued the price into its own column, and the rescue
+    // dropped it. The column now leads with the per-person split, because that
+    // is the number a host compares across places of different sizes, and the
+    // stay total moved one step quieter onto the meta line.
+    //
+    // This asserts BOTH, which the old single-format assertion could not: a
+    // build that showed one and lost the other was exactly the regression.
+    // 10 guests in the Santa Fe example, so $2,660 -> $266 each.
     const prices = await page.locator('.lc-staged-price').allInnerTexts();
-    expect(prices).toEqual(['$2,660', '$2,500', '$2,340']);
+    expect(prices).toEqual(['$266 each', '$250 each', '$234 each']);
+    const metas = await page.locator('.lc-staged-meta').allInnerTexts();
+    for (const total of ['$2,660 total', '$2,500 total', '$2,340 total']) {
+      expect(metas, `the stay total must stay reachable: ${total}`).toContain(total);
+    }
     // It must sit on the NAME line, right of it — not below, not inside the
     // metadata run-on it was rescued from.
     const { nameRight, priceLeft, sameLine } = await page.locator('.lc-staged').first()
@@ -158,15 +171,14 @@ test.describe('what we read, laid out', () => {
       expect(chips.length).toBeGreaterThan(0);
       for (const c of chips) expect(AMENITIES).not.toContain(c);
 
-      // All three of this event's must-haves are met by the amenity list, so
-      // the row sits exactly AT UX_02's ceiling of three.
-      expect(chips.length).toBe(3);
-      // NOTE, and this is a limit of this gate rather than a claim: the
-      // Santa Fe example carries three must-haves, so `.slice(0, 3)` in the
-      // row cannot be exercised here — removing the cap changes nothing on
-      // this fixture, measured 2026-09-30. The cap is defense for an event
-      // that asks for more, and it is honest to say no test holds it than to
-      // leave an assertion that can never go red.
+      // TWO, not three, and this is the stricter reading of UX_02 rather than
+      // a concession. The ceiling of three is for cards; a LIST ROW is "1-2",
+      // and this row now also carries a price column it did not have when the
+      // three-chip assertion was written. All three of the example's
+      // must-haves are met by the amenity list, so the cap is what decides the
+      // number here — which also means the cap IS exercised by this fixture
+      // now, and the note that used to say otherwise no longer applies.
+      expect(chips.length).toBe(2);
 
       // And everything not asked for is COUNTED, never listed. Six amenities,
       // so whatever is not a chip has to be accounted for in the tail.

@@ -1289,6 +1289,60 @@ function platformOf(url) {
 
 
 /**
+ * Which staged rows still need an individual listing read, or none at all.
+ *
+ * ── THE GUARD COUNTED ONE SET AND THE READER GOT ANOTHER (2026-10-01) ──────
+ * commitStaged computed `unread` — the rows carrying neither `sleeps` nor an
+ * amenity list — checked THAT against the cap, and then handed the reader the
+ * whole KEPT list. Two different sets, one of them unbounded by the cap:
+ *
+ *   const unread = keep.filter(...);
+ *   if (unread.length && unread.length <= UNFURL_MAX) enrichByLookup(keep);
+ *
+ * So the cap stopped being a cap. Paste eight listing links, let ONE lookup
+ * come back empty, and at commit `unread` is 1, the gate waves it through, and
+ * all eight are read again — seven of them re-fetching what the paste already
+ * had. ~3s each, so a 3-second job takes 24. A mixed paste (Google hotel cards
+ * carry amenities, Airbnb results cards do not) widens the same gap further.
+ *
+ * Nothing was corrupted: the merge is gaps-only, so a re-read cannot overwrite
+ * a value that is already there. What broke was the PROMISE — the over-cap
+ * notice tells the host "I read up to 8 of them for sleeps, price and
+ * amenities", and in this path it reads as many as they kept.
+ *
+ * Returning the rows to read, rather than a boolean, is what makes the two
+ * agree by construction: the caller cannot gate on one set and read another
+ * because there is only one set.
+ *
+ * A hotel card is NOT a target. It has no bed count and never will, but it
+ * arrives with a name, a rate, a rating and amenities — there is nothing left
+ * to look up. `sleeps == null` alone would send every one of them to the
+ * reader.
+ */
+export function needsLookup(row) {
+  return !!row && row.sleeps == null
+    && !(Array.isArray(row.amenities) && row.amenities.length);
+}
+
+/**
+ * ONE DEFINITION, because the COPY has to agree with the GATE (2026-10-01).
+ * The over-cap notice was keyed to how many rows the host kept, not to how
+ * many still needed reading. Keep twelve where only four need a look and it
+ * said "untick down to 8" — asking for work that buys nothing, about a read
+ * that was already going to happen. Both sides now ask needsLookup().
+ */
+export function lookupTargets(rows, cap) {
+  const list = Array.isArray(rows) ? rows : [];
+  const limit = Number(cap) || 0;
+  const need = list.filter(needsLookup);
+  // Over the cap is "read none", not "read the first eight": the host is told
+  // to untick down to the cap, and a silent partial read would make that copy
+  // a lie in the other direction.
+  if (!need.length || need.length > limit) return [];
+  return need;
+}
+
+/**
  * Rank pasted candidates against what the event says the house needs.
  *
  * HONEST LIMITS, and they matter because this decides what the host looks at:

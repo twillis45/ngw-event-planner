@@ -36,6 +36,7 @@ import {
   LODGING_PLATFORM_LABELS,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
   STAY_FROM_CONFIRMATION, STAY_FROM_PLAN,
+  lookupTargets, needsLookup,
 } from '@app/lib/lodgingIntel';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
 import { normalizeCvbContact } from '@app/lib/cvbIntel';
@@ -973,10 +974,22 @@ function Looking({ event, patch }) {
     //
     // Skipped when the paste handler already did it, so a small paste is not
     // read twice.
-    const unread = keep.filter((c) => c.sleeps == null && !(Array.isArray(c.amenities) && c.amenities.length));
-    if (unread.length && unread.length <= UNFURL_MAX && isUnfurlConfigured()) {
-      const e = await enrichByLookup(keep);
-      if (Array.isArray(e.cands) && e.cands.length === keep.length) keep = e.cands;
+    //
+    // ── AND THE CAP HAS TO BOUND THE READS, NOT JUST THE COUNT (2026-10-01) ─
+    // This gated on the UNREAD count and then handed the reader `keep`. Two
+    // different sets: paste eight links, let one lookup come back empty, and
+    // at commit `unread` is 1, the gate waves it through, and all eight are
+    // read again. lookupTargets returns the rows themselves so the set that is
+    // counted and the set that is read cannot drift apart again.
+    const targets = lookupTargets(keep, UNFURL_MAX);
+    if (targets.length && isUnfurlConfigured()) {
+      const e = await enrichByLookup(targets);
+      if (Array.isArray(e.cands) && e.cands.length === targets.length) {
+        // Merge by key: the reader saw a SUBSET, so its answer cannot replace
+        // the kept list wholesale the way it could when it saw all of it.
+        const by = new Map(e.cands.map((c) => [c._k, c]));
+        keep = keep.map((c) => by.get(c._k) || c);
+      }
     }
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
@@ -1032,11 +1045,18 @@ function Looking({ event, patch }) {
           spinner). Leaving the host to discover it by getting nothing is
           not. This says the number, before they commit, while unticking is
           still the obvious move. */}
-      {staged.pick.size > UNFURL_MAX && (
+      {/* KEYED TO WHAT NEEDS READING, NOT TO WHAT THEY KEPT (2026-10-01).
+          `pick.size` asked the wrong question: a kept row that already carries
+          its amenities — every Google hotel card does — needs no read, so
+          telling the host to untick it buys nothing. Counting the rows that
+          actually need one makes this notice appear exactly when unticking is
+          the thing that changes the outcome. */}
+      {staged.cands.filter((c) => staged.pick.has(c._k) && needsLookup(c)).length > UNFURL_MAX && (
         <p className="lc-note">
-          Keeping {staged.pick.size}. I read up to {UNFURL_MAX} of them for
-          sleeps, price and amenities — untick down to {UNFURL_MAX} or fewer
-          and you get those facts for the ones you keep.
+          Keeping {staged.pick.size}, and {staged.cands.filter((c) => staged.pick.has(c._k) && needsLookup(c)).length} of
+          them still need reading. I read up to {UNFURL_MAX} for sleeps, price
+          and amenities — untick down to {UNFURL_MAX} or fewer of those and you
+          get those facts for the ones you keep.
         </p>
       )}
       {staged.cands.map((c) => {
@@ -1071,9 +1091,28 @@ function Looking({ event, patch }) {
             <span className="lc-staged-main">
               <span className="lc-staged-top">
                 <span className="lc-staged-name">{lodgingTitleFor(c) || 'Unnamed place'}</span>
-                {c.priceShown != null && (
-                  <span className="lc-staged-price">${Math.round(c.priceShown).toLocaleString()}</span>
-                )}
+                {/* ── PER HEAD LEADS HERE TOO (host, 2026-10-01) ───────────
+                    "are we missing the per head and costs." We were, in this
+                    list: it showed the stay TOTAL and nothing else, while the
+                    card beside it leads with the per-person figure the host
+                    ruled was "a major thrust". Two surfaces, same decision,
+                    different answers.
+                    A hotel row is excluded on purpose: its number buys ONE
+                    ROOM for one night (priceBasis 'night'), so dividing it
+                    across the party is the exact per-head lie the cockpit
+                    already routes around. Those still show the rate. */}
+                {(() => {
+                  if (c.priceShown == null) return null;
+                  const each = c.priceBasis === 'night' ? null
+                    : (() => { try { return perHeadOf(c.priceShown, event); } catch { return null; } })();
+                  return (
+                    <span className="lc-staged-price">
+                      {each
+                        ? <>${Math.round(each.each).toLocaleString()}<span className="lc-staged-each"> each</span></>
+                        : `$${Math.round(c.priceShown).toLocaleString()}`}
+                    </span>
+                  );
+                })()}
               </span>
               {/* ── THE ONE FACT THE ORDER IS ABOUT ─────────────────────────
                   These rows are sorted best-fit-first, so this line has to say
@@ -1100,9 +1139,17 @@ function Looking({ event, patch }) {
                 {/* A hotel card carries star class and a rating instead of a
                     bed count — extractHotelCandidates reads them off the real
                     Google card (host, 2026-08-06). Kept, one step quieter. */}
-                {[c.starClass ? `${c.starClass}-star` : null,
+                {[// the total, now that per-head has the lead slot — a host
+                  // comparing places needs both, and this is the quieter one
+                  c.priceShown != null && c.priceBasis !== 'night'
+                    ? `$${Math.round(c.priceShown).toLocaleString()} total` : null,
+                  c.starClass ? `${c.starClass}-star` : null,
                   c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-                  c.rating != null ? `${c.rating}/5` : null]
+                  // Rating dropped from this line on purpose: it already
+                  // appears in the title of any row the lookup filled, and
+                  // keeping it pushed the TOTAL off the end — "$2,180…".
+                  // One line cannot hold four facts at 430px.
+                  null]
                   .filter(Boolean).map((t) => <span key={t} className="lc-staged-meta">{t}</span>)}
               </span>
               {/* ── AMENITIES WE MAY OR MAY NOT NEED ────────────────────────
@@ -1151,12 +1198,19 @@ function Looking({ event, patch }) {
                 }
                 return (
                   <span className="lc-staged-has">
-                    {want.slice(0, 3).map((w) => (
+                    {/* TWO, NOT THREE. Three chips at 430px rendered
+                        "Step-free ac… / Washer & d… / Parking for se…" — three
+                        half-names, which is worse than two whole ones. UX_02
+                        says it outright for list rows: "show the 1-2 most
+                        important ... push the rest to detail view." The card's
+                        own field-by-field names every match in full, so
+                        nothing is lost, only deferred. */}
+                    {want.slice(0, 2).map((w) => (
                       <span key={w} className="lc-staged-chip">{w}</span>
                     ))}
-                    {(want.length > 3 || rest > 0) && (
+                    {(want.length > 2 || rest > 0) && (
                       <span className="lc-staged-more">
-                        +{want.length > 3 ? want.length - 3 + rest : rest} more
+                        +{want.length > 2 ? want.length - 2 + rest : rest} more
                       </span>
                     )}
                   </span>
@@ -1971,8 +2025,27 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                                       instead and the full list stays one tap
                                       away on the listing. */}
                                   <span className="lc-pv-v">
+                                    {/* ── NAME WHAT WAS ASKED FOR, COUNT THE REST ──
+                                        Host, 2026-10-01: "layout should show
+                                        what it has and which I asked for."
+                                        This read "10 things, 2 you asked for"
+                                        — two numbers and not one fact. Which
+                                        two is the whole question; a host does
+                                        not care that the count is two, they
+                                        care that it is the washer and the
+                                        parking. Named first, remainder
+                                        counted, because spelling out all ten
+                                        is the amenity wall this block was
+                                        redesigned to remove. */}
                                     {r.field === 'amenities'
-                                      ? `${(o.amenities || []).length} things${sc && sc.met && sc.met.length ? `, ${sc.met.length} you asked for` : ''}`
+                                      ? [sc && sc.met && sc.met.length ? sc.met.join(', ') : null,
+                                        (() => {
+                                          const all = (o.amenities || []).length;
+                                          const named = (sc && sc.met && sc.met.length) || 0;
+                                          const rest = Math.max(0, all - named);
+                                          if (!all) return null;
+                                          return named ? (rest ? `+${rest} more` : null) : `${all} things, none you asked for`;
+                                        })()].filter(Boolean).join(' · ')
                                       : r.value}
                                   </span>
                                 </div>
@@ -3058,7 +3131,10 @@ const CSS = `
 .lc-staged-name{flex:1 1 auto;font:500 15px/1.3 Inter,sans-serif;color:var(--ink);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lc-staged-price{flex:0 0 auto;font:500 14px/1.3 Inter,sans-serif;color:var(--ink-soft);
-  font-variant-numeric:tabular-nums;}
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* "each" rides with the number but must not compete with it — same relation
+   the card's own per-head lead uses. */
+.lc-staged-each{font-weight:400;font-size:var(--t-caption);color:var(--muted);}
 /* Line 2 — the fit the sort is based on, plus the card's quieter facts. It was
    floated to the right edge, where it collided with the name and won: a row
    truncated to "Casa Pequena . 4 ..." while the sentence beside it ran full
@@ -3093,8 +3169,13 @@ const CSS = `
 /* Same box as a chip (2px padding on a 1.5 line-height), so a row whose third
    line is a plain sentence is exactly as tall as one carrying chips. This is
    what makes the heights match structurally instead of via a magic number. */
-.lc-staged-more{flex:0 1 auto;padding:2px 0;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;font:400 var(--t-caption)/1.5 Inter,sans-serif;color:var(--faint);}
+/* NEVER SHRINKS. Driven 2026-10-01: a third matched chip pushed this to "+."
+   — the one part of the row that cannot survive truncation, because a count
+   with its number cut off is not a smaller fact, it is no fact. The chips
+   give way instead; a clipped chip still shows most of its name. */
+.lc-staged-more{flex:0 0 auto;padding:2px 0;white-space:nowrap;
+  font:400 var(--t-caption)/1.5 Inter,sans-serif;color:var(--faint);}
+.lc-staged-chip{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .lc-offer{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px solid var(--line);
   border-radius:var(--r-md);padding:12px;margin-bottom:12px;}
 .lc-offer .lc-body{margin:0;flex:1 1 100%;}
