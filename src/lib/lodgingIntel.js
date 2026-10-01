@@ -96,6 +96,30 @@ const num = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n
 // think about.
 const HTTPS = /^https:\/\//i;
 
+// ── A LINK FROM THE ADDRESS BAR HAS NO SCHEME ──────────────────────────────
+// Host, in production, pasting a real Santa Fe search:
+//   www.airbnb.com/s/Santa-Fe--NM/homes?checkin=...&price_max=4800
+//   -> "That needs to be an https link to the search."
+//
+// Safari hides the scheme, so copying what is displayed gives exactly that,
+// and the host is told their perfectly good link is the wrong kind of thing.
+// The requirement is real — we only ever fetch https — but it is a thing to
+// SATISFY on their behalf, not a rule to recite at them.
+//
+// Narrow on purpose: a scheme is added only when the string has none and
+// begins with something host-shaped (a dot before the first slash). "notes
+// about airbnb" does not become a URL. An http:// link is upgraded rather
+// than refused, which is the same requirement met, never a downgrade.
+const SCHEMELESS_HOST = /^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:[/:?#]|$)/i;
+export function httpsify(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return '';
+  if (HTTPS.test(t)) return t;
+  if (/^http:\/\//i.test(t)) return t.replace(/^http:/i, 'https:');
+  if (/^[a-z][a-z0-9+.-]*:/i.test(t)) return t;   // some other scheme — leave it to fail honestly
+  return SCHEMELESS_HOST.test(t) ? `https://${t}` : t;
+}
+
 /**
  * Pull every image URL out of ONE paste (host ask 2026-07-28: "can the app do
  * the several link pasting?").
@@ -676,7 +700,7 @@ export function _resetWarmUnfurl() { warmed = false; }
  */
 export async function lodgingResults(url) {
   if (!API_BASE) return { ok: false, reason: 'Reading searches isn’t switched on here — copy the results page and paste it instead.' };
-  const clean = String(url || '').trim();
+  const clean = httpsify(url);
   if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the search.' };
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
@@ -698,7 +722,7 @@ export async function lodgingResults(url) {
 
 export async function unfurlListing(url) {
   if (!API_BASE) return { ok: false, reason: 'Reading listings isn’t switched on here — copy the page and paste it instead.' };
-  const clean = String(url || '').trim();
+  const clean = httpsify(url);
   if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the listing.' };
   // ── A READ THAT NEVER ANSWERS IS THE ONE WE HADN'T HANDLED ────────────────
   // Driving this on 2026-08-04: a single Airbnb link left the button reading
@@ -2231,6 +2255,20 @@ export const LODGING_FIELD_LABELS = {
   photoUrl: 'Photo', notes: 'Notes', cancellationTier: 'Cancellation',
 };
 
+// What a note says BEYOND the amenity list it was built from. notesFor()
+// joins bedrooms, rating and amenities into one string, so the amenity tail
+// is a duplicate of the `amenities` row while the head is not a duplicate of
+// anything. Returns '' when nothing of its own survives.
+function notesMinusAmenities(o) {
+  const raw = String((o && o.notes) || '').trim();
+  if (!raw) return '';
+  const am = Array.isArray(o && o.amenities) ? o.amenities.filter(Boolean) : [];
+  if (!am.length) return raw;
+  const joined = am.join(', ');
+  if (!raw.includes(joined)) return raw;
+  return raw.replace(joined, '').replace(/\s*·\s*$/, '').replace(/^\s*·\s*/, '').trim();
+}
+
 export function lodgingProvenance(option) {
   const o = option || {};
   const src = (o.sources && typeof o.sources === 'object') ? o.sources : {};
@@ -2252,6 +2290,9 @@ export function lodgingProvenance(option) {
   const shown = (k, v) => {
     if (Array.isArray(v)) return v.filter(Boolean).join(', ');
     if (k === 'photoUrl') return 'on the card';           // the URL is not a fact a host reads
+    // Shown without the amenity tail it repeats — "What it has" already
+    // carries that, and printing nine of them twice is what started this.
+    if (k === 'notes') return notesMinusAmenities(o);
     if (k === 'totalPrice' || k === 'pricePerNight' || k === 'fees') {
       const n = Number(v);
       return Number.isFinite(n) ? `$${Math.round(n).toLocaleString()}` : String(v);
@@ -2296,9 +2337,12 @@ export function lodgingProvenance(option) {
     // own (a hand-typed note, a baths count).
     .filter((k) => {
       if (k !== 'notes') return true;
-      const am = Array.isArray(o.amenities) ? o.amenities.filter(Boolean) : [];
-      if (!am.length) return true;
-      return !String(o.notes || '').includes(am.join(', '));
+      // DROPPED ONLY IF IT IS NOTHING BUT THE DUPLICATE. The first cut dropped
+      // the whole row whenever the amenity list appeared inside it, and
+      // notesFor() builds "6 bedrooms · 4.93/5 (123) · <amenities>" — so the
+      // bedrooms and the rating went with it. Host, same day: "seems like
+      // some of the note info amenities etc" is missing. It was.
+      return Boolean(notesMinusAmenities(o));
     })
     .filter(has)
     .map((k) => ({ field: k, label: LODGING_FIELD_LABELS[k], source: src[k] || 'unknown', value: shown(k, o[k]) }));
