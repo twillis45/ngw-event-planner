@@ -117,11 +117,31 @@ test.describe('what we read, laid out', () => {
     expect(priceLeft).toBeGreaterThanOrEqual(nameRight - 1);
     // ...and the NAME is what gives way. A name allowed to wrap pushes the
     // price onto a second line (or off the row), which is the layout this
-    // replaced. Truncation is the mechanism, so assert the mechanism.
-    const clipped = await page.locator('.lc-staged-name').first()
-      .evaluate((n) => n.scrollWidth > n.clientWidth + 1
-        && getComputedStyle(n).textOverflow === 'ellipsis');
-    expect(clipped, 'the long name must truncate, not wrap').toBe(true);
+    // replaced.
+    //
+    // ASSERTED WITHOUT MEASURING GLYPHS, and that is the whole point of this
+    // comment. The first version read `scrollWidth > clientWidth`, which asks
+    // "is this particular string, in this particular font, wider than its
+    // box". It passed on a Mac and failed on all three CI shards, because the
+    // Linux runners resolve a different fallback face and the same sentence
+    // simply is not as wide there. A gate that depends on which fonts the
+    // machine happens to have is not testing the product.
+    //
+    // The invariant has nothing to do with glyph widths: the name is SET to
+    // truncate, and it occupies ONE line. Both hold in any font.
+    const nm = await page.locator('.lc-staged-name').first().evaluate((n) => {
+      const cs = getComputedStyle(n);
+      const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3;
+      return {
+        nowrap: cs.whiteSpace === 'nowrap',
+        ellipsis: cs.textOverflow === 'ellipsis',
+        clipped: cs.overflow === 'hidden' || cs.overflowX === 'hidden',
+        lines: Math.round(n.getBoundingClientRect().height / lh),
+      };
+    });
+    expect(nm.nowrap && nm.ellipsis && nm.clipped,
+      `the name must be set to truncate: ${JSON.stringify(nm)}`).toBe(true);
+    expect(nm.lines, 'the name must stay on one line').toBe(1);
   });
 
   test('only the amenities this event asked for become chips; the rest are a count',

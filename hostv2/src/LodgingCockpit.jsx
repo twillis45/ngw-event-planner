@@ -667,118 +667,11 @@ function Looking({ event, patch }) {
     // something the paste already read. The card's price is dated and the
     // host saw it on the page they copied; the listing's own record is where
     // sleeps lives. Neither read is silently replaced by the other.
-    const UNFURL_MAX = 8;
     if (cands.length <= UNFURL_MAX && isUnfurlConfigured()) {
-      setReadErr('');
-      setBusy(true);
-      try {
-        const read = [];
-        let anyTitle = false;
-        let lastReason = '';
-        for (const c of cands) {
-          let r = null;
-          // One bad link must not cost the host the other four.
-          try { r = await unfurlListing(c.url); } catch { r = null; }
-          if (!r || !r.ok) {
-            if (r && r.reason) lastReason = r.reason;
-            read.push(c);
-            continue;
-          }
-          // ── THE UNFURL'S ANSWER WAS BEING THROWN ON THE FLOOR ────────────
-          // Driven 2026-08-04. Three breaks stacked in one line: it read
-          // `r.photo` (the endpoint returns `image`), it wrote `photo` (photoList
-          // reads `photos`/`photoUrl`), and it ignored `facts` entirely. So a
-          // picture could not arrive from an unfurl under ANY conditions, which
-          // is why every read row still said "no picture yet".
-          const facts = (r.facts && typeof r.facts === 'object') ? r.facts : {};
-          // The unfurl's own image goes through the same question as a pasted
-          // card's: safe to load is not the same as depicts the house.
-          const shotRaw = String(r.image || '').trim();
-          const shot = isListingPhoto(shotRaw) ? shotRaw : '';
-          // GAPS ONLY. Every line reads "what the paste already had, else what
-          // the listing says" — the reverse of what this block did when it
-          // only ever ran on a paste that had nothing to protect.
-          read.push({
-            ...c,
-            name: c.name || r.title,
-            priceShown: c.priceShown != null ? c.priceShown : r.price,
-            photo: c.photo || shot,
-            // The lookup returns ONE image; a paste of the results page is the
-            // only side that ever holds a gallery, so this is gaps-only too.
-            photos: (Array.isArray(c.photos) && c.photos.length) ? c.photos
-              : (shot ? [shot] : []),
-            // A COUNT OF BEDS, never mapped to `sleeps`: how many people a
-            // place holds is not something a bed count settles.
-            beds: c.beds != null ? c.beds : facts.beds,
-            bedrooms: c.bedrooms != null ? c.bedrooms : facts.bedrooms,
-            // ── THE FIELD THE COMPARISON WAS BLOCKED ON (2026-08-04) ──────
-            // `sleeps` decides `fits`, and therefore "3 of 5 fit", the ranking
-            // and the per-person split. A results card never carries it — D6/W3b
-            // says so in its own copy — so it has always been a number the host
-            // had to type. The LISTING page carries it, in the structured record
-            // the unfurl reads. This is that number, not an inference from beds
-            // or bedrooms.
-            sleeps: c.sleeps != null ? c.sleeps : r.sleeps,
-            rating: c.rating != null ? c.rating : r.rating,
-            ratingCount: c.ratingCount != null ? c.ratingCount : r.ratingCount,
-            // The listing's OWN amenity words. Every must-have row read "—"
-            // without them, even where the page said yes (host, 2026-08-06).
-            amenities: (Array.isArray(c.amenities) && c.amenities.length)
-              ? c.amenities
-              : (Array.isArray(r.amenities) && r.amenities.length ? r.amenities : c.amenities),
-          });
-          // WHICH SIDE ANSWERED (2026-09-29). Both sources are reads, so both
-          // rendered as "read from the page you pasted" — and after the merge
-          // that sentence was false for every field the LISTING supplied. On a
-          // surface whose promise is per-field provenance, crediting the wrong
-          // read is the same defect as crediting no read.
-          //
-          // Recorded here because this is the only place that knows: at commit
-          // a filled field looks identical whichever side filled it.
-          read[read.length - 1]._lookedUp = [
-            !c.name && r.title ? 'label' : null,
-            c.sleeps == null && r.sleeps != null ? 'sleeps' : null,
-            c.beds == null && facts.beds != null ? 'beds' : null,
-            c.bedrooms == null && facts.bedrooms != null ? 'bedrooms' : null,
-            c.priceShown == null && r.price != null ? 'price' : null,
-            !c.photo && shot ? 'photoUrl' : null,
-            (!Array.isArray(c.amenities) || !c.amenities.length)
-              && Array.isArray(r.amenities) && r.amenities.length ? 'amenities' : null,
-            c.rating == null && r.rating != null ? 'rating' : null,
-          ].filter(Boolean);
-          if (r.title) anyTitle = true;
-        }
-        // ── RANK AGAIN, NOW THAT WE KNOW ANYTHING ABOUT THEM ─────────────
-        // Host, 2026-09-30: "sort what we read by matter of importance or
-        // priority." It already ranked — once, above, BEFORE the lookup ran.
-        // At that point every candidate a link paste produced had sleeps null,
-        // price null and no amenities, so the ranker was ordering rows it knew
-        // nothing about, and the order the host then read was effectively the
-        // order they happened to paste in. The lookup is the whole point of
-        // this block: it is what turns a bare URL into a place that sleeps 12
-        // for $2,400. Sorting has to happen after it, or the facts arrive too
-        // late to move anything.
-        //
-        // Same ranker, same event, same budget — this is not a second opinion,
-        // it is the first one asked with the evidence in hand. The deck and
-        // the shortlist already order by ranking; this makes the FIRST screen
-        // a host sees agree with them.
-        try {
-          const r2 = rankCandidates(read, event, { budget: Number(event.totalBudget || 0) || 0 });
-          cands = (r2 && r2.ranked && r2.ranked.length === read.length) ? r2.ranked : read;
-        } catch { cands = read; }
-        // A results paste was never linksOnly; a link paste stops being one the
-        // moment a title arrives.
-        found = { ...found, linksOnly: found.linksOnly && !anyTitle };
-        // Only when NOTHING came back — a reason shown beside four filled rows
-        // would read as a failure the host can see is not one.
-        if (lastReason && !anyTitle) setReadErr(lastReason);
-      } catch { /* fall through to the honest keep-it path */ }
-      // FINALLY, not a trailing line. The spinner is the host's only signal that
-      // the app is still theirs; any path that leaves it spinning has taken the
-      // surface away from them. unfurlListing bounds itself, but this makes
-      // stranding impossible rather than merely unlikely.
-      finally { setBusy(false); }
+      const e = await enrichByLookup(cands);
+      cands = e.cands;
+      found = { ...found, linksOnly: found.linksOnly && !e.anyTitle };
+      if (e.lastReason && !e.anyTitle) setReadErr(e.lastReason);
     }
     if (!cands.length) {
       // NAME WHAT THEY ACTUALLY PASTED. The generic "nothing readable" was
@@ -928,10 +821,163 @@ function Looking({ event, patch }) {
     };
   };
 
+  // How many listings we will read in one go. Bounded because the reads are
+  // sequential and each is ~3s against a live page; it is NOT a limit on how
+  // many a host may paste. A bigger paste stages, the host unticks, and the
+  // survivors are read on commit.
+  const UNFURL_MAX = 8;
+
+  // ── READ THE LISTINGS, WHEREVER THE HOST IS IN THE FLOW ─────────────────
+  // Lifted out of the paste handler on 2026-09-30 so the COMMIT can use it
+  // too. See the UNFURL_MAX note at its first call site for why that matters:
+  // a real Airbnb search returns twenty links, the cap is eight, and reading
+  // nothing was the result.
+  //
+  // Returns the enriched list plus the two facts the caller needs to speak
+  // honestly about what happened — whether anything came back at all, and the
+  // last reason if nothing did.
+  const enrichByLookup = async (list) => {
+    let out = list;
+    let anyTitle = false;
+    let lastReason = '';
+      setReadErr('');
+      setBusy(true);
+      try {
+        const read = [];
+        for (const c of list) {
+          let r = null;
+          // One bad link must not cost the host the other four.
+          try { r = await unfurlListing(c.url); } catch { r = null; }
+          if (!r || !r.ok) {
+            if (r && r.reason) lastReason = r.reason;
+            read.push(c);
+            continue;
+          }
+          // ── THE UNFURL'S ANSWER WAS BEING THROWN ON THE FLOOR ────────────
+          // Driven 2026-08-04. Three breaks stacked in one line: it read
+          // `r.photo` (the endpoint returns `image`), it wrote `photo` (photoList
+          // reads `photos`/`photoUrl`), and it ignored `facts` entirely. So a
+          // picture could not arrive from an unfurl under ANY conditions, which
+          // is why every read row still said "no picture yet".
+          const facts = (r.facts && typeof r.facts === 'object') ? r.facts : {};
+          // The unfurl's own image goes through the same question as a pasted
+          // card's: safe to load is not the same as depicts the house.
+          const shotRaw = String(r.image || '').trim();
+          const shot = isListingPhoto(shotRaw) ? shotRaw : '';
+          // GAPS ONLY. Every line reads "what the paste already had, else what
+          // the listing says" — the reverse of what this block did when it
+          // only ever ran on a paste that had nothing to protect.
+          read.push({
+            ...c,
+            name: c.name || r.title,
+            priceShown: c.priceShown != null ? c.priceShown : r.price,
+            photo: c.photo || shot,
+            // The lookup returns ONE image; a paste of the results page is the
+            // only side that ever holds a gallery, so this is gaps-only too.
+            photos: (Array.isArray(c.photos) && c.photos.length) ? c.photos
+              : (shot ? [shot] : []),
+            // A COUNT OF BEDS, never mapped to `sleeps`: how many people a
+            // place holds is not something a bed count settles.
+            beds: c.beds != null ? c.beds : facts.beds,
+            bedrooms: c.bedrooms != null ? c.bedrooms : facts.bedrooms,
+            // ── THE FIELD THE COMPARISON WAS BLOCKED ON (2026-08-04) ──────
+            // `sleeps` decides `fits`, and therefore "3 of 5 fit", the ranking
+            // and the per-person split. A results card never carries it — D6/W3b
+            // says so in its own copy — so it has always been a number the host
+            // had to type. The LISTING page carries it, in the structured record
+            // the unfurl reads. This is that number, not an inference from beds
+            // or bedrooms.
+            sleeps: c.sleeps != null ? c.sleeps : r.sleeps,
+            rating: c.rating != null ? c.rating : r.rating,
+            ratingCount: c.ratingCount != null ? c.ratingCount : r.ratingCount,
+            // The listing's OWN amenity words. Every must-have row read "—"
+            // without them, even where the page said yes (host, 2026-08-06).
+            amenities: (Array.isArray(c.amenities) && c.amenities.length)
+              ? c.amenities
+              : (Array.isArray(r.amenities) && r.amenities.length ? r.amenities : c.amenities),
+          });
+          // WHICH SIDE ANSWERED (2026-09-29). Both sources are reads, so both
+          // rendered as "read from the page you pasted" — and after the merge
+          // that sentence was false for every field the LISTING supplied. On a
+          // surface whose promise is per-field provenance, crediting the wrong
+          // read is the same defect as crediting no read.
+          //
+          // Recorded here because this is the only place that knows: at commit
+          // a filled field looks identical whichever side filled it.
+          read[read.length - 1]._lookedUp = [
+            !c.name && r.title ? 'label' : null,
+            c.sleeps == null && r.sleeps != null ? 'sleeps' : null,
+            c.beds == null && facts.beds != null ? 'beds' : null,
+            c.bedrooms == null && facts.bedrooms != null ? 'bedrooms' : null,
+            c.priceShown == null && r.price != null ? 'price' : null,
+            !c.photo && shot ? 'photoUrl' : null,
+            (!Array.isArray(c.amenities) || !c.amenities.length)
+              && Array.isArray(r.amenities) && r.amenities.length ? 'amenities' : null,
+            c.rating == null && r.rating != null ? 'rating' : null,
+          ].filter(Boolean);
+          if (r.title) anyTitle = true;
+        }
+        // ── RANK AGAIN, NOW THAT WE KNOW ANYTHING ABOUT THEM ─────────────
+        // Host, 2026-09-30: "sort what we read by matter of importance or
+        // priority." It already ranked — once, above, BEFORE the lookup ran.
+        // At that point every candidate a link paste produced had sleeps null,
+        // price null and no amenities, so the ranker was ordering rows it knew
+        // nothing about, and the order the host then read was effectively the
+        // order they happened to paste in. The lookup is the whole point of
+        // this block: it is what turns a bare URL into a place that sleeps 12
+        // for $2,400. Sorting has to happen after it, or the facts arrive too
+        // late to move anything.
+        //
+        // Same ranker, same event, same budget — this is not a second opinion,
+        // it is the first one asked with the evidence in hand. The deck and
+        // the shortlist already order by ranking; this makes the FIRST screen
+        // a host sees agree with them.
+        try {
+          const r2 = rankCandidates(read, event, { budget: Number(event.totalBudget || 0) || 0 });
+          out = (r2 && r2.ranked && r2.ranked.length === read.length) ? r2.ranked : read;
+        } catch { out = read; }
+        // A results paste was never linksOnly; a link paste stops being one the
+        // moment a title arrives.
+        // Only when NOTHING came back — a reason shown beside four filled rows
+        // would read as a failure the host can see is not one.
+      } catch { /* fall through to the honest keep-it path */ }
+      // FINALLY, not a trailing line. The spinner is the host's only signal that
+      // the app is still theirs; any path that leaves it spinning has taken the
+      // surface away from them. unfurlListing bounds itself, but this makes
+      // stranding impossible rather than merely unlikely.
+      finally { setBusy(false); }
+    return { cands: out, anyTitle, lastReason };
+  };
+
   // Commit only what is still ticked. Untick is the whole point of the review.
-  const commitStaged = () => {
-    const keep = staged.cands.filter((c) => staged.pick.has(c._k));
+  const commitStaged = async () => {
+    let keep = staged.cands.filter((c) => staged.pick.has(c._k));
     if (!keep.length) { setStaged(null); return; }
+    // ── READ THE ONES THEY KEPT (2026-09-30) ──────────────────────────────
+    // Host, in production: "I'm using a results link and not getting the list
+    // of properties that match."
+    //
+    // A real Airbnb search returns TWENTY links — measured against the live
+    // endpoint, not assumed. The paste handler only looks listings up when
+    // there are UNFURL_MAX (8) or fewer, so twenty skipped the read entirely
+    // and every row stayed "Airbnb listing / sleeps —": no name, no price,
+    // nothing to match against. Raising the cap is the wrong fix; twenty
+    // sequential reads at ~3s each is a sixty-second wait, which is its own
+    // failure.
+    //
+    // The right one was already written down. lodgingResults' own docstring
+    // says the host "unticks what they were not really considering, and only
+    // the places they KEEP are ever read individually" — the implementation
+    // simply read before the unticking instead of after. Staging twenty is
+    // cheap; reading the four that survive is the whole point.
+    //
+    // Skipped when the paste handler already did it, so a small paste is not
+    // read twice.
+    const unread = keep.filter((c) => c.sleeps == null && !(Array.isArray(c.amenities) && c.amenities.length));
+    if (unread.length && unread.length <= UNFURL_MAX && isUnfurlConfigured()) {
+      const e = await enrichByLookup(keep);
+      if (Array.isArray(e.cands) && e.cands.length === keep.length) keep = e.cands;
+    }
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
@@ -1557,9 +1603,6 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                         colour for meaning. */}
                     <div className="lc-card-top">
                       <h3 className="lc-card-name">{o.label}</h3>
-                      {LODGING_PLATFORM_LABELS[o.platform] && (
-                        <span className="lc-card-door">{LODGING_PLATFORM_LABELS[o.platform]}</span>
-                      )}
                       {perHead
                         ? (
                           <span className="lc-card-price lc-card-lead-each">
@@ -1655,7 +1698,24 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                 // rather than a photo with a caption.
                 const identityRest = (
                   <>
+                    {/* ── THE DOOR SITS WITH THE MONEY ──────────────────────
+                        It was on the title line for one build and the host
+                        caught it the same day: "we've lost all the pricing per
+                        head". Not lost — demoted. The badge made three items
+                        compete on one row, the row wrapped, and the per-head
+                        figure dropped to a second line beside the badge. That
+                        row is the card's lead and the host had already ruled
+                        on what leads it ("per head is a major thrust"), so the
+                        badge is what moves.
+
+                        Here is better than a compromise anyway: a Google rate
+                        buys ONE ROOM for one night and an Airbnb total buys
+                        the whole house for the stay, so the door belongs next
+                        to the number whose meaning it changes. */}
                     <p className="lc-card-sub">
+                      {LODGING_PLATFORM_LABELS[o.platform] && (
+                        <span className="lc-card-door">{LODGING_PLATFORM_LABELS[o.platform]}</span>
+                      )}
                       {[perHead && money(total) ? `${money(total)} in total` : null,
                         nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
                         .filter(Boolean).join(' · ')}
@@ -3161,7 +3221,15 @@ const CSS = `
    it. Wrapping lets the price and badge drop to a second line instead of
    crushing the identity, and the min-width floor stops the name ever
    collapsing again on a narrower phone. */
-.lc-card-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:10px;}
+/* NO WRAP, and the min-width floor on the name is what makes that safe.
+   Wrapping was added when a third item (the door badge) could not fit; it
+   worked, and it cost the thing this row exists for — the per-head figure
+   dropped to a second line and the host said so within the hour. The badge
+   moved to the money line instead, so two items share this row again, and
+   the name SHRINKS to keep the price beside it rather than wrapping it away.
+   The 14ch floor is what stops the shrink becoming the 8px collapse that
+   started all this. */
+.lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
 /* OFF THE PHOTO, ONTO A SURFACE. No shadow, no hardcoded #fff, no alpha: the
    ground is --card now, so --ink means what the token says it means. */
 /* flex 1-1-auto, and it is load-bearing. (No backticks in this block:
@@ -3244,7 +3312,8 @@ const CSS = `
 .lc-pv-k{flex:0 0 auto;font:400 13px/1.4 Inter,sans-serif;color:var(--muted);}
 .lc-pv-v{font:500 13px/1.4 Inter,sans-serif;color:var(--ink);text-align:right;min-width:0;}
 /* The door this place came through. No colour: it is an identity, not a state. */
-.lc-card-door{flex:0 0 auto;font:650 var(--t-caption)/1.5 Inter,sans-serif;color:var(--muted);
+.lc-card-door{display:inline-block;margin:0 var(--sp-2) 0 0;vertical-align:baseline;
+  font:650 var(--t-caption)/1.5 Inter,sans-serif;color:var(--muted);
   background:var(--bg-band);padding:2px var(--sp-2);border-radius:999px;white-space:nowrap;}
 .lc-pv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
   padding:10px 0;border-top:1px solid var(--hair);}

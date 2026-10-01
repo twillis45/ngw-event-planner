@@ -35,10 +35,12 @@ const seedOne = async (page, theme) => {
 test.describe('where this came from', () => {
   test('the claim leads, and it counts what is actually shown', async ({ page }) => {
     await seedOne(page);
-    // Name, Beds, Sleeps, What it has — four. NOT five: "Notes" is dropped
-    // below as a duplicate, and a claim that counted it would be wrong.
+    // Name, Beds, Sleeps, What it has, Notes — five. Notes COUNTS, because it
+    // is kept: only the amenity tail it repeats is stripped. The first cut
+    // dropped the whole row and this asserted four, which is how the bedrooms
+    // and the rating went missing from the card without a gate noticing.
     await expect(page.locator('.lc-pv-claim').first())
-      .toHaveText(/All 4 of these facts were read off the listing\./i);
+      .toHaveText(/All 5 of these facts were read off the listing\./i);
   });
 
   test('the five repetitions are gone — the source is said once per group',
@@ -53,12 +55,18 @@ test.describe('where this came from', () => {
       expect((all.match(/Read from the listing itself/gi) || []).length).toBe(1);
     });
 
-  test('Notes no longer repeats the amenity list verbatim', async ({ page }) => {
+  test('Notes keeps what is its own and drops only the repeat', async ({ page }) => {
     await seedOne(page);
     const card = page.locator('.lc-card').first();
     await card.getByText(/Field by field/i).click();
     const keys = await card.locator('.lc-pv-k').allInnerTexts();
-    expect(keys).not.toContain('Notes');
+    // Notes STAYS. notesFor() builds "6 bedrooms · 4.93/5 (123) · <amenities>"
+    // and only the tail is a duplicate; dropping the row took the bedrooms and
+    // the rating with it, which the host noticed the same day.
+    expect(keys).toContain('Notes');
+    const notes = await card.locator('.lc-pv-row', { hasText: 'Notes' }).locator('.lc-pv-v').innerText();
+    expect(notes).toMatch(/bedrooms/i);
+    for (const a of AMENITIES) expect(notes).not.toContain(a);
     // ...and the amenities are a COUNT, not nine spelled-out lines.
     const txt = await card.innerText();
     expect(txt).toContain('9 things');
@@ -137,6 +145,54 @@ test.describe('where this came from', () => {
       expect(bad, bad.join(' | ')).toEqual([]);
     });
   }
+
+  test('the per-head figure LEADS the card, on the title line', async ({ page }) => {
+    // Host, 2026-09-30: "with the redesign we've lost all the pricing per
+    // head". Not lost — demoted, which on this card is nearly the same thing.
+    //
+    // The door badge had been put on the title row, making three items
+    // compete for 318px. The row was set to wrap so the name could not be
+    // crushed again, and wrapping is what did it: the per-head figure dropped
+    // to a second line beside the badge, no longer paired with the name.
+    //
+    // The host had already ruled on this row once — "per head is a major
+    // thrust and needs more prominent attention" — so the badge is what
+    // moves, down to the money line where a door actually changes the
+    // meaning of the number beside it.
+    //
+    // Geometry, not presence: the old assertion a bug like this walks past is
+    // "the price is visible". It was visible. It was in the wrong place.
+    await page.route('**/api/lodging/unfurl**', (r) => r.fulfill({ json: { ok: true,
+      title: 'Private backyard with BBQ near the Plaza', price: 2180, image: '',
+      facts: { beds: 9, bedrooms: 6 }, sleeps: 12, rating: 4.93, ratingCount: 123,
+      amenities: AMENITIES } }));
+    await page.goto(DEMO);
+    await page.getByRole('button', { name: /Load the Santa Fe example/i }).click();
+    await page.locator('textarea').fill('https://www.airbnb.com/rooms/742220082744554592');
+    await page.getByRole('button', { name: /Read what I pasted/i }).click();
+    const card = page.locator('.lc-card').first();
+    await expect(card).toBeVisible({ timeout: 30_000 });
+
+    const row = await card.evaluate((el) => {
+      const n = el.querySelector('.lc-card-name').getBoundingClientRect();
+      const p = el.querySelector('.lc-card-price');
+      if (!p) return { priced: false };
+      const r = p.getBoundingClientRect();
+      return { priced: true, text: p.innerText.trim(),
+        sameLine: Math.abs(n.top - r.top) < 6, toTheRight: r.left > n.right - 1,
+        nameW: Math.round(n.width) };
+    });
+    expect(row.priced, 'the card must show a price at all').toBe(true);
+    expect(row.text).toMatch(/each/i);
+    expect(row.sameLine, `per-head must sit on the title line, not below it`).toBe(true);
+    expect(row.toTheRight).toBe(true);
+    // ...and the name still has room to be a name. This is the other half of
+    // the same row: it collapsed to 8px once, across five lines.
+    expect(row.nameW).toBeGreaterThan(120);
+
+    // The door is still shown — moved, not dropped — and now sits with the money.
+    await expect(card.locator('.lc-card-sub .lc-card-door')).toHaveText('Airbnb');
+  });
 
   test('the card says which door the place came through', async ({ page }) => {
     await seedOne(page);
