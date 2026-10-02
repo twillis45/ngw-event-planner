@@ -578,7 +578,11 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     // facts DO come back, and what the host needs warning about is the twenty
     // seconds it costs, not a limit that no longer applies.
     await expect(offer).toContainText(/names, sizes and prices/i);
-    await expect(offer).toContainText(/about twenty seconds/i);
+    // NO DURATION. An earlier cut asserted "about twenty seconds" — a figure
+    // measured once, warm, with nothing refused. The offer now says a moment
+    // and points at the counter, which cannot be wrong about itself.
+    await expect(offer).toContainText(/count them off as they come in/i);
+    await expect(offer).not.toContainText(/twenty seconds/i);
     // And declining must still leave the host a route.
     await expect(page.getByRole('button', { name: /No, I’ll pick one/i })).toBeVisible();
 

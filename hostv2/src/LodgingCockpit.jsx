@@ -1458,16 +1458,25 @@ function Looking({ event, patch }) {
                 It used to say "you'll get the links, not names or prices,
                 because a results page doesn't carry those". The first half is
                 no longer true — accepting this now reads each place, so the
-                names and prices DO come back. The second half was always true
-                and still is: they are not on the results page, they are on the
-                listings, which is why this takes twenty seconds instead of
-                being instant. Promising the old limit would undersell it;
-                promising speed would oversell it. Say both. */}
+                names and prices DO come back. The second half still is: they
+                live on the listings, not the results page, which is why this
+                takes a moment instead of being instant.
+
+                NO DURATION PROMISED (host, 2026-10-02: "let the progress
+                counter speak"). The draft said "about twenty seconds", which
+                measured 19.9s against a WARM backend on a run where none of
+                the twenty reads were refused. A host's first pull wakes a
+                spun-down Render instance, and this file's own header says a
+                meaningful share of reads come back 403/429 — either one makes
+                the number wrong, and a number that is wrong is worse than no
+                number. The counter below reports what is actually happening,
+                and it cannot drift from the truth because it IS the truth. */}
             <p className="lc-body">
               That’s the {DOOR_SHORT[searchOffer.door] || 'search'} search, not one house.
               I can read the places on it and bring back their names, sizes and prices —
-              up to {UNFURL_MAX} of them, which takes about twenty seconds because each
-              one is a separate page. If the site stops answering partway, I’ll say so.
+              up to {UNFURL_MAX} of them. Each is a separate page, so this takes a
+              moment; I’ll count them off as they come in, and say so if the site
+              stops answering partway.
             </p>
             <button className="cta" onClick={async () => {
               setBusy(true);
