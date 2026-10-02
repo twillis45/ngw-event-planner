@@ -1473,10 +1473,29 @@ function Looking({ event, patch }) {
                 and it cannot drift from the truth because it IS the truth. */}
             <p className="lc-body">
               That’s the {DOOR_SHORT[searchOffer.door] || 'search'} search, not one house.
-              I can read the places on it and bring back their names, sizes and prices —
-              up to {UNFURL_MAX} of them. Each is a separate page, so this takes a
-              moment; I’ll count them off as they come in, and say so if the site
-              stops answering partway.
+              I can read the places on it and bring back their names, sizes and what
+              they have — up to {UNFURL_MAX} of them. Each is a separate page, so this
+              takes a moment; I’ll count them off as they come in, and say so if the
+              site stops answering partway.
+            </p>
+            {/* ── NAME THE ONE THING IT CANNOT BRING (host, 2026-10-02: "dont
+                see the prices and price per head added in prod, lost it") ────
+                My own copy promised "names, sizes and prices" and this path
+                cannot deliver a price — measured twice against live listings,
+                the unfurl returns price: None while sleeps, rating and
+                amenities all come back. A listing page computes its price in
+                the browser from dates and guests; it is not in the HTML the
+                server fetches.
+                The host did not lose prices here, they were never on this
+                path — but a promise that cannot be kept is worse than the
+                gap, so it says what it can do and names the route that
+                carries money: the results CARDS have prices on them, which is
+                why pasting the page is the one that pays. */}
+            <p className="lc-note">
+              Not prices, though — a listing page doesn’t carry one. If what you’re
+              weighing is cost, copy the whole results page and paste that instead:
+              the cards have prices on them, and I’ll still read each place for
+              sleeps and what it has.
             </p>
             <button className="cta" onClick={async () => {
               setBusy(true);
