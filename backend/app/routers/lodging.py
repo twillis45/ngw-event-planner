@@ -51,7 +51,17 @@ What this deliberately does NOT do:
     The full gallery still comes from the host's own copy-paste, which remains
     the primary path precisely because it needs no fetch at all.
   · no storage — nothing about the listing is retained server-side
-  · no rate at which this could resemble a bot: one page, host-initiated
+  · host-initiated, always: nothing is read that the host did not ask for by
+    pasting a link or pressing "Pull the places in".
+  · AMENDED 2026-10-02, because the line above used to read "no rate at which
+    this could resemble a bot: one page, host-initiated" and the client no
+    longer makes that true. Accepting the search offer now reads up to twenty
+    listings, two at a time with jittered spacing, and stops on two consecutive
+    refusals. That is still one host action and still not a crawl — but it is a
+    rate, and a promise this file could no longer keep had to be rewritten
+    rather than left standing. The ceiling, the concurrency and the breaker all
+    live in hostv2/src/LodgingCockpit.jsx; this endpoint is unchanged and still
+    serves exactly one page per call.
 
 HONEST LIMITS the host should hear rather than discover:
   · Airbnb and Vrbo actively block datacenter traffic. This runs from Render, so

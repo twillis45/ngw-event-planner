@@ -561,13 +561,24 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
   // the ids, and only the places the host KEEPS are ever read individually.
   test('a search link offers to pull its places in, and says what it cannot give', async ({ page }) => {
     await mockResults(page);
+    // THE READS ARE PART OF THE PROMISE NOW. This test mocked only /results,
+    // which was right when accepting the offer staged bare links and fetched
+    // nothing. It now reads each place, so leaving /unfurl unmocked tested the
+    // failure path while claiming to test the happy one — the rows came back
+    // "sleeps —" because the reads were hitting a network that is not there.
+    await mockUnfurl(page);
     await seed(page);
     await paste(page, 'https://www.airbnb.com/s/Santa-Fe--NM/homes?checkin=2028-06-17&checkout=2028-06-21&adults=10');
 
     const offer = page.getByText(/I can read the places on it/i);
     await expect(offer).toBeVisible({ timeout: 20_000 });
-    // It must say what it will NOT give, up front.
-    await expect(offer).toContainText(/links, not names or prices/i);
+    // IT MUST PRICE THE WAIT, up front. This used to assert the opposite —
+    // "links, not names or prices" — which was true when accepting the offer
+    // staged bare URLs. It now reads each place, so the promise inverted: the
+    // facts DO come back, and what the host needs warning about is the twenty
+    // seconds it costs, not a limit that no longer applies.
+    await expect(offer).toContainText(/names, sizes and prices/i);
+    await expect(offer).toContainText(/about twenty seconds/i);
     // And declining must still leave the host a route.
     await expect(page.getByRole('button', { name: /No, I’ll pick one/i })).toBeVisible();
 
@@ -578,11 +589,46 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     await expect(page.getByText(/FROM THE PAGE YOU PASTED/i)).toBeVisible({ timeout: 25_000 });
     const rows = page.locator('.lc-staged');
     expect(await rows.count(), 'a Santa Fe search carries a page of places').toBeGreaterThan(3);
-    // Honest about what a results page never carries.
-    await expect(page.getByText(/sleeps —/).first()).toBeVisible();
-    await expect(page.getByText(/I got the links but not the details/i)).toBeVisible();
+    // AND THE ROWS CARRY FACTS. The two assertions here used to require
+    // "sleeps —" and "I got the links but not the details" to be on screen,
+    // which is exactly the state the host called out: a list with nothing to
+    // choose between is not a choice. Both must now be ABSENT.
+    await expect(page.getByText(/sleeps —/)).toHaveCount(0);
+    await expect(page.getByText(/I got the links but not the details/i)).toHaveCount(0);
+    const named = await page.locator('.lc-staged-name').allInnerTexts();
+    expect(named.length, 'every staged row is named').toBe(await rows.count());
     // The commit CTA counts what will actually be added.
     await expect(page.getByRole('button', { name: /Add \d+ to the shortlist/i })).toBeVisible();
+  });
+
+  // ── WHEN THE SITE DECLINES, STOP AND SAY SO ───────────────────────────────
+  // Found by accident: the test above mocked /results but not /unfurl, so every
+  // read failed and the rows stayed bare. That is the correct behaviour under a
+  // refusing host, and it had no gate — so it gets one. The backend's own note
+  // is why this matters: "Airbnb and Vrbo actively block datacenter traffic …
+  // a meaningful share of requests will come back 403/429." Continuing past a
+  // refusal is how one blocked read becomes a blocked IP.
+  test('a refusing site stops the run and is named, not hidden', async ({ page }) => {
+    await mockResults(page);
+    let reads = 0;
+    await page.route('**/api/lodging/unfurl**', (route) => {
+      reads += 1;
+      return route.fulfill({ status: 502, json: { detail: 'The site declined an automated read (this is common).' } });
+    });
+    await seed(page);
+    await paste(page, 'https://www.airbnb.com/s/Santa-Fe--NM/homes?checkin=2028-06-17&checkout=2028-06-21&adults=10');
+    await page.getByRole('button', { name: /Pull the places in/i }).click();
+    await expect(page.getByText(/FROM THE PAGE YOU PASTED/i)).toBeVisible({ timeout: 25_000 });
+
+    // THE BREAKER HELD. Six links, and it must not have tried all six: two
+    // consecutive refusals stop it. The pool is two wide, so at most one more
+    // can already be in flight when the second failure lands.
+    expect(reads, `stopped after ${reads} refusals of 6 links`).toBeLessThanOrEqual(3);
+
+    // And the host is told which thing happened, because "paste the page" is
+    // the fix for this one and a different sentence is the fix for a truncation.
+    await expect(page.getByText(/stopped answering partway/i)).toBeVisible();
+    await expect(page.getByText(/copy the results page itself/i)).toBeVisible();
   });
 
   test('nothing overflows the phone, and no console errors', async ({ page }) => {

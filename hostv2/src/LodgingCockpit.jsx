@@ -521,6 +521,9 @@ function Looking({ event, patch }) {
   const [busy, setBusy] = useState(false);
   const [staged, setStaged] = useState(null);
   const [searchOffer, setSearchOffer] = useState(null);
+  // Reading progress. The host accepted a longer wait in exchange for more
+  // places; an unexplained longer wait is just a slower product.
+  const [reading, setReading] = useState(null);
   // ── HONEST FALLBACK ON RETURN ────────────────────────────────────────────
   // After a door, the host copies a listing and comes back. Reading the
   // clipboard for them needs `clipboard-read`, which most configurations only
@@ -827,7 +830,18 @@ function Looking({ event, patch }) {
   // sequential and each is ~3s against a live page; it is NOT a limit on how
   // many a host may paste. A bigger paste stages, the host unticks, and the
   // survivors are read on commit.
-  const UNFURL_MAX = 8;
+  // ── THE CAP, AND WHY IT MOVED (host, 2026-10-02) ───────────────────────
+  // Was 8, derived from a sequential loop priced at ~3s a read. Both halves of
+  // that were wrong: a read measures 1.7-2.1s, and the loop no longer has to be
+  // sequential. Twenty is what a real Airbnb search returns, so twenty is what
+  // the host can now weigh.
+  const UNFURL_MAX = 20;
+  // Two at a time. Not an arithmetic choice — see the pool for why being
+  // unremarkable beats being fast against a host that blocks datacenter IPs.
+  const READ_POOL = 2;
+  const READ_GAP_MS = 240;
+  // One failure is a bad link. Two in a row is the site declining.
+  const BREAK_AFTER = 2;
 
   // ── READ THE LISTINGS, WHEREVER THE HOST IS IN THE FLOW ─────────────────
   // Lifted out of the paste handler on 2026-09-30 so the COMMIT can use it
@@ -842,91 +856,145 @@ function Looking({ event, patch }) {
     let out = list;
     let anyTitle = false;
     let lastReason = '';
+    let readStoppedEarly = false;
+    let readCount = 0;
       setReadErr('');
       setBusy(true);
       try {
-        const read = [];
-        for (const c of list) {
-          let r = null;
-          // One bad link must not cost the host the other four.
-          try { r = await unfurlListing(c.url); } catch { r = null; }
-          if (!r || !r.ok) {
-            if (r && r.reason) lastReason = r.reason;
-            read.push(c);
-            continue;
+        // ── READ THEM IN A SMALL POOL, AND STOP IF THE SITE PUSHES BACK ──
+        // Host, 2026-10-02: "parallelize the reads and raise the cap, but we
+        // have to do this in a way to not get blocked or limited. If we take
+        // longer to produce the list for host and add progress indicator is a
+        // choice too."
+        //
+        // MEASURED FIRST: a real unfurl is 1.7-2.1s, not the ~3s the old cap
+        // was reasoned from. Sequential, eight took ~14s and twenty would take
+        // ~35s. The lever was never the cap, it was the loop.
+        //
+        // POOL OF TWO, NOT FOUR OR TWENTY. The arithmetic alone would argue for
+        // more, and the arithmetic is not what governs here: the backend's own
+        // header promises "no rate at which this could resemble a bot", and
+        // bursting one datacenter IP is the single likeliest way to get the
+        // reader blocked for everybody. Two with jittered spacing lands twenty
+        // in ~18s — about what eight cost yesterday — for 2.5x the listings.
+        // The host was offered the longer wait and took it; we spend it on
+        // being unremarkable rather than on being fast.
+        const read = new Array(list.length);
+        let next = 0, fails = 0, stoppedEarly = false, doneN = 0;
+        const readOne = async (i, c) => {
+            let r = null;
+            // One bad link must not cost the host the other four.
+            try { r = await unfurlListing(c.url); } catch { r = null; }
+            if (!r || !r.ok) {
+              if (r && r.reason) lastReason = r.reason;
+              read[i] = c;
+              // ── STOP WHEN THE SITE PUSHES BACK ──────────────────────────
+              // This file's own note: "Airbnb and Vrbo actively block
+              // datacenter traffic. This runs from Render, so a meaningful
+              // share of requests will come back 403/429." Once that starts,
+              // continuing is how one blocked request becomes a blocked IP —
+              // and a blocked reader fails for every host, not just this one.
+              // Two in a row is enough: one is a bad link, two is a pattern.
+              fails += 1;
+              if (fails >= BREAK_AFTER) stoppedEarly = true;
+              return;
+            }
+            fails = 0;
+            // ── THE UNFURL'S ANSWER WAS BEING THROWN ON THE FLOOR ────────────
+            // Driven 2026-08-04. Three breaks stacked in one line: it read
+            // `r.photo` (the endpoint returns `image`), it wrote `photo` (photoList
+            // reads `photos`/`photoUrl`), and it ignored `facts` entirely. So a
+            // picture could not arrive from an unfurl under ANY conditions, which
+            // is why every read row still said "no picture yet".
+            const facts = (r.facts && typeof r.facts === 'object') ? r.facts : {};
+            // The unfurl's own image goes through the same question as a pasted
+            // card's: safe to load is not the same as depicts the house.
+            const shotRaw = String(r.image || '').trim();
+            const shot = isListingPhoto(shotRaw) ? shotRaw : '';
+            // GAPS ONLY. Every line reads "what the paste already had, else what
+            // the listing says" — the reverse of what this block did when it
+            // only ever ran on a paste that had nothing to protect.
+            read[i] = ({
+              ...c,
+              name: c.name || r.title,
+              priceShown: c.priceShown != null ? c.priceShown : r.price,
+              photo: c.photo || shot,
+              // The lookup returns ONE image; a paste of the results page is the
+              // only side that ever holds a gallery, so this is gaps-only too.
+              photos: (Array.isArray(c.photos) && c.photos.length) ? c.photos
+                : (shot ? [shot] : []),
+              // A COUNT OF BEDS, never mapped to `sleeps`: how many people a
+              // place holds is not something a bed count settles.
+              beds: c.beds != null ? c.beds : facts.beds,
+              bedrooms: c.bedrooms != null ? c.bedrooms : facts.bedrooms,
+              // ── THE FIELD THE COMPARISON WAS BLOCKED ON (2026-08-04) ──────
+              // `sleeps` decides `fits`, and therefore "3 of 5 fit", the ranking
+              // and the per-person split. A results card never carries it — D6/W3b
+              // says so in its own copy — so it has always been a number the host
+              // had to type. The LISTING page carries it, in the structured record
+              // the unfurl reads. This is that number, not an inference from beds
+              // or bedrooms.
+              sleeps: c.sleeps != null ? c.sleeps : r.sleeps,
+              rating: c.rating != null ? c.rating : r.rating,
+              ratingCount: c.ratingCount != null ? c.ratingCount : r.ratingCount,
+              // The listing's OWN amenity words. Every must-have row read "—"
+              // without them, even where the page said yes (host, 2026-08-06).
+              amenities: (Array.isArray(c.amenities) && c.amenities.length)
+                ? c.amenities
+                : (Array.isArray(r.amenities) && r.amenities.length ? r.amenities : c.amenities),
+              // ── AND WHAT THE PAGE SAID IT HASN'T GOT (2026-10-01) ─────────
+              // The backend has always returned this beside `amenities`; the
+              // merge dropped it, so the side-by-side could never tell a listing
+              // that DENIED a hot tub from one that never mentioned it. Only a
+              // lookup can supply it — a results card carries neither list.
+              amenitiesAbsent: (Array.isArray(c.amenitiesAbsent) && c.amenitiesAbsent.length)
+                ? c.amenitiesAbsent
+                : (Array.isArray(r.amenitiesAbsent) ? r.amenitiesAbsent : c.amenitiesAbsent),
+            });
+            // WHICH SIDE ANSWERED (2026-09-29). Both sources are reads, so both
+            // rendered as "read from the page you pasted" — and after the merge
+            // that sentence was false for every field the LISTING supplied. On a
+            // surface whose promise is per-field provenance, crediting the wrong
+            // read is the same defect as crediting no read.
+            //
+            // Recorded here because this is the only place that knows: at commit
+            // a filled field looks identical whichever side filled it.
+            read[i]._lookedUp = [
+              !c.name && r.title ? 'label' : null,
+              c.sleeps == null && r.sleeps != null ? 'sleeps' : null,
+              c.beds == null && facts.beds != null ? 'beds' : null,
+              c.bedrooms == null && facts.bedrooms != null ? 'bedrooms' : null,
+              c.priceShown == null && r.price != null ? 'price' : null,
+              !c.photo && shot ? 'photoUrl' : null,
+              (!Array.isArray(c.amenities) || !c.amenities.length)
+                && Array.isArray(r.amenities) && r.amenities.length ? 'amenities' : null,
+              c.rating == null && r.rating != null ? 'rating' : null,
+            ].filter(Boolean);
+            if (r.title) anyTitle = true;
+        };
+        const worker = async () => {
+          for (;;) {
+            if (stoppedEarly) return;
+            const i = next;
+            next += 1;
+            if (i >= list.length) return;
+            // Jitter, so the workers do not march in lockstep and the pattern
+            // does not read as machinery.
+            if (i >= READ_POOL) {
+              await new Promise((res) => { setTimeout(res, READ_GAP_MS * (0.6 + Math.random())); });
+            }
+            await readOne(i, list[i]);
+            doneN += 1;
+            setReading({ done: doneN, total: list.length, stopped: stoppedEarly });
           }
-          // ── THE UNFURL'S ANSWER WAS BEING THROWN ON THE FLOOR ────────────
-          // Driven 2026-08-04. Three breaks stacked in one line: it read
-          // `r.photo` (the endpoint returns `image`), it wrote `photo` (photoList
-          // reads `photos`/`photoUrl`), and it ignored `facts` entirely. So a
-          // picture could not arrive from an unfurl under ANY conditions, which
-          // is why every read row still said "no picture yet".
-          const facts = (r.facts && typeof r.facts === 'object') ? r.facts : {};
-          // The unfurl's own image goes through the same question as a pasted
-          // card's: safe to load is not the same as depicts the house.
-          const shotRaw = String(r.image || '').trim();
-          const shot = isListingPhoto(shotRaw) ? shotRaw : '';
-          // GAPS ONLY. Every line reads "what the paste already had, else what
-          // the listing says" — the reverse of what this block did when it
-          // only ever ran on a paste that had nothing to protect.
-          read.push({
-            ...c,
-            name: c.name || r.title,
-            priceShown: c.priceShown != null ? c.priceShown : r.price,
-            photo: c.photo || shot,
-            // The lookup returns ONE image; a paste of the results page is the
-            // only side that ever holds a gallery, so this is gaps-only too.
-            photos: (Array.isArray(c.photos) && c.photos.length) ? c.photos
-              : (shot ? [shot] : []),
-            // A COUNT OF BEDS, never mapped to `sleeps`: how many people a
-            // place holds is not something a bed count settles.
-            beds: c.beds != null ? c.beds : facts.beds,
-            bedrooms: c.bedrooms != null ? c.bedrooms : facts.bedrooms,
-            // ── THE FIELD THE COMPARISON WAS BLOCKED ON (2026-08-04) ──────
-            // `sleeps` decides `fits`, and therefore "3 of 5 fit", the ranking
-            // and the per-person split. A results card never carries it — D6/W3b
-            // says so in its own copy — so it has always been a number the host
-            // had to type. The LISTING page carries it, in the structured record
-            // the unfurl reads. This is that number, not an inference from beds
-            // or bedrooms.
-            sleeps: c.sleeps != null ? c.sleeps : r.sleeps,
-            rating: c.rating != null ? c.rating : r.rating,
-            ratingCount: c.ratingCount != null ? c.ratingCount : r.ratingCount,
-            // The listing's OWN amenity words. Every must-have row read "—"
-            // without them, even where the page said yes (host, 2026-08-06).
-            amenities: (Array.isArray(c.amenities) && c.amenities.length)
-              ? c.amenities
-              : (Array.isArray(r.amenities) && r.amenities.length ? r.amenities : c.amenities),
-            // ── AND WHAT THE PAGE SAID IT HASN'T GOT (2026-10-01) ─────────
-            // The backend has always returned this beside `amenities`; the
-            // merge dropped it, so the side-by-side could never tell a listing
-            // that DENIED a hot tub from one that never mentioned it. Only a
-            // lookup can supply it — a results card carries neither list.
-            amenitiesAbsent: (Array.isArray(c.amenitiesAbsent) && c.amenitiesAbsent.length)
-              ? c.amenitiesAbsent
-              : (Array.isArray(r.amenitiesAbsent) ? r.amenitiesAbsent : c.amenitiesAbsent),
-          });
-          // WHICH SIDE ANSWERED (2026-09-29). Both sources are reads, so both
-          // rendered as "read from the page you pasted" — and after the merge
-          // that sentence was false for every field the LISTING supplied. On a
-          // surface whose promise is per-field provenance, crediting the wrong
-          // read is the same defect as crediting no read.
-          //
-          // Recorded here because this is the only place that knows: at commit
-          // a filled field looks identical whichever side filled it.
-          read[read.length - 1]._lookedUp = [
-            !c.name && r.title ? 'label' : null,
-            c.sleeps == null && r.sleeps != null ? 'sleeps' : null,
-            c.beds == null && facts.beds != null ? 'beds' : null,
-            c.bedrooms == null && facts.bedrooms != null ? 'bedrooms' : null,
-            c.priceShown == null && r.price != null ? 'price' : null,
-            !c.photo && shot ? 'photoUrl' : null,
-            (!Array.isArray(c.amenities) || !c.amenities.length)
-              && Array.isArray(r.amenities) && r.amenities.length ? 'amenities' : null,
-            c.rating == null && r.rating != null ? 'rating' : null,
-          ].filter(Boolean);
-          if (r.title) anyTitle = true;
-        }
+        };
+        await Promise.all(Array.from(
+          { length: Math.min(READ_POOL, list.length) }, () => worker(),
+        ));
+        // A row the breaker never reached keeps exactly what it arrived with.
+        for (let i = 0; i < list.length; i += 1) if (!read[i]) read[i] = list[i];
+        readStoppedEarly = stoppedEarly;
+        readCount = read.filter((x, i) => x !== list[i]).length;
         // ── RANK AGAIN, NOW THAT WE KNOW ANYTHING ABOUT THEM ─────────────
         // Host, 2026-09-30: "sort what we read by matter of importance or
         // priority." It already ranked — once, above, BEFORE the lookup ran.
@@ -955,8 +1023,8 @@ function Looking({ event, patch }) {
       // the app is still theirs; any path that leaves it spinning has taken the
       // surface away from them. unfurlListing bounds itself, but this makes
       // stranding impossible rather than merely unlikely.
-      finally { setBusy(false); }
-    return { cands: out, anyTitle, lastReason };
+      finally { setBusy(false); setReading(null); }
+    return { cands: out, anyTitle, lastReason, stoppedEarly: readStoppedEarly, readCount };
   };
 
   // Commit only what is still ticked. Untick is the whole point of the review.
@@ -1055,6 +1123,29 @@ function Looking({ event, patch }) {
           spinner). Leaving the host to discover it by getting nothing is
           not. This says the number, before they commit, while unticking is
           still the obvious move. */}
+      {/* WHAT THE SEARCH HELD, AND WHAT WE COULD READ OF IT. A silent
+          truncation is the same dishonesty as a list of blank rows, pointed
+          the other way: the host would never learn the other twelve existed.
+          The paste route is named because it is the one that reaches them —
+          the host's own browser has already rendered those cards. */}
+      {/* The same readout as the main view. commitStaged can now read up to
+          twenty on its own, and the staged panel replaces the view the other
+          indicator lives in — so without this the longest wait in the flow is
+          the one with no progress at all. */}
+      {reading && reading.total > 1 && (
+        <p className="lc-note" role="status" aria-live="polite">
+          Reading {Math.min(reading.done + 1, reading.total)} of {reading.total}…
+        </p>
+      )}
+      {staged.fromSearch && (
+        <p className="lc-note">
+          {staged.fromSearch.declined
+            // The breaker tripped. Say which thing happened, because "paste the
+            // page" is the fix for one of these and not the other.
+            ? `That search had ${staged.fromSearch.total} places. The site stopped answering partway through — that is common and not your doing. Copy the results page itself and paste it to get the rest.`
+            : `That search had ${staged.fromSearch.total} places. I read the first ${staged.fromSearch.read} so you can tell them apart — to weigh all ${staged.fromSearch.total}, copy the results page itself and paste it.`}
+        </p>
+      )}
       {/* KEYED TO WHAT NEEDS READING, NOT TO WHAT THEY KEPT (2026-10-01).
           `pick.size` asked the wrong question: a kept row that already carries
           its amenities — every Google hotel card does — needs no read, so
@@ -1342,6 +1433,16 @@ function Looking({ event, patch }) {
         )}
       </Panel>
       <Panel label={wentLooking ? 'NOW BRING ONE BACK' : 'BRING ONE BACK'}>
+        {/* THE WAIT, SAID OUT LOUD. Twenty reads take about eighteen seconds,
+            which is a long time to watch a button say "Reading…". The host
+            agreed to the longer wait for more places; this is the half of
+            that bargain we owe them. aria-live so it is not a sighted-only
+            reassurance. */}
+        {reading && reading.total > 1 && (
+          <p className="lc-note" role="status" aria-live="polite">
+            Reading {Math.min(reading.done + 1, reading.total)} of {reading.total}…
+          </p>
+        )}
         {/* Offered, never applied on its own: the host still decides that the
             thing on their clipboard is the thing they meant. */}
         {offer && (
@@ -1353,10 +1454,20 @@ function Looking({ event, patch }) {
         )}
         {searchOffer && (
           <div className="lc-offer">
+            {/* ── WHAT THIS PROMISES CHANGED, SO THE COPY HAD TO ──────────
+                It used to say "you'll get the links, not names or prices,
+                because a results page doesn't carry those". The first half is
+                no longer true — accepting this now reads each place, so the
+                names and prices DO come back. The second half was always true
+                and still is: they are not on the results page, they are on the
+                listings, which is why this takes twenty seconds instead of
+                being instant. Promising the old limit would undersell it;
+                promising speed would oversell it. Say both. */}
             <p className="lc-body">
               That’s the {DOOR_SHORT[searchOffer.door] || 'search'} search, not one house.
-              I can read the places on it — you’ll get the links, not names or prices,
-              because a results page doesn’t carry those.
+              I can read the places on it and bring back their names, sizes and prices —
+              up to {UNFURL_MAX} of them, which takes about twenty seconds because each
+              one is a separate page. If the site stops answering partway, I’ll say so.
             </p>
             <button className="cta" onClick={async () => {
               setBusy(true);
@@ -1370,10 +1481,51 @@ function Looking({ event, patch }) {
                   // a real search each rendered "no amenities listed", which
                   // is the wrong sentence and a worse one. Nothing had been
                   // read, so there was no amenity list to be absent from.
-                  const cands = r.links.map((u, i) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null, unread: true, _k: u || `k${i}` }));
+                  let cands = r.links.map((u, i) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null, unread: true, _k: u || `k${i}` }));
+
+                  // ── A LIST WITH NOTHING TO CHOOSE BETWEEN IS NOT A CHOICE ──
+                  // Host, 2026-10-02: "if the host will choose which to add to
+                  // shortlist but there are no distinguishing characteristics
+                  // then there really is no choice being made."
+                  //
+                  // Exactly right, and the two intake paths had drifted apart.
+                  // Pasting eight listing links reads all eight BEFORE staging
+                  // (see the UNFURL_MAX block in add()), so the host unticks
+                  // against names, sleeps and prices. This branch staged
+                  // whatever the search returned — eighteen, twenty — and read
+                  // none of it, so every row said "Airbnb listing / sleeps —"
+                  // and unticking was guesswork dressed as triage.
+                  //
+                  // The server cannot close that gap: its own note records that
+                  // the ids come from map-pin objects, that names and prices
+                  // are not adjacent to them, and that personCapacity appears
+                  // zero times. The facts are not on the page it fetched.
+                  //
+                  // So the list is cut to the number we can actually read, and
+                  // the same enrichment the paste path uses runs here. NOT a
+                  // crawl: the host pressed "Pull the places in", which is the
+                  // same consent as pasting the links by hand — the never-build
+                  // rule is about walking results nobody asked for.
+                  const total = r.links.length;
+                  const over = Math.max(0, cands.length - UNFURL_MAX);
+                  cands = cands.slice(0, UNFURL_MAX);
+                  let declined = false;
+                  if (isUnfurlConfigured()) {
+                    const e = await enrichByLookup(cands);
+                    if (Array.isArray(e.cands) && e.cands.length === cands.length) cands = e.cands;
+                    declined = !!e.stoppedEarly;
+                  }
                   setSearchOffer(null);
                   setText('');
-                  setStaged({ cands, dupes: [], pick: new Set(cands.map((c) => c._k)), linksOnly: true });
+                  // ON THE STAGED PANEL, NOT IN readErr. readErr renders inside
+                  // BRING ONE BACK, and `if (staged) return` exits before it —
+                  // so a message set here would never reach the host at the one
+                  // moment it matters. It rides the staged state instead.
+                  setStaged({
+                    cands, dupes: [], pick: new Set(cands.map((c) => c._k)), linksOnly: false,
+                    ...(over > 0 || declined
+                      ? { fromSearch: { total, read: cands.length, declined } } : null),
+                  });
                 } else {
                   setReadErr((r && r.reason) || 'Nothing readable on that search.');
                 }
