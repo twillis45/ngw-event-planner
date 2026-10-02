@@ -2282,7 +2282,7 @@ function Weighing({ event, intel, patch }) {
           </div>
         )}
       </Panel>}
-      {cmp ? <Transpose cmp={cmp} /> : <Panel label="SIDE BY SIDE">
+      {cmp ? <Transpose cmp={cmp} event={event} intel={intel} /> : <Panel label="SIDE BY SIDE">
         {/* The sentence and the act that answers it, in one place. This panel
             named the need and a second panel repeated it — one moment, one
             ask. */}
@@ -2822,7 +2822,108 @@ const stayDeadline = (event) => {
 // showing the screen — UX_03's own tablet framing); below that it steps
 // aside for a one-line pointer at the swipe deck, which already carries every
 // value this table does, just as stacked cards instead of dense rows.
-function Transpose({ cmp }) {
+/**
+ * The comparison, on a phone. Host picked B2 from three prototypes, 2026-10-01.
+ *
+ * ── WHY TWO AND NOT THREE ─────────────────────────────────────────────────
+ * UX_03 rule 5 bans information-dense tables below 640px, so the wide grid is
+ * tablet+ and this slot used to hold one sentence: "a wider screen shows it as
+ * one table instead." The screen is called WEIGH THEM and the weighing
+ * instrument was not on the flagship viewport — the one the product is built
+ * 390px-first for.
+ *
+ * Rule 7 decides the shape rather than taste: it forbids side-by-side stat
+ * cards and explicitly permits a TWO-COLUMN mini grid. Three-up is out, and
+ * pick-two suits the task anyway, because comparing is pairwise.
+ *
+ * It calls lodgingCompare with a narrowed column list and renders what comes
+ * back. Nothing about a listing is recomputed here — a phone that disagreed
+ * with the tablet about what a page said would be a second truth, and the
+ * whole argument for this shape over a bespoke mobile view was that there is
+ * one engine.
+ */
+function PickTwo({ cmp, event, intel }) {
+  const all = (cmp && cmp.columns) || [];
+  // Default to the top two, which are already best-fit-first — the host opens
+  // on the comparison the ranking says matters, not on an empty chooser.
+  const [pick, setPick] = useState(() => all.slice(0, 2).map((c) => c.id));
+
+  // RECONCILE AGAINST THE LIVE OPTIONS. A place removed, replaced or marked
+  // gone leaves a stale id in state, lodgingCompare finds fewer than two real
+  // columns and returns null, and the whole comparison would vanish off the
+  // screen with no way to get it back. Fall through to the top two instead.
+  const live = pick.filter((id) => all.some((c) => c.id === id));
+  const eff = live.length >= 2 ? live.slice(0, 2) : all.slice(0, 2).map((c) => c.id);
+
+  const toggle = (id) => setPick(() => (
+    eff.includes(id)
+      // Already one of the two: tapping it again is a no-op rather than
+      // dropping to a single column, which is not a comparison.
+      ? eff
+      // Two at a time, so the newest choice replaces the older of the pair.
+      // A disabled third chip would be a dead end with nothing to tap.
+      : [eff[1], id]
+  ));
+
+  let two = null;
+  try { two = lodgingCompare(event, intel, eff); } catch (_e) { two = null; }
+  if (all.length < 2 || !two) return null;
+
+  return (
+    <div className="lc-p2">
+      <div className="lc-p2-pick">
+        {all.map((c) => {
+          const on = eff.includes(c.id);
+          return (
+            <button key={c.id} type="button" className={'lc-p2-chip' + (on ? ' is-on' : '')}
+              aria-pressed={on} onClick={() => toggle(c.id)}
+              aria-label={`${c.label} — ${on ? 'comparing' : 'tap to compare'}`}>
+              <span className="lc-p2-chip-n">{lodgingTitleFor(c) || c.label}</span>
+              {/* THE NAME ALONE DOES NOT IDENTIFY THE CHIP. Two real listings
+                  here are both "Home in Santa Fe · ★4.98 · 5 bedrooms · …" and
+                  differ only in a bed count the truncation eats. Capacity is
+                  what the host is choosing on, so it goes on its own line
+                  where it cannot be cut off. */}
+              <span className="lc-p2-chip-s">
+                {c.sleeps != null ? `sleeps ${c.sleeps}`
+                  : c.beds != null ? `${c.beds} beds` : 'capacity not said'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="lc-p2-grid">
+        <div className="lc-p2-head">
+          {two.columns.map((c) => (
+            <div key={c.id} className="lc-p2-col">
+              <span className="lc-p2-shot">
+                {c.photo
+                  ? <img src={c.photo} alt={c.label} loading="lazy" />
+                  : <span className="lc-p2-shot-none">no picture</span>}
+              </span>
+              <span className="lc-p2-name">{c.label}</span>
+            </div>
+          ))}
+        </div>
+        {two.rows.map((r) => (
+          <div key={r.id} className={'lc-p2-row' + (r.amenity ? ' is-amenity' : '')}>
+            <span className="lc-p2-k" title={r.label}>{r.label}</span>
+            {r.values.map((v, i) => (
+              <span key={i} className={'lc-p2-v'
+                + (v === '—' ? ' is-gap'
+                  : r.flags[i] === 'denied' ? ' is-denied'
+                    : r.flags[i] === 'short' ? ' is-short'
+                      : v === 'yes' ? ' is-yes' : '')}>{v}</span>
+            ))}
+          </div>
+        ))}
+        <p className="lc-p2-foot">{two.note}</p>
+      </div>
+    </div>
+  );
+}
+
+function Transpose({ cmp, event, intel }) {
   const grid = { gridTemplateColumns: `minmax(92px,1.3fr) repeat(${cmp.columns.length}, minmax(0,1fr))` };
   return (
     <Panel label={`SIDE BY SIDE${cmp.guests ? ` · YOUR ${cmp.guests}` : ''}`}>
@@ -2834,7 +2935,7 @@ function Transpose({ cmp }) {
           phone the grid itself stays hidden (UX_03 rule 5), so there is
           nothing further to point at: the deck above already IS the
           comparison. */}
-      <p className="lc-note lc-t-mobile-note">The places you swiped through above are this comparison — a wider screen shows it as one table instead.</p>
+      <div className="lc-t-mobile-note"><PickTwo cmp={cmp} event={event} intel={intel} /></div>
       <div className="lc-t-wide">
         {/* ── THE PHOTO HEADS THE COLUMN (prototype C1, host picked C) ──────
             A host comparing three houses recognises them by sight long before
@@ -3554,6 +3655,58 @@ const CSS = `
    so the @container rule below (min-width:900px) never actually activates —
    a media query needs no such setup and is guaranteed to apply. */
 .lc-t-mobile-note{display:none;}
+/* ── B2: THE COMPARISON, ON A PHONE ──────────────────────────────────────
+   Two columns, which is the width UX_03 rule 7 permits for a mini grid and
+   the reason this is pick-two rather than the three-up table. Same rows and
+   same three states as the wide grid, because it is the same engine. */
+.lc-p2-pick{display:flex;gap:8px;margin:0 0 12px;}
+.lc-p2-chip{flex:1;min-width:0;min-height:var(--tap-min);padding:6px 8px;text-align:left;
+  border-radius:var(--r-sm);border:1px solid var(--line);background:var(--card);color:var(--muted);
+  font:500 11.5px/1.3 Inter,sans-serif;cursor:pointer;overflow:hidden;
+  display:flex;flex-direction:column;gap:1px;justify-content:center;}
+.lc-p2-chip-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* The capacity never truncates — it is the half that tells the chips apart. */
+.lc-p2-chip-s{flex:0 0 auto;color:var(--faint);font-weight:400;}
+.lc-p2-chip.is-on .lc-p2-chip-s{color:var(--ink-soft);}
+.lc-p2-chip.is-on{border-color:var(--steel);background:var(--sheen);color:var(--ink);}
+.lc-p2-grid{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--card);}
+.lc-p2-head{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;border-bottom:1px solid var(--line);}
+.lc-p2-col{display:flex;flex-direction:column;gap:6px;min-width:0;}
+/* Fixed height with or without a picture, so the rows below line up. */
+.lc-p2-shot{display:flex;align-items:center;justify-content:center;aspect-ratio:4/3;
+  border-radius:var(--r-sm);overflow:hidden;background:var(--field);border:1px solid var(--line);}
+.lc-p2-shot img{width:100%;height:100%;object-fit:cover;display:block;}
+.lc-p2-shot-none{font:400 var(--t-caption-min)/1.2 Inter,sans-serif;color:var(--faint);}
+.lc-p2-name{font:650 11.5px/1.3 Inter,sans-serif;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* THE LABEL COLUMN CARRIES THE LISTING'S OWN WORDS, which run long: "Exterior
+   security cameras on property" is 36 characters. Measured on a phone at the
+   first cut, rows came out 32, 36, 47 and 63px tall — labels wrapping to three
+   lines, which is the expand-don't-truncate failure UX_05 names.
+   Two changes, and red-proofing separated them rather than crediting both:
+   WIDENING the label column is the fix — the value cells hold "yes", "no", a
+   dash or a number and need far less room — and removing the clamp alone
+   leaves the gate green. The clamp is defense for a label longer than any in
+   the fixture, not the thing holding this row down. Claimed otherwise here
+   until the perturbation was tried in the right place.
+   Not clamped to ONE line: "Exterior security cameras…" truncated to the ~14
+   characters that fit would stop naming the row at all, which is worse than a
+   second line. The full string stays available as a title. */
+.lc-p2-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);
+  gap:8px;padding:9px 10px;border-top:1px solid var(--line-soft);align-items:baseline;}
+.lc-p2-k{font:400 12px/1.3 Inter,sans-serif;color:var(--muted);min-width:0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.lc-p2-v{font:650 12.5px/1.3 Inter,sans-serif;text-align:right;color:var(--ink);}
+.lc-p2-v.is-gap{font-weight:400;color:var(--faint);}
+.lc-p2-v.is-yes{color:var(--ok);}
+/* Neutral, never red: a house without a hot tub is not a fault, and the word
+   carries the meaning so nothing is stated by colour alone (UX_02). */
+.lc-p2-v.is-denied{color:var(--muted);font-weight:400;}
+.lc-p2-v.is-short{color:var(--muted);font-weight:400;font-size:12px;}
+.lc-p2-row.is-amenity .lc-p2-k{color:var(--muted);}
+.lc-p2-row.is-amenity{padding:7px 10px;}
+.lc-p2-foot{margin:0;padding:10px;font:400 var(--t-caption)/1.4 Inter,sans-serif;color:var(--faint);
+  border-top:1px solid var(--line-soft);}
 .lc-t-wide{display:block;}
 @media (max-width:639px){
   .lc-t-wide{display:none;}

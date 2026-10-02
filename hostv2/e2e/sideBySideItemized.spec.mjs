@@ -23,9 +23,19 @@ const IDS = ['31', '32', '33'];
 //   Pool          31 says yes, nobody else answers -> partial
 //   Kitchen       all three say yes                -> unanimous, sorts last
 //   Free wifi/Wifi  worded differently on purpose  -> must merge to ONE row
+//
+// TWO OF THESE ARE REAL STRINGS, and the fixture is wrong without them. The
+// row-height gate below was unfailable while every amenity here was short:
+// "Hot tub" and "Kitchen" cannot wrap to three lines in any column width, so
+// the test passed with the fix, without the fix, and without either half of
+// it. The 63px row that prompted the fix came from live Airbnb data —
+// "Exterior security cameras on property" and "65 inch HDTV with premium
+// cable, Netflix" are copied from the listings that produced it.
 const READ = {
-  31: { amenities: ['Hot tub', 'Pool', 'Kitchen', 'Wifi'], amenitiesAbsent: [] },
-  32: { amenities: ['Kitchen', 'Free wifi'], amenitiesAbsent: ['Hot tub'] },
+  31: { amenities: ['Hot tub', 'Pool', 'Kitchen', 'Wifi',
+    'Exterior security cameras on property'], amenitiesAbsent: [] },
+  32: { amenities: ['Kitchen', 'Free wifi', '65 inch HDTV with premium cable, Netflix'],
+    amenitiesAbsent: ['Hot tub', 'Exterior security cameras on property'] },
   33: { amenities: ['Kitchen', 'Wifi'], amenitiesAbsent: [] },
 };
 // Only 31 has a picture: the other two heads must still hold their frame.
@@ -55,7 +65,12 @@ const stage = async (page) => {
   const add = page.getByRole('button', { name: /Add 3 to the shortlist/i });
   await expect(add).toBeVisible({ timeout: 60_000 });
   await add.click();
-  await expect(page.locator('.lc-t-wide').first()).toBeVisible({ timeout: 60_000 });
+  // WAIT FOR A SIGNAL THAT HOLDS AT BOTH WIDTHS. This waited for .lc-t-wide to
+  // be VISIBLE, which is precisely what a phone hides — so every mobile test
+  // failed in the helper before reaching its own assertion. Attachment says
+  // the comparison rendered; which half of it is on screen is the thing the
+  // tests below are for.
+  await expect(page.locator('.lc-t-wide').first()).toBeAttached({ timeout: 60_000 });
 };
 
 const rowLabels = (page) => page.locator('.lc-t-row.is-amenity .lc-row-label').allInnerTexts();
@@ -132,5 +147,107 @@ test.describe('the side-by-side itemizes what each place has', () => {
     // comparison there, and it carries every value this grid does.
     await expect(page.locator('.lc-t-wide').first()).toBeHidden();
     await expect(page.locator('.lc-t-mobile-note').first()).toBeVisible();
+  });
+});
+
+// ── B2: THE COMPARISON ON A PHONE (host picked it, 2026-10-01) ─────────────
+// The flagship viewport used to get one sentence pointing at a wider screen.
+// These run at 390px, the width the product is built for first.
+test.describe('pick two, on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('the comparison is on the screen, not a pointer to another one', async ({ page }) => {
+    await stage(page);
+    // The dense grid is still correctly absent below 640px (UX_03 rule 5)...
+    await expect(page.locator('.lc-t-wide').first()).toBeHidden();
+    // ...and the thing that replaced the sentence is a real comparison.
+    await expect(page.locator('.lc-p2-grid')).toBeVisible();
+    await expect(page.locator('.lc-p2-row').first()).toBeVisible();
+    await expect(page.getByText(/a wider screen shows it as one table/i)).toHaveCount(0);
+  });
+
+  test('exactly two columns, which is the width rule 7 allows', async ({ page }) => {
+    await stage(page);
+    await expect(page.locator('.lc-p2-col')).toHaveCount(2);
+    // Every row carries one value per column and no more.
+    const widths = await page.locator('.lc-p2-row').first()
+      .evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(' ').length);
+    expect(widths, 'label + exactly two value columns').toBe(3);
+    const vals = await page.locator('.lc-p2-row').first().locator('.lc-p2-v').count();
+    expect(vals).toBe(2);
+  });
+
+  test('the phone and the tablet give the same answers for the same pair', async ({ page }) => {
+    await stage(page);
+    const read = async (sel, rowSel) => page.locator(rowSel).filter({ hasText: /^Hot tub/ }).first()
+      .locator(sel).allInnerTexts();
+    const phone = await read('.lc-p2-v', '.lc-p2-row');
+    await page.setViewportSize({ width: 1024, height: 1366 });
+    await expect(page.locator('.lc-t-wide').first()).toBeVisible();
+    const tablet = await read('.lc-t-val', '.lc-t-row');
+    // The phone shows the first two columns of the same comparison. A phone
+    // that disagreed with the tablet about what a listing said would be a
+    // second truth, which is the whole reason this calls the same engine.
+    expect(phone).toEqual(tablet.slice(0, 2));
+  });
+
+  test('tapping a third place swaps it into the pair', async ({ page }) => {
+    await stage(page);
+    const chips = page.locator('.lc-p2-chip');
+    await expect(chips).toHaveCount(3);
+    await expect(page.locator('.lc-p2-chip.is-on')).toHaveCount(2);
+    const before = await page.locator('.lc-p2-name').allInnerTexts();
+    await chips.nth(2).click();
+    // Still two, and the third is now one of them.
+    await expect(page.locator('.lc-p2-chip.is-on')).toHaveCount(2);
+    await expect(chips.nth(2)).toHaveAttribute('aria-pressed', 'true');
+    const after = await page.locator('.lc-p2-name').allInnerTexts();
+    expect(after).not.toEqual(before);
+    await expect(page.locator('.lc-p2-col')).toHaveCount(2);
+  });
+
+  test('nothing in it sits under the tap floor, and the screen does not scroll sideways', async ({ page }) => {
+    await stage(page);
+    const short = await page.locator('.lc-p2-chip').evaluateAll(
+      (ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)).filter((h) => h < 44));
+    expect(short, `chips under the floor: ${short.join(',')}`).toEqual([]);
+    const over = await page.evaluate(() => document.documentElement.scrollWidth
+      > document.documentElement.clientWidth);
+    expect(over, 'the page must never scroll horizontally').toBe(false);
+  });
+});
+
+// Two faults the live drive found that the first cut of this file did not.
+test.describe('what driving it on a phone found', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('no two chips read the same, even when the names do', async ({ page }) => {
+    await stage(page);
+    // The real case: two Santa Fe listings both named "Home in Santa Fe ·
+    // ★4.98 · 5 bedrooms · ? beds · 3 baths", differing 30 characters in. Both
+    // chips rendered "Home in Santa …" and the host could not tell which one
+    // they were about to compare.
+    const texts = await page.locator('.lc-p2-chip').evaluateAll(
+      (ns) => ns.map((n) => n.innerText.replace(/\s+/g, ' ').trim()));
+    expect(new Set(texts).size, `chips must differ: ${texts.join(' | ')}`).toBe(texts.length);
+    // And the half that tells them apart must be present, not truncated away.
+    const caps = await page.locator('.lc-p2-chip-s').allInnerTexts();
+    expect(caps).toHaveLength(3);
+    for (const c of caps) expect(c).toMatch(/sleeps \d+|\d+ beds|capacity not said/);
+  });
+
+  test('a long label cannot grow the row without bound', async ({ page }) => {
+    await stage(page);
+    // Measured at the first cut: rows came out 32, 36, 47 and 63px — labels
+    // wrapping to three lines, the expand-don't-truncate failure UX_05 names.
+    // The label is clamped to two lines, so the tallest row is bounded.
+    const hs = await page.locator('.lc-p2-row').evaluateAll(
+      (ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)));
+    expect(Math.max(...hs), `tallest row ${Math.max(...hs)}px, all: ${[...new Set(hs)].join(',')}`)
+      .toBeLessThanOrEqual(50);
+    // A value must never wrap — "yes" / "no" / a dash / a number always fit.
+    const wrapped = await page.locator('.lc-p2-v').evaluateAll(
+      (ns) => ns.filter((n) => n.getBoundingClientRect().height > 22).length);
+    expect(wrapped).toBe(0);
   });
 });

@@ -2682,14 +2682,36 @@ export function lodgingStage(event, intel) {
 //
 // Absence renders as '—', never blank and never zero (research rec #2), and a
 // disqualifying value is grey rather than red (rec #7): too small is not faulty.
-export function lodgingCompare(event, intel) {
+export function lodgingCompare(event, intel, picked) {
   const ev = event || {};
   let li = intel;
   if (!li) { try { li = lodgingIntel(ev); } catch (_e) { return null; } }
   const opts = (li && li.options) || [];
-  if (opts.length < 2) return null;            // one option is not a comparison
 
-  const cols = opts.slice(0, 3);
+  // ── ONE ENGINE, TWO WIDTHS (host picked B2, 2026-10-01) ─────────────────
+  // UX_03 rule 5 bans information-dense tables on a phone, so the wide grid
+  // is tablet+ and the phone used to get a sentence pointing at it: "a wider
+  // screen shows it as one table instead." The screen is called Weigh Them
+  // and the weighing instrument was not on the flagship viewport.
+  //
+  // Rule 7 is what decides the shape. It forbids side-by-side stat cards and
+  // explicitly permits a TWO-COLUMN mini grid — so three-up is out on a phone
+  // and pick-two is in, which suits the task anyway: comparing is pairwise.
+  //
+  // `picked` narrows the COLUMNS and changes nothing else. Every row, the
+  // three-state answers, the tier ordering and the photo heads are computed
+  // exactly as they are for the wide table, because a phone that disagreed
+  // with the tablet about what a listing says would be a second truth.
+  // An empty selection is NOT "show everything": a caller that passed its
+  // host's empty selection would get all three columns, which on a phone is
+  // the stat block rule 7 forbids. Passing a selection means one applies.
+  const only = Array.isArray(picked) ? picked.filter(Boolean) : null;
+  const pool = only
+    ? only.map((id) => opts.find((o) => o && o.id === id)).filter(Boolean)
+    : opts;
+  if (pool.length < 2) return null;            // one option is not a comparison
+
+  const cols = pool.slice(0, 3);
   const guests = li.guests || 0;
   const money = (n) => (Number.isFinite(n) && n > 0 ? `$${Math.round(n).toLocaleString()}` : null);
   const allIn = (o) => {
@@ -2837,6 +2859,14 @@ export function lodgingCompare(event, intel) {
       id: o.id,
       label: o.label,
       photo: o.photoUrl || (Array.isArray(o.photos) ? o.photos[0] : '') || '',
+      // ── WHAT TELLS THIS COLUMN APART (driven on a phone, 2026-10-02) ────
+      // Two of the three real Santa Fe listings are named "Home in Santa Fe ·
+      // ★4.98 · 5 bedrooms · ? beds · 3 baths" and differ only in a bed count
+      // 30 characters in. In a chip that has to truncate, both render "Home in
+      // Santa …" and the host cannot tell which one they are about to compare.
+      // The capacity is the discriminator the host is choosing on anyway.
+      sleeps: o.sleeps != null ? o.sleeps : null,
+      beds: o.beds != null ? o.beds : null,
     })),
     rows,
     guests,
