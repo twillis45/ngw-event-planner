@@ -96,10 +96,29 @@ const underFloor = (page) => page.evaluate(() => {
     if (r.height < 4 || r.width < 4) continue;
     const h = hit(el);
     if (h >= 0 && h < FLOOR) {
+      // ── REPORT THE MECHANISM, NOT JUST THE NUMBER ───────────────────
+      // A bare `hit` cannot tell a SHORT BOX from a CLIPPED EXPANDER, and
+      // the two need opposite fixes: one floors the element, the other
+      // unclips an ancestor. This gate failed three times on CI with a
+      // number I could not act on, because the box it came from renders
+      // differently here. The log now carries the box, the computed
+      // min-height, and the first ancestor that hides overflow — enough to
+      // diagnose from a CI log alone, on a machine that cannot reproduce it.
+      const cs = getComputedStyle(el);
+      let clipper = '';
+      for (let a = el.parentElement; a && !clipper; a = a.parentElement) {
+        const acs = getComputedStyle(a);
+        if (/hidden|auto|scroll/.test(acs.overflowY + acs.overflow)) {
+          clipper = `${a.tagName}.${String(a.className).split(' ').filter(Boolean).slice(0, 2).join('.')}`;
+        }
+      }
       out.push({
         cls: (String(el.className).slice(0, 30) || el.tagName),
         label: (el.innerText || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 24),
         hit: h,
+        box: Math.round(r.height),
+        minH: cs.minHeight,
+        clippedBy: clipper || 'none',
       });
     }
   }
