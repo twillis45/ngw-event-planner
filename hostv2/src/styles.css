@@ -4627,7 +4627,16 @@ button.pill, .pill[role="button"], a.pill{ position:relative; }
 button.pill::after, .pill[role="button"]::after, a.pill::after{
   content:''; position:absolute; left:0; right:0;
   top:50%; transform:translateY(-50%);
-  height:44px; min-width:44px;
+  /* ── THE TOKEN, NOT THE STANDARD (CI, 2026-10-02) ──────────────────────
+     --tap-min ships 46 and the floor gate reads it, but this expander stayed
+     on the bare 44 when the token landed, so an interactive pill failed by
+     two pixels before anything else touched it. The gate named it only after
+     it learned to report the box: cls "pill p-warn", box 27, minH auto.
+     Scoped to this rule deliberately. Seventeen other rules still hardcode
+     44 and some carry comments recording regressions caused by changing
+     exactly this kind of value — a sweep is its own slice, with its own
+     measurements, not a drive-by. */
+  height:var(--tap-min); min-width:var(--tap-min);
   /* pointer-events stay on the pseudo-element so the expanded area is what the
      thumb actually hits; it is transparent, so nothing about the look changes. */
 }

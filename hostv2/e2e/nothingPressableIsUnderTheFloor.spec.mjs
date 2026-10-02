@@ -94,6 +94,39 @@ const underFloor = (page) => page.evaluate(() => {
   for (const el of document.querySelectorAll('button, a[href], [role=button], summary, input:not([type=hidden]), textarea, select')) {
     const r = el.getBoundingClientRect();
     if (r.height < 4 || r.width < 4) continue;
+
+    // ── A CONTROL NOBODY CAN TAP HAS NO TAP TARGET TO JUDGE ──────────────
+    // This gate failed on every Linux shard for weeks on `pill p-warn`, hit
+    // 41, and passed on macOS — and the reason neither result meant anything
+    // is that the pills live in a CLOSED slide panel. Measured, after the same
+    // scroll: .slidepanel and .slidepanel-inner are both height 0 with
+    // overflow hidden, the pill sits 625px outside that box, and an [inert]
+    // ancestor already takes it out of the interaction tree.
+    //
+    // So nothing was wrong with the pill. Whether this gate FAILED came down
+    // to whether some unrelated element happened to cover the coordinate the
+    // walk started from: on macOS the hero's bento tile covered it, hit
+    // returned -1, and the control was skipped by luck. On Linux it did not,
+    // the walk ran, and it reported a floor violation on a button no user can
+    // reach. Both machines were measuring the same non-problem.
+    //
+    // Two exclusions, both meaning "the user cannot press this":
+    //   inert        the platform has already removed it from interaction
+    //   fully clipped  it lies entirely outside a clipping ancestor's box
+    // Neither hides a real fault: open the panel and the control is judged
+    // like any other, which is what the cockpit test below does on purpose.
+    if (el.closest('[inert]')) continue;
+    let unreachable = false;
+    for (let a = el.parentElement; a && !unreachable; a = a.parentElement) {
+      const acs = getComputedStyle(a);
+      if (!/hidden|clip|auto|scroll/.test(acs.overflow + acs.overflowY)) continue;
+      const ar = a.getBoundingClientRect();
+      if (r.top >= ar.bottom || r.bottom <= ar.top || r.left >= ar.right || r.right <= ar.left) {
+        unreachable = true;
+      }
+    }
+    if (unreachable) continue;
+
     const h = hit(el);
     if (h >= 0 && h < FLOOR) {
       // ── REPORT THE MECHANISM, NOT JUST THE NUMBER ───────────────────
