@@ -170,3 +170,61 @@ test('the reads overlap, but only a couple at a time', async ({ page }) => {
   // fetches from one datacenter IP that Airbnb already blocks a share of.
   expect(peak, `peak concurrent reads was ${peak}`).toBeLessThanOrEqual(3);
 });
+
+// ── ANY TWO OF TWENTY, NOT TWO OF THREE ───────────────────────────────────
+// Found by driving prod with a real search: 21 places on the shortlist and the
+// phone comparison offered exactly 3 chips, because it read cmp.columns and
+// lodgingCompare slices to three columns. The host could not weigh the 4th
+// against the 9th. Invisible while a shortlist was three places; one search
+// now adds twenty.
+test('every place on the shortlist can be compared, not just the top three',
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route('**/api/lodging/results**', (r) => r.fulfill({ json: { ok: true, links: LINKS } }));
+    await page.route('**/api/lodging/unfurl**', (r) => {
+      const id = (new URL(r.request().url()).searchParams.get('url') || '').match(/rooms\/(\d+)/);
+      const n = id ? Number(id[1].slice(-2)) : 0;
+      return r.fulfill({ json: { ok: true, title: `Casa ${n} — read on commit`, price: 2000 + n,
+        image: '', facts: { beds: 6 + (n % 7), bedrooms: 3 }, sleeps: 8 + (n % 9),
+        rating: 4.8, ratingCount: 40, amenities: ['Kitchen', n % 2 ? 'Hot tub' : 'Pool'] } });
+    });
+    await page.goto(DEMO); await settled(page);
+    await page.getByRole('button', { name: /Load the Santa Fe example/i }).click();
+    await page.locator('textarea').fill(SEARCH);
+    await page.getByRole('button', { name: /Read what I pasted/i }).click();
+    const pull = page.getByRole('button', { name: /Pull the places in/i });
+    await expect(pull).toBeVisible({ timeout: 20_000 });
+    await pull.click();
+    const add = page.getByRole('button', { name: /Add 20 to the shortlist/i });
+    await expect(add).toBeVisible({ timeout: 90_000 });
+    await add.click();
+
+    const chips = page.locator('.lc-p2-chip');
+    await expect(chips).toHaveCount(20, { timeout: 30_000 });
+    await expect(page.locator('.lc-p2-chip.is-on')).toHaveCount(2);
+
+    // The lane really scrolls rather than crushing twenty chips into one row.
+    const lane = page.locator('.lc-p2-pick');
+    const geo = await lane.evaluate((n) => ({
+      overflows: n.scrollWidth > n.clientWidth + 2,
+      snap: getComputedStyle(n).scrollSnapType,
+      chipW: Math.round(n.firstElementChild.getBoundingClientRect().width),
+    }));
+    expect(geo.overflows, 'the chip row must scroll, not squash').toBe(true);
+    expect(geo.snap).toMatch(/x mandatory/);
+    expect(geo.chipW, `chips must stay legible: ${geo.chipW}px`).toBeGreaterThan(100);
+
+    // THE ACTUAL CLAIM: a place outside the top three can be compared. Pick the
+    // tenth and confirm it becomes one of the two columns.
+    const tenth = (await chips.nth(9).innerText()).split('\n')[0].trim();
+    await chips.nth(9).click();
+    await expect(chips.nth(9)).toHaveAttribute('aria-pressed', 'true');
+    const cols = await page.locator('.lc-p2-name').allInnerTexts();
+    expect(cols).toHaveLength(2);
+    expect(cols.some((c) => c.trim() === tenth), `${tenth} must be a column; got ${cols.join(' | ')}`).toBe(true);
+
+    // And still two, never three, at 390px.
+    await expect(page.locator('.lc-p2-col')).toHaveCount(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth
+      > document.documentElement.clientWidth)).toBe(false);
+  });

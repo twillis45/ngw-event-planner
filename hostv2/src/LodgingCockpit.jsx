@@ -3004,7 +3004,31 @@ const stayDeadline = (event) => {
  * one engine.
  */
 function PickTwo({ cmp, event, intel }) {
-  const all = (cmp && cmp.columns) || [];
+  // ── ANY TWO, NOT TWO OF THE TOP THREE (host, 2026-10-02) ───────────────
+  // The chips used to come from cmp.columns, and lodgingCompare slices to
+  // three columns — so with 21 places on the shortlist the host was offered
+  // exactly 3 and could not weigh the 4th against the 9th. That cap was
+  // invisible while a shortlist was three places; one search now adds twenty.
+  //
+  // TWO AT A TIME STAYS. UX_03 rule 7 permits a two-column mini grid and
+  // forbids side-by-side stat cards, and the arithmetic agrees: at 390px the
+  // row has ~334px after padding and gaps, so two value columns get 95px and
+  // three get 74px — and the sleeps row can say "9 beds for 10 — someone's on
+  // a sofa", which wraps to six lines in 74px. Three columns would break the
+  // one row this table exists for. What was wrong was the CHOICE, not the two.
+  //
+  // 'gone' only survives on the RAW event: normalizeLodgingOption collapses
+  // status to chosen|option, so intel.options cannot tell a lost place from a
+  // live one. Read the raw list for that fact and keep intel's ranked order.
+  const liveIds = new Set((((event && event.lodgingOptions) || [])
+    .filter((o) => o && o.status !== 'gone')).map((o) => o.id));
+  const all = (((intel && intel.options) || []).filter((o) => liveIds.has(o.id)))
+    .map((o) => ({
+      id: o.id,
+      label: o.label,
+      sleeps: o.sleeps != null ? o.sleeps : null,
+      beds: o.beds != null ? o.beds : null,
+    }));
   // Default to the top two, which are already best-fit-first — the host opens
   // on the comparison the ranking says matters, not on an empty chooser.
   const [pick, setPick] = useState(() => all.slice(0, 2).map((c) => c.id));
@@ -3820,8 +3844,15 @@ const CSS = `
    Two columns, which is the width UX_03 rule 7 permits for a mini grid and
    the reason this is pick-two rather than the three-up table. Same rows and
    same three states as the wide grid, because it is the same engine. */
-.lc-p2-pick{display:flex;gap:8px;margin:0 0 12px;}
-.lc-p2-chip{flex:1;min-width:0;min-height:var(--tap-min);padding:6px 8px;text-align:left;
+/* A LANE, BECAUSE THERE CAN BE TWENTY-ONE OF THESE. Three chips shared a row
+   happily; twenty-one at flex:1 would be 16px wide each. UX_03 rule 6 allows
+   horizontal scroll for an explicitly designed lane with scroll-snap, which is
+   what this is — and the order is best-fit-first, so the ones worth comparing
+   are the ones already in view. */
+.lc-p2-pick{display:flex;gap:8px;margin:0 0 12px;overflow-x:auto;scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;}
+.lc-p2-pick::-webkit-scrollbar{display:none;}
+.lc-p2-chip{flex:0 0 132px;scroll-snap-align:start;min-width:0;min-height:var(--tap-min);padding:6px 8px;text-align:left;
   border-radius:var(--r-sm);border:1px solid var(--line);background:var(--card);color:var(--muted);
   font:500 11.5px/1.3 Inter,sans-serif;cursor:pointer;overflow:hidden;
   display:flex;flex-direction:column;gap:1px;justify-content:center;}
