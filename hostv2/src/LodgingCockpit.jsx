@@ -3017,12 +3017,11 @@ function PickTwo({ cmp, event, intel }) {
   // a sofa", which wraps to six lines in 74px. Three columns would break the
   // one row this table exists for. What was wrong was the CHOICE, not the two.
   //
-  // 'gone' only survives on the RAW event: normalizeLodgingOption collapses
-  // status to chosen|option, so intel.options cannot tell a lost place from a
-  // live one. Read the raw list for that fact and keep intel's ranked order.
-  const liveIds = new Set((((event && event.lodgingOptions) || [])
-    .filter((o) => o && o.status !== 'gone')).map((o) => o.id));
-  const all = (((intel && intel.options) || []).filter((o) => liveIds.has(o.id)))
+  // Reads intel directly. This used to detour through event.lodgingOptions
+  // because the normalizer flattened 'gone' to 'option' and intel genuinely
+  // could not tell a lost place from a live one; that whitelist is fixed, so
+  // there is one definition of the fact again instead of two.
+  const all = (((intel && intel.options) || []).filter((o) => o && o.status !== 'gone'))
     .map((o) => ({
       id: o.id,
       label: o.label,

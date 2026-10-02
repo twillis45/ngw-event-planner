@@ -265,7 +265,22 @@ export function normalizeLodgingOption(raw, i = 0) {
     amenitiesAbsent: Array.isArray(o.amenitiesAbsent)
       ? o.amenitiesAbsent.map((a) => String(a || '').trim()).filter(Boolean).slice(0, 40)
       : [],
-    status: o.status === 'chosen' ? 'chosen' : 'option',
+    // ── 'gone' IS A STATE, NOT A TYPO (2026-10-02) ─────────────────────────
+    // This read `o.status === 'chosen' ? 'chosen' : 'option'` — a WHITELIST,
+    // and 'gone' was not on it. Everything downstream reads intel.options, so
+    // by the time a surface asked "is this one gone?" the answer was always
+    // no, and three consumers that depend on that answer were dead:
+    //   · Choices filtered gone out of the deck     — a no-op, so a house
+    //     somebody else booked stayed in the chooser as a live candidate
+    //   · NO LONGER ON THE TABLE renders only gone rows — the panel could
+    //     never appear, so pressing "It's gone" looked like it did nothing
+    //   · the is-gone styling never applied
+    // markGone wrote the status faithfully; the normalizer erased it one step
+    // later. Same class as the topAction whitelist, found the same way.
+    //
+    // Still a whitelist, deliberately — an unrecognised status is an option,
+    // not a silent fourth state nothing knows how to render.
+    status: o.status === 'chosen' ? 'chosen' : (o.status === 'gone' ? 'gone' : 'option'),
   };
 }
 
@@ -2706,9 +2721,15 @@ export function lodgingCompare(event, intel, picked) {
   // host's empty selection would get all three columns, which on a phone is
   // the stat block rule 7 forbids. Passing a selection means one applies.
   const only = Array.isArray(picked) ? picked.filter(Boolean) : null;
+  // A HOUSE SOMEBODY ELSE BOOKED IS NOT A CANDIDATE. Until 'gone' survived
+  // normalization this filter had nothing to catch; now that it does, a lost
+  // place must not hold one of the three columns — or, on a phone, one of the
+  // two. It stays visible under NO LONGER ON THE TABLE, which is where the
+  // host's work on it is preserved; it is simply not something to weigh.
+  const live = opts.filter((o) => o && o.status !== 'gone');
   const pool = only
-    ? only.map((id) => opts.find((o) => o && o.id === id)).filter(Boolean)
-    : opts;
+    ? only.map((id) => live.find((o) => o && o.id === id)).filter(Boolean)
+    : live;
   if (pool.length < 2) return null;            // one option is not a comparison
 
   const cols = pool.slice(0, 3);
