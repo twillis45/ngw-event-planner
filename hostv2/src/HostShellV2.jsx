@@ -99,7 +99,8 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import MustHaves from './MustHaves';
+import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -14289,97 +14290,15 @@ export default function HostShellV2() {
                         {/* WHAT IT HAS TO HAVE (host directive 2026-07-28). The host's own
                             requirements — the only criterion they state outright rather than
                             us inferring it. The verified filters ride the platform search;
-                            all of them steer the ranking. */}
-                        {(() => {
-                          // DEFAULTED FROM THE EVENT (host directive 2026-07-28). Rather than
-                          // ten empty chips, the engine reads the event — its type, its roster,
-                          // its span — and proposes what this gathering actually needs, each
-                          // with the reason and the source behind it. The instant the host
-                          // touches the list, theirs wins outright.
-                          const basis = mustHaveBasis(event);
-                          const on = mustHavesFor(event).map((m) => m.id);
-                          const suggestions = basis === 'suggested' ? suggestedMustHaves(event) : [];
-                          const toggle = (id) => patchEvent(
-                            { lodgingMustHaves: on.includes(id) ? on.filter((x) => x !== id) : [...on, id] }, null);
-                          const chosen = LODGING_MUST_HAVES.filter((m) => on.includes(m.id));
-                          const rest = LODGING_MUST_HAVES.filter((m) => !on.includes(m.id));
-                          // The engine's reason for each item, read whether or not the host
-                          // has since edited the list — a requirement doesn't stop having a
-                          // reason because the host added one of their own next to it.
-                          const whyFor = {};
-                          try { for (const s of suggestedMustHaves(event)) whyFor[s.id] = s.why; } catch (_e) { /* no reasons, rows still render */ }
-                          // Naming two of seven ("Table for everyone, Washer & dryer +5") is
-                          // an arbitrary pair that reads like the list only half-loaded. The
-                          // count is the honest one-line answer.
-                          const summary = chosen.length
-                            ? `${chosen.length} thing${chosen.length === 1 ? '' : 's'}`
-                            : 'anything';
-                          return (
-                            <details className="lodge-req" style={{ margin: '2px 0 10px' }}>
-                              {/* A WALL OF TEN CHIPS IS NOT A CONTROL (host 2026-07-28: "we
-                                  need a modern UI/UX option for the option/amenities listing.
-                                  this is getting messy"). Ten always-open chips took four rows
-                                  and pushed the actual shortlist off the screen. Collapsed to
-                                  one summary row that states the answer — the app's own
-                                  disclosure pattern (Figma 395:60) — and opens when the host
-                                  wants to change it. Same information, one line at rest. */}
-                              <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
-                                alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                                <span className="of">Has to have{basis === 'suggested' ? ' · from your event' : ''}</span>
-                                <span className="v-meta" style={{ color: chosen.length ? 'var(--ink-soft)' : 'var(--muted)' }}>
-                                  {summary} ▾
-                                </span>
-                              </summary>
-                              {/* ONE LIST, TWO DENSITIES (host 2026-07-28: "clean up the pills.
-                                  come up with something else here").
-                                  What was here said everything TWICE: seven reasons as prose
-                                  paragraphs, then all fourteen requirements again as identical
-                                  chips — and because the on-state was only a background tint on
-                                  a pill in a fourteen-pill blob, you could not see at a glance
-                                  which seven the engine had actually chosen.
-                                  Now a requirement appears exactly ONCE, and where it appears
-                                  IS its state. Chosen ones are rows carrying their own reason
-                                  (tap to drop). The rest sit below as small "+" chips (tap to
-                                  add). The reason lives with the requirement instead of in a
-                                  separate wall of prose you have to cross-reference. */}
-                              <ul className="req-list">
-                                {chosen.map((m) => (
-                                  <li key={m.id}>
-                                    <button type="button" className="req-row" aria-pressed="true"
-                                      onClick={() => toggle(m.id)}
-                                      aria-label={`${m.label} — asked for. Tap to drop it.`}>
-                                      <span className="req-tick" aria-hidden="true">✓</span>
-                                      <span className="req-body">
-                                        <span className="req-label">{m.label}</span>
-                                        {whyFor[m.id] && <span className="req-why">{whyFor[m.id]}</span>}
-                                      </span>
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                              {chosen.length === 0 && (
-                                <p className="grounding" style={{ margin: '8px 0 0' }}>
-                                  Nothing required — every place will pass. Add what matters below.
-                                </p>
-                              )}
-                              {rest.length > 0 && (
-                                <>
-                                  <div className="of" style={{ margin: '12px 0 6px' }}>Add if you want it</div>
-                                  <div className="chips">
-                                    {rest.map((m) => (
-                                      <button key={m.id} type="button" className="chip" aria-pressed="false"
-                                        onClick={() => toggle(m.id)}
-                                        aria-label={`Add ${m.label} to what the house needs`}>+ {m.label}</button>
-                                    ))}
-                                  </div>
-                                </>
-                              )}
-                              <p className="grounding" style={{ margin: '10px 0 0', color: 'var(--muted)' }}>
-                                Yours to change. Sources under You &amp; settings → Grounding.
-                              </p>
-                            </details>
-                          );
-                        })()}
+                            all of them steer the ranking.
+                            EXTRACTED 2026-10-02. This was ~90 lines inline here, and the
+                            lodging cockpit — the screen that actually carries the search
+                            doors — had no must-have control at all. Rather than copy it
+                            there and keep two, it moved to MustHaves.jsx and both render
+                            the same component; the req-* classes already live in
+                            styles.css, which main.jsx loads for both trees. */}
+                        <MustHaves event={event}
+                          onChange={(ids) => patchEvent({ lodgingMustHaves: ids }, null)} />
                         {/* CALM PASS (host 2026-08-03). The search doors, the storage note, the paste box and the bookmarklet are HOW YOU GET options -- machinery, not the decision. Once the host has options they are done with this and it should stop competing with the comparison above; with none, it is the whole job, so it opens itself. Native <details>, the app's own disclosure pattern (Figma 395:60) -- no new component. */}
                         <details open={li.options.length === 0} style={{ marginBottom: 'var(--sp-4)' }}>
                           <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',

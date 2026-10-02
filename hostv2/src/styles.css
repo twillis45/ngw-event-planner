@@ -3870,6 +3870,17 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .req-tick{ flex:0 0 auto; color:var(--ok); font-size:12px; line-height:1.5; font-weight:700 }
 .req-body{ display:flex; flex-direction:column; gap:2px; min-width:0 }
 .req-label{ font-size:var(--t-row); font-weight:650; color:var(--ink-soft); transition:color var(--ms-press) var(--ease-out) }
+/* WHICH MUSTS ACTUALLY NARROW THE SEARCH (2026-10-02). hottub, pool and pets
+   carry real query parameters into the Airbnb and Vrbo URLs; everything else
+   only sorts what comes back. A host should be able to see which is which
+   before pressing a door. Stated as WORDS, never colour alone (UX_02), and
+   quieter than the label it qualifies. */
+.req-filters{font-weight:400;color:var(--muted);font-size:var(--t-caption);}
+/* The same fact as a sentence, rendered OUTSIDE the fold so a shut <details>
+   cannot hide the one line a host needs before pressing a door. A real rule,
+   not a bare test hook: it carries its own spacing and sits a step quieter
+   than the control above it. */
+.lc-filters-note{margin:8px 0 0;color:var(--ink-soft);}
 .req-why{ font-size:var(--t-row-sub); line-height:1.45; color:var(--muted) }
 /* Dropping one is a quiet, reversible act — the row dims rather than shouting. */
 .req-row:active{ opacity:.6 }

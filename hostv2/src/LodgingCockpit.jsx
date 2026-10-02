@@ -39,6 +39,7 @@ import {
   lookupTargets, needsLookup,
 } from '@app/lib/lodgingIntel';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
+import MustHaves from './MustHaves';
 import { normalizeCvbContact } from '@app/lib/cvbIntel';
 import { draftLodgingNote } from '@app/lib/doItForMe';
 import { saveCustomEvents } from '@app/lib/customEventStore';
@@ -106,7 +107,9 @@ export default function LodgingCockpit() {
 
   // ONE write path. Everything on this surface goes through it, so the cockpit
   // and the live sheet can never hold different truths about the same event.
-  const patch = useCallback((changes) => {
+  // `opts.keepPeek` — see the note on setViewing below for the one kind of
+  // write that must NOT advance the host.
+  const patch = useCallback((changes, opts) => {
     try {
       const all = loadCustomEvents() || [];
       const next = all.map((e) => (e && e.id === eventId ? { ...e, ...changes } : e));
@@ -119,10 +122,22 @@ export default function LodgingCockpit() {
       // EXCEPT while they are peeking at another step, where `viewing` pinned
       // them to the screen they had just finished with. Any real write clears
       // the peek, so completing an act always hands them wherever they now are.
-      setViewing(null);
-      // The link has been answered. Same argument as the peek above: once the
-      // host acts, the thing that sent them here stops steering.
-      setFocus(null);
+      //
+      // ── EXCEPT SETTING CRITERIA, WHICH IS NOT FINISHING ANYTHING ────────
+      // Driven 2026-10-02, right after the must-have control was hoisted onto
+      // Go look: toggling one threw the host to Weigh them mid-adjustment,
+      // because a toggle is a real write and this cleared the peek. The rule
+      // above is about COMPLETING AN ACT — adding "Pool" to what the house
+      // needs is the opposite, it is the host getting ready to search, and
+      // the doors they are about to press are three inches below the control.
+      // So the one write that adjusts criteria keeps the peek, and every
+      // other write still advances exactly as it did.
+      if (!(opts && opts.keepPeek)) {
+        setViewing(null);
+        // The link has been answered. Same argument as the peek above: once
+        // the host acts, the thing that sent them here stops steering.
+        setFocus(null);
+      }
     } catch { /* storage full or blocked — the surface simply does not change */ }
   }, [eventId]);
 
@@ -1359,6 +1374,20 @@ function Looking({ event, patch }) {
 
   return (
     <>
+      {/* ── CONFIRM WHAT THE HOUSE NEEDS BEFORE OPENING A DOOR ────────────
+          Host, 2026-10-02: "shouldn't the host be able to confirm or add
+          musts before search?" They could not — this control lived only in
+          HostShellV2 and this file had no reference to must-haves at all,
+          while THIS is the screen with the doors on it.
+          Above them, not below, because three of these are real search
+          parameters (hottub, pool, pets) that are already baked into the URLs
+          those buttons open. A host was having their search narrowed by a
+          list they had never been shown. Same component the shell renders —
+          extracted, not copied. */}
+      <Panel label="WHAT THE HOUSE NEEDS">
+        <MustHaves event={event} style={{ margin: 0 }}
+          onChange={(ids) => patch({ lodgingMustHaves: ids }, { keepPeek: true })} />
+      </Panel>
       <Panel label="THREE DOORS">
         <div className="lc-ctas lc-doors">
           {/* THREE ON ONE LINE. "Search Airbnb / Open Vrbo / Search hotels" cannot

@@ -41,7 +41,15 @@ import fs from 'fs';
 import path from 'path';
 
 const HOSTV2 = path.join(__dirname, '..', '..', 'hostv2', 'src');
-const JSX = path.join(HOSTV2, 'HostShellV2.jsx');
+// ── EVERY hostv2 FILE THAT WRITES CLASS NAMES, NOT JUST THE BIG ONE ───────
+// This read HostShellV2.jsx alone. When ~90 lines of the must-have control
+// were extracted to MustHaves.jsx on 2026-10-02, two things happened at once:
+// `lodge-req` stopped being seen (so it reported as "fixed but still listed",
+// which is what caught this), and the new file's own class names — including
+// one with no CSS rule at all — became invisible to the gate entirely.
+// A sweep scoped to one file silently stops covering anything that moves out
+// of it, and extraction is exactly the refactor that moves things out.
+const JSX_FILES = ['HostShellV2.jsx', 'MustHaves.jsx'].map((f) => path.join(HOSTV2, f));
 const CSS = path.join(HOSTV2, 'styles.css');
 
 // ── Classes that are styled somewhere this test cannot see, or are not style
@@ -141,7 +149,7 @@ function isMentionedAnywhere(cls, selectors) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('className source of truth — hostv2', () => {
-  const jsx = fs.readFileSync(JSX, 'utf8');
+  const jsx = JSX_FILES.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
   const css = fs.readFileSync(CSS, 'utf8');
   const written = [...classNamesWrittenBy(jsx)].filter((c) => !NOT_STYLE_HOOKS.has(c));
   const selectors = selectorsIn(css);
