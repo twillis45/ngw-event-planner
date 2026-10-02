@@ -3881,6 +3881,27 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    not a bare test hook: it carries its own spacing and sits a step quieter
    than the control above it. */
 .lc-filters-note{margin:8px 0 0;color:var(--ink-soft);}
+/* ── THE FLOOR, FOR THE CONTROL THAT MOVED (CI matrix46, 2026-10-02) ──────
+   Hoisting this onto the cockpit made two latent violations reachable. In
+   the shell it sits inside a fold that is collapsed once the host has
+   options, so the floor gate's unreachable-exclusion skipped it; on the
+   cockpit it is always on screen. The faults were always there.
+
+   SUMMARY: box 20px, hit 35, min-height 0 — a <summary> has no ::after
+   expander, so it has to carry a real floor.
+
+   CHIPS: box 32px, hit 39 — and 39 is exactly the row pitch (32 + the 7px
+   --gap-chip). The shared .chip::after already asks for var(--tap-min), but
+   wrapped rows sit closer together than the expander is tall, so each
+   neighbour takes the contested strip at the midpoint and every chip is
+   capped at its own row pitch. Widening the ROW gap is the fix that keeps
+   the chip the size it is meant to be — raising the expander cannot help
+   when the thing eating it is the next row. 16 is on the ratified ladder;
+   14 would be the exact minimum and is not. Scoped to .lodge-req, because
+   .chips is used all over the shell and a global row-gap change is a
+   different decision with its own measurements. */
+.lodge-req summary{min-height:var(--tap-min);}
+.lodge-req .chips{row-gap:16px;}
 .req-why{ font-size:var(--t-row-sub); line-height:1.45; color:var(--muted) }
 /* Dropping one is a quiet, reversible act — the row dims rather than shouting. */
 .req-row:active{ opacity:.6 }

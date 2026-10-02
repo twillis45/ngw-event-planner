@@ -49,8 +49,10 @@ export default function MustHaves({ event, onChange, style }) {
   return (
     <>
     <details className="lodge-req" style={style || { margin: '2px 0 10px' }}>
+      {/* centred, not baseline: the row now carries a real tap floor, and
+          baseline would strand the text at the top of it. */}
       <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
-        alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span className="of">Has to have{basis === 'suggested' ? ' · from your event' : ''}</span>
         <span className="v-meta" style={{ color: chosen.length ? 'var(--ink-soft)' : 'var(--muted)' }}>
           {summary} ▾

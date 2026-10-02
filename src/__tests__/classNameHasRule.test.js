@@ -81,7 +81,6 @@ const KNOWN_PHANTOMS = new Set([
   'draft-body',    // 1 use
   'eb-text',       // 1 use
   'latercard',     // 1 use
-  'lodge-req',     // 1 use
   'vc-statuspick', // 1 use
 ]);
 
