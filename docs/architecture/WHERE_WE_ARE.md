@@ -94,10 +94,20 @@ my pre-measurement arithmetic had predicted 6 and 8.
 
 ### Outstanding
 
-- `cra-build` still red — pre-existing CRA lint, untouched all day
-- seventeen CSS rules still hardcode `44px` instead of `var(--tap-min)`
-- `"neighbours'"` in a must-have reason is British spelling against the global
-  US-English rule; noticed and left as out of scope, worth a sweep
+- `cra-build` red since 2026-09-28 on ONE new warning, and "pre-existing CRA
+  lint" was the wrong description (diagnosed 2026-10-03): `lodgingIntel.js:33`
+  imports `isAllowedMedia` and never calls it. The gate fingerprints
+  rule｜file｜message; the 2026-07-31 baseline holds a DIFFERENT lodgingIntel
+  warning (unused `nights`, since fixed), so this one reads as new. 242
+  warnings against a 245 baseline — fewer, correctly still refused. One
+  identifier to delete, wants a build + matrix
+- 16 CSS declaration lines hardcode `44px` instead of `var(--tap-min)`, which
+  is **46px** — so each one sits 2px under the project's own floor while
+  reading as compliant (recounted 2026-10-03; "seventeen" did not hold)
+- British spellings are 41 hits in product strings, not one word (swept
+  2026-10-03). `licence` alone is 18, in host-facing gala and elopement task
+  text. Three hits are correct and must survive a sweep: the parser accepts
+  'neighbours' as host input, and two are proper nouns
 - the cold-start probe + retry covers `/results`; the first per-listing unfurl
   after a cold wake is still exposed
 - `COLD_PROBE_MS = 5000` is asserted by nothing; a revert to 12s would surface

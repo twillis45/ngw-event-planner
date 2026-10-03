@@ -445,9 +445,9 @@ just its verdict.
 
 | | |
 |---|---|
-| `cra-build` | still red, pre-existing CRA lint, untouched all day |
-| Hardcoded 44px | seventeen rules still carry it instead of `var(--tap-min)` |
-| `"neighbours'"` | British spelling in a must-have reason, against the global US-English rule. Noticed, left alone as out of scope — worth a sweep for others |
+| `cra-build` | red since 2026-09-28 on exactly ONE new warning, and my "pre-existing CRA lint, untouched" description was wrong — DIAGNOSED 2026-10-03. `src/lib/lodgingIntel.js:33` imports `isAllowedMedia` and never calls it (only two comments mention it). The gate fingerprints `rule｜file｜message`, the baseline was last regenerated 2026-07-31, and its one lodgingIntel entry is a DIFFERENT warning (unused `nights`, since fixed — `nights` is live at :471/:522). So the file's warning changed identity and reads as new. Build total 242 vs baseline 245: strictly fewer warnings, correctly still refused. Fix is deleting one identifier from the import; not done, because it touches a shipped engine file and wants a build + matrix |
+| Hardcoded 44px | RECOUNTED 2026-10-03: **16 declaration lines** in `hostv2/src/styles.css` (not seventeen — the earlier number did not survive a recount; 20 lines match the pattern and 4 of those are comment prose). `--tap-min` is **46px**, so each literal sits 2px UNDER the project's own floor while reading as compliant |
+| British spellings | SWEPT 2026-10-03, and it is not one word. **41 hits inside product string literals** (comments and tests excluded), ~38 genuine. `licence` is **18 of them** — "Alcohol licence", "Collect the licence", host-facing task text in `fundraiserGala` and `elopement`. Then `colour` 7, `centre` 3, `judgement` 3, `neighbours` 3, `labelled` 2, `grey` 2, `behaviour`/`favourite`/`jewellery` 1 each. Three are CORRECT and must not be swept: `smartParseEvent.js:110` accepts 'neighbours' as British host INPUT, "Canadian Centre for Child Protection" is a proper noun, and the `usCitiesFull` place names (Rockville Centre NY, Sauk Centre MN, Grey Eagle MN) |
 | Cold start | the probe + retry hides it on `/results`. The first per-listing unfurl after a cold wake is still exposed, and was not changed |
 | Probe duration | `COLD_PROBE_MS = 5000` is asserted by nothing. A revert to 12s would show up only as a slow matrix |
 
