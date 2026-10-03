@@ -1,6 +1,20 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-09-29 (fortieth entry:
+**Measured reality, not intentions.** Updated 2026-10-02 (forty-first entry:
+the lodging intake stopped asking the host to choose between twenty rows it
+had told them nothing about. A results link now reads all twenty — two at a
+time, jittered, stopping on two consecutive refusals — and the comparison
+itemizes what each place HAS in three honest states. Also two whitelists that
+silently ate a field: 'gone' never survived the normalizer, so pressing
+"It's gone" did almost nothing visible, and a className gate swept one file so
+it stopped covering code the moment that code was extracted. Worth carrying
+forward: THREE of the last four commits exist because DRIVING the app found
+what a green build hid — a warning inside a closed fold, a toggle that threw
+the host to another tab, a gate gone blind — and 8,155 jest tests saw none of
+them. Also: I rebuilt dist under a running matrix and invalidated 35 minutes
+of it. See the forty-first entry.)
+
+Before that, on 2026-09-29 (fortieth entry:
 the 2026-09-25 per-pound guard closed ONE of three callers into the same table.
 The per-item store chip still turned $72 of appetizer into $1,080, and the
 sourcing card — the only screen in the product that compares tiers — told every
@@ -245,22 +259,158 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `21442817` |
+| Branch / HEAD | `main` @ `d285823a` — 12 commits pushed 2026-10-02, tree clean, Deploy Pages green, prod serving them |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **8,031 passed**, 1 skipped, **0 failed**, **575 suites** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **8,155 passed**, 1 skipped, **0 failed**, **589 suites** (measured 2026-10-02 after the forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **48 passed / 4 files** (2026-09-29 — and see the fortieth entry: 9 of these fail on Node 22 until `Object.defineProperty` replaced `global.navigator = …`; CI pins Node 20, where all 48 always passed). Before that 43 / 4 (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
-| e2e (Playwright) | **MEASURED 2026-09-24 on Checks run 769 (`6408910`): `e2e MERGED TOTAL — 1809 passed · 214 skipped · 0 failed · 0 flaky`.** The suite grew from 1,009 to 1,809 in six days, which is what spent the timeout margin: on run 767 two shards ran 26m18s and 29m against `timeout-minutes: 30`, and the second was KILLED BY THE CLOCK with no test having failed — the merge job turned that into a red run. **Now THREE shards**, measured wall time on the test step: shard 1 **18m04s**, shard 2 **16m59s**, shard 3 **20m37s**; worst job including setup ~21m47s, so ~8 min of margin (27%). My estimate before the change was 17-18 min and shard 3 came in above it — recorded. The denominator now derives from the matrix (`strategy.job-total`), and 1,809 > 1,000 is the proof that derivation did not silently drop a shard's worth of tests. Historic: full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008. **SHARDED 2026-09-18 (`dffc86e` + `f1871a9`)** — two runners, `--shard=k/2`, merged with `merge-reports`. **CONFIRMED on run 659 (`f1871a9`), which prints the combined total itself:** `e2e MERGED TOTAL — 1009 passed · 207 skipped · 0 failed · 0 flaky`. Shard 1 **12m33s**, shard 2 **14m50s**, merge 26s, whole workflow **16m37s** against 29m20s unsharded (run 658, the first sharded run, measured 12m22s / 14m26s / 16m20s). The e2e step went **27.0 -> ~14.5 min, a 46% cut**. `workers: 2` is UNCHANGED — each shard runs two workers on its own machine, so the 2026-08-06 flake fix is untouched |
+| e2e (Playwright) | **MEASURED 2026-10-02 on Checks run 37036935048 (`d285823a`): `e2e MERGED TOTAL — 2862 passed · 229 skipped · 0 failed · 0 flaky`.** Local full matrix the same day: 2,860 passed / 229 skipped / **1 failed / 1 flaky** in 35.1m — the failure was `theShellOpensWithoutSignal` (service-worker kill switch), which re-ran **15 times in isolation and passed 15 times**, and CI's three shards then ran it green. A load race under four local workers, not a regression; recorded because "one red in the matrix" is exactly the shape that gets waved through for the wrong reason. Before that **MEASURED 2026-09-24 on Checks run 769 (`6408910`): `e2e MERGED TOTAL — 1809 passed · 214 skipped · 0 failed · 0 flaky`.** The suite grew from 1,009 to 1,809 in six days, which is what spent the timeout margin: on run 767 two shards ran 26m18s and 29m against `timeout-minutes: 30`, and the second was KILLED BY THE CLOCK with no test having failed — the merge job turned that into a red run. **Now THREE shards**, measured wall time on the test step: shard 1 **18m04s**, shard 2 **16m59s**, shard 3 **20m37s**; worst job including setup ~21m47s, so ~8 min of margin (27%). My estimate before the change was 17-18 min and shard 3 came in above it — recorded. The denominator now derives from the matrix (`strategy.job-total`), and 1,809 > 1,000 is the proof that derivation did not silently drop a shard's worth of tests. Historic: full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008. **SHARDED 2026-09-18 (`dffc86e` + `f1871a9`)** — two runners, `--shard=k/2`, merged with `merge-reports`. **CONFIRMED on run 659 (`f1871a9`), which prints the combined total itself:** `e2e MERGED TOTAL — 1009 passed · 207 skipped · 0 failed · 0 flaky`. Shard 1 **12m33s**, shard 2 **14m50s**, merge 26s, whole workflow **16m37s** against 29m20s unsharded (run 658, the first sharded run, measured 12m22s / 14m26s / 16m20s). The e2e step went **27.0 -> ~14.5 min, a 46% cut**. `workers: 2` is UNCHANGED — each shard runs two workers on its own machine, so the 2026-08-06 flake fix is untouched |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-10-02 (forty-first entry) — a list with nothing to choose between, two whitelists that ate a field, and three faults only driving found
+
+**HEAD `d285823a`, 12 commits, all pushed. jest 8,155 / 589. CI e2e MERGED
+2,862 / 229 / 0 failed / 0 flaky. Deploy Pages green; prod serving it.**
+
+### The host's sentence, which framed the whole session
+
+> "if the host will choose which to add to shortlist but there are no
+> distinguishing characteristics then there really is no choice being made."
+
+Exactly right, and the two intake paths had drifted apart without anyone
+noticing. Pasting listing links read them all BEFORE staging, so the host
+unticked against real names and sizes. Accepting the search offer staged
+whatever came back and read NONE of it — twenty rows reading "Airbnb listing /
+sleeps —", and unticking was guesswork dressed as triage.
+
+### "Is 8 the limit?" No — it was a budget resting on two wrong numbers
+
+The cap came from a sequential loop priced at ~3s a read. Measured: a real
+unfurl is **1.7s mean** (min 1.2, max 2.5), and the loop did not have to be
+sequential. Cap is 20 now, reads pooled.
+
+| | measured |
+|---|---|
+| 20 real listings, prod, pool of 2 | **19.9s** (script mimicking the client) |
+| 18 listings, the REAL app, warm | **29.8s** |
+| 18 listings, the REAL app, COLD | **26.2s** — cold cost landed in the results call (7.5s vs 2.3s), not the reads |
+
+The script undersold the app by ~50% because it missed the tail, not the
+median (1.70 vs 1.68). That is why the copy names no duration: the host ruled
+"let the progress counter speak", and a counter cannot drift from the truth
+the way a hardcoded figure did.
+
+**Pool of 2, not 4,** and the arithmetic is not what decided it. This file's
+own header says Airbnb and Vrbo actively block datacenter traffic and that a
+meaningful share of reads come back 403/429. A blocked IP fails for every
+host, not just the one waiting. Two consecutive refusals stop the run.
+
+**A promise rewritten rather than quietly broken:** `lodging.py` claimed "no
+rate at which this could resemble a bot: one page, host-initiated". The
+endpoint still serves one page per call, but the client no longer makes that
+sentence true, so it now says what actually happens.
+
+### The price asymmetry, which is NOT a regression and cost a false claim
+
+Host: "dont see the prices and price per head added in prod, lost it."
+
+Measured twice against live listings: the unfurl returns **`price: None`**
+while sleeps, rating and amenities all come back. On the prod shortlist: 21
+places, **0** with any price field.
+
+| path | price | sleeps / amenities |
+|---|---|---|
+| results **link** | **never** — a listing computes price in the browser from dates and guests | yes |
+| results **page** pasted | **yes**, off the cards | only after the per-listing lookup |
+
+The prices were never on the link path to lose. What WAS broken is that MY
+copy promised "names, sizes and prices" on the path that has none. Raising the
+cap 8 -> 20 did make the paste path whole: at 8 a twenty-card paste got prices
+and no lookups; at 20 it gets both.
+
+### Two whitelists, same class as topAction
+
+**`normalizeLodgingOption` flattened `'gone'` to `'option'`.** markGone wrote
+the status faithfully and the normalizer erased it one step later, so every
+surface reading `intel.options` always got "no". FOUR consumers were dead:
+the deck's gone-filter (a no-op, so a house somebody else booked stayed in the
+chooser), NO LONGER ON THE TABLE (renders only gone rows, so it could never
+appear), the is-gone styling, and — once pick-two shipped — a lost place could
+hold a comparison column. Pressing "It's gone" did almost nothing visible.
+
+**`classNameHasRule` swept `HostShellV2.jsx` alone.** Extracting ~90 lines to
+`MustHaves.jsx` made that file invisible to the gate, including a class I had
+just written with no CSS rule. A gate scoped to one file silently stops
+covering whatever moves out of it, and extraction is precisely the refactor
+that moves things out.
+
+### The tap floor, finally diagnosed — and the mechanism confirmed to the pixel
+
+`nothingPressableIsUnderTheFloor` had been red on every Linux shard for weeks
+at `hit 41`. The diagnostics added this session named it: the pills live in a
+**closed slide panel** — height 0, overflow hidden, an `[inert]` ancestor, the
+box 625px outside the clip. No user can press it on either platform. macOS
+passed only because the hero covered the coordinate the walk starts from, so
+`hit` returned -1 and the control was skipped BY LUCK. Both machines were
+measuring the same non-problem. The gate now skips inert and fully-clipped
+controls, red-proofed against the risk that matters: squashing a real
+reachable control to 20px still fails it.
+
+Then matrix46 caught a REAL violation the must-have hoist made reachable, and
+the same diagnostics settled a mechanism I had guessed at and could not
+confirm earlier the same day: chips reported **`hit 39`, which is exactly the
+row pitch** (32px chip + 7px `--gap-chip`). The shared `.chip::after` already
+asks for `var(--tap-min)`; wrapped rows simply sit closer than the expander is
+tall, so each neighbour takes the contested strip at the midpoint. Widening
+the ROW gap is the only fix — raising the expander cannot help when the thing
+eating it is the next row.
+
+### Worth carrying forward
+
+**1. Driving found what the suites could not.** Three of the last four commits
+exist because the app was driven: a warning placed INSIDE a closed `<details>`
+(I claimed it rendered at rest without opening the page), a must-have toggle
+that threw the host from Go look to Weigh them mid-adjustment, and the gate
+gone blind. 8,155 jest and 2,860 e2e saw none of them. The suite is good at
+regressions and poor at "this renders but nobody can see it".
+
+**2. NEVER rebuild dist under a running matrix.** `vite preview` serves the
+existing dist. I rebuilt four times during matrix42 and invalidated 35 minutes
+of it; its 11 failures clustered exactly on the specs my mid-run edits touched.
+
+**3. A red-proof that stays green means the perturbation was in the wrong
+place — three times.** The e2e cap gate passed against a stale bundle until I
+rebuilt between steps. A concurrency test "failed" at 6046ms against a 6000ms
+baseline and looked like a broken pool: `peak` was >1, the pool worked, and my
+own 240ms jitter was swamping a 300ms mock. A row-height gate was unfailable
+because every amenity in its fixture was too short to wrap at any width.
+
+**4. My own copy lied twice,** and both times the gap was survivable while the
+promise was not: "about twenty seconds" (measured once, warm, nothing refused)
+and "names, sizes and prices" on a path that has no prices.
+
+**5. A fixture has to make the thing under test possible.** The "stays on Go
+look" gate passed with the fix AND without it, because its fixture seeded no
+places — so Go look WAS the derived stage and there was no peek to clear.
+
+### Open
+
+| | |
+|---|---|
+| `cra-build` | **Still red.** 32 files of lint-as-error in the frozen CRA shell, pre-existing, reproduced at `5342dbcb`, untouched by any of this. The only job that will not go green without its own slice |
+| Wide grid column cap | `lodgingCompare` still slices to 3 columns. Fixed for the phone (any two of N); a tablet host with twenty places may want four or five |
+| Hardcoded 44px | Seventeen rules still carry it instead of `var(--tap-min)`. Several have comments recording regressions caused by changing exactly that value — needs measuring, not sweeping |
+| Price completeness | Only the pasted results page carries money. Stated honestly in the UI now, but the complete record still requires the paste |
+| iOS Simulator note retired | A standing note said lookups fail in the simulator. Driven 2026-10-02: 20 real reads completed there against prod. The note was stale |
 
 ## FIXED 2026-09-29 (fortieth entry) — the unit guard held one door of three, and a seam test that is green only on Node 20
 

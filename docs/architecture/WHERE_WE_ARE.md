@@ -1,5 +1,107 @@
 # Where We Are -- live status board
 
+## 2026-10-02 — the lodging intake stops asking for a choice it gave no basis for, and three faults only driving found
+
+**HEAD `d285823a`, 12 commits, all pushed. jest 8,155 / 589 · CI e2e MERGED
+2,862 / 229 / 0 failed / 0 flaky · Deploy Pages green, prod serving it.**
+
+### Shipped
+
+**A search now reads what it stages.** The host's sentence framed it: "if the
+host will choose which to add to shortlist but there are no distinguishing
+characteristics then there really is no choice being made." Pasting listing
+links already read them before staging; accepting the search offer staged
+twenty rows reading "Airbnb listing / sleeps —" and read none of them. The cap
+moved 8 -> 20 and the reads are pooled two at a time with jitter, stopping on
+two consecutive refusals. Measured on prod: 18 listings in 26.2s cold, 29.8s
+warm, zero refusals, per-read median 1.6-1.7s.
+
+**The comparison became a comparison.** Amenity rows are itemized with three
+honest states — the listing said yes, the listing said NO, the listing never
+said. `amenitiesAbsent` had been in the backend response since the amenity
+reader was written and had ZERO client consumers, so a denial and a silence
+rendered the same dash. Photos head the columns. On a phone the host picks any
+two of N and sees the same rows the tablet table shows, from the same engine.
+
+**What the house needs, on the screen that uses it.** The must-have control
+lived in HostShellV2 while the cockpit — the screen with the three search
+doors — had no reference to must-haves at all. Three of those musts are REAL
+query parameters (`hottub` -> `amenities[]=25`, `pool` -> `amenities[]=7`,
+`pets` -> `pets=1`) baked into the URLs those doors open, so a host was having
+their search narrowed by a list they had never been shown. Extracted to
+`MustHaves.jsx` and rendered by both trees; the filtering ones are named in
+words, outside the fold.
+
+### Two whitelists that ate a field
+
+`normalizeLodgingOption` flattened `'gone'` to `'option'`, so four consumers
+were dead — the deck's gone-filter was a no-op, NO LONGER ON THE TABLE could
+never render, the is-gone styling never applied, and a lost place could hold a
+comparison column. Pressing "It's gone" did almost nothing visible.
+
+`classNameHasRule` swept one file, so extracting ~90 lines made the new file
+invisible to it. **A gate scoped to one file silently stops covering whatever
+moves out of it, and extraction is precisely the refactor that moves things
+out.**
+
+Both are the `topAction` class: a rebuild that drops any field it does not
+name. That is now three instances; the pattern is worth looking for rather
+than waiting to be bitten by.
+
+### The structural lesson: the suite is blind to "renders but unreachable"
+
+Three of the last four commits exist because the app was DRIVEN, not because a
+test failed:
+
+- a warning placed inside a closed `<details>` — the one sentence a host needs
+  before pressing a door was the one sentence they could not see, and I had
+  claimed it rendered at rest without opening the page
+- a must-have toggle that threw the host from Go look to Weigh them
+  mid-adjustment, because `patch()` clears the step peek on purpose and
+  setting criteria is not finishing a step
+- a tap-floor gate red on Linux for weeks over a control inside a collapsed,
+  `[inert]`, fully-clipped panel that no user can press on either platform
+
+8,155 jest tests and 2,860 e2e saw none of them. The suites are good at
+regressions and poor at whether a thing can actually be seen or reached.
+
+### Three red-proofs that stayed green, each for a different reason
+
+Recorded because the failure mode is identical each time and the causes are
+not: a **stale bundle** (`vite preview` serves the existing dist, so the
+perturbation never reached the browser); a **mock too cheap to measure what
+the test claimed** (240ms of jitter swamped a 300ms read, so a working pool
+looked broken); and a **fixture that made the fault impossible** (every
+amenity in it was too short to wrap at any width, and separately, a stage that
+was already derived so there was no peek to clear).
+
+And the related process failure: **rebuilding dist under a running matrix**
+invalidated 35 minutes of matrix42, whose 11 failures clustered exactly on the
+specs the mid-run edits touched.
+
+### Measured facts worth not re-deriving
+
+- A real Airbnb **listing page carries no price** — the unfurl returns
+  `price: None` while sleeps, rating and amenities come back. Price exists only
+  on the results **cards**, so only a pasted results page carries money.
+- A real unfurl is **1.7s mean** (1.2-2.5), not the ~3s the old cap assumed.
+- Chip hit area equals the **row pitch** when wrapped rows sit closer than the
+  expander is tall — measured exactly: `hit 39` = 32px chip + 7px gap.
+- Lookups **do** work in the iOS Simulator; the standing note saying otherwise
+  was stale, retired after 20 real reads completed there against prod.
+
+### Outstanding
+
+- `cra-build` still red: 32 files of lint-as-error in the frozen CRA shell,
+  pre-existing and untouched.
+- `lodgingCompare` still caps the wide grid at three columns. Fixed for the
+  phone; a tablet host with twenty places may want more.
+- Seventeen CSS rules still hardcode `44px` instead of `var(--tap-min)`.
+  Several carry comments recording regressions from changing exactly that
+  value, so it needs measuring rather than sweeping.
+
+---
+
 ## 2026-09-27 — the offline shell ships, onboarding stops lying to a new device, and one pushed commit lit three latent faults
 
 **HEAD `41eed734`, 10 unpushed. jest 7,981 / 566 · vitest 47 / 4 · matrix NOT
