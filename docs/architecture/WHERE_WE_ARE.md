@@ -3,7 +3,22 @@
 ## 2026-10-03 — the open list closed, and three of its four entries were wrong
 
 **jest 8,165 / 590 · `cra-build` GREEN for the first time since 2026-09-28 ·
-matrix51 pending.**
+matrix51 2,874 / 229 / **2 failed** in 35.9m.**
+
+matrix51 was not clean: `activationFunnel:104` [mobile] and
+`theShellOpensWithoutSignal:161` [tablet]. Duration 35.9m against a 34.4-35.1
+baseline, so the probe fix held. Both reproduce green alone — 6/6 and 5/5 —
+and the diff has **zero `hostv2/src` changes**, so neither is reachable from
+it; the kill-switch test already failed in matrix47 on 2026-10-02, before any
+of today's work. Diagnosed as under-load flakes at 4 workers, and recorded as
+a diagnosis rather than a clearance.
+
+**I mis-measured the kill switch first.** `--repeat-each=6` reported 3 failed
+/ 1 flaky / 2 passed and I called it a 50% flake. That test's subject is
+service-worker registration state, which is per-origin and survives between
+repeats in one worker — so I was measuring the harness. Five separate
+processes pass 5/5. `--repeat-each` is the wrong instrument for any test whose
+subject is browser-persistent state.
 
 Asked to explain the open list plainly, I measured it rather than reciting it.
 Three of four descriptions did not survive, and they had been copied forward

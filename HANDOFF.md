@@ -287,7 +287,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `2f16a467` + the forty-third entry's fixes — **`cra-build` GREEN for the first time since 2026-09-28** (`✓ no new warnings, 241 of 245 baselined`), matrix51 pending |
+| Branch / HEAD | `main` @ `b1c76685` — **`cra-build` GREEN for the first time since 2026-09-28** (`✓ no new warnings, 241 of 245 baselined`). matrix51 2,874 / 229 / **2 failed** in 35.9m; both reproduce green alone and neither is reachable from the diff (zero `hostv2/src` changes) — see the forty-third entry |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
@@ -307,7 +307,46 @@ this file is the short answer to "where is it, is it green, what's next."
 ## FIXED 2026-10-03 (forty-third entry) — the whole open list, and one item I had mis-framed
 
 **jest 8,165 / 590 · `cra-build` GREEN for the first time since 2026-09-28 ·
-matrix51 pending.**
+matrix51 2,874 passed / 229 skipped / **2 failed** in 35.9m.**
+
+### matrix51 was NOT clean, and here is the whole of what is known
+
+    [mobile] activationFunnel.spec.mjs:104  a guest replying reports the conversion
+    [tablet] theShellOpensWithoutSignal.spec.mjs:161  THE KILL SWITCH: ?nosw=1 … stays removed
+
+Duration 35.9m against the 34.4 / 35.0 / 35.1 baseline, so no slowdown — the
+probe fix held.
+
+Both reproduce GREEN in isolation:
+
+| test | alone |
+|---|---|
+| `activationFunnel:104` | **6/6 pass**, 3.3-3.5s each, against an 8s poll |
+| `theShellOpensWithoutSignal:161` | **5/5 pass** as five separate processes |
+
+Neither is reachable from this commit. The diff carries **zero `hostv2/src`
+changes**; its only runtime files are `governanceReconciliation.js` (one word)
+and `lodgingIntel.js` (one import, one word, and the unfurl retry). Nothing in
+it touches analytics, service workers, invites or RSVP. And
+`theShellOpensWithoutSignal:161` **already failed in matrix47 on 2026-10-02**,
+on a different project (`tablet-tall`), which predates all of today's work.
+
+Read as: under-load flakes at 4 workers, not regressions. **Stated as a
+diagnosis, not a clearance** — if CI's shards go red on these two, the
+diagnosis is wrong and this entry is the record of having claimed it.
+
+### AND I MIS-MEASURED ONE OF THEM FIRST — my instrument, not the product
+
+My first pass ran `--repeat-each=6` on the kill switch and got **3 failed, 1
+flaky, 2 passed**, which I called "a ~50% flake." Wrong, and wrong in the
+expensive direction: that test asserts **service-worker registration state,
+which is per-origin and persists across repeats in the same worker**, so run N
+leaks into run N+1. Five separate PROCESSES pass 5/5.
+
+`--repeat-each` is the wrong instrument for any test whose subject is
+browser-persistent state — service workers, caches, localStorage, IndexedDB.
+It measures the harness. This is the adjacent-mechanism trap in a new costume,
+and it took thirty seconds to walk straight into.
 
 Asked to explain the open list plainly, I measured it instead of reciting it,
 and **three of the four descriptions did not survive.** Writing that down
