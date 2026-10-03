@@ -692,6 +692,9 @@ export const unfurlOffNote = (configured) =>
 // it never reads as "stuck". A cold Render dyno takes far longer than this and
 // that is exactly the case this bounds.
 const UNFURL_MS = 12000;
+// How long to wait before deciding the backend is asleep rather than slow.
+// Prod measures 1.45-1.59s warm, so this is ~3x the real thing.
+const COLD_PROBE_MS = 5000;
 
 // ── WAKE THE DYNO BEFORE THE HOST NEEDS IT ─────────────────────────────────
 // Measured 2026-09-30: a cold Render free dyno answers /health in 32.7s.
@@ -734,9 +737,9 @@ export async function lodgingResults(url) {
   const clean = httpsify(url);
   if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the search.' };
 
-  const once = async () => {
+  const once = async (ms) => {
     const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), ms) : null;
     try {
       const res = await fetch(`${API_BASE}/api/lodging/results?url=${encodeURIComponent(clean)}`,
         ctl ? { signal: ctl.signal } : undefined);
@@ -773,9 +776,25 @@ export async function lodgingResults(url) {
   // ONLY on a timeout. A 4xx, a refusal or an unreachable host are real
   // answers and are returned as they were — retrying those would be hammering
   // a server that already said no.
-  const first = await once();
+  // ── THE FIRST CALL IS A PROBE, SO IT GETS A PROBE'S PATIENCE ───────────
+  // The first cut gave both attempts the full UNFURL_MS and DOUBLED every
+  // timeout path in the product and the suite: lodgingCockpit.spec went
+  // 27.1s -> 58.1s on one project, and the full matrix was running 4x long —
+  // which would have been a hard CI failure, because the shards carry
+  // timeout-minutes: 30 and would have been killed by the clock with nothing
+  // having failed.
+  //
+  // A cold-start probe does not need twelve seconds. The wake starts the
+  // moment the request ARRIVES, whether or not we keep waiting for it, so
+  // aborting early still buys the warm instance — it just stops paying for
+  // the waiting. Measured warm, three times on prod: 1.45s, 1.47s, 1.59s, so
+  // COLD_PROBE_MS is roughly three times the real thing and nothing healthy
+  // trips it.
+  //
+  // Worst case is now 5s + 12s instead of 12s + 12s.
+  const first = await once(COLD_PROBE_MS);
   if (first.ok || !first.timedOut) return first;
-  const second = await once();
+  const second = await once(UNFURL_MS);
   // If it times out twice it really is too slow, and the honest sentence is
   // the one that was always there.
   return second;
