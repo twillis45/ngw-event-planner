@@ -239,3 +239,37 @@ describe('the probe waits a probe’s time, not a full timeout', () => {
     expect(r.ok).toBe(false);
   });
 });
+
+// ── A REFUSAL THAT NAMES WHO REFUSED (2026-10-03) ──────────────────────────
+// Measured: Vrbo answers 502 in under a second for every search URL form,
+// while Airbnb answers 200 from the same backend in the same minute. The
+// generic "that link could not be read" sends a host to check a link that is
+// perfectly fine.
+describe('a Vrbo search says whose refusal it is', () => {
+  const realFetch = global.fetch;
+  afterEach(() => { global.fetch = realFetch; });
+  const refuse = () => ({ ok: false, status: 502, json: async () => ({ detail: 'That link could not be read.' }) });
+
+  test('Vrbo gets the sentence that names the path that works', async () => {
+    global.fetch = jest.fn(async () => refuse());
+    const r = await lodgingResults('https://www.vrbo.com/search?destination=Anaheim');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/Vrbo does not let us read/i);
+    expect(r.reason).toMatch(/paste the page/i);
+  });
+
+  test('Airbnb keeps its own copy — this must not swallow every refusal', async () => {
+    global.fetch = jest.fn(async () => refuse());
+    const r = await lodgingResults('https://www.airbnb.com/s/Anaheim--CA/homes');
+    expect(r.ok).toBe(false);
+    expect(r.reason).not.toMatch(/Vrbo/i);
+  });
+
+  // A timeout is a different situation with a different fix, and the retry
+  // already owns it.
+  test('a Vrbo TIMEOUT still reads as a timeout, not as a block', async () => {
+    global.fetch = jest.fn(async () => { throw Object.assign(new Error('aborted'), { name: 'AbortError' }); });
+    const r = await lodgingResults('https://www.vrbo.com/search?destination=Anaheim');
+    expect(r.reason).toMatch(/taking too long/i);
+  });
+});

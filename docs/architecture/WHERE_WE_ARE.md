@@ -1,5 +1,76 @@
 # Where We Are -- live status board
 
+## 2026-10-03 (later) — six lodging asks, and four facts the app already knew
+
+**jest 8,191 / 591 · `cra-build` green · matrix57 2,894 / 238 / 0 failed / 1 flaky in 36.4m.**
+
+The through-line is not the features. **Four times, the fact needed was
+already in the app, was being discarded, and was then guessed at downstream —
+with the guess printed to the host as an assumption.**
+
+### What shipped
+
+- **The property list and the must-have fold open at rest.** The list was
+  `open={options.length < 2}`, which held for two or three places typed by
+  hand and stopped holding when a paste could stage twenty. Measured live:
+  523px open, 20px shut.
+- **Bedrooms and bathrooms are NUMERIC requirements.** The card prints "6
+  bedrooms" and the parser already read it, so "5 against a need of 8" is a
+  finding rather than an absence. The catalog had no numeric requirement at
+  all before this.
+- **`min_bedrooms` / `min_bathrooms` ride the Airbnb URL**, verified live as
+  a ladder (20 → 10 → 2 → 0). **`superhost` does not** — it returned all 20,
+  identical to unfiltered, and the negative is recorded in the catalog.
+- **Free cancellation, EV charger, grill** — added only because they are
+  matchable against data we hold.
+- **"8 couples" survives creation** as `guestPairs`, so the bedroom count is
+  the host's own statement rather than an assumption about it.
+
+### The pairing had three homes and I read the wrong one
+
+`guestPairs` (intake), `coupleId` (two split rows under one id), `plusOne`
+(a partner's name on one row). My first cut read only `plusOne` — and the
+app's own add-names path SPLITS "Denise & Ray" into separate rows on purpose,
+so it would have reported zero couples beside a list showing eight. Found by
+auditing for duplication, not by a test.
+
+### The inference I refused
+
+`plusOnePolicy: 'plus_one_ok'` writes "Feel free to bring a plus-one." into
+outward guest-facing copy. "8 couples" is eight specific partnerships, not an
+open invitation. Declined and recorded.
+
+### What the matrix caught, all mine
+
+A derived minimum made a hard filter unticked most of a twenty-link paste and
+timed out a spec at 30s on four projects — `clears` feeds the default tick
+set, and an assumption must not discard the host's own paste. Opening the
+must-have fold put "Real beds, not pull-**out**s" into the accessibility tree,
+where a `/pull|read|places/i` selector with `.first()` started clicking it
+instead of "Pull the places in".
+
+### Carrying forward
+
+- **Before deriving a fact, grep for who already produces it.** Four for four
+  today.
+- **A whitelist you did not write still eats your field** — `guestPairs` died
+  at the creation seam and again at `PARSER_FIELDS`.
+- **Verify a filter as a ladder**, never a single comparison; the search
+  reshuffles.
+
+### Outstanding
+
+- Vrbo search URLs return NOTHING, not links-only — I had that wrong from
+  reading the code. Measured with a control: Vrbo 502 in under a second on
+  both URL forms, Airbnb 200 with 20 priced places from the same backend in
+  the same minute. Vrbo refuses our datacenter IP, so a card parser has no
+  page to parse. Paste from the host's own browser still works, and the
+  failure copy now says that
+- Google search URL — rejected by design; paste works. Recommend leaving it
+- ~300 British spellings in `src/` comments
+
+---
+
 ## 2026-10-03 — the open list closed, and three of its four entries were wrong
 
 **jest 8,165 / 590 · `cra-build` GREEN for the first time since 2026-09-28 ·

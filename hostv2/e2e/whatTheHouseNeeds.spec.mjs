@@ -26,6 +26,20 @@ const goLook = async (page) => {
 test.describe('what the house needs', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  // ── STATE, NOT A TOGGLE (2026-10-03) ──────────────────────────────────
+  // These tests used to click `summary` to OPEN the fold, which silently
+  // assumed it starts shut. The host asked for it open at rest, and the
+  // assumption turned into four failures across three tests in matrix55 —
+  // the click shut it instead, and everything after tried to press a chip
+  // inside a closed <details>.
+  //
+  // Asking for the state we want is robust to the default changing again,
+  // and it is still a REAL click when a click is needed.
+  const openFold = async (det) => {
+    if (!(await det.evaluate((n) => n.open))) await det.locator('summary').click();
+    expect(await det.evaluate((n) => n.open), 'fold is open').toBe(true);
+  };
+
   test('the control is on the screen with the doors, and above them', async ({ page }) => {
     await goLook(page);
     const det = page.locator('details.lodge-req');
@@ -38,8 +52,18 @@ test.describe('what the house needs', () => {
     });
     expect(order.detTop, 'the list that shapes the search comes before the doors')
       .toBeLessThan(order.doorsTop);
-    // Shut at rest — it is a confirmation, not a form to fill in.
-    expect(await det.evaluate((n) => n.open)).toBe(false);
+    // OPEN at rest, REVERSED 2026-10-03 by the host: "I need to uncollapse
+    // properties to see full list", said of the list below and applied here
+    // in the same breath. The old line read "shut at rest — it is a
+    // confirmation, not a form to fill in", and that reasoning held while
+    // this was prose. It stopped holding when two of these requirements
+    // started changing the Airbnb URL: a host who never taps the fold now
+    // searches against criteria they were never shown, and "8 things ▾" names
+    // a count, which cannot be disagreed with.
+    //
+    // Still asserted, and deliberately — a default nobody checks is a default
+    // that drifts back.
+    expect(await det.evaluate((n) => n.open)).toBe(true);
     await expect(det.locator('summary')).toContainText(/Has to have/i);
   });
 
@@ -53,7 +77,7 @@ test.describe('what the house needs', () => {
     async ({ page }) => {
       await goLook(page);
       const det = page.locator('details.lodge-req');
-      await det.locator('summary').click();
+      await openFold(det);
       await page.locator('.lodge-req .chips .chip', { hasText: /^\+ Pool/ }).click();
 
       // ── THE PLACEMENT IS THE POINT ──────────────────────────────────────
@@ -110,7 +134,7 @@ test.describe('what the house needs', () => {
     const current = () => page.locator('.lc-step.is-on').innerText();
     const before = await current();
     expect(before.trim()).toMatch(/Go look/i);
-    await page.locator('details.lodge-req summary').click();
+    await openFold(page.locator('details.lodge-req'));
     await page.locator('.lodge-req .chips .chip', { hasText: /^\+ Pool/ }).click();
     await page.waitForTimeout(600);
     expect((await current()).trim(), 'still on Go look after a toggle').toMatch(/Go look/i);

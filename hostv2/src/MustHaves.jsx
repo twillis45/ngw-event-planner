@@ -48,7 +48,14 @@ export default function MustHaves({ event, onChange, style }) {
 
   return (
     <>
-    <details className="lodge-req" style={style || { margin: '2px 0 10px' }}>
+    {/* OPEN AT REST (host 2026-10-03, same breath as the property list).
+        These are the requirements the search is about to be filtered BY, and
+        two of them now change the Airbnb URL — so a host who never taps the
+        fold books against criteria they were never shown. "8 things ▾" names
+        a count, not the things, and a count cannot be disagreed with.
+        The fold stays, because a host who has read them and wants the screen
+        back can shut it. Only the default changed. */}
+    <details className="lodge-req" open style={style || { margin: '2px 0 10px' }}>
       {/* centred, not baseline: the row now carries a real tap floor, and
           baseline would strand the text at the top of it. */}
       <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',

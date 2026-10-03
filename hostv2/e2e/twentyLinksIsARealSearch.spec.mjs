@@ -40,7 +40,18 @@ test('a whole search is read, so the rows can be told apart', async ({ page }) =
   await page.getByRole('button', { name: /Read what I pasted/i }).click();
 
   // The search link offers to pull its places in.
-  const pull = page.getByRole('button', { name: /pull|read|places/i }).first();
+  //
+  // NAMED EXACTLY, 2026-10-03. This was /pull|read|places/i with .first(),
+  // and it broke the day the must-have fold opened at rest: the requirement
+  // chip "Real beds, not pull-outs" contains "pull", sits ABOVE the doors in
+  // DOM order, and was hidden from the accessibility tree only because the
+  // fold was shut. So .first() started clicking a requirement chip, the
+  // search was never pulled, and the failure surfaced thirty seconds later
+  // as "Add N to the shortlist" never appearing — nowhere near the cause.
+  //
+  // A three-alternative regex plus .first() is a selector that matches
+  // whatever the page happens to put first. The button has a name.
+  const pull = page.getByRole('button', { name: /^Pull the places in$/i });
   if (await pull.count()) await pull.click().catch(() => {});
 
   const add = page.getByRole('button', { name: /Add \d+ to the shortlist/i });

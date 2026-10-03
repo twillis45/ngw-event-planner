@@ -287,11 +287,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
+| Branch / HEAD | `main` @ the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **8,168 passed**, 1 skipped, **0 failed**, **590 suites** (measured 2026-10-03 after the forty-third entry: +5 for `unfurlListing`'s cold-start retry and +3 for the probe-duration gate, no new suite — all eight joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **8,191 passed**, 1 skipped, **0 failed**, **591 suites** (measured 2026-10-03 after the forty-fourth entry: +23 and +1 suite for the bedroom derivation, the numeric requirements, the stated pairing and the Vrbo refusal copy). Before that **8,168 / 590** (same day, forty-third entry: +5 for `unfurlListing`'s cold-start retry and +3 for the probe-duration gate, no new suite — all eight joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **48 passed / 4 files** (2026-09-29 — and see the fortieth entry: 9 of these fail on Node 22 until `Object.defineProperty` replaced `global.navigator = …`; CI pins Node 20, where all 48 always passed). Before that 43 / 4 (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **399 passed** — re-measured 2026-10-02 (forty-second entry: +6 for the results-card price reader). Before that **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -303,6 +303,125 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-10-03 (forty-fourth entry) — the lodging asks, and four facts the app already knew and threw away
+
+**jest 8,191 / 591 · matrix57 2,894 passed / 238 skipped / 0 failed / 1 flaky
+in 36.4m · `cra-build` green.** (The flaky is the known kill-switch
+service-worker race, passed on retry. 238 skips vs 229 is exactly the three
+new bridge tests on the three narrow projects they are scoped away from.)
+
+Six host asks in one session. The through-line is not the features: **four
+separate times, the fact needed was already in the app and was being
+discarded, then guessed at downstream.**
+
+### 1. The property list was behind a tap
+
+`See them as a list` was `open={options.length < 2}` — open only below two
+places, on the 2026-08-05 reasoning that the swipe deck above covers the
+comparison. That held for two or three places typed by hand. It stopped
+holding the moment a results paste could stage TWENTY: a deck is a
+one-at-a-time instrument, and the list was the only scannable view.
+
+Measured live: **523px open, 20px shut.** 503px of list behind a tap.
+
+The must-have fold got the same treatment, and for a sharper reason — two of
+those requirements now change the Airbnb URL, so a host who never taps the
+fold searches against criteria they were never shown.
+
+### 2. Bedrooms — and the question nobody had asked the roster
+
+Host: "the Anaheim event is for 16 and need 2 people (couple) for example 8
+bedrooms." The catalog had **no numeric requirement at all**; sixteen prose
+regexes scoring "does this listing mention the word".
+
+`bedrooms` and `baths` are numeric now: the card PRINTS "6 bedrooms" and the
+parser already read it, so `5 bedrooms against a need of 8` is a FINDING
+where the old code could only say "unknown", which is an absence.
+
+**Three sources of the pairing, and I initially read the wrong one:**
+
+| | |
+|---|---|
+| `guestPairs` | "8 couples" at intake — parsed since 2026-09-25, **multiplied to 16 and discarded** |
+| `coupleId` | the add-names path splits "Denise & Ray" into two rows under ONE id (HostShellV2 ~:6267) |
+| `plusOne` | one row carrying a partner's name |
+
+My first cut counted only `plusOne` — and would have reported **zero couples
+next to a list plainly showing eight**, because the app's own roster path
+splits couples into separate rows on purpose. Caught by auditing for
+duplication rather than by a test.
+
+### 3. min_bedrooms is REAL, and superhost is not
+
+Verified live through our own backend before being wired, as a LADDER rather
+than a single comparison — Airbnb reshuffles between requests, so "the result
+set changed" proves nothing:
+
+    min_bedrooms=1 -> 20 · =8 -> 10 · =12 -> 2 · =20 -> 0
+    min_bathrooms=1 -> 20 · =5 -> 18 · =9 -> 5
+    superhost=true -> 20     <-- IDENTICAL to unfiltered. NOT honored.
+
+`superhost` was proposed by me as a filter and the data said no. It scores
+text and never touches the URL, and **the negative result is recorded in the
+catalog**, because an unwritten negative gets re-proposed every few months.
+
+### 4. The policy inference I refused
+
+`plusOnePolicy: 'plus_one_ok'` writes **"Feel free to bring a plus-one."**
+into outward guest-facing copy. "8 couples" means eight SPECIFIC
+partnerships, not an open invitation — inferring it would tell every invitee
+they may bring someone and inflate a sixteen-person house booking. Declined,
+and recorded so it is not re-proposed as an easy win.
+
+### What matrix55 caught, all of it mine
+
+**A derived minimum must not exclude.** I made a bedroom shortfall a hard
+filter. `clears` feeds the default tick set on a paste, so a derived
+8-bedroom minimum unticked most of a twenty-link search and
+`twentyLinksIsARealSearch` **timed out at 30s on four projects**. The comment
+on that very field warned about it. `bedsShort` and `overBudget` are hard
+because the host STATED the count and the budget; a bedroom minimum is
+derived, sometimes from an assumption printed on screen, and an assumption
+must not throw away the host's own paste. It sinks the row now.
+
+**A selector that matched whatever came first.** Opening the must-have fold
+put the requirement chips into the accessibility tree — including **"Real
+beds, not pull-outs"**. The spec's pull selector was `/pull|read|places/i`
+with `.first()`, so it began clicking a requirement chip instead of "Pull the
+places in"; the search never loaded and the failure surfaced thirty seconds
+later as a missing shortlist button, nowhere near the cause.
+
+**A ratchet I did not know about** caught `guestPairs`: `PARSER_FIELDS names
+exactly the fields the parser returns`. Adding a parser field requires
+declaring it — the same discipline that would have caught the creation-seam
+drop.
+
+### Worth carrying forward
+
+**1. The fact is usually already in the app.** Four times today: the pairing
+at intake, the pairing on the roster, the bedroom numbers on the card, the
+`coupleId` on split rows. Each was being computed, dropped, and then guessed
+at further down — and the guess was printed to the host as an assumption.
+**Before deriving a fact, grep for who already produces it.**
+
+**2. A whitelist you did not write still eats your field.** `guestPairs`
+died twice before it lived: once at the creation seam's object literal, once
+at `PARSER_FIELDS`. Both are good designs. Both are invisible until they bite.
+
+**3. Verify a filter as a LADDER.** One request proves nothing against a
+search that reshuffles. Three thresholds and a zero prove it.
+
+**4. Opening a fold changes the accessibility tree**, and every loose
+selector in the suite is now pointed at new text.
+
+### Open
+
+| | |
+|---|---|
+| Vrbo search URLs | **NOT links-only — nothing at all.** I claimed links-only from reading the fallback path; measured 2026-10-03 with a control, Vrbo refuses our datacenter IP outright: `/search` 502 in 0.62s and `/vacation-rentals` 502 in 0.46s, while Airbnb answered 200 with 20 priced places from the same backend in the same minute. A card parser needs a page and the page never arrives, so that slice is dead as scoped. Vrbo works ONLY via paste from the host's own browser, which is not blocked. The failure copy now says so instead of "that link could not be read", and still ATTEMPTS first so a future unblock just starts working |
+| Google search URL | rejected by `_is_search_url`; paste works via `extractHotelCandidates`. Recommend leaving it — fetching Google from a datacenter IP is a harder fight than Airbnb, which we barely win |
+| `src/` comment spellings | ~300 British spellings in comments; prose-only, deliberately not started |
 
 ## FIXED 2026-10-03 (forty-third entry) — the whole open list, and one item I had mis-framed
 

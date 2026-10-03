@@ -100,7 +100,7 @@ import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
-import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -7736,6 +7736,14 @@ export default function HostShellV2() {
       // Same shape as startTimeSource directly above; lib/guestCountFor.js gates
       // the outward drafts on it, exactly as startTimeIsConfirmed does.
       ...(effGuests ? { guestCountSource: (fGuests ?? parsed.guests) != null ? 'host' : 'playbook-typical' } : {}),
+      // THE PAIRING, NOT JUST THE HEADCOUNT (2026-10-03). "8 couples" became
+      // `guests: 16` and nothing else, so lodgingIntel.bedroomsNeeded had to
+      // ASSUME double occupancy to answer "how many bedrooms" — guessing, on
+      // screen, exactly what the host had already said out loud. This is the
+      // same class as guestCountSource directly above and isDestination below:
+      // a fact that was on screen at creation and thrown away one line later.
+      // Written only when heard; no pairing stays absent rather than a zero.
+      ...(parsed.guestPairs ? { guestPairs: parsed.guestPairs } : {}),
       totalBudget: effBudget || '',
       // ── WHAT WE MAY WRITE DOWN ABOUT TRAVEL ─────────────────────────────
       // Four spreads lived here and encoded a rule jest could never run — which
@@ -14814,7 +14822,21 @@ export default function HostShellV2() {
                           const recNow = (() => { try { return lodgingRecommendation(event, li); } catch { return null; } })();
                           return <LodgeDeck options={li.options} guests={li.guests} isRec={recNow && recNow.pick && recNow.pick.id} write={write} />;
                         })()}
-                        <details open={li.options.length < 2} style={{ marginBottom: li.options.length >= 2 ? 'var(--sp-3)' : 0 }}>
+                        {/* OPEN BY DEFAULT (host 2026-10-03: "I need to uncollapse
+                            properties to see full list"). It was open only below two
+                            options, on the 2026-08-05 reasoning that the swipe deck
+                            above covers the comparison — and that held when a host had
+                            two or three places typed in by hand.
+                            It stopped holding the moment a results-page paste could
+                            stage TWENTY. A deck is a one-at-a-time instrument: it is
+                            the right way to weigh two or three and the wrong way to
+                            scan twenty, and the list was the only scannable view —
+                            behind a tap, under a label that reads like an alternative
+                            rather than the main event.
+                            The deck stays; it is genuinely better for a close
+                            comparison. The fold stays too, so a host who wants the
+                            deck alone can shut the list. Only the DEFAULT changed. */}
+                        <details open style={{ marginBottom: li.options.length >= 2 ? 'var(--sp-3)' : 0 }}>
                           {li.options.length >= 2 && (
                             <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
                               alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
@@ -22318,6 +22340,33 @@ export default function HostShellV2() {
                        A format hint cannot be mistaken for data. */
                     placeholder={'One name per line'}
                     value={rosterText} onChange={e => setRosterText(e.target.value)} aria-label="Add guest names" />
+                  {/* ── THE BRIDGE BETWEEN WHAT SHE SAID AND WHAT SHE TYPES ──────
+                      Host 2026-10-03: "address plus 1s on guest list in creation
+                      (couples are plus one situations)". Both ends of this already
+                      worked and the middle did not. "8 couples" at intake is kept
+                      now (guestPairs), and the add-names path already splits
+                      "Denise & Ray" into two rows tagged with one coupleId — but a
+                      host who states eight couples and then types sixteen separate
+                      names loses the pairing, and the bedroom count silently drops
+                      from her own statement to an assumption.
+                      This is a FORMAT HINT, not a row. Inventing eight couples as
+                      guest rows would be inventing people; telling her the format
+                      that already works costs nothing and is true. It shows only
+                      while the roster does not yet record the pairing she stated. */}
+                  {(() => {
+                    const said = Number(event.guestPairs) || 0;
+                    if (!said) return null;
+                    let basis = null;
+                    try { basis = (bedroomsNeeded(event) || {}).basis; } catch { basis = null; }
+                    if (basis === 'roster') return null;   // the roster already has them
+                    return (
+                      <div className="of" style={{ marginTop: 6, fontSize: 'var(--t-meta)' }}>
+                        You said {said} {said === 1 ? 'couple' : 'couples'}. Type each pair on one
+                        line — “Denise &amp; Ray” — and they are counted as two people sharing a
+                        room, which is what sizes the bedrooms.
+                      </div>
+                    );
+                  })()}
                   {rosterCouples.length > 0 && (
                     // Suggest-and-confirm (never silent): the split is visible BEFORE
                     // commit, and one tap keeps a band name or duo as written.

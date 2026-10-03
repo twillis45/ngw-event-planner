@@ -157,11 +157,23 @@ export function parseSmartEventText(text, opts = {}) {
   //
   // Only consulted when no one-for-one count matched, so "16 guests, 8 couples"
   // reads sixteen and never thirty-two.
-  if (guests === null) {
-    const PAIR_NOUNS = 'couples|pairs|duos';
-    const pm = t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${PAIR_NOUNS})\\b`, 'i'));
-    if (pm) guests = parseInt(pm[1], 10) * 2;
-  }
+  // ── AND THE PAIRING ITSELF IS A FACT, NOT JUST A MULTIPLIER (2026-10-03) ──
+  // This used to compute `guests` and throw the pair count away. Downstream,
+  // lodgingIntel.bedroomsNeeded had to ASSUME double occupancy to answer "how
+  // many bedrooms" — landing on the right number for "8 couples" by guessing
+  // exactly what the host had already said out loud, and saying so on screen
+  // ("this assumes they pair up"). Keeping the count turns that assumption
+  // back into the host's own statement.
+  //
+  // Matched unconditionally, where `guests` is still only derived from it when
+  // nothing one-for-one was found. That ordering is deliberate and unchanged:
+  // "16 guests, 8 couples" must read sixteen and never thirty-two — and it is
+  // also the case this branch could not see before, because it never ran once
+  // `guests` was set.
+  const PAIR_NOUNS = 'couples|pairs|duos';
+  const pm = t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${PAIR_NOUNS})\\b`, 'i'));
+  const guestPairs = pm ? parseInt(pm[1], 10) : null;
+  if (guests === null && guestPairs) guests = guestPairs * 2;
 
   // ── DOZENS ────────────────────────────────────────────────────────────────
   // "a dozen", "half a dozen", "a couple dozen" are counts, not slang for
@@ -1497,7 +1509,7 @@ export function parseSmartEventText(text, opts = {}) {
   const lodging = /\b(airbnb|vrbo|lake\s*house|beach\s*house|cabin|rental\s+(?:house|home|condo)|rent(?:ed|ing)?\s+(?:an?\s+)?(?:airbnb|vrbo|house|cabin|condo))\b/i.test(t);
 
   return {
-    type, typeBasis, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    type, typeBasis, secondaryType, theme, guests, guestPairs, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
     venueAddress: venueAddress || null,

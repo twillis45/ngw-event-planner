@@ -793,11 +793,34 @@ export async function lodgingResults(url) {
   //
   // Worst case is now 5s + 12s instead of 12s + 12s.
   const first = await once(COLD_PROBE_MS);
-  if (first.ok || !first.timedOut) return first;
+  const settle = (r) => {
+    // ── SAY WHOSE REFUSAL IT IS (2026-10-03, measured) ──────────────────
+    // A Vrbo search URL comes back 502 "That link could not be read." in
+    // under a second, every time, while Airbnb answers 200 from the same
+    // backend in the same minute:
+    //
+    //   vrbo.com/search?destination=…      502  0.62s
+    //   vrbo.com/vacation-rentals/p123…    502  0.46s
+    //   airbnb.com/s/Santa-Fe--NM/homes    200  1.25s  20 places, 20 priced
+    //
+    // Vrbo refuses our datacenter IP. The generic sentence reads as "your
+    // link is bad" and sends the host off to check a link that is fine, when
+    // the path that DOES work — paste the page from their own browser, which
+    // Vrbo serves normally — is one line away.
+    //
+    // Still ATTEMPTED rather than refused up front: a block is a fact about
+    // today, and hardcoding "Vrbo never works" is how a measurement becomes a
+    // stale claim. If they ever serve us, this just starts working.
+    if (r && !r.ok && !r.timedOut && /vrbo\./i.test(clean)) {
+      return { ...r, reason: 'Vrbo does not let us read its search from here. Open the search in your browser and paste the page — that works, and it is the same result.' };
+    }
+    return r;
+  };
+  if (first.ok || !first.timedOut) return settle(first);
   const second = await once(UNFURL_MS);
   // If it times out twice it really is too slow, and the honest sentence is
   // the one that was always there.
-  return second;
+  return settle(second);
 }
 
 export async function unfurlListing(url) {
@@ -1472,8 +1495,40 @@ export function rankCandidates(candidates, event, opts) {
     // them here is what makes `matched` mean anything.
     const hay = [c.name, c.kind, c.place, c.notes,
       ...(Array.isArray(c.amenities) ? c.amenities : [])].filter(Boolean).join(' ');
-    const matched = wants.filter((w) => w.match && w.match.test(hay)).map((w) => w.label);
-    const unknown = wants.filter((w) => !(w.match && w.match.test(hay))).map((w) => w.label);
+    // ── A NUMBER THE CARD ANSWERS IS NOT A MENTION (2026-10-03) ───────────
+    // Every requirement in this catalog used to be scored the same way: does
+    // some word appear in the listing's prose. For bedrooms and bathrooms that
+    // is the wrong question and a weaker one — the card PRINTS "6 bedrooms"
+    // and "4 baths", the parser already reads both, so the honest answer is
+    // arithmetic: 5 bedrooms against a need of 8 is SHORT, which is a finding,
+    // where the old code could only say "unknown", which is an absence.
+    //
+    // A requirement is numeric when it carries both `need(event)` and
+    // `reads(candidate)`. `need` returning null means it does not apply to
+    // this event (bathrooms below six guests), and it falls back to prose.
+    const numeric = wants
+      .filter((w) => typeof w.need === 'function' && typeof w.reads === 'function')
+      .map((w) => {
+        let need = null;
+        try { need = w.need(event || {}); } catch { need = null; }
+        return { w, need, has: w.reads(c) };
+      })
+      .filter((x) => x.need != null);
+    const numericIds = new Set(numeric.map((x) => x.w.id));
+    const prose = wants.filter((w) => !numericIds.has(w.id));
+
+    const matched = [
+      ...prose.filter((w) => w.match && w.match.test(hay)).map((w) => w.label),
+      ...numeric.filter((x) => x.has != null && x.has >= x.need).map((x) => x.w.label),
+    ];
+    // Unknown stays unknown: a numeric requirement on a row we have not read
+    // has no number to compare, and saying "short" there would invent a fact.
+    const unknown = [
+      ...prose.filter((w) => !(w.match && w.match.test(hay))).map((w) => w.label),
+      ...numeric.filter((x) => x.has == null).map((x) => x.w.label),
+    ];
+    const shortOn = numeric.filter((x) => x.has != null && x.has < x.need);
+    const short = shortOn.map((x) => `${x.w.label.toLowerCase()}: ${x.has} of ${x.need}`);
 
     // REAL BEDS, not headline capacity — the researched guidance this engine
     // already carries (book under stated capacity so nobody is on an air bed).
@@ -1504,17 +1559,41 @@ export function rankCandidates(candidates, event, opts) {
       ...c,
       matched,
       unknown,
+      // Requirements the card ANSWERED and this place fails. Distinct from
+      // `unknown` on purpose — the host can act on a shortfall.
+      short,
       unread,
       // DELIBERATELY UNCHANGED. `clears` feeds the bookmarklet path's default
       // tick set in HostShellV2, so making an unread link fail to clear would
       // arrive with a link the host deliberately pasted already unticked —
       // losing it, which is worse than mis-ordering it. Whether an unread row
       // should count as clearing is a real question and a separate one.
+      // ── A DERIVED MINIMUM SORTS; IT DOES NOT EXCLUDE (2026-10-03) ──────
+      // The first cut put `shortOn.length === 0` here, and matrix55 caught it
+      // in the worst way available: twentyLinksIsARealSearch TIMED OUT at 30s
+      // on four projects. `clears` feeds the default tick set for a paste, so
+      // a derived 8-bedroom minimum unticked most of a twenty-link search and
+      // nothing was ever read. The comment on this very field warned about it
+      // — "a link the host deliberately pasted already unticked — losing it".
+      //
+      // The distinction that matters: `bedsShort` and `overBudget` are hard
+      // because the host STATED the guest count and the budget. A bedroom
+      // minimum is DERIVED, and on an event with no roster detail it is
+      // derived from an assumption we print on screen. An assumption must not
+      // throw away the host's own paste.
+      //
+      // So a shortfall is still named (`short`) and still sinks the row (the
+      // score penalty below), which is the whole value of measuring it. It
+      // just does not exclude.
       clears: !bedsShort && !overBudget,
       why: bedsShort ? `${c.beds} beds for ${guests} — someone's on a sofa`
         : overBudget ? `$${c.priceShown.toLocaleString()} is over the $${budget.toLocaleString()} you set`
-          : null,
-      score: matched.length * 10 + (c.beds || 0) - (overBudget ? 100 : 0) - (bedsShort ? 100 : 0),
+          // Named last so every case this file already decided keeps its
+          // sentence, and this only speaks where nothing else did.
+          : shortOn.length ? shortOn.map((x) => `${x.has} ${x.w.label.toLowerCase().replace(/^enough /, '')} for ${x.need} needed`).join('; ')
+            : null,
+      score: matched.length * 10 + (c.beds || 0) - (overBudget ? 100 : 0) - (bedsShort ? 100 : 0)
+        - shortOn.length * 100,
     };
   });
 
@@ -1540,6 +1619,16 @@ export function rankCandidates(candidates, event, opts) {
  * against what the host typed about each option. A filter we cannot prove is a
  * filter we do not send.
  */
+// The guest count, read the way the rest of this file already reads it. NOTE:
+// the same expression is inlined at four other sites here with small
+// variations; this helper is used by the 2026-10-03 additions only, because
+// rewriting four working call sites is a bigger change than the one asked for.
+// Worth collapsing deliberately one day, not as a side effect.
+const guestsOf = (ev) => Number((ev || {}).guestCount)
+  || Number((ev || {}).guestEstimate)
+  || (Array.isArray((ev || {}).guests) ? (ev || {}).guests.length : 0)
+  || 0;
+
 export const LODGING_MUST_HAVES = [
   { id: 'hottub',   label: 'Hot tub',            search: { 'amenities[]': '25' }, match: /hot ?tub|jacuzzi|spa\b/i },
   { id: 'pool',     label: 'Pool',               search: { 'amenities[]': '7' },  match: /\bpool\b/i },
@@ -1562,10 +1651,193 @@ export const LODGING_MUST_HAVES = [
   { id: 'realbeds', label: 'Real beds, not pull-outs', search: null, match: /real bed|king|queen|bunk|no (sofa|pull)/i },
   // One bathroom per two-to-three people for a large group; a ground-floor bed
   // AND bath is "the single most overlooked thing" in a multigenerational stay.
-  { id: 'baths',    label: 'Enough bathrooms',      search: null, match: /(\d+(\.\d+)?)\s*(full\s*)?bath|ensuite|en-suite/i },
+  // NUMERIC, not a mention. The card prints "4 baths" and the parser already
+  // reads it, so this requirement can be ANSWERED rather than guessed at: the
+  // cited ratio is one bathroom per two-to-three people, so the need is
+  // ceil(guests / 3) and a 4-bath house for 16 is SHORT, not unknown.
+  { id: 'baths',    label: 'Enough bathrooms',      search: null,
+    match: /(\d+(\.\d+)?)\s*(full\s*)?bath|ensuite|en-suite/i,
+    need: (ev) => { const g = guestsOf(ev); return g >= 6 ? Math.ceil(g / 3) : null; },
+    reads: (c) => (c && c.baths != null ? Number(c.baths) : null),
+    // Same ladder, same day: =1 -> 20 · =5 -> 18 · =9 -> 5. Honored.
+    searchFor: (ev) => { const g = guestsOf(ev); return g >= 6 ? { min_bathrooms: String(Math.ceil(g / 3)) } : null; } },
   { id: 'quiet',    label: 'A room to escape to',   search: null, match: /den|study|bonus room|finished basement|screened porch|sunroom/i },
   { id: 'wifi',     label: 'Wifi that holds a call',search: null, match: /wifi|wi-fi|fiber|gigabit|internet|workspace|desk/i },
+  // ── ADDED 2026-10-03, AND ONLY WHAT THE DATA CAN ANSWER ────────────────────
+  // Host: "need more options based on Airbnb, Vrbo, Google" and "how about no
+  // cancellations". The test applied to every candidate requirement was: can we
+  // MATCH it against something we actually hold? Three sources qualify, and
+  // each entry below says which one it uses.
+  //
+  //   A. the results card, proven in __fixtures__/airbnbSantaFeResults.js
+  //   B. the per-listing read's `amenities` (affirmed) / `amenitiesAbsent`
+  //   C. a verified search filter that changes the URL
+  //
+  // Requirements that failed that test were NOT added. A longer list of things
+  // we cannot check is a worse list.
+
+  // BEDROOMS — the host's own example: "the Anaheim event is for 16 and need 2
+  // people (couple) for example 8 bedrooms". NUMERIC and DERIVED: the roster
+  // already knows who the couples are, because a filled `plusOne` is a person
+  // sharing a row's bed. Source A — the card prints "6 bedrooms" and the
+  // parser reads it into `c.bedrooms` today.
+  { id: 'bedrooms', label: 'Enough bedrooms',       search: null,
+    match: /(\d+)\s*bedrooms?\b/i,
+    need: (ev) => { const b = bedroomsNeeded(ev); return b ? b.rooms : null; },
+    reads: (c) => (c && c.bedrooms != null ? Number(c.bedrooms) : null) ,
+    // VERIFIED LIVE 2026-10-03 against the real search, the same way the three
+    // amenity filters were. Santa Fe, adults=10, through our own backend:
+    //   min_bedrooms=1 -> 20 places · =8 -> 10 · =12 -> 2 · =20 -> 0
+    // Monotonic in the threshold, so it is honored rather than ignored. A
+    // single "the result set changed" would NOT have proven this — Airbnb
+    // reshuffles between requests — which is why the test was a ladder.
+    searchFor: (ev) => { const b = bedroomsNeeded(ev); return b && b.rooms ? { min_bedrooms: String(b.rooms) } : null; } },
+
+  // FREE CANCELLATION — source A, and not a guess: the phrase appears five
+  // times in the captured Santa Fe results fixture, verbatim, on the card.
+  // Read as the host meant it — a booking you can back out of — rather than
+  // the opposite reading (a non-refundable rate bought at a discount).
+  { id: 'freecancel', label: 'Free cancellation',   search: null,
+    match: /free cancellation|refundable|cancel free/i },
+
+  // SUPERHOST — source A (two occurrences in the same fixture). A weak signal
+  // about a PERSON rather than a house, so it is offered and never suggested.
+  // AND IT DOES NOT FILTER. Measured 2026-10-03 on the same run that proved
+  // min_bedrooms and min_bathrooms: `superhost=true` returned all 20 places,
+  // identical to unfiltered. It was proposed as a search filter and the data
+  // said no, so it scores text and never touches the URL. Recorded because a
+  // negative result nobody writes down gets re-proposed every few months.
+  { id: 'superhost', label: 'Superhost',            search: null,
+    match: /\bsuperhost\b/i },
+
+  // Source B. Neither word appears in any prose we hold, so these are only
+  // answerable once a listing has been read — which is exactly the case the
+  // three-state comparison was built for.
+  { id: 'ev',       label: 'EV charger',            search: null,
+    match: /\bev charger|electric vehicle charg|tesla charg/i },
+  { id: 'grill',    label: 'Grill for cooking out', search: null,
+    match: /\b(bbq|barbecue|grill|fire pit)\b/i },
 ];
+
+/**
+ * HOW MANY BEDROOMS THIS GROUP ACTUALLY NEEDS.
+ *
+ * Host, 2026-10-03: "the Anaheim event is for 16 and need 2 people (couple)
+ * for example 8 bedrooms." The arithmetic is theirs; what this adds is that
+ * the roster usually already answers it, so the number is DERIVED rather than
+ * assumed whenever it can be.
+ *
+ * A filled `plusOne` IS a couple — the whole point of that field is a second
+ * adult riding one guest's row, and the rest of the app already reads it that
+ * way (confirmedCovers, crabPlan: "a filled plusOne is a real adult"). So a
+ * row with a plus-one takes ONE room, and a row without takes its own, because
+ * two unrelated adults sharing is the host's call to make and not ours to
+ * assume.
+ *
+ * With no roster detail there is nothing to derive from, and the honest move is
+ * to state the assumption rather than refuse the question: double occupancy,
+ * which is both the common group-rental convention and the host's own
+ * arithmetic — 16 becomes 8.
+ *
+ * `basis` says which of those happened, so the surface can show the host
+ * whether this came from their roster or from an assumption they can overrule.
+ *
+ * ── AGAINST A STANDING RULING, DELIBERATELY AND NARROWLY ───────────────────
+ * The 2026-08-06 review board (both override seats) ruled, at line ~516 of
+ * this file: "we do not know the room count and will not guess one: a party
+ * does not divide into rooms by arithmetic (couples, children, singles)."
+ * That is this arithmetic, named.
+ *
+ * What the board was protecting is a MONEY claim: a per-room hotel rate times
+ * a guessed room count, divided per head, produced "$85 a person" where the
+ * real figure was nearer $4,240. The harm was a fabricated number presented
+ * as spend.
+ *
+ * This function cannot do that, and it is wired so it cannot: its only two
+ * consumers are the `bedrooms` requirement's `need` and the suggestion's
+ * `why`. No money path reads it — checked 2026-10-03, not assumed. The output
+ * is a SEARCH MINIMUM the host sees, with the derivation printed beside it and
+ * a chip they can drop.
+ *
+ * The host also performed exactly this arithmetic themselves when they asked
+ * for it ("for 16 and need 2 people (couple) for example 8 bedrooms"), which
+ * is the request this answers. Recorded here rather than left implicit,
+ * because a future reader will find the ruling and needs to know this was
+ * weighed and not missed. If a per-person cost ever wants this number, the
+ * ruling stands and the answer is still no.
+ *
+ * @returns {{rooms:number, basis:'roster'|'stated'|'assumed', couples:number, singles:number, kids:number, why:string}|null}
+ */
+export function bedroomsNeeded(event) {
+  const ev = event || {};
+  const roster = Array.isArray(ev.guests) ? ev.guests : [];
+  const guests = guestsOf(ev);
+  if (!guests) return null;
+
+  // ── READ THE PAIRING THE APP ACTUALLY WRITES, IN BOTH ITS FORMS ─────────
+  // The first cut counted only `plusOne` and would have been near-useless on
+  // a real roster. The add-names path SPLITS "Denise & Ray" into two separate
+  // rows on purpose — "so each gets their own reply, plate, and seat" — and
+  // tags both with one `coupleId` (HostShellV2 ~:6267, "ONE id for the
+  // pair"). So the common roster has couples with NO plusOne anywhere, and
+  // this function would have reported zero of them and fallen through to an
+  // assumption, next to a list that plainly shows eight pairs.
+  //
+  //   coupleId  two rows, two people, ONE room
+  //   plusOne   one row carrying a partner's name — one room
+  //
+  // Counted so neither double-counts: a row inside a coupleId group is
+  // accounted for by that group and never again by its own plusOne.
+  const pairIds = new Set();
+  for (const g of roster) {
+    const cid = g && String(g.coupleId || '').trim();
+    if (cid) pairIds.add(cid);
+  }
+  const inPairRows = roster.filter((g) => g && String(g.coupleId || '').trim()).length;
+  const plusOnes = roster.filter((g) => g
+    && !String(g.coupleId || '').trim()
+    && String(g.plusOne || '').trim()).length;
+  const couples = pairIds.size + plusOnes;
+  if (couples > 0) {
+    const singles = Math.max(0, roster.length - inPairRows - plusOnes);
+    // Kids commonly share, and the sources say so for a multigen stay. Two to
+    // a room, rounded up, so three kids get two rooms rather than one and a
+    // half.
+    const kids = roster.reduce((n, g) => n + Math.max(0, Number((g && g.kids) || 0)), 0);
+    const rooms = couples + singles + Math.ceil(kids / 2);
+    return {
+      rooms, basis: 'roster', couples, singles, kids,
+      why: `${couples} ${couples === 1 ? 'couple' : 'couples'} sharing a room, ${singles} on their own`
+        + (kids ? `, and ${kids} ${kids === 1 ? 'kid' : 'kids'} two to a room` : '')
+        + ` — that is ${rooms} ${rooms === 1 ? 'bedroom' : 'bedrooms'}.`,
+    };
+  }
+
+  // THE HOST MAY HAVE SAID IT OUTRIGHT. "8 couples" at intake is a PAIRING,
+  // and it used to be multiplied into sixteen and discarded — so this function
+  // assumed double occupancy and announced the assumption, on an event whose
+  // host had already stated it. smartParseEvent keeps `guestPairs` now, and a
+  // stated pairing is a derivation, not a guess.
+  const pairs = Number(ev.guestPairs) || 0;
+  if (pairs > 0) {
+    const singles = Math.max(0, guests - pairs * 2);
+    const rooms = pairs + singles;
+    return {
+      rooms, basis: 'stated', couples: pairs, singles, kids: 0,
+      why: `You said ${pairs} ${pairs === 1 ? 'couple' : 'couples'}`
+        + (singles ? ` and ${singles} on their own` : '')
+        + ` — that is ${rooms} ${rooms === 1 ? 'bedroom' : 'bedrooms'}.`,
+    };
+  }
+
+  const rooms = Math.ceil(guests / 2);
+  return {
+    rooms, basis: 'assumed', couples: 0, singles: guests, kids: 0,
+    why: `${guests} people, two to a room — ${rooms} bedrooms. Nobody on the`
+      + ` roster has a plus-one filled in yet, so this assumes they pair up;`
+      + ` change it if they do not.`,
+  };
+}
 
 /**
  * Sources behind the requirement vocabulary and the suggestions. Registered in
@@ -1739,6 +2011,12 @@ export function suggestedMustHaves(event) {
   if (!isHotelStay && guests >= 6 && nights >= 1) {
     add('realbeds', `Sleeping ${guests} on paper often means sofa beds and air mattresses — the guidance is to book under the headline capacity so everyone gets a real bed.`, 'multigen-rental-fit');
     add('baths', `One bathroom per two or three people is the working ratio; ${guests} people sharing one is the morning everybody remembers.`, 'multigen-rental-fit');
+    // BEDROOMS, with the arithmetic shown rather than a bare number. The
+    // `why` is the derivation itself — it names the couples it counted, or
+    // says plainly that it assumed they pair up — because a host who
+    // disagrees needs to see WHICH assumption to overrule.
+    const bn = bedroomsNeeded(ev);
+    if (bn) add('bedrooms', bn.why, bn.basis === 'roster' ? null : 'multigen-rental-fit');
   }
   // WHO IS ACTUALLY COMING — the roster decides these, not the event type.
   // Step-free access and kid-readiness are real regardless of house or hotel.
@@ -1887,7 +2165,7 @@ export function lodgingSearchLinks(event) {
   const budgetSaid = budget ? `under $${budget.toLocaleString()}` : null;
 
   const musts = mustHavesFor(ev);
-  const mustSaid = musts.filter((m) => m.search).map((m) => m.label.toLowerCase());
+  const mustSaid = musts.filter((m) => m.search || m.searchFor).map((m) => m.label.toLowerCase());
 
   // Airbnb: checkin / checkout / adults / price_max / the must-have filters,
   // with the town in the path slug.
@@ -1904,8 +2182,17 @@ export function lodgingSearchLinks(event) {
   if (budget) ab.set('price_max', String(budget));
   // Only the filters proven against the live search page ride the URL.
   for (const m of musts) {
-    if (!m.search) continue;
-    for (const [k, v] of Object.entries(m.search)) ab.append(k, v);
+    // Static filters (an amenity id Airbnb publishes) and DERIVED ones (a
+    // minimum computed from this event) ride the same URL. Both are verified
+    // against the live search before they are allowed here; a requirement that
+    // only scores text keeps `search: null` and stays out.
+    const fixed = m.search || null;
+    let derived = null;
+    if (typeof m.searchFor === 'function') { try { derived = m.searchFor(ev); } catch { derived = null; } }
+    for (const src of [fixed, derived]) {
+      if (!src) continue;
+      for (const [k, v] of Object.entries(src)) ab.append(k, v);
+    }
   }
   const abSlug = place.replace(/,\s*/g, '--').replace(/\s+/g, '-');
 

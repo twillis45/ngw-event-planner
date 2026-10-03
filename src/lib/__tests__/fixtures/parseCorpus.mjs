@@ -65,7 +65,7 @@ export const PARSER_FIELDS = [
   // the event type, 'generic' when only the "party" catch-all held it up. It
   // exists because deleting ONE character from the type word lands 35 of 45
   // playbook types on Birthday, silently — see oneTypoBoughtABirthday.test.js.
-  'type', 'typeBasis', 'secondaryType', 'theme', 'guests', 'budget', 'date', 'endDate', 'monthYear',
+  'type', 'typeBasis', 'secondaryType', 'theme', 'guests', 'guestPairs', 'budget', 'date', 'endDate', 'monthYear',
   // `nights` and `lodgingKind` added 2026-09-25, from a host-reported parse:
   // "50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb
   // accomodations". Measured, every duration phrase was discarded unless the

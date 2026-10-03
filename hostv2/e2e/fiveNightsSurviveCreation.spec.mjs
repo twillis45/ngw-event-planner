@@ -61,3 +61,41 @@ test('and it never invents one — a seed with no duration says nothing about ni
   await expect(page.getByText(/Not picked yet\./).first()).toBeVisible({ timeout: 20000 });
   await expect(page.getByText(/nights to cover/)).toHaveCount(0);
 });
+
+// ── AND THE PAIRING SURVIVES IT TOO (2026-10-03) ───────────────────────────
+// Same seed, same seam, same class of defect one field over. "8 couples" was
+// multiplied into sixteen guests and then DISCARDED, so lodgingIntel's
+// bedroomsNeeded had to assume double occupancy to answer "how many
+// bedrooms" — and said so on screen, announcing an assumption about a fact
+// this host had already stated in the box they typed in.
+//
+// E2E for exactly the reason the file header gives: jest covers the parser
+// and the engine, and the broken part was the WRITE in between. A test on
+// either end passes whether or not a host can ever get a value through.
+test('the PAIRING survives creation too — "8 couples" is a fact, not just a multiplier', async ({ page }) => {
+  test.setTimeout(120000);
+  await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private mode */ } });
+  await page.goto('./?elegant=1');
+
+  await page.getByText(/Start my event/i).first().click();
+  await page.getByPlaceholder(/crab feast/i).first().fill(SEED);
+  await page.getByText(/^Say it/i).first().click();
+  await page.getByText(/Put my plan together/i).first().click();
+  await page.getByText(/Where Everyone Stays/i).first().waitFor({ state: 'visible', timeout: 30000 });
+
+  // Read what was actually WRITTEN, not what the screen renders — the whole
+  // defect was a field that never reached storage.
+  const ev = await page.evaluate(() => {
+    const list = JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]');
+    const id = localStorage.getItem('ngw-hostv2-last-event');
+    return list.find((e) => e.id === id) || list[list.length - 1] || null;
+  });
+
+  expect(ev, 'the created event is in storage').toBeTruthy();
+  // UNCHANGED, and asserted so the pairing can never start double-counting:
+  // eight couples is sixteen people, not thirty-two.
+  expect(Number(ev.guestEstimate)).toBe(16);
+  // NEW: the pairing itself, which is what turns the bedroom count from an
+  // assumption the host reads about into a derivation from their own words.
+  expect(ev.guestPairs).toBe(8);
+});
