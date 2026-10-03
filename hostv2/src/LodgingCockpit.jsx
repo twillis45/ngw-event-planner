@@ -1483,48 +1483,24 @@ function Looking({ event, patch }) {
         )}
         {searchOffer && (
           <div className="lc-offer">
-            {/* ── WHAT THIS PROMISES CHANGED, SO THE COPY HAD TO ──────────
-                It used to say "you'll get the links, not names or prices,
-                because a results page doesn't carry those". The first half is
-                no longer true — accepting this now reads each place, so the
-                names and prices DO come back. The second half still is: they
-                live on the listings, not the results page, which is why this
-                takes a moment instead of being instant.
-
-                NO DURATION PROMISED (host, 2026-10-02: "let the progress
-                counter speak"). The draft said "about twenty seconds", which
-                measured 19.9s against a WARM backend on a run where none of
-                the twenty reads were refused. A host's first pull wakes a
-                spun-down Render instance, and this file's own header says a
-                meaningful share of reads come back 403/429 — either one makes
-                the number wrong, and a number that is wrong is worse than no
-                number. The counter below reports what is actually happening,
-                and it cannot drift from the truth because it IS the truth. */}
+            {/* ── WHAT THIS PROMISES HAS CHANGED TWICE, SO READ THE DATE ──
+                2026-10-02 (morning): it promised "names, sizes and prices"
+                and I removed prices, because a LISTING page has none —
+                verified, residential IP, dates in the URL, 645KB containing
+                no rate at all.
+                2026-10-02 (evening): prices came back, because the RESULTS
+                page does carry them and the backend now reads them off the
+                cards. Verified against prod from Render's own datacenter IP:
+                18 of 18 priced. The morning's removal was right about the
+                listing and wrong about the search.
+                Still no duration promised — the counter speaks (host). */}
             <p className="lc-body">
               That’s the {DOOR_SHORT[searchOffer.door] || 'search'} search, not one house.
-              I can read the places on it and bring back their names, sizes and what
-              they have — up to {UNFURL_MAX} of them. Each is a separate page, so this
-              takes a moment; I’ll count them off as they come in, and say so if the
+              I can read the places on it — their names and what the whole stay
+              costs come off the search itself, and then I read each place for
+              sleeps and what it has. Up to {UNFURL_MAX} of them. That part takes
+              a moment; I’ll count them off as they come in, and say so if the
               site stops answering partway.
-            </p>
-            {/* ── NAME THE ONE THING IT CANNOT BRING (host, 2026-10-02: "dont
-                see the prices and price per head added in prod, lost it") ────
-                My own copy promised "names, sizes and prices" and this path
-                cannot deliver a price — measured twice against live listings,
-                the unfurl returns price: None while sleeps, rating and
-                amenities all come back. A listing page computes its price in
-                the browser from dates and guests; it is not in the HTML the
-                server fetches.
-                The host did not lose prices here, they were never on this
-                path — but a promise that cannot be kept is worse than the
-                gap, so it says what it can do and names the route that
-                carries money: the results CARDS have prices on them, which is
-                why pasting the page is the one that pays. */}
-            <p className="lc-note">
-              Not prices, though — a listing page doesn’t carry one. If what you’re
-              weighing is cost, copy the whole results page and paste that instead:
-              the cards have prices on them, and I’ll still read each place for
-              sleeps and what it has.
             </p>
             <button className="cta" onClick={async () => {
               setBusy(true);
@@ -1538,7 +1514,33 @@ function Looking({ event, patch }) {
                   // a real search each rendered "no amenities listed", which
                   // is the wrong sentence and a worse one. Nothing had been
                   // read, so there was no amenity list to be absent from.
-                  let cands = r.links.map((u, i) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null, unread: true, _k: u || `k${i}` }));
+                  // ── THE CARDS CARRY MONEY NOW (2026-10-02) ──────────────
+                  // `places` is new: the backend reads each results CARD, so
+                  // a pull arrives with the listing's own name and its STAY
+                  // TOTAL before anything is looked up. Verified against prod
+                  // from Render's datacenter IP: 18 of 18 priced.
+                  //
+                  // `links` is still read when `places` is absent — an older
+                  // backend, or a page served without card objects — and that
+                  // path is byte-for-byte what it was before.
+                  //
+                  // NOT priceBasis 'night'. The label reads "for 4 nights", so
+                  // this is the whole stay; 'night' is the hotel-rate flag and
+                  // tagging a stay total with it is how a room-night gets
+                  // divided across the party.
+                  const src = (Array.isArray(r.places) && r.places.length)
+                    ? r.places
+                    : (r.links || []).map((u) => ({ url: u }));
+                  let cands = src.map((pl, i) => ({
+                    url: pl.url,
+                    name: pl.name || '',
+                    kind: '', place: '', bedrooms: null, beds: null,
+                    priceShown: pl.totalPrice != null ? pl.totalPrice : null,
+                    nights: pl.nights != null ? pl.nights : null,
+                    // Only truly unread when the page told us nothing at all.
+                    unread: pl.totalPrice == null && !pl.name,
+                    _k: pl.url || `k${i}`,
+                  }));
 
                   // ── A LIST WITH NOTHING TO CHOOSE BETWEEN IS NOT A CHOICE ──
                   // Host, 2026-10-02: "if the host will choose which to add to
@@ -1563,7 +1565,7 @@ function Looking({ event, patch }) {
                   // crawl: the host pressed "Pull the places in", which is the
                   // same consent as pasting the links by hand — the never-build
                   // rule is about walking results nobody asked for.
-                  const total = r.links.length;
+                  const total = (r.links || src).length;
                   const over = Math.max(0, cands.length - UNFURL_MAX);
                   cands = cands.slice(0, UNFURL_MAX);
                   let declined = false;
@@ -3155,8 +3157,59 @@ function PickTwo({ cmp, event, intel }) {
   );
 }
 
+// ── HOW MANY COLUMNS THIS WIDTH CAN HOLD, MEASURED ───────────────────────
+// UX_03 for tablet-land says "Three-column stat grids work. Four columns may
+// be tight — TEST BEFORE SHIPPING", so it was tested rather than assumed.
+// The widest value this table holds is the sleeps shortfall — "9 — 3 without
+// a bed" — which needs 123px at the row's own font.
+//
+// MEASURED, at four widths, counting value cells that wrapped:
+//     768  -> 3 cols, 144px, 0 wrapped
+//     1024 -> 4 cols, 115px, 0 wrapped
+//     1280 -> 6 cols,  81px, 4 WRAPPED
+//     1536 -> 6 cols,  81px, 4 WRAPPED
+//
+// And the reason 1280 and 1536 are IDENTICAL is the finding: the stage is
+// max-width capped, so the table stops widening above ~1024 and a wider
+// monitor buys no columns at all. My first cut computed 6 at 1280 and 8 at
+// 1536 from arithmetic that assumed the grid grows with the viewport. It does
+// not. Four is the ceiling everywhere above 1024, and the only thing a bigger
+// screen changes is how much room is left around it.
+const colCapFor = (w) => (w >= 1024 ? 4 : 3);
+
 function Transpose({ cmp, event, intel }) {
-  const grid = { gridTemplateColumns: `minmax(92px,1.3fr) repeat(${cmp.columns.length}, minmax(0,1fr))` };
+  // The cap is a width question, so it is re-read on resize rather than
+  // sampled once at mount — a tablet that rotates is the ordinary case here.
+  const [cap, setCap] = useState(() => colCapFor(
+    typeof window === 'undefined' ? 1280 : window.innerWidth,
+  ));
+  useEffect(() => {
+    const on = () => setCap(colCapFor(window.innerWidth));
+    on();
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
+
+  // ── ANY N, NOT THE FIRST N (2026-10-02) ────────────────────────────────
+  // Same fault the phone had: the table showed the top three and a host with
+  // twenty-one places could not weigh the fourth against the ninth. The cap
+  // is a width limit, not a selection — so the host selects, exactly as they
+  // do on the phone, and the chips are the same control.
+  const all = (((intel && intel.options) || []).filter((o) => o && o.status !== 'gone'))
+    .map((o) => ({ id: o.id, label: o.label, sleeps: o.sleeps, beds: o.beds }));
+  const [pick, setPick] = useState(null);
+  const live = (pick || []).filter((id) => all.some((o) => o.id === id));
+  const eff = live.length >= 2 ? live.slice(0, cap) : all.slice(0, cap).map((o) => o.id);
+  const toggle = (id) => setPick(() => (
+    eff.includes(id)
+      // Never below two: one column is not a comparison.
+      ? (eff.length > 2 ? eff.filter((x) => x !== id) : eff)
+      : (eff.length < cap ? [...eff, id] : [...eff.slice(1), id])
+  ));
+
+  let shown = cmp;
+  try { shown = lodgingCompare(event, intel, eff, cap) || cmp; } catch { shown = cmp; }
+  const grid = { gridTemplateColumns: `minmax(92px,1.3fr) repeat(${shown.columns.length}, minmax(0,1fr))` };
   return (
     <Panel label={`SIDE BY SIDE${cmp.guests ? ` · YOUR ${cmp.guests}` : ''}`}>
       {/* "Below" was true when this table sat above the deck; the reorder
@@ -3175,9 +3228,27 @@ function Transpose({ cmp, event, intel }) {
             worst in a narrow column. The frame keeps its height with no photo
             so the columns stay aligned (UX_05: rows the same height) — an
             empty frame, never a stock photo standing in for a real house. */}
+        {all.length > cap && (
+          <div className="lc-p2-pick lc-t-pick">
+            {all.map((c) => {
+              const on = eff.includes(c.id);
+              return (
+                <button key={c.id} type="button" className={'lc-p2-chip' + (on ? ' is-on' : '')}
+                  aria-pressed={on} onClick={() => toggle(c.id)}
+                  aria-label={`${c.label} — ${on ? 'comparing' : 'tap to compare'}`}>
+                  <span className="lc-p2-chip-n">{lodgingTitleFor(c) || c.label}</span>
+                  <span className="lc-p2-chip-s">
+                    {c.sleeps != null ? `sleeps ${c.sleeps}`
+                      : c.beds != null ? `${c.beds} beds` : 'capacity not said'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="lc-t-head" style={grid}>
           <span />
-          {cmp.columns.map((c) => (
+          {shown.columns.map((c) => (
             <span key={c.id} className="lc-col-head">
               <span className="lc-col-shot">
                 {c.photo
@@ -3188,7 +3259,7 @@ function Transpose({ cmp, event, intel }) {
             </span>
           ))}
         </div>
-        {cmp.rows.map((r) => (
+        {shown.rows.map((r) => (
           <div key={r.id} className={'lc-t-row' + (r.amenity ? ' is-amenity' : '')} style={grid}>
             <span className="lc-row-label">{r.label}</span>
             {r.values.map((v, i) => (
@@ -3201,13 +3272,13 @@ function Transpose({ cmp, event, intel }) {
           </div>
         ))}
         {/* A count the host cannot see is a claim. Said out loud. */}
-        {cmp.amenitiesOver > 0 && (
+        {shown.amenitiesOver > 0 && (
           <p className="lc-note">
-            {cmp.amenitiesOver} more {cmp.amenitiesOver === 1 ? 'amenity' : 'amenities'} the
+            {shown.amenitiesOver} more {shown.amenitiesOver === 1 ? 'amenity' : 'amenities'} the
             listings named are not shown — the ones where these places differ come first.
           </p>
         )}
-        <p className="lc-note">{cmp.note}</p>
+        <p className="lc-note">{shown.note}</p>
       </div>
     </Panel>
   );

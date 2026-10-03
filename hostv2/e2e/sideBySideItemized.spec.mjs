@@ -16,6 +16,13 @@
 // for the wrong reason.
 import { test, expect, settled } from './fixtures.mjs';
 
+// NOTE on selectors: the wide table grew its own column chooser that reuses
+// .lc-p2-chip, and its markup sits in the DOM at phone width even while
+// .lc-t-wide hides it. Every chip selector here is scoped to the phone's own
+// chooser so a count can never silently measure both surfaces at once —
+// these tests pass unscoped today only because three places do not exceed
+// the cap, which is luck, not design.
+
 const DEMO = './?demo=lodging';
 const IDS = ['31', '32', '33'];
 // Deliberately uneven, because an even fixture cannot fail the interesting way:
@@ -193,13 +200,13 @@ test.describe('pick two, on a phone', () => {
 
   test('tapping a third place swaps it into the pair', async ({ page }) => {
     await stage(page);
-    const chips = page.locator('.lc-p2-chip');
+    const chips = page.locator('.lc-p2-pick:not(.lc-t-pick) .lc-p2-chip');
     await expect(chips).toHaveCount(3);
-    await expect(page.locator('.lc-p2-chip.is-on')).toHaveCount(2);
+    await expect(page.locator('.lc-p2-pick:not(.lc-t-pick) .lc-p2-chip.is-on')).toHaveCount(2);
     const before = await page.locator('.lc-p2-name').allInnerTexts();
     await chips.nth(2).click();
     // Still two, and the third is now one of them.
-    await expect(page.locator('.lc-p2-chip.is-on')).toHaveCount(2);
+    await expect(page.locator('.lc-p2-pick:not(.lc-t-pick) .lc-p2-chip.is-on')).toHaveCount(2);
     await expect(chips.nth(2)).toHaveAttribute('aria-pressed', 'true');
     const after = await page.locator('.lc-p2-name').allInnerTexts();
     expect(after).not.toEqual(before);
@@ -208,7 +215,7 @@ test.describe('pick two, on a phone', () => {
 
   test('nothing in it sits under the tap floor, and the screen does not scroll sideways', async ({ page }) => {
     await stage(page);
-    const short = await page.locator('.lc-p2-chip').evaluateAll(
+    const short = await page.locator('.lc-p2-pick:not(.lc-t-pick) .lc-p2-chip').evaluateAll(
       (ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)).filter((h) => h < 44));
     expect(short, `chips under the floor: ${short.join(',')}`).toEqual([]);
     const over = await page.evaluate(() => document.documentElement.scrollWidth
@@ -227,11 +234,11 @@ test.describe('what driving it on a phone found', () => {
     // ★4.98 · 5 bedrooms · ? beds · 3 baths", differing 30 characters in. Both
     // chips rendered "Home in Santa …" and the host could not tell which one
     // they were about to compare.
-    const texts = await page.locator('.lc-p2-chip').evaluateAll(
+    const texts = await page.locator('.lc-p2-pick:not(.lc-t-pick) .lc-p2-chip').evaluateAll(
       (ns) => ns.map((n) => n.innerText.replace(/\s+/g, ' ').trim()));
     expect(new Set(texts).size, `chips must differ: ${texts.join(' | ')}`).toBe(texts.length);
     // And the half that tells them apart must be present, not truncated away.
-    const caps = await page.locator('.lc-p2-chip-s').allInnerTexts();
+    const caps = await page.locator('.lc-p2-pick:not(.lc-t-pick) .lc-p2-chip-s').allInnerTexts();
     expect(caps).toHaveLength(3);
     for (const c of caps) expect(c).toMatch(/sleeps \d+|\d+ beds|capacity not said/);
   });

@@ -3900,6 +3900,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    14 would be the exact minimum and is not. Scoped to .lodge-req, because
    .chips is used all over the shell and a global row-gap change is a
    different decision with its own measurements. */
+/* The column chooser above the wide table. Same chips as the phone's
+   pick-two — one control, two widths — but the table has room, so they wrap
+   instead of scrolling in a lane. */
+.lc-t-pick{flex-wrap:wrap;overflow:visible;margin:0 0 12px;}
+.lc-t-pick .lc-p2-chip{flex:0 0 auto;min-width:132px;max-width:220px;}
 .lodge-req summary{min-height:var(--tap-min);}
 .lodge-req .chips{row-gap:16px;}
 .req-why{ font-size:var(--t-row-sub); line-height:1.45; color:var(--muted) }

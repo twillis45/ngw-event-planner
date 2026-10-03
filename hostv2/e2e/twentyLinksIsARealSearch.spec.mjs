@@ -199,12 +199,16 @@ test('every place on the shortlist can be compared, not just the top three',
     await expect(add).toBeVisible({ timeout: 90_000 });
     await add.click();
 
-    const chips = page.locator('.lc-p2-chip');
+    // SCOPED TO THE PHONE'S OWN CHOOSER. The wide table grew a chooser that
+    // reuses these chips, and its markup is in the DOM at phone width even
+    // though .lc-t-wide hides it — so a bare .lc-p2-chip now matches 40, not
+    // 20, and the count assertion was measuring both surfaces at once.
+    const chips = page.locator('.lc-p2-pick:not(.lc-t-pick) .lc-p2-chip');
     await expect(chips).toHaveCount(20, { timeout: 30_000 });
-    await expect(page.locator('.lc-p2-chip.is-on')).toHaveCount(2);
+    await expect(page.locator('.lc-p2-pick:not(.lc-t-pick) .lc-p2-chip.is-on')).toHaveCount(2);
 
     // The lane really scrolls rather than crushing twenty chips into one row.
-    const lane = page.locator('.lc-p2-pick');
+    const lane = page.locator('.lc-p2-pick:not(.lc-t-pick)');
     const geo = await lane.evaluate((n) => ({
       overflows: n.scrollWidth > n.clientWidth + 2,
       snap: getComputedStyle(n).scrollSnapType,
@@ -228,3 +232,77 @@ test('every place on the shortlist can be compared, not just the top three',
     expect(await page.evaluate(() => document.documentElement.scrollWidth
       > document.documentElement.clientWidth)).toBe(false);
   });
+
+// ── THE SEARCH CARDS CARRY MONEY (2026-10-02) ─────────────────────────────
+// Host: "ive been operating under false pretenses. how are we going to get
+// prices into the app" — after I had told them this path structurally could
+// not carry money. A LISTING page genuinely has none; the RESULTS page does,
+// and the backend now reads it off each card. Verified against prod from
+// Render's datacenter IP: 18 of 18 priced.
+//
+// These gate the CLIENT half: that a priced `places` payload reaches the
+// staged rows as money, that a stay total is never mistaken for a nightly
+// rate, and that an unpriced payload still behaves exactly as it used to.
+const PRICED = Array.from({ length: 18 }, (_, i) => ({
+  url: `https://www.airbnb.com/rooms/90000000${i}`,
+  name: `Casa ${i}`,
+  totalPrice: 2000 + i * 100,
+  nights: 4,
+}));
+
+test('a search pull arrives with prices on it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/lodging/results**', (r) => r.fulfill({
+    json: { ok: true, links: PRICED.map((p) => p.url), places: PRICED, priced: PRICED.length, linksOnly: false },
+  }));
+  await page.route('**/api/lodging/unfurl**', (r) => r.fulfill({
+    json: { ok: true, title: '', price: null, image: '', facts: { beds: 8, bedrooms: 4 },
+      sleeps: 10, rating: 4.9, ratingCount: 30, amenities: ['Kitchen'] },
+  }));
+  await page.goto(DEMO); await settled(page);
+  await page.getByRole('button', { name: /Load the Santa Fe example/i }).click();
+  await page.locator('textarea').fill(SEARCH);
+  await page.getByRole('button', { name: /Read what I pasted/i }).click();
+  await page.getByRole('button', { name: /Pull the places in/i }).click();
+  await expect(page.getByRole('button', { name: /Add 18 to the shortlist/i }))
+    .toBeVisible({ timeout: 60_000 });
+
+  // EVERY row has money on it before the host unticks anything — which is
+  // the whole complaint this answers.
+  const prices = await page.locator('.lc-staged-price').allInnerTexts();
+  expect(prices).toHaveLength(18);
+  for (const p of prices) expect(p).toMatch(/\$\d/);
+
+  // Per head LEADS, the stay total follows on the meta line. 10 guests, so
+  // $2,000 -> $200 each. If the total were ever read as a NIGHTLY rate this
+  // number would be four times too big — that is the crab-money class and
+  // this is the arithmetic that catches it.
+  expect(prices.some((p) => /\$200 each/.test(p)),
+    `per-head must divide the stay total: ${prices.slice(0, 3).join(' | ')}`).toBe(true);
+  const metas = await page.locator('.lc-staged-meta').allInnerTexts();
+  expect(metas, 'the stay total stays reachable').toContain('$2,000 total');
+});
+
+test('an unpriced search still behaves exactly as it did', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // An older backend, or a page served without card objects. `places` absent,
+  // `links` present — the path this had before prices existed.
+  await page.route('**/api/lodging/results**', (r) => r.fulfill({
+    json: { ok: true, links: LINKS, linksOnly: true },
+  }));
+  await page.route('**/api/lodging/unfurl**', (r) => r.fulfill({
+    json: { ok: true, title: 'Casa — read on commit', price: null, image: '',
+      facts: { beds: 9, bedrooms: 5 }, sleeps: 11, rating: 4.9, ratingCount: 20,
+      amenities: ['Kitchen'] },
+  }));
+  await page.goto(DEMO); await settled(page);
+  await page.getByRole('button', { name: /Load the Santa Fe example/i }).click();
+  await page.locator('textarea').fill(SEARCH);
+  await page.getByRole('button', { name: /Read what I pasted/i }).click();
+  await page.getByRole('button', { name: /Pull the places in/i }).click();
+  await expect(page.getByRole('button', { name: /Add 20 to the shortlist/i }))
+    .toBeVisible({ timeout: 60_000 });
+  // No money claimed, and nothing invented in its place.
+  await expect(page.locator('.lc-staged-price')).toHaveCount(0);
+  expect(await page.locator('.lc-staged').count()).toBe(20);
+});

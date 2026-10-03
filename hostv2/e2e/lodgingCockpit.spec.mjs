@@ -577,18 +577,20 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     // staged bare URLs. It now reads each place, so the promise inverted: the
     // facts DO come back, and what the host needs warning about is the twenty
     // seconds it costs, not a limit that no longer applies.
-    // NOT "prices". An earlier cut of this copy promised them and the path
-    // cannot deliver: measured against live listings, the unfurl returns no
-    // price at all. The offer must name what it can bring and route the host
-    // to the results-page paste for money.
-    await expect(offer).toContainText(/names, sizes and what they have/i);
-    await expect(offer).not.toContainText(/sizes and prices/i);
+    // PRICES ARE BACK, and the history is worth keeping because the copy
+    // moved twice in one day. A LISTING page carries no price (verified), so
+    // the morning's cut removed the promise. The RESULTS page does carry
+    // them, the backend now reads them off the cards, and prod returns 18 of
+    // 18 priced from Render's datacenter IP — so the offer says so again.
+    await expect(offer).toContainText(/what the whole stay costs/i);
+    await expect(offer).toContainText(/sleeps and what it has/i);
     // NO DURATION. An earlier cut asserted "about twenty seconds" — a figure
     // measured once, warm, with nothing refused. The offer now says a moment
     // and points at the counter, which cannot be wrong about itself.
     await expect(offer).toContainText(/count them off as they come in/i);
-    await expect(page.getByText(/a listing page doesn.t carry one/i)).toBeVisible();
-    await expect(page.getByText(/copy the whole results page/i)).toBeVisible();
+    // The "not prices — copy the whole results page" note is gone: it told
+    // the host to do by hand the thing the pull now does for them.
+    await expect(page.getByText(/a listing page doesn.t carry one/i)).toHaveCount(0);
     await expect(offer).not.toContainText(/twenty seconds/i);
     // And declining must still leave the host a route.
     await expect(page.getByRole('button', { name: /No, I’ll pick one/i })).toBeVisible();

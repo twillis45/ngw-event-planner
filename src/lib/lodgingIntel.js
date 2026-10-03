@@ -2697,7 +2697,7 @@ export function lodgingStage(event, intel) {
 //
 // Absence renders as '—', never blank and never zero (research rec #2), and a
 // disqualifying value is grey rather than red (rec #7): too small is not faulty.
-export function lodgingCompare(event, intel, picked) {
+export function lodgingCompare(event, intel, picked, maxCols) {
   const ev = event || {};
   let li = intel;
   if (!li) { try { li = lodgingIntel(ev); } catch (_e) { return null; } }
@@ -2732,7 +2732,17 @@ export function lodgingCompare(event, intel, picked) {
     : live;
   if (pool.length < 2) return null;            // one option is not a comparison
 
-  const cols = pool.slice(0, 3);
+  // ── THE COLUMN CAP IS THE CALLER'S, BECAUSE IT IS A WIDTH QUESTION ─────
+  // Hardcoded 3 since this function was written, which was right when a
+  // shortlist was three places typed in by hand. One search now adds twenty,
+  // and 3 became the main thing between the host and the comparison — the
+  // same fault already fixed on the phone, where the chips offered 3 of 21.
+  //
+  // The engine cannot know the width, so it does not guess: the surface says
+  // how many it can hold and this honours it, clamped to something a table
+  // can actually be. Two is the floor because one column is not a comparison.
+  const cap = Math.max(2, Math.min(Number(maxCols) || 3, 6));
+  const cols = pool.slice(0, cap);
   const guests = li.guests || 0;
   const money = (n) => (Number.isFinite(n) && n > 0 ? `$${Math.round(n).toLocaleString()}` : null);
   const allIn = (o) => {
