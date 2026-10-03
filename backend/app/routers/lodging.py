@@ -76,6 +76,7 @@ HONEST LIMITS the host should hear rather than discover:
 
 import json
 import logging
+import base64
 import re
 from urllib.parse import urlparse
 
@@ -431,9 +432,133 @@ async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
 # than no price. `personCapacity` and `ratingAverage` appear zero times, so the
 # `sleeps` that gates the whole comparison is not here either.
 #
-# So this returns LINKS ONLY, and says so. The client already has an honest
-# path for that: the staged review tells the host their paste carried no names
-# or prices and what to do about it.
+# ── AMENDED 2026-10-02: THE PRICES ARE THERE, AND THEY ARE PAIRABLE ───────
+# The paragraph above is right that the MAP PINS carry no price and that
+# pairing by POSITION would be guesswork. What it missed is that there is a
+# second structure on the same page where the two live in ONE record: each
+# `StaySearchResult` object carries a base64 node id that decodes to
+# "DemandStayListing:<roomId>", the listing's own name, and its
+# `structuredDisplayPrice`. No position guessing is needed because the fields
+# are in the same object.
+#
+# HOW THIS WAS ESTABLISHED, because the note it corrects was also written in
+# good faith:
+#   · a regex that took "the first price after the id" looked right and was
+#     OFF BY ONE CARD — it gave the same room $1,910 in one fetch and $7,517
+#     in another. Internally consistent within a page, and wrong. Rejected.
+#   · parsing each card as JSON and keying on the listing NAME gave 16 of 16
+#     IDENTICAL prices across two independent fetches of the same search.
+#   · ground truth: the listing page for room 694594012522374038 has the
+#     title "HotTub + FirePit w. MtnViews | Pets OK | DT 10mins", which is
+#     exactly the name on the card claiming that room id.
+#   · the labels read "$3,355 for 4 nights", so these are STAY TOTALS, not
+#     nightly rates. The nights count is carried so nothing has to assume it.
+#
+# A LISTING page still has no price — verified from a residential IP with
+# check-in/check-out in the URL: the only dollar figures in 645KB are the
+# host's own house rules ($500 smoking fine, $1,000 police fine). That is why
+# the price has to come from here or not at all.
+#
+# UNKNOWN AT THE TIME OF WRITING: this was measured from a residential IP.
+# Render is a datacenter IP and Airbnb serves those differently. If the page
+# this endpoint receives has no card objects, `places` simply comes back
+# empty and the response is exactly what it was before — links only. The
+# client is written to that: prices when they are there, the old honest
+# "no names or prices" path when they are not.
+_CARD = re.compile(r'"__typename":"StaySearchResult"')
+_NODE = re.compile(r'"id":"([A-Za-z0-9+/=]{20,})"')
+_PRICE_LABEL = re.compile(r'\$([\d,]+) for (\d+) nights?')
+_MAX_CARDS = 40
+_MAX_CARD_BYTES = 120_000
+
+
+def _walk(node, key, acc):
+    """Every value under `key`, at any depth."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == key:
+                acc.append(v)
+            _walk(v, key, acc)
+    elif isinstance(node, list):
+        for v in node:
+            _walk(v, key, acc)
+    return acc
+
+
+def _card_objects(html: str):
+    """Each StaySearchResult record on the page, parsed as JSON. Never raises:
+    a card that will not parse is skipped, not guessed at."""
+    for n, m in enumerate(_CARD.finditer(html)):
+        if n >= _MAX_CARDS:
+            return
+        start = html.rfind('{', 0, m.start())
+        if start < 0:
+            continue
+        depth, end = 0, None
+        for j in range(start, min(start + _MAX_CARD_BYTES, len(html))):
+            c = html[j]
+            if c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    end = j + 1
+                    break
+        if not end:
+            continue
+        try:
+            yield json.loads(html[start:end])
+        except Exception:
+            continue
+
+
+def _room_of(card) -> str:
+    for raw in (x for x in _walk(card, 'id', []) if isinstance(x, str)):
+        try:
+            dec = base64.b64decode(raw + '==').decode('utf-8', 'ignore')
+        except Exception:
+            continue
+        if dec.startswith('DemandStayListing:'):
+            rid = dec.split(':', 1)[1]
+            if rid.isdigit():
+                return rid
+    return ''
+
+
+def search_cards(html: str) -> dict:
+    """{roomId: {'name', 'total', 'nights'}} for every card showing a price."""
+    out = {}
+    for card in _card_objects(html):
+        rid = _room_of(card)
+        if not rid or rid in out:
+            continue
+        names = [n.get('localizedStringWithTranslationPreference')
+                 for n in _walk(card, 'name', []) if isinstance(n, dict)]
+        name = next((n for n in names if isinstance(n, str) and n.strip()), '')
+        # ── READ THE PRICE OUT OF THE PRICE NODE, NOT OUT OF THE CARD ──────
+        # The first cut searched every accessibilityLabel in the record for
+        # something with a $ and the word "night". A card carries more than
+        # one such string — "originally $3,701" among them — so that was
+        # picking a price by luck of ordering inside the object, which is the
+        # same failure as picking one by position inside the page, one level
+        # down. Caught by the test that strips structuredDisplayPrice and
+        # still got a price back.
+        label = ''
+        for node in _walk(card, 'structuredDisplayPrice', []):
+            label = next((x for x in _walk(node, 'accessibilityLabel', [])
+                          if isinstance(x, str) and '$' in x), '')
+            if label:
+                break
+        m = _PRICE_LABEL.search(label)
+        if not m:
+            continue
+        try:
+            total = int(m.group(1).replace(',', ''))
+            nights = int(m.group(2))
+        except ValueError:
+            continue
+        out[rid] = {'name': name[:80], 'total': total, 'nights': nights}
+    return out
 #
 # WHY IT IS AN OFFER, NOT AN AUTOMATIC PULL. This is one fetch of one page the
 # host asked for. It deliberately does NOT walk the results and unfurl each
@@ -500,12 +625,43 @@ async def results(url: str = Query(..., min_length=12, max_length=2048)):
             ids.append(i)
         if len(ids) >= MAX_RESULTS:
             break
+    # ── THE CARDS, WHEN THE PAGE WE WERE SERVED HAS THEM (2026-10-02) ─────
+    # Never raises and never guesses: a page without card objects yields {},
+    # and the response is then byte-for-byte the one this endpoint has always
+    # returned. That is the degradation path for a datacenter IP being served
+    # a thinner page than a browser gets.
+    try:
+        cards = search_cards(html)
+    except Exception as exc:                      # pragma: no cover - defensive
+        log.info("results card parse failed, falling back to links: %s", exc)
+        cards = {}
+
+    places = []
+    for i in ids:
+        c = cards.get(i)
+        row = {"url": base + i}
+        if c:
+            # `total` is a STAY total — the label says "for N nights" — so the
+            # nights it covers rides with it rather than being assumed.
+            row["totalPrice"] = c["total"]
+            row["nights"] = c["nights"]
+            if c["name"]:
+                row["name"] = c["name"]
+        places.append(row)
+
+    priced = sum(1 for p in places if "totalPrice" in p)
     return {
         "ok": True,
         "url": url,
         "count": len(ids),
-        # LINKS ONLY, and the field name says it. No name, no price, no sleeps —
-        # see the note above for why inventing them here would be worse.
+        # Kept, unchanged, because every existing caller reads it.
         "links": [base + i for i in ids],
-        "linksOnly": True,
+        # NEW: the same listings with whatever the page actually said about
+        # them. `priced` lets the client speak accurately instead of inferring
+        # from an empty field — 0 means this page carried no prices, which is
+        # a different sentence from "this place has no price".
+        "places": places,
+        "priced": priced,
+        # linksOnly now means what it says: we learned nothing but the links.
+        "linksOnly": priced == 0,
     }
