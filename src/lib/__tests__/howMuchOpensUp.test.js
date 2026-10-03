@@ -66,7 +66,7 @@ describe('it counts what was never counted', () => {
     expect(b.surfaces).toBeGreaterThan(0);
   });
 
-  test('THE TRANSITIVE HALF EARNS ITS KEEP — the Gala target reaches past its neighbours', () => {
+  test('THE TRANSITIVE HALF EARNS ITS KEEP — the Gala target reaches past its neighbors', () => {
     // 4 decisions name it directly; 6 are downstream once their own dependents
     // are followed. A first-order count would under-report the single most
     // load-bearing decision in that playbook by a third.

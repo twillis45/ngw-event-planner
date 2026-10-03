@@ -30,7 +30,7 @@
 import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
-import { isAllowedMedia, isListingPhoto } from './lodgingBookmarklet';
+import { isListingPhoto } from './lodgingBookmarklet';
 import { googleTravelTs } from './googleTravelTs';
 // LEAF IMPORT ON PURPOSE (2026-08-16). Importing this from './playbooks'
 // dragged the entire 1.4MB playbook corpus onto the guest invite path,
@@ -631,7 +631,7 @@ export function lodgingIntel(event) {
     : (() => {
         const top = [...options].sort((a, b) => (b.votes || 0) - (a.votes || 0))[0];
         const tie = options.filter((o) => (o.votes || 0) === (top.votes || 0) && o.votes).length > 1;
-        if (!top || !top.votes) return `${voted} ${voted === 1 ? 'reply' : 'replies'} in — no clear favourite yet.`;
+        if (!top || !top.votes) return `${voted} ${voted === 1 ? 'reply' : 'replies'} in — no clear favorite yet.`;
         return tie
           ? `${voted} ${voted === 1 ? 'reply' : 'replies'} in — it's a tie so far.`
           : `${top.votes} of ${voted} ${voted === 1 ? 'reply leans' : 'replies lean'} toward ${top.label}. Yours is still the call.`;
@@ -815,24 +815,42 @@ export async function unfurlListing(url) {
   // do not make the host wait it out: cut it at UNFURL_MS, say what happened in
   // their words, and let the keep-the-link path do its job. The link is never
   // lost — losing it would be worse than not filling it in.
-  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
-  try {
-    const res = await fetch(`${API_BASE}/api/lodging/unfurl?url=${encodeURIComponent(clean)}`,
-      ctl ? { signal: ctl.signal } : undefined);
-    const body = await res.json().catch(() => null);
-    if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
-    return { ok: true, ...body };
-  } catch (err) {
-    // Distinguish "took too long" from "couldn't get there" — they are different
-    // situations and the host can act on them differently.
-    const timedOut = err && (err.name === 'AbortError' || String(err).includes('aborted'));
-    return { ok: false, reason: timedOut
-      ? 'Reading that listing is taking too long — I’ve kept the link. Open it and paste the page if you want the name and price filled in.'
-      : 'Couldn’t reach the listing. Copy the page and paste it instead.' };
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+  const once = async (ms) => {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), ms) : null;
+    try {
+      const res = await fetch(`${API_BASE}/api/lodging/unfurl?url=${encodeURIComponent(clean)}`,
+        ctl ? { signal: ctl.signal } : undefined);
+      const body = await res.json().catch(() => null);
+      if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
+      return { ok: true, ...body };
+    } catch (err) {
+      // Distinguish "took too long" from "couldn't get there" — they are different
+      // situations and the host can act on them differently.
+      const timedOut = err && (err.name === 'AbortError' || String(err).includes('aborted'));
+      return { ok: false, timedOut, reason: timedOut
+        ? 'Reading that listing is taking too long — I’ve kept the link. Open it and paste the page if you want the name and price filled in.'
+        : 'Couldn’t reach the listing. Copy the page and paste it instead.' };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+
+  // ── THE SAME COLD START, AND IT WAS LEFT EXPOSED HERE (2026-10-03) ──────
+  // /results got the probe-and-retry on 2026-10-02 and this path did not, on
+  // the reasoning that it costs a host a name and a photo rather than the
+  // prices. That was a ranking, not a reason to leave it: the mechanism is
+  // identical — a cold Render free dyno answers /health in 32.7s (measured
+  // 2026-09-30), the abort fires at twelve, and the host is told reading is
+  // too slow by the very request that woke the server. A second press works.
+  //
+  // Same shape as lodgingResults, and for the same two reasons: the first
+  // attempt is a PROBE at COLD_PROBE_MS so a wake costs 5s + 12s instead of
+  // 12s + 12s, and only a TIMEOUT is retried — a 4xx or a refusal is a real
+  // answer, and retrying those hammers a server that already said no.
+  const first = await once(COLD_PROBE_MS);
+  if (first.ok || !first.timedOut) return first;
+  return once(UNFURL_MS);
 }
 
 /**
@@ -1743,7 +1761,7 @@ export function suggestedMustHaves(event) {
   }
   // TRAVELLING IN — cars have to land somewhere.
   if (ev.isDestination || guests >= 8) {
-    add('parking', `${guests >= 8 ? 'A group this size' : 'People traveling in'} arrives in several cars, and a one-car driveway becomes the neighbours' problem.`, 'airbnb-disturbance');
+    add('parking', `${guests >= 8 ? 'A group this size' : 'People traveling in'} arrives in several cars, and a one-car driveway becomes the neighbors' problem.`, 'airbnb-disturbance');
   }
   return out;
 }
@@ -2549,7 +2567,7 @@ export function lodgingRankBasis(event, intel) {
   return {
     lines,
     // Stated so the order is never mistaken for a verdict.
-    caveat: 'Nothing is ruled out — this is the order they are shown in, not a judgement about which you should take.',
+    caveat: 'Nothing is ruled out — this is the order they are shown in, not a judgment about which you should take.',
   };
 }
 

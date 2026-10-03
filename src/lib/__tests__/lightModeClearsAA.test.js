@@ -112,7 +112,7 @@ describe('text on a TINT clears AA too — the ground the first sweep missed', (
   }
 });
 
-describe('the grey tiers rank by luminance, not by hue', () => {
+describe('the gray tiers rank by luminance, not by hue', () => {
   // The defect this repo already paid for once in dark: --muted and --ink-soft
   // had identical luminance and differed only in hue, so in grayscale — or for
   // a host who cannot separate those hues — they read as ONE tier. Light has

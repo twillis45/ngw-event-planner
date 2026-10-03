@@ -470,7 +470,7 @@ export const MONEY_PROVENANCE = {
         + '`ph` is dereferenced immediately afterwards, so removing the assignment converts a silent '
         + 'wrong answer into a TypeError, which is worse — the estimator would crash instead of '
         + 'declining. The refusal removes the same unsourced dollar figure AND leaves a defined '
-        + 'behaviour. It also costs nothing to adopt: estimateTotalRange ALREADY returns null when '
+        + 'behavior. It also costs nothing to adopt: estimateTotalRange ALREADY returns null when '
         + 'type or guestCount is missing, so every caller in the app has always had to handle null on '
         + 'this exact path. The refusal reuses a contract that is already proven at runtime rather '
         + 'than inventing one. '

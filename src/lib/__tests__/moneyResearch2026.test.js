@@ -394,7 +394,7 @@ describe('budget.perHeadFallback — when the branch IS forced, it declines', ()
 // including provenanceKeys, so not one figure and not one attribution changed.
 // This is the readable subset.
 
-describe('behaviour lock — a research pass that moved a dollar would be a pricing change', () => {
+describe('behavior lock — a research pass that moved a dollar would be a pricing change', () => {
   const CASES = [
     ['Wedding',          150, null,         'afternoon', 1,    false, 0,  30000,  75000],
     // MOVED 2026-09-23 by a PRICING DECISION, which is the one reason this lock

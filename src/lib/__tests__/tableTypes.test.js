@@ -132,7 +132,7 @@ describe('the seating plan carries capacity through', () => {
 });
 
 describe('write helpers touch one table and nothing else', () => {
-  test('setting a type leaves neighbours alone and pads honestly', () => {
+  test('setting a type leaves neighbors alone and pads honestly', () => {
     const next = withTableType({ tableTypes: ['round-60'] }, 3, 'banquet-8');
     expect(next).toEqual(['round-60', '', 'banquet-8']);
   });

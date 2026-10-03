@@ -33,7 +33,7 @@ describe('any multi-day event gets an arc, not just a Reunion', () => {
     expect(rows.find((r) => r.title === 'The main event').day).toBeGreaterThan(1);
   });
 
-  test('it is labelled STRUCTURAL and admits it holds no activity content', () => {
+  test('it is labeled STRUCTURAL and admits it holds no activity content', () => {
     const p = guestItinerary(santaFe, noPlaybook).provenance;
     expect(p.tier).toBe('structural');
     expect(p.note).toMatch(/will not invent/i);

@@ -69,7 +69,7 @@ describe('the ordering explains itself', () => {
   it('states that the order is not a verdict', () => {
     const b = lodgingRankBasis(evt());
     expect(b.caveat).toMatch(/nothing is ruled out/i);
-    expect(b.caveat).toMatch(/not a judgement/i);
+    expect(b.caveat).toMatch(/not a judgment/i);
   });
 });
 

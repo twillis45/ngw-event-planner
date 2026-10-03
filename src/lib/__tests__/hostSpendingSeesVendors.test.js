@@ -99,7 +99,7 @@ test('vendor money already PAID is not double-charged as spent', () => {
   expect(m.committed).toBe(8300);
 });
 
-test('no vendors → byte-identical to the old behaviour', () => {
+test('no vendors → byte-identical to the old behavior', () => {
   const m = hostSpending(wedding([]));
   expect(m.vendorOwed).toBe(0);
   expect(m.committed).toBe(300);

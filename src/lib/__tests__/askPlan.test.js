@@ -79,7 +79,7 @@ describe('answerPlanQuestion — deterministic, honest, sourced', () => {
   });
 
   test('unrecognized questions answer honestly — never fabricate', () => {
-    const r = answerPlanQuestion('what colour tablecloth is trendy this year?', CTX);
+    const r = answerPlanQuestion('what color tablecloth is trendy this year?', CTX);
     expect(r.matched).toBe(false);
     expect(r.answer).toMatch(/money, food, guests, weather/i);
   });

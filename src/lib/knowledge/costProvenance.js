@@ -743,7 +743,7 @@ export const COST_SOURCES = {
     org: 'Go Big Signs, "Custom Sign Cost Guide: How Much Do Custom Signs Cost in 2026" (listing - figures read from search results)',
     url: 'https://gobigsigns.com/blogs/display-guides/custom-sign-cost-guide',
     fetched: '2026-08-18',
-    claim: 'Printed signage 2026. FOAM BOARD $20-50 per square foot: an 18x24in sign $15-30, a 4x8ft trade-show display $150-400 - indoor only, since UV yellows it within 3-6 months. VINYL BANNERS on 13oz or 18oz with hemmed edges and grommets $50-200: a 3x6ft full-colour banner $60-120, an 8x10ft large-format $150-400, lasting 1-2 years outdoors before fading. YARD SIGNS on 4mm UV-resistant corrugated plastic last about a year outdoors.',
+    claim: 'Printed signage 2026. FOAM BOARD $20-50 per square foot: an 18x24in sign $15-30, a 4x8ft trade-show display $150-400 - indoor only, since UV yellows it within 3-6 months. VINYL BANNERS on 13oz or 18oz with hemmed edges and grommets $50-200: a 3x6ft full-color banner $60-120, an 8x10ft large-format $150-400, lasting 1-2 years outdoors before fading. YARD SIGNS on 4mm UV-resistant corrugated plastic last about a year outdoors.',
   },
   'dips-retail-2026': {
     org: 'Walmart and H-E-B dip, hummus and salsa listings, 2026 (listing - figures read from search results)',
@@ -1010,7 +1010,7 @@ export const COST_SOURCES = {
     org: 'Gorham Printing published book-price charts, with Quill and Global Industrial for dividers (all fetched)',
     url: 'https://gorhamprinting.com/prices-book-printing/price-charts.html',
     fetched: '2026-08-18',
-    claim: 'Bound documents 2026. SPIRAL-BOUND BOOKS, per book at 100 copies: 5.5x8.5in black-and-white $5.70 at 50 pages, $8.59 at 150, $13.32 at 300; 8.5x11in $6.94 at 50 pages and $20.86 at 300; colour interiors $12.09 at 50 pages. Premium coil adds $0.55 a book and wire-o about $0.15. NO PUBLISHER QUOTES BELOW 100 COPIES - every other US printer checked is calculator-only - so a 10-50 book run cannot be priced from published rates. TABBED DIVIDERS: an 8-tab insertable set $3.75-7.79 ($0.47-0.97 a tab).',
+    claim: 'Bound documents 2026. SPIRAL-BOUND BOOKS, per book at 100 copies: 5.5x8.5in black-and-white $5.70 at 50 pages, $8.59 at 150, $13.32 at 300; 8.5x11in $6.94 at 50 pages and $20.86 at 300; color interiors $12.09 at 50 pages. Premium coil adds $0.55 a book and wire-o about $0.15. NO PUBLISHER QUOTES BELOW 100 COPIES - every other US printer checked is calculator-only - so a 10-50 book run cannot be priced from published rates. TABBED DIVIDERS: an 8-tab insertable set $3.75-7.79 ($0.47-0.97 a tab).',
   },
   'tablenumbers-holders-2026': {
     org: 'WebstaurantStore, GoFoodService, Quill and Global Industrial (all fetched)',
@@ -1067,13 +1067,13 @@ export const COST_SOURCES = {
     org: 'The Knot 2026 Real Weddings Study (10,474 US couples) and Zola published ranges (both fetched)',
     url: 'https://www.theknot.com/content/average-wedding-cost',
     fetched: '2026-08-18',
-    claim: 'Wedding jewellery 2026. PLAIN METAL BANDS, no stones: $150-700 per ring, with mens bands $400-1,000 and womens $600-1,800. WEDDING RINGS as a survey line: $3,000 (The Knot; the page does not state whether that is a pair). ENGAGEMENT RINGS WITH A CENTRE STONE are a different category entirely at a $4,600 survey average, or about $5,200 per an uncited industry figure - never to be blended with a band price.',
+    claim: 'Wedding jewelry 2026. PLAIN METAL BANDS, no stones: $150-700 per ring, with mens bands $400-1,000 and womens $600-1,800. WEDDING RINGS as a survey line: $3,000 (The Knot; the page does not state whether that is a pair). ENGAGEMENT RINGS WITH A CENTRE STONE are a different category entirely at a $4,600 survey average, or about $5,200 per an uncited industry figure - never to be blended with a band price.',
   },
   'proposal-items-2026': {
     org: 'The Box Sock and Soulmatebox slim ring-box listings (both fetched)',
     url: 'https://soulmatebox.com/',
     fetched: '2026-08-18',
-    claim: 'Slim pocket proposal ring boxes 2026: $12.99 for super-slim black, cream, grey and blue models, $15.99 for a discreet slim black, $17.99 for a slim pocket grey. All priced each.',
+    claim: 'Slim pocket proposal ring boxes 2026: $12.99 for super-slim black, cream, gray and blue models, $15.99 for a discreet slim black, $17.99 for a slim pocket gray. All priced each.',
   },
   // Two publishers, kept as two entries. A row citing "the petal research" as one
   // id reads as single-sourced to the >=2 policy — the third time that gate has
@@ -1181,7 +1181,7 @@ export const COST_SOURCES = {
     org: 'Superior Promos and 4imprint promotional notebook listings (both fetched)',
     url: 'https://www.superiorpromos.com/pad-holders-portfolios-all/notebooks/journal-notebook',
     fetched: '2026-08-18',
-    claim: 'Custom-printed notebooks 2026, per unit at the quantity: 75 units $5.86, 150 $4.88, 250 $4.24, 500 $3.69, 1,000 $3.21. SETUP IS SEPARATE at $40.00 per colour per location - at the 75-unit minimum that adds $0.53 a unit on top. A second supplier lists notebooks at $1.27-3.89 a unit against minimums of 50-100 with no setup stated. NO SUPPLIER QUOTED BELOW A 50-UNIT MINIMUM, so a 25-unit price cannot be extrapolated. Blank retail notebooks are a different channel at $1.61-4.49 each with no volume break evidenced.',
+    claim: 'Custom-printed notebooks 2026, per unit at the quantity: 75 units $5.86, 150 $4.88, 250 $4.24, 500 $3.69, 1,000 $3.21. SETUP IS SEPARATE at $40.00 per color per location - at the 75-unit minimum that adds $0.53 a unit on top. A second supplier lists notebooks at $1.27-3.89 a unit against minimums of 50-100 with no setup stated. NO SUPPLIER QUOTED BELOW A 50-UNIT MINIMUM, so a 25-unit price cannot be extrapolated. Blank retail notebooks are a different channel at $1.61-4.49 each with no volume break evidenced.',
   },
   'waterbottles-blank-2026': {
     org: 'Bulk Tumblers and CDI International blank water-bottle listings (both fetched)',
@@ -1223,7 +1223,7 @@ export const COST_SOURCES = {
     org: 'Party City and Target gender-reveal listings (both fetched)',
     url: 'https://www.partycity.com/products/gender-reveal-confetti-party-poppers-12ct',
     fetched: '2026-08-18',
-    claim: 'Gender-reveal items 2026: confetti party poppers $15.00 for 12 ($1.25 each) and $19.28 for 12 ($1.61 each); a single large confetti cannon $4.99-10.00. A balloon box was found at ONE publisher only ($23.69, plus a 4-count baby-box set at $10.00) and colour powder cannons at none that could be fetched, so neither is registered here.',
+    claim: 'Gender-reveal items 2026: confetti party poppers $15.00 for 12 ($1.25 each) and $19.28 for 12 ($1.61 each); a single large confetti cannon $4.99-10.00. A balloon box was found at ONE publisher only ($23.69, plus a 4-count baby-box set at $10.00) and color powder cannons at none that could be fetched, so neither is registered here.',
   },
   'homesetup-retail-2026': {
     org: 'IKEA US and Target listings for entry trays, baskets, hooks, totes and buckets (all fetched)',
@@ -1277,7 +1277,7 @@ export const COST_SOURCES = {
     org: 'Rolled Up Tees screen-printing rate guide and ooShirts published pricing (both fetched)',
     url: 'https://rolleduptees.com/blog/how-much-does-screen-printing-cost',
     fetched: '2026-08-18',
-    claim: 'Custom screen-printed t-shirts at party quantities, one colour one location: a shop rate guide quotes $12-18 a shirt at 12-24 pieces and $9-14 at 25-48; a discount online printer quotes about $6.00 a shirt at 12, $5.50 at 24 and $5.00 at 50. THE TWO DISAGREE BY 2-3x AT THE SAME QUANTITY - a house-blank online printer against a shop rate - so this is a RANGE, not a figure to average. Additional ink colours add $0.75-1.50.',
+    claim: 'Custom screen-printed t-shirts at party quantities, one color one location: a shop rate guide quotes $12-18 a shirt at 12-24 pieces and $9-14 at 25-48; a discount online printer quotes about $6.00 a shirt at 12, $5.50 at 24 and $5.00 at 50. THE TWO DISAGREE BY 2-3x AT THE SAME QUANTITY - a house-blank online printer against a shop rate - so this is a RANGE, not a figure to average. Additional ink colors add $0.75-1.50.',
   },
   'sash-retail-2026': {
     org: 'The House of Bachelorette, Party City and Target sash listings (all fetched)',

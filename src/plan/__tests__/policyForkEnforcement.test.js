@@ -179,7 +179,7 @@ function scanForForks(text) {
 const relOf = (f) => path.relative(REPO, f); // e.g. 'src/…' or 'hostv2/src/…'
 
 describe('PART A — source scan: overdue is never decided by a local determination', () => {
-  test('the scanner bites every forbidden idiom, and spares every legitimate neighbour', () => {
+  test('the scanner bites every forbidden idiom, and spares every legitimate neighbor', () => {
     // A green scan proves nothing if the regex is broken — pin the exact shapes.
     // IDIOM A — the original date-vs-clock fork.
     expect(scanForForks('const overdue = tasks.filter(t => !t.done && date <= getToday()).length;').map(h => h.idiom)).toContain('A:date-vs-clock');

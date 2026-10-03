@@ -175,7 +175,7 @@ describe('recommendations are derived from checkable facts only', () => {
     const d = reconciliationCandidates(clean, [], [])[0];
     expect(d.blockers).toEqual([]);
     expect(d.recommended).toBe('requires-human-decision');
-    expect(d.why).toMatch(/judgement a machine must not make/);
+    expect(d.why).toMatch(/judgment a machine must not make/);
   });
 
   test('NONE of the seven real records is fully clean', () => {

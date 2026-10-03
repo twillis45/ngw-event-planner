@@ -1,6 +1,18 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-10-02 (forty-second entry:
+**Measured reality, not intentions.** Updated 2026-10-03 (forty-third entry:
+the whole open list closed, and THREE of its four descriptions turned out to be
+wrong when measured instead of recited. `cra-build` had been red six days on
+one orphaned import that the gate named in full every single run — I had
+labelled that line "pre-existing, untouched" and so nobody opened it. The
+British spelling was 61 strings, not one word, with `licence` a third of them
+in host-facing task text; three hits were correct English and one of those is a
+working parser capability. The tap-floor item was mine and wrong: the floor IS
+44, the shipped 46 is rounding headroom that makes 44 true on Linux, and
+"fixing" it would have reintroduced a documented CI break — owner ruled, item
+closed, no CSS touched. See the forty-third entry.)
+
+Before that, on 2026-10-02 (forty-second entry:
 the search path DOES carry prices, and I had told the host it structurally
 could not. They answered "ive been operating under false pretenses", and they
 had been — on my say-so. The prices were in the results page the backend
@@ -275,11 +287,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `2013e63f` — 18 commits across 2026-10-02/03, Deploy Pages green 01:22, CI Checks 01:48 green but `cra-build`, prod serving prices |
+| Branch / HEAD | `main` @ `2f16a467` + the forty-third entry's fixes — **`cra-build` GREEN for the first time since 2026-09-28** (`✓ no new warnings, 241 of 245 baselined`), matrix51 pending |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **8,160 passed**, 1 skipped, **0 failed**, **590 suites** (measured 2026-10-02 after the forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **8,165 passed**, 1 skipped, **0 failed**, **590 suites** (measured 2026-10-03 after the forty-third entry: +5 for `unfurlListing`'s cold-start retry, no new suite — the tests joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **48 passed / 4 files** (2026-09-29 — and see the fortieth entry: 9 of these fail on Node 22 until `Object.defineProperty` replaced `global.navigator = …`; CI pins Node 20, where all 48 always passed). Before that 43 / 4 (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **399 passed** — re-measured 2026-10-02 (forty-second entry: +6 for the results-card price reader). Before that **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -291,6 +303,140 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-10-03 (forty-third entry) — the whole open list, and one item I had mis-framed
+
+**jest 8,165 / 590 · `cra-build` GREEN for the first time since 2026-09-28 ·
+matrix51 pending.**
+
+Asked to explain the open list plainly, I measured it instead of reciting it,
+and **three of the four descriptions did not survive.** Writing that down
+first, because the wrong descriptions had been copied forward daily and one of
+them I had written hours earlier.
+
+### 1. `cra-build` — six days red on a one-identifier fix
+
+"Pre-existing CRA lint, untouched" was wrong. It was ONE warning:
+`lodgingIntel.js:33` imported `isAllowedMedia` and never called it.
+
+The gate fingerprints `rule｜file｜message`. The baseline was last regenerated
+**2026-07-31**, and its single lodgingIntel entry is a DIFFERENT warning —
+unused `nights`, since fixed and live at :471/:522. The old fingerprint
+vanished, a new one appeared, and the build was carrying 242 warnings against
+a 245 baseline — **strictly fewer, correctly still refused.** Fewer warnings
+is not a defense a fingerprint gate accepts, and should not be.
+
+I first assumed I had orphaned it myself, having edited that file all session.
+Scanned 30 commits of its history: **zero calls since 2026-08-06.** I did not
+cause it; I was the first to regenerate a build whose fingerprint set differs
+from a two-month-old baseline. Checked rather than confessed.
+
+Gate now reads: `✓ no new warnings (241 of 245 baselined)`, and it reported
+**4 resolved** warnings it had been carrying since July — three unused vars in
+`providerIntegration.js` and a `react-hooks/exhaustive-deps` in
+`ChecklistGenerator.jsx`. Somebody fixed those and the stale baseline never
+noticed. Tidy with `npm run gate:cra:update` when convenient.
+
+### 2. The tap floor — the item was mine, and it was wrong
+
+I had written "seventeen rules hardcode 44px instead of `var(--tap-min)`,
+which is 46px — so each sits 2px under the project's own floor."
+
+Recount: **16 declaration lines**, not seventeen (20 lines match the pattern,
+4 are comment prose). And the framing was the real error.
+
+**OWNER RULING 2026-10-03: the floor IS 44. Item closed, no CSS changed.**
+44 is WCAG 2.5.5, Apple HIG and UX_03. The 46 is the SHIPPED size, carrying
+two pixels of rounding headroom *so that 44 stays true* — and the comment at
+`styles.css:72` already says exactly that, with the receipt: controls pinned
+at exactly 44 passed on macOS for weeks and failed every Linux CI shard,
+because `nothingPressableIsUnderTheFloor` probes from a ROUNDED centre and a
+44px box reports 43 or 44 depending on sub-pixel edges. The gate also reads
+`--tap-min` as its own threshold, so lowering the token would have lowered the
+bar it enforces AND re-broken it.
+
+Worth keeping: literal compliance here would have reintroduced a documented
+CI failure. The 16 literals at 44 are not defects; my open item was.
+
+### 3. British spellings — not one word, sixty-one
+
+I had logged this as `"neighbours'"` in a must-have reason. One word, out of
+scope. The sweep: **61 strings across 35 files.**
+
+    license 20 · color 10 · behavior 10 · labeled 8 · judgment 6
+    neighbors 5 · gray 4 · neighbor 3 · jewelry 1 · favorite 1
+
+`licence` alone was a third of it, in host-facing task text — "Alcohol
+licence", "Collect the licence, the rings and the flowers", "who holds the
+liquor licence for the night" — in the gala and elopement playbooks. I had
+never mentioned it once.
+
+**Three hits are CORRECT and a naive sweep would have broken them**, which is
+why the fixer carries an explicit skip list:
+
+| | |
+|---|---|
+| `smartParseEvent.js:110` | `'neighbours'` is British spelling the parser ACCEPTS as host input. Americanizing it removes a capability |
+| `incidentContext.js:168` | "Canadian **Centre** for Child Protection" is a proper noun |
+| `usCitiesFull.js` | real place names — Rockville Centre NY, Sauk Centre MN, Grey Eagle MN |
+
+Also left alone deliberately: the parser regexes that match `centre` as host
+input (`smartParseEvent:677`, `taskRoute:114/182`, `App.js:2960`). The fixer
+only touches string literals, so regexes were out of reach by construction —
+which was lucky in four places and a trap in two:
+
+**TWO assertion regexes had to move in lockstep or the suite would have broken
+on a renamed word** — `lodgingShowsItsWork.test.js:72` asserts
+`/not a judgement/i` against a string this sweep renamed, and
+`governanceReconciliation.test.js:178` asserts
+`/judgement a machine must not make/`. A regex literal is not a string
+literal, so nothing would have renamed them with their subject.
+
+### 4. The cold start on the OTHER path
+
+`/results` got the probe-and-retry on 2026-10-02 and `unfurlListing` did not,
+on the reasoning that one listing is worth less than the whole search. That
+was a ranking, not a reason: same cold dyno (32.7s to answer /health, measured
+2026-09-30), same 12s abort, same false "taking too long" produced *by the
+request that woke the server*. A host whose first action of the day was
+reading one listing got the bug `/results` no longer has.
+
+Same shape now, and for the same two reasons: first attempt is a probe at
+`COLD_PROBE_MS` so a wake costs 5s + 12s instead of 12s + 12s, and **only a
+timeout retries** — a 4xx or a refusal is a real answer, and retrying those
+hammers a host that already blocks datacenter traffic.
+
+`coldStartRetry.test.js` gained a second describe block, 5 tests.
+**Red-proofed:** removing the retry turned the two retry assertions red (2
+failed / 8 passed) and left the three "do NOT retry" tests green — correctly,
+since those cannot detect the retry's absence. Restored, 10/10.
+
+### Worth carrying forward
+
+**1. An open-item list decays exactly like any other claim.** Three of four
+descriptions were wrong, and they had been recited for days because reciting
+is cheaper than measuring. "Pre-existing and untouched" is the most expensive
+phrase on a list — it tells the next reader not to look.
+
+**2. The fix for a stale gate may be in the gate's own output.** Six days of
+red named the file, the rule and the identifier every single run. Nobody
+opened it, including me, because the summary line said `cra-build failure` and
+I had already labelled that line pre-existing.
+
+**3. A sweep needs a skip list before it needs a pattern.** Three of the hits
+were correct English and one of them was a working capability. The words to
+NOT change were the valuable half of this task.
+
+**4. A regex is not a string, and an assertion is not a comment.** Fixing
+copy desyncs any test that matches it with a regex literal. Two here.
+
+### Open
+
+| | |
+|---|---|
+| Probe duration | `COLD_PROBE_MS = 5000` is asserted by nothing. A revert to 12s surfaces only as a slow matrix |
+| CRA baseline | 4 resolved entries worth tidying: `npm run gate:cra:update` |
+| British spellings in COMMENTS | the sweep covered string literals in `src` + `hostv2/src`. A handful remain in `hostv2/e2e` and `scripts` comments (e.g. "CC BY 4.0 licence"). Deliberately excluded as churn under a running matrix, not as out of scope |
 
 ## FIXED 2026-10-02 (forty-second entry) — the prices were there all along, and a standing comment said they were not
 

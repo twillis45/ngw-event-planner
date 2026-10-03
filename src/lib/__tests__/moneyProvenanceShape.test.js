@@ -477,7 +477,7 @@ describe('sourcing.tiers — the note is arithmetic, not an opinion', () => {
 // destination x nights x metro). The full sweep was byte-identical after. This
 // is the readable subset, locked so it stays that way.
 
-describe('behaviour lock — provenance is metadata, and metadata costs nothing', () => {
+describe('behavior lock — provenance is metadata, and metadata costs nothing', () => {
   const CASES = [
     // type, guests, date, timeOfDay, metro, destination, nights, low, high
     ['Wedding',          150, null,         'afternoon', 1,    false, 0,  30000,  75000],

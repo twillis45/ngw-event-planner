@@ -87,7 +87,7 @@ describe('a band, never a point', () => {
 });
 
 describe('what it refuses', () => {
-  test('a town with no commercial service gets nothing, not its neighbour’s', () => {
+  test('a town with no commercial service gets nothing, not its neighbor’s', () => {
     // Annapolis guests really do fly, into BWI. Answering with Baltimore
     // would be guessing which airport they pick — the same guess
     // lodgingIntel refuses to make about how a party divides into rooms.

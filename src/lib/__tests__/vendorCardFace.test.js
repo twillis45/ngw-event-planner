@@ -98,7 +98,7 @@ describe('clause 3 — one chip, ranked by time-to-consequence', () => {
     }
   });
 
-  test('the insurance chip STATES ITS REASON (UX_02: a colour names its cause)', () => {
+  test('the insurance chip STATES ITS REASON (UX_02: a color names its cause)', () => {
     // Was a bare noun, "Insurance", amber with no consequence attached.
     expect(CHIP).toMatch(/Insurance still needed/);
   });

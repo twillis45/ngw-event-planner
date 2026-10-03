@@ -62,7 +62,7 @@ describe('we do not invent', () => {
   // carries startTimeSource:'derived' + basis:'rule-of-thumb', and the outward gate still hides
   // it from guests/vendors/ROS until the host confirms (the "we do not INVENT AS FACT" invariant
   // the rest of this block still guards).
-  test('no forecast, no bucket, nothing said → rule-of-thumb, honestly labelled', () => {
+  test('no forecast, no bucket, nothing said → rule-of-thumb, honestly labeled', () => {
     const p = proposeStartTime(crab(), null);
     expect(p).not.toBeNull();
     expect(p.basis).toBe('rule-of-thumb');

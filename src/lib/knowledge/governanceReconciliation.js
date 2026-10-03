@@ -232,7 +232,7 @@ function whyFor(blockers) {
       + 'evidence entry — so this cannot enter the corpus as it stands. Redo it through the '
       + 'composer with the source attached as evidence; the value and reasoning still hold.';
   }
-  return 'No checkable defect. What remains is judgement a machine must not make: does '
+  return 'No checkable defect. What remains is judgment a machine must not make: does '
     + 'this source\'s scope actually reach this event, and is the value right?';
 }
 

@@ -61,7 +61,7 @@ describe('the proposal is GROUNDED in what actually needs a count', () => {
 });
 
 describe('when nothing needs a count, we SAY it is a rule of thumb', () => {
-  test('ungrounded proposals are labelled, not disguised', () => {
+  test('ungrounded proposals are labeled, not disguised', () => {
     const p = proposeReplyBy(withCaterer({ vendors: [], timeline: [] }));
     expect(p.grounded).toBe(false);
     expect(p.why).toMatch(/rule of thumb/i);

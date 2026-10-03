@@ -1,5 +1,88 @@
 # Where We Are -- live status board
 
+## 2026-10-03 — the open list closed, and three of its four entries were wrong
+
+**jest 8,165 / 590 · `cra-build` GREEN for the first time since 2026-09-28 ·
+matrix51 pending.**
+
+Asked to explain the open list plainly, I measured it rather than reciting it.
+Three of four descriptions did not survive, and they had been copied forward
+daily.
+
+### cra-build: six days red, one identifier
+
+Not "pre-existing CRA lint." One warning: `lodgingIntel.js:33` imported
+`isAllowedMedia` and never called it. The gate fingerprints
+`rule｜file｜message`; the baseline was last regenerated **2026-07-31** and its
+one lodgingIntel entry is a different warning (unused `nights`, since fixed).
+The build carried 242 warnings against a 245 baseline — fewer, and correctly
+still refused, because a fingerprint gate is not a counter.
+
+I assumed first that I had orphaned it, having worked that file all session.
+History says zero calls since 2026-08-06. Not mine; I was just the first to
+rebuild against a two-month-old baseline.
+
+Now: `✓ no new warnings (241 of 245 baselined)`, plus **4 resolved** entries
+the stale baseline never noticed.
+
+### The tap floor: the item was the defect
+
+**Owner ruling: the floor IS 44. Closed, no CSS changed.** 44 is WCAG 2.5.5 /
+HIG / UX_03; the shipped 46 is two pixels of rounding headroom that make 44
+TRUE — `nothingPressableIsUnderTheFloor` probes from a rounded centre, so a
+44px box reports 43 or 44 by sub-pixel luck, which is why controls pinned at
+exactly 44 passed on macOS for weeks and failed every Linux shard. The gate
+also reads `--tap-min` as its threshold, so lowering the token lowers the bar.
+My open item ("16 literals sit 2px under the floor") inverted the reasoning.
+
+### British spellings: 61 strings, not one word
+
+`license` 20 · `color` 10 · `behavior` 10 · `labeled` 8 · `judgment` 6 ·
+`neighbors` 5 · `gray` 4 · `neighbor` 3 · `jewelry` 1 · `favorite` 1.
+
+`licence` was a third of it and all host-facing: "Alcohol licence", "Collect
+the licence, the rings and the flowers", "who holds the liquor licence for the
+night." Never mentioned in any prior entry.
+
+**The skip list was the valuable half.** Three hits are correct and one is a
+capability: `smartParseEvent.js:110` accepts `'neighbours'` as British host
+INPUT, "Canadian Centre for Child Protection" is a proper noun, and
+`usCitiesFull` holds Rockville Centre NY / Sauk Centre MN / Grey Eagle MN. The
+parser regexes matching `centre` as input were out of reach by construction.
+
+**Two assertion regexes had to move in lockstep** —
+`lodgingShowsItsWork.test.js:72` and
+`governanceReconciliation.test.js:178` match renamed strings with regex
+literals, which no string-literal sweep would have touched.
+
+### The cold start on the other path
+
+`unfurlListing` now probes and retries like `/results` does. Same cold dyno
+(32.7s to /health), same 12s abort, same false "taking too long" from the
+request that woke the server. Only timeouts retry. Red-proofed: removing the
+retry turned the two retry assertions red and left the three "do NOT retry"
+tests green, which is correct — those cannot detect its absence.
+
+### Carrying forward
+
+- **An open-item list decays like any other claim.** "Pre-existing and
+  untouched" is the most expensive phrase on one: it tells the next reader not
+  to look. Six days of red named the file, rule and identifier every run.
+- **A sweep needs its skip list before its pattern.** The words NOT to change
+  were the valuable half.
+- **A regex is not a string.** Renaming copy desyncs any test matching it with
+  a regex literal.
+
+### Outstanding
+
+- `COLD_PROBE_MS = 5000` is asserted by nothing; a revert surfaces only as a
+  slow matrix
+- 4 resolved CRA baseline entries worth tidying (`npm run gate:cra:update`)
+- British spellings remain in `hostv2/e2e` and `scripts` COMMENTS; excluded
+  deliberately as churn under a running matrix
+
+---
+
 ## 2026-10-02 (later) — the prices were on the page the whole time, and a standing comment said they were not
 
 **HEAD `2013e63f`, pushed 2026-10-03 01:22. jest 8,160 / 590 · backend 399 ·

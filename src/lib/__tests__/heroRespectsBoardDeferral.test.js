@@ -95,7 +95,7 @@ describe('the hero never asks for what the board has parked', () => {
     }
   });
 
-  test('a board failure degrades to the old behaviour, never to a crash', () => {
+  test('a board failure degrades to the old behavior, never to a crash', () => {
     // The board is wrapped because the progress header must not go down with
     // it. An event with no type exercises the unhappy path.
     expect(() => progressOf({ id: 'x', date: iso(AS_OF.getTime() + 90 * 864e5) })).not.toThrow();

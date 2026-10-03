@@ -41,7 +41,7 @@ describe('palette bundles expose every declared token', () => {
     });
   });
 
-  it('dangerSolid specifically resolves to a colour, not a stray key', () => {
+  it('dangerSolid specifically resolves to a color, not a stray key', () => {
     // The regression that started this. Named on its own so a failure points
     // straight at the token rather than at a list diff.
     expect(dark.dangerSolid).toMatch(/^#[0-9a-fA-F]{6}$/);

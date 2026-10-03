@@ -60,7 +60,7 @@ describe('publish lineage (task 1)', () => {
     expect(newWay.publishedVersion).toBe(oldWay.publishedVersion);
   });
 
-  test('OLD behaviour: a re-publish leaves the parent unsuperseded -> two live heads', () => {
+  test('OLD behavior: a re-publish leaves the parent unsuperseded -> two live heads', () => {
     const v1 = adminPublish(approved('k1', 'ONE'), null, 1);
     const reapproved = { ...v1, status: 'approved' };
     // the bug: passing rollbackTo (null here) instead of publishedVersion ('v1')
@@ -72,7 +72,7 @@ describe('publish lineage (task 1)', () => {
     expect(r.conflicts).toHaveLength(1);               // and the build says so
   });
 
-  test('NEW behaviour: a re-publish supersedes its parent and resolves to the head', () => {
+  test('NEW behavior: a re-publish supersedes its parent and resolves to the head', () => {
     const v1 = adminPublish(approved('k1', 'ONE'), null, 1);
     const reapproved = { ...v1, status: 'approved', proposal: { ...v1.proposal, newValue: 'TWO' } };
     const v2 = adminPublish(reapproved, reapproved.publishedVersion || null, 2);
@@ -195,7 +195,7 @@ describe('export merge safety (Phase 5C.6 / D2)', () => {
     expect(snap.entries).toHaveLength(3);
   });
 
-  test('the OLD destructive behaviour is what we are preventing', () => {
+  test('the OLD destructive behavior is what we are preventing', () => {
     const existing = [
       pub('k-crabs', 'Crab Feast', 'p_crabs.provenance', 'crabs-v1', 'CRABS'),
       pub('k-wine', 'Retirement Party', 'p_wine.provenance', 'wine-v1', 'WINE'),

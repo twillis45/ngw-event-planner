@@ -133,7 +133,7 @@ const dayParty = {
       { when: 'T0 -3h', what: 'Final garnish prep; stage food on the grazing table; charge the backup speaker' },
     ],
     setup: [
-      { when: 'T0 -5h', what: 'Sound check with the DJ at real volume — before the neighbours are home' },
+      { when: 'T0 -5h', what: 'Sound check with the DJ at real volume — before the neighbors are home' },
       { when: 'T0 -4h', what: 'Bar built: ice, mixers, cups, and the non-alcoholic option out front' },
       { when: 'T0 -2:55', what: 'Confirm the posted end time with everyone working it' },
       { when: 'T0 -2h', what: 'Build the bar + punch dispenser, set DJ power + speakers, raise canopies/shade, arrange seating pods + high-tops' },

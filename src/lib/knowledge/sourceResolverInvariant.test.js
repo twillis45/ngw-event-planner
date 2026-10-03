@@ -241,7 +241,7 @@ describe('2 — the union is a FAITHFUL INDEX of the axis maps', () => {
   });
 });
 
-describe('3 — the resolver contract, asserted against TODAY behaviour', () => {
+describe('3 — the resolver contract, asserted against TODAY behavior', () => {
   // A future resolveSource(id) must satisfy exactly this. Written now so the
   // migration is mechanical.
   const resolveViaUnion = (id) => {

@@ -69,7 +69,7 @@ describe('intake hears the rental family, not only the hotel family', () => {
     // property the host never mentioned.
     for (const t of [
       'the house band plays at 8', 'open house on Sunday', 'house wine for the table',
-      'a full house of guests', 'housewarming', 'the apartment upstairs neighbours',
+      'a full house of guests', 'housewarming', 'the apartment upstairs neighbors',
       'in-house catering', 'house salad',
     ]) {
       expect(heardStayStyle(t)).toBe(null);

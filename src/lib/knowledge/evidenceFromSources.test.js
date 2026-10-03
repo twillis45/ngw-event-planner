@@ -31,7 +31,7 @@ describe('it records the choice a human already made', () => {
     expect(e.capturedAt).toBe(src.fetched);
   });
 
-  test('whether the source SUPPORTS the value is left null — that is a human judgement', () => {
+  test('whether the source SUPPORTS the value is left null — that is a human judgment', () => {
     const [e] = evidenceFromSources(['bar-provision-2026']);
     expect(e.supports).toBeNull();
   });

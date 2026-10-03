@@ -150,7 +150,7 @@ describe('a party gets the size it needs', () => {
 });
 
 describe('what it refuses', () => {
-  test('a city outside the 34 gets nothing, not its neighbour’s listings', () => {
+  test('a city outside the 34 gets nothing, not its neighbor’s listings', () => {
     // Annapolis is 30 miles from Washington and is not Washington.
     // SACRAMENTO, deliberately. The first version used only Annapolis and
     // Santa Fe — neither MD nor NM is a covered state, so a fallback that
@@ -174,7 +174,7 @@ describe('what it refuses', () => {
 });
 
 describe('the words that reach a host', () => {
-  test('every basis carries the CC BY attribution — it is a licence condition', () => {
+  test('every basis carries the CC BY attribution — it is a license condition', () => {
     let checked = 0;
     for (const [city, st, , buckets] of AIRBNB_NIGHTLY) {
       for (const b of Object.keys(buckets)) {

@@ -66,7 +66,7 @@ describe('destination detection — the home comparison', () => {
     expect(d('Reunion in Annapolis, Maryland — 20 cousins flying in', HOME)).toBe(true);
   });
 
-  test('with no host area on file, a named place still flags (prior behaviour)', () => {
+  test('with no host area on file, a named place still flags (prior behavior)', () => {
     expect(d('Anniversary dinner in Savannah, Georgia for 20')).toBe(true);
   });
 });
