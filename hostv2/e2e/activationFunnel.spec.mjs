@@ -129,8 +129,24 @@ test.describe('activation funnel — hostv2 emits it, not just the frozen CRA', 
     // API before the event is emitted, so `settled` can return while the reply
     // is still in flight. Poll for the event rather than reading the log once
     // and concluding the instrumentation is dead.
+    //
+    // BUDGET RAISED 8s -> 30s (2026-10-03), measured rather than guessed. This
+    // test takes 3.3-3.5s alone (6/6 runs) and blew the 8s ceiling in BOTH
+    // matrix51 and matrix52 on [mobile], retry included — 9.2s each time. CI's
+    // three shards never saw it, so the product is fine and the ceiling was
+    // the defect: 8s is under three times the unloaded cost, which is no
+    // headroom at all against four workers competing for a CPU.
+    //
+    // Raising a POLL ceiling is not the thing playwright.config.mjs warns
+    // about. That warning is against a fixed waitForTimeout sleep, which pays
+    // its full cost every run and still races; a poll returns the instant the
+    // condition holds, so 30s costs this test nothing on the 3.3s path and
+    // only ever spends the difference when the machine is genuinely loaded.
+    //
+    // It stays an ASSERTION on exactly one event. A wider budget must not
+    // become a wider claim.
     await expect.poll(async () => only(await fired(page), 'invite_rsvp_submitted').length,
-      { timeout: 8000 }).toBe(1);
+      { timeout: 30000 }).toBe(1);
 
     const hits = only(await fired(page), 'invite_rsvp_submitted');
     expect(hits).toHaveLength(1);

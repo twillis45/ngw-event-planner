@@ -111,6 +111,24 @@ and was masked out deliberately; and three comments quoting Airbnb's
 "Guest favourite" badge were MISQUOTES — the captured fixture and
 `CARD_NOISE` both say `Guest favorite`, so fixing them corrects the record.
 
+### A test whose ceiling was the defect
+
+`activationFunnel:104` [mobile] failed matrix51 and matrix52 — retry included,
+9.2s against an 8s poll ceiling — while passing 6/6 alone at 3.2-3.5s and
+staying green across CI's three shards on both commits. Twice in a row is not
+a flake, so "contention flake" was too generous a first read. The ceiling was
+the defect: 8s is under three times the unloaded cost. Raised to 30s.
+
+A poll ceiling is not the fixed `waitForTimeout` sleep the config warns
+about — a poll returns the instant the condition holds, so it costs nothing on
+the fast path. Red-proofed against passing vacuously: pointed at an event that
+never fires it still fails, Expected 1 / Received 0, at 28.9s.
+
+**matrix53: 2,876 / 229 / 0 failed / 35.5m — the full suite clean.**
+
+`theShellOpensWithoutSignal:161` did not recur, so it was a true flake, and my
+`--repeat-each` reading of it as a 50% failure was instrument error.
+
 ### Outstanding
 
 - ~300 British spellings remain in `src/` COMMENTS — a prose-only sweep across
