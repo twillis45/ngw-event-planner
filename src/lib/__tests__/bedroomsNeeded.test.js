@@ -1,5 +1,5 @@
 process.env.REACT_APP_API_BASE_URL = 'https://example.test';
-const { bedroomsNeeded, LODGING_MUST_HAVES } = require('/Users/toddwillis/Code/ngw-event-planner/demo/src/lib/lodgingIntel');
+const { bedroomsNeeded, LODGING_MUST_HAVES } = require('../lodgingIntel');
 describe('bedroom derivation', () => {
   test("the host's own Anaheim case: 16, no roster detail -> 8", () => {
     const r = bedroomsNeeded({ guestCount: 16 });
@@ -34,7 +34,7 @@ describe('bedroom derivation', () => {
 // The point of making bedrooms numeric: "5 bedrooms against a need of 8" is a
 // FINDING the host can act on, where the old prose scoring could only report
 // an absence.
-const { rankCandidates, suggestedMustHaves } = require('/Users/toddwillis/Code/ngw-event-planner/demo/src/lib/lodgingIntel');
+const { rankCandidates, suggestedMustHaves } = require('../lodgingIntel');
 
 describe('a measured shortfall is a finding, not an absence', () => {
   const ev = { guestCount: 16, type: 'reunion', lodgingMustHaves: ['bedrooms'] };
@@ -82,7 +82,7 @@ describe('a measured shortfall is a finding, not an absence', () => {
 // said so on screen — announcing an assumption about a fact the host had
 // stated outright. Both halves are gated here: the parser keeps it, and the
 // engine reads it.
-const { parseSmartEventText } = require('/Users/toddwillis/Code/ngw-event-planner/demo/src/lib/smartParseEvent');
+const { parseSmartEventText } = require('../smartParseEvent');
 
 describe('a stated pairing is a derivation, not a guess', () => {
   test('the parser keeps the pair count AND still reads guests as sixteen', () => {
@@ -130,7 +130,7 @@ describe('a stated pairing is a derivation, not a guess', () => {
 // recorded at the catalog entries). This gates that the verified param
 // actually rides the door the host opens — the difference between filtering a
 // search and sorting its leftovers.
-const { lodgingSearchLinks } = require('/Users/toddwillis/Code/ngw-event-planner/demo/src/lib/lodgingIntel');
+const { lodgingSearchLinks } = require('../lodgingIntel');
 
 describe('a verified filter rides the Airbnb URL', () => {
   const ev = {
