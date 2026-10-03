@@ -733,22 +733,52 @@ export async function lodgingResults(url) {
   if (!API_BASE) return { ok: false, reason: 'Reading searches isn’t switched on here — copy the results page and paste it instead.' };
   const clean = httpsify(url);
   if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the search.' };
-  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
-  try {
-    const res = await fetch(`${API_BASE}/api/lodging/results?url=${encodeURIComponent(clean)}`,
-      ctl ? { signal: ctl.signal } : undefined);
-    const body = await res.json().catch(() => null);
-    if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
-    return { ok: true, ...body };
-  } catch (err) {
-    const timedOut = err && (err.name === 'AbortError' || String(err).includes('aborted'));
-    return { ok: false, reason: timedOut
-      ? 'Reading that search is taking too long. Open it and copy the page instead.'
-      : 'Couldn’t reach that search. Copy the results page and paste it instead.' };
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+
+  const once = async () => {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
+    try {
+      const res = await fetch(`${API_BASE}/api/lodging/results?url=${encodeURIComponent(clean)}`,
+        ctl ? { signal: ctl.signal } : undefined);
+      const body = await res.json().catch(() => null);
+      if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
+      return { ok: true, ...body };
+    } catch (err) {
+      const timedOut = err && (err.name === 'AbortError' || String(err).includes('aborted'));
+      return { ok: false, timedOut, reason: timedOut
+        ? 'Reading that search is taking too long. Open it and copy the page instead.'
+        : 'Couldn’t reach that search. Copy the results page and paste it instead.' };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+
+  // ── THE FIRST CALL IS THE WARM-UP, SO DO NOT SPEND IT ON A FAILURE ──────
+  // Driven on prod 2026-10-02, 23:12: the first pull of a session came back
+  // "Reading that search is taking too long. Open it and copy the page
+  // instead", and the same pull worked immediately afterwards. The endpoint
+  // is not slow — measured three times right after, 1.45-1.59s with 18 of 18
+  // priced. The backend had been idle through a 35-minute matrix, Render's
+  // free tier spins down, and waking it costs far more than UNFURL_MS.
+  //
+  // warmUnfurl() already pings /health on load for exactly this, but a cold
+  // wake is tens of seconds and the ping cannot finish inside a 12s abort.
+  //
+  // So the timeout is RETRIED ONCE, because the call that timed out is the
+  // thing that woke the instance — the retry lands on a warm server and the
+  // host never sees the failure. This is the first pull of somebody's
+  // morning, and it used to send them away to copy the page by hand for a
+  // feature that works perfectly on the second press.
+  //
+  // ONLY on a timeout. A 4xx, a refusal or an unreachable host are real
+  // answers and are returned as they were — retrying those would be hammering
+  // a server that already said no.
+  const first = await once();
+  if (first.ok || !first.timedOut) return first;
+  const second = await once();
+  // If it times out twice it really is too slow, and the honest sentence is
+  // the one that was always there.
+  return second;
 }
 
 export async function unfurlListing(url) {

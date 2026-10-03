@@ -1,5 +1,90 @@
 # Where We Are -- live status board
 
+## 2026-10-02 (later) — the prices were on the page the whole time, and a standing comment said they were not
+
+**HEAD `9d8fbbbe` + the cold-start retry. jest 8,160 / 590 · backend 399 ·
+matrix48 2,876 / 229 / 0 failed / 0 flaky · prod serving prices.**
+
+### What happened
+
+I told the host the search path "structurally cannot carry money" and shipped
+copy saying so. They replied: "ive been operating under false pretenses." They
+had been, on my say-so.
+
+A LISTING page really has no price — verified from a residential IP with dates
+in the URL; in 645KB the only dollar figures are the host's own house rules.
+But the RESULTS page carries one per card, in the SAME object as the listing
+id: `DemandStayListing:<roomId>`, the name, and `structuredDisplayPrice`.
+
+The standing comment said names and prices "are not adjacent to the ids, so
+pairing them by position would be guesswork". Right about position, written in
+good faith about the map-pin structure, and I believed the conclusion without
+opening the page.
+
+A search pull now stages rows with money on them before anything is unticked.
+Driven on prod: 18 staged, 18 priced.
+
+### The structural lesson: a code comment is a claim, and claims expire
+
+This file already carries "latent faults wait for a switch" and "a gate scoped
+to one file stops covering what moves out of it". Add this one:
+
+**A note that says "checked rather than assumed" is true on the day it is
+written and silently decays afterwards.** It had no date, no method, and no
+scope — it said prices were not pairable, when what had been checked was one
+structure. The fix is not to distrust comments; it is to date them, say what
+was checked, and amend in place rather than delete, which is what the backend
+note now does.
+
+### Two parsers rejected, and what rejected them
+
+Both were self-consistent on a single page:
+
+- "first price after the id" was OFF BY ONE CARD — same room, $1,910 in one
+  fetch and $7,517 in another
+- "any price-ish label in the record" picked by ordering inside the object,
+  the same failure one level down
+
+**Fetching the same search twice is what exposed both.** One sample proves
+nothing about a parser whose failure mode is misalignment.
+
+### Ship the unknown behind a degradation, then measure it
+
+Everything was measured from a residential IP, and Render is a datacenter IP
+Airbnb serves differently. Rather than argue about it, the extractor was
+written to fall back to the exact previous links-only response and deployed to
+find out. Prod answered: `count 18 · priced 18 · linksOnly false`.
+
+### The first pull of the morning was failing
+
+The prod drive's first attempt said "Reading that search is taking too long.
+Open it and copy the page instead" and the same pull worked immediately after.
+Not slowness — a Render cold start after a 35-minute idle, costing far more
+than the 12s abort. Pre-existing, and newly serious now that this path carries
+the prices.
+
+`/results` retries once on a timeout, because the call that timed out is what
+woke the instance. **Only on a timeout** — a refusal is a real answer, and
+retrying it is how one refusal becomes a blocked IP.
+
+### Also
+
+The wide table's column cap was hardcoded at 3 and is now measured: 3 below
+1024, 4 above, with the host choosing which. 1280 and 1536 measured IDENTICAL
+because the stage is max-width capped — a bigger monitor buys no columns, and
+my pre-measurement arithmetic had predicted 6 and 8.
+
+### Outstanding
+
+- `cra-build` still red — pre-existing CRA lint, untouched all day
+- seventeen CSS rules still hardcode `44px` instead of `var(--tap-min)`
+- `"neighbours'"` in a must-have reason is British spelling against the global
+  US-English rule; noticed and left as out of scope, worth a sweep
+- the cold-start retry covers `/results`; the first per-listing unfurl after a
+  cold wake is still exposed
+
+---
+
 ## 2026-10-02 — the lodging intake stops asking for a choice it gave no basis for, and three faults only driving found
 
 **HEAD `d285823a`, 12 commits, all pushed. jest 8,155 / 589 · CI e2e MERGED
