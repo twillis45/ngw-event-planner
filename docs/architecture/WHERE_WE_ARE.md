@@ -2,8 +2,10 @@
 
 ## 2026-10-02 (later) — the prices were on the page the whole time, and a standing comment said they were not
 
-**HEAD `9d8fbbbe` + the cold-start retry. jest 8,160 / 590 · backend 399 ·
-matrix48 2,876 / 229 / 0 failed / 0 flaky · prod serving prices.**
+**HEAD `2013e63f`, pushed 2026-10-03 01:22. jest 8,160 / 590 · backend 399 ·
+matrix50 2,876 / 229 / 0 failed / 0 flaky in 35.0m · CI Checks green but
+`cra-build`, all three e2e shards inside their 30-minute budget · prod serving
+prices.**
 
 ### What happened
 
@@ -67,6 +69,22 @@ the prices.
 woke the instance. **Only on a timeout** — a refusal is a real answer, and
 retrying it is how one refusal becomes a blocked IP.
 
+**The first version of that retry was a 4x slowdown, and no test failed**
+(fixed 2026-10-03, `2013e63f`). It gave the first attempt the full 12s abort
+before retrying, so every timeout path paid 12s + 12s:
+
+    no retry        27.1s
+    naive retry     58.1s   <- what shipped
+    probe + retry   24.0s   <- faster than no retry at all
+
+matrix49 was stopped at 72 minutes / 1,494 of 3,105 with **zero failures** —
+green and 4x slow, which CI's 30-minute shard timeout would have turned into a
+killed job with nothing red to explain it. The wake begins the moment the
+request lands, so waiting longer does not wake it faster: the first attempt is
+now a 5s probe, only the retry gets the 12s abort. matrix50 came back 35.0m
+against matrix48's 34.4m baseline. Gated for behavior (that it retries, and
+only on timeouts), NOT for the probe's duration.
+
 ### Also
 
 The wide table's column cap was hardcoded at 3 and is now measured: 3 below
@@ -80,8 +98,10 @@ my pre-measurement arithmetic had predicted 6 and 8.
 - seventeen CSS rules still hardcode `44px` instead of `var(--tap-min)`
 - `"neighbours'"` in a must-have reason is British spelling against the global
   US-English rule; noticed and left as out of scope, worth a sweep
-- the cold-start retry covers `/results`; the first per-listing unfurl after a
-  cold wake is still exposed
+- the cold-start probe + retry covers `/results`; the first per-listing unfurl
+  after a cold wake is still exposed
+- `COLD_PROBE_MS = 5000` is asserted by nothing; a revert to 12s would surface
+  only as a slow matrix
 
 ---
 

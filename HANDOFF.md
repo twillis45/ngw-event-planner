@@ -11,7 +11,10 @@ prod from Render's own datacenter IP. Worth carrying forward: I reached the
 false claim by trusting a standing CODE COMMENT instead of opening the page,
 and the comment was itself written in good faith about a different structure.
 Also: the first pull of a session was failing on a Render cold start and
-telling the host to go copy the page by hand. See the forty-second entry.)
+telling the host to go copy the page by hand — and the first fix for THAT was
+a naive retry that quadrupled every timeout path in the suite, caught not by a
+failure but by a matrix running 72 minutes instead of 35. See the forty-second
+entry.)
 
 Before that, on 2026-10-02 (forty-first entry:
 the lodging intake stopped asking the host to choose between twenty rows it
@@ -272,7 +275,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `9d8fbbbe` + the cold-start retry — 16 commits on 2026-10-02, Deploy Pages green, prod serving prices |
+| Branch / HEAD | `main` @ `2013e63f` — 18 commits across 2026-10-02/03, Deploy Pages green 01:22, CI Checks 01:48 green but `cra-build`, prod serving prices |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
@@ -291,9 +294,10 @@ this file is the short answer to "where is it, is it green, what's next."
 
 ## FIXED 2026-10-02 (forty-second entry) — the prices were there all along, and a standing comment said they were not
 
-**HEAD `9d8fbbbe` plus the cold-start retry. jest 8,160 / 590 · backend 399 ·
-matrix48 2,876 / 229 / 0 failed / 0 flaky · CI green but cra-build · prod
-serving prices.**
+**HEAD `2013e63f`, pushed 2026-10-03 01:22. jest 8,160 / 590 · backend 399 ·
+matrix50 2,876 / 229 / 0 failed / 0 flaky in 35.0m · CI green but cra-build
+(e2e MERGED TOTAL 2,876 / 229 / 0 / 0, all three shards inside their 30-minute
+budget) · prod serving prices.**
 
 ### The claim I got wrong, and how
 
@@ -369,6 +373,30 @@ what woke the instance. Only on a timeout — a 4xx or a refusal is a real
 answer, and retrying those is how one refusal becomes a blocked IP against a
 host that already blocks datacenter traffic.
 
+**The first version of that retry was wrong, and only the clock said so**
+(fixed 2026-10-03, `2013e63f`). It gave the FIRST attempt the full 12s abort
+before retrying, so every timeout path in the suite paid 12s + 12s. Measured
+on `lodgingCockpit.spec.mjs --project=mobile`:
+
+    no retry        27.1s
+    naive retry     58.1s   <- what shipped in 5b0cdc87
+    probe + retry   24.0s   <- faster than having no retry at all
+
+matrix49 was killed at 72 minutes / 1,494 of 3,105 with **zero failures** —
+everything green, just 4x slow, which CI's 30-minute shard timeout would have
+turned into a killed job with nothing red to explain it. The fix is
+conceptual, not a tuning tweak: the wake starts the moment the request
+arrives, so waiting longer does not wake it faster. The first attempt is now a
+`COLD_PROBE_MS = 5000` probe and only the retry gets `UNFURL_MS = 12000`;
+aborting early still buys the warm instance and stops paying for the wait.
+matrix50 came back 35.0m against matrix48's 34.4m baseline.
+
+Gated for behavior, NOT for duration: the tests assert that it retries and
+that it retries only on timeouts. A timing unit test costs 5s of jest and was
+judged not worth it, so if the probe silently reverts to 12s the suite gets
+slow again and nothing says why. The matrix duration is the only check, and it
+lives in the commit message rather than in a gate.
+
 ### Also in this entry
 
 **The wide column cap** was hardcoded at 3 and is now measured — and my
@@ -406,6 +434,13 @@ and more honest than arguing about it.
 **4. A test that passes can still be the thing that finds the bug** — the
 `structuredDisplayPrice` strip was written as a formality.
 
+**5. Zero failures is not the only way a suite reports a defect.** matrix49
+was entirely green and entirely wrong; what caught it was noticing that 72
+minutes is the wrong number for a 35-minute job. No test was going to say
+that, and "no failures" read as clearance is exactly how a 30-minute shard
+timeout becomes an unexplained CI mystery. Read the DURATION of a run, not
+just its verdict.
+
 ### Open
 
 | | |
@@ -413,7 +448,8 @@ and more honest than arguing about it.
 | `cra-build` | still red, pre-existing CRA lint, untouched all day |
 | Hardcoded 44px | seventeen rules still carry it instead of `var(--tap-min)` |
 | `"neighbours'"` | British spelling in a must-have reason, against the global US-English rule. Noticed, left alone as out of scope — worth a sweep for others |
-| Cold start | the retry hides it on `/results`. The first per-listing unfurl after a cold wake is still exposed, and was not changed |
+| Cold start | the probe + retry hides it on `/results`. The first per-listing unfurl after a cold wake is still exposed, and was not changed |
+| Probe duration | `COLD_PROBE_MS = 5000` is asserted by nothing. A revert to 12s would show up only as a slow matrix |
 
 ## FIXED 2026-10-02 (forty-first entry) — a list with nothing to choose between, two whitelists that ate a field, and three faults only driving found
 
