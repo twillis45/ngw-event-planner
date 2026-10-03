@@ -94,7 +94,7 @@ test.describe('the side-by-side itemizes what each place has', () => {
     expect(vals).toEqual(['yes', 'no', '—']);
 
     // And the denial must not be dressed as a fault. UX_02: a house without a
-    // hot tub is not an error, and nothing may be stated by colour alone —
+    // hot tub is not an error, and nothing may be stated by color alone —
     // which the literal word "no" already satisfies.
     const denied = row.locator('.lc-t-val.is-denied');
     await expect(denied).toHaveCount(1);

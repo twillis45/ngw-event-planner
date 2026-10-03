@@ -1,7 +1,7 @@
 // ─── DRIFT CAPTURE (Phase 5G-C1) ─────────────────────────────────────────────
 //
 // Captures the REAL current NGW mobile surfaces and the reference competitor at
-// both widths, so a drift judgement is made against artefacts rather than memory.
+// both widths, so a drift judgment is made against artefacts rather than memory.
 // Not an assertion suite — its output is the PNGs.
 import { test } from './fixtures.mjs';
 

@@ -106,7 +106,7 @@ test('NEGATIVE CONTROL: the food sheet still folds exactly as it did', async ({ 
   // into Plan / Bringing / Shop, and the planning rows — Your choices, Dietary
   // needs, How it's sourced — left the shopping tab, which is what stopped it
   // being seven stacked blocks deep before the first grocery. The sheet opens
-  // on Shop, so the door is one tap further in. The fold behaviour this test
+  // on Shop, so the door is one tap further in. The fold behavior this test
   // guards is unchanged; only the route to it moved.
   await tapText(page, '^Plan$');
   await page.waitForTimeout(600);

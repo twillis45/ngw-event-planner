@@ -34,7 +34,7 @@ const FLOOR = 44;
 // `.pill` status chips are real routing buttons and measure 267x28. They are
 // NOT fixed here, and the reason is measured, not assumed: in a stacked list
 // the gap between consecutive pills is 7px, so giving each a 44px ::after hit
-// area — the technique used for .sheet-back — would overlap its neighbour by
+// area — the technique used for .sheet-back — would overlap its neighbor by
 // 8px and let one row steal the next row's taps. Closing it properly means
 // raising the pill's real height and the list's rhythm together (28+7 -> e.g.
 // 36+8), which changes a core Studio Matte atom used across many surfaces.
@@ -179,7 +179,7 @@ test('the account panel clears it — a surface this sweep had never measured', 
   // Reached the way a PHONE reaches it. The `.wm-you` rail control carrying
   // aria-label "You and your account" exists in the DOM at 393px but is not
   // visible — it belongs to the desktop rail. On mobile the route is the
-  // eyebrow, then a directory row, and that row is labelled "You & settings".
+  // eyebrow, then a directory row, and that row is labeled "You & settings".
   // Same destination, two names; the naming is logged, not fixed here.
   await boot(page);
   await page.locator('.ev-eyebrow').first().click();

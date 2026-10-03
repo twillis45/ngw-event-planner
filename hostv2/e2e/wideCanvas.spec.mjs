@@ -24,7 +24,7 @@ const boot = async (page) => {
   await settled(page);
 };
 
-test.skip(({ viewport }) => !viewport || viewport.width < 1280, 'above-1280 behaviour only');
+test.skip(({ viewport }) => !viewport || viewport.width < 1280, 'above-1280 behavior only');
 
 test('nothing overflows horizontally on a wide canvas', async ({ page }) => {
   await boot(page);

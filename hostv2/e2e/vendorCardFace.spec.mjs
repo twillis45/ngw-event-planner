@@ -37,7 +37,7 @@ const boot = async (page) => {
 
 const amberCount = (page) => page.evaluate(() => {
   // Count what the HOST sees as "needs attention": any PAINTED element whose
-  // colour resolves to the warn token. Reading computed colour, not class
+  // color resolves to the warn token. Reading computed color, not class
   // names, because the defect was a token default.
   //
   // RESOLVE THE TOKEN THROUGH AN ELEMENT. The first cut compared the raw

@@ -88,13 +88,33 @@ tests green, which is correct — those cannot detect its absence.
 - **A regex is not a string.** Renaming copy desyncs any test matching it with
   a regex literal.
 
+### The three outstanding rows, closed the same day
+
+**The probe is gated.** Three fake-timer tests, 2-4ms each — the "a timing
+test costs 5s of jest" objection was simply wrong. They assert the first
+attempt aborts at 5001ms and not before 4999, that the retry is still waiting
+at a second 5s, and that a cold wake spends 5s + 12s. Red-proofed at
+`COLD_PROBE_MS = 12000`: all three red, by assertion, in 1-3ms.
+
+Two mistakes worth keeping: `expect(value, 'message')` is Playwright's, not
+jest 27's; and advancing 17001ms in ONE jump HANGS rather than failing,
+because the retry's timer does not exist until the probe's abort is handled.
+The third test now asserts the retry exists before awaiting anything, so a
+regression names itself instead of burning a 5s timeout.
+
+**CRA baseline tidied** — 241 of 241, down from 245.
+
+**Comment spellings swept** — 60 lines across 29 files in `hostv2/e2e`,
+`hostv2/scripts`, `scripts`. Two things a blind sweep gets wrong:
+`EXPECT_UNLABELLED` is an env-var interface documented in a 2026-08-17 audit
+and was masked out deliberately; and three comments quoting Airbnb's
+"Guest favourite" badge were MISQUOTES — the captured fixture and
+`CARD_NOISE` both say `Guest favorite`, so fixing them corrects the record.
+
 ### Outstanding
 
-- `COLD_PROBE_MS = 5000` is asserted by nothing; a revert surfaces only as a
-  slow matrix
-- 4 resolved CRA baseline entries worth tidying (`npm run gate:cra:update`)
-- British spellings remain in `hostv2/e2e` and `scripts` COMMENTS; excluded
-  deliberately as churn under a running matrix
+- ~300 British spellings remain in `src/` COMMENTS — a prose-only sweep across
+  runtime files. Deliberately not started, and named so it is a decision
 
 ---
 

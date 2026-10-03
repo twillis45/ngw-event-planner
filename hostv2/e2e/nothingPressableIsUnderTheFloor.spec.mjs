@@ -52,7 +52,7 @@ const seed = async (page) => {
 };
 
 // Every pressable thing on screen, measured by walking outward from its
-// centre until elementFromPoint stops answering with it.
+// center until elementFromPoint stops answering with it.
 // ── IT JUDGES THE SHIPPED FLOOR, NOT THE BARE STANDARD ────────────────────
 // This read `h < 44` and so could not fail on the machine it was written on.
 // Measured 2026-10-01: srail-row, lc-step and the ::after expander all sat at

@@ -5,7 +5,7 @@
 // row's own note is explicit that the day-of job is packing them — so on the
 // only dated surface a host reads, a $100-$2,000 essential with a six-week
 // production queue looked like a three-day errand. An elopement is usually
-// travelled to, which makes it worse: the rings must be in hand before the trip.
+// traveled to, which makes it worse: the rings must be in hand before the trip.
 //
 // The lead is researched, not chosen: two independent jewellers, one UK and one
 // US, both read in full on 2026-09-23, converging on 6-8 weeks and giving the

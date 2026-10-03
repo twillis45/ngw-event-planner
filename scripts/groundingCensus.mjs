@@ -82,7 +82,7 @@ for (const f of files) {
       // TWO SLOTS, NOT ONE (2026-08-17). The corpus migrated cost claims to
       // `costProvenance` and DELIBERATELY VACATED `provenance` on those items —
       // `costProvenanceSlot.test.js` asserts the slot "is genuinely vacated".
-      // Reading only `provenance` therefore counted 89 fully-labelled items as
+      // Reading only `provenance` therefore counted 89 fully-labeled items as
       // unlabelled and put the headline at 82.8% when it is 99.3%.
       //
       // That undercount was not academic: it drove a plan to "label the 93",
@@ -93,7 +93,7 @@ for (const f of files) {
       const st = typeof prov === 'string' ? prov + ' (string form)'
         : (prov && prov.verificationStatus) || (prov ? '(object, no status)' : null);
       // AN ALTERNATIVE INHERITS ITS PARENT (2026-08-17). `alternatives[]` entries
-      // are swap suggestions on an already-labelled line — "Pork shoulder" under
+      // are swap suggestions on an already-labeled line — "Pork shoulder" under
       // p_ribs, whose own provenance is `cited` with two sources. Not one of the
       // 541 priced items in this corpus labels an alternative, and
       // `costProvenanceSlot.test.js` counts provenance keys PER LINE, so adding
@@ -117,7 +117,7 @@ console.log(`\nTRUE CENSUS (objects, not text)`);
 console.log(`  priced items          ${priced}`);
 console.log(`  of those in alternatives ${inAlt}`);
 console.log(`  WITH provenance.verificationStatus ${labeled}  ${JSON.stringify(byStatus)}`);
-console.log(`  alternatives inheriting a labelled parent ${inheritedFromParent}`);
+console.log(`  alternatives inheriting a labeled parent ${inheritedFromParent}`);
 console.log(`  WITHOUT (need labelling)           ${unlabeled}`);
 console.log(`\nworst files:`);
 worst.sort((a, b) => b.u - a.u).slice(0, 10).forEach((r) => console.log(`  ${String(r.u).padStart(3)} unlabeled / ${String(r.p).padStart(3)} priced   ${r.f}`));
@@ -140,10 +140,10 @@ await rm(TMP, { recursive: true, force: true });
 //     timeline entries, other structures that carry their own provenance).
 //
 //  2. It does not count `researched` AT ALL — a status in live use on 37 priced
-//     items. Those items are labelled, and the audit sees neither numerator nor
+//     items. Those items are labeled, and the audit sees neither numerator nor
 //     denominator for them. They are invisible.
 //
-//  3. Its denominator was labelled-only, so ~380 unlabelled priced items never
+//  3. Its denominator was labeled-only, so ~380 unlabelled priced items never
 //     appeared. (Fixed in the audit itself; recorded here because the three
 //     defects compound: each one moves the number in a different direction.)
 //

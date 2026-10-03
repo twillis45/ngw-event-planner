@@ -27,7 +27,7 @@
 //
 // ─── STATUS: STILL BLOCKED, AND THE THIRD REASON IS THE WORST ──────────────
 // APPLIED ONCE AND REVERTED. The forward lexer below is correct — both
-// detectors agreed at 148 labelled / 393 unlabelled, it wrote all 393, and the
+// detectors agreed at 148 labeled / 393 unlabelled, it wrote all 393, and the
 // census then read 541/541 with zero unlabelled. It looked like a clean pass.
 //
 // Two jest suites failed, and they were right. THE CORPUS HAS TWO PROVENANCE
@@ -51,7 +51,7 @@
 //
 // BEFORE RE-RUNNING: handle the string form by UPGRADING it in place
 // (`provenance: 'synthesized'` -> the object with the same status), never by
-// adding a key beside it; treat any existing `provenance:` as already-labelled;
+// adding a key beside it; treat any existing `provenance:` as already-labeled;
 // and add a post-write assertion that no object literal carries two
 // `provenance:` keys. Then run jest, because jest is the only instrument in
 // this chain that actually caught the damage.
@@ -155,7 +155,7 @@ for (const f of files) {
   const hits = [];
   for (const h of scanFile(src).hits) {
     const body = src.slice(h.open, h.close + 1);
-    // ANY `provenance:` MEANS LABELLED — not just one carrying a
+    // ANY `provenance:` MEANS LABELED — not just one carrying a
     // verificationStatus. The corpus also uses a bare string shorthand
     // (`provenance: 'synthesized'`, 13 of them), and `hostLabelsAreTruthful`
     // locks the count of those string forms at 21. They are authored work:

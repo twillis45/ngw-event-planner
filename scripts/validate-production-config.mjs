@@ -167,7 +167,7 @@ for (const [name, rawValue] of Object.entries(process.env)) {
 //
 // Host ruling 2026-07-31: the public site ships as the open, localStorage-only
 // demo, and .env.production.local omits these DELIBERATELY. That omission is
-// product behaviour, not missing configuration. A demo release that quietly
+// product behavior, not missing configuration. A demo release that quietly
 // acquired live auth would change what the product IS for every visitor, so
 // their absence is asserted rather than assumed.
 if (PROFILE === 'demo') {

@@ -295,7 +295,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     //
     // The card led with the stay TOTAL and put per-head third, in page tokens
     // (--ink/--muted) over a photograph — which is why the tail was invisible
-    // on a bright listing. Fitment was one clause in that same grey sentence.
+    // on a bright listing. Fitment was one clause in that same gray sentence.
     //
     // This asserts the RANKING, not the wording: per-head occupies the lead
     // slot, the total is still present but demoted, and the fit chip carries
@@ -325,7 +325,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     expect(sizes.sub).toBeLessThan(sizes.lead);
 
     // Fitment is a state with a REASON, never a bare tick — UX_02: never
-    // communicate state by colour alone.
+    // communicate state by color alone.
     const chip = page.locator('.lc-fitchip').first();
     await expect(chip).toBeVisible();
     await expect(chip).toHaveText(/sleeps/i);
@@ -334,11 +334,11 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     // not in page tokens. 4.5:1 is the floor for both the chip and the hedge.
     const contrast = await page.evaluate(() => {
       const px = (c) => c.match(/[\d.]+/g).slice(0, 3).map(Number);
-      // ALPHA COUNTS. This used px() on the text colour and threw the alpha
+      // ALPHA COUNTS. This used px() on the text color and threw the alpha
       // away, so rgba(255,255,255,.06) — invisible — measured as pure white
       // and sailed past 4.5. Caught by red-proofing: I made the tail
       // effectively transparent and all sixteen tests still passed. A
-      // translucent colour is composited over its ground first, which is what
+      // translucent color is composited over its ground first, which is what
       // the eye does.
       const alpha = (c) => { const m = String(c).match(/[\d.]+/g); return m && m.length > 3 ? Number(m[3]) : 1; };
       const over = (fg, a, bg) => fg.map((v, i) => Math.round(v * a + bg[i] * (1 - a)));
@@ -452,7 +452,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     expect(items.join(' | ')).toMatch(/sleeps/i);
 
     // At least one reason is marked as a drawback, and it is not the same
-    // element as the wins — colour alone would not survive a grayscale read,
+    // element as the wins — color alone would not survive a grayscale read,
     // so the class is the claim.
     const against = await why.locator('li.lc-pickwhy-against').count();
     const forCount = items.length - against;
@@ -499,7 +499,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
 
   test('an Airbnb badge never becomes the property photo', async ({ page }) => {
     // Found by driving the real captured results page: two of six cards showed
-    // Airbnb's "Guest favourite" trophy as the house, because Airbnb serves
+    // Airbnb's "Guest favorite" trophy as the house, because Airbnb serves
     // its badge art from the same CDN as listing photography. It passed every
     // check — it IS a real image on an allowed host.
     //
@@ -539,7 +539,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     // The only route to a second place used to vanish at this stage.
     await expect(page.getByRole('button', { name: /Add another place/i })).toBeVisible();
 
-    await // The deck card's button is labelled by aria-label ("Pick <the place>"), not
+    await // The deck card's button is labeled by aria-label ("Pick <the place>"), not
     // by its visible "Pick this place" — getByRole matches the ACCESSIBLE name,
     // so the alternation has to be the label, not the text.
     page.getByRole('button', { name: /Make .* the pick|^Pick\s/i }).first().click();
@@ -616,7 +616,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
 
   // ── WHEN THE SITE DECLINES, STOP AND SAY SO ───────────────────────────────
   // Found by accident: the test above mocked /results but not /unfurl, so every
-  // read failed and the rows stayed bare. That is the correct behaviour under a
+  // read failed and the rows stayed bare. That is the correct behavior under a
   // refusing host, and it had no gate — so it gets one. The backend's own note
   // is why this matters: "Airbnb and Vrbo actively block datacenter traffic …
   // a meaningful share of requests will come back 403/429." Continuing past a
@@ -720,7 +720,7 @@ test.describe('a place with no photo can still be picked', () => {
     await expect(page.locator('.lc-step.is-on')).toHaveText(/The pick/i);
   });
 
-  test('a hotel row shows the rate it knows, labelled as one room', async ({ page }) => {
+  test('a hotel row shows the rate it knows, labeled as one room', async ({ page }) => {
     await seed(page);
     await paste(page, [
       '<div>https://www.google.com/travel/search?q=hotels</div>',
@@ -753,7 +753,7 @@ test.describe('a place with no photo can still be picked', () => {
     await seed(page);
     await paste(page, LISTING);
     await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
-    await // The deck card's button is labelled by aria-label ("Pick <the place>"), not
+    await // The deck card's button is labeled by aria-label ("Pick <the place>"), not
     // by its visible "Pick this place" — getByRole matches the ACCESSIBLE name,
     // so the alternation has to be the label, not the text.
     page.getByRole('button', { name: /Make .* the pick|^Pick\s/i }).first().click();

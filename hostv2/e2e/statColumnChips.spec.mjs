@@ -100,7 +100,7 @@ const readColumn = (page) =>
 // split one fact in two: `Where it happens` is the TOWN (which genuinely
 // unblocks weather, shopping and lodging search) and `Venue address` is the
 // signed address (which gates COI, the dock, final rentals, power, run-of-show
-// and transport). Before the split a single chip labelled "Venue" read
+// and transport). Before the split a single chip labeled "Venue" read
 // "handled" off a town while a card below it said "Not set yet" — one word
 // answering two questions. See docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md.
 const PARTS = ['Date & time', 'Where it happens', 'Venue address', 'Guests', 'Food', 'Lodging', 'Budget'];

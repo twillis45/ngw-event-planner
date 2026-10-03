@@ -25,11 +25,11 @@
     "entries": []
   },
   "generatedFrom": "npx react-scripts build",
-  "fingerprint": "rule|file|message (no line numbers — they shift on unrelated edits)",
-  "totalWarnings": 245,
+  "fingerprint": "rule|file|message, with any embedded \"(at line N)\" normalized away — line numbers shift on unrelated edits",
+  "totalWarnings": 241,
   "byRule": {
-    "no-unused-vars": 227,
-    "react-hooks/exhaustive-deps": 9,
+    "no-unused-vars": 224,
+    "react-hooks/exhaustive-deps": 8,
     "no-mixed-operators": 6,
     "no-useless-escape": 1,
     "no-lone-blocks": 1,
@@ -41,7 +41,6 @@
     "src/plan/CommunicationHub.jsx": 6,
     "src/plan/VendorPlanningWorkspace.jsx": 5,
     "src/CommandCenter.jsx": 4,
-    "src/lib/knowledge/providerIntegration.js": 3,
     "src/lib/vendorAccountability/derive.js": 3,
     "src/lib/experience/experienceComposer.js": 2,
     "src/lib/knowledge/evidencePipeline.js": 2,
@@ -50,7 +49,6 @@
     "src/lib/knowledge/providerNormalizers.js": 2,
     "src/lib/knowledge/researchQuestion.js": 2,
     "src/lib/playbooks/index.js": 2,
-    "src/plan/ChecklistGenerator.jsx": 2,
     "src/components/EventDayMode.jsx": 1,
     "src/lib/assembleRevealEngines.js": 1,
     "src/lib/contactFormat.js": 1,
@@ -65,6 +63,7 @@
     "src/lib/lodgingIntel.js": 1,
     "src/lib/playbooks/playbookRegistry.js": 1,
     "src/lib/vendorAccountability/conflicts.js": 1,
+    "src/plan/ChecklistGenerator.jsx": 1,
     "src/plan/ClientIntakeFlow.jsx": 1,
     "src/plan/DecisionApprovalCenter.jsx": 1,
     "src/slices/OrchestrationSlice.jsx": 1,
@@ -1154,13 +1153,13 @@
     {
       "rule": "react-hooks/exhaustive-deps",
       "file": "src/App.js",
-      "message": "The 'timeline' conditional could make the dependencies of useMemo Hook (at line 43444) change on every render. To fix this, wrap the initialization of 'timeline' in its own useMemo() Hook",
+      "message": "The 'timeline' conditional could make the dependencies of useMemo Hook (at line 43452) change on every render. To fix this, wrap the initialization of 'timeline' in its own useMemo() Hook",
       "count": 1
     },
     {
       "rule": "react-hooks/exhaustive-deps",
       "file": "src/App.js",
-      "message": "The 'vendors' conditional could make the dependencies of useMemo Hook (at line 21055) change on every render. To fix this, wrap the initialization of 'vendors' in its own useMemo() Hook",
+      "message": "The 'vendors' conditional could make the dependencies of useMemo Hook (at line 21063) change on every render. To fix this, wrap the initialization of 'vendors' in its own useMemo() Hook",
       "count": 1
     },
     {
@@ -1297,24 +1296,6 @@
     },
     {
       "rule": "no-unused-vars",
-      "file": "src/lib/knowledge/providerIntegration.js",
-      "message": "'apiKey' is assigned a value but never used",
-      "count": 1
-    },
-    {
-      "rule": "no-unused-vars",
-      "file": "src/lib/knowledge/providerIntegration.js",
-      "message": "'providers' is assigned a value but never used",
-      "count": 1
-    },
-    {
-      "rule": "no-unused-vars",
-      "file": "src/lib/knowledge/providerIntegration.js",
-      "message": "'query' is assigned a value but never used",
-      "count": 1
-    },
-    {
-      "rule": "no-unused-vars",
       "file": "src/lib/knowledge/providerNormalizers.js",
       "message": "'priceKey' is assigned a value but never used",
       "count": 1
@@ -1395,12 +1376,6 @@
       "rule": "no-unused-vars",
       "file": "src/plan/ChecklistGenerator.jsx",
       "message": "'useEffect' is defined but never used",
-      "count": 1
-    },
-    {
-      "rule": "react-hooks/exhaustive-deps",
-      "file": "src/plan/ChecklistGenerator.jsx",
-      "message": "The 'timeline' logical expression could make the dependencies of useMemo Hook (at line 240) change on every render. To fix this, wrap the initialization of 'timeline' in its own useMemo() Hook",
       "count": 1
     },
     {

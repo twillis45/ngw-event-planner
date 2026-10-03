@@ -93,7 +93,7 @@ test('ICE IS TWENTY CENTS A POUND, and the sheet now says so', async ({ page }) 
   // mean (~0.98) and the top of the band renders $0.39. That is the authored
   // corpus value, regionally adjusted — not a lost cent.
   //
-  // Editing the number alone would have written today's behaviour into the
+  // Editing the number alone would have written today's behavior into the
   // gate, which the board named as the trap. So the band is asserted as a
   // RANGE around the authored value, and the claim that makes the adjustment
   // honest is asserted with it: a line adjusted from the basket must say so.
@@ -106,7 +106,7 @@ test('ICE IS TWENTY CENTS A POUND, and the sheet now says so', async ({ page }) 
   // ONLY WHEN THE PLAN WAS ACTUALLY ADJUSTED. The regional factor comes from a
   // live BLS proxy; CI builds against e2e-mock.invalid, the fetch fails, and
   // the sheet honestly reads "National average · not yet adjusted". Asserting
-  // the marker unconditionally reds CI on correct behaviour — it did, seven
+  // the marker unconditionally reds CI on correct behavior — it did, seven
   // times, on this test.
   const sheet = await page.evaluate(() => (document.querySelector('.sheet') || {}).innerText || '');
   const adjusted = !/not yet adjusted/i.test(sheet) && /adjusted for the/i.test(sheet);

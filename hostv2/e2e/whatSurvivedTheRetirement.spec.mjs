@@ -24,7 +24,7 @@ const boot = async (page, { id, type, choices }) => {
     // ON THE EVENT, NOT IN A PATCH. Seeding `ngw-hostv2-patch-<id>` is what the
     // shipped-event specs do, and it silently did nothing here — a patch against
     // a CUSTOM event did not reach `choicePickFor`, so the decision read as
-    // unanswered and both assertions failed against correct product behaviour.
+    // unanswered and both assertions failed against correct product behavior.
     // `foodChoices` is the event's own field and is what the engine reads.
     // Guarded: addInitScript re-runs on every navigation, and an unconditional
     // seed rewrites the event after the app has already changed it — the trap

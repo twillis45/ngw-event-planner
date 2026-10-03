@@ -63,7 +63,7 @@ const AUDIT = () => {
     }
     if (ghost) continue;
     // Only nodes that own their text — otherwise a wrapper is judged on a
-    // child's colour and every failure is reported once per ancestor.
+    // child's color and every failure is reported once per ancestor.
     const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim())
       .map((n) => n.textContent.trim()).join(' ');
     if (!own) continue;

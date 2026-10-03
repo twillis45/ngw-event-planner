@@ -2,7 +2,7 @@
 // The creation step's date row is two <input type="date"> stacked on top of
 // each other. Each carried an aria-label ("First day" / "Last day"), so a
 // screen reader was told which was which and a sighted host was told nothing —
-// two identical grey boxes, and the only way to learn which one was the end of
+// two identical gray boxes, and the only way to learn which one was the end of
 // the trip was to type in it and watch the countdown move.
 //
 // UX_05 is explicit and was not being followed here: "Position: ABOVE the

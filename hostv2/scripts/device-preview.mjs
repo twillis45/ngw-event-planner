@@ -32,7 +32,7 @@
 // Safari actually ships, so those behave as they will on the device.
 //
 // WHAT THIS IS NOT. It is not the iOS Simulator. It will not show you iOS keyboard
-// behaviour, Home-indicator gestures, or real touch latency. For those, install
+// behavior, Home-indicator gestures, or real touch latency. For those, install
 // Xcode and use `xcrun simctl` (see the note printed at the end of a run).
 import { chromium, webkit, devices } from 'playwright';
 import { previewUrl } from '../deployBase.mjs';
@@ -123,7 +123,7 @@ try {
   if (useChromium || !/Executable doesn't exist/i.test(String(err && err.message))) throw err;
   console.log('\n  WebKit is not installed, falling back to Chromium.');
   console.log('  The VIEWPORT and touch flags are still right, so layout and breakpoints are');
-  console.log('  faithful. Not faithful: iOS scrolling, 100dvh behaviour and safe-area insets.');
+  console.log('  faithful. Not faithful: iOS scrolling, 100dvh behavior and safe-area insets.');
   console.log('  For those:  npx playwright install webkit\n');
   browser = await chromium.launch({ headless: false });
   engineUsed = 'Chromium (Blink) — WebKit not installed';
@@ -192,7 +192,7 @@ for (const [k, v] of Object.entries(measured)) console.log(`    ${k.padEnd(20)} 
 if (measured.horizontalOverflow) console.log('\n  ⚠ horizontal overflow at this size');
 
 console.log('\n  Window is open and interactive. Ctrl-C here to close it.');
-console.log('  For true iOS behaviour (keyboard, gestures, latency): install Xcode, then');
+console.log('  For true iOS behavior (keyboard, gestures, latency): install Xcode, then');
 console.log(`  xcrun simctl boot "iPhone 15 Pro" && open -a Simulator && xcrun simctl openurl booted "${URL}"\n`);
 
 await new Promise(() => {});   // hold the window open until Ctrl-C

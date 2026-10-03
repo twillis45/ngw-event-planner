@@ -16,7 +16,7 @@
 // looking, because `window.open` is wrapped in a try/catch that swallows a
 // blocked popup. A stubbed or blocked `open` looks exactly like a no-op. I
 // called it a confirmed defect on that basis and was wrong. This spec exists so
-// nobody has to make that judgement by eye again.
+// nobody has to make that judgment by eye again.
 //
 // WHY THE TOAST IS THE ASSERTION AND NOT THE NAVIGATION. The handler opens
 // `instacartSearchUrl(term)` in a new tab. A test cannot follow that without

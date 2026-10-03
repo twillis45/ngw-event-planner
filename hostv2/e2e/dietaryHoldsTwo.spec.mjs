@@ -20,7 +20,7 @@
 // has to live here or it does not exist.
 //
 // Pinned to 390px — the dietary picker is the mobile-flagship surface and this
-// is the geometry the behaviour was driven at. Running it at six viewports
+// is the geometry the behavior was driven at. Running it at six viewports
 // would buy six identical results.
 import { test, expect, settled } from './fixtures.mjs';
 
@@ -159,7 +159,7 @@ test('tapping a restriction marks the lines it applies to', async ({ page }) => 
 });
 
 test('NEGATIVE CONTROL: a pick-one decision still folds on one tap', async ({ page }) => {
-  // The multi behaviour must not leak. If the sourcing question stopped folding,
+  // The multi behavior must not leak. If the sourcing question stopped folding,
   // every pick-one in the app would have become a toggle list.
   const sheet = await boot(page);
   await chip(sheet, 'Order steamed for pickup').click();

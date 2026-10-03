@@ -75,7 +75,7 @@ test.describe('the roster toolbar', () => {
       // "Can't" stays a non-issue.
       const texts = await page.locator('.rtool-lens .chip').allTextContents();
       const at = texts.findIndex((t) => t.trim().startsWith(label));
-      expect(at, `a chip labelled ${label} exists`).toBeGreaterThan(-1);
+      expect(at, `a chip labeled ${label} exists`).toBeGreaterThan(-1);
       const chip = page.locator('.rtool-lens .chip').nth(at);
       expect(texts[at].trim(), `${label} chip states its count`).toBe(`${label} ${want}`);
       await chip.click({ timeout: 5000 });

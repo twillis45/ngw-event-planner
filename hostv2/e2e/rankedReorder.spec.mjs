@@ -63,14 +63,14 @@ test('a row that changes rank travels to its new place', async ({ page }) => {
   const after = await rows.evaluateAll((ns) => ns.map((n) => n.getAttribute('data-flip')));
   const flipped = await page.evaluate(() => [...(window.__flipped || [])]);
 
-  // Either the order changed and rows travelled, or the ranking legitimately
+  // Either the order changed and rows traveled, or the ranking legitimately
   // did not move — in which case nothing should have been animated either.
   // Asserting one without the other is how this test would pass on a broken
   // FLIP (order changed, nothing moved) or on a jittery one (nothing changed,
   // rows animated anyway).
   const orderChanged = JSON.stringify(before) !== JSON.stringify(after);
   if (orderChanged) {
-    expect(flipped.length, 'the ranking changed and no row travelled').toBeGreaterThan(0);
+    expect(flipped.length, 'the ranking changed and no row traveled').toBeGreaterThan(0);
   } else {
     expect(flipped.length, 'nothing was reranked, but rows animated anyway').toBe(0);
   }
@@ -110,7 +110,7 @@ test('the decisions queue travels too, and its rows are not nested', async ({ pa
   });
 
   // EVERY row is measurable — a row without an id is silently excluded from
-  // FLIP and simply cuts while its neighbours travel, which reads worse than
+  // FLIP and simply cuts while its neighbors travel, which reads worse than
   // nothing moving at all.
   expect(shape.rows).toBeGreaterThan(2);
   expect(shape.flips).toBe(shape.rows);

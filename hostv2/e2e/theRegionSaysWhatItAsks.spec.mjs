@@ -60,7 +60,7 @@ test('a covered region states what whole places ask, and credits the source', as
   // prices and they exclude fees. Shortened 2026-09-27 after the host read
   // the full five-line version on a phone as too dense — the short form is
   // `basisShort`, and it keeps exactly the facts a host cannot infer plus
-  // the attribution the CC BY 4.0 licence requires.
+  // the attribution the CC BY 4.0 license requires.
   expect(txt).toMatch(/Asking prices, before fees/i);
   expect(txt).toMatch(/Inside Airbnb/i);
   expect(txt).toMatch(/CC BY 4\.0/i);

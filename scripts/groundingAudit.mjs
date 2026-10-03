@@ -30,7 +30,7 @@ for (const f of files) {
     // `claimBasis.js:69-73` is THE classifier and it declares five:
     // cited · established-consensus · researched · synthesized · partial.
     // This counted THREE. `researched` is in live use on 98 items repo-wide
-    // and `partial` on 2 — labelled work that appeared in neither the
+    // and `partial` on 2 — labeled work that appeared in neither the
     // numerator nor the denominator, so it was invisible to the grade.
     // Note the spacing is optional in the wild (`verificationStatus:'researched'`
     // appears 3 times), so the space is optional in the pattern too.
@@ -54,7 +54,7 @@ const labeledTotal = totals.cited + totals.synthesized + totals.consensus + tota
 // SETTLED is the honest middle number. claimBasis.js marks `cited` and
 // `established-consensus` settled:true and the other three settled:false — so
 // `% cited` alone understates the work (it discards 40 consensus items that the
-// classifier itself calls settled) while `% labelled` overstates it.
+// classifier itself calls settled) while `% labeled` overstates it.
 const settled = totals.cited + totals.consensus;
 const settledPct = totals.priced ? Math.round((settled / totals.priced) * 1000) / 10 : 0;
 const groundedPct = labeledTotal ? Math.round((totals.cited / labeledTotal) * 100) : 0;
@@ -81,7 +81,7 @@ if (asJson) {
   console.log(`\n  GROUNDING COVERAGE — ${groundedPct}% of ${labeledTotal} LABELED items cited`);
   console.log(`  ACROSS ALL PRICED ITEMS  — ${truePct}% cited  (${totals.cited} of ${totals.priced}, in ${files.length} playbooks)`);
   console.log(`  SETTLED (cited + established-consensus, per claimBasis) — ${settledPct}%  (${settled} of ${totals.priced})`);
-  console.log(`  labelled by status: ${totals.cited} cited · ${totals.consensus} consensus · ${totals.researched} researched · ${totals.synthesized} synthesized · ${totals.partial} partial`);
+  console.log(`  labeled by status: ${totals.cited} cited · ${totals.consensus} consensus · ${totals.researched} researched · ${totals.synthesized} synthesized · ${totals.partial} partial`);
   if (unlabeled > 0) {
     console.log(`\n  ${unlabeled} PRICED ITEMS CARRY NO verificationStatus AT ALL — ${Math.round((unlabeled / totals.priced) * 100)}% of the priced set,`);
     console.log('  invisible to the headline above. Label these FIRST: the honest default is');

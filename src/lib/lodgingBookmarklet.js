@@ -75,7 +75,7 @@ export function isAllowedMedia(url) {
  * tightening of one silently moved the other.
  *
  * Found by pasting the real captured Santa Fe results page: two of six cards
- * showed Airbnb's "Guest favourite" trophy as the property photo, because
+ * showed Airbnb's "Guest favorite" trophy as the property photo, because
  * Airbnb serves its own marketing art from the same CDN as listing
  * photography. The house is /im/pictures/miso|hosting|prohost-api/Hosting-…;
  * the trophy is /im/pictures/airbnb-platform-assets/…. It matters more since

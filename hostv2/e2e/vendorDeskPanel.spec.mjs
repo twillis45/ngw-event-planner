@@ -179,13 +179,13 @@ test('the visible rows and the fold ACCOUNT FOR every counted chip', async ({ pa
   // assertion about counting them held by accident.
   //
   // My first attempt at closing that drove the status control to MAKE one
-  // settled, and skipped: the picker's options are not labelled "Confirmed",
+  // settled, and skipped: the picker's options are not labeled "Confirmed",
   // and confirming alone does not settle a vendor anyway (worry and COI also
   // gate it). A skipping test is exactly as vacuous as `0 === 0`.
   //
   // So this asserts the invariant that holds at ANY settled count, including
   // zero: "Everyone N" counts every vendor, the default view folds the settled
-  // ones behind their own labelled number, and those two must account for N
+  // ones behind their own labeled number, and those two must account for N
   // between them with nothing unexplained. It passes today with folded = 0,
   // and it goes red the moment a settled vendor exists and the chip stops
   // matching — which is the fault, caught without needing the fixture to

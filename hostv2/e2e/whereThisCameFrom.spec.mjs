@@ -110,7 +110,7 @@ test.describe('where this came from', () => {
         const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
           return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
         // COMPOSITE THE ALPHA. .lc-card's background is rgba(111,135,148,0.1);
-        // stopping at the first non-transparent colour and treating it as
+        // stopping at the first non-transparent color and treating it as
         // opaque reported 1.04:1 for text that is plainly legible. Same
         // mistake a contrast gate in this repo already made once — walk every
         // layer and blend it over the one beneath.

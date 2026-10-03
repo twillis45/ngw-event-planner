@@ -64,7 +64,7 @@ const res = spawnSync('npx', ['react-scripts', 'build'], {
   env: { ...process.env, CI: '' },
   maxBuffer: 64 * 1024 * 1024,
 });
-// Strip ANSI colour codes before parsing. react-scripts colourises its ESLint
+// Strip ANSI color codes before parsing. react-scripts colourises its ESLint
 // block when it thinks a terminal is attached, and the escape sequences sit
 // BEFORE "Line n:n:" — so the warning regex matched nothing and the gate
 // silently reported zero warnings. A gate that cannot see warnings passes
@@ -112,7 +112,7 @@ const WARN_RE = /^\s+Line\s+(\d+):(\d+):\s+(.*?)\s{2,}([a-zA-Z@][a-zA-Z0-9@/_-]*
 // not changed in any other respect reported as NEW at 21063 and 43452 where the
 // baseline held 21055 and 43444. The gate went red on a file nobody had a
 // warning-relevant edit in, and it stayed red across FIFTEEN pushes without
-// anyone seeing it, because every Checks run in that window was cancelled by the
+// anyone seeing it, because every Checks run in that window was canceled by the
 // next push before `cra-build` finished.
 //
 // Normalized on BOTH sides, so the committed baseline keeps matching without

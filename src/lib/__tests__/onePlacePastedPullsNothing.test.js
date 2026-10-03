@@ -53,7 +53,7 @@ describe('a single listing, pasted the way a host actually pastes it', () => {
     // PHOTOS ARE READ — but not from every card, and card 0 is why (2026-09-30).
     // This asserted candidates[0].photo and broke when badge art stopped
     // counting as a property photo: two of these six cards carry Airbnb's
-    // "Guest favourite" trophy in the image slot, and card 0 is one of them.
+    // "Guest favorite" trophy in the image slot, and card 0 is one of them.
     // Its photo is now '' on purpose. The premise here is that the parser
     // reads photography off this page at all, so it asks THAT, and pins the
     // badge behaviour separately below rather than on an index that can move.

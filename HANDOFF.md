@@ -469,13 +469,58 @@ NOT change were the valuable half of this task.
 **4. A regex is not a string, and an assertion is not a comment.** Fixing
 copy desyncs any test that matches it with a regex literal. Two here.
 
+
+### The three Open rows, closed 2026-10-03 (same day)
+
+**1. `COLD_PROBE_MS` is gated now, and the "5s of jest" objection was wrong.**
+Three fake-timer tests, **2-4ms each**, zero wall clock. They assert the
+behavior rather than the literal: the first attempt aborts at 5001ms and not
+before 4999, the retry is still waiting at a second 5s (a sentinel race proves
+it has not settled), and a cold wake spends 5s + 12s rather than 12s + 12s.
+
+**Red-proofed** by setting `COLD_PROBE_MS = 12000` — all three go red, in
+1-3ms, by assertion.
+
+Two of my own mistakes on the way, both instructive:
+- `expect(value, 'message')` is **Playwright's** idiom. Jest 27 answers
+  "Expect takes at most one argument." The messages moved into comments.
+- The first draft advanced the clock 17001ms in ONE jump and **hung** instead
+  of failing. The retry's timer does not EXIST until the probe's abort has
+  been handled, so one jump fires the probe and then waits forever on a timer
+  nothing has scheduled. The budget has to be spent in two steps — and the
+  third test now asserts `calls === 2` BEFORE it awaits anything, so a
+  regression fails on that line instead of burning jest's 5s timeout to say
+  nothing. A hung test reads as a mystery; an assertion names the fault.
+
+**2. CRA baseline tidied.** `241 of 241`, down from 245 — the four entries the
+gate had been reporting as resolved are gone.
+
+**3. British spellings in comments: 60 lines across 29 files**, in
+`hostv2/e2e`, `hostv2/scripts` and `scripts`. This had been logged as
+"deliberately excluded as churn," which was true while a matrix was running
+and not after.
+
+Two findings inside it that a blind sweep would have gotten wrong:
+
+| | |
+|---|---|
+| `EXPECT_UNLABELLED` | an **env var interface**, documented as the override in `docs/audits/2026-08-17_DECISION_ENGINE_RESCORE.md`. Renaming it breaks that doc and anything that sets it. Masked out of the sweep and left British on purpose |
+| `"Guest favourite"` | three comments quoted Airbnb's badge in British spelling. **The badge is `Guest favorite`** — the captured fixture says so, and `CARD_NOISE` at `lodgingIntel.js:963` matches the US form. These were MISQUOTES, not verbatim quotes, so fixing them corrects the record rather than Americanizing a source |
+
+`BEHAVIOUR_GEOMETRIES` and `behaviourOnly` in `boardMatrix.spec.mjs` were
+renamed too — verified file-local first, since that spec is 73% of the matrix
+by its own note and an inconsistent rename would error rather than fail.
+
+Still open after this: nothing from the forty-third entry's list. The ~300
+British spellings remaining in `src/` COMMENTS are a separate, much larger
+sweep that would touch runtime files for prose alone; not started, and named
+here so it is a decision rather than an oversight.
+
 ### Open
 
 | | |
 |---|---|
-| Probe duration | `COLD_PROBE_MS = 5000` is asserted by nothing. A revert to 12s surfaces only as a slow matrix |
-| CRA baseline | 4 resolved entries worth tidying: `npm run gate:cra:update` |
-| British spellings in COMMENTS | the sweep covered string literals in `src` + `hostv2/src`. A handful remain in `hostv2/e2e` and `scripts` comments (e.g. "CC BY 4.0 licence"). Deliberately excluded as churn under a running matrix, not as out of scope |
+| `src/` comment spellings | ~300 British spellings remain in `src/` COMMENTS. A prose-only sweep across runtime files; deliberately not started |
 
 ## FIXED 2026-10-02 (forty-second entry) — the prices were there all along, and a standing comment said they were not
 

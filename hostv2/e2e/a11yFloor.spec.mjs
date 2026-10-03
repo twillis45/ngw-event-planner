@@ -71,7 +71,7 @@ const CONTRAST_PROBE = () => {
     return { rgb: [p[0], p[1], p[2]], a: p.length > 3 ? p[3] : 1 };
   };
   // Walk up for the first OPAQUE background — a translucent layer would give a
-  // ratio against a colour nobody actually sees.
+  // ratio against a color nobody actually sees.
   const bgOf = (el) => {
     let n = el;
     while (n && n !== document.documentElement) {
@@ -93,7 +93,7 @@ const CONTRAST_PROBE = () => {
   const bad = [];
   for (const el of [...document.querySelectorAll('p,span,div,button,a,h1,h2,h3,strong,em,label')].filter(vis)) {
     // Only elements holding their OWN text — otherwise a container is judged on
-    // a descendant's colour and every wrapper reports twice.
+    // a descendant's color and every wrapper reports twice.
     const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
     if (!own) continue;
     const cs = getComputedStyle(el);

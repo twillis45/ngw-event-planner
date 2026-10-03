@@ -80,26 +80,26 @@ const unbalanced = (s) => {
 //
 // Measured 2026-08-17 over a full matrix: this file was 1230s of the suite's
 // 1689s — 73% — and ONE test in it, the decisions sweep, was 904s of that. 54%
-// of the whole matrix was a single behavioural test re-running across six
+// of the whole matrix was a single behavioral test re-running across six
 // viewports.
 //
 // The split is by what a test actually asserts, not by convenience:
 //   GEOMETRY  (pinned geometry + scroll-end reachability, fold peek) measure
 //             rendered boxes and MUST run on every viewport — they are the
 //             reason the six projects exist.
-//   BEHAVIOUR (decisions sweep, checklist CTA, display lint, loop-advance) ask
+//   BEHAVIOR (decisions sweep, checklist CTA, display lint, loop-advance) ask
 //             "does the row open its editor", "does this CTA land somewhere
 //             real", "is there machinery in the copy". None of that changes
 //             between 768 and 1024 wide.
 //
 // Two, not one: 1280 is where the shell stops being a phone silhouette and the
 // responsive canvases switch on (see the `desktop` project note in the config),
-// so a phone and a desktop are genuinely different code paths for a behaviour
+// so a phone and a desktop are genuinely different code paths for a behavior
 // test. The four middle widths were buying repeat results at ~10 minutes a run.
 const BEHAVIOUR_GEOMETRIES = ['mobile', 'desktop'];
 const behaviourOnly = (testInfo) =>
   test.skip(!BEHAVIOUR_GEOMETRIES.includes(testInfo.project.name),
-    `behaviour test — runs on ${BEHAVIOUR_GEOMETRIES.join(' + ')} only (see the note above; this file was 73% of the matrix)`);
+    `behavior test — runs on ${BEHAVIOUR_GEOMETRIES.join(' + ')} only (see the note above; this file was 73% of the matrix)`);
 
 const stageWeather = async (page) => {
   const iso = dateIn(2);
@@ -145,7 +145,7 @@ test('every dated state actually sits where its label says', async ({ page }) =>
   // truth, and would have been "fixed" by adding redundant patches.
   //
   // What actually rotted was a HARDCODED date: the repast was seeded Jul 25 and
-  // had drifted 39 days into the past while still labelled T-3, so it rendered
+  // had drifted 39 days into the past while still labeled T-3, so it rendered
   // no ask at all and that was reported as a solemn-path defect. The horizon
   // the app puts on screen is the thing to assert.
   const bad = [];
