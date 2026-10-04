@@ -177,6 +177,30 @@ export function photoList(raw) {
  * Normalize one host-entered option. Pure; unknown fields ride through so the
  * shortlist can grow without this file changing.
  */
+// ── ONE PLACE THAT KNOWS WHICH STATUSES ARE ALIVE (2026-10-04) ────────────
+// Host: "allow host to remove properties." A host declining a place and the
+// market taking it away are DIFFERENT FACTS and must not share a status --
+// `gone` drives lodgingTrouble's "Casa Verde fell through", which would be a
+// lie told about the host's own decision.
+//
+// So `removed` is its own status, and the moment there are two non-live
+// statuses the real risk appears: SEVEN call sites across the engine and the
+// cockpit filtered `status !== 'gone'` to mean "live", and adding a second
+// dead status by hand means missing one and having a removed place reappear
+// in exactly one view. That is the whitelist defect this repo has already
+// paid for twice (topAction, PARSER_FIELDS).
+//
+// There is one predicate now. Add a status to the set and every list that
+// asks `isLiveOption` is correct for free; a list that hand-rolls the check
+// is a bug by construction.
+export const LODGING_STATUSES = new Set(['option', 'chosen', 'gone', 'removed']);
+
+// Not on the shortlist any more, for either reason.
+const LODGING_DEAD = new Set(['gone', 'removed']);
+
+/** Is this option still on the shortlist? The only correct liveness test. */
+export const isLiveOption = (o) => !!o && !LODGING_DEAD.has(o.status);
+
 export function normalizeLodgingOption(raw, i = 0) {
   const o = raw || {};
   const url = String(o.url || '').trim();
@@ -200,6 +224,19 @@ export function normalizeLodgingOption(raw, i = 0) {
     platform: lodgingPlatformFor(url) || (String(o.platform || '').trim().toLowerCase() || null),
     sleeps: num(o.sleeps),
     beds: num(o.beds),
+    // ── CARRIED 2026-10-04, AND THEY WERE NOT ─────────────────────────────
+    // Found by a test about something else entirely. The results card prints
+    // "6 bedrooms · 9 beds · 5.5 baths" and the parser reads all three, but
+    // this normalizer carried only `beds` — so the bedroom and bathroom
+    // requirements added 2026-10-03 scored STAGED candidates correctly and
+    // went blind the moment a place joined the shortlist, reporting `unknown`
+    // for a number that had already been read off the card.
+    //
+    // Same class as topAction and PARSER_FIELDS: a whitelist silently drops
+    // what nobody told it about, and the loss is invisible at the call site
+    // because the field simply is not there to miss.
+    bedrooms: num(o.bedrooms),
+    baths: num(o.baths),
     pricePerNight: num(o.pricePerNight),
     // 'room' when the rate buys ONE ROOM (a hotel) rather than the whole place
     // (a rental). Decides whether rate x nights is a stay total or a fragment
@@ -280,7 +317,7 @@ export function normalizeLodgingOption(raw, i = 0) {
     //
     // Still a whitelist, deliberately — an unrecognised status is an option,
     // not a silent fourth state nothing knows how to render.
-    status: o.status === 'chosen' ? 'chosen' : (o.status === 'gone' ? 'gone' : 'option'),
+    status: LODGING_STATUSES.has(o.status) ? o.status : 'option',
   };
 }
 
@@ -2650,7 +2687,7 @@ export function lodgingTrouble(event, intel) {
 
   const chosenGone = gone.find((o) => o.wasChosen === true);
   const named = (o) => String((o && o.label) || '').trim() || 'One of your places';
-  const left = raw.filter((o) => o && o.status !== 'gone').length;
+  const left = raw.filter((o) => isLiveOption(o)).length;
 
   if (chosenGone) {
     return {
@@ -3080,7 +3117,7 @@ export function lodgingCompare(event, intel, picked, maxCols) {
   // place must not hold one of the three columns — or, on a phone, one of the
   // two. It stays visible under NO LONGER ON THE TABLE, which is where the
   // host's work on it is preserved; it is simply not something to weigh.
-  const live = opts.filter((o) => o && o.status !== 'gone');
+  const live = opts.filter((o) => isLiveOption(o));
   const pool = only
     ? only.map((id) => live.find((o) => o && o.id === id)).filter(Boolean)
     : live;

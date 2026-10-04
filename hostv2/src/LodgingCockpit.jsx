@@ -36,7 +36,7 @@ import {
   LODGING_PLATFORM_LABELS,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
   STAY_FROM_CONFIRMATION, STAY_FROM_PLAN,
-  lookupTargets, needsLookup,
+  lookupTargets, needsLookup, isLiveOption,
 } from '@app/lib/lodgingIntel';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
 import MustHaves from './MustHaves';
@@ -1782,9 +1782,9 @@ function StayHero({ photoUrl, label, sub }) {
 // is rendered: the photo, the price, the nights it covers, the host's own
 // must-have count, the amenity chips those musts produce, and the per-field
 // provenance table, which is the point of the screen.
-function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, onPhoto, onFill }) {
+function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, onRemove, onPhoto, onFill }) {
   const [at, setAt] = useState(0);
-  const unordered = opts.filter((o) => o.status !== 'gone');
+  const unordered = opts.filter(isLiveOption);
   // ── THE BEST ONE FIRST (host, 2026-09-29: "default to most recommended
   // based on needs for the event") ────────────────────────────────────────
   // The deck opened on whichever place happened to be added first, so the
@@ -2062,6 +2062,17 @@ function Choices({ opts, event, intel, scores, recPick, basis, onPick, onGone, o
                           style={{ textDecoration: 'none' }}>Open the listing ↗</a>
                       )}
                       <button className="cta soft" aria-label={`${o.label} is gone`} onClick={() => onGone(o.id)}>It’s gone</button>
+                      {/* ── WHERE THE HOST ACTUALLY IS (2026-10-04) ────────
+                          The first cut put this only in the list below, and
+                          the list is unreachable in the normal case:
+                          `deckShown = liveCount > 0`, so the deck replaces it
+                          the moment ONE place is live. A remove button nobody
+                          can reach is not a feature.
+                          Beside "It's gone" on purpose, worded so neither
+                          reads as the other — one is the market, one is her. */}
+                      <button className="cta soft"
+                        aria-label={`Remove ${o.label} from the shortlist`}
+                        onClick={() => onRemove(o.id)}>Not for us</button>
                     </div>
                     {/* SAY IT, LIKE THE MISSING PHOTO ALREADY DOES (2026-08-06,
                         Grandmother seat, overriding two design stars). Twelve
@@ -2361,7 +2372,7 @@ function Weighing({ event, intel, patch }) {
   };
   // ONE definition of who is in the chooser, read by the deck and by the list
   // below it — two copies of this filter is precisely how they would disagree.
-  const liveCount = (event.lodgingOptions || []).filter((o) => o && o.status !== 'gone').length;
+  const liveCount = (event.lodgingOptions || []).filter(isLiveOption).length;
   // Must ask the SAME question as Choices' own guard above — this is what
   // turns the list below from "make the call" (every option) into "no longer
   // on the table" (only the ones struck out). If the two disagree, the same
@@ -2372,6 +2383,8 @@ function Weighing({ event, intel, patch }) {
   const kc = (() => { try { return kitchenConsequence(event); } catch { return null; } })();
   const rec = (() => { try { return lodgingRecommendation(event, intel); } catch { return null; } })();
   const opts = (intel && intel.options) || [];
+  // Off the shortlist, for either reason — the market's or the host's.
+  const shelved = opts.filter((o) => !isLiveOption(o));
 
   // THE OUTLET (board ruling 2026-07-28): a pick writes the stay in the SAME
   // patch, so travelPlan reads it and hostSpending counts it. A pick that
@@ -2398,6 +2411,38 @@ function Weighing({ event, intel, patch }) {
       ? { lodging: { ...(event.lodging || {}), hotelName: '' } } : null;
     patch({ lodgingOptions: next, ...(stay || null) });
   };
+  // ── THE HOST SAYING NO IS NOT THE MARKET SAYING NO (host, 2026-10-04) ──
+  // "allow host to remove properties". Deliberately NOT `gone`: that status
+  // drives lodgingTrouble's "Casa Verde fell through", which would be a lie
+  // told about the host's own decision — and it would offer to help them
+  // recover from a loss they chose.
+  //
+  // SOFT, because a shortlist is a thinking tool and thinking reverses. The
+  // row keeps every field it had; only its status changes, so an undo is a
+  // one-word write rather than a reconstruction from memory we did not keep.
+  const [undo, setUndo] = useState(null);   // { id, label } — the last removal
+  const removeOption = (id) => {
+    const row = (event.lodgingOptions || []).find((o) => o && o.id === id);
+    const next = (event.lodgingOptions || []).map((o) => (o && o.id === id
+      // wasChosen for the same reason markGone keeps it: if the pick is the
+      // thing being removed, the plan has to stop naming it.
+      ? { ...o, status: 'removed', wasChosen: o.status === 'chosen' }
+      : o));
+    const stay = (row && row.status === 'chosen')
+      ? { lodging: { ...(event.lodging || {}), hotelName: '' } } : null;
+    setUndo({ id, label: (row && row.label) || 'That place' });
+    patch({ lodgingOptions: next, ...(stay || null) }, { keepPeek: true });
+  };
+  const undoRemove = () => {
+    if (!undo) return;
+    patch({
+      lodgingOptions: (event.lodgingOptions || []).map((o) => (o && o.id === undo.id
+        ? { ...o, status: o.wasChosen ? 'chosen' : 'option' }
+        : o)),
+    }, { keepPeek: true });
+    setUndo(null);
+  };
+
   const trouble = (() => { try { return lodgingTrouble(event, intel); } catch { return null; } })();
 
   return (
@@ -2416,7 +2461,7 @@ function Weighing({ event, intel, patch }) {
              screen. They still exist, just after, not before. */}
       <Choices opts={opts} event={event} intel={intel}
         scores={rec && rec.scores ? rec.scores : null}
-        recPick={rec && !rec.tie ? rec.pick : null} onPick={pick} onGone={markGone}
+        recPick={rec && !rec.tie ? rec.pick : null} onPick={pick} onGone={markGone} onRemove={removeOption}
         onPhoto={askPhoto} onFill={askFill} basis={basis} />
       {/* THE PANEL THAT NEVER RENDERED (found 2026-08-05, single-threaded
           re-test of the review-board pass — "which is the recommended?").
@@ -2523,16 +2568,39 @@ function Weighing({ event, intel, patch }) {
 
           With fewer than two live places there is no deck, and this is the
           full list again. */}
-      {(deckShown ? opts.filter((o) => o.status === 'gone') : opts).length > 0 && (
+      {/* ── THE LIST SHOWS WHAT IS STILL ON THE SHORTLIST ─────────────────
+          This read `opts`, unfiltered, which was right while `gone` was the
+          only way off the list — a gone row still belongs in the shelf panel
+          below. With `removed` it stopped being right: a place the host had
+          just declined would have kept its seat in MAKE THE CALL.
+          Both dead statuses shelve together, because from the list's point
+          of view the question is only "is this still in play". */}
+      {/* ── THE WAY BACK, SAID ONCE AND PLAINLY ───────────────────────────
+          A soft remove is only soft if the host can see the way back. This
+          names the place rather than saying "item removed", because with
+          three houses on screen the host has to know WHICH one answered. It
+          clears on the next removal and on undo; a row that scrolled away
+          can still be restored from NO LONGER ON THE TABLE below. */}
+      {undo && (
+        <p className="lc-note" role="status" aria-live="polite">
+          {undo.label} is off the shortlist.{' '}
+          <button className="mini" onClick={undoRemove}
+            aria-label={`Put ${undo.label} back on the shortlist`}>Put it back</button>
+        </p>
+      )}
+      {(deckShown ? shelved : opts.filter(isLiveOption)).length > 0 && (
       <Panel label={deckShown ? 'NO LONGER ON THE TABLE' : 'MAKE THE CALL'}>
-        {(deckShown ? opts.filter((o) => o.status === 'gone') : opts).map((o) => {
+        {(deckShown ? shelved : opts.filter(isLiveOption)).map((o) => {
           const isGone = o.status === 'gone';
+          // Removed by the host, not lost to the market. Same shelf, opposite
+          // story, and only one of them is reversible by us.
+          const isRemoved = o.status === 'removed';
           // Is there anything to weigh this against? The thumbnail rule exists
           // to stop a host comparing houses they cannot see — its own copy says
           // "weigh it against the others". With no others there is no
           // comparison to protect, and holding the row back only dead-ends the
           // plan (see the thin branch below).
-          const others = opts.filter((x) => x && x.id !== o.id && x.status !== 'gone').length;
+          const others = opts.filter((x) => x && x.id !== o.id && isLiveOption(x)).length;
           // ── A PLACE IS NOT A PLACE WITHOUT A PICTURE (host, 2026-08-04:
           //    "don't have the app reference properties without a thumbnail") ──
           // A row that is only a name asks the host to choose between houses
@@ -2611,6 +2679,23 @@ function Weighing({ event, intel, patch }) {
               </span>
               {isGone
                 ? <span className="lc-note" style={{ margin: 0 }}>no longer available</span>
+                : isRemoved
+                  // The way back for a removal the undo line no longer covers.
+                  // "no longer available" would be a lie here: it is available,
+                  // the host simply said no, and they are allowed to change
+                  // their mind without re-finding the listing.
+                  ? (
+                    <span className="lc-opt-acts">
+                      <span className="lc-note" style={{ margin: 0 }}>you took this off</span>
+                      <button className="cta soft"
+                        aria-label={`Put ${o.label} back on the shortlist`}
+                        onClick={() => patch({
+                          lodgingOptions: (event.lodgingOptions || []).map((x) => (x && x.id === o.id
+                            ? { ...x, status: x.wasChosen ? 'chosen' : 'option' }
+                            : x)),
+                        }, { keepPeek: true })}>Put it back</button>
+                    </span>
+                  )
                 : (
                   <span className="lc-opt-acts">
                     {String(o.url || '').trim() && (
@@ -2637,6 +2722,12 @@ function Weighing({ event, intel, patch }) {
                     {/* PEER, not a fallback — same row, same weight class. */}
                     <button className="cta soft" aria-label={`${o.label} is gone`}
                       onClick={() => markGone(o.id)}>It’s gone</button>
+                    {/* TWO BUTTONS, TWO DIFFERENT FACTS. "It's gone" is the
+                        market; "Not for us" is the host. They sit together
+                        because that is where the host is deciding, and they
+                        are worded so neither reads as the other. */}
+                    <button className="cta soft" aria-label={`Remove ${o.label} from the shortlist`}
+                      onClick={() => removeOption(o.id)}>Not for us</button>
                   </span>
                 )}
             </div>
@@ -3071,7 +3162,7 @@ function PickTwo({ cmp, event, intel }) {
   // because the normalizer flattened 'gone' to 'option' and intel genuinely
   // could not tell a lost place from a live one; that whitelist is fixed, so
   // there is one definition of the fact again instead of two.
-  const all = (((intel && intel.options) || []).filter((o) => o && o.status !== 'gone'))
+  const all = (((intel && intel.options) || []).filter((o) => isLiveOption(o)))
     .map((o) => ({
       id: o.id,
       label: o.label,
@@ -3195,7 +3286,7 @@ function Transpose({ cmp, event, intel }) {
   // twenty-one places could not weigh the fourth against the ninth. The cap
   // is a width limit, not a selection — so the host selects, exactly as they
   // do on the phone, and the chips are the same control.
-  const all = (((intel && intel.options) || []).filter((o) => o && o.status !== 'gone'))
+  const all = (((intel && intel.options) || []).filter((o) => isLiveOption(o)))
     .map((o) => ({ id: o.id, label: o.label, sleeps: o.sleeps, beds: o.beds }));
   const [pick, setPick] = useState(null);
   const live = (pick || []).filter((id) => all.some((o) => o.id === id));

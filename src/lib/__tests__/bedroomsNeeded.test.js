@@ -182,3 +182,31 @@ describe('coupleId is a pairing too', () => {
     expect(bedroomsNeeded({ guests }).rooms).toBe(1);
   });
 });
+
+// ── THE REQUIREMENT WENT BLIND AT THE SHORTLIST (found 2026-10-04) ─────────
+// The card prints "6 bedrooms · 9 beds · 5.5 baths" and the parser reads all
+// three, but normalizeLodgingOption carried only `beds`. So the numeric
+// requirements scored STAGED candidates and then reported `unknown` for a
+// saved shortlist — a number already read off the card, lost on the way in.
+// Found by a test about removing properties, not by one about bedrooms.
+describe('the numbers survive becoming a shortlist', () => {
+  const { lodgingIntel, normalizeLodgingOption } = require('../lodgingIntel');
+
+  test('bedrooms and baths are carried, not dropped', () => {
+    const n = normalizeLodgingOption({ id: 'a', bedrooms: 8, baths: 5.5, beds: 12 });
+    expect(n.bedrooms).toBe(8);
+    expect(n.baths).toBe(5.5);
+    expect(n.beds).toBe(12);
+  });
+
+  test('so a saved option can actually MEET the requirement', () => {
+    const ev = {
+      guestCount: 16, type: 'reunion', lodgingMustHaves: ['bedrooms'],
+      lodgingOptions: [{ id: 'a', label: 'Casa Grande', bedrooms: 8, beds: 12, status: 'option' }],
+    };
+    const li = lodgingIntel(ev);
+    const { ranked } = rankCandidates(li.options, ev);
+    expect(ranked[0].matched).toContain('Enough bedrooms');
+    expect(ranked[0].unknown).not.toContain('Enough bedrooms');
+  });
+});
