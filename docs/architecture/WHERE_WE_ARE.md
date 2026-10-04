@@ -1,5 +1,82 @@
 # Where We Are -- live status board
 
+## 2026-10-04 — the BLS factor: a wrong label, no instrument, and what both hid
+
+**backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known
+flaky · five commits, pushed and live.**
+
+One host question — "Bls is showing aug this is oct" while the app said
+APRIL — opened three stacked problems. The first two were hiding the third.
+
+### 1. The label came from a series outside the basket
+
+`_fetch_latest` collapsed every fetched series to one `min()` and stamped it
+on the basket factor. But `factor` is the mean over `_BASKET`, and the request
+also carries additive `_PER_ITEM` series that contribute nothing to it.
+Chicken legs — additive, and already commented as having partial regional
+coverage — last published 2026-04 while everything else sat at 2026-08, so it
+dragged the label back four months. The prices were August.
+
+Nothing was dropped to fix it, and that was the host's call: removing chicken
+legs from the month calculation would have meant USING April data while
+CLAIMING August. Each figure now carries the date of the data it is made of.
+
+The existing contract test had the principle right — "only as current as its
+stalest input" — and its SCOPE had gone stale: the additive items arrived
+2026-08-16 and nobody narrowed the month calculation to match.
+
+### 2. No instrument, and no way to know if the key was set
+
+`render.yaml` declares `BLS_API_KEY` with `sync: false`, so it is set by hand
+or not at all, and nothing could say which. `/api/food-prices/status` now
+answers that as a boolean, never the value. **The key IS set, 500/day** — the
+quota risk was never live.
+
+`scripts/foodPriceFreshness.mjs` joins the Monday grounding-monitor and
+reports rather than fails. It found Northeast and Midwest still stale on its
+first run — BREAD, a basket item this time, last published 2026-04 and
+2026-05 there. Those labels were correct.
+
+### 3. The composition, which the other two were covering for
+
+35 of 35 series measured, 2025-01 to 2026-08. A **2025-10 cliff** across
+unrelated items in unrelated regions: eggs, milk and ground beef return a
+single month in the Northeast and Midwest; West has no eggs at all. Three of
+four regions were computing a grocery spread from four of seven items — and
+the retired ones are the volatile, high-spend staples.
+
+### The board, and the ruling
+
+Six owner-confirmed seats. The decisive finding came from the archetype
+survey-methodology seat: **this is not an index, it is an unweighted mean of
+whatever survived**, so a set that differs by region is a different
+measurement in each region wearing one name. Same seat: changing the basket
+breaks comparability over time. Rogati's adopted dissent: returning 1.0 is
+itself a claim, and probably false.
+
+**Owner ruled: do not carry regional.** The floor is the whole basket. Live:
+
+    ne / mw / west   national-fallback, reason 'coverage'
+    south            regional, 0.979, 2026-08, 7 of 7
+
+### Carrying forward
+
+- **A broken instrument returns a uniform answer that looks like data.** My
+  first coverage table was mostly `--` from a bash loop sending one series per
+  area; BLS said REQUEST_SUCCEEDED every time. Caught only by contradicting an
+  earlier measurement. This repo already learned this with `dig`.
+- **A source-grep gate can fail on its own documentation** — a test banning
+  `min(months)` failed on the comment explaining why.
+
+### Outstanding
+
+- If the South lapses, NO region carries a factor. Undecided what then
+- C1: does "4 of 7 staples" reassure or alarm? Needs a real host
+- Replacement APU items never investigated; a swap needs a version bump
+- Weighted index deferred by board recommendation
+
+---
+
 ## 2026-10-03 (later) — six lodging asks, and four facts the app already knew
 
 **jest 8,191 / 591 · `cra-build` green · matrix57 2,894 / 238 / 0 failed / 1 flaky in 36.4m.**

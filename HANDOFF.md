@@ -1,6 +1,27 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-10-03 (forty-third entry:
+**Measured reality, not intentions.** Updated 2026-10-04 (forty-fifth entry:
+the BLS food factor. One host question — "Bls is showing aug this is oct" with
+the app saying APRIL — opened three stacked problems, the first two hiding the
+third. A label built from a series OUTSIDE the basket; nothing watching the
+factor at all and no way to tell whether the API key was even set; and
+underneath both, the composition: three of four regions computing a grocery
+spread from four of seven items, with eggs, milk and ground beef — the
+volatile high-spend ones — retired in a 2025-10 cliff. A six-seat board ruled
+it is not an index but an unweighted mean of whatever survived, and the owner
+ruled DO NOT CARRY REGIONAL. Only the South now claims a regional factor.
+See the forty-fifth entry.)
+
+Before that, on 2026-10-03 (forty-fourth entry: six lodging asks, and four
+facts the app already knew and discarded — the pairing at intake, the
+`coupleId` on split rows, the bedroom numbers on the card. Each was computed,
+dropped, then guessed at downstream, and the guess was printed to the host as
+an assumption. Also the rename that "finished" on 2026-09-23 and had been
+shipping the competitor's name in every title tag, manifest and the sales page
+for ten days, because brand.js is a JS module and cannot reach a <title>.
+See the forty-fourth entry.)
+
+Before that, on 2026-10-03 (forty-third entry:
 the whole open list closed, and THREE of its four descriptions turned out to be
 wrong when measured instead of recited. `cra-build` had been red six days on
 one orphaned import that the gate named in full every single run — I had
@@ -287,7 +308,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
+| Branch / HEAD | `main` @ `56b57bbf` — 2026-10-04, five commits, all pushed and live. backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known flaky. Before that, the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
@@ -303,6 +324,144 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-10-04 (forty-fifth entry) — the BLS factor: a wrong label, a missing instrument, and the thing both were hiding
+
+**backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known
+flaky in 36.3m · `cra-build` green · five commits, all pushed and live.**
+
+Started as one question from the host — "Bls is showing aug this is oct" and
+the app said APRIL — and turned out to be three separate problems stacked, the
+first two hiding the third.
+
+### 1. The label was built from a series outside the basket
+
+`_fetch_latest` collapsed every series in the response to one `min()` and the
+endpoint stamped that on the basket factor. But `factor` is the mean over
+`_BASKET`, and the same request also carries the additive `_PER_ITEM` series,
+which contribute nothing to it. Measured live, West:
+
+    milk / bread / chicken / potatoes / beer / wine    2026-08
+    chicken legs (ADDITIVE)                            2026-04
+
+Chicken legs — whose own code comment already said "regional coverage is
+partial" — dragged the basket's label back four months. **The prices were
+August; only the label said April.**
+
+NOTHING WAS DROPPED, and that was the host's call. My first proposal was to
+remove chicken legs from the month calculation; they refused it, correctly —
+that would have meant USING April data while CLAIMING August. Instead the
+fetch returns a month per series, the factor takes the oldest among the basket
+series that actually produced a ratio, and each per-item factor carries its
+own date in a new `item_months`. A ratio is stamped with the OLDER of its
+region/US pair, because it cannot be more current than its staler half.
+
+**The principle was already right; its SCOPE went stale.**
+`test_disagreeing_series_report_the_OLDEST_month` says a figure "is only as
+current as its stalest input". True, and still enforced. When it was written
+the only series fetched WERE the basket; the additive items arrived
+2026-08-16 and nobody narrowed the month calculation to match.
+
+### 2. Nothing was watching, and nobody could say if the key was set
+
+`render.yaml` declares `BLS_API_KEY` with `sync: false` — set by hand in the
+dashboard or not at all — and no endpoint, log or test could answer whether it
+had been. That matters because the failure is silent: unregistered BLS caps
+near 25 queries a day, a refusal is cached until UTC midnight, and the only
+symptom is a number that stopped moving.
+
+`/api/food-prices/status` answers `{ keyed, daily_query_cap, cached }` —
+boolean only, never the value, the same shape `/api/stripe/status` uses, with
+a test asserting the secret does not travel. **Answer: the key IS set, cap
+500/day.** The quota risk was never live.
+
+`scripts/foodPriceFreshness.mjs` runs in the Monday grounding-monitor and
+reports rather than fails, per `sourceFreshness.js`: "a stale source is not a
+wrong source... the only correct response is to tell a human." It warns past
+THREE months, not two, because BLS ships about two months behind and warning
+at two would fire monthly and teach everyone to ignore it.
+
+**It earned itself on its first run** — found Northeast still at 2026-04 and
+Midwest at 2026-05. Traced to BLS: BREAD, a BASKET item this time, last
+published 2026-04 in the Northeast and 2026-05 in the Midwest. Those labels
+were therefore CORRECT.
+
+### 3. What the first two were hiding — the composition
+
+Measured the whole thing, 35 of 35 series, 7 items x 5 areas, 2025-01 to
+2026-08 (`docs/audits/2026-10-04_BLS_COVERAGE_AND_CADENCE.md`):
+
+| | US | NE | MW | South | West |
+|---|---|---|---|---|---|
+| Eggs | 20mo | **1mo 25-10** | 10mo 25-10 | 20mo | **none** |
+| Milk | 20mo | **1mo 25-10** | **1mo 25-10** | 20mo | 20mo |
+| Bread | 20mo | 16mo **26-04** | 17mo **26-05** | 20mo | 20mo |
+| Ground beef | 20mo | **1mo 25-10** | **1mo 25-10** | 20mo | **1mo 25-10** |
+| Chicken / Potatoes / Bananas | 20mo | mostly 20mo | 20mo | 20mo | patchy |
+
+**A 2025-10 cliff across unrelated items in unrelated regions.** That reads as
+a BLS coverage change, not an outage. Three of four regions were computing a
+"grocery spread" from four of seven items — and the retired ones are eggs,
+milk and ground beef, the volatile high-spend staples.
+
+### The board, and the ruling
+
+Six seats, owner-confirmed, scored against that table
+(`docs/audits/2026-10-04_BLS_COVERAGE_BOARD.md`). The decisive finding came
+from the one seat that nearly was not proposed, an archetype survey-
+methodology seat: **this is not an index, it is an unweighted mean of whatever
+survived**, so a set that differs by region is a DIFFERENT measurement in each
+region wearing one name. BLS weights by expenditure; we do not.
+
+Second non-obvious find, same seat: **changing the basket breaks comparability
+over time.** A host whose estimate moves should be seeing prices move, not our
+bookkeeping.
+
+Rogati's dissent, adopted: **returning 1.0 is ITSELF a claim** — "this region
+costs what the nation costs" — and replacing an unreliable measurement with a
+confident wrong one is the same defect moved.
+
+**OWNER RULED: do not carry regional.** The floor is now the WHOLE basket,
+derived as `len(_BASKET)`. Whole rather than a bigger fraction because a count
+cannot express the composition finding, and expressing it needs the weighting
+scheme the board recommended NOT building. Live result:
+
+    ne     national-fallback  factor 1.0    items 0  [coverage]
+    mw     national-fallback  factor 1.0    items 0  [coverage]
+    south  regional           factor 0.979  month 2026-08  items 7
+    west   national-fallback  factor 1.0    items 0  [coverage]
+
+Also shipped: `basis` and `fallback_reason` as structured fields (an outage
+and permanently thin coverage want opposite things from a host), a versioned
+basket behind a ratchet, and the host-visible context now naming "N of 7
+staples" when short.
+
+### Worth carrying forward
+
+**1. A measurement whose instrument is broken returns a uniform answer that
+looks like data.** My first coverage table came back mostly `--` from a bash
+loop sending one series per area instead of seven. BLS answered
+REQUEST_SUCCEEDED every time. Caught only because it contradicted a
+measurement from an hour earlier. This repo already has this lesson, with
+`dig`.
+
+**2. A source-grep gate can fail on its own documentation.** A test banning
+`min(months)` failed on the comment explaining why. Replaced with a real call.
+
+**3. Two gates nobody remembered caught this.** `everyBackendRouteHasACaller`
+on the new `/status` — answered by classifying it beside four existing
+"Operator probe" entries rather than exempting it. And a client test read
+`itemsUsed: 0` from a valid payload because `BASE` is read at module load,
+the trap `coldStartRetry.test.js` already documents.
+
+### Open
+
+| | |
+|---|---|
+| If the South lapses | one more retired item there and NO region carries a factor. The Monday monitor will say so; what to do then is undecided |
+| C1 | does "4 of 7 staples" reassure or alarm? Needs a real host. Academic today — only the South is complete, so nobody sees the string |
+| Replacement APU items | never investigated; must precede any basket swap, and a swap needs a version bump |
+| Weighted index | deferred by board recommendation until someone shows it changes a host decision |
 
 ## FIXED 2026-10-03 (forty-fourth entry) — the lodging asks, and four facts the app already knew and threw away
 
