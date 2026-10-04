@@ -251,7 +251,21 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // from 2022/2022 to 1976/1969 — a real failure, but one that names neither
 // the cause nor the file. Group membership is a fact about the source, so the
 // source is where it is checked.
-const MAX_HOSTV2_TEXT_GATES = 51;
+// 51 -> 52 (2026-10-03): theNameOutsideTheApp.test.js.
+//
+// IT CANNOT BE AN E2E, and the reason is unusually clean. It asserts the
+// <title> in hostv2/index.html — a STATIC string that exists only before
+// React boots. The app sets document.title on mount, so by the time any e2e
+// could read it the value under test has already been overwritten. The thing
+// is literally unobservable at runtime.
+//
+// It earns its place: ten days after a rename that swept 17 files and gave
+// the name an owner in lib/brand.js, production still introduced itself as
+// the competitor in its title tag, its manifest, its home-screen label and
+// across the sales page. brand.js is a JS module and cannot reach a <title>
+// or a JSON manifest, so the rename was complete everywhere its instrument
+// could see — and blind to the half a buyer sees first.
+const MAX_HOSTV2_TEXT_GATES = 52;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

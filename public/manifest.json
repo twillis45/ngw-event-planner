@@ -1,6 +1,6 @@
 {
-  "short_name": "Event Boss",
-  "name": "NGW Event Boss",
+  "short_name": "No Guesswork",
+  "name": "No Guesswork Events",
   "icons": [
     { "src": "favicon.ico", "sizes": "64x64 32x32 24x24 16x16", "type": "image/x-icon" }
   ],

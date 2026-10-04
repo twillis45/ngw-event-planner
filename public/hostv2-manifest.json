@@ -1,6 +1,6 @@
 {
-  "short_name": "Event Boss",
-  "name": "Event Boss",
+  "short_name": "No Guesswork",
+  "name": "No Guesswork Events",
   "description": "The details are ours. The day is yours.",
   "icons": [
     { "src": "/ngw-event-planner/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
