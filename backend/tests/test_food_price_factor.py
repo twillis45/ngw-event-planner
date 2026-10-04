@@ -78,7 +78,7 @@ def _with_prices(monkeypatch, regional, national):
         out = {}
         for i in ids:
             out[i] = regional if i.startswith("APU" + _AREA["south"]) else national
-        return out, "2026-07"
+        return out, {i: "2026-07" for i in ids}
     monkeypatch.setattr(FP, "_fetch_latest", fake)
 
 
@@ -121,7 +121,7 @@ def test_thin_coverage_is_a_fallback_not_a_two_item_average(monkeypatch):
             # only one basket item resolves on both sides
             if i.endswith(list(FP._BASKET)[0]):
                 out[i] = 1.5 if i.startswith("APU" + _AREA["south"]) else 1.0
-        return out, "2026-07"
+        return out, {i: "2026-07" for i in ids}
     monkeypatch.setattr(FP, "_fetch_latest", sparse)
     r = call(region="south")
     assert r["factor"] == 1.0, "a single pair must not become the regional factor"
@@ -137,7 +137,8 @@ def test_the_month_is_cached_so_one_host_does_not_refetch_per_render(monkeypatch
 
     async def counting(ids):
         calls["n"] += 1
-        return {i: (1.1 if i.startswith("APU" + _AREA["south"]) else 1.0) for i in ids}, "2026-07"
+        return ({i: (1.1 if i.startswith("APU" + _AREA["south"]) else 1.0) for i in ids},
+                {i: "2026-07" for i in ids})
     monkeypatch.setattr(FP, "_fetch_latest", counting)
     call(region="south")
     call(region="south")
@@ -154,7 +155,8 @@ def test_the_month_is_cached_so_one_host_does_not_refetch_per_render(monkeypatch
 # consumer states something the source never said.
 def test_the_reported_month_is_the_DATA_month_not_today(monkeypatch):
     async def lagging(ids):
-        return {i: (1.1 if i.startswith("APU" + _AREA["south"]) else 1.0) for i in ids}, "2026-07"
+        return ({i: (1.1 if i.startswith("APU" + _AREA["south"]) else 1.0) for i in ids},
+                {i: "2026-07" for i in ids})
     monkeypatch.setattr(FP, "_fetch_latest", lagging)
     r = call(region="south")
     assert r["month"] == "2026-07"
@@ -165,7 +167,7 @@ def test_no_readable_period_means_NO_month_rather_than_a_wrong_one(monkeypatch):
     # An absent month is honest. Falling back to today would restate the exact
     # defect this fix removes.
     async def undated(ids):
-        return {i: (1.1 if i.startswith("APU" + _AREA["south"]) else 1.0) for i in ids}, None
+        return ({i: (1.1 if i.startswith("APU" + _AREA["south"]) else 1.0) for i in ids}, {})
     monkeypatch.setattr(FP, "_fetch_latest", undated)
     assert call(region="south")["month"] is None
 
@@ -202,9 +204,27 @@ def test_disagreeing_series_report_the_OLDEST_month(monkeypatch):
         async def post(self, *a, **k): return FakeResp()
 
     monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
-    prices, month = asyncio.run(FP._fetch_latest(["A", "B"]))
+    prices, months = asyncio.run(FP._fetch_latest(["A", "B"]))
     assert prices == {"A": 1.0, "B": 2.0}
-    assert month == "2026-06"
+
+    # ── THE PRINCIPLE HELD; ITS SCOPE WENT STALE (2026-10-04) ──────────────
+    # This asserted `month == "2026-06"` straight off _fetch_latest, and the
+    # comment above still states the rule correctly: a figure is only as
+    # current as its stalest input, and reporting the newest would overstate
+    # it. That is right, and it is still enforced.
+    #
+    # What changed is WHICH inputs. When this was written the only series
+    # fetched were the basket. The additive `_PER_ITEM` series arrived
+    # 2026-08-16 and ride the same request while contributing nothing to the
+    # factor -- so one collapsed minimum began stamping the basket with a date
+    # from a series outside it. Measured live on 2026-10-04: the West basket
+    # was at 2026-08 and the whole endpoint reported 2026-04, because additive
+    # `chicken legs` last published in April.
+    #
+    # So the fetch now reports a month PER SERIES and the oldest-wins rule is
+    # applied by the caller, over the series that actually make the number.
+    assert months == {"A": "2026-08", "B": "2026-06"}
+    assert min(months.values()) == "2026-06", "oldest still wins where it applies"
 
 
 # ── A FAILURE IS CACHED TOO, ON A SHORT LEASH ───────────────────────────────
@@ -253,7 +273,8 @@ def test_an_expired_entry_is_refetched_rather_than_served_forever(monkeypatch):
         calls["n"] += 1
         if calls["n"] == 1:
             raise RuntimeError("down")
-        return {i: (1.1 if i.startswith("APU" + _AREA["south"]) else 1.0) for i in ids}, "2026-07"
+        return ({i: (1.1 if i.startswith("APU" + _AREA["south"]) else 1.0) for i in ids},
+                {i: "2026-07" for i in ids})
     monkeypatch.setattr(FP, "_fetch_latest", flaky)
 
     assert call(region="south")["factor"] == 1.0          # outage, cached

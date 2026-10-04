@@ -172,7 +172,7 @@ async def _fetch_latest(series_ids: list):
     if data.get("status") != "REQUEST_SUCCEEDED":
         raise RuntimeError(f"BLS status {data.get('status')}: {data.get('message')}")
     out = {}
-    months = set()
+    months = {}
     for s in data.get("Results", {}).get("series", []):
         sid = s.get("seriesID")
         pts = s.get("data") or []
@@ -183,8 +183,24 @@ async def _fetch_latest(series_ids: list):
                 continue
             mk = _data_month(pts[0])
             if mk:
-                months.add(mk)
-    return out, (min(months) if months else None)
+                months[sid] = mk
+    # ── PER SERIES, NOT ONE MINIMUM (2026-10-04) ─────────────────────────────
+    # This returned `min(months)` across EVERY series in the response, and the
+    # caller stamped that on the basket factor. The two sets are not the same:
+    # the factor is the mean over `_BASKET`, while the request also carries the
+    # additive `_PER_ITEM` series, which contribute nothing to it.
+    #
+    # Measured 2026-10-04 against the live API, West region: milk, bread,
+    # chicken, potatoes, beer and wine all published 2026-08 — and chicken
+    # legs, an ADDITIVE item whose own code comment already says "regional
+    # coverage is partial", last published 2026-04. One series outside the
+    # basket dragged the basket's label back four months, so a host planning
+    # in October was shown April for a number built from August prices.
+    #
+    # Returning the months per series lets each reported figure carry the date
+    # of the data it is actually made of. Nothing is dropped — chicken legs
+    # keeps its value AND gains an honest April stamp of its own.
+    return out, months
 
 
 @router.get("")
@@ -215,12 +231,25 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
         codes = list(_BASKET) + [c for c in _PER_ITEM if c not in _BASKET]
         ids = ([_series(_AREA[reg], it) for it in codes]
                + [_series(_AREA["us"], it) for it in codes])
-        prices, data_month = await _fetch_latest(ids)
+        prices, series_months = await _fetch_latest(ids)
 
         def _ratio(code):
             r = prices.get(_series(_AREA[reg], code))
             n = prices.get(_series(_AREA["us"], code))
             return (r / n) if (r and n and n > 0) else None
+
+        def _month_of(code):
+            """The month a RATIO is good for: the older of its two series.
+
+            A ratio compares this region against the US, so it is only as
+            current as the staler half. Taking the older of the pair is the
+            same conservatism the old code applied globally — correct here,
+            where it describes one number, and wrong there, where it described
+            a number built from other series entirely.
+            """
+            ms = [series_months.get(_series(_AREA[a], code)) for a in (reg, "us")]
+            ms = [m for m in ms if m]
+            return min(ms) if ms else None
 
         ratios = [x for x in (_ratio(it) for it in _BASKET) if x is not None]
         if len(ratios) < 3:
@@ -235,10 +264,21 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
         # does not publish for this region is omitted entirely — the client falls
         # back to the mean, which is a real answer rather than a guessed one.
         item_factors = {}
+        item_months = {}
         for code, key in _PER_ITEM.items():
             x = _ratio(code)
             if x is not None:
                 item_factors[key] = max(0.8, min(1.3, round(x, 3)))
+                m = _month_of(code)
+                if m:
+                    item_months[key] = m
+
+        # The factor's OWN month: the oldest among the basket series that
+        # actually produced a ratio. An item BLS does not publish for this
+        # region contributes no number and so cannot age the label either.
+        basket_months = [m for m in (_month_of(c) for c in _BASKET
+                                     if _ratio(c) is not None) if m]
+        data_month = min(basket_months) if basket_months else None
 
         result = {
             "region": reg, "region_label": _REGION_LABEL[reg], "factor": factor,
@@ -247,6 +287,10 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
             "month": data_month, "source": src, "basket": list(_BASKET.values()),
             "items_used": len(ratios),
             "item_factors": item_factors,
+            # Parallel to item_factors and deliberately NOT folded into it:
+            # clients read item_factors as a flat {key: number} map
+            # (lib/foodPrices.js), and changing its shape would break them.
+            "item_months": item_months,
         }
         _CACHE[(reg, month_key)] = (time.time() + _SUCCESS_TTL, result)
         return result
