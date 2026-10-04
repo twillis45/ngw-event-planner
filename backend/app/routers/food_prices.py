@@ -203,6 +203,36 @@ async def _fetch_latest(series_ids: list):
     return out, months
 
 
+@router.get("/status")
+async def food_prices_status():
+    """Whether this deployment can reach BLS at a usable rate, and what it holds.
+
+    ADDED 2026-10-04. render.yaml declares BLS_API_KEY with `sync: false` --
+    it has to be set by hand in the dashboard, and nothing anywhere could say
+    whether it HAD been. That matters because the consequence is invisible:
+    unregistered BLS allows roughly 25 queries a day, this endpoint's 6h TTL
+    across four regions can want 16, and a quota refusal is cached until the
+    next UTC midnight. Hit the cap and hosts see the fallback for the rest of
+    the day while the only symptom is a number that did not move.
+
+    Reports whether a key is present, NEVER the key -- same shape as
+    /api/stripe/status, which answers {"configured": bool} and nothing more.
+    `months` is what is in the cache right now, so a human or a monitor can
+    see whether the data is advancing without burning a BLS query to ask.
+    """
+    return {
+        "keyed": bool(BLS_API_KEY),
+        # Unregistered is not broken -- it works until it does not, which is
+        # the whole problem with it.
+        "daily_query_cap": 500 if BLS_API_KEY else 25,
+        "cached": [
+            {"region": k[0], "month": (v[1] or {}).get("month")}
+            for k, v in _CACHE.items()
+            if isinstance(v, tuple) and len(v) > 1 and isinstance(v[1], dict)
+        ],
+    }
+
+
 @router.get("")
 async def food_price_factor(region: Optional[str] = None, state: Optional[str] = None):
     """Current regional food-price factor vs the US baseline. Pass ?region=ne|mw|south|west

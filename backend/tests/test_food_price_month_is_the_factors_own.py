@@ -134,3 +134,40 @@ def test_the_live_west_case_end_to_end(monkeypatch):
     # NOTHING DROPPED: chicken legs keeps its factor and carries its own date.
     assert "chickenLegs" in r["item_factors"]
     assert r["item_months"]["chickenLegs"] == "2026-04"
+
+
+# ── IS THE KEY EVEN SET? NOTHING COULD SAY (2026-10-04) ────────────────────
+# render.yaml declares BLS_API_KEY with `sync: false`, so it is set by hand in
+# the dashboard or not at all -- and no endpoint, log or test could answer
+# whether it had been. The failure it guards is silent: unregistered BLS caps
+# around 25 queries a day, a refusal caches until UTC midnight, and the only
+# symptom a host sees is a number that stopped moving.
+def test_status_reports_whether_a_key_is_set_and_never_the_key(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    monkeypatch.setattr(fp, "BLS_API_KEY", "super-secret-value")
+    r = TestClient(app).get("/api/food-prices/status").json()
+    assert r["keyed"] is True
+    assert r["daily_query_cap"] == 500
+    # The VALUE must never travel. This is the whole reason /api/stripe/status
+    # answers a boolean and nothing else.
+    assert "super-secret-value" not in str(r)
+
+    monkeypatch.setattr(fp, "BLS_API_KEY", None)
+    r2 = TestClient(app).get("/api/food-prices/status").json()
+    assert r2["keyed"] is False
+    assert r2["daily_query_cap"] == 25
+
+
+def test_status_shows_what_the_cache_holds_without_spending_a_query(monkeypatch):
+    """A monitor must be able to see whether the month is advancing cheaply."""
+    import time
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    fp._CACHE.clear()
+    fp._CACHE[("west", "2026-10")] = (time.time() + 3600, {"region": "west", "month": "2026-08"})
+    r = TestClient(app).get("/api/food-prices/status").json()
+    assert {"region": "west", "month": "2026-08"} in r["cached"]
+    fp._CACHE.clear()

@@ -56,6 +56,21 @@ jobs:
       - name: Grounding scoreboard
         run: node scripts/groundingAudit.mjs --stale 30
 
+      # ── IS THE LIVE FACTOR STILL ADVANCING? (added 2026-10-04) ──────────
+      # The audit above measures the CORPUS. The BLS food-price factor is a
+      # different thing entirely -- fetched live, cached six hours, on no
+      # schedule at all -- and nothing was looking at it. On 2026-10-04 the
+      # app was reporting APRIL prices in October, across more than one
+      # region, and it was noticed by a human rather than by anything here.
+      #
+      # continue-on-error because this reports and never blocks: the script
+      # exits 0 by design, and this makes that true even if the API is down.
+      # `sourceFreshness.js` already settled the principle -- freshness warns,
+      # it never invalidates.
+      - name: Food-price freshness (BLS)
+        continue-on-error: true
+        run: node scripts/foodPriceFreshness.mjs
+
       # The machine-readable form, kept as an artifact so two runs can be
       # diffed. This is what makes a later price-pull PROVABLE rather than
       # asserted: if a pull moved nothing, the next report says so.
