@@ -35,6 +35,51 @@ _BASKET = {
     "708111": "Eggs", "709112": "Milk", "702111": "Bread",
     "703111": "Ground beef", "706111": "Chicken", "711211": "Potatoes", "712311": "Bananas",
 }
+# ── A3: THE BASKET IS VERSIONED (board, 2026-10-04) ────────────────────────
+# Changing which items make the factor changes WHAT THE FACTOR MEASURES, and a
+# ratio from one basket is not comparable with a ratio from another. The
+# methodology seat raised it: a host whose estimate moves between two months
+# should be seeing prices move, not our bookkeeping. Bump this whenever
+# `_BASKET` changes, and a test fails if you forget.
+BASKET_VERSION = 1
+
+# ── THE FLOOR IS THE WHOLE BASKET (owner ruling, 2026-10-04) ──────────────
+# It was 3 of 7, and 3 was never derived — it was chosen when the basket was
+# seven and healthy and reads as "a bit under half". The board ruled it
+# indefensible and sent the number to the owner as open item B1, because
+# raising it trades reach for honesty and a board cannot price that.
+#
+# OWNER RULED: do not carry regional. If we cannot measure the basket we do
+# not claim a regional spread — we use the national figure and say so.
+#
+# WHY THE WHOLE BASKET RATHER THAN A BIGGER FRACTION. A count alone cannot
+# express what the board actually found. The items BLS retired are eggs, milk
+# and ground beef — the volatile, high-spend staples — so "5 of 7" could still
+# be five cheap, stable items and a factor that quietly means something else.
+# A threshold on composition would need a weighting scheme, which is exactly
+# the work the board recommended NOT doing until someone shows it changes a
+# host decision. Requiring all seven needs no weighting and cannot drift by
+# composition: either we measured the basket or we did not.
+#
+# THE COST, STATED. Today that leaves the South as the only region with a
+# regional factor; Northeast, Midwest and West all fall back to national with
+# the reason named. Given the 2025-10 coverage cliff, the South may follow.
+# That is the ruling working rather than failing — a factor nobody can defend
+# is worth less than an honest national one.
+#
+# Derived from the basket so it cannot fall out of step with it.
+_MIN_ITEMS = len(_BASKET)
+
+
+class _InsufficientCoverage(RuntimeError):
+    """Too few items resolved to call the result a regional measurement.
+
+    Distinct from an outage on purpose: an outage is temporary and a host
+    should try later; thin coverage is a standing fact about what BLS
+    publishes here and trying later will not help.
+    """
+
+
 _AREA = {"ne": "0100", "mw": "0200", "south": "0300", "west": "0400", "us": "0000"}
 
 # ─── PER-ITEM FACTORS (added 2026-08-16) ────────────────────────────────────
@@ -282,8 +327,9 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
             return min(ms) if ms else None
 
         ratios = [x for x in (_ratio(it) for it in _BASKET) if x is not None]
-        if len(ratios) < 3:
-            raise RuntimeError(f"insufficient BLS coverage for {reg} (got {len(ratios)})")
+        if len(ratios) < _MIN_ITEMS:
+            raise _InsufficientCoverage(
+                f"{len(ratios)} of {len(_BASKET)} items resolved for {reg}")
         factor = round(statistics.fmean(ratios), 3)
         # clamp to a sane band — guards against a bad/partial fetch skewing budgets.
         factor = max(0.8, min(1.3, factor))
@@ -321,14 +367,39 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
             # clients read item_factors as a flat {key: number} map
             # (lib/foodPrices.js), and changing its shape would break them.
             "item_months": item_months,
+            # A2: what KIND of answer this is, structured so a client can act
+            # on it rather than parse prose. 'regional' means measured here.
+            "basis": "regional",
+            "basket_version": BASKET_VERSION,
         }
         _CACHE[(reg, month_key)] = (time.time() + _SUCCESS_TTL, result)
         return result
     except Exception as e:  # noqa: BLE001 — never break the food plan on a price miss
         log.error("food_price_factor %s failed: %s", reg, e)
-        fallback = {"region": reg, "region_label": _REGION_LABEL.get(reg, reg), "factor": 1.0,
-                    "month": None, "source": src,
-                    "note": "Current prices unavailable right now — showing national estimate."}
+        # ── A2: SAY WHICH KIND OF FALLBACK THIS IS (board, 2026-10-04) ──────
+        # One note covered both an outage and permanently thin coverage, and
+        # they want opposite things from a host: come back later, versus this
+        # is simply how much BLS publishes for your region.
+        #
+        # The factor stays 1.0 because the food plan needs a number, but the
+        # board was explicit that 1.0 is ITSELF A CLAIM — "this region costs
+        # what the nation costs" — and probably false. So it is labelled
+        # national rather than presented as a measured local spread, and
+        # `basis` is the field that carries that rather than the prose.
+        thin = isinstance(e, _InsufficientCoverage)
+        fallback = {
+            "region": reg, "region_label": _REGION_LABEL.get(reg, reg),
+            "factor": 1.0, "month": None, "source": src,
+            "basis": "national-fallback",
+            "fallback_reason": "coverage" if thin else "unavailable",
+            "basket_version": BASKET_VERSION,
+            "items_used": 0,
+            "note": (
+                "Not enough local price data for this region — using national prices."
+                if thin else
+                "Current prices unavailable right now — showing national estimate."
+            ),
+        }
         # CACHED, on a short leash. Without this every request during an outage
         # pays the full 20s timeout to learn the same thing. A daily-quota
         # refusal gets a LONG leash instead — see `_fail_ttl_for`: retrying that

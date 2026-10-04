@@ -2744,7 +2744,23 @@ export default function HostShellV2() {
         // itemFactors: the backend's PER-ITEM regional factors. geoItemMap decides
         // which priced lines may claim one; every other line keeps the basket mean.
         // Exactly one multiplier lands on any band — see playbooks/index.js factorFor.
-        if (!dead) setFoodPP({ priceFactor: d.factor || 1, priceContext: d.factor !== 1 ? (d.regionLabel + (d.month ? ' · ' + d.month : '') + ' · ' + d.source) : null, itemFactors: d.itemFactors || {} });
+        // ── A1: SAY WHAT THE NUMBER IS MADE OF (board 2026-10-04) ──────
+        // This read "West · 2026-08 · BLS Average Price" whether the factor
+        // came from seven staples or four. Measured 2026-10-04: three of four
+        // regions were on four, and the retired items were eggs, milk and
+        // ground beef — the volatile, high-spend ones. The count only appears
+        // when it is short of the full basket, so a complete region stays
+        // quiet rather than paying for a caveat it does not need.
+        const partial = d.basis === 'regional' && d.itemsUsed > 0
+          && d.basketSize > 0 && d.itemsUsed < d.basketSize;
+        if (!dead) setFoodPP({
+          priceFactor: d.factor || 1,
+          priceContext: d.factor !== 1
+            ? (d.regionLabel + (d.month ? ' · ' + d.month : '') + ' · ' + d.source
+              + (partial ? ` · ${d.itemsUsed} of ${d.basketSize} staples` : ''))
+            : null,
+          itemFactors: d.itemFactors || {},
+        });
       } catch { if (!dead) setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); }
     })();
     return () => { dead = true; };

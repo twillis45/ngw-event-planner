@@ -17,6 +17,18 @@ const NEUTRAL = Object.freeze({
   // Per-item factors, keyed by geoItemMap's item names. Empty is the honest
   // no-data answer: every line then takes the basket mean.
   itemFactors: Object.freeze({}),
+  // ── A1 (board 2026-10-04): the factor must carry its own composition ─────
+  // 1.087 renders identically whether it came from seven staples or four, and
+  // on 2026-10-04 three of four regions were running on four — with eggs, milk
+  // and ground beef, the volatile high-spend ones, among the retired. A host
+  // cannot tell a measured regional spread from an arithmetic accident unless
+  // the surface says so.
+  itemsUsed: 0,
+  basketSize: 0,
+  // 'regional' = measured here. 'national-fallback' = not enough local data,
+  // so the national figure stood in and must not be read as a local spread.
+  basis: 'national-fallback',
+  basketVersion: null,
 });
 
 // getFoodPriceFactor({ region, state }) → { factor, region, regionLabel, month, source, note }.
@@ -53,6 +65,12 @@ export async function getFoodPriceFactor({ region, state } = {}) {
       month: d.month || null,
       source: d.source || 'BLS Average Price',
       note: d.note || null,
+      // Composition, so a surface can say what the number is made of. A
+      // malformed payload must leave these falsy rather than claim coverage.
+      itemsUsed: Number(d.items_used) > 0 ? Number(d.items_used) : 0,
+      basketSize: Array.isArray(d.basket) ? d.basket.length : 0,
+      basis: d.basis === 'regional' ? 'regional' : 'national-fallback',
+      basketVersion: Number(d.basket_version) || null,
       // Per-item regional factors (2026-08-16). The backend already computed
       // these and discarded them with fmean; now it returns them. Only numbers
       // in a sane band survive — a malformed payload must not reach a price.

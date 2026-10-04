@@ -106,6 +106,10 @@ const CALLED_FROM_OUTSIDE = {
   '/api/webhooks/status': 'Operator probe — is the relay configured.',
   '/api/shopping/instacart/status': 'Operator probe — is the Instacart key set.',
   '/api/shopping/kroger/status': 'Operator probe — are the Kroger client id/secret set.',
+  '/api/food-prices/status': 'Operator probe — is BLS_API_KEY set, and what months are cached. '
+    + 'Called by scripts/foodPriceFreshness.mjs in the weekly grounding-monitor, '
+    + 'never by a shell: render.yaml declares the key with sync:false, so nothing '
+    + 'could say whether it had been set by hand.',
 };
 
 // ── BUILT AND NOT WIRED ────────────────────────────────────────────────────
