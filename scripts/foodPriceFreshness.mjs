@@ -71,10 +71,21 @@ const main = async () => {
   console.log('\n=== FOOD-PRICE FRESHNESS ===');
   for (const n of notes) console.log('  ' + n);
   if (worst != null && worst > WARN_MONTHS) {
-    console.log(`\n  WARNING: the newest region is ${worst} months behind, past the `
-      + `${WARN_MONTHS}-month threshold. BLS normally runs two months behind, so `
-      + `this suggests a missed release, an exhausted quota, or a discontinued `
-      + `series. Reported, not failed -- freshness warns, it never invalidates.`);
+    console.log(`\n  WARNING: a region is ${worst} months behind, past the `
+      + `${WARN_MONTHS}-month threshold. BLS normally runs two months behind.`);
+    console.log('  Four causes, and they want different responses:');
+    console.log('    · PARTIAL REGIONAL COVERAGE -- the usual one, and not a fault.');
+    console.log('      BLS publishes some APU items only for some regions. Measured');
+    console.log('      2026-10-04: bread last shipped 2026-04 in the Northeast and');
+    console.log('      2026-05 in the Midwest while everything else was at 2026-08,');
+    console.log('      and eggs/milk/ground beef have no 2026 regional data at all');
+    console.log('      outside the South. Such a label is CORRECT -- the factor');
+    console.log('      really does contain April bread. Check `items N of 7` above:');
+    console.log('      a low count alongside an old month is this case.');
+    console.log('    · a missed or delayed BLS release -- all regions slip together.');
+    console.log('    · an exhausted quota -- check `keyed` on the first line.');
+    console.log('    · a discontinued series -- an item that never returns.');
+    console.log('  Reported, not failed -- freshness warns, it never invalidates.');
   }
   console.log('');
   // ALWAYS zero. See the doctrine note at the top of this file.
