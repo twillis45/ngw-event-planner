@@ -231,4 +231,48 @@ describe('the invite lands before the cheap seats are gone', () => {
     // point.
     expect(airTravelInviteFloor(DEST).floorDays).toBeLessThan(180);
   });
+  // ── THE DATE MOVED AND NEVER SAID WHY (found 2026-10-06) ──────────────────
+  // The milestone has named itself since 2026-09-23 — `airFloorBecause`,
+  // `airFloorSources`, `airFloorTier`. Grepped: the ONLY reader of any of the
+  // three is this test file. The checklist row inherits the floored DATE and
+  // none of the reason, so a host flying thirty people to Santa Fe sees an
+  // invite silently sitting at 88 days with no account of the booking window
+  // that put it there — and no way to tell their guests when to buy.
+  //
+  // That is the same shape as the milestone defect this file already guards:
+  // the engine knew and the host did not. It travels one more hop here.
+  test('THE TASK CARRIES THE REASON, not just the moved date', () => {
+    const t = chk(DEST)(/send invites/i);
+    expect(t.airFloor).toBeTruthy();
+    expect(t.airFloor.because).toMatch(/74–21 days|74-21 days/);
+    expect(t.airFloor.sources).toEqual(['cheapair-airfare-2024', 'frommers-booking-windows-2026']);
+    expect(t.airFloor.tier).toBe('synthesized');
+  });
+
+  test('…and it carries the WINDOW ITSELF, so a host can tell guests when to buy', () => {
+    // The dates a guest acts on, not just the date the host sends. Without
+    // these three numbers the row can explain its own timing and still leave
+    // the guest with nothing to do.
+    const f = chk(DEST)(/send invites/i).airFloor;
+    expect(f.primeOpensDays).toBe(74);
+    expect(f.primeClosesDays).toBe(21);
+    expect(f.bestSingleDay).toBe(42);
+  });
+
+  test('NEGATIVE CONTROL: a LOCAL task carries no air floor at all', () => {
+    expect(chk(LOCAL)(/send invites/i).airFloor).toBeUndefined();
+  });
+
+  // ── US ENGLISH, AND THIS IS WHERE IT GOT OUT ──────────────────────────────
+  // `because` is host-facing copy the moment anything renders it, and it read
+  // "plus a fortnight to decide". Standing house rule is US English; a gate on
+  // the one string that is about to reach a screen is cheaper than finding it
+  // on the screen.
+  test('the host-facing sentence is US English', () => {
+    const because = airTravelInviteFloor(DEST).because;
+    for (const brit of [/\bfortnight\b/i, /\bwhilst\b/i, /\borganise/i, /\bcolour/i, /\btravelled\b/i]) {
+      expect(because).not.toMatch(brit);
+    }
+    expect(because).toMatch(/two weeks/i);
+  });
 });

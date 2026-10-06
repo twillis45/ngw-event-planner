@@ -5762,6 +5762,29 @@ export default function HostShellV2() {
     patchEvent({ timeline: tasks }, tasks.length + ' tasks drafted — the engine gates them by your choices and works back from the date.');
   };
 
+  // ── WHY THE INVITE MOVED, AND WHEN GUESTS SHOULD BUY ─────────────────────
+  // The air-travel floor pulls the invite to 88 days on a destination event so
+  // guests can buy inside the measured prime window. That has been true since
+  // 2026-09-23 and SILENT: the milestone carried `airFloorBecause` and
+  // `airFloorSources`, the task inherited the date, and the only reader of the
+  // reason anywhere in the tree was a unit test. A host saw an invite sitting
+  // three months out with no account of itself — and nothing to tell a guest.
+  //
+  // READ LIVE, NEVER PERSISTED. `draftTimeline` writes a WHITELIST of seven
+  // fields (its own comment records losing `leadDays` that way, and how long
+  // "nothing was ever overdue" survived because of it). Widening that list
+  // would freeze a booking window into the event at draft time and leave it
+  // there while the sources moved. Keyed by task id off the live engine
+  // instead, so an event drafted last month still explains itself with today's
+  // numbers — and the whitelist stays exactly as narrow as it is.
+  const airFloorById = useMemo(() => {
+    const m = new Map();
+    try {
+      for (const r of (playbookChecklist(event) || [])) if (r && r.airFloor) m.set(r.id, r.airFloor);
+    } catch (_e) { /* no checklist, no note */ }
+    return m;
+  }, [event]);
+
   // The REAL spread: same food plan hostSpending bills from, sized by the
   // engine's own attendance band for this event.
   const foodPlan = useMemo(() => {
@@ -18087,6 +18110,32 @@ export default function HostShellV2() {
                           })()}
                         </span>
                         {detail ? <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal' }}>{detail}</span> : null}
+                        {/* ── THE BOOKING WINDOW, SAID OUT LOUD ──────────────
+                            Two audiences, one row. The host needs to know why
+                            this date is not the one the playbook authored; the
+                            guest needs the dates to act on, which is the half
+                            the host has to pass along and could not. The
+                            window edges are cited (CheapAir 2024, corroborated
+                            by Google Flights and Expedia via Frommers); the
+                            two-week decision buffer inside `because` is
+                            reasoned, and travelLeadTime marks the whole thing
+                            `synthesized` rather than cited for exactly that
+                            reason. Named here as "what the studies measured",
+                            never as a quote or a promise. */}
+                        {(() => {
+                          const af = airFloorById.get(t.id);
+                          if (!af) return null;
+                          return (
+                            <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal', display: 'block', marginTop: 4 }}>
+                              {af.because}
+                              {' Tell guests to book '}
+                              {`${af.primeOpensDays}–${af.primeClosesDays}`}
+                              {' days out — about '}
+                              {af.bestSingleDay}
+                              {' days ahead is the average sweet spot. Measured by CheapAir (917M fares, 2024), with Google Flights and Expedia landing in the same window.'}
+                            </span>
+                          );
+                        })()}
                         <span className="v-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                           {/* The DUE DATE, finally. taskDueLabel had zero call sites — the app
                               computed every task's lead and then showed the host only a prose

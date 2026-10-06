@@ -91,7 +91,7 @@ export function airTravelInviteFloor(event) {
     decisionBufferTier: 'reasoned',
     tier: 'synthesized',
     sources: AIR_BOOKING.sources,
-    because: `Flights are cheapest booked ${AIR_BOOKING.primeOpensDays}–${AIR_BOOKING.primeClosesDays} days out, and fares step up around ${AIR_BOOKING.primeClosesDays} days. Inviting ${floorDays} days ahead gives everyone the whole of that window, plus a fortnight to decide and ask for the time off.`,
+    because: `Flights are cheapest booked ${AIR_BOOKING.primeOpensDays}–${AIR_BOOKING.primeClosesDays} days out, and fares step up around ${AIR_BOOKING.primeClosesDays} days. Inviting ${floorDays} days ahead gives everyone the whole of that window, plus two weeks to decide and ask for the time off.`,
   };
 }
 

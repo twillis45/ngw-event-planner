@@ -23,7 +23,7 @@ import { marketFor } from '../marketFor';
 // No cycle: lodgingIntel reads destLodgingOptions, never this module — that
 // split exists precisely so the two can refer to one option list safely.
 import { lodgingKitchen } from '../lodgingIntel';
-import { airTravelInviteFloor } from '../knowledge/travelLeadTime';
+import { airTravelInviteFloor, AIR_BOOKING } from '../knowledge/travelLeadTime';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -1451,6 +1451,29 @@ export function playbookChecklist(event, asOf) {
       owner: '', // a solo host owns everything — no owner chip clutter
       dueInDays,
       provenance: { source: `${playbook.type} playbook`, taskId: t.id },
+      // ── AND THE REASON TRAVELS WITH THE DATE (2026-10-06) ────────────────
+      // The hop this sweep missed. The milestone has carried `airFloorBecause`
+      // and `airFloorSources` since 2026-09-23; grepped on 2026-10-06, the only
+      // reader of either was the unit test. So the task inherited the moved
+      // date and none of the account of it, and a host flying thirty people to
+      // Santa Fe saw "send invites" sitting at 88 days with nothing saying why
+      // — and, worse, nothing they could pass on to a guest about WHEN TO BUY.
+      //
+      // The window edges ride along rather than only the sentence, because the
+      // host's question and the guest's question are different: the host needs
+      // to know why their invite moved, the guest needs the dates to act on.
+      // One object, read from the milestone that already owns the decision —
+      // never re-derived here, for the same reason the offset is not.
+      ...(_flooredMs ? {
+        airFloor: {
+          because: _flooredMs.airFloorBecause,
+          sources: _flooredMs.airFloorSources,
+          tier: _flooredMs.airFloorTier,
+          primeOpensDays: AIR_BOOKING.primeOpensDays,
+          primeClosesDays: AIR_BOOKING.primeClosesDays,
+          bestSingleDay: AIR_BOOKING.bestSingleDay,
+        },
+      } : null),
     });
   }
   // Food-approach: when the host is using a caterer, surface the one task that choice creates —
