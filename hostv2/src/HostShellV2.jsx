@@ -134,7 +134,7 @@ import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
-import { estimateTotalRange } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, TRAVEL_LOGISTICS_NOT_INCLUDED } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
@@ -3752,15 +3752,56 @@ export default function HostShellV2() {
   // IT ONLY SPEAKS WHEN IT MATTERS. Online, this renders nothing — a
   // permanent "last updated" line is noise on the 99% of loads that are
   // live, and noise is how a real notice gets ignored.
-  const [isOffline, setIsOffline] = useState(() => {
-    try { return typeof navigator !== 'undefined' && navigator.onLine === false; } catch { return false; }
-  });
+  // ── AND `navigator.onLine` IS NOT THE QUESTION ──────────────────────────
+  // Found by driving, iOS Simulator 2026-10-06. A brand-new event, typed in
+  // over a reachable 127.0.0.1, and the first sentence on the creation screen
+  // was "No signal — showing your saved plan. Up to date as of a moment ago."
+  //
+  // Both halves cannot be true, and the second one is the true one:
+  // `markSignal()` stamps at the top of `registerOfflineShell` precisely
+  // because a load reaching the page IS what signal means. The first fired
+  // anyway, because this took the flag as proof — and iOS reports that flag
+  // off whatever loopback is doing. The HTML spec only ever promised one
+  // direction of it: false MAY mean offline, true guarantees nothing. This
+  // was reading the weak direction as a verdict and printing a failure notice
+  // over a working app, on the one screen where there is no saved plan to
+  // show at all.
+  //
+  // So the flag is a PROMPT TO CHECK and never the answer. The check is a
+  // real same-origin request to a path swTemplate's handler is guaranteed to
+  // decline — not a navigation, not in PRECACHE — so it goes to the network
+  // rather than being answered out of the cache it is asking about. A 404 is
+  // a fine result: the question is whether the origin is reachable, not what
+  // it holds.
+  //
+  // Starting at false and probing means the aisle gets its banner a beat
+  // late. That is the right trade: late and true beats instant and wrong,
+  // and `theNoSignalBannerTellsTheTruth.spec.mjs` holds both ends of it.
+  const [isOffline, setIsOffline] = useState(false);
   useEffect(() => {
-    const down = () => setIsOffline(true);
+    let live = true;
+    const reachable = async () => {
+      try {
+        await fetch(`${import.meta.env.BASE_URL}__signal-probe?t=${Date.now()}`, { cache: 'no-store' });
+        return true;            // ANY answer is an answer — we got there
+      } catch (_) { return false; }
+    };
+    const check = async () => {
+      const ok = await reachable();
+      if (!live) return;
+      setIsOffline(!ok);
+      if (ok) markSignal();
+    };
+    try { if (typeof navigator !== 'undefined' && navigator.onLine === false) check(); } catch (_) { /* no navigator */ }
+    const down = () => check();
     const up = () => { setIsOffline(false); markSignal(); };
     window.addEventListener('offline', down);
     window.addEventListener('online', up);
-    return () => { window.removeEventListener('offline', down); window.removeEventListener('online', up); };
+    return () => {
+      live = false;
+      window.removeEventListener('offline', down);
+      window.removeEventListener('online', up);
+    };
   }, []);
   // ── AND IT HAS TO KEEP TICKING, WHICH IT DID NOT ─────────────────────────
   // Recomputing per render is not enough, and driving it proved that: the
@@ -7571,7 +7612,39 @@ export default function HostShellV2() {
               this figure, so the disclosure is specific rather than a blanket
               disclaimer, and `sources` is empty for every budget figure — this
               reads as an explanation, never as a citation. */}
-          <BigValue suffix={estDisclosure && estDisclosure.mustMark ? 'Typical · est.' : 'Typical'}>{fmt(typical)}</BigValue>
+          {/* ── PER HEAD BELONGS IN THE HERO (host, 2026-10-06) ────────────
+              It first shipped as its own Grounding line under the paragraph,
+              which buried the only figure on this screen a host can actually
+              check. $13,200 is not checkable against anything they have lived
+              through; $440 a head is — it is the number they can hold against
+              a dinner they have paid for. It rides the locked suffix slot, so
+              the hero stays ONE object at 44/750 and the disclosure marker
+              keeps its place at the end. Pure arithmetic on two figures
+              already on screen: nothing to ground, nothing invented. */}
+          <BigValue suffix={(
+            <>
+              {guests > 0 && (
+                /* A FIGURE, NOT A FOOTNOTE (host, 2026-10-06). It first rode
+                   the suffix slot at 13px muted, which is the register this
+                   kit uses for units and disclosure markers — and a host read
+                   it as one. 22/700 in ink is unmistakably a number while
+                   staying half the hero's 44, so the total is still the one
+                   loud thing and the checkable figure is no longer a caption
+                   on it. */
+                <span style={{
+                  fontSize: 22, fontWeight: 700, letterSpacing: '-.02em',
+                  color: 'var(--ink)', fontVariantNumeric: 'tabular-nums',
+                }}>{`${fmt(Math.round(typical / guests))} a head`}</span>
+              )}
+              {/* The separator binds FORWARD, not back: at 390px the suffix
+                  wraps after the per-head figure, and a trailing "·" left
+                  dangling at the end of the first line reads as a dropped
+                  word. Glued to what follows, the whole marker moves down
+                  together. */}
+              {guests > 0 ? ' ' : ''}
+              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Typical · est.' : 'Typical'}`}
+            </>
+          )}>{fmt(typical)}</BigValue>
           <Grounding>
             {`For ${guests} at a ${String(event.type).toLowerCase()}, typical lands near ${fmt(typical)}. `}
             {estDisclosure && estDisclosure.mustMark
@@ -7602,8 +7675,27 @@ export default function HostShellV2() {
               Your categories already add up to {fmt(rowsStandIn.rowsSum)} across {rowsStandIn.rowCount} {rowsStandIn.rowCount === 1 ? 'line' : 'lines'} — <button style={linkBtn} onClick={() => setB(rowsStandIn.rowsSum)}>use that</button> if it is the ceiling you mean.
             </Grounding>
           )}
+          {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
+              The old line here said "travel-scale costs are part of the
+              numbers", which a host reads as "the flights are in this". The
+              estimator means the opposite: `notIncludedFor` has named the
+              exclusions since the family-aware intake work, and grepped
+              2026-10-06 its only reader in the tree was the CRA-side
+              BudgetEstimateHint — so the one screen that turns this estimate
+              into a committed budget with a single tap was the one screen that
+              never said what it leaves out. Wired here, in the engine's own
+              words.
+              (A comment in totalEstimate.js claims the travel_led band "is
+              meant to cover airfare, lodging and insurance as well as the
+              party". That contradicts TRAVEL_LOGISTICS_NOT_INCLUDED three
+              files away and is reported separately — the list is what ships,
+              so the list is what the host is told.) */}
           {est && est.destinationAdjusted && (
-            <Grounding gap={8}>These ranges run wider because guests are traveling in — travel-scale costs are part of the numbers.</Grounding>
+            <Grounding gap={8}>
+              {`Ranges run wider because guests are traveling in. Not in this number: ${
+                TRAVEL_LOGISTICS_NOT_INCLUDED.join(' · ').toLowerCase()
+              }.`}
+            </Grounding>
           )}
           <CtaRow>
             <button className="cta" onClick={() => setB(typical)}>Use {fmt(typical)}</button>
