@@ -1,3 +1,29 @@
+// ─── ENGINE KEYS ARE NOT HOST COPY ──────────────────────────────────────────
+// `areaLabel` lived inside one render block, and the plan-parts list 300 lines
+// below it printed `{c.id}` raw — so a host read "location  handled" and
+// "headcount  handled" on the surface that is meant to be their plan in their
+// own words. The map was right there and out of scope, which is the whole
+// reason the raw id survived.
+//
+// NOT `cueLabel`, which the audit proposed. Checked against all twelve ids
+// phaseProgress can emit: nine carry an IMPERATIVE in their handled state
+// ("Add the location" -> "Add the location — handled"), and `vendors`,
+// `budget` and `moment` carry NULL, which renders a blank row. The proposed
+// remedy was wrong for twelve of twelve.
+//
+// Unknown ids fall back to a capitalized form rather than to nothing: a
+// thirteenth area added tomorrow reads as "Lodging", not as an empty cell.
+const AREA_LABELS = {
+  datetime: 'Date & time', date: 'Date', location: 'Where it happens',
+  venueaddress: 'Venue address', headcount: 'Guests', food: 'Food',
+  dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order',
+  vendors: 'Vendors', shopping: 'Shopping', lodging: 'Where everyone stays',
+  payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals',
+  budget: 'Budget', moment: 'The moment',
+};
+const areaLabelFor = (id) => AREA_LABELS[id]
+  || (id ? String(id).charAt(0).toUpperCase() + String(id).slice(1) : 'Area');
+
 // Host Shell V2 — WIRED PROTOTYPE (separate app, real engines).
 // UI is the expressive-editorial concept; every number and card below comes from
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
@@ -8801,11 +8827,12 @@ export default function HostShellV2() {
                       emoji (standing rule: no emoji in product copy), and
                       `aria-hidden` because the label already says it. */}
                   <button onClick={() => listening ? stopVoice() : startVoice()} aria-pressed={listening}
-                    style={{ background: 'none', border: 'none', padding: 0, marginTop: 16, alignSelf: 'flex-start',
+                    style={{ background: 'none', border: 'none', paddingInline: 0, paddingBlock: 8,
+                      marginTop: 8, alignSelf: 'flex-start',
                       display: 'inline-flex', alignItems: 'center', gap: 8,
-                      fontFamily: 'var(--sans)', fontSize: 14, fontWeight: 550,
+                      fontFamily: 'var(--sans)', fontSize: 16, fontWeight: 550,
                       color: 'var(--steel-soft)', cursor: 'pointer' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
                       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -11721,13 +11748,22 @@ export default function HostShellV2() {
                       </p>
                       {phaseCues.items.map((c, i) => c.handled ? (
                         <div key={c.id || i} className="line" style={{ padding: '5px 0' }}>
-                          <span className="of">{c.id}</span><span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled</span>
+                          <span className="of">{areaLabelFor(c.id)}</span><span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled</span>
                         </div>
                       ) : (
                         <button key={c.id || i} className="frow" style={{ padding: 'var(--sp-2) 2px', minHeight: 44, alignItems: 'center' }}
-                          onClick={() => { if (c.route && routeSheet(c.route)) return; toast(c.cueLabel); }}>
-                          <span className="f-main"><span className="f-name" style={{ fontSize: 'var(--t-body)' }}>{c.cueLabel}</span></span>
-                          <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                          onClick={() => { if (c.route && routeSheet(c.route)) return; toast(c.cueLabel || areaLabelFor(c.id)); }}>
+                          {/* `cueLabel` is legitimately null on some items in some
+                              states, and this rendered it unconditionally — an
+                              empty 44px button behind a navigation chevron, which
+                              then toasted `undefined`. The area name is the honest
+                              fallback: it says WHICH part is still open even when
+                              the engine has no sentence for it.
+                              And the chevron goes when there is nowhere to go —
+                              the house rule is a glyph only when the handler
+                              routes, and this one is conditional on `c.route`. */}
+                          <span className="f-main"><span className="f-name" style={{ fontSize: 'var(--t-body)' }}>{c.cueLabel || areaLabelFor(c.id)}</span></span>
+                          {c.route ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
                         </button>
                       ))}
                     </>
@@ -18852,8 +18888,20 @@ export default function HostShellV2() {
                     <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(done ? { color: 'var(--ok)' } : null) }}>
                       {fmt((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0))}–{fmt((foodPlan.foodHigh || 0) + (foodPlan.suppliesHigh || 0))}
                     </BigValue>
+                    {/* ── "ALL IN" HAS TO BE ALL IN (2026-10-06) ──────────────
+                        The headline above sums food AND supplies; this line used
+                        to print `perGuestLow/High`, which `isFood` filters to
+                        food only. So the screen said "all in · $17–$39 a head ·
+                        30 guests" under a printed $535–$1,320, and a host who
+                        took the invitation to multiply came out at $1,170 — 13%
+                        short at the top, with the gap exactly equal to supplies,
+                        on the one screen whose job is the grocery number.
+                        The food-only pair is NOT widened: the money row below
+                        prints it against the food-only subtotal and reconciles
+                        there. The engine gained an all-in pair instead and this
+                        line reads that. */}
                     <Grounding gap={ASK_RHYTHM.valueToWhy}>
-                      estimate, all in · {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head · {fGuestPhrase} guests
+                      estimate, all in · {fmt(foodPlan.perGuestAllInLow)}–{fmt(foodPlan.perGuestAllInHigh)} a head · {fGuestPhrase} guests
                     </Grounding>
                     {/* BOTH MONEY TRUTHS, NEITHER PRETENDING TO BE THE OTHER.
                         Host ruling 2026-09-24 ("do one of each") after the review

@@ -54,7 +54,20 @@ The scripted matrix ran 1440×900 and 1920×1080 — both pass `min-height:700px
 
 Rules:
 1. Single column. Always. No exceptions.
-2. Touch targets minimum 44px tall.
+2. Touch targets minimum 44px on BOTH axes — 44 wide AND 44 tall.
+
+   Owner ruling 2026-10-06. This line read "44px tall" and meant one axis,
+   while `hostv2/e2e/mobileTapFloor.spec.mjs` has always enforced both
+   (`if (h >= FLOOR && w >= FLOOR) continue`). A 35x46 control therefore
+   PASSED the written doctrine and FAILED the repo's own instrument — a
+   measured contradiction between two artifacts the project treats as
+   authoritative, which made the question unrulable rather than merely open.
+   Ruled toward the instrument, which also matches Apple's HIG and WCAG 2.5.5.
+
+   Consequence, recorded because it is real work and not a formality: the
+   `::after` tap expander in styles.css stretches the hit area on the VERTICAL
+   axis only (`left:0; right:0` pins it to the control's own width), so it
+   cannot rescue a narrow control. Narrow controls need real width.
 3. No hover-dependent interactions.
 4. Primary CTA visible without scrolling (above the fold).
 5. No information-dense tables. Use stacked card layouts.
@@ -78,7 +91,7 @@ Rules:
 5. Priority/attention lanes: horizontal scroll with scroll-snap (not 3-col grid that clips).
 6. Sidebar is hidden — hamburger menu.
 7. Page padding: 16-20px.
-8. Touch targets still 44px minimum.
+8. Touch targets still 44px minimum, on both axes (see rule 2).
 
 **Tablet test: Does it look polished enough to show a client? Or does it look like a squished desktop?**
 

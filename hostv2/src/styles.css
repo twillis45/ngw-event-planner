@@ -1307,6 +1307,20 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .mini{
   font-size:var(--t-btn); font-weight:650; color:var(--ink); background:var(--steel-tint);
   border:1px solid var(--steel-soft); border-radius:var(--r-sm); padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
+  /* ── 44 IS TWO AXES (owner ruling 2026-10-06) ──────────────────────────
+     UX_03 rule 2 said "44px tall" and meant one axis; mobileTapFloor has
+     always enforced both. A 35x46 control passed the doctrine and failed the
+     instrument, which is why this sat open rather than merely unfixed. Ruled
+     toward the instrument.
+     The shared `::after` expander below cannot help here: it is `left:0;
+     right:0`, so it pins to the control's own width and only ever stretches
+     the vertical axis. A narrow control needs real width.
+     MEASURED: the four single-glyph stepper pills (guests −/+, kids −/+) were
+     35 wide and are the only `.mini` this moves. Every text `.mini` on the
+     product — "Change", "Put it back", "Use that" — is already far past 44,
+     so a min-width floors the glyphs and touches nothing else.
+     Centred, or a one-character label sits left in a 44px box. */
+  min-width:var(--tap-min); display:inline-flex; align-items:center; justify-content:center;
 }
 
 /* ── A FOLDED CONFLICT KID (host click-through, 2026-07-28) ──────────────────
@@ -3665,6 +3679,25 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 /* BigValueInput (parity kit) — the number IS the display; native spinners off. */
 .bigval-input::-webkit-outer-spin-button, .bigval-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
 .bigval-input{ -moz-appearance:textfield; appearance:textfield }
+/* ── AND EVERY OTHER NUMBER FIELD, NOT JUST THE HERO ONE (2026-10-06) ───────
+   The two rules above were written for the display input and named it
+   explicitly. Censused: this shell has SIXTEEN `type="number"` inputs and
+   exactly one of them was protected. The other fifteen shipped the browser's
+   own stepper — the single element on those surfaces that does not belong to
+   this product, in a grey the palette uses nowhere else, wedged between the
+   app's own minus and plus buttons so one number carried four controls.
+   Measured on the guest row: the painted stepper lands ON the last digit at
+   the width these fields are sized to, so "30" renders as "3(".
+   PLATFORM CAVEAT, because a green check here would overstate it: this is
+   reproducible in Chromium and on Android. iOS WebKit paints its own stepper
+   through a different internal mechanism that this pseudo-element never
+   exposed, and Playwright's WebKit is the desktop port with a spoofed UA, so
+   neither proves the iPhone case. The rule is correct either way; the claim
+   it supports is "no OS stepper where we can suppress one", not "fixed on
+   every device". */
+.field[type="number"]::-webkit-outer-spin-button,
+.field[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
+.field[type="number"]{ -moz-appearance:textfield; appearance:textfield }
 .bigval-input:focus{ outline:none; border-bottom:1px solid var(--steel-soft) }
 
 /* Scroll-end clearance grows by the pinned weather pill's band (Layer-2, 2026-07-22). */

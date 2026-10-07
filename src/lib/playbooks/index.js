@@ -5393,6 +5393,25 @@ export function playbookFoodPlan(event, opts = {}) {
     // exactly to foodLow/foodHigh, and the range is pure price spread, matching them.
     perGuestLow: guests > 0 ? Math.round(sum('low') / guests) : 0,
     perGuestHigh: guests > 0 ? Math.round(sum('high') / guests) : 0,
+    // ── AND THE PAIR THAT MATCHES AN "ALL IN" TOTAL (2026-10-06) ───────────
+    // `sum()` above is filtered by `isFood`, so perGuestLow/High are food
+    // only. That is CORRECT where they are used: the money row prints
+    // "≈ $17–$39 a head × 30 guests" against the food-only subtotal and the
+    // multiplication closes there.
+    // It was wrong on the Shop hero, which prints food+supplies as its
+    // headline and then put the food-only band beneath it under the words
+    // "all in" and a guest count — an explicit invitation to multiply that
+    // came out 13% short at the top. $39 x 30 = $1,170 under a printed
+    // $1,320, and the gap was exactly supplies.
+    // ADDITIVE, for the same reason as shoppingCount above: widening the
+    // existing pair would break the surface that is right in order to fix the
+    // one that is wrong.
+    perGuestAllInLow: guests > 0
+      ? Math.round((Math.max(0, Math.round(sum('low') / 5) * 5) + Math.max(0, Math.round(supSum('low') / 5) * 5)) / guests)
+      : 0,
+    perGuestAllInHigh: guests > 0
+      ? Math.round((Math.max(0, Math.round(sum('high') / 5) * 5) + Math.max(0, Math.round(supSum('high') / 5) * 5)) / guests)
+      : 0,
     // bandLow/bandHigh still disclose the REAL attendance spread (60-86, say) as its
     // own honest fact — separate from the dollar figures above, never compounded in.
     bandLow: _guestsLow, bandHigh: guests,

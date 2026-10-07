@@ -239,3 +239,59 @@ test('the back control on a sheet is tappable, without moving the layout', async
   expect(m.pseudo).toBeGreaterThanOrEqual(FLOOR);
   expect(surprising(await sweep(page))).toEqual([]);
 });
+
+// ── THE SURFACE THE SWEEP NEVER VISITED (2026-10-06) ──────────────────────
+// Bench C of the re-score board, measured: this file's fixture sets
+// `guestCount: 12`, which SETTLES the guest ask so its stepper never mounts,
+// and its sheet walk iterates `.navrow`, where "Guests" does not appear — it
+// is a tile on the plan surface, not a directory row. So the four stepper
+// pills had never been measured by the gate built to measure exactly them.
+// The file's own header warns that "a sweep is only as complete as the STATES
+// its fixture reaches"; this is that warning coming true in its own file.
+//
+// THE RULING THAT UNBLOCKED IT. UX_03 rule 2 read "44px tall" — one axis —
+// while `sweep` here has always checked both. A 35x46 pill passed the written
+// doctrine and failed the instrument, so writing this test before the ruling
+// risked building a guard around something doctrine permitted. Owner ruled
+// 2026-10-06: 44 is two axes, doctrine corrected, and the expander cannot
+// help because `left:0;right:0` pins it to the control's own width.
+test('the guest stepper is measured, and clears the floor on BOTH axes', async ({ page }) => {
+  // UNSET, deliberately — the opposite of this file's own EV fixture. A
+  // settled count renders a summary row; the stepper only exists while the
+  // ask is open, which is why `guestCount: 12` kept it off screen.
+  const UNSET = { ...EV, id: 'E2E_TEST_tapfloor_unset', guestCount: undefined, guestEstimate: undefined };
+  await page.addInitScript((ev) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([ev]));
+    localStorage.setItem('ngw-hostv2-last-event', ev.id);
+    localStorage.setItem('ngw-v2-splash-seen', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+  }, UNSET);
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto('./', { waitUntil: 'domcontentloaded' });
+  await settled(page);
+
+  const reached = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('button,[role="button"],a,.frow,.tab,.tile')]
+      .find((x) => /guest/i.test((x.innerText || '').trim()));
+    if (!el) return false;
+    el.click();
+    return true;
+  });
+  expect(reached, 'a guest surface is reachable from the plan').toBe(true);
+  await page.waitForTimeout(1500);
+
+  // PREMISE BEFORE VERDICT. An empty offender list means nothing unless the
+  // controls were actually on screen — which is precisely how this gate read
+  // clean for weeks while never rendering the thing it guards.
+  const pills = await page.locator('button.mini').count();
+  expect(pills, 'stepper pills are rendered on this surface').toBeGreaterThan(0);
+
+  const boxes = await page.evaluate(() => [...document.querySelectorAll('button.mini')]
+    .map((b) => { const r = b.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; })
+    .filter((b) => b.w > 0 && b.h > 0));
+  for (const b of boxes) {
+    expect(b.w, `mini width ${b.w}x${b.h}`).toBeGreaterThanOrEqual(FLOOR);
+    expect(b.h, `mini height ${b.w}x${b.h}`).toBeGreaterThanOrEqual(FLOOR);
+  }
+  expect(surprising(await sweep(page))).toEqual([]);
+});
