@@ -3686,6 +3686,43 @@ export default function HostShellV2() {
     // fresh one could show two different "how far over" dollar amounts on
     // the same sheet (found in the per-screen audit).
   const money = { planned: spend.total, committed: spend.committed, committedEstimated: spend.committedEstimated || 0, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
+  // ── A BLANK SLOT BESIDE A NUMBER THE APP ALREADY HAS ─────────────────────
+  // The WHERE YOU STAND strip rendered the budget as an em-dash under the line
+  // "you haven't set one yet — tap to lock a number in", on the same scroll
+  // where the plan had just said in 44px type that this event typically lands
+  // near $13,200. The app knew a number and showed a blank and a reprimand.
+  // The em-dash in a slot labelled BUDGET reads as something the host is
+  // behind on; the real state is "there is a proposal and you have not taken
+  // it", which is not a failing and not theirs.
+  //
+  // THE ESTIMATE IS NOT WRITTEN ANYWHERE. It is displayed as a proposal and
+  // marked as one. Putting it into `money.planned` would be the dishonest fix
+  // with teeth: every engine downstream sizes off the committed budget, so a
+  // host who never agreed to $13,200 would have a plan built as though they
+  // had. Suggested is not set, and the slot says which.
+  const suggestedTotal = useMemo(() => {
+    if (money.planned) return null;                 // a real budget beats a guess
+    try {
+      // `guestNumber`, not `guestCountResolved` — the same accessor the budget
+      // ask itself uses two thousand lines down, so the slot and the ask can
+      // never resolve a different headcount for one event. The first cut here
+      // called guestCountResolved, which answered 0 on a freshly created
+      // event (the parse stores no `guestCount` key at all) while the ask was
+      // happily rendering "For 30 at a birthday" from the other accessor —
+      // the slot silently stayed blank and the test failed for a reason that
+      // had nothing to do with the copy it was guarding.
+      // It is called rather than read from `guests` below: this memo runs
+      // during render, before that const is initialised.
+      const g = guestNumber(event);
+      if (!g || !event.type) return null;
+      const e = estimateTotalRange({
+        type: event.type, guestCount: g, date: event.date, timeOfDay: event.timeOfDay,
+        isDestination: !!event.isDestination, nights: spanNights(event),
+      });
+      const mid = e ? Math.round(((e.lowTotal + e.highTotal) / 2) / 100) * 100 : 0;
+      return mid > 0 ? mid : null;
+    } catch (_e) { return null; }
+  }, [event, money.planned]);
   // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
   // the Budget sheet and After. NEVER planner category rows (Rule 4): the host
   // model is one number plus where the plan says it's going.
@@ -11269,7 +11306,7 @@ export default function HostShellV2() {
                 <button className="tile tile-c" onClick={() => setSheet({ kind: 'budget' })}>
                   <div className="t-label">Budget</div>
                   <div>
-                    <div className="t-num">{money.planned ? fmt(bAnim) : '—'}</div>
+                    <div className="t-num">{money.planned ? fmt(bAnim) : (suggestedTotal ? fmt(suggestedTotal) : '—')}</div>
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
                     <div className={'t-sub' + (money.planned && money.committed > money.planned && !isPast ? ' over' : '')}>
@@ -11281,7 +11318,14 @@ export default function HostShellV2() {
                           vocabulary as `spent` right beside it: "(est.)" when the
                           whole figure is a guess, "· $N est." when only part is.
                           Never a second vocabulary (UX_08). */}
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</> : 'you haven’t set one yet — tap to lock a number in'}
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</>
+                        : (suggestedTotal
+                          /* Typical, est., and still yours to take — the same
+                             three words the budget ask uses for the same
+                             figure, so one number never wears two
+                             vocabularies across two surfaces (UX_08). */
+                          ? 'typical for an event this size · est. — tap to use it or set your own'
+                          : 'you haven’t set one yet — tap to lock a number in')}
                     </div>
                   </div>
                 </button>

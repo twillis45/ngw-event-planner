@@ -149,7 +149,18 @@ const birthday = {
     { id: 'r_headcount', trigger: 'Final headcount still not locked 3 days out', severity: 'high', mitigation: 'Chase RSVPs; buy fresh after the count locks; round up ~10%, not 30%.' },
     { id: 'r_cake', trigger: 'Cake ordered too late', severity: 'med', mitigation: 'Order 3–5 days ahead; have a grocery-cake backup.' },
     { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'low', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill drinks.' },
-    { id: 'r_allergy', trigger: 'Kid food allergies not collected', severity: 'high', mitigation: 'Ask allergies with the invite; label nut-free options; keep a safe snack.' },
+    // KID-WORDED ON AN EVENT WITH NO KIDS (2026-10-06). This read "Kid food
+    // allergies not collected" unconditionally, and on the Santa Fe 80th —
+    // thirty adults flying in, zero children — it was the ONLY row in the
+    // host's risk lane. A milestone birthday is the common case for this
+    // playbook and the common case was the one it got wrong.
+    // Re-scoped rather than gated: allergies at a thirty-person seated dinner
+    // are a real uncollected hazard with or without a child in the room, so
+    // dropping the row for adults would trade a false positive for a false
+    // negative. `kidsTrigger` restores the sharper wording when kids are
+    // actually coming, read through the same `eventHasKids` predicate the
+    // decisions and checklist already use.
+    { id: 'r_allergy', trigger: 'Guest food allergies not collected', kidsTrigger: 'Kid food allergies not collected', severity: 'high', mitigation: 'Ask allergies with the invite; label nut-free options; keep a safe option on the table.' },
     { id: 'r_weather', trigger: 'Outdoor party, no rain plan', severity: 'med', mitigation: 'Confirm an indoor fallback or a tent/canopy 3 days out.' },
   ],
 

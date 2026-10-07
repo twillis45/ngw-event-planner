@@ -2727,9 +2727,21 @@ export function playbookRisks(event, domain) {
     .filter((r) => !dre || dre.test(`${r.id || ''} ${r.trigger}`)) // match the trigger/id, not the fix (mitigations mention "guest" generically)
     .map((r) => {
       const sev = String(r.severity || 'med').toLowerCase();
+      // ── A KID-WORDED TRIGGER NEEDS A KID (2026-10-06) ──────────────────
+      // `eventHasKids` is the one place this repo answers "are kids actually
+      // coming", and every other content reader in this file already asks it
+      // — decisions through `whenKids` (:940), checklist rows (:1407),
+      // packing lines (:1293). Risks never did, so Birthday's allergy row
+      // said "Kid food allergies not collected" on a thirty-adult 80th where
+      // it was the host's ONLY risk.
+      // `kidsTrigger` is an override, not a gate: the row still renders for
+      // an adult event, in guest terms. Gating would have swapped a false
+      // positive for a false negative on the same screen, which on an
+      // uncollected-allergy row is the worse of the two.
+      const kidWording = r.kidsTrigger && eventHasKids(event) ? r.kidsTrigger : null;
       return {
         id: r.id,
-        trigger: resolveAnsweredCopy(String(r.trigger).trim(), r.copyByAnswer && r.copyByAnswer.trigger, event),
+        trigger: resolveAnsweredCopy(String(kidWording || r.trigger).trim(), r.copyByAnswer && r.copyByAnswer.trigger, event),
         mitigation: resolveAnsweredCopy(String(r.mitigation).trim(), r.copyByAnswer && r.copyByAnswer.mitigation, event),
         severity: sev, rank: (sev in RISK_RANK) ? RISK_RANK[sev] : 2,
       };
