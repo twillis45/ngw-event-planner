@@ -176,3 +176,50 @@ test('THE ASK IS NOT A WALL OF TEXT: the exclusions are summarised, not spilled'
   // with real money behind it rather than being a bare chevron.
   expect(closed).toMatch(/\b8 things this number leaves out\b/i);
 });
+
+// ── "TYPICAL" WAS THE MIDPOINT OF A GUESS ────────────────────────────────
+//
+// Host, 2026-10-06: "is typical actually typical for budget or median because
+// they are different".
+//
+// They are, and the label was the wrong one. Measured:
+//
+//   typical = round(((lowTotal + highTotal) / 2) / 100) * 100
+//
+// — the arithmetic MIDPOINT of an authored band. The band it is a midpoint of
+// is PER_HEAD_BY_FAMILY, whose own provenance record reads tier 'estimate',
+// confidence 'low', with the note "Closing a coverage gap with an unsourced
+// band makes the COVERAGE honest, not the NUMBER."
+//
+// So the word claimed a measured central tendency nothing here has measured.
+// And the error has a direction: event spend is right-skewed — a long tail of
+// expensive events — so the midpoint of a range sits ABOVE its median. It
+// overstated the basis AND the figure, on the screen where one tap commits.
+//
+// THE NUMBER IS UNCHANGED. A midpoint is a defensible thing to lead with when
+// it is all you have; calling it typical was not.
+//
+// THIS IS AN E2E AND NOT A JEST GATE, on the ratchet's own instruction and on
+// today's evidence. A source-reading version took three attempts and the
+// red-proof killed two of them — the second passed with the old label
+// reinstated, because this screen writes its label as
+//   `${cond ? 'Typical · est.' : 'Typical'}`
+// and the gate's interpolation-stripper deleted the string it existed to
+// check. Reading innerText cannot be fooled that way: whatever the source
+// shape, the host either sees the word or does not.
+test('A MIDPOINT IS NOT A TYPICAL: the label says what the number is', async ({ page }) => {
+  await toBudget(page);
+  const txt = await page.evaluate(() => document.body.innerText || '');
+
+  // (premise) this really is the budget ask, carrying its figures.
+  expect(txt).toMatch(/A number to plan around/i);
+  expect(txt).toMatch(/a head/i);
+
+  expect(txt).not.toMatch(/\btypical\b/i);
+  expect(txt).toMatch(/middle of the range|mid[-\u2011]range/i);
+
+  // And the honesty that was already there survives — the cheap way to pass
+  // the line above is to delete the sentence.
+  expect(txt).toMatch(/not a quote/i);
+  expect(txt).toMatch(/est\./);
+});

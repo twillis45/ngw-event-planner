@@ -63,7 +63,11 @@ test('THE SLOT PROPOSES instead of scolding, when the app already has a number',
   });
   expect(slot, 'the BUDGET slot is on the plan surface').toBeTruthy();
   expect(slot).toMatch(/\$[\d,]+/);
-  expect(slot).toMatch(/typical for an event this size/i);
+  // Was /typical for an event this size/. The host asked whether "typical"
+  // meant typical or median; it meant neither — it is the midpoint of an
+  // authored band, and on right-skewed spend a midpoint sits above a median.
+  // The slot shows that same figure, so it took the same correction.
+  expect(slot).toMatch(/mid-range for an event this size/i);
   expect(slot).toMatch(/tap to use it or set your own/i);
 });
 

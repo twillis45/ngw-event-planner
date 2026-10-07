@@ -7603,7 +7603,22 @@ export default function HostShellV2() {
     const opts = est
       ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
       : [];
-    const OPT_LABELS = ['Lean', 'Typical', 'All-out'];
+    // ── A MIDPOINT IS NOT A TYPICAL (host, 2026-10-06) ──────────────────
+    // "is typical actually typical for budget or median because they are
+    // different". They are, and this was the wrong one. `typical` below is
+    // round(((low + high) / 2) / 100) * 100 — the arithmetic MIDPOINT of an
+    // authored band, and that band's own provenance record says tier
+    // 'estimate', confidence 'low', with the note "Closing a coverage gap
+    // with an unsourced band makes the COVERAGE honest, not the NUMBER."
+    // So the word claimed a measured central tendency nothing here has
+    // measured — and the error has a direction. Event spend is right-skewed,
+    // a long tail of expensive events, so the midpoint of a range sits ABOVE
+    // its median. It overstated the basis AND the figure, on the screen where
+    // one tap commits to it.
+    // The NUMBER is unchanged. A midpoint is a defensible thing to lead with
+    // when it is all you have; calling it typical was not. The variable keeps
+    // its name because renaming it would touch the engine for a copy fix.
+    const OPT_LABELS = ['Lean', 'Mid‑range', 'All-out'];
     const low = est ? est.lowTotal : 0;
     const high = est ? est.highTotal : 0;
     const typical = est ? Math.round(((low + high) / 2) / 100) * 100 : 0;
@@ -7702,13 +7717,13 @@ export default function HostShellV2() {
                   word. Glued to what follows, the whole marker moves down
                   together. */}
               {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Typical · est.' : 'Typical'}`}
+              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range · est.' : 'Mid‑range'}`}
             </>
           )}>{fmt(typical)}</BigValue>
           <Grounding>
-            {`For ${guests} at a ${String(event.type).toLowerCase()}, typical lands near ${fmt(typical)}. `}
+            {`For ${guests} at a ${String(event.type).toLowerCase()}, the middle of the range is ${fmt(typical)}. `}
             {estDisclosure && estDisclosure.mustMark
-              ? 'That is a planning estimate from typical per-head bands, not a quote. '
+              ? 'That is the midpoint of a planning band, not an average of real events and not a quote. '
               : ''}The plan sizes food, vendors and shopping from here — change it anytime.
           </Grounding>
           {/* ── WHEN THIS PLAN'S OWN VENDORS COST MORE THAN THE RANGE ──────
@@ -11407,7 +11422,7 @@ export default function HostShellV2() {
                              three words the budget ask uses for the same
                              figure, so one number never wears two
                              vocabularies across two surfaces (UX_08). */
-                          ? 'typical for an event this size · est. — tap to use it or set your own'
+                          ? 'mid-range for an event this size · est. — tap to use it or set your own'
                           : 'you haven’t set one yet — tap to lock a number in')}
                     </div>
                   </div>

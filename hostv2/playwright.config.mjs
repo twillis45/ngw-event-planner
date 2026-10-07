@@ -70,6 +70,17 @@ const VIEWPORT_INDEPENDENT = [
   '**/theBudgetSlotIsNotScolding.spec.mjs',
   '**/theInviteSaysWhenToBook.spec.mjs',
   '**/theNoSignalBannerTellsTheTruth.spec.mjs',
+  // ── AND THE TWO THAT TIMED IT OUT A SECOND TIME, SAME DAY ──────────────
+  // Added 2026-10-06 after shard 3 hit `timeout-minutes: 30` AGAIN, at
+  // 30m13s. Both drive the real creation flow — clear storage, type the
+  // 179-character seed, wait for the parse, assemble — and both were written
+  // the same evening as the four above, by the same hand, which had already
+  // learned this lesson once and did not apply it to the next two files.
+  // They belong here on the same merits: every assertion in both is on TEXT.
+  // One checks that a pacing task's authored copy reaches the checklist, the
+  // other that the creation screen names what to type. Neither measures a box.
+  '**/theAltitudeReachesThePlan.spec.mjs',
+  '**/theCreationScreenSaysWhatToType.spec.mjs',
 ];
 
 const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];
