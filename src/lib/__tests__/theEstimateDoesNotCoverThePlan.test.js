@@ -57,7 +57,9 @@ describe('(premise) the shortfall is real, and the engine already knew', () => {
 describe('the note says both numbers and marks which is which', () => {
   test('it names the floor, the top of the range, and what to do', () => {
     const note = estimateShortfallNote(est('Surprise Proposal', 2));
-    expect(note).toMatch(/what a typical event of this kind costs/);
+    // 2026-10-06: was /what a typical event of this kind costs/. The band is
+    // authored, not measured from events, so the sentence now says what it is.
+    expect(note).toMatch(/a planning band for an event of this kind/);
     expect(note).toMatch(/start around \$1,750/);
     expect(note).toMatch(/more than the \$500 top of it/);
     expect(note).toMatch(/setting your number from the vendors, not the range/);

@@ -52,13 +52,13 @@ const openBudget = async (page, type, guestCount) => {
 test('(premise) the budget proposal really is on screen, with its one-tap chip', async ({ page }) => {
   // Without this the assertions below could pass over a sheet that never opened.
   const t = await openBudget(page, 'Surprise Proposal', 2);
-  expect(t).toMatch(/typical lands near \$300/);
+  expect(t).toMatch(/the middle of the range is \$300/);
   expect(t).toMatch(/Use \$300/);
 });
 
 test('THE HOST IS TOLD BEFORE THEY TAP — both numbers, and which is which', async ({ page }) => {
   const t = await openBudget(page, 'Surprise Proposal', 2);
-  expect(t).toMatch(/This range is what a typical event of this kind costs/);
+  expect(t).toMatch(/This range is a planning band for an event of this kind/);
   expect(t).toMatch(/vendors that start around \$1,750/);
   expect(t).toMatch(/more than the \$500 top of it/);
 });
@@ -67,7 +67,7 @@ test('IT SITS BETWEEN THE ESTIMATE AND THE BUTTON, which is the point', async ({
   // A true sentence below the fold would not have stopped the tap. This asserts
   // reading order: the estimate, then the warning, then the one-tap chip.
   const t = await openBudget(page, 'Surprise Proposal', 2);
-  const estimate = t.search(/typical lands near \$300/);
+  const estimate = t.search(/the middle of the range is \$300/);
   const note = t.search(/start around \$1,750/);
   const chip = t.search(/Use \$300/);
   expect(estimate).toBeGreaterThan(-1);
@@ -88,7 +88,7 @@ test('NEGATIVE CONTROL: an event whose estimate covers its plan says nothing', a
   // An 80-guest wedding clears its own roster. If the note appears here it has
   // become a disclaimer, and a disclaimer on every screen is read as decoration.
   const t = await openBudget(page, 'Wedding', 80);
-  expect(t).toMatch(/typical lands near/);
+  expect(t).toMatch(/the middle of the range is/);
   expect(t).not.toMatch(/start around \$/);
-  expect(t).not.toMatch(/This range is what a typical event of this kind costs/);
+  expect(t).not.toMatch(/This range is a planning band for an event of this kind/);
 });

@@ -126,5 +126,9 @@ export function estimateShortfallNote(est) {
   const floor = Math.round(Number(est.requiredVendorFloor));
   const high = Math.round(Number(est.highTotal));
   if (!(floor > 0) || !(high > 0) || floor <= high) return null;
-  return `This range is what a typical event of this kind costs. Your own plan already calls for vendors that start around ${fmt(floor)} — more than the ${fmt(high)} top of it. Worth setting your number from the vendors, not the range.`;
+  // 2026-10-06: was "what a TYPICAL event of this kind costs", which claims the
+  // band was measured from real events. It was not — PER_HEAD_BY_FAMILY is
+  // authored, tier 'estimate', confidence 'low'. Same correction as the budget
+  // ask's "Typical" -> "Mid-range": say what the number IS.
+  return `This range is a planning band for an event of this kind. Your own plan already calls for vendors that start around ${fmt(floor)} — more than the ${fmt(high)} top of it. Worth setting your number from the vendors, not the range.`;
 }
