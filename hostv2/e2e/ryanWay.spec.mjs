@@ -42,8 +42,13 @@ const create = async (page, text) => {
   await page.goto('./');
   await settled(page);
   await page.getByText('Start my event', { exact: false }).first().click();
+  // The mic click that used to sit here is gone with the control. It was a
+  // no-op settle step — `fill()` already fires the change and the wait below
+  // does the waiting — and it is worth recording WHY it was ever written:
+  // five specs, the audit's capture robot, and a demo host all reached for
+  // that button as though it submitted. It never did. The affordance was the
+  // defect; these lines were it showing up in the suite.
   await page.getByPlaceholder(/crab feast/i).first().fill(text);
-  await page.getByText('Say it', { exact: false }).first().click();
   await expect(page.getByText('Put my plan together', { exact: false }).first()).toBeVisible({ timeout: 15000 });
 };
 

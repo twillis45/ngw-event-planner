@@ -156,7 +156,13 @@ test(`drive the ${RUN.key} 80th from creation and photograph everything`, async 
   await page.waitForTimeout(300);
   await shot(page, '03-typed');
 
-  await tapText(page, 'Say it');
+  // WAS `tapText(page, 'Say it')`, and that line is the single best piece of
+  // evidence in this whole audit: the capture robot typed the sentence and
+  // then clicked the microphone, exactly as a host would, before any human
+  // had noticed the affordance was wrong. In headless Chromium it silently
+  // no-opped and the run carried on, so the trap never showed up as a failure
+  // — it showed up as a screenshot of an app in dictation.
+  // The control is gone now. `fill()` already fires the change.
   await page.waitForTimeout(1600);
   await settled(page);
   await shot(page, '04-parsed');

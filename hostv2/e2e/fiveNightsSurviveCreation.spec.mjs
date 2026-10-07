@@ -28,8 +28,13 @@ test('a month, no day, and five nights — the reveal still knows it is five nig
   await page.goto('./?elegant=1');
 
   await page.getByText(/Start my event/i).first().click();
+  // The mic click that used to sit here is gone with the control. It was a
+  // no-op settle step — `fill()` already fires the change and the wait below
+  // does the waiting — and it is worth recording WHY it was ever written:
+  // five specs, the audit's capture robot, and a demo host all reached for
+  // that button as though it submitted. It never did. The affordance was the
+  // defect; these lines were it showing up in the suite.
   await page.getByPlaceholder(/crab feast/i).first().fill(SEED);
-  await page.getByText(/^Say it/i).first().click();
 
   // The confirm screen has to have heard the month and NOT invented a day —
   // if it ever resolves one, date→endDate carries the span and this whole
@@ -54,7 +59,6 @@ test('and it never invents one — a seed with no duration says nothing about ni
   await page.getByText(/Start my event/i).first().click();
   await page.getByPlaceholder(/crab feast/i).first()
     .fill('50th birthday nov 2027 8 couples Disneyland airbnb accomodations');
-  await page.getByText(/^Say it/i).first().click();
   await page.getByText(/Put my plan together/i).first().click();
 
   await page.getByText(/Where Everyone Stays/i).first().waitFor({ state: 'visible', timeout: 30000 });
@@ -79,7 +83,6 @@ test('the PAIRING survives creation too — "8 couples" is a fact, not just a mu
 
   await page.getByText(/Start my event/i).first().click();
   await page.getByPlaceholder(/crab feast/i).first().fill(SEED);
-  await page.getByText(/^Say it/i).first().click();
   await page.getByText(/Put my plan together/i).first().click();
   await page.getByText(/Where Everyone Stays/i).first().waitFor({ state: 'visible', timeout: 30000 });
 

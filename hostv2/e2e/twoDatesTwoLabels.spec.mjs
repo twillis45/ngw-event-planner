@@ -21,7 +21,6 @@ const openCreate = async (page, sentence) => {
   await page.getByText(/Start my event/i).first().click();
   const box = page.getByPlaceholder(/crab feast/i).first();
   await box.fill(sentence);
-  await page.getByText(/^Say it/i).first().click();
   // The confirm screen's date row opens from the date chip.
   const chip = page.locator('button', { hasText: /pick a day|^[A-Z][a-z]{2} \d/ }).first();
   await chip.waitFor({ state: 'visible', timeout: 15000 });
