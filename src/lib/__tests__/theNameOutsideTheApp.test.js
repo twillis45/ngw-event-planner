@@ -34,6 +34,21 @@ import { BRAND } from '../brand';
 const ROOT = path.resolve(__dirname, '../../..');
 const RETIRED = /Event Boss/i;
 
+// ─── THE OTHER NAME ON THE PAGE ─────────────────────────────────────────────
+// The 2026-10-03 sweep above fixed the PRODUCT name in all six shipped files
+// and passed. The sales page kept crediting the wrong COMPANY for four more
+// days — "No Guesswork Events — a New Ground Works build" — in the footer,
+// which is the line a buyer reads when they go looking for who they would be
+// paying. The sweep could not have caught it: it searched for the retired
+// product name, and this is a different string naming a different thing.
+//
+// `BRAND.company` already existed when this was found and had NO CONSUMER
+// anywhere in the tree — the fact had an owner and nobody read it, which is
+// the same class as the wordmark and the diet vocabulary before it. Static
+// HTML cannot import the module, so the binding has to be a test; that is what
+// the two assertions below are.
+const RETIRED_COMPANY = /New Ground Works/i;
+
 // Every static file a visitor can be served. A new one added here without the
 // name is the next instance of this bug.
 const SHIPPED = [
@@ -70,6 +85,24 @@ describe('the name outside the app', () => {
     const m = html.match(/apple-mobile-web-app-title"\s+content="([^"]*)"/);
     expect(m).toBeTruthy();
     expect(m[1]).toBe(BRAND.short);
+  });
+
+  test.each(SHIPPED)('%s never credits the retired company', (rel) => {
+    const text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const hits = text.split('\n')
+      .map((l, i) => (RETIRED_COMPANY.test(l) ? `${i + 1}: ${l.trim().slice(0, 90)}` : null))
+      .filter(Boolean);
+    expect(hits).toEqual([]);
+  });
+
+  // Absence again proves only absence. The footer is the one shipped place that
+  // names the seller at all, so it is checked for the CURRENT entity by value —
+  // which also gives `BRAND.company` its first reader.
+  test('the sales page credits the company brand.js names', () => {
+    expect(BRAND.company).not.toMatch(RETIRED_COMPANY);
+    const html = fs.readFileSync(path.join(ROOT, 'public/landing.html'), 'utf8');
+    const footer = (html.match(/<footer>([\s\S]*?)<\/footer>/) || [])[1] || '';
+    expect(footer).toContain(BRAND.company);
   });
 
   // "wired prototype" was shipping in a title tag — the string a bookmark keeps.
