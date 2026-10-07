@@ -103,7 +103,17 @@ const readColumn = (page) =>
 // and transport). Before the split a single chip labeled "Venue" read
 // "handled" off a town while a card below it said "Not set yet" — one word
 // answering two questions. See docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md.
-const PARTS = ['Date & time', 'Where it happens', 'Venue address', 'Guests', 'Food', 'Lodging', 'Budget'];
+// `Lodging` -> `Where everyone stays`, 2026-10-07, and this entry had been
+// asserting a DEFECT rather than a decision. This row read its labels from an
+// in-render map that was three keys short of the authored one, so `lodging`
+// fell through to `capitalize('lodging')` — the raw engine id, which is exactly
+// what the labelling work exists to keep off the screen. It went unnoticed for
+// the dullest possible reason: capitalizing THAT id happens to produce a real
+// English word, so the fallback looked like copy somebody wrote.
+// "Where everyone stays" is the authored string, is what the plan-parts list
+// has always shown for the same fact, and is the product's plain-host phrasing
+// (`lodging` is the mild trade word). One vocabulary per fact, UX_08.
+const PARTS = ['Date & time', 'Where it happens', 'Venue address', 'Guests', 'Food', 'Where everyone stays', 'Budget'];
 
 test.describe('the stat column carries the named set', () => {
   test('1440x900 — the named plan-part set, one header, one fraction', async ({ page }) => {
