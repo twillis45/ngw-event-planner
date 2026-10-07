@@ -134,7 +134,7 @@ import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
-import { estimateTotalRange, TRAVEL_LOGISTICS_NOT_INCLUDED } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
@@ -7706,29 +7706,58 @@ export default function HostShellV2() {
               2026-10-06 its only reader in the tree was the CRA-side
               BudgetEstimateHint — so the one screen that turns this estimate
               into a committed budget with a single tap was the one screen that
-              never said what it leaves out. Wired here, in the engine's own
-              words.
-              (A comment in totalEstimate.js claims the travel_led band "is
-              meant to cover airfare, lodging and insurance as well as the
-              party". That contradicts TRAVEL_LOGISTICS_NOT_INCLUDED three
-              files away and is reported separately — the list is what ships,
-              so the list is what the host is told.) */}
-          {est && est.destinationAdjusted && (
-            <Grounding gap={8}>
-              {`Ranges run wider because guests are traveling in. Not in this number: ${
-                TRAVEL_LOGISTICS_NOT_INCLUDED.join(' · ').toLowerCase()
-              }.`}
-            </Grounding>
-          )}
+              never said what it leaves out.
+              WIRED TO THE FUNCTION, NOT THE CONSTANT — and the first cut of
+              this was not. It imported the raw 3-line
+              TRAVEL_LOGISTICS_NOT_INCLUDED while its own comment claimed the
+              exclusions were wired "in the engine's own words", and the 2026-
+              10-06 review board opened it: for a destination Birthday
+              `notIncludedFor` answers with EIGHT lines and the host was shown
+              three. The five it dropped were gifts and favors, outfits for the
+              guest of honor, tips beyond service charge, pre- or post-event
+              gatherings — and cake, which on an 80th birthday is the one that
+              bites. Calling the function is the whole fix; the raw constant
+              was never the engine's answer, only one third of it.
+              AND IT IS NO LONGER GATED ON TRAVEL. The old condition was
+              `est.destinationAdjusted`, so a church-hall lunch got no
+              disclosure at all and src/App.js — the FROZEN donor — stayed the
+              only surface in the product that had ever rendered the full list.
+              `notIncludedFor` already scopes itself: it prepends the three
+              travel lines only when `isDestination`, so a local event is told
+              about its cake and its tips and never about visas. */}
+          {(() => {
+            const excl = (() => {
+              try { return notIncludedFor(event.type, { isDestination: !!event.isDestination }); } catch (_e) { return []; }
+            })();
+            if (!excl.length) return null;
+            return (
+              <Grounding gap={8}>
+                {est && est.destinationAdjusted ? 'Ranges run wider because guests are traveling in. ' : ''}
+                {`Not in this number: ${excl.join(' · ').toLowerCase()}.`}
+              </Grounding>
+            );
+          })()}
           <CtaRow>
             <button className="cta" onClick={() => setB(typical)}>Use {fmt(typical)}</button>
             <button className="mini" onClick={() => setBudgetChanging(true)}>Change</button>
           </CtaRow>
+          {/* ── THE OTHER TWO NUMBERS ARE AS UNCHECKABLE AS THE FIRST ──────
+              Tufte's objection at the 2026-10-06 board, and it lands: the
+              entire argument for showing a per-head is that $13,200 is not a
+              figure a host can hold against anything they have lived through
+              and $440 is. By that argument $6,600 and $19,800 are equally
+              opaque, and the honesty had been granted to exactly one of the
+              three. It costs a few characters to give it to all of them, and
+              a host choosing between tiers is now comparing per-person
+              numbers rather than totals — which is the comparison they can
+              actually reason about. */}
           {(low || high) ? (
             <Grounding gap={16}>
               or {low ? <button style={linkBtn} onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
+              {low && guests > 0 ? ` (${fmt(Math.round(low / guests))} a head)` : ''}
               {low && high ? ' · ' : ''}
               {high ? <button style={linkBtn} onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
+              {high && guests > 0 ? ` (${fmt(Math.round(high / guests))} a head)` : ''}
             </Grounding>
           ) : null}
         </AskColumn>

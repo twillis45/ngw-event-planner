@@ -73,3 +73,68 @@ test('WHOSE MONEY: a destination ask names what the host is NOT paying for', asy
   expect(txt).toMatch(/Airfare and ground transfers/i);
   expect(txt).toMatch(/Lodging beyond the group block/i);
 });
+
+// ── THE WIRE WAS 3 OF 8, AND THE COMMIT SAID OTHERWISE ────────────────────
+// Bench B of the 2026-10-06 review board opened the first version of this
+// wire and found it imported the raw 3-line TRAVEL_LOGISTICS_NOT_INCLUDED
+// constant while its own comment claimed the exclusions were wired "in the
+// engine's own words". For a destination Birthday `notIncludedFor` returns
+// EIGHT lines; the host was shown three. The five missing ones were gifts and
+// favors, outfits for the guest of honor, tips beyond service charge,
+// pre- or post-event gatherings — and cake, which on an 80th birthday is the
+// one that bites.
+//
+// Worse, the line was gated on `est.destinationAdjusted`, so every ordinary
+// non-destination event in hostv2 got no exclusion disclosure at all and the
+// frozen CRA stayed the only surface that had ever rendered the full list.
+test('THE WHOLE LIST: a destination ask names every exclusion the engine holds', async ({ page }) => {
+  await toBudget(page);
+  const txt = await page.evaluate(() => document.body.innerText || '');
+  // All eight, in the engine's own words. Named individually rather than
+  // counted, so a regression says WHICH line went missing.
+  for (const line of [
+    /airfare and ground transfers/i,
+    /lodging beyond the group block/i,
+    /travel insurance, visas, or permits/i,
+    /gifts, favors, and thank-you cards/i,
+    /outfits and accessories for the guest of honor/i,
+    /tips and gratuities beyond service charge/i,
+    /cake \/ dessert when not included with catering/i,
+    /pre- or post-event gatherings/i,
+  ]) expect(txt).toMatch(line);
+});
+
+test('AND THE ORDINARY CASE TOO: a local event still hears what it excludes', async ({ page }) => {
+  // The gate that hid this. A church-hall lunch has no airfare to disclose,
+  // but it still has a cake and it still has tips.
+  await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private */ } });
+  await page.goto('./?elegant=1');
+  await page.getByRole('button', { name: 'Start my event' }).first().click();
+  await page.getByPlaceholder(/crab feast/i).first()
+    .fill("Mom's 80th birthday party on June 14 2027, about 45 people at the church hall in Baltimore, sit-down lunch");
+  await page.getByRole('button', { name: /^Put my plan together$/ }).click();
+  await page.getByRole('button', { name: /^Open your plan$/ }).click();
+  await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
+  const txt = await page.evaluate(() => document.body.innerText || '');
+  expect(txt).toMatch(/cake \/ dessert when not included with catering/i);
+  expect(txt).toMatch(/tips and gratuities beyond service charge/i);
+  // …and it is NOT told about visas, which it does not need.
+  expect(txt).not.toMatch(/travel insurance, visas, or permits/i);
+});
+
+test('EVERY TIER IS CHECKABLE, not just the middle one', async ({ page }) => {
+  // Tufte, Bench B: the whole argument for the per-head figure is that the
+  // total is not checkable and the per-head is. Lean and All-out are equally
+  // uncheckable and were left that way, so the honesty reached one of three
+  // numbers. Read off the screen rather than pinned, because the bands move.
+  await toBudget(page);
+  const txt = await page.evaluate(() => document.body.innerText || '');
+  const guests = Number((txt.match(/For (\d+) at a/) || [])[1]);
+  expect(Number.isFinite(guests) && guests > 0).toBe(true);
+  const money = (re) => Number((txt.match(re) || [])[1]?.replace(/,/g, ''));
+  const lean = money(/Lean \$([\d,]+)/);
+  const allout = money(/All-out \$([\d,]+)/);
+  expect(Number.isFinite(lean) && Number.isFinite(allout)).toBe(true);
+  expect(txt).toMatch(new RegExp(`\\$${Math.round(lean / guests)}\\b`));
+  expect(txt).toMatch(new RegExp(`\\$${Math.round(allout / guests)}\\b`));
+});

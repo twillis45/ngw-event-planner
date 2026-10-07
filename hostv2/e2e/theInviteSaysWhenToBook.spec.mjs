@@ -61,14 +61,32 @@ test('THE WINDOW REACHES THE HOST: the invite row explains its own date', async 
   expect(txt).toMatch(/CheapAir/i);
 });
 
+// ── AND THIS TEST WAS VACUOUS, WHICH A BOARD CAUGHT AND I DID NOT ─────────
+// As first written this asserted only `not.toMatch(/fortnight/i)` and clicked
+// the checklist with `if (el) el.click()` — no assertion that it opened.
+// Bench E of the 2026-10-06 review board red-proofed it by suppressing the
+// entire airFloor note and watched it PASS with the sentence it guards absent
+// from the application. A negative assertion on a string that is not there is
+// satisfied by the string never rendering at all, which is the exact shape of
+// guard this repo keeps finding and this file was supposed to be better than.
+//
+// It now asserts the sentence is PRESENT and in US English, and the navigation
+// is asserted rather than attempted — the same discipline the test above it
+// already used.
 test('US ENGLISH on the one sentence that reaches a screen', async ({ page }) => {
   await openChecklist(page);
-  await page.evaluate(() => {
+  const opened = await page.evaluate(() => {
     const el = [...document.querySelectorAll('button,[role="button"],a,.frow,.tab')]
       .find((x) => /^checklist/i.test((x.innerText || '').trim()));
-    if (el) el.click();
+    if (!el) return false;
+    el.click();
+    return true;
   });
+  expect(opened, 'the host can reach a Checklist surface').toBe(true);
   await page.waitForTimeout(1500);
   const txt = await page.evaluate(() => document.body.innerText || '');
+  // PREMISE FIRST: the sentence has to be on screen for its spelling to mean
+  // anything. Without this line the assertion below is satisfied by absence.
+  expect(txt).toMatch(/two weeks to decide/i);
   expect(txt).not.toMatch(/\bfortnight\b/i);
 });

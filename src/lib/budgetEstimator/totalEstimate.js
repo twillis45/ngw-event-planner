@@ -254,10 +254,31 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
   // why the remedy is a product call and not a constant to pick here.
   const vendorFloor = requiredVendorFloor(type, guests);
   // THE STAY AGAINST THE WHOLE EVENT (2026-09-22). The travel_led band is
-  // $200-600 a head and is meant to cover airfare, lodging and insurance as
-  // well as the party. On the Santa Fe 80th the CHEAPEST listing the app itself
-  // shows the host is $218 a head for the rooms alone, and three of the six are
-  // above the whole band. Reported here, applied nowhere — identical treatment
+  // $200-600 a head and covers THE PARTY. This comment used to say it was
+  // "meant to cover airfare, lodging and insurance as well", which the
+  // 2026-10-06 review board struck down on two grounds and it is worth
+  // keeping both, because a future editor will be tempted to restore it.
+  //
+  // First, it contradicted shipped host-facing copy: confidence.js's
+  // TRAVEL_LOGISTICS_NOT_INCLUDED names airfare, lodging beyond the block and
+  // travel insurance as EXCLUDED, that list is exported and tested, and the
+  // budget ask now renders it. When a tested artifact and a comment disagree,
+  // the artifact is the product.
+  //
+  // Second, the numbers in this very comment refute it: the cheapest listing
+  // the app shows this host is $218 a head for the rooms alone, and three of
+  // the six are above the whole band. If $200-600 covered lodging, then at the
+  // low end the entire event — rooms, flights, insurance, food, venue — would
+  // cost $2 more than the rooms. That is not a band that covers travel.
+  //
+  // STILL OPEN, and deliberately not touched here: the extra-days catering
+  // term above is suppressed on `destinationAdjusted`, and the comment
+  // justifying that suppression leans on the same struck claim. If the band is
+  // party-only then the suppression needs its own basis — but re-enabling the
+  // term on a wrong premise double-counts every destination stay, which is the
+  // defect the suppression exists to prevent. That is an owner ruling with a
+  // measurement behind it, not a comment edit, so it is named rather than
+  // guessed at. Reported here, applied nowhere — identical treatment
   // to `requiredVendorFloor` above, and for the identical reason: moving a
   // host-facing dollar band is a product call with a basis this file lacks.
   //
