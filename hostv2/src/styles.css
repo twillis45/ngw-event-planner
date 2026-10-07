@@ -125,7 +125,22 @@
 html,body{margin:0;padding:0}
 body{font-family:var(--sans); color:var(--ink); background:var(--bg-band); -webkit-font-smoothing:antialiased}
 button{font-family:inherit}
-:focus-visible{outline:2px solid var(--steel); outline-offset:2px; border-radius:var(--r-sm)}
+/* FOCUS INDICATORS USE --steel-soft, NOT --steel (2026-10-07) ─────────────
+   MEASURED, not inspected. --steel #4c6675 against the two surfaces a ring is
+   ever drawn on:
+       vs page --bg #141518   3.01:1   (scrapes a 3.0 floor by 0.01)
+       vs card --card #1E1F22 2.72:1   FAILS
+   WCAG 1.4.11 sets 3:1 for non-text UI indicators, and `outline-offset` puts
+   the ring OUTSIDE the control, on whatever is behind it — which on most of
+   this app is a card. So the real case is the failing one.
+   --steel-soft #8AA3B0 measures 6.91 / 6.24 on the same two surfaces.
+   THE REPO ALREADY KNEW. The note at `.sheet-note` records that --steel-soft
+   "was chosen by the C1 colour audit purely to clear the contrast floor that
+   --steel failed (2.44:1)". That audit moved TEXT onto the accessible token
+   and left every focus ring behind on the failing one — the same shape as a
+   dozen other findings here: the fix landed at one site and the token stayed
+   wrong at the others. */
+:focus-visible{outline:2px solid var(--steel-soft); outline-offset:-2px; border-radius:var(--r-sm)}
 
 /* background-color here backs .app's bottom FADE (see .app.has-nextbar): the mask
    fades .app's own background along with its content, so without an identical
@@ -582,6 +597,37 @@ button{font-family:inherit}
    now (interpolate-size); browsers without it simply show instantly. */
 :root{interpolate-size: allow-keywords}
 .editor-slot{height:auto; overflow:clip; transition:height var(--ms-enter) var(--ease-out), opacity var(--ms-enter) var(--ease-out)}
+/* ── A RING INSIDE THIS SLOT IS DRAWN INSIDE THE CONTROL ────────────────────
+   Host, 2026-10-07: "border is clipped on top and sides". It was, and the
+   slot's `overflow:clip` above is the clipper — which cannot simply be
+   removed, because it is what makes the unfold work (`@starting-style` takes
+   this from height:0, and without the clip the editor spills while it opens).
+
+   MEASURED on the venue editor at the live site. The slot's own edges are
+   flush with its controls, so every ring that reaches outside a box is cut:
+
+       Name or address   left 20, top 331   slot left 20, top 331   cut L + T
+       Save              right 557          slot right 557          cut R
+       I'll sort this    left 20                                    cut L
+
+   A positive `outline-offset` draws the ring OUTSIDE the border box, so it
+   lands in the clipped region. Negative offset draws it inside, where nothing
+   can clip it — verified by measurement, not by eye: at +1px the ring reached
+   left 17 against a slot edge of 20; at -2px it sits at 20 and survives.
+   `.srail-row` already uses this technique for the same reason.
+
+   Scoped to the slot on purpose. Outside a clipping ancestor the ring is nicer
+   just outside the control, and that is left alone. */
+/* THE PER-CONTAINER PATCHES WERE WHACK-A-MOLE, so the ring moved inside
+   globally instead — see the `:focus-visible` rule above.
+   I patched three containers one at a time (`.editor-slot`, then
+   `.card.hero-card` when the gate found "Resolve 6 decisions" flush to its
+   left and bottom, then `.db-row` at the stagewrap's foot) and each fix
+   simply surfaced the next. That is the shape of a wrong fix: this app is
+   built of nested clipping boxes, so any rule that draws OUTSIDE a control
+   depends on every ancestor of that control forever.
+   An inset ring cannot be clipped by anything, so the class is closed rather
+   than its instances. `.srail-row` had already reached this answer alone. */
 @starting-style{ .editor-slot{height:0; opacity:0} }
 /* Perf-as-calm: below-fold weight isn't rendered until approached */
 .day-node{content-visibility:auto; contain-intrinsic-size:auto 420px}
@@ -1465,7 +1511,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      (--field-compact, ~31-34px) now clear 44px without losing their tight look. */
   min-height:44px;
 }
-.field:focus{outline:2px solid var(--steel); outline-offset:1px}
+.field:focus{outline:2px solid var(--steel-soft); outline-offset:-2px}
 /* Status states — make the VISUAL track the aria-invalid the markup already sets
    (email/validation fields), so a sighted host gets the same signal a screen
    reader does. Focus + status combine: a red ring when focused-and-invalid.
@@ -1498,11 +1544,53 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
    custom glyph here would be a second vocabulary for "there is more", which
    UX_08 spends elsewhere. The open body indents to the summary's text so the
    list reads as belonging to it rather than as a new paragraph. */
-.excl-fold > summary{ cursor: pointer; }
-.excl-fold > summary::-webkit-details-marker{ color: var(--muted); }
-.excl-fold > summary:focus-visible{ outline: 2px solid var(--steel); outline-offset: 2px; border-radius: 4px; }
+/* ── THE HOUSE GLYPH, AND A THUMB CAN REACH IT ──────────────────────────────
+   Two faults a review bench found in one element, and both are faults this
+   codebase had already named elsewhere.
+
+   1. THE MARKER WAS THE BROWSER'S OWN. This rule used to only COLOR the
+      native triangle, which left a platform widget drawing a control on a
+      Studio Matte surface — the exact objection that had just removed the
+      native steppers from the number fields, reintroduced one element over.
+      `?` is the app's existing disclosure glyph (the menu and WHERE YOU STAND
+      both use it), and it is deliberately not a chevron: a chevron is
+      reserved for a handler that ROUTES, and a fold settles in place.
+
+   2. NO SWEEP HAD EVER OPENED THIS SCREEN. My first note here said a
+      `<summary>` is invisible to the tap gates; that was half wrong and worth
+      recording. `mobileTapFloor`'s sweep really did select only
+      `button, a, [role=button]` — but `nothingPressableIsUnderTheFloor`
+      has listed `summary` all along and was green, because it drives the home
+      shell and the lodging cockpit and never opens the budget ask. So the
+      blind spot was the SURFACE, not the selector: the same fault as the
+      creation screen, where the gate was fine and nothing pointed it at the
+      first screen of the product.
+      Both are closed — the selector is widened, and a sweep now opens the
+      budget ask. `.lodge-req summary` carries a hand-written floor for the
+      same reason, found by a board rather than by an instrument. */
+.excl-fold > summary{
+  cursor: pointer;
+  list-style: none;                 /* kills the standards marker */
+  /* 8, not 6: the ratified spacing ladder has no 6 and the ratchet caught it
+     (270 off-ladder values against a baseline of 269 — exactly this one). */
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: var(--tap-min);
+}
+.excl-fold > summary::-webkit-details-marker{ display: none; }
+.excl-fold > summary::marker{ content: ''; }
+.excl-fold > summary::after{
+  content: '\25BE'; color: var(--muted); font-size: .9em; line-height: 1;
+  transition: transform var(--ms-press) var(--ease-out);
+}
+.excl-fold[open] > summary::after{ transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce){
+  .excl-fold > summary::after{ transition: none; }
+}
+.excl-fold > summary:focus-visible{ outline: 2px solid var(--steel-soft); outline-offset: 2px; border-radius: 4px; }
 .excl-fold[open] > summary{ margin-bottom: 2px; }
-.excl-fold > p{ padding-left: 1.1em; }
+/* The 1.1em indent aligned the detail under the native marker, which is gone
+   and was on the other side anyway. */
+.excl-fold > p{ padding-left: 0; }
 
 /* ── FIELD LABEL ────────────────────────────────────────────────────────────
    UX_05: above the input, always; 12px / 500 / muted; 4-6px gap; never inline.
@@ -2813,7 +2901,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* WAVE-B: the status pill is a WRITE control now (tap cycles the booking
    ladder) — same visual language, button semantics. */
 button.vc-pill{border:none; cursor:pointer; font-family:inherit}
-button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
+button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset:1px}
 .vc-chips{display:flex; flex-wrap:wrap; gap:var(--gap-chip); margin-top:9px}/* audit D1 */
 /* ── AMBER IS NOW THE EXCEPTION, NOT THE DEFAULT ─────────────────────────────
    Vendors ruling 2026-08-21, clause 3. The BASE was `--warn`, so every chip was
@@ -3042,7 +3130,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 /* Editable draft body — same look as the read-only card, but yours */
 .draft-edit{width:100%; border:1px solid var(--line); background:var(--bg-band); color:var(--ink);
   font:inherit; font-size:var(--t-input); line-height:1.55; resize:vertical; outline:none}
-.draft-edit:focus{border-color:var(--steel)}
+.draft-edit:focus{border-color:var(--steel-soft)}
 
 /* ── Print: the day sheet — a paper cue sheet a helper can hold. On paper the
    palette is ink-on-paper by definition; screen tokens don't apply. ── */
@@ -4394,7 +4482,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .srail-l{ min-width:0; }
 .srail-row:hover{ color:var(--ink); background:var(--steel-tint); }
 .srail-row:hover .srail-i{ opacity:1; }
-.srail-row:focus-visible{ outline:2px solid var(--steel); outline-offset:-2px; }
+.srail-row:focus-visible{ outline:2px solid var(--steel-soft); outline-offset:-2px; }
 /* WHERE AM I, not just where can I go — the thing the eyebrow menu could never
    answer, because it only exists while it is open. One weight change and one
    tint; no accent colour is spent here. */
@@ -6438,4 +6526,24 @@ button.vc-pill::after{
   min-height:var(--tap-min);
   font-family:var(--sans); font-size:14px; font-weight:550;
   color:var(--steel-soft); cursor:pointer;
+}
+
+/* ── THE TIER SHORTCUTS ARE THUMB TARGETS, NOT JUST WORDS ───────────────────
+   Measured 85x17 and 97x17 on the budget ask — found the first time a tap
+   sweep was pointed at that screen. They commit money in one tap ("Lean
+   $2,400", "All-out $7,200"), which makes seventeen pixels the wrong height
+   for the most consequential small control in the product.
+   They live INSIDE a sentence, so padding them would break the line. An
+   inline-flex box can carry a min-height in running text: the line box grows
+   and the flow does not break. The `::after` expander used elsewhere is wrong
+   here — these sit mid-paragraph, where a 44px overlay would reach into the
+   wrapped line above and steal its taps, which is the measured reason `.pill`
+   is a named exception rather than an expanded one.
+   Classed rather than inline-styled so the spacing and parity ratchets can
+   see it: `linkBtn` is a JSX style object and is invisible to them. */
+.tier-link{
+  display:inline-flex; align-items:center;
+  min-height:var(--tap-min);
+  padding-inline:2px;
+  vertical-align:middle;
 }

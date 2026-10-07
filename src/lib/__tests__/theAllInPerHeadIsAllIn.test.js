@@ -14,11 +14,25 @@
 // the band, on the one screen whose job is the grocery number.
 //
 // WHY IT IS FIXED BY ADDING, NOT BY WIDENING. `perGuestLow/High` are correct
-// where they are used elsewhere: the sibling money row at HostShellV2 prints
-// "≈ $17–$39 a head × 30 guests" against the food-only subtotal, and THERE the
-// multiplication closes. Widening the existing pair would break the surface
-// that is right to fix the one that is wrong. So the engine gains an all-in
-// pair and the hero reads that instead — the same shape as shoppingCount.
+// where they are used elsewhere, so widening the existing pair would break a
+// right surface to fix a wrong one. The engine gains an all-in pair and the
+// hero reads that instead — the same shape as shoppingCount.
+//
+// A CLAIM THIS COMMENT USED TO MAKE, AND IT WAS FALSE (corrected 2026-10-07).
+// It said the sibling money row prints "a head x N guests" against the
+// food-only subtotal "and THERE the multiplication closes". A review bench
+// opened it: that row prints a single figure which is the MIDDLE of the band
+// the per-head pair implies — ~$835 against $510-$1,170 at 30 guests, ~$280
+// against $170-$390 at 10 — so the band brackets the printed number and does
+// not multiply to it. A host following the instruction landed on neither
+// figure there either.
+//
+// The decision above survives the correction intact; only its stated reason
+// was wrong. The row has since dropped the multiply sign and reads "across N
+// guests", because the relationship is not reliable arithmetic in the first
+// place: foodLow/High round to the nearest 5 while perGuest divides the
+// unrounded sum, and a real-priced item makes the printed figure partly
+// actual rather than a midpoint of anything.
 import { playbookFoodPlan } from '../playbooks';
 
 const EV = {

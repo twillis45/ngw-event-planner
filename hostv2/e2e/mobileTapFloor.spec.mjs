@@ -48,7 +48,16 @@ const surprising = (offenders) => offenders.filter(o => !KNOWN_OPEN.some(re => r
 const sweep = (page) => page.evaluate((FLOOR) => {
   const out = [];
   const seen = new Set();
-  for (const el of document.querySelectorAll('button, a, [role=button]')) {
+  // `summary` JOINS THIS SWEEP (2026-10-07) — and the honest version of why,
+  // because my first note got it half wrong. A summary is activatable and was
+  // none of the three selectors here, so this file could not see one. But the
+  // sibling sweep `nothingPressableIsUnderTheFloor` HAS listed `summary` all
+  // along and was green anyway: it drives the home shell and the lodging
+  // cockpit, and neither opens the budget ask where the exclusions fold lives.
+  // So the selector was one gap and the SURFACE was the bigger one — the same
+  // fault as the creation screen. Widening this alone would have fixed
+  // neither; the budget-ask sweep below is the other half.
+  for (const el of document.querySelectorAll('button, a, [role=button], summary')) {
     const cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') continue;
     const box = el.getBoundingClientRect();
@@ -321,4 +330,60 @@ test('the creation screen clears it too — the first screen of the product', as
   await expect(page.locator('button.voice-door')).toHaveCount(1);
 
   expect(surprising(await sweep(page))).toEqual([]);
+});
+
+// ─── THE BUDGET ASK, WHICH NO TAP SWEEP HAD EVER OPENED ─────────────────────
+// Every sweep in this file and in `nothingPressableIsUnderTheFloor` drives the
+// home shell, a sheet, or the cockpit. None opens the one screen where a host
+// commits a number — so the exclusions fold's `<summary>` sat there unmeasured
+// while both files were green, one of them with `summary` in its selector.
+test('the budget ask clears the floor — including its disclosure fold', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private mode */ } });
+  await page.addInitScript((ev) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([ev]));
+    localStorage.setItem('ngw-hostv2-last-event', ev.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-v2-welcomed', '1');
+  }, { ...EV, id: 'E2E_TEST_tapfloor_budget', totalBudget: 0, isDestination: true });
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto('./?elegant=1');
+  await settled(page);
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll('button,[role="button"],a')]
+      .find((x) => /set your budget/i.test((x.innerText || '').trim()));
+    if (el) el.click();
+  });
+  await page.waitForTimeout(1200);
+  await settled(page);
+
+  // PREMISE, and it is the whole point of the test: the fold must really be on
+  // screen, or an empty offender list means "measured nothing" again.
+  const folds = await page.locator('details.excl-fold > summary').count();
+  expect(folds, 'the exclusions fold is rendered on the budget ask').toBeGreaterThan(0);
+  expect(await page.locator('button').count()).toBeGreaterThan(3);
+
+  expect(surprising(await sweep(page))).toEqual([]);
+
+  // ── AND THE MARKER IS OURS, NOT THE PLATFORM'S ─────────────────────────
+  // A bench's objection: the fold's open/closed signal was the browser's own
+  // triangle, which is the same native-widget leak that had just been removed
+  // from the number fields one element over. Asserted on COMPUTED STYLE rather
+  // than on a screenshot, because "I looked and it seemed fine" is how the
+  // first version of this shipped.
+  const marker = await page.evaluate(() => {
+    const sum = document.querySelector('details.excl-fold > summary');
+    if (!sum) return null;
+    const after = getComputedStyle(sum, '::after');
+    return {
+      listStyle: getComputedStyle(sum).listStyleType,
+      glyph: (after.content || '').replace(/["']/g, ''),
+    };
+  });
+  expect(marker, 'the fold summary is on screen').not.toBeNull();
+  // `list-style: none` is what suppresses the standards marker; webkit's own
+  // pseudo-element is hidden by its own rule and cannot be read this way.
+  expect(marker.listStyle).toBe('none');
+  // U+25BE, the glyph the menu and WHERE YOU STAND already use. Not a chevron:
+  // a chevron is reserved for a handler that routes, and a fold settles here.
+  expect(marker.glyph).toBe('\u25BE');
 });

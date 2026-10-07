@@ -7883,10 +7883,10 @@ export default function HostShellV2() {
               actually reason about. */}
           {(low || high) ? (
             <Grounding gap={16}>
-              or {low ? <button style={linkBtn} onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
+              or {low ? <button className="tier-link" style={linkBtn} onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
               {low && guests > 0 ? ` (${fmt(Math.round(low / guests))} a head)` : ''}
               {low && high ? ' · ' : ''}
-              {high ? <button style={linkBtn} onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
+              {high ? <button className="tier-link" style={linkBtn} onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
               {high && guests > 0 ? ` (${fmt(Math.round(high / guests))} a head)` : ''}
             </Grounding>
           ) : null}
@@ -22671,8 +22671,23 @@ export default function HostShellV2() {
                                 already-computed foodPlan/foodPP, no new math. */}
                             {r.kind === 'food' && foodPlan && foodPlan.itemCount > 0 && (
                               <div className="v-meta" style={{ padding: '0 0 10px' }}>
+                                {/* NO MULTIPLY SIGN. This read "a head x N guests" beside
+                                    a single printed figure, and the invitation was false:
+                                    at 10 guests the row prints ~$280 while $17 x 10 = $170
+                                    and $39 x 10 = $390, so a host who accepts the
+                                    instruction lands on neither number. It is the same
+                                    defect C2 fixed in the budget hero, one screen over, and
+                                    a review bench found it cited in C2's own comment as a
+                                    reason not to widen the field.
+                                    "Across" was chosen over printing the implied band
+                                    because the relationship is NOT reliable arithmetic:
+                                    foodLow/High round to the nearest 5 while perGuest
+                                    divides the unrounded sum, and once items carry real
+                                    prices the printed figure is partly actual rather than a
+                                    midpoint of anything. A rate across a headcount is true
+                                    in every one of those states; a multiplication is not. */}
                                 {foodPlan.guests > 0 && foodPlan.foodHigh > 0 && (
-                                  <>≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head × {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
+                                  <>≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
                                 )}
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
