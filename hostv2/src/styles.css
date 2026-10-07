@@ -4666,7 +4666,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      the one the sweep measures, is its own box. It is transparent padding
      either way: the caret's type size does not change. */
   .counted-caret {
+    /* BOTH AXES, per the owner's ruling 2026-10-06. This block carried
+       min-height only, and the comment above it says why: the 2026-08 sweep
+       that wrote it found every offender was a full-bleed row, so "width was
+       never the problem". True of rows, false of a chip whose whole label is
+       "12" — measured 41x46 on the guest ask, tall enough and 3px short.
+       The ::after expander cannot pay for this one: left:0;right:0 pins it to
+       the control's own width, so it can only ever add HEIGHT. */
     min-height: var(--tap-min);
+    min-width: var(--tap-min);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -4744,7 +4752,7 @@ button.pill::after, .pill[role="button"]::after, a.pill::after{
    carried by the ::after overlay below (the same pills-don't-grow trade the
    board itself wrote for .pill) — so the 44px promise holds while the visual
    drops a step. --t-caption because --t-meta measures identical to --t-chip. */
-.chips-compact .chip{ position:relative; font-size:var(--t-caption); padding:var(--sp-1) var(--sp-3); min-height:0; }
+.chips-compact .chip{ position:relative; font-size:var(--t-caption); padding:var(--sp-1) var(--sp-3); min-height:0; min-width:0; }
 .chips-compact .chip::after{
   content:''; position:absolute; left:0; right:0;
   top:50%; transform:translateY(-50%);
