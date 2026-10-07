@@ -3108,15 +3108,21 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    turned motion off. So the accommodation is a ring that is STATIC and states
    it: the 2px core only, no halo. It persists, which is correct for a marker
    that is no longer allowed to announce itself and leave. */
-/* ── AN ACCOMMODATION MAY NOT REDUCE THE REMAINING SIGNAL ──────────────────
-   A bench measured what this rule actually shipped: with motion off, the halo
-   was dropped AND the core kept the failing --steel, leaving a bare 3.01:1
-   ring — the thinnest, lowest-contrast focus marker in the app, served to the
-   user whose vestibular needs put them in this media query. Reduced-motion
-   correlates with age, and the flagship scenario here is an 80th birthday.
-   The halo is not motion, so it stays; only the ANIMATION is removed. */
+/* ── THE COLOUR WAS THE DEFECT; THE MISSING HALO WAS A RULING ──────────────
+   A bench read this rule as an accommodation that REDUCED the signal — halo
+   dropped and the failing --steel kept, a bare 3.01:1 marker served to the
+   user whose vestibular needs put them in this query. Half of that was right
+   and I acted on both halves, which was wrong: restoring the halo contradicted
+   the 2026-08-21 motion audit and turned `motionContinuity.spec.mjs:206` red
+   on all seven projects. That gate is better reasoned than my edit — the halo
+   is TRANSIENT by design, sized to be seen for three seconds and then leave,
+   and with animations off it never leaves, so a permanent double ring is the
+   defect it was written to prevent.
+   What was actually broken is fixed: the core now carries --steel-soft, so
+   the accommodation is a static ring at 6.24 on a card instead of 3.01. One
+   ring, legible, and it no longer fails the floor. */
 @media(prefers-reduced-motion:reduce){
-  .rowfocus{ box-shadow:0 0 0 2px var(--steel-soft), 0 0 0 8px var(--steel-tint); animation:none; }
+  .rowfocus{ box-shadow:0 0 0 2px var(--steel-soft); }
 }
 
 /* ── Event masthead: kicker / title / venue (replaces the caps eyebrow) ──
