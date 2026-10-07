@@ -1,6 +1,20 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-10-06 (forty-sixth entry:
+**Measured reality, not intentions.** Updated 2026-10-07 (forty-seventh entry:
+a three-bench re-score board that rejected THREE more of my claims, and the
+worst of them was backwards. I wrote that demoting the mic brought the creation
+submit above the keyboard fold; two benches measured it independently at 576
+before and **618 after** against a ~508px fold. The mic sat BESIDE the field,
+so deleting it freed no height, and the replacement link added 42px above the
+submit. The source comment over that input had recorded the defect CORRECTLY
+all along. Also: the map I said I had hoisted had not been hoisted (a second
+copy was added, three keys short, so `lodging` rendered as a capitalized raw
+id — and a spec was asserting that fallback as if it were copy); the money row
+does not reconcile the way I said; and a tap sweep pointed at the first screen
+of the product for the first time found a **261x17** control on it. See the
+forty-seventh entry.)
+
+Before that, on 2026-10-06 (forty-sixth entry:
 a sixteen-pass audit of one creation sentence, and a sixteen-seat board that
 sat twice — once on the findings, once on the code. It rejected FOUR of my
 claims, three of which I would otherwise have carried forward as true: a
@@ -321,11 +335,11 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main` @ `e1536281` — 2026-10-06, **nine commits this session, eight pushed and live**; `8cb6acf3` (e2e ceiling 30→40) committed and held while the run on `e1536281` was measured. jest **8,247 / 598** · e2e **3,163 tests / 116 files**. Matrix on `bb378869` GREEN, all three shards (26m54s / 26m04s / 26m48s). Shard 3 was CANCELLED on the clock twice earlier the same evening — 30m19s and 30m13s, no test failing either time, both caused by creation-driving specs of mine left out of `VIEWPORT_INDEPENDENT`. Before that, 2026-10-04, five commits —  backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known flaky. Before that, the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
+| Branch / HEAD | `main` @ `bdc8826f` — 2026-10-07, **eight commits pushed this session** (`17dccc54..bdc8826f`), all live. jest **8,267 / 601** - e2e **3,263 tests**. Two full matrices: on `2218a203` **2,978 passed / 4 failed (35.6m)** where all four failures were the first five tests of the run, inside the cold-start window right after `vite preview` booted, and re-ran **17/17 clean on the same dist**; on `3b83ebf4` **3,024 passed / 238 skipped / 1 failed / 0 flaky (36.5m)**, and that one failure was a spec asserting a label-lookup FALLBACK as though it were authored copy. Worth keeping: the first matrix was launched while I then ran full jest suites four times over the following eight minutes, which is the same mistake as driving a browser during a matrix. Before that, `main` @ `e1536281` — 2026-10-06, **nine commits this session, eight pushed and live**; `8cb6acf3` (e2e ceiling 30→40) committed and held while the run on `e1536281` was measured. jest **8,247 / 598** · e2e **3,163 tests / 116 files**. Matrix on `bb378869` GREEN, all three shards (26m54s / 26m04s / 26m48s). Shard 3 was CANCELLED on the clock twice earlier the same evening — 30m19s and 30m13s, no test failing either time, both caused by creation-driving specs of mine left out of `VIEWPORT_INDEPENDENT`. Before that, 2026-10-04, five commits —  backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known flaky. Before that, the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **8,247 passed**, 1 skipped, **0 failed**, **598 suites** (measured 2026-10-06 after the forty-sixth entry: +56 / +7 suites for the exclusions hinge, the per-event exclusion sweep across 45 playbooks, the kid-risk corpus gate, the altitude routing, and the parser field. Three gates were written and then REWRITTEN after red-proofing showed they could not fail — one of them three times; the third version is what shipped). Before that **8,191 passed**, 1 skipped, **591 suites** (2026-10-03, forty-fourth entry: +23 and +1 suite for the bedroom derivation, the numeric requirements, the stated pairing and the Vrbo refusal copy). Before that **8,168 / 590** (same day, forty-third entry: +5 for `unfurlListing`'s cold-start retry and +3 for the probe-duration gate, no new suite — all eight joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **8,267 passed**, 1 skipped, **0 failed**, **601 suites** (measured 2026-10-07 after the forty-seventh entry: +20 / +3 suites. One of them, `oneLabelMapForTheAreas`, raised the hostv2 text-gate ratchet 52 -> 53, and the ratchet's convention was honoured rather than waved at: the reason is CHECKED, not assumed. `thePlanPartsReadAsEnglish` is the rendered gate for that surface and it was GREEN across a full matrix with the duplicate map present, because two maps that agree render identically). Before that **8,247 passed**, 1 skipped, **0 failed**, **598 suites** (measured 2026-10-06 after the forty-sixth entry: +56 / +7 suites for the exclusions hinge, the per-event exclusion sweep across 45 playbooks, the kid-risk corpus gate, the altitude routing, and the parser field. Three gates were written and then REWRITTEN after red-proofing showed they could not fail — one of them three times; the third version is what shipped). Before that **8,191 passed**, 1 skipped, **591 suites** (2026-10-03, forty-fourth entry: +23 and +1 suite for the bedroom derivation, the numeric requirements, the stated pairing and the Vrbo refusal copy). Before that **8,168 / 590** (same day, forty-third entry: +5 for `unfurlListing`'s cold-start retry and +3 for the probe-duration gate, no new suite — all eight joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **48 passed / 4 files** (2026-09-29 — and see the fortieth entry: 9 of these fail on Node 22 until `Object.defineProperty` replaced `global.navigator = …`; CI pins Node 20, where all 48 always passed). Before that 43 / 4 (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **399 passed** — re-measured 2026-10-02 (forty-second entry: +6 for the results-card price reader). Before that **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -337,6 +351,168 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-10-07 (forty-seventh entry) — the claim that was backwards, a 17-pixel door, and a spec asserting a fallback
+
+Eight commits, all pushed and live (`17dccc54..bdc8826f`). A re-score board of
+three benches sat on the code at `a158f613` and rejected three more of my
+claims. **All three have the same shape: I described the EDIT I made instead of
+the SCREEN it produced.** That is the sentence to carry forward from this entry.
+
+### The claim that was backwards
+
+I wrote that demoting the mic brought the creation submit above the
+keyboard-up fold. Two benches measured it independently and agreed:
+
+| build | submit bottom at 390px | vs the ~508px keyboard-up viewport |
+|---|---|---|
+| before the mic was demoted | 576px | 68px below |
+| after | **618px** | **110px below** |
+
+The mic sat BESIDE the field (`.create-inputrow` is `align-items:stretch`, and
+the control took the field's own radius), so deleting it freed ZERO vertical
+space, while the replacement link line added `marginTop 8 + paddingBlock 8x2 +
+an 18px line` = exactly 42px. **I made the defect 42px worse and reported it
+fixed.** The diagnosis had been right and was already written down: the comment
+above that input says the submit "sits below the keyboard-reduced fold at
+390px". The remedy routed around it with a hidden Enter path, and the commit
+message then described the control as moved.
+
+Doctrine had already settled what the board filed as an open owner ruling:
+`UX_03_MULTI_VIEWPORT_EXCELLENCE.md:72` and `:223` both say "Primary CTA
+visible without scrolling (above the fold)".
+
+**ONE SEED IS NOT A MEASUREMENT OF A SURFACE.** Measuring three realistic
+drafts is what showed the fix I first reached for could not work:
+
+| draft | CTA bottom |
+|---|---|
+| short `crab feast for 20, Aug 2` | 470 |
+| dual `90th birthday and retirement...` | 576 |
+| heavy `...walker, altitude, bbq and cake` | 702 |
+
+The stack above the submit is DRAFT-SIZED — the recognition chips and the
+"didn't make it into the plan" block both grow with the sentence — so any fixed
+spacing budget passes for one seed and fails the next. **My first gate here used
+the short seed alone and passed while two of three drafts sat under the
+keyboard, including the 80th-birthday seed this surface was built for.**
+
+What shipped: the voice door retires once the field has text (the condition its
+sibling door already used — that is the 42px back, and it leaves one loud thing
+once a draft exists); the submit is `sticky`, the idiom this app already owns in
+`.ftotal`; `enterKeyHint="go"` so iOS paints the key the input asks for.
+
+**The sticky was wrong on the first attempt and measurably worse (584).** I
+wrapped only the button, whose parent was 105px tall, so it had 41px of travel
+and also added its own padding. A sticky element moves only inside its
+CONTAINING BLOCK. Re-parented to the 617px stage it has the travel it needs.
+`sticky` over `fixed` is deliberate and has its own test: a submit already on
+screen must not move, and the short draft still paints at 470 where it sat.
+
+Red-proofed: `position:static`, rebuilt, the two overflowing drafts fail with
+their exact numbers; restored, 6/6.
+
+### The tap sweep had never seen the first screen of the product
+
+`mobileTapFloor`'s `boot()` seeds an event and lands on home, so every sweep in
+that file measured a host who already HAS a plan. The creation screen — the
+first screen anyone sees — was outside the gate entirely, which is how a 162x34
+voice link shipped inside the very commit pair that ruled the floor is 44px on
+BOTH axes.
+
+Pointed at that screen, it found the worst offender in the app on the first
+run: **the intake door at 261x17.** Seventeen pixels, on the door a host takes
+when the free-text field intimidates them.
+
+Both secondary doors are classed now, and the better reason is the second one:
+**an inline `style={{}}` is invisible to the ratchets.** `spacingLadder` refused
+`gap: 7` and `marginTop: 14` when they were written in CSS; `padding: 0` on a
+17px control written in a JSX style attribute could never have been caught
+where it lived. Type sizes are unchanged — the 16/14 split is an owner ruling
+about emphasis, and height is not type size.
+
+Also corrected, and it had broken two of my own specs: **clearing localStorage
+does not land on the creation screen.** The app ships sample events, so an empty
+store opens a seeded demo plan. Two specs were asserting against "Margaret
+Adeyemi's Retirement Celebration" without knowing it. They now use the route
+`typingIsSubmitting` already proved (`?elegant=1`, then "Start my event").
+
+### The map was never hoisted, and a spec was asserting the fallback
+
+C3 claimed the engine-id -> host-copy map had been hoisted to module scope. It
+had not: the original in-render map survived and a SECOND copy was added, so the
+bundle carried "Where it happens" twice. They agreed on every shared key — which
+is exactly why nothing looked wrong — but the in-render copy was three keys
+short, so `lodging`, `budget` and `moment` fell through `capitalize(id)` onto the
+chip row. C3's own defect, still shipping one screen from the fix.
+
+**It hid for the dullest possible reason: capitalizing `lodging` produces a real
+English word.** The fallback read like copy somebody wrote. And
+`statColumnChips.spec.mjs` was asserting `'Lodging'` as the expected label — a
+gate holding the defect in place. The authored string is "Where everyone
+stays", which is what the plan-parts list has always shown for the identical
+fact and is the plain-host phrasing the product chose over the trade word.
+
+Check: `oneLabelMapForTheAreas.test.js` — exactly one map, and it covers the
+engine's own `add()`/`id:` census. Red-proofed: a second four-key map in, that
+test reads 2 where it wants 1; out, green.
+
+### Two surfaces still claimed a population
+
+The "Typical" rename covered three hero sites and missed two. `LABELS_C` in the
+create-flow budget rows still read "Typical", so the same band read "Mid-range"
+on one screen and "Typical" on the next. And the WHERE YOU STAND slot read
+"mid-range **for an event this size**" — implying a distribution OF EVENTS with
+the host placed inside it, which the hero explicitly disclaims one surface over
+("not an average of real events and not a quote"). Nothing measured a
+population; the figure is `(low + high) / 2` of an authored band whose own
+provenance record reads tier `estimate`, confidence `low`.
+
+### Settled in the builder's favour, for once
+
+A bench stopped inferring and served a three-field probe to real iOS Safari on
+an iPhone 17 Pro simulator. A `type=number` input with `appearance:auto` forced
+as a CONTROL paints no stepper either: **iOS Safari does not render a spinner on
+number inputs at all**, so there was never anything for C4's rule to suppress or
+to break. The refusal to claim the platform was right, and the claim can now be
+widened.
+
+### Scores, and the two seats that will not move
+
+Sethi 8 - Kare 7 - Tufte 7 - Rogati 7 - Wroblewski 6 - Norman 6 - Kowalski 6 -
+Rams 5 - **Next Maintainer 4** - **Market Realist 3**. Nothing at 9.
+
+The Next Maintainer stayed at 4 for one reason: **HEAD could not pass its own
+suite.** Seven references to a control the commit deleted survived in five
+committed specs, and the repair existed only in an uncommitted working tree.
+Fixed in `d82832f1`.
+
+The Market Realist's refusal is structural and it finally measured why.
+`budget.perHeadByFamily` states that four of its five families have ZERO dated
+per-head figures and names `travel_led` "the worst of the five — it is unsourced
+AND it is the band the destination blend raises other types toward". Santa Fe is
+a destination birthday, and its $13,200 is reached by blending toward exactly
+that row. Every item in these commits improves how truthfully the product
+DESCRIBES that number; none changes where it comes from. Meanwhile
+`belowLodgingFloor` computes the contradiction between a vendor's published
+price and our invented one, is asserted seven times in test, and tells the host
+nothing. Two things move that seat — ground the band to its own
+`sufficientWhen` bar, or wire `belowLodgingFloor` to a surface — and the second
+needs no research and no new number.
+
+Full board record: `docs/audits/2026-10-07_RESCORE_BOARD_2.md`.
+
+### Open, and named rather than implied
+
+- **The iOS overlay question is NOT settled.** My fold gate measures the case
+  where the keyboard SHRINKS the layout viewport. iOS resizes the VISUAL
+  viewport instead, and I verified nothing on a device. The remedy is the same
+  either way, which is why the gate is worth having, but the absolute "within
+  508" claim is Chromium's. Next check: the simulator probe a bench already used.
+- Seven owner rulings listed in the board record, including `travel_led`'s
+  scope, `location` reading "Place" in `eventOrientation.js` against "Where it
+  happens" in `AREA_LABELS`, and whether "our pick" stays on the Change picker.
+- Benches D and E of this board were never dispatched.
 
 ## FIXED 2026-10-06 (forty-sixth entry) — a board sat twice, four of my claims were rejected, and a funeral meal was told its budget excluded party favors
 

@@ -1,5 +1,82 @@
 # Where We Are -- live status board
 
+## 2026-10-07 — the claim that was backwards, a 17-pixel door, and a spec asserting a fallback
+
+**jest 8,267 / 601 - e2e 3,263 tests - eight commits, all pushed and live
+(`17dccc54..bdc8826f`).** A three-bench re-score board sat on the code and
+rejected three more of my claims. All three share one shape, and it is the
+thing to carry forward: **I described the edit I made instead of the screen it
+produced.**
+
+### The claim that was backwards
+
+I wrote that demoting the mic brought the creation submit above the keyboard
+fold. Two benches measured independently: **576 before, 618 after**, against a
+~508px keyboard-up viewport. The mic sat BESIDE the field, so deleting it freed
+no vertical space, and the replacement link added exactly 42px above the
+submit. The source comment over that input had the diagnosis right the whole
+time — it says the submit sits below the keyboard-reduced fold at 390px. The
+remedy routed around it and the commit message described the control as moved.
+
+**One seed is not a measurement of a surface.** Three drafts: short 470, dual
+576, heavy 702. The stack above the submit is draft-sized, so no fixed spacing
+budget can hold — and my first gate used the short seed alone and PASSED while
+two of three drafts sat under the keyboard.
+
+Shipped: the voice door retires once there is text (the condition its sibling
+door already had); the submit is `sticky` via the `.ftotal` idiom this app
+already owns; `enterKeyHint="go"`. The sticky was wrong on the first try and
+measurably worse (584) — I wrapped only the button, whose parent was 105px
+tall, so it had 41px of travel. **A sticky element moves only inside its
+containing block.** Re-parented to the 617px stage it works, and a separate
+test holds the other half of the claim: a submit already on screen must not
+move, so the short draft still paints at 470.
+
+### Two gates that could not see their own subject
+
+- **The tap sweep had never visited the creation screen.** `boot()` seeds an
+  event and lands on home, so every sweep measured a host who already has a
+  plan — which is how a 162x34 voice link shipped inside the commit pair that
+  ruled the floor is 44px on both axes. Pointed at that screen it found the
+  worst offender in the app on the first run: **the intake door at 261x17.**
+- **An inline `style={{}}` is invisible to the ratchets.** `spacingLadder`
+  refused `gap: 7` in CSS; `padding: 0` on a 17px control in a JSX style
+  attribute could never be caught where it lived. Both secondary doors are
+  classed now. Type sizes unchanged — the 16/14 split is an owner ruling about
+  emphasis, and height is not type size.
+
+### The map was never hoisted, and a spec was holding the defect in place
+
+A second copy had been added, not a hoist. The two agreed on every shared key,
+so nothing looked wrong, but the in-render copy was three keys short and
+`lodging` fell through `capitalize(id)` onto the chip row. **It hid because
+capitalizing that particular id produces a real English word** — and
+`statColumnChips.spec.mjs` was asserting `'Lodging'` as expected, a gate
+keeping the fallback alive. One map now, covering the engine's own id census,
+red-proofed.
+
+### Also
+
+- Two surfaces still claimed a population: `LABELS_C` read "Typical" one screen
+  from the hero's "Mid-range", and the WHERE YOU STAND slot said "mid-range for
+  an event this size" — a distribution of events the hero explicitly disclaims.
+- Settled in the builder's favour: a bench served a probe to real iOS Safari and
+  found that a `type=number` input with `appearance:auto` forced paints no
+  stepper either. There was never anything for C4's rule to break.
+- Scores: Sethi 8, Kare 7, Tufte 7, Rogati 7, Wroblewski 6, Norman 6, Kowalski
+  6, Rams 5, Next Maintainer 4, Market Realist 3. Nothing at 9.
+
+### Open
+
+- **The iOS overlay question is not settled.** The fold gate measures the
+  keyboard SHRINKING the layout viewport; iOS resizes the visual viewport
+  instead. The remedy is the same either way, but the absolute number is
+  Chromium's. Next check: the simulator probe a bench already used.
+- `belowLodgingFloor` is still computed, asserted seven times, and shown to
+  nobody. It is the cheapest thing on the board that would move the Market
+  Realist off 3, and it needs no research and no new number.
+- Seven owner rulings in `docs/audits/2026-10-07_RESCORE_BOARD_2.md`.
+
 ## 2026-10-06 — a board sat twice, rejected four of my claims, and a funeral meal was told its budget excluded party favors
 
 **jest 8,247 / 598 · e2e 3,163 tests / 116 files · nine commits, eight pushed
