@@ -168,13 +168,42 @@ jobs:
   # shard is UNCHANGED, so the 2026-08-06 flake posture (two runs at one SHA
   # producing disjoint failure sets) is untouched — the trade is one more
   # runner, not more parallelism per machine.
+  #
+  # ── 30 → 40, OWNER RULING 2026-10-06 ──────────────────────────────────────
+  #
+  # The block above says in as many words that "raising the timeout alone would
+  # be the wrong fix — it moves the wall without buying margin back, and the
+  # next ten days spend it again". That argument stands and this is not a
+  # rebuttal of it. It is an owner ruling, taken with the argument in view, and
+  # it is recorded here so nobody later reads the two as a contradiction.
+  #
+  # TWICE IN ONE EVENING, both times on added specs:
+  #   e2e-shard (3)  30m19s  CANCELLED  — four new creation-driving specs
+  #   e2e-shard (3)  30m13s  CANCELLED  — two more, same hand, same lesson
+  # Both were cured at the source (the six are text assertions and now run
+  # under `desktop` only, not across seven geometries), and neither was a
+  # failing test — the clock ran out on a suite that was passing.
+  #
+  # THE ARGUMENT THE BLOCK ABOVE DOES NOT MAKE, and the reason 40 is defensible
+  # rather than merely convenient: this timeout's own stated purpose, three
+  # lines down, is to kill a HANG — `playwright install` wedging for 60-90+
+  # minutes and squatting the concurrency slot. A ceiling of 30 against a
+  # legitimate runtime of 26-30 cannot tell a hang from a slow runner, which is
+  # exactly what it did twice tonight. 40 restores the gap the guard needs to
+  # be a guard: a shard at 31 minutes is slow, a shard at 40 is stuck.
+  #
+  # WHAT THIS DOES NOT BUY, stated so the next person does not have to find it:
+  # margin. The suite is 3,163 tests in 116 files, up from ~2,900 four days
+  # ago, and the growth is the actual problem. 40 moves the wall; a fourth
+  # shard would move the runtime. The block above is right that the ten days
+  # after this will spend whatever is granted here.
   e2e-shard:
     runs-on: ubuntu-latest
     # Three times on 2026-08-19 the `playwright install` step hung indefinitely
     # (60-90+ min, runner-side), squatting the concurrency slot until someone
     # noticed. A hang is not a verdict — kill it and let the next dispatch (or a
     # manual re-run) try a fresh runner.
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       # A failing shard must not cancel its sibling. Half a verdict is how you
       # re-run twice to learn what one run already knew.
