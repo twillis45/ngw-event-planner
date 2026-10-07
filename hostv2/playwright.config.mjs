@@ -81,6 +81,13 @@ const VIEWPORT_INDEPENDENT = [
   // other that the creation screen names what to type. Neither measures a box.
   '**/theAltitudeReachesThePlan.spec.mjs',
   '**/theCreationScreenSaysWhatToType.spec.mjs',
+  // ── THE DEMO BAR (2026-10-07) ──────────────────────────────────────────
+  // Arms the bar, seeds, reseeds, removes, disarms. Every assertion is on
+  // stored state or on text — the "Set your budget" beat, the fresh id, the
+  // tombstone, the no-data toast. Nothing measures a box, and the bar is
+  // fixed inline chrome that is identical at every width. Six geometries
+  // would buy six identical results and tap Seed / reset twelve more times.
+  '**/theDemoResetsToTheSamePlace.spec.mjs',
 ];
 
 const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];
