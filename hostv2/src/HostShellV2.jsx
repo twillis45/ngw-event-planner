@@ -8675,9 +8675,49 @@ export default function HostShellV2() {
                 <div className={'create-stage' + (smartText.trim() === '' ? ' centered' : '')}>
                   <div className="eyebrow">New event</div>
                   <h1 className="mega create-prompt">What are we planning?</h1>
+                  {/* ── IT NAMED A REGISTER, NOT A TASK (host, 2026-10-06) ───────
+                      This read "Say it like you'd text a friend — I'll take it
+                      from there", and the host's verdict was "too ambitious and
+                      not enough direction". Both halves hold, and UX_06 already
+                      said so twice: its opening rule is that copy must tell the
+                      planner WHAT TO DO, and its empty-state rule is "explain
+                      what goes here and how to start". Telling someone to write
+                      like they text leaves them not knowing whether three words
+                      or a paragraph, or which facts carry weight.
+                      "I'll take it from there" was the ambition. The parser is
+                      good and it is not that good — DIDN'T MAKE IT INTO THE PLAN
+                      exists precisely because it isn't — so the promise was one
+                      the very next screen walked back. The smaller promise is
+                      true, and it turns the honesty block into something the
+                      host is told to expect rather than something that lands on
+                      them as an apology.
+                      The three named are the three the plan cannot start
+                      without, and the same three the recognition chips hand
+                      back: occasion, headcount, date.
+                      THE EXAMPLE IS VISIBLE NOW, which reverses the 2026-07-11
+                      ruling that took example chips off this screen so "the
+                      prompt stands alone". Same owner, revisited deliberately on
+                      2026-10-06 — recorded here so the next reader sees a
+                      decision and not a lapse. It is one worked sentence rather
+                      than a chip rack, and it is a DIFFERENT shape from the
+                      placeholder's short "crab feast for 20, Aug 2", so the two
+                      teach a range instead of printing one example twice. */}
                   <p className="mega-sub" style={{ fontWeight: 550, color: 'var(--muted)' }}>
-                    Say it like you’d text a friend — I’ll take it from there.
+                    The occasion, roughly how many, and when — I’ll tell you what I couldn’t use.
                   </p>
+                  {/* The example retires the moment it has done its job. Once
+                      there is text in the field the host has stopped needing to
+                      know what a sentence looks like, and the line is only
+                      pushing the recognition chips — the thing they now
+                      actually want to read — further down a 390px screen. The
+                      DIRECTION above stays, because it is still explaining the
+                      "didn't make it into the plan" block they are about to
+                      meet. */}
+                  {smartText.trim() === '' && (
+                    <p className="grounding">
+                      Like “Mom’s 80th in Santa Fe, 30 people, June 14”.
+                    </p>
+                  )}
                   <div className="create-inputrow">
                     <input
                       id="smart-text-input"
