@@ -67,7 +67,12 @@ test('THE SLOT PROPOSES instead of scolding, when the app already has a number',
   // meant typical or median; it meant neither — it is the midpoint of an
   // authored band, and on right-skewed spend a midpoint sits above a median.
   // The slot shows that same figure, so it took the same correction.
-  expect(slot).toMatch(/mid-range for an event this size/i);
+  // Was /mid-range for an event this size/. That phrasing implied a
+  // DISTRIBUTION OF EVENTS and placed the host inside it, which the hero one
+  // surface over explicitly disclaims ("not an average of real events").
+  // Nothing measured a population, so the slot now says what the number is.
+  expect(slot).toMatch(/the middle of a planning band/i);
+  expect(slot).not.toMatch(/for an event this size|events like|events this/i);
   expect(slot).toMatch(/tap to use it or set your own/i);
 });
 

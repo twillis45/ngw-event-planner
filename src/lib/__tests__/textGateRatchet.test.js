@@ -265,7 +265,28 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // across the sales page. brand.js is a JS module and cannot reach a <title>
 // or a JSON manifest, so the rename was complete everywhere its instrument
 // could see — and blind to the half a buyer sees first.
-const MAX_HOSTV2_TEXT_GATES = 52;
+// 52 -> 53 (2026-10-07): oneLabelMapForTheAreas.test.js.
+//
+// IT CANNOT BE AN E2E, and the fault's whole history is the proof. C3 claimed
+// to have hoisted the engine-id -> host-copy map to module scope. It had not:
+// the original in-render map survived and a SECOND copy was added, so the
+// bundle carried "Where it happens" twice. The two agreed on every shared key,
+// which is exactly why nothing looked wrong — two maps that agree render
+// identically, so no rendered assertion can tell one from two.
+//
+// CHECKED, NOT ASSUMED: `thePlanPartsReadAsEnglish.spec.mjs` is the rendered
+// gate for this surface and it was GREEN across the full matrix at 2218a203
+// with the duplicate present. It reads the plan-parts list, which used the
+// module map; the chip row 300 lines away used the in-render copy, and that
+// copy was three keys short — so `lodging`, `budget` and `moment` fell through
+// to capitalized raw ids on a surface the e2e does not visit. The runtime
+// symptom was real and on a different screen from the gate.
+//
+// "How many of a thing exist in a file" is a fact about the source. Coverage
+// of the surviving map against the engine's own id census is checked here too,
+// in the same breath, because a single map that misses an id is the identical
+// defect arriving by the other road.
+const MAX_HOSTV2_TEXT_GATES = 53;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

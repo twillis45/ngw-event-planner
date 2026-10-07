@@ -8794,6 +8794,7 @@ export default function HostShellV2() {
                         e.preventDefault();
                         assemble();
                       }}
+                      enterKeyHint="go"
                       aria-label="Describe your event"
                     />
                   </div>
@@ -8826,12 +8827,25 @@ export default function HostShellV2() {
                       in this file's own 24-grid stroke idiom rather than an
                       emoji (standing rule: no emoji in product copy), and
                       `aria-hidden` because the label already says it. */}
-                  <button onClick={() => listening ? stopVoice() : startVoice()} aria-pressed={listening}
-                    style={{ background: 'none', border: 'none', paddingInline: 0, paddingBlock: 8,
-                      marginTop: 8, alignSelf: 'flex-start',
-                      display: 'inline-flex', alignItems: 'center', gap: 8,
-                      fontFamily: 'var(--sans)', fontSize: 16, fontWeight: 550,
-                      color: 'var(--steel-soft)', cursor: 'pointer' }}>
+                  {/* ── IT RETIRES WHEN THE FIELD IS NO LONGER EMPTY ──────────
+                      The 42px this line occupies is the whole of a regression I
+                      shipped and then claimed to have fixed. Demoting the mic
+                      freed no vertical space, because it sat BESIDE the field
+                      (`align-items:stretch`), and this replacement line sits
+                      ABOVE the submit: marginTop 8 + paddingBlock 8x2 + an 18px
+                      line. Two benches measured the submit moving 576 -> 618 at
+                      390px while my commit message said it had come above the
+                      fold. I inferred that from the edit instead of measuring a
+                      screen.
+                      The condition is not invented for the occasion — it is the
+                      one its SIBLING secondary door 20 lines below already uses.
+                      The intake link retires the moment there is text; so does
+                      the example sentence above. Dictation is a way to FILL an
+                      empty field, so it belongs to the same set, and the screen
+                      is left with one loud thing once a draft exists: the
+                      control that submits it. */}
+                  {smartText.trim() === '' && (
+                  <button className="voice-door" onClick={() => listening ? stopVoice() : startVoice()} aria-pressed={listening}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
@@ -8841,11 +8855,22 @@ export default function HostShellV2() {
                     </svg>
                     {listening ? 'Listening… tap to stop' : 'or speak it instead'}
                   </button>
+                  )}
                   {smartText.trim() === '' && !intakeOpen && (
                     <>
                       {/* Intake link (Figma 626:61): quiet steel, honest glyph — it navigates. */}
-                      <button onClick={() => setIntakeOpen(true)}
-                        style={{ background: 'none', border: 'none', padding: 0, marginTop: 16, alignSelf: 'flex-start', fontFamily: 'var(--sans)', fontSize: 14, fontWeight: 550, color: 'var(--steel-soft)', cursor: 'pointer' }}>
+                      {/* MEASURED 261x17 on the first screen of the product, found
+                          the moment the tap sweep was finally pointed at this
+                          screen. Seventeen pixels: the worst offender in the app
+                          and it was sitting on the door a host takes when the
+                          free-text field intimidates them.
+                          Classed for the same two reasons as `.voice-door` — the
+                          floor has to come from somewhere the ratchets can see,
+                          and `padding: 0` in an inline style object is invisible
+                          to them. Type stays 14px: the 16px on the voice door is
+                          an owner ruling about emphasis, and height is not type
+                          size, so clearing the floor costs the hierarchy nothing. */}
+                      <button className="intake-door" onClick={() => setIntakeOpen(true)}>
                         Rather answer a few quick questions? ›
                       </button>
                       {/* Empty state: one honest what-you-get line, no example
@@ -9229,7 +9254,14 @@ export default function HostShellV2() {
                         })();
                         const midC = estC ? Math.round(((estC.lowTotal + estC.highTotal) / 2) / 100) * 100 : 0;
                         const optsC = estC ? [...new Set([estC.lowTotal, midC, estC.highTotal])] : [];
-                        const LABELS_C = ['Lean', 'Typical', 'All-out'];
+                        // 'Typical' claimed a central tendency nothing measured, and the
+                        // hero was renamed for exactly that reason — but this array was
+                        // missed, so the same band read 'Mid‑range' on one screen and
+                        // 'Typical' on the next. `midC` directly above is literally
+                        // `(low + high) / 2`: a midpoint of a planning band, which is what
+                        // the new word says and the old one did not. U+2011 matches the
+                        // hero so it cannot break across the hyphen in a narrow row.
+                        const LABELS_C = ['Lean', 'Mid‑range', 'All-out'];
                         const fmtC = (n) => '$' + Number(n).toLocaleString();
                         return (
                           <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
@@ -9306,7 +9338,36 @@ export default function HostShellV2() {
                         );
                       })()}
                       {effType && (
-                        <div style={{ marginTop: 26 }}>
+                        /* The sticky lives HERE, on the direct child of
+                           `.create-stage`, and not on an inner wrapper around the
+                           button. A sticky element can only travel inside its own
+                           CONTAINING BLOCK: my first attempt wrapped just the
+                           button, whose parent was 105px tall, so it had 41px of
+                           travel and moved almost nowhere (584 against a 508
+                           fold — measurably worse than before, since it also
+                           added its own padding). Parented to the 617px stage it
+                           has the travel it needs. */
+                        <div className="create-submitbar" style={{ marginTop: 26 }}>
+                          {/* PINNED, BECAUSE THE STACK ABOVE IT IS NOT A FIXED HEIGHT.
+                              Measured at 390px, CTA bottom by draft:
+                                short  "crab feast for 20, Aug 2"          470
+                                dual   "90th birthday and retirement..."   576
+                                heavy  "...walker, altitude, bbq and cake" 702
+                              The keyboard-up viewport is ~508, so two of three
+                              realistic drafts put the submit under the keyboard —
+                              including the 80th-birthday seed this surface was
+                              built for. A spacing diet cannot fix that class: the
+                              recognition chips and the "didn't make it" block grow
+                              with the sentence, so any fixed budget passes for one
+                              seed and fails the next. My first gate here did
+                              exactly that, and passed on the short seed alone.
+                              `sticky` is content-length independent and is the
+                              idiom this app already owns (`.ftotal`, the pinned
+                              grocery total). It is NOT `fixed`: a button whose
+                              flow position is already on screen stays exactly
+                              where it sat — the short draft still renders it at
+                              470, untouched — and it pins only once the flow
+                              would carry it past the fold. */}
                           <button className="cta big" onClick={assemble}
                             disabled={!!effDate && dstatC.blocking}
                             style={effDate && dstatC.blocking ? { opacity: .45, cursor: 'not-allowed' } : undefined}>
@@ -11398,7 +11459,6 @@ export default function HostShellV2() {
                                 and read "Venue — handled" beside a card saying "Not set
                                 yet". The axis is named for what it measures now, and the
                                 venue address is its own row (board ruling 2026-08-14). */}
-                            const areaLabel = (id) => ({ datetime: 'Date & time', date: 'Date', location: 'Where it happens', venueaddress: 'Venue address', headcount: 'Guests', food: 'Food', dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order', vendors: 'Vendors', shopping: 'Shopping', payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals' }[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Area'));
                             const nextId = nextCue && (nextCue.id || nextCue.source);
                             return (
                               <>
@@ -11439,10 +11499,10 @@ export default function HostShellV2() {
                                   return (
                                     <button key={c.id || ix} type="button" className="chip"
                                       onClick={e => { e.stopPropagation(); if (c.id === 'datetime' || c.id === 'date') { setSheet({ kind: 'date' }); return; } if (c.id === 'location') { setSheet({ kind: 'venue' }); return; } if (c.route && routeSheet(c.route)) return; if (c.cueLabel) toast(c.cueLabel); }}
-                                      aria-label={areaLabel(c.id) + (c.handled ? ' — handled' : ' — still open') + '. Open it.'}
+                                      aria-label={areaLabelFor(c.id) + (c.handled ? ' — handled' : ' — still open') + '. Open it.'}
                                       style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', fontWeight: c.handled ? 550 : 700, letterSpacing: '.02em', display: 'inline-flex', alignItems: 'center', gap: 5, color: c.handled ? 'var(--faint)' : isNext ? 'var(--steel-soft)' : 'var(--ink-soft)' }}>
                                       <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', display: 'inline-block', background: c.handled ? 'var(--ok)' : 'var(--faint)', opacity: c.handled ? 0.9 : 0.55 }} />
-                                      {areaLabel(c.id)}
+                                      {areaLabelFor(c.id)}
                                     </button>
                                   );
                                 })}
@@ -11509,11 +11569,21 @@ export default function HostShellV2() {
                           Never a second vocabulary (UX_08). */}
                       {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</>
                         : (suggestedTotal
-                          /* Typical, est., and still yours to take — the same
-                             three words the budget ask uses for the same
-                             figure, so one number never wears two
-                             vocabularies across two surfaces (UX_08). */
-                          ? 'mid-range for an event this size · est. — tap to use it or set your own'
+                          /* NO POPULATION. This read "mid-range for an event
+                             this size", and the comment here claimed it shared
+                             the ask's vocabulary while the three words after
+                             "mid-range" added something the ask does not say.
+                             "for an event this size" implies a distribution OF
+                             EVENTS and places the host in it — and the hero one
+                             surface over explicitly disclaims exactly that:
+                             "the midpoint of a planning band, not an average of
+                             real events and not a quote". Nothing measured a
+                             population; `suggestedTotal` is (low + high) / 2 of
+                             an authored band whose own provenance record reads
+                             tier `estimate`, confidence `low`.
+                             So this says what the number IS. Same figure, same
+                             claim, both surfaces (UX_08). */
+                          ? 'the middle of a planning band · est. — tap to use it or set your own'
                           : 'you haven’t set one yet — tap to lock a number in')}
                     </div>
                   </div>

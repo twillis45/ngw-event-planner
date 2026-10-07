@@ -6382,3 +6382,60 @@ button.vc-pill::after{
   font-weight:600;
 }
 .shop-acts.chips > .food-act:first-of-type{ grid-column:1 / -1; margin:0 0 var(--sp-1); }
+
+/* ── THE VOICE DOOR ─────────────────────────────────────────────────────────
+   Was an inline JSX style object, which is how it came to measure 162x34 in
+   the same commit pair that ruled the tap floor is 44px on BOTH axes. Two
+   reasons it has a class now, and the second is the one that matters:
+
+   1. The floor. 34px is ten short. Width was never the problem here (162px),
+      so this is the height half of the ruling, and the real box carries it
+      rather than an ::after — the control sits in flow with nothing beside it,
+      so growing it moves nothing. It only renders while the field is EMPTY,
+      so the extra height is never above the submit.
+   2. An inline style object is INVISIBLE TO THE RATCHETS. `spacingLadder`
+      refused `gap: 7` and `marginTop: 14` when they were written in CSS; the
+      same numbers written in a JSX `style={{}}` are unreachable to it. A
+      review bench found this by setting a rung-breaking size inline and
+      watching nothing fire. Styling that lives here can be gated; styling
+      that lives in the attribute cannot.
+
+   16px/550 is an owner ruling ("make the glyph and text slightly bigger"),
+   deliberately kept rather than equalised with the 14px intake link beside
+   it — that mismatch is a real open question and it belongs to the owner, not
+   to a tidy-up. */
+.voice-door{
+  background:none; border:none; padding-inline:0; padding-block:12px;
+  margin-top:8px; align-self:flex-start;
+  display:inline-flex; align-items:center; gap:8px;
+  min-height:var(--tap-min);
+  font-family:var(--sans); font-size:16px; font-weight:550;
+  color:var(--steel-soft); cursor:pointer;
+}
+
+/* ── THE CREATION SUBMIT, PINNED ────────────────────────────────────────────
+   See the comment at its render site for the three measured drafts. `sticky`
+   rather than `fixed` on purpose: a submit already on screen must not move, so
+   the short draft still paints it at 470 where it always sat, and only a draft
+   long enough to push it past the fold gets it pinned.
+   The background is not decoration — a transparent pinned control would have
+   the recognition chips scrolling through the type. Same safe-area handling as
+   `.ftotal`, which is where this pattern was measured the first time. */
+.create-submitbar{
+  position:sticky;
+  bottom:env(safe-area-inset-bottom, 0px);
+  z-index:3;
+  background:var(--bg);
+  padding-block:8px;
+}
+
+/* The other secondary door on the creation screen. 14px type is deliberate —
+   see the render site — and the 44px floor is carried by the box, not the type. */
+.intake-door{
+  background:none; border:none; padding-inline:0; padding-block:12px;
+  margin-top:8px; align-self:flex-start;
+  display:inline-flex; align-items:center;
+  min-height:var(--tap-min);
+  font-family:var(--sans); font-size:14px; font-weight:550;
+  color:var(--steel-soft); cursor:pointer;
+}

@@ -295,3 +295,30 @@ test('the guest stepper is measured, and clears the floor on BOTH axes', async (
   }
   expect(surprising(await sweep(page))).toEqual([]);
 });
+
+// ─── THE CREATION SCREEN, WHICH THIS SWEEP HAD NEVER SEEN ───────────────────
+// `boot()` seeds an event and lands on home, so every test above measures a
+// host who already HAS a plan. The first screen of the product was outside the
+// sweep entirely — and that is where a 162x34 voice link shipped, in the same
+// commit pair that ruled the floor is 44px on both axes. The gate boasted of
+// closing this blind-spot class for the guest stepper while standing in
+// another one.
+test('the creation screen clears it too — the first screen of the product', async ({ page }) => {
+  // Clearing storage opens a SEEDED DEMO EVENT, not this screen — the app ships
+  // sample events. Same route `typingIsSubmitting.spec.mjs` uses.
+  await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private mode */ } });
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto('./?elegant=1');
+  await page.getByRole('button', { name: 'Start my event' }).first().click();
+  await expect(page.getByText(/what are we planning/i)).toBeVisible({ timeout: 20000 });
+  await settled(page);
+
+  // PREMISE. The create screen is deliberately sparse, so "5 buttons" would be
+  // wrong here — but empty still has to mean measured. Name the two controls
+  // that must be present, so a blank stage cannot read as clean.
+  const buttons = await page.locator('button').count();
+  expect(buttons, 'controls are rendered on the creation screen').toBeGreaterThan(2);
+  await expect(page.locator('button.voice-door')).toHaveCount(1);
+
+  expect(surprising(await sweep(page))).toEqual([]);
+});
