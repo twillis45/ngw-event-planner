@@ -38,6 +38,22 @@ const SEED = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
   + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard, '
   + 'she uses a walker and the altitude is hard on her';
 
+// The exclusions moved behind a `<details>` fold on 2026-10-06, after the
+// host read five lines of grey run-on between the hero and the commit button.
+// A closed fold is not in innerText, so these tests open it first — which is
+// also the honest assertion: the claim was never "eight lines are shouted at
+// the host", it is "the host can reach all eight".
+const openExclusions = async (page) => {
+  const opened = await page.evaluate(() => {
+    const d = [...document.querySelectorAll('details')]
+      .find((x) => /things this number leaves out/i.test(x.innerText || ''));
+    if (!d) return false;
+    d.open = true;
+    return true;
+  });
+  expect(opened, 'the exclusions fold is on the budget ask').toBe(true);
+};
+
 const toBudget = async (page) => {
   await page.addInitScript(() => {
     try { localStorage.clear(); } catch { /* private mode */ }
@@ -68,6 +84,7 @@ test('THE PER-HEAD FIGURE: the ask shows what the total is per person', async ({
 
 test('WHOSE MONEY: a destination ask names what the host is NOT paying for', async ({ page }) => {
   await toBudget(page);
+  await openExclusions(page);
   const txt = await page.evaluate(() => document.body.innerText || '');
   // The engine's own words, not a paraphrase invented here.
   expect(txt).toMatch(/Airfare and ground transfers/i);
@@ -89,6 +106,7 @@ test('WHOSE MONEY: a destination ask names what the host is NOT paying for', asy
 // frozen CRA stayed the only surface that had ever rendered the full list.
 test('THE WHOLE LIST: a destination ask names every exclusion the engine holds', async ({ page }) => {
   await toBudget(page);
+  await openExclusions(page);
   const txt = await page.evaluate(() => document.body.innerText || '');
   // All eight, in the engine's own words. Named individually rather than
   // counted, so a regression says WHICH line went missing.
@@ -115,6 +133,7 @@ test('AND THE ORDINARY CASE TOO: a local event still hears what it excludes', as
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
   await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
+  await openExclusions(page);
   const txt = await page.evaluate(() => document.body.innerText || '');
   expect(txt).toMatch(/cake \/ dessert when not included with catering/i);
   expect(txt).toMatch(/tips and gratuities beyond service charge/i);
@@ -137,4 +156,23 @@ test('EVERY TIER IS CHECKABLE, not just the middle one', async ({ page }) => {
   expect(Number.isFinite(lean) && Number.isFinite(allout)).toBe(true);
   expect(txt).toMatch(new RegExp(`\\$${Math.round(lean / guests)}\\b`));
   expect(txt).toMatch(new RegExp(`\\$${Math.round(allout / guests)}\\b`));
+});
+
+// ── AND THE SCREEN STAYS READABLE, WHICH IS WHY THE FOLD EXISTS ──────────
+// The reason for the fold, gated so it cannot quietly come undone. Both the
+// reduction seat and the data-ink seat warned that eight items in one run-on
+// sentence would bury the ask; it shipped that way and the host said so
+// within the hour. A count and two named items is the summary; the engine's
+// words are one tap away.
+test('THE ASK IS NOT A WALL OF TEXT: the exclusions are summarised, not spilled', async ({ page }) => {
+  await toBudget(page);
+  const closed = await page.evaluate(() => document.body.innerText || '');
+  // Closed by default…
+  expect(closed).toMatch(/things this number leaves out/i);
+  // …and the long tail is NOT on screen until asked for.
+  expect(closed).not.toMatch(/pre- or post-event gatherings/i);
+  expect(closed).not.toMatch(/tips and gratuities beyond service charge/i);
+  // The summary still earns its place: it says how many, and names something
+  // with real money behind it rather than being a bare chevron.
+  expect(closed).toMatch(/\b8 things this number leaves out\b/i);
 });

@@ -46,6 +46,30 @@ const SELF_PINNED = [
 const VIEWPORT_INDEPENDENT = [
   '**/crossDeviceSync.spec.mjs',
   '**/a11yFloor.spec.mjs',
+  // ── THE FOUR THAT TIMED SHARD 3 OUT (2026-10-06) ────────────────────────
+  // These landed the same day and each drives the REAL creation flow — clear
+  // storage, type the 179-character seed, wait for the parse, assemble, open
+  // the plan — once per test, eight times across the four files. On seven
+  // projects that is fifty-six full creations, and shard 3 ran 30m19s against
+  // `timeout-minutes: 30`. No test failed; the clock did. That is the failure
+  // this file's own comment at :155 already recorded once before.
+  //
+  // They belong here on the merits, not as a timeout dodge. Every assertion in
+  // all four is on TEXT — which exclusions the budget ask names, whether the
+  // no-signal banner fired, whether the invite row carries its booking window,
+  // whether the budget slot proposes or scolds. Not one of them measures a box.
+  // Six more geometries buy six identical results, which is exactly the rule
+  // this list exists for.
+  //
+  // WHAT THAT GIVES UP, stated rather than discovered later: the exclusions
+  // sentence is now eight items in one run-on line, and at 390px nothing
+  // checks what it does to the screen. That is a real gap and it is a LAYOUT
+  // gap — it wants its own density spec on the mobile project, not these four
+  // text assertions re-run at six widths to no effect.
+  '**/theBudgetAskSaysWhoseMoney.spec.mjs',
+  '**/theBudgetSlotIsNotScolding.spec.mjs',
+  '**/theInviteSaysWhenToBook.spec.mjs',
+  '**/theNoSignalBannerTellsTheTruth.spec.mjs',
 ];
 
 const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];

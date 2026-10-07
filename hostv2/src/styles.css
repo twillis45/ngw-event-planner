@@ -1473,6 +1473,24 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 }
 .grounding{font-size:var(--t-meta); color:var(--muted); margin-top:6px; font-weight:550}
 
+/* ── THE EXCLUSIONS FOLD ────────────────────────────────────────────────────
+   The budget ask's "N things this number leaves out". It shipped as one
+   run-on sentence of eight interpunct-separated clauses and the re-score
+   board measured it at 136px — 31% of the ask column at 390px, a 167%
+   increase, and on a LOCAL event it went from nothing to 85px. The honesty
+   is right and the volume was not.
+   The summary is a CONTROL, so it gets a pointer and a visible focus ring;
+   it is not a button, so it gets no button chrome. The marker stays the
+   platform's own triangle — this is one disclosure on a dense screen and a
+   custom glyph here would be a second vocabulary for "there is more", which
+   UX_08 spends elsewhere. The open body indents to the summary's text so the
+   list reads as belonging to it rather than as a new paragraph. */
+.excl-fold > summary{ cursor: pointer; }
+.excl-fold > summary::-webkit-details-marker{ color: var(--muted); }
+.excl-fold > summary:focus-visible{ outline: 2px solid var(--steel); outline-offset: 2px; border-radius: 4px; }
+.excl-fold[open] > summary{ margin-bottom: 2px; }
+.excl-fold > p{ padding-left: 1.1em; }
+
 /* ── FIELD LABEL ────────────────────────────────────────────────────────────
    UX_05: above the input, always; 12px / 500 / muted; 4-6px gap; never inline.
    Added for the creation step's two date inputs, which were two identical bare

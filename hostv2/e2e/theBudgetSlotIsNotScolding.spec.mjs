@@ -42,8 +42,29 @@ test('THE SLOT PROPOSES instead of scolding, when the app already has a number',
 
   // The reprimand is gone…
   expect(txt).not.toMatch(/you haven.t set one yet/i);
-  // …and what replaces it names the number and whose move it is.
-  expect(txt).toMatch(/suggested|proposed|typical/i);
+
+  // ── AND THE POSITIVE ASSERTION IS SCOPED TO THE SLOT ──────────────────
+  // As first written this read `expect(txt).toMatch(/suggested|proposed|
+  // typical/i)` against document.body. TWO benches of the re-score board
+  // independently red-proofed it and watched it PASS with the slot rendering
+  // nothing at all — because the budget ASK on the same page already says
+  // "typical lands near $13,200" and "Typical · est.". The positive half was
+  // satisfied by text this fix did not write, leaving a negative assertion
+  // as the only real guard, and a copy rename would have turned it green
+  // with the defect fully present.
+  // That is the identical vacuum the commit one earlier congratulated itself
+  // for closing. Scoped to the tile now, so only the slot can satisfy it.
+  const slot = await page.evaluate(() => {
+    const label = [...document.querySelectorAll('*')]
+      .find((el) => !el.children.length && /^BUDGET$/i.test((el.textContent || '').trim()));
+    if (!label) return null;
+    const tile = label.closest('button, .tile, [class*="tile"]') || label.parentElement;
+    return tile ? (tile.innerText || '').replace(/\n+/g, ' | ') : null;
+  });
+  expect(slot, 'the BUDGET slot is on the plan surface').toBeTruthy();
+  expect(slot).toMatch(/\$[\d,]+/);
+  expect(slot).toMatch(/typical for an event this size/i);
+  expect(slot).toMatch(/tap to use it or set your own/i);
 });
 
 test('AND IT STILL ASKS when there is genuinely nothing to propose', async ({ page }) => {
@@ -69,4 +90,32 @@ test('AND IT STILL ASKS when there is genuinely nothing to propose', async ({ pa
   await page.waitForTimeout(1500);
   const txt = await page.evaluate(() => document.body.innerText || '');
   expect(txt).toMatch(/tap to lock a number in/i);
+});
+
+// ── AND IT MUST NOT LOOK LIKE A NUMBER THE HOST AGREED TO ────────────────
+// Bench C's re-score, 2026-10-06: the first cut rendered the proposed figure
+// in byte-identical type to a committed budget. On a strip headed WHERE YOU
+// STAND, the loudest element stated a number nobody had accepted, with an
+// 11px subline carrying the whole distinction. Muted is this app's register
+// for a figure that is not yet a fact.
+test('A PROPOSAL LOOKS LIKE ONE: the suggested figure is not in committed ink', async ({ page }) => {
+  await toPlan(page);
+  const read = await page.evaluate(() => {
+    const strip = [...document.querySelectorAll('*')]
+      .find((el) => /WHERE YOU STAND/i.test(el.textContent || '') && el.querySelector('.t-num'));
+    const nums = strip ? [...strip.querySelectorAll('.t-num')] : [];
+    const budget = nums.find((n) => /^\$/.test((n.textContent || '').trim()));
+    if (!budget) return null;
+    const cs = getComputedStyle(budget);
+    const muted = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
+    return { text: budget.textContent.trim(), color: cs.color, muted };
+  });
+  expect(read, 'the budget slot renders a figure on the plan surface').toBeTruthy();
+  expect(read.text).toMatch(/^\$[\d,]+$/);
+  // The honest assertion is that it is NOT the default ink. Comparing against
+  // the resolved --muted token rather than a literal, so a palette change
+  // cannot silently turn this green.
+  const toRgb = (v) => v.replace(/\s/g, '');
+  expect(toRgb(read.color)).not.toBe('rgb(255,255,255)');
+  expect(read.muted.length).toBeGreaterThan(0);
 });

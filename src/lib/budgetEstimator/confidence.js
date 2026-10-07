@@ -56,12 +56,21 @@ export const NOT_INCLUDED_BY_FAMILY = {
     'Cleaning or extra help hired separately',
     'Tips for any hired help',
   ],
+  // ── FULL SERVICE IS A COST SHAPE, NOT A WEDDING ────────────────────────
+  // This list was written for weddings and the family it keys off is coarser
+  // than that: `budgetFamilyForType` folds Sweet 16, Quinceañera, Vow Renewal
+  // and Fundraiser / Gala in beside Wedding. While the budget ask only showed
+  // exclusions on destination events the mismatch stayed hidden; 516f432b
+  // ungated that line and four events with no couple in them were suddenly
+  // told their budget excludes a honeymoon and a marriage license.
+  // The shared lines are what every full-service event actually has — a
+  // vendor-run day, attire, gifts, a service charge. The two that name a
+  // marriage moved to WEDDING_ONLY below and are added back by type, not by
+  // family, because the family cannot tell these events apart.
   full_service: [
     'Event-day attire and accessories',
     'Gifts (welcome bags, attendant gifts, favors)',
-    'Honeymoon or travel for the couple/host',
     'Rehearsal dinner and pre-event parties',
-    'Marriage license / permit fees',
     'Tips and gratuities beyond standard service charge',
   ],
   corporate: [
@@ -77,6 +86,20 @@ export const NOT_INCLUDED_BY_FAMILY = {
     'Tips and gratuities beyond service charge',
     'Cake / dessert when not included with catering',
     'Pre- or post-event gatherings',
+  ],
+  // ── THE MEAL AFTER A FUNERAL IS NOT A PARTY ────────────────────────────
+  // `Repast` resolved to `host_driven`, whose list opens with "Gifts, favors,
+  // and thank-you cards". Ungating the budget ask put that in front of a host
+  // arranging food for people who had just buried someone. Thank-you cards are
+  // real and kept — they are a genuine repast cost and the one line of that
+  // row that belongs here. Favors, party gifts and "pre- or post-event
+  // gatherings" are not, and the guest-of-honor line names a person this event
+  // does not have.
+  repast: [
+    'Thank-you cards and acknowledgements',
+    'Tips and gratuities beyond service charge',
+    'Flowers beyond what the service provides',
+    'Containers for sending food home with family',
   ],
   travel_led: [
     ...TRAVEL_LOGISTICS_NOT_INCLUDED,
@@ -103,15 +126,32 @@ export function budgetFamilyForType(type) {
 // discloses the same travel exclusions a Wellness Retreat's always has.
 // Types already in the travel_led family are returned unchanged (they
 // itemize travel natively).
+// The two lines that name a marriage. Added by TYPE, never by family, because
+// `full_service` cannot tell a wedding from a quinceañera and both of these
+// are nonsense on the latter. Kept beside the family lists rather than in the
+// resolver so an editor adding a wedding exclusion sees where it goes.
+const WEDDING_ONLY = Object.freeze([
+  'Honeymoon or travel for the couple/host',
+  'Marriage license / permit fees',
+]);
+const WEDDING_TYPES = Object.freeze(['wedding', 'elopement', 'vow renewal']);
+
 export function notIncludedFor(familyOrType, opts = {}) {
+  const key = String(familyOrType == null ? '' : familyOrType).trim().toLowerCase();
+  const typed = NOT_INCLUDED_BY_FAMILY[key] && !NOT_INCLUDED_BY_FAMILY[familyOrType]
+    ? NOT_INCLUDED_BY_FAMILY[key] : null;
   const base = NOT_INCLUDED_BY_FAMILY[familyOrType]
+    || typed
     || NOT_INCLUDED_BY_FAMILY[budgetFamilyForType(familyOrType)]
     || NOT_INCLUDED_BY_FAMILY.host_driven;
-  if (!opts || !opts.isDestination) return base;
-  if (base === NOT_INCLUDED_BY_FAMILY.travel_led) return base;
+  const withWedding = WEDDING_TYPES.includes(key)
+    ? [...base, ...WEDDING_ONLY.filter((l) => !base.includes(l))]
+    : base;
+  if (!opts || !opts.isDestination) return withWedding;
+  if (base === NOT_INCLUDED_BY_FAMILY.travel_led) return withWedding;
   return [
     ...TRAVEL_LOGISTICS_NOT_INCLUDED,
-    ...base.filter((line) => !TRAVEL_LOGISTICS_NOT_INCLUDED.includes(line)),
+    ...withWedding.filter((line) => !TRAVEL_LOGISTICS_NOT_INCLUDED.includes(line)),
   ];
 }
 

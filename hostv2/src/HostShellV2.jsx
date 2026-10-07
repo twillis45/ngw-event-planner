@@ -7762,16 +7762,34 @@ export default function HostShellV2() {
               `notIncludedFor` already scopes itself: it prepends the three
               travel lines only when `isDestination`, so a local event is told
               about its cake and its tips and never about visas. */}
+          {/* ── AND THEN IT WAS TOO MUCH PROSE (host, 2026-10-06) ──────────
+              The eight lines shipped as one run-on sentence and buried the
+              ask. Measured by the re-score board at 390px: 136px of grey
+              text, 31% of a 433px column, a 167% increase — and on a LOCAL
+              event it went from nothing at all to 85px. Both the reduction
+              seat and the data-ink seat predicted it before it shipped; the
+              host said it within the hour.
+              None of the honesty is dropped. A count is the summary a host
+              can act on — knowing there ARE eight is most of the value — and
+              the fold carries the engine's own words for anyone who wants
+              them. The summary names the ones with real money behind them so
+              the line is useful closed as well as open. `<details>` is the
+              house pattern for this and the food tab already ships one
+              ("What's in the estimate"); this reaches for it rather than
+              inventing a second shape. */}
           {(() => {
             const excl = (() => {
               try { return notIncludedFor(event.type, { isDestination: !!event.isDestination }); } catch (_e) { return []; }
             })();
             if (!excl.length) return null;
+            const lead = est && est.destinationAdjusted ? 'travel and lodging' : 'gifts and the cake';
             return (
-              <Grounding gap={8}>
-                {est && est.destinationAdjusted ? 'Ranges run wider because guests are traveling in. ' : ''}
-                {`Not in this number: ${excl.join(' · ').toLowerCase()}.`}
-              </Grounding>
+              <details className="excl-fold" style={{ marginTop: 8 }}>
+                <summary className="grounding" style={{ cursor: 'pointer' }}>
+                  {`${excl.length} things this number leaves out — ${lead} among them`}
+                </summary>
+                <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
+              </details>
             );
           })()}
           <CtaRow>
@@ -11306,7 +11324,20 @@ export default function HostShellV2() {
                 <button className="tile tile-c" onClick={() => setSheet({ kind: 'budget' })}>
                   <div className="t-label">Budget</div>
                   <div>
-                    <div className="t-num">{money.planned ? fmt(bAnim) : (suggestedTotal ? fmt(suggestedTotal) : '—')}</div>
+                    {/* A PROPOSAL MUST NOT WEAR A COMMITMENT'S CLOTHES. The
+                        first cut rendered the suggested figure in identical
+                        ink, weight and size to a budget the host had actually
+                        set — on a strip headed WHERE YOU STAND, which made its
+                        loudest element a number nobody agreed to, with an 11px
+                        subline carrying the whole distinction. Muted is this
+                        app's register for a figure that is not yet a fact, and
+                        the committed path keeps its ticking animation while
+                        the proposal does not, so the two differ in colour AND
+                        in behaviour — either answers a glance. */}
+                    <div className="t-num" data-proposed={suggestedTotal && !money.planned ? '1' : undefined}
+                      style={suggestedTotal && !money.planned ? { color: 'var(--muted)' } : undefined}>
+                      {money.planned ? fmt(bAnim) : (suggestedTotal ? fmt(suggestedTotal) : '—')}
+                    </div>
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
                     <div className={'t-sub' + (money.planned && money.committed > money.planned && !isPast ? ' over' : '')}>
