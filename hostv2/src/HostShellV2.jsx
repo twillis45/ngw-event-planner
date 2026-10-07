@@ -8738,6 +8738,22 @@ export default function HostShellV2() {
                       Like “Mom’s 80th in Santa Fe, 30 people, June 14”.
                     </p>
                   )}
+                  {/* ── RETURN DID NOTHING, AND THE ONE BUTTON WAS A MIC ────────
+                      `grep -c '<form'` over this whole shell returns ZERO, so there
+                      is no implicit submission, and this input carried `onChange`
+                      and nothing else. The real submit renders only once `effType`
+                      resolves and sits below the keyboard-reduced fold at 390px —
+                      so for the whole time a host is typing, the only affordance
+                      beside the field was the microphone.
+                      The audit's own capture robot fell into it before any human
+                      was looking: typed the sentence, clicked the adjacent button,
+                      and put the app into dictation. A demo host then said the
+                      same thing in their own words — "Say it" read innately like
+                      an enter or submit button.
+                      THE GUARD IS COPIED FROM THE BUTTON, NOT INVENTED. Enter must
+                      not be a back door around the date-conflict block: a keyboard
+                      path that creates a plan the pointer path refuses is worse
+                      than no keyboard path. Same two conditions, same order. */}
                   <div className="create-inputrow">
                     <input
                       id="smart-text-input"
@@ -8745,16 +8761,59 @@ export default function HostShellV2() {
                       placeholder={listening ? 'Listening…' : 'Try: crab feast for 20, Aug 2'}
                       value={smartText}
                       onChange={e => { setSmartText(e.target.value); setFType(null); setCreateEdit(null); }}
+                      onKeyDown={e => {
+                        if (e.key !== 'Enter') return;
+                        if (!effType) return;                       // nothing to assemble yet
+                        if (effDate && dstatC.blocking) return;     // the button is disabled here
+                        e.preventDefault();
+                        assemble();
+                      }}
                       aria-label="Describe your event"
                     />
-                    {/* UX_02 amber budget: listening is a status, not a warning — steel, not warn.
-                        .cta.soft's resting state is already steel-tint/steel-soft, so a 1px steel
-                        ring keeps the aria-pressed state visually distinct without leaving the register. */}
-                    <button className="cta soft" style={listening ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', boxShadow: '0 0 0 1px var(--steel-soft)' } : undefined}
-                      onClick={() => listening ? stopVoice() : startVoice()} aria-pressed={listening} aria-label="Speak it instead">
-                      {listening ? 'Listening… tap to stop' : 'Say it'}
-                    </button>
                   </div>
+                  {/* ── THE MIC WAS DRAWN AS THE FIELD'S SUBMIT (demo host, 2026-10-06) ──
+                      "the say it seemed innately like an enter or submit button",
+                      from a host using it — which settles a question three board
+                      seats had split on. The cause was geometry, not wording:
+                      `.create-inputrow` is `align-items:stretch` and `.cta.soft`
+                      took the field's own `--r-lg`, so the control was rendered as
+                      the input's right-hand cap. Composition said "this completes
+                      the field" and the word on it could not argue.
+                      Renaming it would not have helped. The seat that measured this
+                      said so in advance — change the label and leave it welded to
+                      the field and the next host taps it too, because the thing
+                      teaching them to tap it is the geometry.
+                      Voice is now a quiet text link, which is the pattern this very
+                      screen already uses for its other secondary door ("Rather
+                      answer a few quick questions? ›") — not a new shape invented
+                      at the board. The primary slot is left to the one control that
+                      submits, and there is now exactly ONE of those on the screen
+                      instead of an inline button and a below-fold CTA. */}
+                  {/* A MIC, NOT A CHEVRON — and the chevron was the bug. The
+                      link below this one carries `›` under a comment that says
+                      "honest glyph — it navigates", which is the house rule:
+                      a glyph only when the handler routes. Dictation settles in
+                      PLACE, so `›` was false navigation, and I had written it
+                      one commit earlier.
+                      A mic says what the control does instead of pretending it
+                      goes somewhere, which is also what the host asked for. Drawn
+                      in this file's own 24-grid stroke idiom rather than an
+                      emoji (standing rule: no emoji in product copy), and
+                      `aria-hidden` because the label already says it. */}
+                  <button onClick={() => listening ? stopVoice() : startVoice()} aria-pressed={listening}
+                    style={{ background: 'none', border: 'none', padding: 0, marginTop: 16, alignSelf: 'flex-start',
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      fontFamily: 'var(--sans)', fontSize: 14, fontWeight: 550,
+                      color: 'var(--steel-soft)', cursor: 'pointer' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="22" />
+                      <line x1="8" y1="22" x2="16" y2="22" />
+                    </svg>
+                    {listening ? 'Listening… tap to stop' : 'or speak it instead'}
+                  </button>
                   {smartText.trim() === '' && !intakeOpen && (
                     <>
                       {/* Intake link (Figma 626:61): quiet steel, honest glyph — it navigates. */}

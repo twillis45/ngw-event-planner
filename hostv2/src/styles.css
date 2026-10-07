@@ -1440,7 +1440,6 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .create-prompt{font-size:clamp(38px,12.5cqw,50px); line-height:1.02; letter-spacing:-.035em; margin:14px 0 10px}
 .create-inputrow{display:flex; gap:var(--sp-2); margin-top:18px; align-items:stretch}
 .create-inputrow .field{flex:1; max-width:none; font-size:var(--t-input-lg); padding:15px 18px; border-radius:var(--r-lg)}
-.create-inputrow .cta.soft{padding:0 var(--sp-5); border-radius:var(--r-lg); font-size:14.5px/*half-step, deliberate*/}
 
 .q{margin:30px 0 0}
 .q-label{font-size:var(--t-sub); font-weight:750; margin-bottom:11px; letter-spacing:-.01em}
