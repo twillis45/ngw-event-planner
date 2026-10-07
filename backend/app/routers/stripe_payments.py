@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from ..config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from ..auth import require_planner
+from .. import passes
 from ..app_origins import is_app_redirect
 
 log = logging.getLogger("ngw.stripe")
@@ -189,6 +190,35 @@ async def verify_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/pass")
+async def my_pass(
+    event_id: Optional[str] = None,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Does the CALLER hold a paid pass? Optionally for one event.
+
+    SCOPED TO THE CALLER BY CONSTRUCTION. The user id comes from the verified
+    token, never from a query parameter -- a `?user_id=` would let anyone ask
+    about anyone, and "who else has paid" is not a question this app answers.
+
+    Answers for a signed-out caller with 401 rather than `held: false`: those
+    are different facts, and a gate that cannot tell them apart will lock out
+    a paying host whose session simply expired.
+    """
+    who = await require_planner(authorization, x_planner_token)
+    uid = str(who.get("id") or "")
+    try:
+        held = await passes.holds_pass(uid, event_id)
+    except Exception as exc:   # noqa: BLE001
+        # NEVER invent a pass, and never silently deny one either. 503 says
+        # "ask again"; a confident false would lock a paying host out of
+        # something they bought.
+        log.error("passes: read failed for user=%s: %s", uid, exc)
+        raise HTTPException(status_code=503, detail="Could not check your pass just now.")
+    return {"held": held, "event_id": event_id}
+
+
 @router.post("/webhook")
 async def stripe_webhook(
     request: Request,
@@ -253,10 +283,51 @@ async def stripe_webhook(
     log.info("stripe: webhook %s", event_type)
 
     if event_type == "checkout.session.completed":
-        fee_id  = (session_data.get("metadata") or {}).get("fee_id")
+        meta    = session_data.get("metadata") or {}
+        fee_id  = meta.get("fee_id")
         sess_id = session_data.get("id")
         amount  = session_data.get("amount_total")
         log.info("stripe: payment completed fee_id=%s session=%s amount=%s", fee_id, sess_id, amount)
+
+        # ── GRANT THE PASS (2026-10-06) ───────────────────────────────────
+        # Until today this handler ONLY LOGGED, which the 2026-08-07 board
+        # ruling named as the reason an anonymous purchase "produces a charge
+        # and nothing the host can ever recover". Stripe was configured all
+        # along; nothing recorded a sale.
+        #
+        # GATED ON kind == 'pass', because the checkout that exists today is
+        # NOT a pass purchase -- it bills a host's CLIENT for a fee milestone
+        # (metadata carries fee_id and client_name). Granting on every
+        # completed session would hand a One-Event Pass to a planner every
+        # time a client paid an invoice.
+        #
+        # A session with no user_id is NOT granted and says so. The pass is
+        # keyed to a signed-in user; one with no owner cannot be read back by
+        # anybody, so writing it would only look like success.
+        if meta.get("kind") == "pass":
+            uid = str(meta.get("user_id") or "").strip()
+            if not uid:
+                log.error("stripe: pass session %s carries no user_id — NOT granted", sess_id)
+            else:
+                try:
+                    created = await passes.grant(
+                        session_id=sess_id, user_id=uid,
+                        event_id=meta.get("event_id") or None,
+                        amount_cents=amount,
+                        currency=(session_data.get("currency") or "usd"),
+                        product_label=meta.get("label") or None,
+                    )
+                    # created=False is a Stripe RETRY, which is success. Either
+                    # way this returns 2xx below, or Stripe retries forever.
+                    log.info("stripe: pass granted session=%s user=%s new=%s",
+                             sess_id, uid, created)
+                except Exception as exc:   # noqa: BLE001
+                    # Logged loudly and NOT swallowed into a 2xx: a failed
+                    # grant means a charge with no entitlement, and Stripe
+                    # retrying is exactly what we want to happen next.
+                    log.error("stripe: pass grant FAILED session=%s user=%s: %s",
+                              sess_id, uid, exc)
+                    raise HTTPException(status_code=500, detail="grant failed")
         # Future: update Supabase client record here when feeSchedule moves server-side.
 
     return {"ok": True}

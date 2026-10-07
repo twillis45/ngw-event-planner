@@ -130,7 +130,21 @@ const CALLED_FROM_OUTSIDE = {
 // for: not catching a new dead route, but refusing to keep calling a live one
 // dead. An empty object here is a claim ("nothing is built and unwired"), and
 // the two tests below are what keep it a true one.
-const BUILT_NOT_WIRED = {};
+//
+// AND IT IS NOT EMPTY AGAIN, WHICH IS ALSO THE POINT. `GET /api/stripe/pass`
+// landed 2026-10-06 with the passes table and the webhook grant, and nothing
+// reads it yet: `passGate` still decides from local state and has not been
+// pointed at the server's answer. That is a real open decision, not an
+// oversight — the migration has not been applied to any database either, so a
+// shell that consulted this route today would ask a table that does not exist.
+// It leaves this list the day passGate calls it, and the staleness test below
+// is what will make it leave.
+const BUILT_NOT_WIRED = {
+  '/api/stripe/pass': 'Built 2026-10-06 with migration 0009 and the webhook grant; '
+    + 'nothing calls it yet because passGate still reads local state and the '
+    + 'migration is not applied to any database. Open decision: wire passGate to '
+    + 'this route as part of the billing flip, or drop both.',
+};
 
 describe('every backend route has someone who calls it', () => {
   test('(premise) the backend is actually being read', () => {
