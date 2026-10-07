@@ -52,7 +52,28 @@ const openBudget = async (page, over = {}) => {
   }, [SANTA_FE, over]);
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, 'Set your budget');
+  // TWO ROUTES, because the hero changes once a budget exists. With none set
+  // the plan leads with "Set your budget"; with one set it leads with the
+  // venue ask and the budget lives behind the WHERE YOU STAND tile. The first
+  // version of this helper knew only the first route, so the settled-branch
+  // test landed on the home screen and failed on its own premise — which is
+  // the premise assertion earning its keep again.
+  // TWO TAPS WHEN A BUDGET EXISTS, and it took three wrong guesses before I
+  // stopped guessing and measured. The hero only offers "Set your budget"
+  // while none is set. With one set: the plan-parts chip "Budget" opens the
+  // money sheet, and the editor sits one more tap behind a "Your budget - $N"
+  // row. The WHERE YOU STAND tile LOOKS like a route and is not — it opens
+  // nothing in this state — and a plain /budget/i hits the chip first anyway.
+  const opened = await tapText(page, 'Set your budget');
+  if (!opened) {
+    await page.evaluate(() => {
+      const chip = [...document.querySelectorAll('button,[role=button],a')]
+        .find((e) => (e.innerText || '').trim() === 'Budget');
+      if (chip) chip.click();
+    });
+    await page.waitForTimeout(1200);
+    await tapText(page, 'Your budget');
+  }
   await page.waitForTimeout(1200);
   await settled(page);
   return bodyText(page);
@@ -73,7 +94,7 @@ test('THE ROOMS REACH THE HOST — her own cheapest listing, in dollars', async 
   expect(t).toMatch(/Private backyard with BBQ near the Plaza/);
   // The relationship, not just the two numbers side by side.
   expect(t).toMatch(/this range covers the party/i);
-  expect(t).toMatch(/not the stay, the flights, or travel insurance/i);
+  expect(t).toMatch(/lodging beyond a group block, the flights and travel insurance all sit outside it/i);
   // $2,180 < $6,000, so the boolean is false and the stronger clause must be
   // absent. A sentence that always says "more than the top" would be wrong here.
   expect(t).not.toMatch(/more than the \$6,000 top/);
@@ -106,4 +127,30 @@ test('NEGATIVE CONTROL: no shortlist, no sentence — and never a zero', async (
   expect(t).toMatch(/the middle of the range is/);        // premise: still the budget screen
   expect(t).not.toMatch(/The rooms are on top of this/);
   expect(t).not.toMatch(/\$0 for the stay/);
+});
+
+// ─── AND IT SURVIVES THE COMMIT MOMENT ──────────────────────────────────────
+// A review bench opened this the same night the note shipped: it rendered in
+// the PROPOSED branch ONLY. `isSet` returns above it and the Change drawer
+// returns below it, so a host who sets a budget BEFORE shortlisting lodging —
+// the ordinary sequence, and the one the plan's own ordering produces — never
+// saw it. The defect the note was written to close, in a smaller box.
+test('THE BUDGET IS ALREADY SET: the rooms still reach the host', async ({ page }) => {
+  const t = await openBudget(page, { totalBudget: 4000 });
+  // PREMISE: we really are on the settled branch, not the proposal.
+  expect(t).toMatch(/Your budget/i);
+  expect(t).toMatch(/The rooms are on top of this/);
+  expect(t).toMatch(/\$2,180 for the stay/);
+});
+
+test('AND IN THE CHANGE DRAWER, where a host raises the number', async ({ page }) => {
+  const t = await openBudget(page, { totalBudget: 4000 });
+  await tapText(page, 'Change the number');
+  await page.waitForTimeout(900);
+  const after = await bodyText(page);
+  expect(after).toMatch(/Change your budget/i);
+  expect(after).toMatch(/The rooms are on top of this/);
+  // The drawer also used to say the band runs wider "because guests are
+  // traveling in", which reads as the travel being inside the number.
+  expect(after).not.toMatch(/run wider because guests are traveling in/i);
 });

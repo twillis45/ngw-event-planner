@@ -14,7 +14,18 @@
          simply never given it. `git log -S viewport-fit` on this file returns
          nothing: not removed, never present.
          Tied to the CSS by safeAreaViewportFit.test.js so the two cannot drift. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- interactive-widget=resizes-content is the ONLY reason the creation
+         screen's sticky submit works on a phone (bench, on a real iPhone 17
+         Pro, 2026-10-07). `position:sticky; bottom:...` resolves against the
+         LAYOUT viewport, and by default a soft keyboard shrinks only the
+         VISUAL one — so the bar never engaged, and the measured result on
+         device was identical to having no fix at all: the submit sat behind
+         the keyboard for the dual and heavy drafts.
+         The builder had hedged this as "the remedy is the same either way".
+         It was not; the hedge was wrong and a device settled it. This keyword
+         makes the keyboard resize the layout viewport, which is what every
+         `sticky`/`dvh` assumption in this shell already depends on. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>No Guesswork Events</title>
     <!-- ── PWA: ICONS ONLY (B4, board 2026-07-28) ────────────────────────────
          The board verified: manifest.json declared only favicon.ico (Chromium

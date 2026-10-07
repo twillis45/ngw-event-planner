@@ -39,7 +39,9 @@ describe('the rooms reach the host', () => {
     // It must say what the range covers, or the two numbers sit next to each
     // other with no stated relationship — which is the defect, not the fix.
     expect(note).toMatch(/this range covers the party/i);
-    expect(note).toMatch(/not the stay, the flights, or travel insurance/i);
+    // Mirrors the shipped exclusion constant rather than rounding it off: the
+    // line is "Lodging beyond the group block", which concedes a block IS covered.
+    expect(note).toMatch(/lodging beyond a group block, the flights and travel insurance all sit outside it/i);
     // and it must NOT claim the rooms outrun the range, because they do not.
     expect(note).not.toMatch(/more than the/i);
   });

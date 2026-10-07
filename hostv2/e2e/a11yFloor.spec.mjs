@@ -390,6 +390,35 @@ test.describe('the focus indicator holds its own floor', () => {
     });
     expect(m.bg, `focus colour ${m.ring} on --bg`).toBeGreaterThanOrEqual(3);
     expect(m.card, `focus colour ${m.ring} on --card`).toBeGreaterThanOrEqual(3);
+
+    // AND THE LANDING-RING FAMILY, which paints with box-shadow and border
+    // rather than outline and so sat outside every check here. All three were
+    // still on the failing token while this file was green.
+    const fam = await page.evaluate(() => {
+      const rt = getComputedStyle(document.documentElement);
+      const hex = (h) => { h = h.trim().replace('#', ''); if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+        return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+      const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+      const cr = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+      const first = (s) => { const m = /rgba?\(([^)]+)\)/.exec(s || ''); return m ? m[1].split(',').slice(0, 3).map(Number) : null; };
+      const probe = (cls, prop) => {
+        const d = document.createElement('div');
+        d.className = cls; document.body.appendChild(d);
+        const v = first(getComputedStyle(d)[prop]); d.remove();
+        return v;
+      };
+      const out = {};
+      for (const [name, cls, prop] of [['rowfocus', 'rowfocus', 'boxShadow'], ['vrow', 'vrow focus', 'borderTopColor']]) {
+        const rgb = probe(cls, prop);
+        if (rgb) out[name] = { card: cr(rgb, hex(rt.getPropertyValue('--card'))), bg: cr(rgb, hex(rt.getPropertyValue('--bg'))) };
+      }
+      return out;
+    });
+    for (const [name, r] of Object.entries(fam)) {
+      expect(r.card, `${name} ring on --card`).toBeGreaterThanOrEqual(3);
+      expect(r.bg, `${name} ring on --bg`).toBeGreaterThanOrEqual(3);
+    }
   });
 
   test('EVERY ring reached by tabbing clears 3:1 against what is behind it', async ({ page }) => {
@@ -411,8 +440,18 @@ test.describe('the focus indicator holds its own floor', () => {
         const el = document.activeElement;
         if (!el || el === document.body) return null;
         const c = getComputedStyle(el);
-        if (c.outlineStyle === 'none' || parseFloat(c.outlineWidth) === 0) return null;
-        const ring = parse(c.outlineColor);
+        // AN OUTLINE IS NOT THE ONLY KIND OF FOCUS RING, and skipping the
+        // others is how this gate stayed 12/12 green while a 2.72:1 indicator
+        // shipped. A bench proved it: `.rowfocus` (the row-landing ring, ~20
+        // call sites) paints with `box-shadow` and `.vrow.focus` with
+        // `border`, so `return null` on `outlineStyle === 'none'` excused
+        // exactly the indicators that were still on the failing token.
+        // That is the same hole I had just diagnosed in my own first attempt,
+        // repeated one indicator over.
+        let ring = null;
+        if (c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) > 0) ring = parse(c.outlineColor);
+        if (!ring) ring = parse((c.boxShadow || '').replace(/^none$/, ''));
+        if (!ring && parseFloat(c.borderTopWidth) > 0) ring = parse(c.borderTopColor);
         if (!ring) return null;
         // WHICH SURFACE THE RING SITS ON DEPENDS ON ITS OFFSET, and getting
         // this wrong made the gate unable to fail. Red-proofing caught it: with

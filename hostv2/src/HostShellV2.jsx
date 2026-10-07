@@ -7696,6 +7696,19 @@ export default function HostShellV2() {
     const customN = parseInt(customBudget, 10) || 0;
     const linkBtn = { background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' };
 
+    // ── THE ROOMS NOTE BELONGS TO ALL THREE BRANCHES ───────────────────────
+    // It shipped inside PROPOSED only, which a review bench opened the same
+    // night: `isSet` returns above, the Change drawer returns below, and a
+    // host who sets a budget BEFORE shortlisting lodging — the ordinary
+    // sequence, and the one the plan's own ordering produces — never saw it.
+    // That is the defect this note was written to close, in a smaller box:
+    // "computed and shown to nobody" became "shown on one branch of three".
+    // Hoisted here, above every return, so a branch cannot silently omit it.
+    const roomsNote = (() => {
+      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis); } catch (_e) { return null; } })();
+      return t ? <Grounding>{t}</Grounding> : null;
+    })();
+
     // PROPOSE-DON'T-ASK (matches the day-of times): a budget is ONE grounded number
     // (Typical = the estimator's mid), not a 3-way menu. Lead with it + Use/Change;
     // the old tiers+custom become the Change drawer. The copy already conceded the
@@ -7709,6 +7722,7 @@ export default function HostShellV2() {
           <Eyebrow tone="ok">Your budget</Eyebrow>
           <BigValue>{fmt(Number(event.totalBudget))}</BigValue>
           <Grounding>The plan sizes food, vendors and shopping from here — change it anytime.</Grounding>
+          {roomsNote}
           <CtaRow><button className="mini" onClick={() => setBudgetChanging(true)}>Change the number</button></CtaRow>
         </AskColumn>
       );
@@ -7795,10 +7809,7 @@ export default function HostShellV2() {
               one sentence. See lib/budgetCopy.js#stayOnTopOfTheRangeNote for
               why this does not cry "contradiction" and why it mints no new
               band. */}
-          {(() => {
-            const stay = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis); } catch (_e) { return null; } })();
-            return stay ? <Grounding>{stay}</Grounding> : null;
-          })()}
+          {roomsNote}
           {/* THE HOST'S OWN ROWS, SAID OUT LOUD (2026-09-18). A host who filled in
               budget categories but never named an overall figure used to reach an
               ask written as though nothing were known — on a sheet whose money bar
@@ -7883,10 +7894,10 @@ export default function HostShellV2() {
               actually reason about. */}
           {(low || high) ? (
             <Grounding gap={16}>
-              or {low ? <button className="tier-link" style={linkBtn} onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
+              or {low ? <button className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
               {low && guests > 0 ? ` (${fmt(Math.round(low / guests))} a head)` : ''}
               {low && high ? ' · ' : ''}
-              {high ? <button className="tier-link" style={linkBtn} onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
+              {high ? <button className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
               {high && guests > 0 ? ` (${fmt(Math.round(high / guests))} a head)` : ''}
             </Grounding>
           ) : null}
@@ -7928,8 +7939,19 @@ export default function HostShellV2() {
         </CtaRow>
         <Grounding gap={ASK_COMPACT.ctaToFoot}>
           {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)}.${est.nightsAdjusted ? ` That covers your ${spanNights(event) + 1} days — food and drinks for the extra days are in the range.` : spanNights(event) > 0 && !est.destinationAdjusted ? ` That prices the main day — your ${spanNights(event) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those.` : ''}` : ''}
-          {est && est.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : ''}
+          {/* "run wider BECAUSE guests are traveling in" invites exactly the
+              reading the proposal branch has a comment about having fixed — a
+              host takes it to mean the travel is in the number. It is not: the
+              band widens for a destination event and the travel sits outside
+              it, which is what this now says. Found by a review bench, which
+              noted the fix had landed one branch up and left this one standing
+              verbatim. */}
+          {est && est.destinationAdjusted ? ' These ranges run wider for a destination event — the flights and the stay still sit outside them.' : ''}
         </Grounding>
+        {/* The drawer is where a host RAISES a number, which is the most
+            exposed money moment in the product, and it was the one branch of
+            three with no rooms disclosure at all. */}
+        {roomsNote}
       </AskColumn>
     );
   };
@@ -8872,8 +8894,22 @@ export default function HostShellV2() {
                       the example sentence above. Dictation is a way to FILL an
                       empty field, so it belongs to the same set, and the screen
                       is left with one loud thing once a draft exists: the
-                      control that submits it. */}
-                  {smartText.trim() === '' && (
+                      control that submits it.
+                      ── `|| listening` IS NOT OPTIONAL (bench, 2026-10-07) ──
+                      The bare empty-text guard shipped for four hours and it
+                      left a LIVE MICROPHONE the host could not switch off.
+                      Dictation's first interim word sets `smartText`, which
+                      unmounted this button — and this button is the only
+                      user-reachable `stopVoice()` in the file, the only thing
+                      that renders "Listening…", and the only `aria-pressed`.
+                      The 20s idle backstop resets on every result, so it never
+                      fires while someone is speaking.
+                      Visibility of system state and user control, both lost,
+                      on a microphone. The door therefore retires on TEXT, not
+                      on dictation: while `listening` it stays, because the
+                      host needs the way out more than the screen needs to be
+                      quiet. */}
+                  {(smartText.trim() === '' || listening) && (
                   <button className="voice-door" onClick={() => listening ? stopVoice() : startVoice()} aria-pressed={listening}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
@@ -9393,10 +9429,15 @@ export default function HostShellV2() {
                               `sticky` is content-length independent and is the
                               idiom this app already owns (`.ftotal`, the pinned
                               grocery total). It is NOT `fixed`: a button whose
-                              flow position is already on screen stays exactly
-                              where it sat — the short draft still renders it at
-                              470, untouched — and it pins only once the flow
-                              would carry it past the fold. */}
+                              flow position would fall below the scrollport is
+                              pinned; anything above it is left alone.
+                              A CLAIM HERE WAS WRONG (bench, 2026-10-07): this
+                              said the short draft "still renders at 470,
+                              untouched". It does not — measured 459 pinned
+                              against 478 in flow, because that draft's
+                              scroller overflows too. Sticky still beats fixed,
+                              but the difference shows when there is NOTHING to
+                              scroll, which is what the gate now measures. */}
                           <button className="cta big" onClick={assemble}
                             disabled={!!effDate && dstatC.blocking}
                             style={effDate && dstatC.blocking ? { opacity: .45, cursor: 'not-allowed' } : undefined}>

@@ -212,5 +212,11 @@ export function stayOnTopOfTheRangeNote(est, stay) {
     ? ` On its own that is more than the ${fmt(high)} top of this range.`
     : '';
 
-  return `The rooms are on top of this. ${whose} showed ${fmt(floor)} for the stay, and this range covers the party — not the stay, the flights, or travel insurance.${outruns}`;
+  // "not the stay" OVERSHOT ITS OWN SOURCE, and a review bench caught it. The
+  // shipped exclusion line is "Lodging beyond the group block" — qualified,
+  // and it concedes that a group block IS covered. A whole-house shortlist is
+  // not a group block, so the conclusion held for this case while the sentence
+  // asserted something broader than the constant it leans on. It now mirrors
+  // the constant's own wording instead of rounding it off.
+  return `The rooms are on top of this. ${whose} showed ${fmt(floor)} for the stay, and this range covers the party — lodging beyond a group block, the flights and travel insurance all sit outside it.${outruns}`;
 }

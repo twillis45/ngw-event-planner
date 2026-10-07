@@ -99,22 +99,38 @@ for (const [name, seed] of Object.entries(SEEDS)) {
   });
 }
 
-// NOT PINNED WHEN IT DOES NOT NEED TO BE. `sticky` is chosen over `fixed`
-// precisely so a submit already on screen does not move, and that is a claim
-// worth a check of its own: the short draft must still paint the button where
-// it sat in flow, not dragged down to the fold edge.
-test('a draft that already fits leaves the submit where it sat', async ({ page }) => {
+// STICKY, NOT FIXED — AND THE FIRST VERSION OF THIS TEST COULD NOT TELL.
+// It asserted the short draft's submit sat above `viewport - 20`. A bench
+// measured both states: pinned 459, in flow 478, and the threshold was 488 —
+// so it passed either way and survived `position:static`. It was the fourth
+// gate of mine this week that could not fail for its own reason.
+//
+// The claim it was guarding was ALSO false. I wrote that a submit already on
+// screen "does not move"; sticky pins whenever the flow position would fall
+// below the scrollport, and at 390x508 the short draft's scroller overflows
+// (801 > 508), so it pins too. What actually separates sticky from fixed is
+// what happens when there is NOTHING to scroll: sticky leaves the element in
+// flow, fixed welds it to the viewport. So that is what this measures now.
+test('with nothing to scroll, the submit stays in flow — sticky, not fixed', async ({ page }) => {
   await fresh(page);
+  await page.setViewportSize({ width: 390, height: 1200 });   // taller than the content
   await page.fill('#smart-text-input', SEEDS.short);
   await page.waitForTimeout(1100);
+
   const m = await page.evaluate(() => {
     const cta = document.querySelector('button.cta.big');
+    const sc = cta.closest('.app');
     const r = cta.getBoundingClientRect();
-    return { bottom: Math.round(r.bottom), h: window.innerHeight };
+    return { bottom: Math.round(r.bottom), h: window.innerHeight,
+             overflows: sc.scrollHeight > sc.clientHeight };
   });
-  // It measured 470 in a 508 viewport before any pinning existed. If sticky
-  // ever starts dragging it to the bottom edge, this catches it.
-  expect(m.bottom).toBeLessThan(m.h - 20);
+  // PREMISE: this viewport really does fit the content, or the distinction
+  // being drawn does not exist on this screen.
+  expect(m.overflows, 'content fits — nothing to stick against').toBe(false);
+  // Fixed would weld it near the bottom; sticky leaves it where the flow put
+  // it, which on a 1200px viewport is far above the fold.
+  expect(m.bottom, `submit bottom ${m.bottom} should sit in flow, not at the fold`)
+    .toBeLessThan(m.h - 200);
 });
 
 // THE VOICE DOOR RETIRES, which is the other half of the fix and the half that
@@ -133,4 +149,56 @@ test('the voice door is offered on an empty field and retires once there is text
   await page.waitForTimeout(700);
   await expect(page.locator('button.voice-door')).toHaveCount(0);
   await expect(page.locator('button.cta.big')).toHaveCount(1);
+});
+
+// ─── A LIVE MICROPHONE MUST KEEP ITS OFF SWITCH ─────────────────────────────
+// A review bench found this four hours after the retire-on-text guard shipped,
+// and it is the worst thing either of us introduced tonight. Dictation's FIRST
+// interim word sets `smartText`, which unmounted the voice door — and that
+// button is the only user-reachable `stopVoice()` in the shell, the only thing
+// that renders "Listening…", and the only `aria-pressed`. The 20s idle backstop
+// resets on every result, so it never fires while someone is talking.
+// The guard is `|| listening` now. This holds it there.
+//
+// BOTH globals are faked on purpose: Chromium defines `window.SpeechRecognition`
+// and the shell reads `SpeechRecognition || webkitSpeechRecognition`, so faking
+// only the webkit one leaves the real engine in charge and the test green for
+// the wrong reason.
+test('the voice door stays while the mic is live, so it can be switched off', async ({ page }) => {
+  await page.addInitScript(() => {
+    class FakeRec {
+      constructor() { this.lang = ''; this.continuous = false; this.interimResults = false; window.__rec = this; }
+      start() { this.started = true; }
+      stop() { this.stopped = true; if (this.onend) this.onend(); }
+      abort() { this.stopped = true; }
+      // one interim word — the first thing any real dictation produces
+      say(text) {
+        const res = [Object.assign([{ transcript: text }], { isFinal: false, length: 1 })];
+        if (this.onresult) this.onresult({ resultIndex: 0, results: Object.assign(res, { length: res.length }) });
+      }
+    }
+    window.SpeechRecognition = FakeRec;
+    window.webkitSpeechRecognition = FakeRec;
+  });
+  await fresh(page);
+
+  // PREMISE: the door is offered, and tapping it really starts the recognizer.
+  const door = page.locator('button.voice-door');
+  await expect(door).toHaveCount(1);
+  await door.click();
+  expect(await page.evaluate(() => !!(window.__rec && window.__rec.started)), 'dictation started').toBe(true);
+
+  // THE MOMENT THAT BROKE IT: one interim word lands in the field.
+  await page.evaluate(() => window.__rec.say("mom's 80th birthday"));
+  await page.waitForTimeout(400);
+  expect(await page.inputValue('#smart-text-input')).not.toBe('');
+
+  // …and the way out must still be on screen.
+  await expect(door, 'the stop control survives the first spoken word').toHaveCount(1);
+  await expect(door).toHaveAttribute('aria-pressed', 'true');
+  await expect(door).toContainText(/listening/i);
+
+  // And it genuinely stops.
+  await door.click();
+  expect(await page.evaluate(() => !!window.__rec.stopped), 'tapping it stops the recognizer').toBe(true);
 });
