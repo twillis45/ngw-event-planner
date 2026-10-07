@@ -7959,6 +7959,18 @@ export default function HostShellV2() {
       // a fact that was on screen at creation and thrown away one line later.
       // Written only when heard; no pairing stays absent rather than a zero.
       ...(parsed.guestPairs ? { guestPairs: parsed.guestPairs } : {}),
+      // ── AND THE THING THE HOST SAID ABOUT SOMEONE'S HEALTH ───────────────
+      // Same class as guestPairs above, and the most expensive instance of it.
+      // "the altitude is hard on her" was heard by the parse, printed back
+      // under DIDN'T MAKE IT INTO THE PLAN, and dropped — while `dest_health`,
+      // the question authored for exactly that and carrying a pacing task,
+      // sat three taps away at its default. The fact existed on screen at
+      // creation and was thrown away one line later, which is the shape this
+      // file keeps finding.
+      // Written only when heard. It carries the host's WORDS because the
+      // recommendation quotes them back rather than asserting a health fact in
+      // the app's own voice — and it PROPOSES, so the question stays theirs.
+      ...(parsed.healthNoted ? { healthNoted: parsed.healthNoted } : {}),
       totalBudget: effBudget || '',
       // ── WHAT WE MAY WRITE DOWN ABOUT TRAVEL ─────────────────────────────
       // Four spreads lived here and encoded a rule jest could never run — which

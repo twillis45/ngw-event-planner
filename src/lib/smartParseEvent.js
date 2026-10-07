@@ -1508,8 +1508,56 @@ export function parseSmartEventText(text, opts = {}) {
   // exactly wrong for a destination rental; 'venue' is the consumed vocabulary.
   const lodging = /\b(airbnb|vrbo|lake\s*house|beach\s*house|cabin|rental\s+(?:house|home|condo)|rent(?:ed|ing)?\s+(?:an?\s+)?(?:airbnb|vrbo|house|cabin|condo))\b/i.test(t);
 
+  // ── THE HOST ANSWERED A QUESTION THE APP WAS GOING TO ASK ──────────────────
+  //
+  // "…and the altitude is hard on her" went into DIDN'T MAKE IT INTO THE PLAN,
+  // under the line "the plan won't know about them", while `dest_health` —
+  // "Any guests with heart or lung conditions?" — sat three taps away, authored
+  // for exactly this, CDC-grounded, with a pacing task gated behind a Yes.
+  // Not a missing capability: a wired engine with its intake disconnected.
+  //
+  // WHAT THIS WILL NOT READ, and each line is a rule somebody can check:
+  //
+  //   AGE. `dest_health`'s own authoring comment records that the
+  //   meta-analysis behind it found NO age link to altitude illness — heart
+  //   and lung health is what predicts who struggles. "80th" is not evidence
+  //   and must never reach this field.
+  //
+  //   A MOBILITY AID. A walker is not a cardiopulmonary condition. "She uses a
+  //   walker" stays in the disclosure block, honestly declared, because no
+  //   slot exists for it and inventing one would be the worse error.
+  //
+  //   ALTITUDE AS SCENERY. "the altitude is beautiful", "we love the thin
+  //   mountain air" — the clause has to say someone finds it HARD, not that a
+  //   mountain exists. The difficulty word is what is being matched, not the
+  //   noun.
+  //
+  // It carries the host's own words rather than a boolean, because the
+  // recommendation this feeds has to quote them back as its reason. A
+  // proposal that cannot say why it was made is the thing this repo spends
+  // most of its gates refusing.
+  const healthNoted = (() => {
+    const HARD = '(?:hard|rough|tough|difficult|a\\s+struggle|bothers?|gets\\s+to|does\\s+not\\s+agree\\s+with|doesn.t\\s+agree\\s+with|affects?)';
+    const SUBJ = '(?:the\\s+)?(?:altitude|elevation|thin\\s+air|high\\s+altitude)';
+    const pats = [
+      // "the altitude is hard on her" / "elevation bothers him"
+      new RegExp(`${SUBJ}\\s+(?:is\\s+|are\\s+|really\\s+)?${HARD}\\b[^.,;]*`, 'i'),
+      // "she struggles with the altitude" / "he has trouble with elevation"
+      new RegExp(`\\b\\w+\\s+(?:struggles?|has\\s+trouble|has\\s+a\\s+hard\\s+time)\\s+(?:with\\s+)?${SUBJ}[^.,;]*`, 'i'),
+      // An explicitly named cardiopulmonary condition — the thing the question
+      // is actually about, however it is phrased.
+      new RegExp('[^.,;]*\\b(?:heart\\s+(?:condition|problem|trouble)|lung\\s+(?:condition|problem)|copd|emphysema|asthma|on\\s+oxygen|breathing\\s+(?:problem|trouble|issues?))\\b[^.,;]*', 'i'),
+    ];
+    for (const re of pats) {
+      const m = t.match(re);
+      if (m && m[0]) return { yes: true, quote: m[0].trim().replace(/^(?:and|but)\s+/i, '') };
+    }
+    return null;
+  })();
+
   return {
     type, typeBasis, secondaryType, theme, guests, guestPairs, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    healthNoted,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
     venueAddress: venueAddress || null,

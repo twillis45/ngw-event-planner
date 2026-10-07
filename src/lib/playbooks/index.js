@@ -252,6 +252,12 @@ export function decisionFactsFor(event, playbook, asOf, profile) {
     // buildFacts and refuses every rule that reads it.
     hostCapacity: ev.hostCapacity || (profile && profile.hostCapacity) || null,
     helperCount: namedHelperCount(ev),
+    // The host's own words about someone's health, carried from the creation
+    // sentence. `dest_health` reads this to PROPOSE rather than to answer —
+    // see its recommendedWhen rule, and smartParseEvent#healthNoted for the
+    // three things the parse refuses to read as health.
+    hostNotedHealth: !!(ev.healthNoted && ev.healthNoted.yes),
+    hostWords: (ev.healthNoted && ev.healthNoted.quote) || null,
   });
 }
 
@@ -1161,7 +1167,20 @@ const DESTINATION_DECISIONS = [
   // came from (a meta-analysis on altitude sickness) found no age link at all;
   // heart and lung health is what actually predicts who struggles. The yes-path
   // pacing task (dest_t_health below) fires off this answer via whenChoice.
-  { id: 'dest_health', label: 'Any guests with heart or lung conditions?', options: ['Yes', 'No', 'Not sure'], default: 'Not sure', when: 'T-90d', why: 'It’s heart and lung health that struggles with altitude and long, active days — not age by itself. Knowing early lets you pace the schedule instead of scrambling once you’re there.' },
+  // PROPOSED, NEVER ANSWERED (2026-10-06). When the creation sentence already
+  // named the difficulty — "the altitude is hard on her" — the host has
+  // answered this before it was asked, and the app used to file that under
+  // "didn't make it into the plan" and then ask anyway.
+  // The rule proposes Yes and quotes them back; it does not store an answer.
+  // Recording a health fact about a named person on their behalf is not the
+  // app's to do, and `default: 'Not sure'` still stands the moment they change
+  // it. The guard on the other side is in the parse, not here: age and a
+  // mobility aid never set the fact this reads.
+  { id: 'dest_health', label: 'Any guests with heart or lung conditions?', options: ['Yes', 'No', 'Not sure'], default: 'Not sure', when: 'T-90d', why: 'It’s heart and lung health that struggles with altitude and long, active days — not age by itself. Knowing early lets you pace the schedule instead of scrambling once you’re there.',
+    recommendedWhen: [
+      { when: { hostNotedHealth: { eq: true } }, pick: 'Yes',
+        because: 'You said “{hostWords}”, which is what this question is for — so the plan paces the days instead of asking you again.' },
+    ] },
 ];
 
 // F10 (audit 2026-07-27): a travel-native playbook's OWN lodging decision

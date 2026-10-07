@@ -77,7 +77,7 @@ const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; 
  */
 export function buildFacts({
   guests, guestsKnown, budget, daysOut, venueKind, venueKnown, isDestination, overnight,
-  hostCapacity, helperCount,
+  hostCapacity, helperCount, hostNotedHealth, hostWords,
 } = {}) {
   const g = num(guests);
   const b = num(budget);
@@ -116,6 +116,24 @@ export function buildFacts({
     // the correct outcome — the authored literal stays and says whatever it
     // always said. Only the claim that the host HAS help is derivable here.
     helperCount: { value: h, known: h != null && h > 0 },
+    // ── WHAT THE HOST SAID ABOUT SOMEONE'S HEALTH, IN THEIR OWN WORDS ──────
+    // Set only when the creation text named a difficulty — altitude being hard
+    // on someone, or a cardiopulmonary condition said outright. Never inferred
+    // from age and never from a mobility aid; see smartParseEvent's own note
+    // for why each of those is refused.
+    //
+    // KNOWN ONLY WHEN TRUE, the same asymmetry as helperCount above and for
+    // the same reason: a host who did not mention anyone's health has not told
+    // us everyone is well, they have told us nothing. So a rule asking for
+    // `{ hostNotedHealth: { eq: false } }` can never fire, by construction —
+    // the authored default keeps the question open, which is the honest state.
+    hostNotedHealth: { value: hostNotedHealth === true, known: hostNotedHealth === true },
+    // The clause itself, so a recommendation can quote it back rather than
+    // assert a health fact in the app's own voice.
+    hostWords: {
+      value: typeof hostWords === 'string' && hostWords.trim() ? hostWords.trim() : null,
+      known: typeof hostWords === 'string' && !!hostWords.trim(),
+    },
   };
 }
 
@@ -260,9 +278,22 @@ export function resolveCopy(decision, facts) {
  *   'authored-default' no rule applied; the playbook's literal stands
  *   null               nothing to propose at all
  */
+// ── A PROPOSAL THAT QUOTES THE HOST ───────────────────────────────────────
+// Authored `because` copy is static, which is right for every rule that reads
+// a number — "40 guests is past what one oven can do" needs no quotation. It
+// is wrong for a rule that fires on something the host SAID, where the only
+// honest reason is their own sentence. `{hostWords}` is substituted from the
+// fact of the same name; a rule that uses the token without the fact being
+// known keeps its literal rather than printing an empty quotation.
+const withHostWords = (because, facts) => {
+  if (typeof because !== 'string' || !because.includes('{hostWords}')) return because;
+  const f = facts && facts.hostWords;
+  return (f && f.known) ? because.split('{hostWords}').join(f.value) : because;
+};
+
 export function proposedPickFor(decision, facts) {
   const rec = evaluateRecommendation(decision, facts || {});
-  if (rec) return { pick: rec.pick, basis: 'recommended', because: rec.because, read: rec.read };
+  if (rec) return { pick: rec.pick, basis: 'recommended', because: withHostWords(rec.because, facts), read: rec.read };
   const def = decision && decision.default != null && decision.default !== '' ? decision.default : null;
   return def ? { pick: def, basis: 'authored-default', because: null, read: [] } : null;
 }

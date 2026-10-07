@@ -65,7 +65,14 @@ export const PARSER_FIELDS = [
   // the event type, 'generic' when only the "party" catch-all held it up. It
   // exists because deleting ONE character from the type word lands 35 of 45
   // playbook types on Birthday, silently — see oneTypoBoughtABirthday.test.js.
-  'type', 'typeBasis', 'secondaryType', 'theme', 'guests', 'guestPairs', 'budget', 'date', 'endDate', 'monthYear',
+  // `healthNoted` added 2026-10-06, from the Santa Fe 80th: the host wrote
+  // "the altitude is hard on her" and the app filed it under DIDN'T MAKE IT
+  // INTO THE PLAN while `dest_health` — the question authored for exactly
+  // that, with a pacing task behind it — sat three taps away unanswered.
+  // It carries the host's WORDS, not a boolean, because the recommendation it
+  // feeds quotes them back as its reason. Age and mobility aids are refused
+  // at the parse; see smartParseEvent#healthNoted for why each.
+  'type', 'typeBasis', 'secondaryType', 'theme', 'guests', 'guestPairs', 'budget', 'date', 'endDate', 'monthYear', 'healthNoted',
   // `nights` and `lodgingKind` added 2026-09-25, from a host-reported parse:
   // "50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb
   // accomodations". Measured, every duration phrase was discarded unless the
