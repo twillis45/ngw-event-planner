@@ -1468,16 +1468,62 @@ export function parseSmartEventText(text, opts = {}) {
     // "retirement AND 50th birthday" is two, "retirement dinner" is one. Adjacency
     // never was evidence, so the match now requires a joiner between the two.
     const lower = t.toLowerCase();
+    // ── AND A COMMA IS NOT A CONJUNCTION (2026-10-06) ──────────────────
+    // The list above used to read `and | & | + | , | plus | slash | /`. The
+    // comment four lines up states the rule in English — "A conjunction is
+    // what makes it clear" — and a comma is not one, nor is a slash. The two
+    // members that were not conjunctions were exactly the two this rule's
+    // gate never exercised, so the class the 2026-08-17 fix closed reopened
+    // through the one character nobody tested.
+    //
+    // It cost the Santa Fe 80th its name. "...for 3 nights, dinner at an
+    // adobe courtyard" matched `, dinner`, and "Mom's 80th Birthday & Dinner"
+    // was stamped on the header of every screen after the reveal — the first
+    // thing a host reads about their own event, and wrong, which is verbatim
+    // the harm the original fix was written to stop.
+    //
+    // The intake asks for exactly this shape: "Say it like you'd text a
+    // friend" invites run-on prose, where a comma is a clause separator and
+    // nothing else.
+    //
+    // UNDER-REPORTING IS THE SAFE DIRECTION HERE, and it is a choice. A host
+    // who genuinely means two occasions can write "and", which this still
+    // honours. Losing a second occasion drops a signal; inventing one puts a
+    // party the host is not throwing into the NAME of the one they are.
+    //
+    // THE LIST IS THE RULE — the comment cannot be. Any addition here is a
+    // new way to name a second occasion and needs its own case in
+    // dualEventNeedsAJoiner.test.js, which now covers both positions.
     const JOINED = (key) => new RegExp(
-      '(?:\\band\\b|&|\\+|,|\\bplus\\b|\\bslash\\b|/)\\s*(?:a\\s+|an\\s+|the\\s+)?' + key
-      + '|' + key + '\\s*(?:\\band\\b|&|\\+|,|\\bplus\\b|/)', 'i').test(lower);
+      '(?:\\band\\b|&|\\+|\\bplus\\b)\\s*(?:a\\s+|an\\s+|the\\s+)?' + key
+      + '|' + key + '\\s*(?:\\band\\b|&|\\+|\\bplus\\b)', 'i').test(lower);
     const mentioned = HOST_TYPES.filter((ht) => {
       const key = ht.toLowerCase().replace(' party', '');
       return key.length > 3 && lower.includes(key) && JOINED(key);
     });
-    const milestoneType = /\d{1,3}(?:st|nd|rd|th)\s+birthday/i.test(t) ? 'Birthday'
-      : /\d{1,3}(?:st|nd|rd|th)\s+anniversary/i.test(t) ? 'Anniversary'
-        : (/\bbirthday\b/i.test(t) ? 'Birthday' : null);
+    // ── AND THE MILESTONE PATH NEVER ASKED FOR A JOINER AT ALL ─────────
+    // Removing the comma above was not enough, and the tests found it: with
+    // `,` and `/` gone, "birthday, graduation" STILL named a second occasion,
+    // because this line adds its answer to `others` directly and the joiner
+    // rule never ran on it. So the whole requirement could be bypassed by the
+    // bare word "birthday" — a hole wider than the comma, and one the gate
+    // could not see because every case in it says "50th birthday", which
+    // reaches `others` through here rather than through JOINED.
+    // It is the same rule and it applies the same way: a milestone is a
+    // SECOND occasion only when something joins it to the first. "retirement
+    // and 50th birthday" is two and still resolves; "retirement 50th
+    // birthday" and "birthday, graduation" are one apiece.
+    // The joiner is tested against the PHRASE as written, not the bare noun.
+    // First cut asked `JOINED('birthday')`, which requires the joiner adjacent
+    // to the key — so "retirement and 50th birthday", the one dual case this
+    // file exists to protect, went red because "50th " sits in between. The
+    // ordinal is part of the phrase and has to be matched with it.
+    const msOrdinal = t.match(/\b(\d{1,3}(?:st|nd|rd|th)\s+(?:birthday|anniversary))\b/i);
+    const milestoneWord = msOrdinal
+      ? (/birthday/i.test(msOrdinal[1]) ? 'Birthday' : 'Anniversary')
+      : (/\bbirthday\b/i.test(t) ? 'Birthday' : null);
+    const milestonePhrase = msOrdinal ? msOrdinal[1].toLowerCase() : 'birthday';
+    const milestoneType = (milestoneWord && JOINED(milestonePhrase)) ? milestoneWord : null;
     const others = [...new Set([...mentioned, ...(milestoneType ? [milestoneType] : [])])]
       .filter((x) => x && x !== type && HOST_TYPES.includes(x));
     if (others.length) secondaryType = others[0];

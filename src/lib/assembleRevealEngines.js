@@ -385,7 +385,13 @@ function assemblePlanningDomains(event, profile, foodPP) {
     if (fp && fp.list && fp.list.length > 0) {
       domains.push({
         type: 'shopping',
-        data: { fp, itemCount: fp.itemCount, spanNote: foodSpanText(event) }
+        // `shoppingCount`, not `itemCount` — the shopping stage describes the
+        // LIST, and itemCount is food only. This stage told a host "4 items,
+        // ready to check off" about an eight-row list, on the screen that
+        // closes with "nothing made up". The engine answers the question once
+        // now; see playbookFoodPlan#shoppingCount for why itemCount stayed as
+        // it was rather than being widened under its four other consumers.
+        data: { fp, itemCount: fp.shoppingCount, spanNote: foodSpanText(event) }
       });
     }
   } catch {}

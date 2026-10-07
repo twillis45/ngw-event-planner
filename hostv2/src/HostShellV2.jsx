@@ -5877,8 +5877,13 @@ export default function HostShellV2() {
     // suppliesCount/suppliesBought are already non-skipped in the engine, and
     // isFood is `group !== 'Supplies'`, so these two sum to every active line
     // exactly once — the same set the groups below render and total.
-    const total = (foodPlan.itemCount || 0) + (foodPlan.suppliesCount || 0);
-    const bought = (foodPlan.boughtCount || 0) + (foodPlan.suppliesBought || 0);
+    // READ, NOT RE-SUMMED (2026-10-06). This arithmetic was correct and it was
+    // the THIRD copy of it; the fourth site — the reveal's shopping stage, in
+    // another module — got it wrong and said 4 items for a list of 8. The
+    // engine answers it once now, so a fifth surface inherits the right number
+    // instead of being asked to rediscover it.
+    const total = foodPlan.shoppingCount || 0;
+    const bought = foodPlan.shoppingBought || 0;
     return { bought, total, done: total > 0 && bought >= total };
   }, [foodPlan]);
 

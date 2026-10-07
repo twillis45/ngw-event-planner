@@ -124,7 +124,20 @@ export const PARSE_CORPUS = [
   { text: "Wedding at 12 pm for 150", from: 'derived variant — noon, the meridiem edge', expect: { type: 'Wedding', startTime: '12:00 PM', startTimeBasis: 'said-exact', guests: 150 } },
   { text: "After party at 12 am for 30", from: 'derived variant — midnight, the other meridiem edge', expect: { startTime: '12:00 AM', startTimeBasis: 'said-exact', guests: 30 } },
   { text: "Cookout in the afternoon at 1 for 20", from: "derived variant — the host's own bucket disambiguates a bare hour", expect: { type: 'The Cookout', timeOfDay: 'afternoon', startTime: '1:00 PM', startTimeBasis: 'said-with-bucket', guests: 20 } },
-  { text: "Birthday brunch at 10 for 24", from: 'derived variant — morning bucket keeps the bare hour in the AM', expect: { timeOfDay: 'morning', startTime: '10:00 AM', startTimeBasis: 'said-with-bucket', guests: 24, type: 'Get-Together', secondaryType: 'Birthday' }, suspect: 'the PRIMARY occasion is the birthday; "brunch" is the descriptor. It resolves the other way round, so the reveal names the event a Get-Together.' },
+  // CHANGED 2026-10-06, deliberately and in the open. This recorded
+  // `secondaryType: 'Birthday'`, and the entry's own `suspect` note already
+  // said the resolution was wrong. The joiner rule now covers the milestone
+  // path as well as the type path, so "Birthday brunch" — one event, with
+  // "brunch" as the descriptor — no longer names a second occasion. That is
+  // the same shape as "retirement dinner", which this parser has refused
+  // since 2026-08-17; it was escaping through the milestone branch, which
+  // never consulted the joiner at all.
+  // The suspect stands and is now the WHOLE of what is wrong here: the
+  // primary should be Birthday and is Get-Together. Dropping the secondary
+  // does not fix that and does not make it worse — before the change the host
+  // would have been named a "Get-Together & Birthday", which is two events
+  // neither of which they are throwing.
+  { text: "Birthday brunch at 10 for 24", from: 'derived variant — morning bucket keeps the bare hour in the AM', expect: { timeOfDay: 'morning', startTime: '10:00 AM', startTimeBasis: 'said-with-bucket', guests: 24, type: 'Get-Together', secondaryType: null }, suspect: 'the PRIMARY occasion is the birthday; "brunch" is the descriptor. It resolves the other way round, so the reveal names the event a Get-Together. OPEN: the secondary no longer papers over it.' },
   { text: "Sunset cocktail party at 7 for 40", from: 'derived variant — "sunset" is an evening bucket', expect: { timeOfDay: 'evening', startTime: '7:00 PM', startTimeBasis: 'said-with-bucket', guests: 40 } },
   { text: "Cookout at my place at 4 for 20, no kids", from: 'derived variant — no meridiem, no bucket: the weakest basis', expect: { type: 'The Cookout', startTime: '4:00 PM', startTimeBasis: 'said-hour-only', guests: 20, kidsPolicy: 'adults_only', venue: 'Home', venueKind: 'home' } },
   // REVERSED 2026-09-23, deliberately and in the open. This entry recorded

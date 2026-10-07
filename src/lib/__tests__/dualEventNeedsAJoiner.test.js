@@ -69,4 +69,69 @@ describe('a genuine dual event still names both', () => {
     expect(r.type).toBe('Retirement Party');
     expect(r.secondaryType).toBe('Birthday');
   });
+  // ── A COMMA IS NOT A CONJUNCTION (2026-10-06) ────────────────────────────
+  // The 2026-08-17 fix closed "retirement dinner" -> "My Retirement & Dinner"
+  // by requiring a joiner, and its comment states the rule in English: "A
+  // conjunction is what makes it clear". The LIST it shipped was
+  // `and | & | + | , | plus | slash | /` — and a comma is not a conjunction,
+  // nor is a slash. The two members that are not conjunctions are exactly the
+  // two this file never exercised, so the class reopened through the one
+  // character nobody tested.
+  //
+  // It cost the Santa Fe 80th its name. "...for 3 nights, dinner at an adobe
+  // courtyard" matched `, dinner`, and "Mom's 80th Birthday & Dinner" was
+  // stamped on the header of every screen after the reveal — the first thing a
+  // host reads about their own event, and wrong, which is verbatim the harm
+  // the original fix was written to stop.
+  //
+  // The intake invites exactly this: "Say it like you'd text a friend" asks
+  // for run-on prose, where a comma is a clause separator and nothing more.
+  describe('a comma is a clause separator, not a second occasion', () => {
+    test('THE DEFECT: the Santa Fe 80th keeps its own name', () => {
+      expect(secondaryOf("Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
+        + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard, '
+        + 'she uses a walker and the altitude is hard on her')).toBeNull();
+    });
+
+    test('…and the gate\'s OWN reported case, plus one comma', () => {
+      // The 2026-08-17 entry is "retirement dinner for 30". Adding a comma put
+      // it straight back.
+      expect(secondaryOf('retirement dinner, for 30 on Oct 18')).toBeNull();
+    });
+
+    test('a comma between two real occasions is still not a joiner', () => {
+      // Deliberate: a list separator cannot carry this claim either way. If a
+      // host means two events they can say "and", which this file already
+      // guards. Under-reporting is the safe direction — a dropped signal, not
+      // an invented one, and it is the host's own event NAME at stake.
+      expect(secondaryOf('birthday, graduation')).toBeNull();
+    });
+
+    test('a slash is not a joiner either, in either position', () => {
+      expect(secondaryOf('graduation slash birthday party')).toBeNull();
+      expect(secondaryOf('birthday / graduation')).toBeNull();
+    });
+
+    test('NEGATIVE CONTROL: a real conjunction still names both', () => {
+      // The guard against over-correcting into "never set a secondary".
+      // The parser resolves Graduation as PRIMARY here and Retirement Party as
+      // the secondary — measured, not assumed. My first draft of this asserted
+      // the pair the other way round and went red against correct code, which
+      // is a red test for the wrong reason and looks exactly like a real one.
+      expect(secondaryOf('retirement and graduation party')).toBe('Retirement Party');
+      expect(secondaryOf('retirement & graduation party')).toBe('Retirement Party');
+      expect(secondaryOf('retirement plus graduation party')).toBe('Retirement Party');
+    });
+
+    test('(premise) the `and` branch is REACHED, not shadowed by milestoneType', () => {
+      // Bench E, re-score: every existing case in this file says "50th
+      // birthday", and `milestoneType` fires on /\bbirthday\b/ BEFORE the
+      // joiner is consulted — so the headline test and its own anti-vacuity
+      // guard both passed through a different code path and the `\band\b`
+      // branch was never exercised. These two strings carry no birthday and
+      // no ordinal, so only the joiner can produce the answer.
+      expect(secondaryOf('retirement graduation party')).toBeNull();
+      expect(secondaryOf('retirement and graduation party')).toBe('Retirement Party');
+    });
+  });
 });

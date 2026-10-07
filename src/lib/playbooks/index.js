@@ -5400,6 +5400,22 @@ export function playbookFoodPlan(event, opts = {}) {
     spentHigh: Math.max(0, Math.round(gotSum('high') / 5) * 5),
     boughtCount,
     itemCount: list.filter((i) => !i.skipped && isFood(i)).length,
+    // ── THE WHOLE SHOPPING LIST, AS ONE FIELD (2026-10-06) ─────────────────
+    // ADDITIVE ON PURPOSE. `itemCount` above means "the food is shopped" to
+    // the readiness gate, to dayBefore's RECON-I5 and to the nav row, and
+    // HostShellV2's own note records the decision not to widen it: four
+    // consumers would move to fix one sentence.
+    // What the SHOPPING surfaces need is a different question — how many rows
+    // are on the list — and it was being answered separately on each of them.
+    // Three got it right in 2026-09-27; the fourth, the reveal's shopping
+    // stage in assembleRevealEngines.js, told the Santa Fe host "4 items,
+    // ready to check off" about a list of eight. It was missed because the
+    // 2026-09-27 fix lived in a React useMemo inside the shell, and a
+    // shell-local memo cannot reach another module — the fix's SHAPE forbade
+    // its fourth site.
+    // Asked once, here, where every surface can read it.
+    shoppingCount: list.filter((i) => !i.skipped).length,
+    shoppingBought: boughtCount + supItems.filter((s) => got[s.id]).length,
     lockedTotal: Math.max(0, Math.round(lockedTotal)),
     lockedCount,
     realCount,
