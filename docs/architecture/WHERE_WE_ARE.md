@@ -1,5 +1,108 @@
 # Where We Are -- live status board
 
+## 2026-10-06 — a board sat twice, rejected four of my claims, and a funeral meal was told its budget excluded party favors
+
+**jest 8,247 / 598 · e2e 3,163 tests / 116 files · nine commits, eight pushed
+and live.** A sixteen-pass audit of one creation sentence, a sixteen-seat
+review board that sat once on the findings and again on the code, and the
+work that came out of both.
+
+### The sentence under test, unchanged all day
+
+> Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, about 30 people
+> flying in for 3 nights, dinner at an adobe courtyard, she uses a walker and
+> the altitude is hard on her
+
+Sixteen automated passes returned 64 raw findings; adversarial verification
+confirmed 7, narrowed 47 and rejected 10. The board then opened the code.
+
+### What shipped
+
+- **The no-signal banner** said "No signal — showing your saved plan" on a
+  brand-new event over a reachable origin. `markSignal()` stamps at the top of
+  `registerOfflineShell` because a load reaching the page IS signal; the
+  banner fired microseconds later off `navigator.onLine === false`. The flag is
+  a prompt to check now, and the check is a real request to a path
+  `swTemplate` is guaranteed to decline.
+- **The booking window** reaches the host. `airFloorBecause` had carried the
+  cited reason since 2026-09-23 with a unit test as its only reader, while the
+  invite date moved three months with no account of itself.
+- **The exclusions wire**, twice. First cut rendered 3 of 8 lines and gated
+  them on travel; the board rejected the commit's own claim. Second cut hit
+  something worse — see below.
+- **Per head** on all three tiers, and the label fixed: `typical` is
+  `round(((low + high) / 2) / 100) * 100`, the midpoint of an unsourced band.
+  Event spend is right-skewed, so a midpoint sits above a median. It now reads
+  **Mid-range**, and says it is "the midpoint of a planning band, not an
+  average of real events and not a quote."
+- **The kid risk.** `playbookRisks` was the one content reader in its family
+  that never called `eventHasKids`, so a thirty-adult 80th was warned about
+  children. Re-scoped, not gated — gating would trade a false positive for a
+  false negative on an uncollected-allergy row.
+- **The altitude clause** routes to `dest_health`, the CDC-grounded question
+  the app already asks, as a PROPOSAL quoting the host. Age and mobility aids
+  are refused at the parse; the walker stays honestly disclosed.
+- **The creation copy.** "Say it like you'd text a friend — I'll take it from
+  there" named a register, not a task, and over-promised what the next screen
+  walks back.
+
+### The one that reached production
+
+Removing the `destinationAdjusted` gate was right — a local event has a cake
+and tips and was told nothing. What went unchecked is that the list it now
+showed EVERY event is family-scoped, and the families are coarse.
+`budgetFamilyForType` folds Sweet 16, Quinceañera, Vow Renewal and Fundraiser
+in beside Wedding, so four events with no couple were told their budget
+excludes a honeymoon and a marriage license. And **Repast** — the meal after a
+funeral — resolved to `host_driven`, whose list opens with "Gifts, favors, and
+thank-you cards".
+
+Live for roughly 70 minutes. The marriage lines attach by TYPE now; Repast has
+its own list. `anExclusionMustApplyToTheEvent.test.js` sweeps all 45 playbooks
+and its last test refuses the cheap fix of emptying the lists.
+
+### Four claims of mine the board rejected
+
+Worth keeping, because three would otherwise have been carried forward as true.
+
+1. A commit said both fixes were "confirmed on the simulator". The captures
+   are **18 minutes older than the commit** and show the defects. Three
+   benches caught it independently.
+2. A recorded root cause was mechanically impossible: `guestCountResolved`
+   cannot "answer 0" — all four of its returns are objects. Fix right, reason
+   wrong, and the reason is what gets reused.
+3. A hinge test was overclaimed: the render iterates `notIncludedFor`, so a
+   ninth engine line reaches the host automatically. The hinge guards the
+   e2e's coverage, not the host's disclosure.
+4. **A guard I shipped could not fail.** Two benches red-proofed
+   `theBudgetSlotIsNotScolding` and watched it pass with the slot rendering
+   nothing — its positive assertion matched `/typical/` against
+   `document.body`, satisfied by the budget ask on the same page. That is the
+   exact vacuum the commit one earlier congratulated itself for closing.
+
+### And the same lesson twice in one evening
+
+Shard 3 hit `timeout-minutes: 30` at **30m19s**, then again at **30m13s**. No
+test failed either time; the clock ran out. Both causes were mine: specs that
+drive the real creation flow, left out of `VIEWPORT_INDEPENDENT` so each ran on
+seven geometries. Six are listed now. The ceiling is raised to 40 by owner
+ruling — recorded beside `checks.yml`'s own argument against it, because the
+timeout's stated job is to kill a HANG and a 30-minute ceiling against a
+26-30 minute runtime cannot tell a hang from a slow runner.
+
+### Open, and named rather than quietly carried
+
+- **Accessibility scored 2/10 twice**, both times by a lens reading code. The
+  walker still has no slot. The seat said in its own output that this is not
+  community consent and will keep saying so.
+- The extra-days catering suppression rests on a premise the code now formally
+  retracts. Owner ruling, with a measurement behind it.
+- `belowLodgingFloor` — computed, six test assertions, zero UI readers.
+- The reveal undercounts the shopping list by half; the widening fix reached
+  three readouts and `assembleRevealEngines.js` is the fourth.
+- The exclusions line is unchecked at 390px now those specs left the
+  responsive matrix. It wants a density spec, not six re-runs of text.
+
 ## 2026-10-04 — the BLS factor: a wrong label, no instrument, and what both hid
 
 **backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known
