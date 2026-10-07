@@ -224,11 +224,11 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
-import { lodgingFloorFor } from '@app/lib/lodgingFloor';
+import { lodgingBasisFor, budgetComparableTotal } from '@app/lib/knowledge/lodgingBasisLadder';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
@@ -7619,8 +7619,20 @@ export default function HostShellV2() {
     // shortlisted or picked one, so the estimate can say whether the rooms
     // already exceed everything it allows for. Null whenever nothing is
     // shortlisted — see lib/lodgingFloor.js, which refuses to guess a price.
+    // THROUGH THE LADDER'S OWN GUARD, not straight at `lodgingFloorFor`.
+    // Same number for rungs 1-2 (`budgetComparableTotal` returns the stay
+    // total it already carried), but now the 2026-09-27 board's first finding
+    // is load-bearing in production instead of only in test: rung 3 is a
+    // regional ASKING band and rung 4 is a federal per-ROOM ceiling, and
+    // neither may ever reach a whole-event comparison. `budgetComparableTotal`
+    // refuses both by construction rather than by this caller's good manners.
+    // It also gives `lodgingBasisFor` its first production reader, which is
+    // the same board's finding #2 — the ladder was authored ahead of one.
+    const _stayBasis = (() => {
+      try { return lodgingBasisFor(event); } catch (_e) { return null; }
+    })();
     const _stayFloor = (() => {
-      try { const f = lodgingFloorFor(event, guests); return f ? f.total : null; } catch (_e) { return null; }
+      try { return budgetComparableTotal(_stayBasis, spanNights(event)); } catch (_e) { return null; }
     })();
     const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay, isDestination: !!event.isDestination, nights: spanNights(event), lodgingFloor: _stayFloor });
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
@@ -7769,6 +7781,23 @@ export default function HostShellV2() {
           {(() => {
             const short = (() => { try { return estimateShortfallNote(est); } catch (_e) { return null; } })();
             return short ? <Grounding>{short}</Grounding> : null;
+          })()}
+          {/* ── AND THE ROOMS, WHICH THIS RANGE DOES NOT COVER ─────────────
+              `belowLodgingFloor` has sat on the estimate result since
+              2026-09-22 with zero UI readers — computed, asserted seven times
+              in test, shown to nobody. The Market Realist seat scored the
+              product down for it three sittings running: the app computes the
+              contradiction between a vendor's published price and its own
+              invented band, and tells the host nothing.
+              The exclusions fold below already says lodging is excluded, as a
+              CATEGORY. The host is at the same time looking at a real price
+              for it on their own shortlist, and nothing put the two numbers in
+              one sentence. See lib/budgetCopy.js#stayOnTopOfTheRangeNote for
+              why this does not cry "contradiction" and why it mints no new
+              band. */}
+          {(() => {
+            const stay = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis); } catch (_e) { return null; } })();
+            return stay ? <Grounding>{stay}</Grounding> : null;
           })()}
           {/* THE HOST'S OWN ROWS, SAID OUT LOUD (2026-09-18). A host who filled in
               budget categories but never named an overall figure used to reach an
