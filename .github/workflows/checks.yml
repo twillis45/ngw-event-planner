@@ -209,7 +209,23 @@ jobs:
       # re-run twice to learn what one run already knew.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        # ── FOUR, OWNER RULING 2026-10-06 ────────────────────────────────
+        # Three shards landed at 26-30 min and shard 3 was CANCELLED on the
+        # clock three times in one evening, each time with no test failing.
+        # The ceiling moved 30→40 the same night and that was the stopgap:
+        # it tells a hang from a slow runner again, and it buys no margin.
+        # This buys the margin. Four shards put each at roughly 20-23 min
+        # against 40, which is the same mechanism that worked in September
+        # (2 → 3) rather than a new one.
+        # `workers: 2` per shard is UNCHANGED, so the 2026-08-06 flake
+        # posture — two runs at one SHA producing disjoint failure sets —
+        # is untouched. The trade is one more runner, not more parallelism
+        # per machine.
+        # ONE-LINE BY CONSTRUCTION, and the file earned the right to say so:
+        # the denominator is `strategy.job-total`, the blobs upload as
+        # `blob-${{ matrix.shard }}` and the merge downloads `blob-*` with
+        # merge-multiple. Nothing else states the count.
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
