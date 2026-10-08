@@ -11,10 +11,12 @@
 //   committed  = spent + still-planned food → "known costs" / "spoken for".
 //   Quotes and estimates are NEVER "paid" or "spent".
 import { hostSpending } from './hostSpending';
+// Arrived below the export on 2026-10-07 and broke `import/first`, which CRA
+// escalates to a BUILD error — main and the Pages deploy were red for three
+// commits. Imports stay together, above the first statement.
+import { isOwnEvidence } from './knowledge/lodgingBasisLadder';
 
 export const NEAR_BUDGET_HEADROOM = 0.15; // <15% left = "getting close"
-
-import { isOwnEvidence } from './knowledge/lodgingBasisLadder';
 
 const fmt = (n) => '$' + Math.round(Math.abs(Number(n) || 0)).toLocaleString();
 
