@@ -11,10 +11,9 @@
 //   committed  = spent + still-planned food → "known costs" / "spoken for".
 //   Quotes and estimates are NEVER "paid" or "spent".
 import { hostSpending } from './hostSpending';
+import { isOwnEvidence } from './knowledge/lodgingBasisLadder';
 
 export const NEAR_BUDGET_HEADROOM = 0.15; // <15% left = "getting close"
-
-import { isOwnEvidence } from './knowledge/lodgingBasisLadder';
 
 const fmt = (n) => '$' + Math.round(Math.abs(Number(n) || 0)).toLocaleString();
 
