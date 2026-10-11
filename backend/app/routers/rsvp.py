@@ -381,9 +381,11 @@ async def _assert_event_studio_read(conn, event_id: str, principal: dict) -> Non
     1. CANONICAL: public.events.studio_id → studio_members membership. This column
        DOES exist and is stamped on every synced event (saveEvent writes studio_id),
        so a studio owner/member can read RSVPs immediately — no comms open required.
-    2. FALLBACK: event_owners.studio_id → studio_members membership (legacy events
-       whose public.events.studio_id wasn't backfilled).
-    3. FALLBACK: event_owners.owner_id direct match.
+    2. FALLBACK, only when public.events has no row for the event:
+       event_owners.studio_id → studio_members membership.
+    3. FALLBACK, same condition: event_owners.owner_id direct match.
+    When public.events has the event and the caller is not in its studio, the
+    answer is 403 — an event_owners row never overrides the tenant key.
 
     History: this used to authorize ONLY via event_owners, which is populated lazily
     the first time a planner opens the event in comms. A freshly-created event that
@@ -415,6 +417,12 @@ async def _assert_event_studio_read(conn, event_id: str, principal: dict) -> Non
         )
         if member:
             return
+        # The event has a tenant key and the caller is not in it. Do NOT fall
+        # through to event_owners: that row could have been created by the
+        # caller's own first touch in comms (the cross-studio claim, closed in
+        # communication._assert_event_access on 10/11/2026), so it is not
+        # evidence of access when it contradicts public.events.
+        raise HTTPException(status_code=403, detail="You don't have access to this event.")
 
     # FALLBACK: event_owners (lazy comms claim) — covers legacy events whose
     # public.events.studio_id was never backfilled, plus the direct owner_id match.

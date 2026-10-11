@@ -110,8 +110,10 @@ async def _channel(conn, event_id: str, channel_type: str):
 async def _assert_event_access(conn, event_id: str, principal: dict, *, claim: bool = True) -> None:
     """Authorize an authenticated planner for an event — studio-scoped access only.
 
-    An event belongs to a *studio*; any member of that studio may access it. The
-    first authenticated touch claims the event for the caller's studio. There is
+    An event belongs to a *studio*; any member of that studio may access it. When
+    public.events has the event, its studio_id alone decides access and no other
+    studio can claim it. Only an event with no public.events row (not yet synced)
+    is still claimed on first authenticated touch for the caller's studio. There is
     no per-user fallback — auth.uid() is identity only, never the tenant boundary
     for operational data. The shared dev-token path (local dev only, gated by
     ALLOW_DEV_TOKEN in require_planner) skips ownership entirely.
@@ -129,6 +131,30 @@ async def _assert_event_access(conn, event_id: str, principal: dict, *, claim: b
     if not uid:
         raise HTTPException(status_code=403, detail="Planner identity required")
 
+    # TENANT KEY FIRST. public.events.studio_id is NOT NULL and stamped on every
+    # synced event; when it exists it alone decides access. event_owners used to
+    # be consulted first and created for whoever touched an event first, so a
+    # planner from another studio who knew an event id could claim it (58 events
+    # had no owner row in production on 10/11/2026). An owner row that names a
+    # different studio than the event grants nothing.
+    event_studio = await conn.fetchval(
+        "select studio_id from public.events where id=$1", event_id)
+    if event_studio is not None:
+        member = await conn.fetchval(
+            "select 1 from studio_members where studio_id=$1 and user_id=$2", event_studio, uid)
+        if not member:
+            raise HTTPException(status_code=403, detail="You don't have access to this event.")
+        if claim:
+            # Record the event's OWN studio, never the caller's.
+            await conn.execute(
+                """insert into event_owners (event_id, owner_id, owner_email, studio_id)
+                   values ($1,$2,$3,$4) on conflict (event_id) do nothing""",
+                event_id, uid, principal.get("email"), event_studio)
+        return
+
+    # No public.events row (not yet synced): no tenant key exists, so the
+    # legacy first-touch behavior below still applies. Once the event syncs,
+    # the check above governs.
     # Resolve caller's studio (identity → tenant).
     studio = await conn.fetchval(
         "select studio_id from studio_members where user_id=$1 order by (role='owner') desc limit 1", uid)
