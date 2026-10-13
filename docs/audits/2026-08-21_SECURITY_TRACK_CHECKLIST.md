@@ -111,8 +111,21 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
 
 ## Stage-7 touchpoint — error visibility
 
-- **OPEN — Sentry DSN unset in prod** (see Path to Production audit;
-  being worked this session as shortlist #2).
+- **DONE — Sentry DSN is set and live in prod. Verified 2026-10-13 by probing
+  the shipped bundle, not by reading a settings page.** This row said "OPEN —
+  Sentry DSN unset in prod" for seven weeks while the Path to Production audit's
+  own shortlist recorded it DONE the same session it was written. Two documents,
+  one fact, opposite answers, and neither was ever re-probed — so the
+  contradiction itself was the finding.
+  Method, because "it's in the Actions vars" is not the same claim as "it ships":
+  fetched `twillis45.github.io/ngw-event-planner/index.html`, read the one JS
+  chunk it references (`static/js/main.*.js`, 5.66 MB), and grepped the served
+  bytes. A real `*.ingest.us.sentry.io` host is present — a DSN baked into the
+  production build, which is the only thing that makes `initSentry()` more than
+  a no-op. The audit was right; this row was wrong.
+  Note the DSN is client-side and therefore public by design (it is readable in
+  the bundle by anyone), so its presence is not a secret leak — but the org
+  identifier is deliberately not copied here.
 
 ## Web platform-specific
 
@@ -139,5 +152,7 @@ out to be shipped under the Release Integrity name, and the
 token-in-query residual is closed. Remaining OPENs: the pentest, finding
 #8 (portal authz design — board question), and four user-side
 attestations (RLS applied in the live dashboard, backups on + one
-restore drill, login rate-limit check on Supabase defaults, plus
-Sentry-DSN taking effect on next deploy is worth eyeballing once).
+restore drill, login rate-limit check on Supabase defaults). **The
+Sentry-DSN item that used to sit in this list is CLOSED — probed in the
+shipped bundle 2026-10-13, see the stage-7 touchpoint above.** It is down
+from four attestations to three.
