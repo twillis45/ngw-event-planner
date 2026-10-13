@@ -529,6 +529,19 @@ nothing.
 · a real test-mode checkout end to end, which is the ONLY thing that proves the
   secret matches the key. D-2 #5 regardless.
 
+**THE RUNBOOK FOR THAT LAST ONE EXISTS NOW:**
+`docs/ONE_EVENT_PASS_PURCHASE_RUNBOOK.md`, written at the owner's request.
+Eight steps, every factual claim checked against source rather than recalled
+(the hostv2 dev port 5199, `.gitignore` line 17, `CLAIM_RETRY_DELAYS_MS`,
+`PASS_AMOUNT_CENTS`), plus a failure-mode table keyed on the **delivery-log
+status code** — 400 means the `whsec_` is from the wrong Stripe context, 500
+means migration 017 never applied, 200-with-no-unlock means a thin payload, and
+no delivery at all means the event is not subscribed. One purchase settles all
+four of the unproven items above, and each failure mode points at exactly one of
+them. It also insists the result be recorded here WITH that status code, because
+"it worked" without the number is the claim this file keeps having to
+re-measure.
+
 **NOT DONE, AND OFFERED:** adding `mode` (`"test"`/`"live"`, from the key
 prefix — not secret material) to the status probe, which would make the
 test-vs-live half of that mismatch visible from one curl. Proposed and awaiting
