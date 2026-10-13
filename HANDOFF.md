@@ -1,6 +1,19 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-10-13 (fifty-seventh entry:
+**Measured reality, not intentions.** Updated 2026-10-13 (fifty-eighth entry:
+PR #90 merged (`5770787`), deploy verified by FETCHING production (bundle moved
+to `main.69037cdc.js`), and the question that had been "unattested" all day got
+an answer from the probe built for it hours earlier:
+first `{"webhook_verified":false}` — confirming the hole had been LIVE for about
+six hours — and then, once the owner set it on Render, `true`. Both readings are
+recorded. The draft of that entry said "IS NOT SET" in a heading and was
+corrected before commit, because a `false` can equally mean "set, not yet
+redeployed": re-probe before concluding. A second trap found in the dashboard:
+the owner's context is a SANDBOX and Render held a DIFFERENT key, and sandboxes
+are isolated — a mismatched pair reads GREEN and rejects every webhook. See the
+fifty-eighth entry.)
+
+Before that, earlier on 2026-10-13 (fifty-seventh entry:
 `render.yaml` is the Render Blueprint and PROMPTS for every sync:false variable
 — it named 8 of the 16 the server reads, and the two missing ones that matter
 were **STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET**. The money keys were the
@@ -420,6 +433,106 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** — and its five preconditions now read as follows, 2026-10-07 (forty-eighth entry): **#2 (demo account) is NOT waiting on the owner and never was** — the path is driven end to end by `theDemoResetsToTheSamePlace.spec.mjs` and every test in it runs SIGNED OUT with no Supabase account, so a single-device demo needs no setup step at all; what stays unverified is the cross-device half, which needs real credentials. #1 (domain + policies), #4 (live-keys Stripe then `REACT_APP_BILLING_LIVE=1`) and #5 (three non-founder hosts asked for money) are untouched and owner-side. #3 (stranger-proof onboarding) is untouched, and the demo fixture it would be tested against is now guarded. The **stage-9 board has still never been convened.** ⏱ **TIMES IN THIS FILE ARE UTC UNLESS LABELLED**, because they are read off GitHub CI runs and deploy logs, which report UTC. The owner reads them in **Eastern** (EDT, UTC−4, until 2026-11-01; EST, UTC−5, after), so an unlabelled timestamp here is four hours later than the clock on his wall — enough to misdate an outage by a working morning. The repo's own gate records already carry explicit offsets (`2026-08-29T15:24:26-04:00`), so unlabelled times in the measured-state file were inconsistent with the project's own convention. The outage pair above is now labelled both ways; new entries should carry `Z` or an offset. ✅ **BOTH contradictions this row flagged are CLOSED (2026-10-13) — and one of the two flags was itself half wrong.** (a) The workspace `CLAUDE.md` surfaces table, the copy read FIRST every session, said "stages 1–4 passed, 5 and 7 open, 9 pending" for six weeks after it went false; two stages had been recorded since and two more (6, 8) were never listed. Re-measured against this row and pushed, `ngw-event-planner-workspace` @ `d90b7fd`. It now also declares itself a `facing`/`platform` table and says the handoff wins any disagreement, so the next drift resolves instead of sitting. (b) **CORRECTION TO THIS ROW'S OWN CLAIM.** The `demo/` prefix is not a prefix "the app repo does not have" — it is CORRECT. The app repo is a separate repository cloned at `demo/` inside the workspace repo, and `.gitignore` carries a `/demo/` entry at the top for exactly that reason ("Nested repositories — these are independently version-controlled"), so every `demo/…` path resolves on the owner's machine. What breaks is CLOUD sessions, where the two are checked out as siblings. The fix this row implied — rewriting the prefixes — would have broken the authoritative layout; `CLAUDE.md` now carries a short section on stripping it instead. Reading `.gitignore` before editing is the whole difference. (c) The Sentry contradiction was settled by probing the shipped bundle instead of re-reading either document: the live Pages deploy's one JS chunk (`static/js/main.*.js`, 5.66 MB) contains a real `*.ingest.us.sentry.io` host, so the DSN ships, the Path to Production audit was right, and `2026-08-21_SECURITY_TRACK_CHECKLIST.md` was wrong for seven weeks — now DONE/verified, and its closing verdict goes from four user-side attestations to three |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## SHIPPED 2026-10-13 (fifty-eighth entry) — merged, deployed, and the unattested question finally has an answer: NO
+
+Times Eastern (EDT, UTC−4). Closing state for the session the six entries below
+describe.
+
+**PR #90 MERGED — `5770787`, a merge commit so all twelve messages survive.**
+20 files, +2,504 / −49. Validated on CI run **907** at `c97b34e`, all 9 jobs
+green: jest **607 / 8,343** (×3 timezones) · backend pytest **440** on the
+pinned `asyncpg==0.29.0` / Python 3.12.7 — **which is the authoritative
+confirmation of that number**, since the local run used 0.32.0 · e2e
+**3,094 passed / 238 skipped / 0 failed / 0 flaky** across 4 shards ·
+`gate:cra` 241 of 241 · hostv2 build + parity.
+
+Merged WITHOUT waiting for the duplicate `pull_request` run that opening the PR
+started, because it was beginning on the byte-identical SHA run 907 had already
+taken through the full matrix. Recorded as a judgement call, not buried.
+
+**DEPLOY VERIFIED BY FETCHING IT, NOT BY READING A BADGE.**
+Checks **#909** green on `main`; Deploy Pages **#566** green. Production HTTP 200
+serving "No Guesswork Events", and the bundle moved
+**`main.58f86605.js` → `main.69037cdc.js`**. The change is the point: #89 left
+the hash alone because it touched no frontend code, and an unchanged hash HERE
+would have meant the deploy had not taken — this merge edits `stripeApi.js`,
+`commApi.js` and `HostShellV2.jsx`.
+
+## THE UNATTESTED QUESTION GOT AN ANSWER, THEN THE ANSWER CHANGED — BOTH MEASURED
+
+The probe this session built answered, minutes after the deploy, the question
+the 2026-10-03 audit could not and no file could, because the variable was not
+declared anywhere (the entry below):
+
+```
+$ curl .../api/stripe/status      # ~13:25 Eastern, just after the merge
+{"configured":true,"webhook_verified":false,"can_honour_purchases":false}
+
+$ curl .../api/stripe/status      # after the owner set it on Render
+{"configured":true,"webhook_verified":true,"can_honour_purchases":true}
+```
+
+**`STRIPE_WEBHOOK_SECRET` IS NOW SET.** Both readings are kept because the first
+one is the evidence and the second is the state. **This is the single most
+useful thing the session produced** — not the code, the answer: a question that
+had been unanswerable all day became one curl.
+
+⚠️ **A PROCESS NOTE WORTH MORE THAN THE RESULT.** This entry was drafted with
+the heading "THE ANSWER IS NO: STRIPE_WEBHOOK_SECRET IS NOT SET IN PRODUCTION",
+and it was corrected before commit because the value flipped while it was being
+written — the Render redeploy had simply not restarted the process yet when the
+first probe ran. A `false` from this probe can mean "not set" OR "set, not yet
+redeployed", and nothing in the reading distinguishes them. **Re-probe after a
+redeploy before concluding anything from a false.** Had this shipped unchecked
+it would have been a wrong headline in the file whose whole job is measured
+truth — the exact failure the stale header and stale gate table below record.
+
+**THE FIRST READING CONFIRMS THE HOLE WAS LIVE, and that is why it is kept.**
+`configured: true` with `webhook_verified: false` is precisely the state the
+security fix was written for: secret key set, signing secret absent, and
+`_grant_pass` deployed since 07:41. For roughly six hours this morning, a charge
+on that deployment would have taken $39 and recorded nothing, and an unsigned
+POST to the webhook would have minted a pass for any event in any studio. The
+dashboard agreed independently — Stripe Workbench showed **no webhook endpoint
+at all** and "no deliveries in the last 7 days". Two sources, same conclusion.
+
+**WHAT `can_honour_purchases: true` DOES AND DOES NOT MEAN.** It means a secret
+EXISTS. It does **not** mean the secret matches the key creating the sessions —
+see the sandbox trap below. The probe cannot see that, and only a real test-mode
+checkout end to end can. Do not read the green as "sellable".
+
+**A SECOND TRAP FOUND IN THE DASHBOARD, worth more than the first.** The owner's
+Stripe context is a **SANDBOX on test keys** (`sk_test_…KoTp`), and Render's
+`STRIPE_SECRET_KEY` is **a different key** — context unknown, prefix unreported
+at the time of writing. Stripe sandboxes are ISOLATED: an endpoint created in
+one fires only for sessions created with that one's key. So pasting a `whsec_`
+from the sandbox while Render holds a foreign key produces the worst failure
+shape available: `can_honour_purchases` flips **true**, the buy button appears,
+and every real webhook is rejected 400 — the original "charge with nothing
+recoverable" wearing a green badge. **The probe can see that a secret exists,
+never that it is the RIGHT one.** Ruling: align Render to the chosen sandbox
+rather than reverse-engineer the mystery key; an unidentified key in production
+is a liability on its own, and replacing a test key on a dormant product costs
+nothing.
+
+**STILL OPEN, and none of it is code:**
+· **confirm the destination's payload style is SNAPSHOT, not thin** — the
+  handler reads `event.data.object.metadata` directly, so a thin payload
+  delivers no `studio_id` and silently grants nothing while returning 200;
+· confirm it subscribes `checkout.session.completed`, the only event
+  `_grant_pass` runs on;
+· confirm the `whsec_` came from the SAME context as the secret key — the probe
+  reads green either way;
+· whether migration `017` ever applied to live Supabase — still unattested, and
+  if the table is absent the insert raises and the grant is inert;
+· a real test-mode checkout end to end, which is the ONLY thing that proves the
+  secret matches the key. D-2 #5 regardless.
+
+**NOT DONE, AND OFFERED:** adding `mode` (`"test"`/`"live"`, from the key
+prefix — not secret material) to the status probe, which would make the
+test-vs-live half of that mismatch visible from one curl. Proposed and awaiting
+the owner's word; it cannot identify WHICH sandbox, only the mode.
 
 ## FIXED 2026-10-13 (fifty-seventh entry) — the money keys were the only secrets the blueprint never named
 

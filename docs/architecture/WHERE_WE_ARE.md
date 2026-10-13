@@ -1,6 +1,45 @@
 # Where We Are -- live status board
 
-## 2026-10-13 (last) — the money keys were the only secrets the blueprint never named
+## 2026-10-13 (last) — merged, deployed, and the unattested question answered twice
+
+**`main` @ `5770787`** — PR #90 merged as a merge commit, 20 files, +2,504/−49,
+validated on CI run 907 at `c97b34e` (all 9 jobs green; e2e 3,094 passed / 0
+failed / 0 flaky; backend 440 on the pinned asyncpg, which is the authoritative
+confirmation of that number). Checks #909 and Deploy Pages #566 both green on
+the merge. Production fetched, not badge-read: HTTP 200, and the bundle moved
+`main.58f86605.js` → `main.69037cdc.js` — a change that had to happen here,
+since this merge edits `stripeApi.js`, `commApi.js` and `HostShellV2.jsx`.
+
+**The question the 2026-10-03 audit could not answer, and no file could, took
+one curl once the probe existed:**
+
+```
+{"configured":true,"webhook_verified":false,"can_honour_purchases":false}   # just after merge
+{"configured":true,"webhook_verified":true,"can_honour_purchases":true}    # after Render was set
+```
+
+The first reading is the evidence: `configured: true` with `webhook_verified:
+false`, alongside `_grant_pass` deployed since 07:41, means **the hole was live
+for about six hours** — a charge would have taken $39 and recorded nothing, and
+an unsigned POST would have minted a pass. Stripe's dashboard agreed
+independently: no webhook endpoint existed at all.
+
+⚠️ **Two cautions worth more than the green.** First, this entry was drafted
+with the heading "STRIPE_WEBHOOK_SECRET IS NOT SET IN PRODUCTION" and corrected
+before commit — the value flipped mid-writing because Render had not restarted
+the process yet. A `false` means "not set" *or* "set, not yet redeployed", and
+nothing distinguishes them: re-probe before concluding. Second, `true` means a
+secret **exists**, not that it **matches** the key creating sessions. The
+owner's Stripe context is a sandbox and Render held a different key; sandboxes
+are isolated, so a mismatched pair reads green and rejects every webhook. Only
+a real test-mode checkout proves it.
+
+Still open, none of it code: snapshot-not-thin payload style on the destination,
+`checkout.session.completed` subscribed, the `whsec_` sourced from the same
+context as the key, whether migration 017 ever applied to live Supabase, and one
+real test-mode purchase end to end.
+
+## 2026-10-13 (earlier) — the money keys were the only secrets the blueprint never named
 
 The missing half of the entry below. `render.yaml` is the Render Blueprint:
 deploying from it **prompts** for every `sync: false` variable, as its own
