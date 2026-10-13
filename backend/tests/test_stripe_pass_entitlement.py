@@ -90,9 +90,9 @@ def _pool_of(conn, monkeypatch):
     monkeypatch.setattr(SP, "get_pool", _get_pool)
 
 
-def _webhook(payload: dict):
+def _webhook(payload: dict, *, stripe_signature="t=1,v1=good"):
     body = json.dumps(payload).encode()
-    return asyncio.run(SP.stripe_webhook(FakeRequest(body), stripe_signature=None))
+    return asyncio.run(SP.stripe_webhook(FakeRequest(body), stripe_signature=stripe_signature))
 
 
 def _completed(metadata, *, payment_status="paid", session_id="cs_pass_1",
@@ -118,16 +118,40 @@ PASS_META = {
 }
 
 
+class _Obj(dict):
+    """Attribute-readable dict, matching `stripe.Webhook.construct_event`'s
+    return shape (`event.type`, `event.data.object`). Same shim the signature
+    suite uses for its signed-path test."""
+
+    __getattr__ = dict.get
+
+
 @pytest.fixture
 def dev_webhook(monkeypatch):
-    """No webhook secret configured: the documented local-dev path.
+    """A deployment with BOTH secrets, whose signature verification passes.
 
-    Used so these tests exercise the GRANT, not signature verification —
-    which has its own suite in test_stripe_webhook_signature.py and must keep
-    rejecting unsigned requests wherever a secret exists.
+    ── THIS FIXTURE WAS REWRITTEN 2026-10-13, AND THE REASON MATTERS ────────
+    It used to set `STRIPE_WEBHOOK_SECRET = ""` — the unverified local-dev path
+    — "so these tests exercise the GRANT, not signature verification". That was
+    reasonable when written and became wrong the same week: the webhook now
+    REFUSES to grant an entitlement from an unverified body, because on a
+    deployment with no signing secret an unauthenticated POST would otherwise
+    mint a One-Event Pass for any event in any studio.
+
+    So the old fixture tested a path that can no longer grant, and every
+    assertion below would have been passing against a code path production
+    never takes. It now verifies for real (construct_event monkeypatched to
+    return the parsed body), which is the path a live purchase actually
+    travels. The name is kept so the diff reads as what changed.
     """
     monkeypatch.setattr(SP, "STRIPE_SECRET_KEY", "sk_test_x")
-    monkeypatch.setattr(SP, "STRIPE_WEBHOOK_SECRET", "")
+    monkeypatch.setattr(SP, "STRIPE_WEBHOOK_SECRET", "whsec_test")
+
+    def _construct(payload, sig, secret):
+        d = json.loads(payload)
+        return _Obj(type=d.get("type", ""), data=_Obj(object=d.get("data", {}).get("object", {})))
+
+    monkeypatch.setattr(SP.stripe.Webhook, "construct_event", staticmethod(_construct))
 
 
 def _inserts(conn):
@@ -184,6 +208,71 @@ def test_a_fee_payment_never_grants_a_pass(dev_webhook, monkeypatch):
     _webhook(_completed({"fee_id": "fee-1"}, amount_total=500000))
 
     assert _inserts(conn) == [], "a fee milestone is not a pass purchase"
+
+
+def test_an_UNVERIFIED_webhook_grants_nothing(monkeypatch, caplog):
+    """The hole this entitlement opened, closed 2026-10-13.
+
+    The 2026-08-07 comment in the router predicted it exactly: "Today the
+    handler only logs, so the blast radius is a false payment record in the
+    logs — but ... at that point the same request marks a fee paid." Writing
+    `event_passes` made that point arrive.
+
+    With STRIPE_SECRET_KEY set and STRIPE_WEBHOOK_SECRET unset, this route
+    accepts an unsigned body by design (a genuine local dev box). Every fact
+    the grant needs — event_id, studio_id, payment_status — comes OUT of that
+    body, so without this refusal an unauthenticated POST mints a pass for any
+    event in any studio. STRIPE_WEBHOOK_SECRET is not declared in render.yaml,
+    so "it is probably configured in production" was the only thing standing
+    here, and that is not a control.
+    """
+    monkeypatch.setattr(SP, "STRIPE_SECRET_KEY", "sk_test_x")
+    monkeypatch.setattr(SP, "STRIPE_WEBHOOK_SECRET", "")      # the dev path
+    conn = FakeConn()
+    _pool_of(conn, monkeypatch)
+
+    with caplog.at_level("ERROR"):
+        out = _webhook(_completed(PASS_META), stripe_signature=None)
+
+    # Still a 2xx — Stripe must not be given a reason to retry forever, and the
+    # event is still logged. It simply grants nothing.
+    assert out == {"ok": True}
+    assert _inserts(conn) == [], "an unverified webhook must never write an entitlement"
+    assert any("REFUSING" in str(r.msg) or "REFUSING" in r.message for r in caplog.records), \
+        "the refusal must be loud enough to find in a log, and name the missing secret"
+
+
+def test_the_same_body_DOES_grant_once_the_signature_verifies(dev_webhook, monkeypatch):
+    # The negative above is only meaningful beside this: identical payload,
+    # identical metadata, verification on → the row is written. Otherwise the
+    # test above would pass against a grant that was broken for some other
+    # reason entirely.
+    conn = FakeConn()
+    _pool_of(conn, monkeypatch)
+    _webhook(_completed(PASS_META))
+    assert len(_inserts(conn)) == 1
+
+
+def test_the_status_probe_says_whether_a_purchase_CAN_be_honoured(monkeypatch):
+    """`webhook_verified` exists because nothing could answer it.
+
+    The signing secret is read from the environment and absent from
+    render.yaml, so no file in this repo can say whether it was set by hand —
+    logged as "unattested" in the 2026-10-03 checkout-readiness audit. Booleans
+    only, never values.
+    """
+    monkeypatch.setattr(SP, "STRIPE_SECRET_KEY", "sk_test_x")
+    monkeypatch.setattr(SP, "STRIPE_WEBHOOK_SECRET", "")
+    out = asyncio.run(SP.stripe_status())
+    assert out["configured"] is True
+    assert out["webhook_verified"] is False
+    assert out["can_honour_purchases"] is False      # charging here would strand the host
+
+    monkeypatch.setattr(SP, "STRIPE_WEBHOOK_SECRET", "whsec_x")
+    out = asyncio.run(SP.stripe_status())
+    assert out["can_honour_purchases"] is True
+    # No secret material ever leaves the box.
+    assert not any("sk_test" in str(v) or "whsec" in str(v) for v in out.values())
 
 
 def test_pass_metadata_missing_the_tenant_key_grants_nothing(dev_webhook, monkeypatch):

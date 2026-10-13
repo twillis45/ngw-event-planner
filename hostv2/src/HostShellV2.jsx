@@ -236,7 +236,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 // an amount from the caller, which is right for a planner's own fee (App.js
 // still uses it for that) and wrong for a fixed-price product. hostv2 sells one
 // thing, and `createPassSession` is the route that prices it server-side.
-import { isStripeApiConfigured, createPassSession, verifySession } from '@app/lib/stripeApi';
+import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
@@ -17070,7 +17070,29 @@ export default function HostShellV2() {
               // flag) → the honest "free in preview" state, matching the standing
               // "not ready to charge" decision — the API base being set for RSVP
               // must not silently turn on a real $39 charge.
-              const canCharge = (() => { try { return isStripeApiConfigured() && process.env.REACT_APP_BILLING_LIVE === '1'; } catch { return false; } })();
+              // ── AND NEVER CHARGE WHERE THE PURCHASE CANNOT BE RECORDED ─────
+              // The two existing gates ask "is a backend set" and "has the
+              // business switched billing on". Neither can see the thing that
+              // actually strands a host: with no STRIPE_WEBHOOK_SECRET on the
+              // deployment, the signature cannot be verified, the server
+              // refuses the grant, and a charge takes money and records
+              // nothing. That is the 2026-08-07 ruling's incident exactly, and
+              // no client-side flag can know it — so the backend reports it
+              // through /api/capabilities.
+              //
+              // `!== false` on purpose: the capability is `null` until that
+              // one-shot fetch resolves, and `null` must behave like today
+              // rather than like "cannot". Treating unknown as false would show
+              // "free while in preview" on first paint and swap to a $39 button
+              // a moment later — two different claims about price on the one
+              // surface where that is unacceptable.
+              const canCharge = (() => {
+                try {
+                  return isStripeApiConfigured()
+                    && process.env.REACT_APP_BILLING_LIVE === '1'
+                    && stripeCanHonourPurchases() !== false;
+                } catch { return false; }
+              })();
               // ── NEVER OFFER TO SELL SOMETHING THIS EVENT ALREADY OWNS ──────
               // `canCharge` answers "may this deployment take money", which is
               // not the same question as "does this host owe any". Until

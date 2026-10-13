@@ -198,6 +198,49 @@ describe('the sheet never offers to sell a pass the event already owns', () => {
   });
 });
 
+describe('a charge is never offered where it cannot be recorded', () => {
+  // The audit's core finding, finally enforceable: "flipping
+  // REACT_APP_BILLING_LIVE would take money and deliver nothing recoverable."
+  // No client-side flag can know that — with no STRIPE_WEBHOOK_SECRET the
+  // server refuses the grant — so the backend reports it through
+  // /api/capabilities and the sheet's third gate reads it.
+  test('canCharge consults it, and treats UNKNOWN as carry-on', () => {
+    const sheet = code(passSheet());
+    expect(sheet).toMatch(/stripeCanHonourPurchases\(\) !== false/);
+    // `!== false`, never a truthiness test. The capability is null until the
+    // one-shot capabilities fetch resolves, and a truthy test would read null
+    // as "cannot" — showing "free while in preview" on first paint and
+    // swapping to a $39 button a moment later. Two claims about price on the
+    // one surface where that cannot happen.
+    expect(sheet).not.toMatch(/&&\s*stripeCanHonourPurchases\(\)\s*&&/);
+  });
+
+  test('the flag really is three-state, and a missing key stays unknown', () => {
+    const { setStripeCanHonourPurchases, stripeCanHonourPurchases } = loadApi();
+    expect(stripeCanHonourPurchases()).toBe(null);      // nothing asked yet
+    setStripeCanHonourPurchases(false);
+    expect(stripeCanHonourPurchases()).toBe(false);
+    setStripeCanHonourPurchases(true);
+    expect(stripeCanHonourPurchases()).toBe(true);
+    setStripeCanHonourPurchases(null);
+    expect(stripeCanHonourPurchases()).toBe(null);
+  });
+
+  test('commApi records it ONLY when the backend actually sent a boolean', () => {
+    // An older deployment that has not shipped the new capabilities key must
+    // leave the flag null. Reading a missing key as false would hide the buy
+    // button everywhere that has not redeployed yet.
+    const src = fs.readFileSync(path.join(__dirname, '..', 'commApi.js'), 'utf8');
+    expect(src).toMatch(/typeof data\.stripe_can_honour_purchases === 'boolean'/);
+  });
+
+  test('the backend computes it from BOTH secrets', () => {
+    const main = fs.readFileSync(
+      path.join(__dirname, '..', '..', '..', 'backend', 'app', 'main.py'), 'utf8');
+    expect(main).toMatch(/"stripe_can_honour_purchases":\s*bool\(STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET\)/);
+  });
+});
+
 describe('the paid return reads our own record, and keeps old receipts working', () => {
   test('the pass branch asks the entitlement, and does not verify the redirect', () => {
     const src = shell();

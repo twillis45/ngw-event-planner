@@ -25,6 +25,23 @@ let _stripeConfigured = false;
 export const setStripeConfigured = (v) => { _stripeConfigured = v; };
 export const isStripeConfigured  = () => _stripeConfigured;
 
+// ── CAN A PURCHASE BE HONOURED, not just taken ──────────────────────────────
+// `stripe_configured` answers "could this box charge a card". Since the webhook
+// started writing `public.event_passes`, that is no longer the question that
+// matters: with no STRIPE_WEBHOOK_SECRET the signature cannot be verified, the
+// grant is refused server-side by design, and a charge would take money and
+// record nothing. That is the outcome the 2026-08-07 ruling refused.
+//
+// THREE STATES, AND THE THIRD IS THE POINT. `null` means capabilities has not
+// answered yet, and it is NOT the same as `false`. A two-state version reads
+// false on first paint, so the pass sheet would show "free while in preview"
+// and then swap to a $39 button a moment later — a flicker between two
+// different claims about price, on the one surface where that is unacceptable.
+// So an UNKNOWN changes nothing and only a CONFIRMED false suppresses.
+let _canHonourPurchases = null;
+export const setStripeCanHonourPurchases = (v) => { _canHonourPurchases = (v === null ? null : !!v); };
+export const stripeCanHonourPurchases    = () => _canHonourPurchases;
+
 /**
  * Create a Stripe Checkout Session for a fee milestone.
  * Returns { url, session_id }.

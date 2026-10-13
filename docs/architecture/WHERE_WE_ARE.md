@@ -1,6 +1,63 @@
 # Where We Are -- live status board
 
-## 2026-10-13 (last) — two untruths, both in things written to prevent untruths
+## 2026-10-13 (last) — 🔴 slice 1 turned a log line into a free-pass minter
+
+**A hole I opened today**, found by reading the code whose blast radius I had
+changed. The 2026-08-07 fix comment at that exact line had already written down
+the condition:
+
+> "Today the handler only logs, so the blast radius is a false payment record in
+> the logs — but ... **at that point the same request marks a fee paid.**"
+
+That point arrived in slice 1. `_grant_pass` writes `public.event_passes`, and
+the webhook's unverified branch — correct and deliberate for a local dev box —
+accepts an unsigned body when `STRIPE_WEBHOOK_SECRET` is unset. Every fact the
+grant needs comes out of that body, so on a deployment with `STRIPE_SECRET_KEY`
+set and no signing secret, an unauthenticated POST would **mint a One-Event Pass
+for any event in any studio.** And `STRIPE_WEBHOOK_SECRET` is not declared in
+`render.yaml`, so nothing in the repo could say whether that was the case —
+"probably configured" was the only thing standing there.
+
+**Fixed on verification, not on environment:** an entitlement is never granted
+from an unverified body. The dev path still exists, still announces itself,
+still logs — it just cannot grant, and says `REFUSING … Set
+STRIPE_WEBHOOK_SECRET` at ERROR. Still 2xx, so Stripe gets no reason to retry
+forever.
+
+**The existing tests were passing against a path production never takes.** The
+`dev_webhook` fixture set the secret to `""` on purpose — reasonable when
+written this morning, wrong by the afternoon — so all fourteen grant assertions
+drove the unverified branch. It now verifies for real. Two new tests, the second
+making the first mean something: an unverified webhook writes nothing, and the
+*identical body* grants once the signature verifies.
+
+**Two instruments, because "unattested" was the real problem.**
+`GET /api/stripe/status` now returns `webhook_verified` and
+`can_honour_purchases` (booleans only — a test asserts no secret material is in
+the payload), so one curl replaces a dashboard login. And `/api/capabilities`
+reports `stripe_can_honour_purchases`, which the pass sheet's `canCharge` now
+requires — the audit's core finding made enforceable, since "flipping the
+billing flag would take money and deliver nothing recoverable" is something no
+client-side flag can know.
+
+The flag is deliberately **three-state** (`true | false | null`) and read as
+`!== false`: `null` means capabilities has not answered, and treating unknown as
+false would show "free while in preview" on first paint then swap to a $39
+button — two claims about price on the one surface where that cannot happen.
+
+Measurement caveat, stated because it qualifies the number: pytest cannot be
+installed as pinned here (`asyncpg==0.29.0` has no wheel for Python 3.13), so
+the suite ran against asyncpg 0.32.0 installed locally only. `requirements.txt`
+is untouched and asyncpg is imported-but-unused in these tests.
+
+backend pytest **440 passed** (the handoff row had said 399 since 2026-10-02),
+jest **606 / 8,336**, `gate:cra` 241 of 241, hostv2 build + parity, vitest 49/4.
+
+**Top operational item now:** whether `STRIPE_WEBHOOK_SECRET` is set on Render
+and whether the Stripe endpoint subscribes `checkout.session.completed`. Both
+are now checkable; neither is checked.
+
+## 2026-10-13 (earlier) — two untruths, both in things written to prevent untruths
 
 **The pass sheet offered to sell a pass the event already held.** `canCharge`
 answers "may this deployment take money", not "does this host owe any", and
