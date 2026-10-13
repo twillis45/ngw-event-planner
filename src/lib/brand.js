@@ -28,25 +28,40 @@
 // reads as a corporate insert — "What No Guesswork remembers" is a sentence, and
 // "What No Guesswork Events remembers" is a press release. Surfaces pick the one
 // that fits; neither is ever re-typed.
-// ─── THE DOMAIN, AS FAR AS THIS ENVIRONMENT CAN ESTABLISH IT ────────────────
-// Checked 2026-09-23 by DNS resolution, which is a real signal but NOT an
-// authoritative one — a registered domain can sit with no DNS configured, so
-// "does not resolve" means LIKELY unregistered, never certainly. RDAP and WHOIS
-// are both blocked by this environment's egress proxy and dig/nslookup are not
-// installed, so no registration record was read.
+// ─── THE DOMAIN, NOW READ FROM THE REGISTRY RATHER THAN GUESSED ─────────────
+// RE-MEASURED 2026-10-13 BY RDAP, AND THE OLD METHOD NOTE WAS WRONG ABOUT WHAT
+// WAS POSSIBLE. This block used to say "RDAP and WHOIS are both blocked by this
+// environment's egress proxy", so the table below was built from DNS resolution
+// alone and every row hedged to "likely". `rdap.verisign.com` answered HTTP 200
+// from a cloud session on 2026-10-13. Whether it was blocked in September or
+// the environment changed is unknown and is NOT claimed here — what matters is
+// the standing instruction: TRY RDAP FIRST. It is the registry's own answer;
+// DNS resolution is an inference about it.
 //
-// The method was calibrated before it was trusted: a known-registered domain
-// resolves and is refused by the proxy (a distinct error), while invented
-// nonsense fails to resolve. The two are distinguishable, which is what makes
-// the column below mean anything.
+// Why the distinction was never cosmetic: "does not resolve" cannot tell a free
+// domain from a registered one parked with no DNS. RDAP can — a 404 means the
+// name is not in the registry at all.
 //
-//   noguessworksystems.com   RESOLVES          OURS — confirmed by the owner
-//   noguesswork.com          RESOLVES          TAKEN, and identified: Dr Rameck
-//                                              Hunt's "The NO GUESSWORK Diet"
-//                                              (Penn Medicine Princeton Health)
-//   noguessworkevents.com    does not resolve  likely free — the exact-match .com
-//   noguesswork.events       does not resolve  likely free
-//   noguessworkevents.app    does not resolve  likely free
+//   noguessworksystems.com   REGISTERED  ours. DomainRegistry.com LLC,
+//                                        expires 2027-02-08, DNS on Cloudflare
+//   noguesswork.com          REGISTERED  TAKEN, and identified: Dr Rameck
+//                                        Hunt's "The NO GUESSWORK Diet"
+//                                        (Penn Medicine Princeton Health)
+//   noguessworkevents.com    404 — NOT IN THE REGISTRY. **Genuinely available**,
+//                                        not "likely free". The exact-match .com.
+//   noguesswork.events       unconfirmed  .events RDAP endpoint would not
+//                                        connect — a transport failure, NOT a
+//                                        404, so this row is still a guess
+//   noguessworkevents.app    unconfirmed  same: .app RDAP unreachable from here
+//
+// Reproduce (no dig/whois needed, and none are installed):
+//   curl -s -o /dev/null -w "%{http_code}" \
+//     https://rdap.verisign.com/com/v1/domain/<name>.com
+//   200 = registered · 404 = available
+//
+// STILL NOT A CLEARANCE. A registry record is not a trademark search, and an
+// available domain is not a cleared mark. The USPTO search and an attorney's
+// opinion below are untouched by any of this.
 //
 // ─── "NO GUESSWORK" IS IN USE BY SOMEONE ELSE, IN ANOTHER CLASS ─────────────
 // Found while answering "is noguesswork.com mine?" — it is not.
@@ -67,7 +82,11 @@
 // search results for noguesswork.com, and its TITLE was read and written down as
 // an established second user — jurisdiction ("US") included, which was never
 // checked at all. The site could not be fetched to confirm any of it. All that
-// is actually known is that the domain resolves.
+// was actually known then is that the domain resolves. RDAP 2026-10-13 upgrades
+// that by exactly one notch: the domain IS registered (HTTP 200). It says
+// nothing about who holds it, what it sells, or under which jurisdiction — so
+// the removal below still stands, and the registry record does not resurrect
+// any part of the claim that was struck.
 //
 // It also would not have mattered if it were true: tutoring is not event
 // software, and Hunt alone already establishes that the phrase has other users.
