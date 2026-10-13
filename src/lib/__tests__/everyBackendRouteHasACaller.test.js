@@ -146,20 +146,21 @@ const CALLED_FROM_OUTSIDE = {
 // Both entries MUST leave this list when hostv2 wires them, and the staleness
 // test below is what will make them leave rather than letting a live route go
 // on being described as dead.
-const BUILT_NOT_WIRED = {
-  '/api/stripe/create-pass-session':
-    'The One-Event Pass checkout. Built 2026-10-13 with the entitlement spine '
-    + '(supabase/migrations/017_event_passes.sql); the owner scoped that work to the '
-    + 'backend only, so no shell calls it yet. hostv2 has no Stripe code at all — the '
-    + '2026-10-03 checkout-readiness audit measured that — and billing is still dormant '
-    + 'behind isBillingLive(). The pass sheet is what should call this, once passGate '
-    + 'reads the server record.',
-  '/api/stripe/pass':
-    'Reads whether an event holds a pass — the server answer passGate will consult. '
-    + 'Built alongside the route above and unwired for the same reason: passGate still '
-    + 'answers "allowed" while billing is dormant and has not been pointed at the '
-    + 'entitlement table. Until it is, nothing in either shell needs this.',
-};
+//
+// ── BOTH LEFT THE SAME DAY THEY ARRIVED, AND THE GUARD IS WHY ──────────────
+// They were added 2026-10-13 when the entitlement spine landed backend-first by
+// an explicit scope ruling, and both were gone by the end of that day:
+// `/api/stripe/pass` when `passEntitlement` started calling it, and
+// `/api/stripe/create-pass-session` when the pass sheet replaced its
+// client-priced `createCheckoutSession({ amountCents: 3900 })` call with it.
+// The staleness test below is what forced each removal — the guard working in
+// the direction nobody builds for: not catching a new dead route, but refusing
+// to keep calling a live one dead.
+//
+// EMPTY IS A CLAIM, NOT AN ABSENCE OF ONE. It says "nothing in this repo is
+// built and unwired", and the two tests below are what keep it true. It was
+// empty from 2026-09-23 to 2026-10-13 for the same reason.
+const BUILT_NOT_WIRED = {};
 
 describe('every backend route has someone who calls it', () => {
   test('(premise) the backend is actually being read', () => {

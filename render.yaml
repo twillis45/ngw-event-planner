@@ -35,6 +35,29 @@ services:
         sync: false
       - key: KROGER_CLIENT_SECRET    # developer.kroger.com → your app → Client Secret
         sync: false
+      # ── Stripe (added 2026-10-13; both were MISSING from this blueprint) ──
+      # The money keys were the only secrets this file did not name, so a fresh
+      # Blueprint deploy was never prompted for them and Stripe came up silently
+      # unconfigured.
+      - key: STRIPE_SECRET_KEY       # Stripe → Developers → API keys → Secret key (sk_live_/sk_test_)
+        sync: false                  #   UNSET = /api/stripe/* inert; no charge can be taken.
+      # LOAD-BEARING, AND NOT ONLY FOR SIGNATURES. The webhook writes
+      # public.event_passes, so this secret is the difference between a paid
+      # One-Event Pass being RECORDED and the grant being refused outright: with
+      # it unset the signature cannot be verified, and an entitlement is never
+      # granted from an unverified body (see stripe_payments.stripe_webhook).
+      # A deployment with the secret key set and this one unset can therefore
+      # TAKE money and record nothing — which is why the shell now hides the buy
+      # button unless /api/capabilities reports stripe_can_honour_purchases.
+      # Check it without a dashboard login: GET /api/stripe/status.
+      - key: STRIPE_WEBHOOK_SECRET   # Stripe → Webhooks → endpoint signing secret (whsec_...)
+        sync: false                  #   The endpoint must subscribe checkout.session.completed.
+      # Resend's own webhook verification (Svix HMAC-SHA256). config.py: "If
+      # unset, verification is skipped (dev/testing only — set this in
+      # production)." Same shape as the Stripe secret above, and it was missing
+      # from this file for the same reason.
+      - key: RESEND_WEBHOOK_SECRET   # Resend → Webhooks → endpoint → Signing Secret
+        sync: false
       - key: PLANNER_DEV_TOKEN       # local-dev shorthand only; IGNORED in deployment
         sync: false                   # unless ALLOW_DEV_TOKEN=true is ALSO set (do NOT set in prod)
       # SECURITY: Do NOT add ALLOW_DEV_TOKEN here. It must remain unset in every

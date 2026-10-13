@@ -29,7 +29,7 @@ const areaLabelFor = (id) => AREA_LABELS[id]
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
-import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, cloneElement } from 'react';
+import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, useSyncExternalStore, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { currentTheme, setStoredTheme } from './theme.js';
@@ -232,8 +232,13 @@ import { lodgingBasisFor, budgetComparableTotal } from '@app/lib/knowledge/lodgi
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
-import { isStripeApiConfigured, createCheckoutSession, verifySession } from '@app/lib/stripeApi';
-import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure } from '@app/lib/passGate';
+// `createCheckoutSession` is deliberately NOT imported here any more: it takes
+// an amount from the caller, which is right for a planner's own fee (App.js
+// still uses it for that) and wrong for a fixed-price product. hostv2 sells one
+// thing, and `createPassSession` is the route that prices it server-side.
+import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases } from '@app/lib/stripeApi';
+import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld } from '@app/lib/passGate';
+import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
 import { commApi, isCommApiConfigured } from '@app/lib/commApi';
@@ -821,11 +826,33 @@ function CityField({ value, onChange, onPick, onEnter, placeholder, ariaLabel, s
 // verifySession and requires payment_status === 'paid' AND the session's own
 // metadata fee_id to match — the redirect params only tell us WHAT to verify.
 // No session id, no unlock.
+//
+// ── TWO SHAPES, AND THE OLD ONE DOES NOT GET DELETED (2026-10-13) ──────────
+// `kind: 'pass'` is the current flow: `create-pass-session` sets the price
+// server-side and the WEBHOOK grants, so the return trip does not verify a
+// payment at all — it reads `public.event_passes`, which only a
+// signature-verified webhook can write. Nothing in the URL is evidence.
+//
+// `kind: 'fee'` is the flow that shipped before it, where the pass was bought
+// through `create-checkout-session` with the amount passed from the browser.
+// It stays parsed because a host can still be holding one of those links: a
+// Stripe receipt email is permanent, and the handler's own copy tells people to
+// reopen the app from it. Deleting this branch would turn a real receipt into a
+// link that silently does nothing.
 const PASS_PAID_RETURN = (() => {
   try {
     const q = new URLSearchParams(window.location.search);
+    if (q.get('pass_paid') === '1' && String(q.get('event_id') || '').trim()) {
+      return {
+        kind: 'pass',
+        eventId: String(q.get('event_id')).trim(),
+        feeId: null,
+        sessionId: q.get('session_id') || null,
+      };
+    }
     if (q.get('stripe_paid') === '1' && String(q.get('fee_id') || '').startsWith('one-event-pass-')) {
       return {
+        kind: 'fee',
         eventId: String(q.get('fee_id')).slice('one-event-pass-'.length) || null,
         feeId: String(q.get('fee_id')),
         sessionId: q.get('session_id') || null,
@@ -890,6 +917,26 @@ function FoodModes({ mode, count, setSheet }) {
       {count ? btn('bringing', `Bringing · ${count}`, () => setSheet({ kind: 'bringing' })) : null}
       {btn('shop', 'Shop', () => setSheet({ kind: 'food' }))}
     </div>
+  );
+}
+
+// ─── THE PASS FACT, MADE REACTIVE ────────────────────────────────────────────
+// `passGate` is synchronous and reads `passEntitlement` directly, which is what
+// lets `briefAllowed` work inside a tap handler with no prop plumbing. The cost
+// is that nothing tells React when a server answer lands — and the three
+// `destinationLocked` call sites are in RENDER (the lodging, ground and
+// arrivals sheets), so without this a teased surface stays teased after the
+// server has confirmed the pass, until some unrelated state change happens to
+// re-render it.
+//
+// The VALUE is deliberately not used by the caller. What this hook buys is the
+// re-render; the gates read `serverPassHeld` themselves. Returned anyway so it
+// is a hook and not a side effect wearing a hook's name.
+function usePassEntitlement(eventId) {
+  return useSyncExternalStore(
+    subscribePassEntitlements,
+    () => serverPassHeld(eventId),
+    () => null,                       // no server snapshot: nothing is known yet
   );
 }
 
@@ -3174,6 +3221,36 @@ export default function HostShellV2() {
   }, [eventId, welcome, stage, eventIsTheHostsOwn]);
   useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
 
+  // ── ASK THE SERVER WHETHER THIS EVENT HOLDS A PASS ─────────────────────────
+  // Before this, the only answer was `ev.passPurchased` — written by the paid
+  // return handler below and then persisted with the event, which meant a host
+  // who paid and cleared their browser had bought nothing recoverable. The
+  // audit (`docs/audits/2026-10-03_STRIPE_CONSUMER_CHECKOUT_READINESS.md`)
+  // named that in the board's own words. `public.event_passes` is the durable
+  // record; this is the one place that asks for it.
+  //
+  // THE GUARDS ARE BOTH LOAD-BEARING:
+  //  · `isBillingLive()` — billing is dormant, so in production today this
+  //    fires for nobody. Asking anyway would be a request per event open for an
+  //    answer no gate consults.
+  //  · `isUserCreatedEvent` — the route resolves the tenant key from a
+  //    `public.events` row, which only the host's own events have. Samples and
+  //    pool events would get a 409 that means nothing, which is a worse outcome
+  //    than not asking. This is the engine's own predicate, not a second
+  //    definition of the same idea.
+  //
+  // `claimed` is the webhook/redirect race: Stripe redirects the browser and
+  // POSTs the webhook independently, so a host can land here with the blob
+  // already claiming a pass and the row not yet written. It makes a "no"
+  // provisional rather than a revocation — see `refreshEventPass`.
+  usePassEntitlement(eventId);
+  const passClaimed = event && event.passPurchased === true;
+  useEffect(() => {
+    if (!isBillingLive()) return;
+    if (!eventId || !isUserCreatedEvent({ id: eventId })) return;
+    refreshEventPass(eventId, { claimed: passClaimed });
+  }, [eventId, passClaimed]);
+
 
   const switchEvent = (id) => {
     redoEventId.current = null; // moving to another event abandons any pending create correction
@@ -3411,20 +3488,48 @@ export default function HostShellV2() {
   useEffect(() => {
     if (!PASS_PAID_RETURN || !PASS_PAID_RETURN.eventId || passPaidApplied.current) return;
     passPaidApplied.current = true;
+    const { kind, eventId: paidEventId, feeId, sessionId } = PASS_PAID_RETURN;
+    const unlocked = () => {
+      // The blob write is a CACHE of a confirmed fact, not the grant. Written
+      // only after the server or Stripe has confirmed, so nothing here can
+      // manufacture the claim that `passGate` falls back to.
+      setCustoms(list => list.map(c => (c && c.id === paidEventId) ? { ...c, passPurchased: true } : c));
+      toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
+    };
+
     (async () => {
-      if (!PASS_PAID_RETURN.sessionId) {
+      // ── THE PASS FLOW: ASK OUR OWN RECORD, NOT THE REDIRECT ──────────────
+      // `public.event_passes` is written only by the signature-verified
+      // webhook, so the row IS the proof. The redirect is not evidence of
+      // anything and is not treated as any.
+      //
+      // `claimed: true` because the host has just come back from a completed
+      // checkout: Stripe redirects the browser and POSTs the webhook
+      // INDEPENDENTLY, so a "no" here is far more likely to be a webhook that
+      // has not landed than a purchase that did not happen. It re-asks on a
+      // bounded backoff before believing it — see `refreshEventPass`.
+      if (kind === 'pass') {
+        await refreshEventPass(paidEventId, { claimed: true });
+        if (serverPassHeld(paidEventId) === true) { unlocked(); return; }
+        toast('Thanks — your payment went through, but we haven’t seen it land on this event yet. It usually takes a few seconds; reopen the event and it’ll be here.');
+        return;
+      }
+
+      // ── THE LEGACY FEE-SHAPED RETURN ─────────────────────────────────────
+      // Kept working for links already in people's inboxes. Verify-first, as
+      // before: the redirect params only say WHAT to check.
+      if (!sessionId) {
         toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.');
         return;
       }
       let v = null;
-      try { v = await verifySession(PASS_PAID_RETURN.sessionId); } catch { v = null; }
-      const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === PASS_PAID_RETURN.feeId);
+      try { v = await verifySession(sessionId); } catch { v = null; }
+      const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === feeId);
       if (!paid) {
         toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.');
         return;
       }
-      setCustoms(list => list.map(c => (c && c.id === PASS_PAID_RETURN.eventId) ? { ...c, passPurchased: true } : c));
-      toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
+      unlocked();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -16965,13 +17070,73 @@ export default function HostShellV2() {
               // flag) → the honest "free in preview" state, matching the standing
               // "not ready to charge" decision — the API base being set for RSVP
               // must not silently turn on a real $39 charge.
-              const canCharge = (() => { try { return isStripeApiConfigured() && process.env.REACT_APP_BILLING_LIVE === '1'; } catch { return false; } })();
+              // ── AND NEVER CHARGE WHERE THE PURCHASE CANNOT BE RECORDED ─────
+              // The two existing gates ask "is a backend set" and "has the
+              // business switched billing on". Neither can see the thing that
+              // actually strands a host: with no STRIPE_WEBHOOK_SECRET on the
+              // deployment, the signature cannot be verified, the server
+              // refuses the grant, and a charge takes money and records
+              // nothing. That is the 2026-08-07 ruling's incident exactly, and
+              // no client-side flag can know it — so the backend reports it
+              // through /api/capabilities.
+              //
+              // `!== false` on purpose: the capability is `null` until that
+              // one-shot fetch resolves, and `null` must behave like today
+              // rather than like "cannot". Treating unknown as false would show
+              // "free while in preview" on first paint and swap to a $39 button
+              // a moment later — two different claims about price on the one
+              // surface where that is unacceptable.
+              const canCharge = (() => {
+                try {
+                  return isStripeApiConfigured()
+                    && process.env.REACT_APP_BILLING_LIVE === '1'
+                    && stripeCanHonourPurchases() !== false;
+                } catch { return false; }
+              })();
+              // ── NEVER OFFER TO SELL SOMETHING THIS EVENT ALREADY OWNS ──────
+              // `canCharge` answers "may this deployment take money", which is
+              // not the same question as "does this host owe any". Until
+              // 2026-10-13 nothing asked the second one, so a host who had
+              // already paid opened this sheet to a "Get the pass — $39" button;
+              // the server's 409 caught it only AFTER the tap, which makes the
+              // refusal honest and the button a lie. UX_07: a CTA may not offer
+              // a charge that cannot legitimately be taken.
+              //
+              // Owned wins over the preview state too. If the pass is held, the
+              // gates are open, and telling someone who paid that the app is
+              // "free while in preview" would be the same untruth pointed the
+              // other way.
+              const held = passHeld(event);
+              // ── THE PRICE IS NOT OURS TO SEND (2026-10-13) ──────────────────
+              // This used to call `createCheckoutSession({ amountCents: 3900,
+              // feeId: 'one-event-pass-' + event.id, … })`, which is gap #3 of
+              // the 2026-10-03 checkout-readiness audit shipped in the shell:
+              // the amount came from the browser, so a buyer who edited the
+              // bundle paid one cent for the same entitlement. `createPassSession`
+              // takes no amount — the server charges PASS_AMOUNT_CENTS — and it
+              // must not grow one.
+              //
+              // The 409 is a real answer, not an error: the route refuses to sell
+              // a pass to an event that already holds one rather than taking the
+              // money twice. Saying "try again" to that would be a lie, so it
+              // gets its own line.
               const buyPass = async () => {
                 try {
-                  const out = await createCheckoutSession({ amountCents: 3900, label: `${BRAND.full} — One-Event Pass`, feeId: 'one-event-pass-' + event.id, eventId: event.id, clientName: (profile && profile.name) || '' });
+                  const out = await createPassSession({ eventId: event.id });
                   if (out && out.url) { window.location.assign(out.url); return; }
                   toast('Couldn’t open checkout just now — please try again.');
-                } catch { toast('Checkout isn’t available right now.'); }
+                } catch (e) {
+                  const why = String((e && e.message) || '');
+                  if (/already has a pass/i.test(why)) {
+                    toast('This event already has the pass — nothing more to buy. Reopen it and everything’s unlocked.');
+                    return;
+                  }
+                  if (/synced/i.test(why)) {
+                    toast('This event hasn’t finished syncing to your account yet — give it a moment and try again.');
+                    return;
+                  }
+                  toast('Checkout isn’t available right now.');
+                }
               };
               // MODEL D pass sheet (fourth sitting, 2026-08-19). Three rulings live
               // in this copy and none may drift:
@@ -17007,7 +17172,16 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ margin: 0 }}>{d}</p>
                     </div>
                   ))}
-                  {canCharge ? (
+                  {held.held ? (
+                    <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
+                      <p className="f-name" style={{ margin: '0 0 2px', color: 'var(--ok)' }}>This event has the pass</p>
+                      {/* True whichever source answered: if the pass is held, the
+                          gates are open. Deliberately does NOT say "confirmed
+                          with Stripe" — when only the event's own record claims
+                          it, that sentence would be inventing a confirmation. */}
+                      <p className="grounding" style={{ margin: 0 }}>Every vendor brief and the full destination toolkit are unlocked here. Nothing more to pay on this event — the pass covers it.</p>
+                    </div>
+                  ) : canCharge ? (
                     <>
                       <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass}>Get the pass — $39</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>

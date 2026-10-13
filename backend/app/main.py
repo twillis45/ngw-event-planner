@@ -26,7 +26,7 @@ from .routers import rsvp
 from .routers import vendor_brief
 from .routers import research
 from .emailer import is_email_configured
-from .config import STRIPE_SECRET_KEY, RESEND_WEBHOOK_SECRET
+from .config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_WEBHOOK_SECRET
 
 logging.basicConfig(level=logging.INFO)
 
@@ -203,6 +203,17 @@ async def capabilities():
     return {
         "email_configured":  is_email_configured(),
         "stripe_configured": bool(STRIPE_SECRET_KEY),
+        # ── CAN A PURCHASE BE HONOURED, not just taken (added 2026-10-13) ────
+        # `stripe_configured` answers "could this box charge a card". Since the
+        # webhook started writing `public.event_passes`, that is no longer the
+        # question that matters: without STRIPE_WEBHOOK_SECRET the signature
+        # cannot be verified, the grant is refused by design, and a charge would
+        # take money and record nothing — the exact outcome the 2026-08-07 board
+        # ruling refused and the 2026-10-03 audit re-stated.
+        #
+        # The shell uses this to keep a buy button off a deployment that cannot
+        # record what it sells. A boolean, never the secrets.
+        "stripe_can_honour_purchases": bool(STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET),
         "service": "ngw-events-api",
     }
 

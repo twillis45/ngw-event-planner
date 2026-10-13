@@ -1,5 +1,268 @@
 # Where We Are -- live status board
 
+## 2026-10-13 (last) — the money keys were the only secrets the blueprint never named
+
+The missing half of the entry below. `render.yaml` is the Render Blueprint:
+deploying from it **prompts** for every `sync: false` variable, as its own
+header says. It named 8 of the 16 environment variables the server reads — and
+among the missing were `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+
+So a fresh Blueprint deploy was never asked for either, and Stripe would come up
+silently unconfigured — while the 2026-10-03 audit recorded production as
+`{"configured":true}`, meaning a dashboard value no repo file records. **That is
+why "is the webhook secret set?" had no answer**: the variable existed nowhere a
+reader could find it. The fix below made the question checkable over HTTP; this
+makes it declared.
+
+Three keys added with what UNSET means, including `RESEND_WEBHOOK_SECRET`, which
+config.py already documented as "verification is skipped (dev/testing only — set
+this in production)" — the same shape as the Stripe one, missing for the same
+reason.
+
+The other six absences are now **written decisions** rather than silences, via
+`theBlueprintNamesWhatTheServerNeeds.test.js`: `ALLOW_DEV_TOKEN` is a deliberate
+security omission (declaring it puts the token bypass one dashboard field from
+being live), `SUPABASE_DB_URL` is an alternative spelling of a declared
+variable, `RESEND_FROM_NAME` has a working default, and the three `POSTHOG_*`
+vars are an **open question stated as one** — nobody has recorded whether
+production reads PostHog.
+
+Two of its tests earn their keep beyond the sweep: a commented-out example is
+not a declaration, and no `value:` line may carry a live secret prefix — which
+checks the header's "never commit secrets" promise instead of trusting it.
+
+Also recorded: run 905's `e2e` merge job went red with its shards cancelled by
+my own dispatch — blob count 0, merge skipped, Verdict failed deliberately. Read
+by opening the job's steps rather than assuming, because "my dispatch cancelled
+it" is exactly the story a real failure would hide behind. Sixth production
+firing of the instrument built this morning.
+
+jest **607 / 8,343**, backend pytest 440, `gate:cra` 241 of 241, hostv2 build +
+parity, `check:migrations` green.
+
+## 2026-10-13 (earlier) — 🔴 slice 1 turned a log line into a free-pass minter
+
+**A hole I opened today**, found by reading the code whose blast radius I had
+changed. The 2026-08-07 fix comment at that exact line had already written down
+the condition:
+
+> "Today the handler only logs, so the blast radius is a false payment record in
+> the logs — but ... **at that point the same request marks a fee paid.**"
+
+That point arrived in slice 1. `_grant_pass` writes `public.event_passes`, and
+the webhook's unverified branch — correct and deliberate for a local dev box —
+accepts an unsigned body when `STRIPE_WEBHOOK_SECRET` is unset. Every fact the
+grant needs comes out of that body, so on a deployment with `STRIPE_SECRET_KEY`
+set and no signing secret, an unauthenticated POST would **mint a One-Event Pass
+for any event in any studio.** And `STRIPE_WEBHOOK_SECRET` is not declared in
+`render.yaml`, so nothing in the repo could say whether that was the case —
+"probably configured" was the only thing standing there.
+
+**Fixed on verification, not on environment:** an entitlement is never granted
+from an unverified body. The dev path still exists, still announces itself,
+still logs — it just cannot grant, and says `REFUSING … Set
+STRIPE_WEBHOOK_SECRET` at ERROR. Still 2xx, so Stripe gets no reason to retry
+forever.
+
+**The existing tests were passing against a path production never takes.** The
+`dev_webhook` fixture set the secret to `""` on purpose — reasonable when
+written this morning, wrong by the afternoon — so all fourteen grant assertions
+drove the unverified branch. It now verifies for real. Two new tests, the second
+making the first mean something: an unverified webhook writes nothing, and the
+*identical body* grants once the signature verifies.
+
+**Two instruments, because "unattested" was the real problem.**
+`GET /api/stripe/status` now returns `webhook_verified` and
+`can_honour_purchases` (booleans only — a test asserts no secret material is in
+the payload), so one curl replaces a dashboard login. And `/api/capabilities`
+reports `stripe_can_honour_purchases`, which the pass sheet's `canCharge` now
+requires — the audit's core finding made enforceable, since "flipping the
+billing flag would take money and deliver nothing recoverable" is something no
+client-side flag can know.
+
+The flag is deliberately **three-state** (`true | false | null`) and read as
+`!== false`: `null` means capabilities has not answered, and treating unknown as
+false would show "free while in preview" on first paint then swap to a $39
+button — two claims about price on the one surface where that cannot happen.
+
+Measurement caveat, stated because it qualifies the number: pytest cannot be
+installed as pinned here (`asyncpg==0.29.0` has no wheel for Python 3.13), so
+the suite ran against asyncpg 0.32.0 installed locally only. `requirements.txt`
+is untouched and asyncpg is imported-but-unused in these tests.
+
+backend pytest **440 passed** (the handoff row had said 399 since 2026-10-02),
+jest **606 / 8,336**, `gate:cra` 241 of 241, hostv2 build + parity, vitest 49/4.
+
+**Top operational item now:** whether `STRIPE_WEBHOOK_SECRET` is set on Render
+and whether the Stripe endpoint subscribes `checkout.session.completed`. Both
+are now checkable; neither is checked.
+
+## 2026-10-13 (earlier) — two untruths, both in things written to prevent untruths
+
+**The pass sheet offered to sell a pass the event already held.** `canCharge`
+answers "may this deployment take money", not "does this host owe any", and
+nothing asked the second question — so an owner opened the sheet to a
+"Get the pass — $39" button. `passHeld(event)` is now checked first, ahead of
+`canCharge` (don't sell it twice) and ahead of the preview state (don't tell
+someone who paid that the app is free). The owned copy deliberately does not say
+"confirmed with Stripe": when only the event's own record claims the pass, that
+would invent a confirmation.
+
+**The audit that drove all three slices was never re-opened.** It named five
+gaps and recommended treating consumer checkout as unbuilt; all five are now
+closed in code and the document still said otherwise. It carries a
+re-measurement block now — each gap with a verdict, the original text untouched
+below — and that re-measurement **corrects the audit's own ranking**: the
+caller-supplied price was filed third of five, "small beside" the entitlement
+store, when it was in fact the one gap already shipped, in the product's own
+pass sheet.
+
+What is not closed is not code: the live `event_passes` table and the **Stripe
+webhook endpoint subscription** are both unattested, and the webhook is now the
+single point of failure — the entitlement is written only by
+`checkout.session.completed`, so an unsubscribed event means every purchase
+charges the card and writes no row. Billing stays dormant by decision, and
+nobody has run a real card.
+
+**`docs/audits/INDEX.md` says "Every audit, and where it actually lives". It
+named 23 of 87.** The porting rows were finished; the in-repo table was never
+extended, so every audit from 2026-08-14 onward is in the tree, tracked by git,
+and missing from the index — the 2026-07-14 invisibility failure the file was
+written about, reproducing by a different road.
+
+The 64 missing rows are deliberately **not** backfilled: they are other people's
+findings across five months, and headlines invented from filenames would put
+guesses into the one document whose job is to be trustworthy. The instrument
+shipped instead — `theAuditIndexIsNotAStory.test.js`, a ratchet at 63 that
+prints every missing file and checks no indexed link 404s. It caught its own
+author on the first run: the tightness test fired because indexing one audit
+took the count to 63 while the constant still read 64.
+
+jest **606 / 8,332**, `gate:cra` 241 of 241, hostv2 build + parity, vitest 49/4,
+`check:migrations` green.
+
+## 2026-10-13 (earlier) — the price was coming from the browser, in shipped code
+
+Slice 3 of three, and the only one of them that fixes a live defect rather than
+building toward one.
+
+It was scoped as "wire the pass sheet to `create-pass-session`", on the
+assumption the sheet had no checkout. It had one:
+
+```js
+createCheckoutSession({ amountCents: 3900, feeId: 'one-event-pass-' + event.id, … })
+```
+
+That is gap #3 of the 2026-10-03 checkout-readiness audit — "the price cannot
+come from the caller" — living in the shell. A buyer who edited the bundle paid
+one cent and received the same entitlement. `amount_cents` is correct for a
+planner's own fee, where the planner sets the number, and `App.js` still uses it
+that way; on a fixed-price product it is the hole.
+
+`createPassSession({ eventId })` replaces it — no amount, no label, no fee id.
+hostv2 no longer imports `createCheckoutSession` at all.
+
+**The return trip stopped verifying a payment**, because it no longer has to: a
+pass session's metadata carries `kind: 'pass'` and no `fee_id`, so the old check
+could only fail, and the entitlement row is written only by the
+signature-verified webhook — the row is the proof, the redirect is evidence of
+nothing. The pass branch calls `refreshEventPass(id, { claimed: true })` and
+reads `serverPassHeld`. The legacy `?stripe_paid=1` shape stays parsed, because
+a Stripe receipt email is permanent and the handler's own copy tells people to
+reopen the app from it.
+
+**Two guards caught me and both were right.** `plannerFetchesCarryAuth` had a
+hole I left in slice 1 — `/api/stripe/pass` shipped a caller and was never
+added to its `GATED` list, and unauthenticated that route is a 401 or an answer
+for the wrong tenant. And `textGateRatchet` refused the new test file, demanding
+a justification rather than a bump; it got one, because the claim is an absence
+(no amount posted, no import present) and a rendered assertion cannot observe a
+field that is not sent.
+
+jest **605 / 8,324**, `gate:cra` 241 of 241, hostv2 build + parity, vitest
+49 / 4. `BUILT_NOT_WIRED` is empty again — both entries arrived and left on the
+same day, each forced out by the staleness test.
+
+## 2026-10-13 (later still) — the shell asks, and the race that arrives with the money
+
+Slice 2 of three. `HostShellV2.jsx` now calls `refreshEventPass(eventId)` once
+per event open, behind `isBillingLive()` (dormant, so this fires for nobody
+today) and `isUserCreatedEvent` (the route resolves the tenant key from a
+`public.events` row, which only the host's own events have).
+
+**The re-render seam was a real gap.** `passGate` is synchronous and reads the
+module store directly — which is what lets `briefAllowed` work inside a tap
+handler with no prop plumbing — but nothing told React when an answer landed.
+Checking every call site rather than assuming: `briefAllowed` is in an async
+handler and needs nothing; all three `destinationLocked` calls are in
+sheet-render IIFEs and would have left a teased lodging/ground/arrivals surface
+teased after the server confirmed the pass. React is 19.2.6, so the fix is
+`subscribePassEntitlements` + `useSyncExternalStore`, notifying only on an
+actual change.
+
+**The race, handled here rather than deferred.** Stripe redirects the browser
+and POSTs the webhook independently. If the redirect wins, the host lands with a
+blob claiming a pass and no row yet — and the refresh this slice adds would read
+`held: false` and revoke the unlock of someone who paid seconds ago. Adding the
+refresh without handling that would have shipped the defect, reachable the moment
+D-2 flips the billing flag. So `refreshEventPass(id, { claimed })` makes a "no"
+**provisional** while the blob claims a pass: three asks on a bounded backoff
+(`[2000, 4000]`), never a retry on a "yes" and never a retry that turns a
+failure into a revocation. A stale claim costs two extra requests and is then
+revoked — the right side to be wrong on for a $39 charge.
+
+**The in-flight dedupe had to become upgradeable.** On a paid return the shell
+asks on mount, before the handler has written the claim, then again with
+`claimed: true`; serving the first promise unchanged applied the first call's
+policy and wrote the race's "no" down anyway. The flag now lives in a record the
+running loop re-reads, and the negative test (same mock, same ordering, no
+second caller → the "no" IS written) is what makes that guard mean something.
+
+jest **604 / 8,312**, `gate:cra` 241 of 241, hostv2 build + parity green, vitest
+**49 / 4**. No production behaviour change. Slice 3 is the pass sheet calling
+`/api/stripe/create-pass-session`, the last route in `BUILT_NOT_WIRED`.
+
+## 2026-10-13 (later) — the pass fact moves to the server, and the rule I proposed for it was wrong
+
+**`main` @ `eaf43a5`** (PRs #87, #88 and #89 all merged today; production
+verified HTTP 200 after #88). Slice 1 of three on the One-Event Pass, authorized
+by the owner by name.
+
+`passGate` had read `ev.passPurchased` — a boolean on the persisted event blob —
+since the Model D engine landed. The hostv2 return handler that writes it was
+already stricter than trusting a redirect (session id required, `verifySession`
+called, `payment_status === 'paid'` and a matching metadata `fee_id`), but it
+could not survive a closed tab or a cleared browser. `public.event_passes`
+(migration 017) and `GET /api/stripe/pass` are the recoverable record; this
+slice is the frontend reading it.
+
+New `src/lib/passEntitlement.js` holds the server's answers in memory and
+`passGate.passHeld(ev)` returns `{ held, source }`. Precedence as shipped:
+
+- server **true** → held (`source: 'server'`)
+- server **false** → **not held, whatever the blob says** — revocation
+- server **never asked** → the blob's claim stands (`source: 'claim'`)
+
+**The rule I proposed before building was wrong and is not what shipped.** I had
+said "never grant from the persisted event blob." Refusing to grant while the
+server has not answered buys no security — `passGate` runs in the browser, so
+the real boundary is the route, where an `event_passes` row can only be created
+by the signature-verified webhook — and it costs a host who genuinely paid their
+unlock on every cold load and offline minute. What the server record buys is
+**recovery** and **revocation**, which is what the audit's "nothing the host can
+ever recover" actually named. The rejected rule is written into the module so it
+does not get re-adopted from the headline.
+
+A failed lookup records **nothing**: a 403 or cold backend written down as
+`held: false` would revoke a real purchase on a network blip.
+
+All 13 existing `passGate` tests pass untouched — the ruling's clauses did not
+change, only the source of the fact. Nothing calls the refresh yet, so no
+runtime behaviour changed; slice 2 is the hostv2 wiring, slice 3 the pass sheet
+(`/api/stripe/create-pass-session` remains deliberately unwired). jest
+**604 / 8,300**, `gate:cra` 241 of 241, hostv2 build and `check:migrations`
+green.
+
 ## 2026-10-13 — the outage ended without me, and the branch was rebased on top of that
 
 **`main` @ `be03383`. Production shipped 2026-10-11 ~14:06 (Checks 887 green,

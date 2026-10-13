@@ -127,8 +127,31 @@ def _configured() -> bool:
 
 @router.get("/status")
 async def stripe_status():
-    """Tells the frontend whether Stripe is configured on this server."""
-    return {"configured": _configured()}
+    """Tells the frontend whether Stripe is configured on this server.
+
+    `webhook_verified` is the operator-visible answer to "can this deployment
+    honour a purchase?", added 2026-10-13 when the webhook started writing
+    entitlements. Until then the only consequence of a missing signing secret
+    was an unverified log line; now it is the difference between a paid pass
+    being recorded and the grant being refused outright (see the webhook).
+
+    IT IS HERE BECAUSE NOTHING COULD ANSWER IT. `STRIPE_WEBHOOK_SECRET` is read
+    from the environment and is **not declared in render.yaml**, so no file in
+    this repo can say whether it was ever set by hand — the same blind spot
+    `/api/food-prices/status` exists for, and it was logged as "unattested" in
+    `docs/audits/2026-10-03_STRIPE_CONSUMER_CHECKOUT_READINESS.md` for exactly
+    this reason. One curl now answers it instead of a dashboard login.
+
+    Booleans only, never the values. Public like the other operator probes: the
+    grant is gated on verification, so learning that a secret is absent buys an
+    attacker nothing it can act on.
+    """
+    return {
+        "configured": _configured(),
+        "webhook_verified": bool(STRIPE_WEBHOOK_SECRET),
+        # Both must be true before a purchase can be honoured end to end.
+        "can_honour_purchases": bool(STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET),
+    }
 
 
 # A per-charge sanity ceiling, NOT a business limit — the planner seat's note
@@ -447,6 +470,30 @@ async def stripe_webhook(
     # The rule now: if a secret is configured, the signature is REQUIRED. The
     # unverified path survives only for a deployment with no secret at all,
     # which is a genuine local dev box, and it says so in the log.
+    # ── THE COMMENT ABOVE CAME TRUE ON 2026-10-13 ────────────────────────────
+    # "Today the handler only logs, so the blast radius is a false payment
+    #  record in the logs — but the docstring names this the hook point for
+    #  Supabase writes when feeSchedule moves server-side, and at that point the
+    #  same request marks a fee paid."
+    #
+    # That point arrived. `_grant_pass` below writes `public.event_passes`, so
+    # on a deployment with STRIPE_SECRET_KEY set and STRIPE_WEBHOOK_SECRET
+    # UNSET, an unauthenticated POST to this route would mint a One-Event Pass
+    # for any event in any studio — every fact the grant needs (event_id,
+    # studio_id, payment_status) comes out of the body. Yesterday that request
+    # produced a log line; today it would produce an entitlement.
+    #
+    # STRIPE_WEBHOOK_SECRET is not declared in render.yaml, so nothing in this
+    # repo can say whether it is set in production. That makes "it is probably
+    # configured" the only thing standing between this route and free passes,
+    # which is not a control.
+    #
+    # So the grant is now gated on VERIFICATION, not on environment: the
+    # unverified path still exists for a genuine local dev box, still says so,
+    # and still logs the event — it simply cannot hand out an entitlement. A
+    # dev who needs to exercise the grant runs `stripe listen`, which issues a
+    # real whsec_ and is the documented way to do it anyway.
+    verified = False
     if STRIPE_WEBHOOK_SECRET:
         if not stripe_signature:
             log.warning("stripe: webhook rejected — no stripe-signature header")
@@ -459,6 +506,7 @@ async def stripe_webhook(
             raise HTTPException(status_code=400, detail="Invalid Stripe signature.")
         event_type = event.type
         session_data = event.data.object
+        verified = True
     else:
         # No secret configured — local dev only. Unverified, and loud about it.
         log.warning(
@@ -477,7 +525,19 @@ async def stripe_webhook(
         amount  = session_data.get("amount_total")
 
         if meta.get("kind") == PASS_METADATA_KIND:
-            await _grant_pass(meta, session_data, sess_id, amount)
+            # AN ENTITLEMENT IS NEVER GRANTED FROM AN UNVERIFIED BODY. See the
+            # note above the verification block: this is the one branch here
+            # with real blast radius, and `verified` is false only where no
+            # signing secret exists at all.
+            if not verified:
+                log.error(
+                    "stripe: REFUSING to grant a pass from an UNVERIFIED webhook "
+                    "(event=%s session=%s). Set STRIPE_WEBHOOK_SECRET on this "
+                    "deployment — until it is set, no purchase can be honoured here.",
+                    meta.get("event_id"), sess_id,
+                )
+            else:
+                await _grant_pass(meta, session_data, sess_id, amount)
         else:
             fee_id = meta.get("fee_id")
             log.info("stripe: payment completed fee_id=%s session=%s amount=%s", fee_id, sess_id, amount)

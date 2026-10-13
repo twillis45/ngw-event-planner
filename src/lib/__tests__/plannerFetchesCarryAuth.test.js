@@ -16,9 +16,18 @@ const fs = require('fs');
 const path = require('path');
 
 // module -> the paths in it that require planner auth server-side
+// ── THE PASS ROUTES WERE MISSING FROM HERE FOR PART OF A DAY ───────────────
+// `/api/stripe/pass` shipped a caller on 2026-10-13 and was not added to this
+// list; `/api/stripe/create-pass-session` followed hours later. Both call
+// `require_planner` server-side, so both are exactly what this file exists for
+// — and `fetchEventPass`'s whole job is to answer "does this event hold a
+// pass", which without auth is either a 401 or, far worse, a question answered
+// for the wrong tenant. Added when the second one landed, which is one route
+// and a few hours later than it should have been.
 const GATED = {
   'stripeApi.js': ['/api/stripe/create-checkout-session', '/api/stripe/verify-session',
-    '/api/stripe/create-subscription-session'],
+    '/api/stripe/create-subscription-session', '/api/stripe/create-pass-session',
+    '/api/stripe/pass'],
   'webhookService.js': ['/api/webhooks/relay'],
 };
 

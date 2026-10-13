@@ -25,6 +25,23 @@ let _stripeConfigured = false;
 export const setStripeConfigured = (v) => { _stripeConfigured = v; };
 export const isStripeConfigured  = () => _stripeConfigured;
 
+// ── CAN A PURCHASE BE HONOURED, not just taken ──────────────────────────────
+// `stripe_configured` answers "could this box charge a card". Since the webhook
+// started writing `public.event_passes`, that is no longer the question that
+// matters: with no STRIPE_WEBHOOK_SECRET the signature cannot be verified, the
+// grant is refused server-side by design, and a charge would take money and
+// record nothing. That is the outcome the 2026-08-07 ruling refused.
+//
+// THREE STATES, AND THE THIRD IS THE POINT. `null` means capabilities has not
+// answered yet, and it is NOT the same as `false`. A two-state version reads
+// false on first paint, so the pass sheet would show "free while in preview"
+// and then swap to a $39 button a moment later — a flicker between two
+// different claims about price, on the one surface where that is unacceptable.
+// So an UNKNOWN changes nothing and only a CONFIRMED false suppresses.
+let _canHonourPurchases = null;
+export const setStripeCanHonourPurchases = (v) => { _canHonourPurchases = (v === null ? null : !!v); };
+export const stripeCanHonourPurchases    = () => _canHonourPurchases;
+
 /**
  * Create a Stripe Checkout Session for a fee milestone.
  * Returns { url, session_id }.
@@ -89,6 +106,83 @@ export const createSubscriptionSession = async ({ plan, email, studioId }) => {
     throw new Error(err.detail || `Subscription API error ${res.status}`);
   }
   return res.json(); // { url, session_id }
+};
+
+/**
+ * Start checkout for the One-Event Pass on a specific event.
+ * Returns { url, session_id }.
+ *
+ * ── WHY THIS IS NOT `createCheckoutSession` WITH A $39 ARGUMENT ────────────
+ * It was, until 2026-10-13: the pass sheet called
+ * `createCheckoutSession({ amountCents: 3900, feeId: 'one-event-pass-' + id })`,
+ * which is gap #3 of `docs/audits/2026-10-03_STRIPE_CONSUMER_CHECKOUT_READINESS.md`
+ * shipped in the shell — **the price came from the browser**. `amount_cents` is
+ * correct for a planner's own fee, where the planner sets the number; on a
+ * fixed-price product the same property means a buyer who edits the bundle
+ * posts one cent and gets the same entitlement.
+ *
+ * `create-pass-session` has NO price field at all — the server charges
+ * `PASS_AMOUNT_CENTS` and a test asserts the request model cannot carry an
+ * amount. So this function takes no amount either, and must not grow one.
+ *
+ * It also stamps the tenant key into the session metadata, which is the only
+ * way the webhook can know which studio to write the entitlement for: that
+ * request arrives with a signature and nothing else, no principal.
+ */
+export const createPassSession = async ({ eventId }) => {
+  if (!BASE) throw new Error('No API backend configured (REACT_APP_API_BASE_URL).');
+
+  const origin   = window.location.origin;
+  const pathname = window.location.pathname;
+
+  const res = await fetch(`${BASE}/api/stripe/create-pass-session`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', ...(await plannerAuthHeaders()) },
+    body: JSON.stringify({
+      event_id: eventId,
+      // `?pass_paid=1`, not the fee flow's `?stripe_paid=1&fee_id=…`: the pass
+      // session's metadata carries `kind: 'pass'` and no fee_id, so the old
+      // return shape has nothing to verify against. The session id still rides
+      // along — not as evidence of payment (the webhook is what grants), but so
+      // the return can say something true about a session it can name.
+      success_url: `${origin}${pathname}?pass_paid=1&event_id=${encodeURIComponent(eventId)}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${origin}${pathname}?pass_cancel=1`,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Pass checkout error ${res.status}`);
+  }
+  return res.json(); // { url, session_id }
+};
+
+/**
+ * Read whether an event holds a One-Event Pass — the server's own record
+ * (`public.event_passes`), written only by the signature-verified webhook.
+ * Returns { event_id, held } and, when held, { sku, amount_cents, currency,
+ * purchased_at }.
+ *
+ * Studio-scoped server-side: a signed-in caller cannot read another studio's
+ * entitlement by event id.
+ *
+ * THROWS rather than returning a falsy answer, because the caller must be able
+ * to tell "the server says no pass" from "the server could not be asked".
+ * `passEntitlement.refreshEventPass` is what turns that distinction into the
+ * never-asked / false / true the gates read; collapsing the two here would let
+ * a cold backend revoke a pass somebody paid for.
+ */
+export const fetchEventPass = async (eventId) => {
+  if (!BASE) throw new Error('No API backend configured.');
+  const res = await fetch(
+    `${BASE}/api/stripe/pass?event_id=${encodeURIComponent(eventId)}`,
+    { headers: { ...(await plannerAuthHeaders()) } },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Pass lookup error ${res.status}`);
+  }
+  return res.json();
 };
 
 /**
