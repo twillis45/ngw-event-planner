@@ -1,6 +1,50 @@
 # Where We Are -- live status board
 
-## 2026-10-13 (last) — the price was coming from the browser, in shipped code
+## 2026-10-13 (last) — two untruths, both in things written to prevent untruths
+
+**The pass sheet offered to sell a pass the event already held.** `canCharge`
+answers "may this deployment take money", not "does this host owe any", and
+nothing asked the second question — so an owner opened the sheet to a
+"Get the pass — $39" button. `passHeld(event)` is now checked first, ahead of
+`canCharge` (don't sell it twice) and ahead of the preview state (don't tell
+someone who paid that the app is free). The owned copy deliberately does not say
+"confirmed with Stripe": when only the event's own record claims the pass, that
+would invent a confirmation.
+
+**The audit that drove all three slices was never re-opened.** It named five
+gaps and recommended treating consumer checkout as unbuilt; all five are now
+closed in code and the document still said otherwise. It carries a
+re-measurement block now — each gap with a verdict, the original text untouched
+below — and that re-measurement **corrects the audit's own ranking**: the
+caller-supplied price was filed third of five, "small beside" the entitlement
+store, when it was in fact the one gap already shipped, in the product's own
+pass sheet.
+
+What is not closed is not code: the live `event_passes` table and the **Stripe
+webhook endpoint subscription** are both unattested, and the webhook is now the
+single point of failure — the entitlement is written only by
+`checkout.session.completed`, so an unsubscribed event means every purchase
+charges the card and writes no row. Billing stays dormant by decision, and
+nobody has run a real card.
+
+**`docs/audits/INDEX.md` says "Every audit, and where it actually lives". It
+named 23 of 87.** The porting rows were finished; the in-repo table was never
+extended, so every audit from 2026-08-14 onward is in the tree, tracked by git,
+and missing from the index — the 2026-07-14 invisibility failure the file was
+written about, reproducing by a different road.
+
+The 64 missing rows are deliberately **not** backfilled: they are other people's
+findings across five months, and headlines invented from filenames would put
+guesses into the one document whose job is to be trustworthy. The instrument
+shipped instead — `theAuditIndexIsNotAStory.test.js`, a ratchet at 63 that
+prints every missing file and checks no indexed link 404s. It caught its own
+author on the first run: the tightness test fired because indexing one audit
+took the count to 63 while the constant still read 64.
+
+jest **606 / 8,332**, `gate:cra` 241 of 241, hostv2 build + parity, vitest 49/4,
+`check:migrations` green.
+
+## 2026-10-13 (earlier) — the price was coming from the browser, in shipped code
 
 Slice 3 of three, and the only one of them that fixes a live defect rather than
 building toward one.

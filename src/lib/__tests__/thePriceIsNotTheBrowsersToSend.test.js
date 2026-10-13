@@ -49,11 +49,17 @@ const code = (s) => s
 
 // The sheet's own block, so a match somewhere else in an 18k-line file cannot
 // stand in for the thing under test.
+// Bounded by the NEXT sheet block, not by a character count. The first version
+// took a fixed 5,000-char window and silently stopped short of the render
+// branch, so three assertions failed on correct code — a window that can end
+// mid-block is a matcher that reports absence it never looked for.
 const passSheet = () => {
   const src = shell();
   const at = src.indexOf("sheet.kind === 'pass' && (() => {");
   expect(at).toBeGreaterThan(-1);          // premise: the block still exists
-  return src.slice(at, at + 5000);
+  const end = src.indexOf("{sheet.kind === 'help' && (() => {", at);
+  expect(end).toBeGreaterThan(at);         // premise: the next block still follows
+  return src.slice(at, end);
 };
 
 describe('the pass checkout sends no price', () => {
@@ -151,6 +157,44 @@ describe('…and the shell does not reach for the helper that accepts one', () =
     // uses the right route" and started meaning "nothing uses either".
     const app = fs.readFileSync(path.join(__dirname, '..', '..', 'App.js'), 'utf8');
     expect(app).toMatch(/createCheckoutSession/);
+  });
+});
+
+describe('the sheet never offers to sell a pass the event already owns', () => {
+  // `canCharge` answers "may this deployment take money", which is not the
+  // question "does this host owe any". Nothing asked the second one until
+  // 2026-10-13, so an owner opened this sheet to a "Get the pass — $39" button
+  // and the server's 409 caught it only AFTER the tap. UX_07: the refusal was
+  // honest and the button was a lie.
+  test('held is checked, and it wins over BOTH other states', () => {
+    const sheet = code(passSheet());
+    expect(sheet).toMatch(/const held = passHeld\(event\)/);
+    // Ordering is the whole fix: a held pass must be checked before canCharge
+    // (don't sell it twice) and before the preview state (don't tell someone
+    // who paid that the app is free).
+    const heldAt = sheet.indexOf('held.held ?');
+    const chargeAt = sheet.indexOf('canCharge ?');
+    expect(heldAt).toBeGreaterThan(-1);
+    expect(chargeAt).toBeGreaterThan(heldAt);
+  });
+
+  test('the owned state does not claim a confirmation it may not have', () => {
+    // passHeld can answer from the event's own record when the server has not
+    // been asked. "Unlocked" is true either way; "confirmed with Stripe" would
+    // be inventing the part we do not know.
+    const sheet = passSheet();
+    const at = sheet.indexOf('This event has the pass');
+    expect(at).toBeGreaterThan(-1);
+    const block = sheet.slice(at, at + 700);
+    expect(block).not.toMatch(/confirmed with Stripe|verified with Stripe|Stripe confirmed/i);
+  });
+
+  test('(premise) the buy button and the preview state both still exist', () => {
+    // Without this, the ordering assertions above would keep passing on a sheet
+    // that had lost one of the branches entirely.
+    const sheet = passSheet();
+    expect(sheet).toContain('Get the pass — $39');
+    expect(sheet).toMatch(/Free while .* is in preview/);
   });
 });
 

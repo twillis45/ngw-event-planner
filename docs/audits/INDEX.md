@@ -39,8 +39,22 @@ Note also: the repo-root `docs/` tree (including `docs/audits/`) is **outside th
 
 ## Authored in-repo
 
+> ⚠️ **THIS TABLE IS 23 OF 87 AUDITS (measured 2026-10-13).** The porting rows
+> above were completed; this table was never extended, so every audit authored
+> in-repo from 2026-08-14 onward is in the tree, tracked by git, and missing
+> from here. That is the 2026-07-14 failure this file was written about —
+> "a repo search could not find them, so they were invisible to any file-based
+> review" — reproducing by a different road.
+>
+> `src/lib/__tests__/theAuditIndexIsNotAStory.test.js` now holds the count down
+> and prints every missing file, so the 65th cannot arrive quietly. The 64 rows
+> are NOT backfilled: they are other people's findings across five months, and
+> headlines invented from filenames would put guesses into the one document
+> whose job is to be trustworthy. Each wants its author's own verdict.
+
 | Date | Doc | Headline |
 |---|---|---|
+| 2026-10-03 | [Stripe Consumer-Checkout Readiness](2026-10-03_STRIPE_CONSUMER_CHECKOUT_READINESS.md) | Answered D-2 precondition #3. **"No. The Stripe integration is live, hardened and working — for a different job"**: it bills a host's client for an event fee and cannot sell the One-Event Pass. Five gaps, the load-bearing one being **no server-side entitlement** — "an anonymous purchase produces a charge and nothing the host can ever recover". ⚠️ **RE-MEASURED 2026-10-13: all five closed in code** (migration 017 + the webhook grant + `create-pass-session` + hostv2 wiring + `passGate.passHeld`). Gap #3 was worse than filed — the caller-supplied price was **shipped in the pass sheet**, not latent. Still open and none of it code: the live table and the Stripe webhook subscription are both **unattested**, and nobody has run a real card |
 | 2026-08-18 | [Host Landing — Next Action Mobbin Read](2026-08-18_HOST_LANDING_NEXT_ACTION_MOBBIN_READ.md) | 18 screens, 3 intents. Consumer party apps (Partiful, Luma, LINE) ship **no next action at all** — roster + share link — so our NOW hero is real differentiation; Posh is the ops console we reject, verbatim. Two transferable changes: counts ride on the filter control, not a stat row (Partiful/LINE), and **every leader gives the caught-up state the full canvas** — ours is an eyebrow chip over more content. Negative finding from Whatnot: never co-render "all caught up" with a progress meter |
 | 2026-08-07 | [Untested Router Security Sweep](2026-08-07_UNTESTED_ROUTER_SECURITY_SWEEP.md) | 8 of 16 backend routers had no tests; untested and unaudited correlated. **Two live holes FIXED**: `/api/webhooks/relay` was an unauthenticated SSRF (169.254.169.254 metadata reachable, guard already existed and was never wired), and a **missing `stripe-signature` header skipped Stripe verification entirely**. **Three FOUND-NOT-FIXED**, all product calls: create-checkout-session is anonymous, success_url/cancel_url are unvalidated (a real Stripe page on your account redirecting anywhere), verify-session is open. `communication` (584 LOC) still unswept |
 | 2026-08-07 | [Mobile Tap-Target Sweep](2026-08-07_MOBILE_TAP_TARGET_SWEEP.md) | Isolated 393x852 sweep of every control, not a named class list. **Two real offenders the existing `tapTargets.spec.mjs` cannot see**: the `‹ Sections` back control is **67x16px on every sheet** (`HostShellV2.jsx:9658`) and `.navseg-b` is 37px (`styles.css:326`). Overflow 0 everywhere; home surface clean. **FOUND, NOT FIXED** — both files were held by a second session. Also records two false readings the harness had to correct (the front door is not the app; `cursor:pointer` inherits) and that **the dock is retired**, so mobile nav is the eyebrow |

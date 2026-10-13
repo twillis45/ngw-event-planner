@@ -1,5 +1,63 @@
 # Stripe consumer-checkout readiness - audit, 2026-10-03
 
+> ## RE-MEASURED 2026-10-13. All five gaps are closed IN CODE. Do not read that as "can sell the app."
+>
+> This block was added ten days later, by the session that closed them, because
+> an audit that names five gaps and is never re-opened becomes the document that
+> sends the next person to rebuild what already exists. That failure has its own
+> entry in `docs/audits/INDEX.md`, and `CLAUDE.md`'s own gate table carried a
+> stale verdict for six weeks while being the first thing read every session.
+>
+> | Gap (as written below) | Verdict 2026-10-13 | What closed it |
+> |---|---|---|
+> | 1. No entitlement store | **CLOSED (code)** | `supabase/migrations/017_event_passes.sql` - `public.event_passes`, keyed on `event_id`, `studio_id` as the tenant key, RLS on with NO policy so only the service role reaches it |
+> | 2. The webhook only logs | **CLOSED** | `_grant_pass()` in `stripe_payments.py`: requires `payment_status == "paid"`, `on conflict do nothing` with no target so a redelivery and a racing second session both land once |
+> | 3. Price is caller-supplied | **CLOSED** | `POST /api/stripe/create-pass-session` has **no price field at all**; `PassSessionRequest` is asserted to be exactly `{event_id, success_url, cancel_url}`. ⚠️ **This one was live in the shell until today** - see the note below |
+> | 4. All wiring is in the frozen CRA shell | **CLOSED** | hostv2 now holds `createPassSession`, `refreshEventPass` on event open, and the `?pass_paid=1` return. `src/App.js` was not touched; it keeps `create-checkout-session` for planner fees, which is its correct use |
+> | 5. `passGate` is not connected to payment | **CLOSED** | `passGate.passHeld(ev)` reads `public.event_passes` through `GET /api/stripe/pass`, preferring it over the `ev.passPurchased` blob in both directions |
+>
+> ### Gap 3 was worse than this audit said, and that is the finding of the day
+>
+> The audit filed it third of five, "small beside" the entitlement store. But it
+> was not a latent property of a router nobody called - it was **shipped code in
+> the product's own pass sheet**:
+>
+> ```js
+> createCheckoutSession({ amountCents: 3900, feeId: 'one-event-pass-' + event.id, … })
+> ```
+>
+> The amount came from the browser, so a buyer who edited the bundle paid one
+> cent and received the same entitlement. It was unreachable only because billing
+> is dormant. Ranking it fourth in severity was wrong; it was the one gap that
+> was already written.
+>
+> ### What is NOT closed, and none of it is code
+>
+> - **The live table is UNATTESTED.** Merging sent `017` through the Supabase
+>   integration that watches `supabase/migrations`, but no session so far has had
+>   database credentials. What is confirmed is that the merge landed and the
+>   integration is wired - **not** that `public.event_passes` exists. One
+>   dashboard look closes it.
+> - **The Stripe webhook endpoint subscription is UNATTESTED**, and it is now the
+>   single point of failure. The entitlement is written only by
+>   `checkout.session.completed`. If that event is not subscribed for this
+>   deployment's endpoint, every purchase charges the card and writes no row -
+>   which is the 2026-08-07 ruling's exact incident, with the storage built and
+>   never reached. Verify in the Stripe dashboard before any flag flips.
+> - **Billing is still DORMANT by decision** - `REACT_APP_BILLING_LIVE` unset.
+>   D-2's five preconditions govern flipping it and this audit answered only the
+>   third.
+> - **Nobody has run the flow end to end with a real card.** D-2 #5 (three
+>   non-founder hosts asked for money) is untouched.
+>
+> So the Recommendation at the foot of this page - "treat consumer checkout as
+> unbuilt" - is **spent**. The honest replacement: treat it as built and
+> unverified. The next step is not code, it is two dashboard looks and one real
+> $39 charge.
+>
+> Everything below this block is the audit exactly as written on 2026-10-03.
+
+
 **Question asked.** `FLAGSHIP_DEMO_AND_PRICING_D2.md` lists five preconditions
 before the product can take money, and names the third as unverified: "a
 checkout path (a Stripe router exists in the backend - its readiness for

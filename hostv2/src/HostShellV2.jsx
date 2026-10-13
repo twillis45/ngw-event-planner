@@ -237,7 +237,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 // still uses it for that) and wrong for a fixed-price product. hostv2 sells one
 // thing, and `createPassSession` is the route that prices it server-side.
 import { isStripeApiConfigured, createPassSession, verifySession } from '@app/lib/stripeApi';
-import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent } from '@app/lib/passGate';
+import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
@@ -17071,6 +17071,20 @@ export default function HostShellV2() {
               // "not ready to charge" decision — the API base being set for RSVP
               // must not silently turn on a real $39 charge.
               const canCharge = (() => { try { return isStripeApiConfigured() && process.env.REACT_APP_BILLING_LIVE === '1'; } catch { return false; } })();
+              // ── NEVER OFFER TO SELL SOMETHING THIS EVENT ALREADY OWNS ──────
+              // `canCharge` answers "may this deployment take money", which is
+              // not the same question as "does this host owe any". Until
+              // 2026-10-13 nothing asked the second one, so a host who had
+              // already paid opened this sheet to a "Get the pass — $39" button;
+              // the server's 409 caught it only AFTER the tap, which makes the
+              // refusal honest and the button a lie. UX_07: a CTA may not offer
+              // a charge that cannot legitimately be taken.
+              //
+              // Owned wins over the preview state too. If the pass is held, the
+              // gates are open, and telling someone who paid that the app is
+              // "free while in preview" would be the same untruth pointed the
+              // other way.
+              const held = passHeld(event);
               // ── THE PRICE IS NOT OURS TO SEND (2026-10-13) ──────────────────
               // This used to call `createCheckoutSession({ amountCents: 3900,
               // feeId: 'one-event-pass-' + event.id, … })`, which is gap #3 of
@@ -17136,7 +17150,16 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ margin: 0 }}>{d}</p>
                     </div>
                   ))}
-                  {canCharge ? (
+                  {held.held ? (
+                    <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
+                      <p className="f-name" style={{ margin: '0 0 2px', color: 'var(--ok)' }}>This event has the pass</p>
+                      {/* True whichever source answered: if the pass is held, the
+                          gates are open. Deliberately does NOT say "confirmed
+                          with Stripe" — when only the event's own record claims
+                          it, that sentence would be inventing a confirmation. */}
+                      <p className="grounding" style={{ margin: 0 }}>Every vendor brief and the full destination toolkit are unlocked here. Nothing more to pay on this event — the pass covers it.</p>
+                    </div>
+                  ) : canCharge ? (
                     <>
                       <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass}>Get the pass — $39</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
