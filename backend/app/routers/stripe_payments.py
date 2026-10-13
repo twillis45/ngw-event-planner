@@ -6,10 +6,26 @@ shares the Stripe URL with the client; the client pays on Stripe's
 PCI-compliant hosted page. The planner then verifies payment status and
 the fee milestone is marked paid.
 
+TWO PRODUCTS LIVE HERE, and conflating them is the mistake to avoid:
+
+  1. A FEE MILESTONE — the planner invoices their own CLIENT. The caller sets
+     the amount, because the planner decides the fee.
+  2. THE ONE-EVENT PASS — the host buys our product, $39, fixed server-side.
+     Added 2026-10-13, after the 2026-10-03 readiness audit found the Stripe
+     integration "live, hardened and working — for a different job" (1) and
+     unable to sell (2) at all. Separate route, separate grant path, no price
+     parameter.
+
 CTA truthfulness:
   POST /api/stripe/create-checkout-session → DONE  (real Stripe session created)
+  POST /api/stripe/create-pass-session     → DONE  (real session, server-set price)
+  GET  /api/stripe/pass                    → DONE  (reads the entitlement row)
   GET  /api/stripe/verify-session          → DONE  (actual Stripe payment_status)
-  POST /api/stripe/webhook                 → DONE  (Stripe-signed event, logged)
+  POST /api/stripe/webhook                 → DONE  (Stripe-signed; GRANTS the pass)
+
+The entitlement table is `public.event_passes`
+(`supabase/migrations/017_event_passes.sql`). Nothing else writes it, and no
+client can: RLS is on with no policy, so only this service reaches it.
 
 Setup (Render dashboard):
   STRIPE_SECRET_KEY     = sk_live_...  (or sk_test_... for test mode)
@@ -29,9 +45,80 @@ from typing import Optional
 from ..config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from ..auth import require_planner
 from ..app_origins import is_app_redirect
+from ..db import get_pool
 
 log = logging.getLogger("ngw.stripe")
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
+
+# ─── THE ONE-EVENT PASS — ONE PRICE, ONE SKU, SET HERE AND NOWHERE ELSE ──────
+#
+# `create-checkout-session` below takes `amount_cents` FROM THE CALLER, which is
+# correct for what it does: a planner invoicing their own client sets the fee.
+# The 2026-10-03 checkout-readiness audit named that same property a defect for
+# a fixed-price product — "a buyer could post one cent" — and it is right.
+#
+# Both are true because they are two different products, so this is a SEPARATE
+# ROUTE rather than a mode flag on that one. The pass route has no price
+# parameter to abuse, and the invoicing contract the frozen CRA shell depends on
+# is untouched. A flag would have put a fixed-price product one boolean away
+# from a caller-priced one.
+PASS_SKU = "one-event-pass"
+PASS_AMOUNT_CENTS = 3_900          # $39, board ruling 2026-08-18, amended 08-19
+PASS_LABEL = "No Guesswork Events — One-Event Pass"
+
+# This number also ships as COPY on the pass sheet. If it ever changes, the
+# sheet and this constant move in the same commit or the product quotes a price
+# it will not charge; the fourth sitting's standing commitments (no vendor-side
+# fees while that sentence ships) are governed the same way — copy first.
+PASS_METADATA_KIND = "pass"        # how the webhook tells a pass from a fee
+
+
+async def _studio_for_event(conn, event_id: str, principal: dict) -> str:
+    """Resolve the event's OWNING studio, or refuse. Money-route strictness.
+
+    This is deliberately STRICTER than `communication._assert_event_read_access`
+    rather than a reuse of it, and the difference is the point: that helper
+    falls back to the legacy `event_owners` table when `public.events` has no
+    row, because comms and RSVP must keep working for events that predate the
+    studio migration. A purchase has no such history to honour.
+
+    So the rule here is: the event must have a `public.events` row, and the
+    caller must be a member of the studio that row names. No fallback, no
+    first-touch claim, and never the CALLER's own studio as a stand-in.
+
+    That last clause is the one with scar tissue. PR #86 closed a hole where
+    per-user ownership was consulted first, letting a planner from another
+    studio claim an event by knowing its id — 58 events in production had no
+    owner row on 2026-10-11. Claiming on a route that then CHARGES A CARD would
+    be the same bug with a receipt attached.
+
+    An event that has not synced to Postgres yet is refused with its own status
+    and a message that says so, because "you don't have access" would be a lie:
+    the host does own it, the server simply has never seen it.
+    """
+    # Local dev only, gated by ALLOW_DEV_TOKEN inside require_planner.
+    if principal.get("via") == "dev_token":
+        return "dev-studio"
+
+    uid = principal.get("id")
+    if not uid:
+        raise HTTPException(status_code=403, detail="Signed-in identity required.")
+
+    studio_id = await conn.fetchval(
+        "select studio_id from public.events where id=$1", event_id)
+    if studio_id is None:
+        raise HTTPException(
+            status_code=409,
+            detail="This event has not synced to the server yet. Open it once while "
+                   "signed in, then try again.",
+        )
+
+    member = await conn.fetchval(
+        "select 1 from studio_members where studio_id=$1 and user_id=$2", studio_id, uid)
+    if not member:
+        raise HTTPException(status_code=403, detail="You don't have access to this event.")
+
+    return str(studio_id)
 
 
 def _configured() -> bool:
@@ -149,6 +236,138 @@ async def create_checkout_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class PassSessionRequest(BaseModel):
+    event_id: str
+    success_url: str            # app URL (may include {CHECKOUT_SESSION_ID})
+    cancel_url: str
+    # NOTE what is absent: no amount, no label. Both are set server-side. The
+    # caller names WHICH EVENT it is buying for and nothing about the price.
+
+
+@router.post("/create-pass-session")
+async def create_pass_session(
+    body: PassSessionRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Start checkout for the One-Event Pass on a specific event.
+
+    Returns { url, session_id }. The pass is GRANTED by the webhook below, never
+    by this route and never by the browser's return trip — see the webhook's own
+    note on why the redirect is not evidence of payment.
+    """
+    # AUTH BEFORE CONFIGURATION, for the reason the route above states: below
+    # the _configured() check an anonymous caller learns whether this deployment
+    # has Stripe wired.
+    principal = await require_planner(authorization, x_planner_token)
+
+    if not _configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe is not configured on this server. Add STRIPE_SECRET_KEY to the Render environment.",
+        )
+
+    for field, value in (("success_url", body.success_url), ("cancel_url", body.cancel_url)):
+        if not is_app_redirect(value):
+            raise HTTPException(status_code=400, detail=f"{field} must point at this application.")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        studio_id = await _studio_for_event(conn, body.event_id, principal)
+
+        # ALREADY PAID? Refuse rather than take the money. The pass is per-event
+        # and one row can exist, so a second purchase could only ever be a
+        # double charge for something the host already owns.
+        held = await conn.fetchval(
+            "select 1 from public.event_passes where event_id=$1", body.event_id)
+        if held:
+            raise HTTPException(
+                status_code=409,
+                detail="This event already has a pass. Nothing more to buy.",
+            )
+
+    stripe.api_key = STRIPE_SECRET_KEY
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": PASS_LABEL},
+                    "unit_amount": PASS_AMOUNT_CENTS,     # server-set, not caller-set
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=body.success_url,
+            cancel_url=body.cancel_url,
+            # ── WHY THE TENANT KEY TRAVELS THROUGH STRIPE ────────────────────
+            # The webhook has NO authenticated principal: it arrives from
+            # Stripe carrying a signature and this metadata, and nothing else.
+            # So the two facts needed to write an entitlement — which event and
+            # which studio — have to be stamped HERE, where a principal exists
+            # and membership has just been checked, and read back there.
+            #
+            # They are not caller-supplied in any meaningful sense: studio_id
+            # came from public.events a moment ago, and the signature proves
+            # Stripe is handing back metadata we ourselves wrote.
+            metadata={
+                "kind":        PASS_METADATA_KIND,
+                "sku":         PASS_SKU,
+                "event_id":    body.event_id,
+                "studio_id":   studio_id,
+                "purchased_by": principal.get("id") or "",
+            },
+        )
+        log.info(
+            "stripe: pass session created id=%s event=%s studio=%s",
+            session.id, body.event_id, studio_id,
+        )
+        return {"url": session.url, "session_id": session.id}
+
+    except stripe.error.StripeError as e:
+        log.error("stripe: create-pass-session error: %s", e)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/pass")
+async def get_pass(
+    event_id: str,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Does this event hold a pass? The server's answer, for `passGate`.
+
+    Studio-scoped: the same membership check the purchase route runs, so a
+    signed-in caller cannot read another studio's entitlements by event id.
+
+    This route does NOT require Stripe to be configured — an entitlement is a
+    row in our database, and whether it can be read has nothing to do with
+    whether new ones can currently be sold.
+    """
+    principal = await require_planner(authorization, x_planner_token)
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await _studio_for_event(conn, event_id, principal)
+        row = await conn.fetchrow(
+            """select sku, amount_cents, currency, purchased_at
+                 from public.event_passes where event_id=$1""",
+            event_id,
+        )
+
+    if row is None:
+        return {"event_id": event_id, "held": False}
+    return {
+        "event_id":     event_id,
+        "held":         True,
+        "sku":          row["sku"],
+        "amount_cents": row["amount_cents"],
+        "currency":     row["currency"],
+        "purchased_at": row["purchased_at"].isoformat() if row["purchased_at"] else None,
+    }
+
+
 @router.get("/verify-session")
 async def verify_session(
     session_id: str,
@@ -253,10 +472,91 @@ async def stripe_webhook(
     log.info("stripe: webhook %s", event_type)
 
     if event_type == "checkout.session.completed":
-        fee_id  = (session_data.get("metadata") or {}).get("fee_id")
+        meta    = session_data.get("metadata") or {}
         sess_id = session_data.get("id")
         amount  = session_data.get("amount_total")
-        log.info("stripe: payment completed fee_id=%s session=%s amount=%s", fee_id, sess_id, amount)
-        # Future: update Supabase client record here when feeSchedule moves server-side.
+
+        if meta.get("kind") == PASS_METADATA_KIND:
+            await _grant_pass(meta, session_data, sess_id, amount)
+        else:
+            fee_id = meta.get("fee_id")
+            log.info("stripe: payment completed fee_id=%s session=%s amount=%s", fee_id, sess_id, amount)
+            # Future: update Supabase client record here when feeSchedule moves server-side.
 
     return {"ok": True}
+
+
+async def _grant_pass(meta: dict, session_data, sess_id, amount) -> None:
+    """Write the entitlement. THE ONLY PLACE A PASS IS EVER GRANTED.
+
+    ── WHY NOT ON THE BROWSER'S RETURN TRIP ────────────────────────────────────
+    `success_url` carries `{CHECKOUT_SESSION_ID}` and the app calls
+    /verify-session with it, which is how the UI learns the payment landed. That
+    is a good UX signal and a bad grant: the user controls when (and whether)
+    their browser comes back, so a closed tab would mean a charge with no pass.
+    The webhook arrives regardless, is signature-verified, and retries until we
+    acknowledge it. So: the redirect informs, the webhook entitles.
+
+    ── WHY THIS ONE REFUSES TO SWALLOW ITS ERRORS ──────────────────────────────
+    The fee branch above logs and returns {"ok": True} whatever happens, which
+    is right for a log line. It is wrong here. If this write fails and we still
+    answer 2xx, Stripe considers the event delivered and never retries — and a
+    customer has paid for a pass that does not exist, with no mechanism left to
+    repair it. That is precisely the "charge and nothing the host can ever
+    recover" the 2026-08-07 ruling refused.
+
+    So an exception here propagates to a 500 and Stripe redelivers. A failed
+    grant must look like a failure. `db.py` carries a sibling lesson worth
+    naming: a writer that swallowed its errors (the price-observation path) made
+    a broken pool look like a working system for exactly this reason.
+    """
+    # ASYNC PAYMENT METHODS COMPLETE UNPAID. `checkout.session.completed` fires
+    # when the session finishes, which for some methods is before money moves;
+    # only `payment_status == "paid"` means paid. We request card only, so this
+    # should not trigger — "should not" is why it is checked rather than assumed.
+    status = session_data.get("payment_status")
+    if status != "paid":
+        log.warning(
+            "stripe: pass session %s completed but payment_status=%s — no grant written",
+            sess_id, status,
+        )
+        return
+
+    event_id  = meta.get("event_id")
+    studio_id = meta.get("studio_id")
+    if not event_id or not studio_id:
+        # Signature-verified but missing what an entitlement needs. Loud, and
+        # NOT retried: redelivering identical metadata cannot fix it.
+        log.error(
+            "stripe: pass session %s has kind=pass but event_id=%r studio_id=%r — no grant",
+            sess_id, event_id, studio_id,
+        )
+        return
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # `on conflict do nothing` WITHOUT a target, covering BOTH unique
+        # constraints: stripe_session_id (the same event redelivered — Stripe
+        # retries until acknowledged) and event_id (a second session for an
+        # event that already has a pass, which the purchase route refuses but a
+        # race could still produce). Either way the first grant stands and the
+        # replay is a no-op rather than a crash or a second row.
+        await conn.execute(
+            """insert into public.event_passes
+                   (event_id, studio_id, sku, amount_cents, currency,
+                    stripe_session_id, purchased_by)
+               values ($1, $2, $3, $4, $5, $6, $7)
+               on conflict do nothing""",
+            event_id,
+            studio_id,
+            meta.get("sku") or PASS_SKU,
+            amount if amount is not None else PASS_AMOUNT_CENTS,
+            (session_data.get("currency") or "usd"),
+            sess_id,
+            meta.get("purchased_by") or None,
+        )
+
+    log.info(
+        "stripe: PASS GRANTED event=%s studio=%s session=%s amount=%s",
+        event_id, studio_id, sess_id, amount,
+    )
