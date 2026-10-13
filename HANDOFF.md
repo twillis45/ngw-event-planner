@@ -8236,9 +8236,9 @@ source on 2026-10-13.
 | One Fact, Two Owners | https://claude.ai/artifact/2LgNwhCu1oFYtRs73uYcm4 | `docs/artifact/one-fact-two-owners.html` | in sync (+552). **Was in no repo doc** |
 | The Unfed Engine | https://claude.ai/artifact/U1uoJKKbTdtbpaoaYoduKZ | `docs/artifact/the-unfed-engine.html` | in sync (+552). **Was in no repo doc** |
 | The First Recorded Gate | https://claude.ai/artifact/GhAvQW5ogLhg1pyzcoGQZ8 | `docs/artifact/the-first-recorded-gate.html` | content in sync; see the note below before touching this one |
-| Activation Ledger | https://claude.ai/artifact/WDShtmfa9eGAnzBP36MHp5 | **none — artifact only** | n/a. Measured event-planner page (`hostv2` ×17, `vendor` ×27, `playbook` ×15) with **no repo trace** |
+| Activation Ledger | https://claude.ai/artifact/WDShtmfa9eGAnzBP36MHp5 | `docs/artifact/activation-ledger.html` **(ported 2026-10-13)** | in sync (+552). Was artifact-only with no repo trace |
 | **Santa Fe 80th Spec** | https://claude.ai/artifact/GXhbdC76hZz8DZPrMrzikz | **none — artifact only**, but CITED at `HANDOFF.md` §"Still open on the Santa Fe 80th" | n/a. **Live, with open items**, one of them owed by Todd (§3 timeline needs a destination lead-time basis; §1 needs correcting; §4 ships while `kitchen` is null) |
-| **Backyard BBQ Planner** | https://claude.ai/artifact/2Yn3oTqguwrm58A5PsFc79 | **none — artifact only** | n/a. No repo trace. ⚠️ Do not grep for it: "Backyard BBQ" appears all over the engine as an event TYPE (a playbook name), which is not a reference to this page |
+| **Backyard BBQ Planner** | https://claude.ai/artifact/2Yn3oTqguwrm58A5PsFc79 | `docs/artifact/backyard-bbq-planner.html` **(ported 2026-10-13)** | in sync (**+370**, the older wrapper — see the note below). ⚠️ Do not grep for it: "Backyard BBQ" appears all over the engine as an event TYPE (a playbook name), which is not a reference to this page |
 | Path to Production Board | https://claude.ai/artifact/MHtgHGn75cgKchSjtPDvKV | **none** in this repo; pulled record in the PRIVATE workspace repo at `docs/artifacts-pulled/2026-09-30_PATH_TO_PRODUCTION_GATE_RECORD.md` | Updated to Version 2 on 2026-10-13 with a dated event-planner addendum. Its gate grid was deliberately NOT touched — no gate has been ruled since 2026-09-30 |
 
 ⚠️ **`the-first-recorded-gate.html` is NOT a clean source, and that is on
@@ -8252,13 +8252,36 @@ as published. **Do not strip the preamble to tidy it.** Its only content
 difference from the live page is one date string ("Recorded 2026-09-03" live vs
 "Recorded September 3, 2026" in the file).
 
-**Two pages are artifact-only, which is the condition INDEX.md calls a
-failure.** Activation Ledger and Ready Is Computed have no source file and were
-named in no repo document, so a repo search could not find them — the exact
-blindness that file was written about. Neither is ported here: porting is a
-decision about what the repo should carry, and these are living pages rather
-than point-in-time findings. They are now at least **named**, which is the part
-that was free and was not done.
+### How a source in `docs/artifact/` relates to its published page
+
+**A source here is a FRAGMENT, not a document.** It starts at `<title>` and
+ends with the content; the publish step wraps it in
+`<!doctype html>…</head><body>\n` + source + `\n</body></html>`. That is the
+whole of the size difference the table's sync column reports, and it is how a
+page can be verified without a diff tool: fetch the published copy, strip the
+wrapper, compare to the source.
+
+**The wrapper is not one fixed size.** Pages published recently carry a 552-byte
+wrapper (`viewport-fit=cover`, safe-area padding, `scroll-padding-top`); the
+older one is **370 bytes** without them. `backyard-bbq-planner.html` has the
+370-byte wrapper because it was published before that change. A delta that is
+neither is a real divergence and should be read as one.
+
+**Ported 2026-10-13, and byte-faithfully.** Activation Ledger and Backyard BBQ
+Planner were artifact-only — the condition `docs/audits/INDEX.md` calls a
+failure, since a repo search could not find them at all. Each source was
+produced by stripping the wrapper from the live published copy, and each was
+verified to reconstruct that copy **byte for byte** before being committed.
+Republishing either from its source reproduces the live page exactly.
+
+⚠️ **`backyard-bbq-planner.html` opens with a stray `<!doctype html>` line
+INSIDE the fragment**, before its `<title>`. That is what the author published
+and it is kept, for the same reason `the-first-recorded-gate.html` keeps its
+preamble: a source's job here is to reproduce the page, not to be tidy. Removing
+it would make the source stop matching what is live.
+
+*Ready Is Computed* is deliberately not ported — see the withdrawal above; the
+evidence that it was event-planner work did not hold up.
 
 **Not event-planner pages, checked and deliberately excluded from this table:**
 Standing Board (`QuPdfteZqB6APGSTSjr44e` — holds personal health, banking and

@@ -1,0 +1,739 @@
+<title>Activation Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground: #F4F3EF;
+    --panel: #FFFFFF;
+    --panel-2: #FAF9F6;
+    --ink: #17191D;
+    --ink-2: #4A4E56;
+    --ink-3: #797E88;
+    --rule: #DCD8D0;
+    --rule-2: #EAE7E0;
+    --brass: #8A6A2F;
+    --brass-soft: #F0E7D4;
+    --live: #3D6A51;
+    --live-soft: #E2ECE5;
+    --open: #A06D22;
+    --open-soft: #F7EBD7;
+    --conflict: #9B4635;
+    --conflict-soft: #F6E4DF;
+    --frozen: #5B5F8A;
+    --frozen-soft: #E7E7F1;
+    --shadow: 0 1px 2px rgba(23,25,29,.05), 0 8px 24px -16px rgba(23,25,29,.22);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #111216;
+      --panel: #191B20;
+      --panel-2: #1E2027;
+      --ink: #E9E7E1;
+      --ink-2: #ADB1B9;
+      --ink-3: #7D828C;
+      --rule: #2D3037;
+      --rule-2: #24272D;
+      --brass: #C9A55E;
+      --brass-soft: #2E2718;
+      --live: #7FB395;
+      --live-soft: #1B2721;
+      --open: #D5A45C;
+      --open-soft: #2B2317;
+      --conflict: #D98A76;
+      --conflict-soft: #2D1E1A;
+      --frozen: #9A9EC9;
+      --frozen-soft: #1F2030;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #111216;
+    --panel: #191B20;
+    --panel-2: #1E2027;
+    --ink: #E9E7E1;
+    --ink-2: #ADB1B9;
+    --ink-3: #7D828C;
+    --rule: #2D3037;
+    --rule-2: #24272D;
+    --brass: #C9A55E;
+    --brass-soft: #2E2718;
+    --live: #7FB395;
+    --live-soft: #1B2721;
+    --open: #D5A45C;
+    --open-soft: #2B2317;
+    --conflict: #D98A76;
+    --conflict-soft: #2D1E1A;
+    --frozen: #9A9EC9;
+    --frozen-soft: #1F2030;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1020px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 40px 72px;
+  }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .88em;
+  }
+
+  /* ── masthead ─────────────────────────────────────────── */
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--brass);
+  }
+  .masthead { display: flex; flex-direction: column; gap: 14px; }
+  h1 {
+    font-family: Newsreader, Georgia, "Times New Roman", serif;
+    font-size: clamp(34px, 6.2vw, 52px);
+    font-weight: 500; line-height: 1.04; letter-spacing: -.015em;
+  }
+  .standfirst {
+    font-family: Newsreader, Georgia, serif;
+    font-size: clamp(17px, 2.4vw, 20px);
+    line-height: 1.5; color: var(--ink-2); max-width: 62ch;
+  }
+  .stamp {
+    font-size: 12px; color: var(--ink-3);
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+    padding-top: 4px;
+  }
+
+  /* ── measurement strip ────────────────────────────────── */
+  .strip {
+    display: grid; gap: 1px; margin-block: 32px 8px;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    background: var(--rule); border: 1px solid var(--rule);
+    border-radius: 3px; overflow: hidden;
+  }
+  .stat { background: var(--panel); padding: 14px 16px; }
+  .stat dt {
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600; margin-bottom: 5px;
+  }
+  .stat dd {
+    margin: 0; font-size: 21px; font-weight: 600;
+    font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+  }
+  .stat dd small { font-size: 12px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+
+  /* ── sections ─────────────────────────────────────────── */
+  section { margin-top: 56px; }
+  .shead {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    border-bottom: 1.5px solid var(--ink); padding-bottom: 9px; margin-bottom: 8px;
+  }
+  .shead h2 {
+    font-family: Newsreader, Georgia, serif;
+    font-size: clamp(25px, 4vw, 33px); font-weight: 500; letter-spacing: -.01em;
+  }
+  .shead .count { font-size: 12.5px; color: var(--ink-3); margin-left: auto; font-variant-numeric: tabular-nums; }
+  .sdek { color: var(--ink-2); max-width: 66ch; margin-bottom: 22px; font-size: 14.5px; }
+
+  /* ── ledger rows ──────────────────────────────────────── */
+  .ledger { display: flex; flex-direction: column; gap: 1px; background: var(--rule-2); border-block: 1px solid var(--rule-2); }
+  .row {
+    background: var(--panel); padding: 13px 16px 14px;
+    display: grid; gap: 3px 14px;
+    grid-template-columns: 1fr auto; align-items: start;
+  }
+  .row .rt { font-weight: 600; font-size: 14.5px; }
+  .row .rd { grid-column: 1 / -1; color: var(--ink-2); font-size: 13.5px; }
+  .row .rd code { color: var(--ink); background: var(--panel-2); padding: 1px 4px; border-radius: 2px; }
+
+  .pill {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 2px; white-space: nowrap;
+  }
+  .p-live { background: var(--live-soft); color: var(--live); }
+  .p-open { background: var(--open-soft); color: var(--open); }
+  .p-conflict { background: var(--conflict-soft); color: var(--conflict); }
+  .p-frozen { background: var(--frozen-soft); color: var(--frozen); }
+  .p-quiet { background: var(--panel-2); color: var(--ink-3); border: 1px solid var(--rule-2); }
+
+  /* ── the flag board (the page's one bold moment) ──────── */
+  /* A deliberately dark instrument panel in both themes — its colors are set
+     literally because the surface itself does not change with the theme. */
+  .board {
+    background: #0E1014; color: #E9E7E1;
+    border: 1px solid #262A31;
+    border-radius: 4px; padding: 22px 20px 20px; box-shadow: var(--shadow);
+  }
+  .board .bh {
+    font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: #C9A55E; font-weight: 600; margin-bottom: 4px;
+  }
+  .board .bl { font-size: 13.5px; color: #A9ADB5; max-width: 58ch; margin-bottom: 18px; }
+  .gates { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; }
+  .gate {
+    border: 1px solid #33373F; border-radius: 3px; padding: 9px 10px 8px;
+    background: #14161A; display: flex; flex-direction: column; gap: 3px;
+  }
+  .gate .gn { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #E9E7E1; }
+  .gate .gv { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; color: #7FB395; }
+  .gate .gc { font-size: 10.5px; color: #AD8F58; letter-spacing: .04em; }
+  .bfoot {
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid #2A2E35;
+    font-size: 13px; color: #A9ADB5; display: flex; flex-direction: column; gap: 8px;
+  }
+  .bfoot strong { color: #E9E7E1; font-weight: 600; }
+
+  /* ── score bars ───────────────────────────────────────── */
+  .scores { display: flex; flex-direction: column; gap: 1px; background: var(--rule-2); border-block: 1px solid var(--rule-2); }
+  .score {
+    background: var(--panel); padding: 12px 16px;
+    display: grid; grid-template-columns: minmax(96px, 148px) 1fr auto;
+    gap: 6px 14px; align-items: center;
+  }
+  .score .sn { font-weight: 600; font-size: 14px; }
+  .score .sv { font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .score .sv em { font-style: normal; color: var(--ink-3); font-weight: 500; font-size: 12px; }
+  .track {
+    position: relative; height: 9px; border-radius: 2px;
+    background: var(--rule-2); border: 1px solid var(--rule-2);
+  }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px 0 0 2px; background: var(--brass); }
+  .fill.cap { background: var(--conflict); }
+  .prior {
+    position: absolute; top: -3px; bottom: -3px; width: 2px;
+    background: var(--ink-3); border-radius: 1px;
+  }
+  .score .sfoot { grid-column: 1 / -1; font-size: 13px; color: var(--ink-2); }
+  .why {
+    grid-column: 1 / -1; display: grid; gap: 4px 18px; margin-top: 8px;
+    grid-template-columns: 76px 1fr;
+  }
+  .why dt {
+    font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase;
+    font-weight: 600; color: var(--ink-3); padding-top: 2px;
+  }
+  .why dd { margin: 0; font-size: 13.2px; color: var(--ink-2); }
+  .why dd code { background: var(--panel-2); padding: 1px 4px; border-radius: 2px; color: var(--ink); }
+  .why .lever { color: var(--ink); }
+  .kind {
+    display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; padding: 2px 6px; border-radius: 2px; margin-left: 6px;
+    vertical-align: 1px;
+  }
+  .k-decision { background: var(--conflict-soft); color: var(--conflict); }
+  .k-work { background: var(--live-soft); color: var(--live); }
+  @media (max-width: 560px) { .why { grid-template-columns: 1fr; } .why dt { padding-top: 6px; } }
+
+  /* ── how-to disclosure ────────────────────────────────── */
+  .howto { grid-column: 1 / -1; margin-top: 10px; }
+  .howto > summary {
+    cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--brass); padding: 5px 10px 5px 8px;
+    border: 1px solid var(--rule); border-radius: 2px; background: var(--panel-2);
+  }
+  .howto > summary::-webkit-details-marker { display: none; }
+  .howto > summary::before {
+    content: "+"; font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    line-height: 1; width: 10px; text-align: center; font-weight: 500;
+  }
+  .howto[open] > summary::before { content: "\2212"; }
+  .howto > summary:hover { border-color: var(--brass); }
+  .howto > summary:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .howbody {
+    margin-top: 12px; padding: 16px 18px 15px;
+    border: 1px solid var(--rule-2); border-left: 2px solid var(--brass);
+    border-radius: 0 3px 3px 0; background: var(--panel-2);
+  }
+  .howbody ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
+  .howbody li { font-size: 13.2px; color: var(--ink-2); }
+  .howbody li strong { color: var(--ink); font-weight: 600; }
+  .howbody code {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    background: var(--panel); border: 1px solid var(--rule-2);
+    padding: 1px 5px; border-radius: 2px; color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .howbody .donewhen {
+    margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--rule-2);
+    font-size: 12.8px; color: var(--ink-2);
+  }
+  .howbody .donewhen b { color: var(--brass); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; font-size: 10.5px; }
+  .howbody .warnline {
+    margin-top: 10px; font-size: 12.8px; color: var(--conflict);
+  }
+  .legend { font-size: 12px; color: var(--ink-3); margin-top: 10px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  /* ── callout ──────────────────────────────────────────── */
+  .callout {
+    border: 1px solid var(--conflict); border-left-width: 3px;
+    background: var(--conflict-soft); border-radius: 3px;
+    padding: 16px 18px; margin-top: 22px;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .callout h3 {
+    font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; color: var(--conflict);
+  }
+  .callout p { font-size: 13.8px; color: var(--ink-2); max-width: 68ch; }
+  .callout code { background: rgba(155,70,53,.1); padding: 1px 4px; border-radius: 2px; color: var(--ink); }
+
+  .note {
+    border-left: 2px solid var(--rule); padding-left: 14px;
+    color: var(--ink-3); font-size: 13px; margin-top: 18px; max-width: 70ch;
+  }
+
+  /* ── tables ───────────────────────────────────────────── */
+  .scroll { overflow-x: auto; margin-top: 4px; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+  th {
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600; border-bottom-color: var(--rule);
+  }
+  td.was { color: var(--ink-3); }
+  td code { font-size: 12px; }
+
+  footer {
+    margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--rule);
+    font-size: 12.5px; color: var(--ink-3); display: flex; flex-direction: column; gap: 7px;
+  }
+
+  @media (max-width: 560px) {
+    .row { grid-template-columns: 1fr; }
+    .row .pill { justify-self: start; }
+    .score { grid-template-columns: 1fr auto; }
+    .score .track { grid-column: 1 / -1; order: 3; }
+    .score .sfoot { order: 4; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">NGW Event Planner · activation state</p>
+    <h1>What is merged, what is gated, what is unfinished</h1>
+    <p class="standfirst">Every line below was measured today against <code class="mono">main&nbsp;@&nbsp;3b9e87b</code> — the flag defaults by running the gates, the stage status by reading the repo, the scores by re-reading the rescore that set them. Nothing is inherited from an audit's summary.</p>
+    <p class="stamp">
+      <span>September 19, 2026</span><span>·</span>
+      <span>HEAD <code class="mono">3b9e87b</code>, level with <code class="mono">origin/main</code></span><span>·</span>
+      <span>Working tree clean</span>
+    </p>
+  </header>
+
+  <dl class="strip">
+    <div class="stat"><dt>Test suites</dt><dd>489</dd></div>
+    <div class="stat"><dt>Tests</dt><dd>7,077 <small>+1 skip</small></dd></div>
+    <div class="stat"><dt>CI run 673</dt><dd>Green</dd></div>
+    <div class="stat"><dt>Deploy 350</dt><dd>Green</dd></div>
+    <div class="stat"><dt>Commits, this run</dt><dd>14</dd></div>
+    <div class="stat"><dt>Numbers moved</dt><dd>0 <small>last 4 finds</small></dd></div>
+  </dl>
+
+  <!-- ══ MERGED ══════════════════════════════════════════ -->
+  <section>
+    <div class="shead">
+      <h2>Merged</h2>
+      <span class="count">shipping in hostv2, the public surface</span>
+    </div>
+    <p class="sdek">hostv2 is the product. It imports the shared engine through the <code class="mono">@app/lib/*</code> alias and calls these functions unconditionally — no gate, no persona check, no flag.</p>
+
+    <div class="ledger">
+      <div class="row">
+        <span class="rt">Positive Attention</span><span class="pill p-live">Live</span>
+        <span class="rd"><code>positiveAttention()</code> from <code>@app/lib/positiveAttention</code></span>
+      </div>
+      <div class="row">
+        <span class="rt">Event Identity</span><span class="pill p-live">Live</span>
+        <span class="rd"><code>identityStatement()</code> from <code>@app/lib/eventIdentity</code> — Sprint 60B</span>
+      </div>
+      <div class="row">
+        <span class="rt">Decision Memory</span><span class="pill p-live">Live</span>
+        <span class="rd"><code>makeRecord</code>, <code>appendDecision</code>, <code>latestRationaleForSubject</code> — the rationale field Sprint 56G called a true-moat layer, shipping</span>
+      </div>
+      <div class="row">
+        <span class="rt">Moment Library</span><span class="pill p-live">Live</span>
+        <span class="rd"><code>suggestableMoments</code>, <code>buildMomentSegment</code> — Sprint 60F</span>
+      </div>
+      <div class="row">
+        <span class="rt">Confidence Grammar</span><span class="pill p-live">Live</span>
+        <span class="rd"><code>confidencePersona</code>, <code>confidenceFor</code> — Sprint 57G</span>
+      </div>
+      <div class="row">
+        <span class="rt">Provenance accessors, this run</span><span class="pill p-live">Live</span>
+        <span class="rd"><code>marketFor</code>, <code>startTimeFieldsToPersist</code>, <code>costProvenance</code> on vendor rows, <code>requiredVendorFloor</code> / <code>belowRequiredVendors</code> on the estimate, and the date rung that now answers the whole “when” question</span>
+      </div>
+      <div class="row">
+        <span class="rt">Path to Production stages 1, 2, 3, 4, 6, 8</span><span class="pill p-live">Passed</span>
+        <span class="rd">Problem statement, scope &amp; design, build, verify, deploy, maintain — all PASS as of the 2026‑08‑21 audit, none reopened since</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FLAGGED ═════════════════════════════════════════ -->
+  <section>
+    <div class="shead">
+      <h2>Flagged off</h2>
+      <span class="count">11 gates · 0 off · 0 consulted by hostv2</span>
+    </div>
+    <p class="sdek">This is the section that changed. Sprint 61B (2026‑06‑18) concluded that the entire host experience was “merged, tested, and turned <strong>OFF</strong>,” and called flag enablement the single highest-leverage move. Both halves of that are false today.</p>
+
+    <div class="board">
+      <p class="bh">Probed by running each gate — clean environment, no query string, no localStorage</p>
+      <p class="bl">Every <code class="mono">pi.*</code> gate returns <strong>true</strong>. Red-proofed: setting <code class="mono">ngw-pi-nav=0</code> flips it to false and clearing storage flips it back, so the probe measures the gate and not itself.</p>
+      <div class="gates">
+        <div class="gate"><span class="gn">pi.attention</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.confidence</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.decisions</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.identity</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.labels</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.memory</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.moments</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.nav</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.voice</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.planv2</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+        <div class="gate"><span class="gn">pi.shell</span><span class="gv">ON</span><span class="gc">doc says OFF</span></div>
+      </div>
+      <div class="bfoot">
+        <p><strong>They were switched on, and the comments were never updated.</strong> All nine gate modules still carry “default OFF” in their header — 17 mentions — while eight of the nine carry “Host Activation v1: default ON” inside the function body. Each file contradicts itself, header against code.</p>
+        <p><strong>And they gate the wrong shell.</strong> Grepping all fourteen gate function names across <code class="mono">hostv2/src</code> returns nothing. hostv2 never consults a flag. These eleven gates govern <code class="mono">src/</code> — the CRA host shell, frozen donor-only since the A1 freeze on 2026‑07‑16, with deletion scheduled post-Sprint‑2.</p>
+      </div>
+    </div>
+
+    <div class="ledger" style="margin-top:22px">
+      <div class="row">
+        <span class="rt">Legacy CRA shell — <code class="mono">demo/src/App.js</code></span><span class="pill p-frozen">Frozen</span>
+        <span class="rd">The only surface the <code>pi.*</code> flags reach. Donor-only; security and data-loss fixes plus shared <code>lib/</code> engine work only</span>
+      </div>
+      <div class="row">
+        <span class="rt">Admin console — <code class="mono">?admin=1</code></span><span class="pill p-quiet">Internal</span>
+        <span class="rd">Stages 2 and 4 passed 2026‑08‑21; ruled standalone-capable in the CRA-retirement plan</span>
+      </div>
+      <div class="row">
+        <span class="rt">Demo tools bar — <code class="mono">?demo=1</code></span><span class="pill p-quiet">Internal</span>
+        <span class="rd">QA chrome on both shells</span>
+      </div>
+    </div>
+
+    <p class="note">What this costs: nothing to switch on, because nothing is off. The real cost is a stale premise — a three-month-old audit named flag enablement as the top activation move, and acting on it would have produced a no-op.</p>
+  </section>
+
+  <!-- ══ INCOMPLETE ══════════════════════════════════════ -->
+  <section>
+    <div class="shead">
+      <h2>Incomplete</h2>
+      <span class="count">stages 5 · 7 open, 9 pending</span>
+    </div>
+    <p class="sdek">Four of the 2026‑08‑21 audit's findings have moved since it was written. Re-measured against the repo today rather than carried forward.</p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Said 2026-08-21</th><th>Measured 2026-09-19</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Security Sprint C+D</td>
+            <td class="was">“never started”</td>
+            <td><span class="pill p-live">Closed</span> Checklist records it DONE, superseded by name</td>
+          </tr>
+          <tr>
+            <td>Consolidated stage-5 checklist</td>
+            <td class="was">“never been written down”</td>
+            <td><span class="pill p-live">Written</span> 16 DONE · 3 NO-OP · 4 OPEN</td>
+          </tr>
+          <tr>
+            <td>Tracked <code>public/hostv2</code> vs <code>gate:hostv2</code></td>
+            <td class="was">“one decision, currently neither”</td>
+            <td><span class="pill p-live">Decided</span> 0 tracked files, gate out of the verify chain. The <code>gate:hostv2</code> script survives in <code>package.json</code> as a dead entry</td>
+          </tr>
+          <tr>
+            <td>Sentry DSN in the prod build</td>
+            <td class="was">“code-wired, no DSN, zero error visibility”</td>
+            <td><span class="pill p-open">Unverified</span> The workflow now passes <code>REACT_APP_SENTRY_DSN</code> from Actions vars. Whether the variable is <em>set</em> is not in the repo, and egress to the deployed site is blocked from here — so this is unverified, not verified</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="ledger" style="margin-top:26px">
+      <div class="row">
+        <span class="rt">Stage 5 — Security &amp; data review</span><span class="pill p-open">Open</span>
+        <span class="rd">Four rows still open by name: pentest (external), backup/restore attestation, login rate limiting, and the Supabase RLS posture recorded in writing</span>
+      </div>
+      <div class="row">
+        <span class="rt">Stage 7 — Observe &amp; handoff</span><span class="pill p-open">Open</span>
+        <span class="rd">Error visibility hangs on the one unverified row above. PostHog is live — that finding was retracted the same session after it grepped two chunks of three</span>
+      </div>
+      <div class="row">
+        <span class="rt">Stage 9 — Promotion</span><span class="pill p-open">Pending</span>
+        <span class="rd">The actual gate to public: five D-2 preconditions plus a 10–12 seat board sitting with first-timer and security seats mandatory</span>
+      </div>
+      <div class="row">
+        <span class="rt">Six calls awaiting a decision</span><span class="pill p-open">Yours</span>
+        <span class="rd">The closing-window axis (board packet ready, three shapes costed) · raise eight per-head bands or cut the food lines · refuse-vs-floor on the two contradicting rosters · six money divergences needing pricing research · four deadlines that disagree only with a commercial source · three split-act purchase rows needing a second row authored</span>
+      </div>
+      <div class="row">
+        <span class="rt">The moat tail — Capture → Memory → Network</span><span class="pill p-quiet">Traction-gated</span>
+        <span class="rd">Sprint 56G's only true-moat layers. Decision Memory ships; the aggregation that makes any of it defensible needs event volume that does not exist yet</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ SCORES ══════════════════════════════════════════ -->
+  <section>
+    <div class="shead">
+      <h2>Scores</h2>
+      <span class="count">W9 re-score · 2026-08-17</span>
+    </div>
+    <p class="sdek">House rule, applied in every row: score against a named leader, take the <em>lowest</em> sub-dimension, re-derive against the running engine, never inherit. The tick on each bar is the prior score. Every cap and lever is quoted from the document that set the number — none is inferred. <strong>Open the instructions on any row</strong> for the steps, with the files, commands and guards named.</p>
+
+    <div class="scores">
+      <div class="score">
+        <span class="sn">Hero</span>
+        <span class="track"><span class="fill" style="width:90%"></span><span class="prior" style="left:70%"></span></span>
+        <span class="sv">9<em>/10 · was 7*</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>Relevance, not correctness. The hero provably always asks something real across 273 states — and it is unprovable that “Which song for the vals, and who plays it?” is the sentence <em>that</em> host needed.</dd>
+          <dt>To reach 10</dt><dd class="lever">A host panel. Real hosts judging whether the question was the one they needed.<span class="kind k-decision">Needs people, not code</span></dd>
+          <details class="howto"><summary>How to run it</summary><div class="howbody">
+            <ol>
+              <li><strong>Freeze the corpus first.</strong> The rescore enumerated 273 hero states (event type × countdown stage). Export that exact set so the panel judges what the 9 was derived from — a panel on a different set re-scores a different thing.</li>
+              <li><strong>Pre-register the bar before anyone sees a screen.</strong> Write down the threshold that earns the 10th point — the ranking board's own discipline. A panel run without a stated bar produces a result that cannot fail, which is worth nothing.</li>
+              <li><strong>Recruit first-time hosts, not planners.</strong> Stage 9 already mandates a first-timer seat on the promotion board; reuse that recruitment rather than opening a second channel.</li>
+              <li><strong>Ask one question per state</strong> — “is this the thing you would want to be asked right now?” with <em>yes / no / right thing, wrong time</em>. Not a 1–5 rating; a rating cannot fail the bar.</li>
+              <li><strong>Record it as a dated rescore</strong> in <code>docs/audits/</code>, citing the response counts. The 10 is claimable only from measured host answers.</li>
+            </ol>
+            <p class="donewhen"><b>Done when</b> — a dated panel result clears the pre-registered bar. Nothing in the engine changes.</p>
+          </div></details>
+        </dl>
+      </div>
+      <div class="score">
+        <span class="sn">Coverage</span>
+        <span class="track"><span class="fill" style="width:80%"></span><span class="prior" style="left:70%"></span></span>
+        <span class="sv">8<em>/10 · was 7</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>The decision-window gradient. Coverage of <em>when</em> each domain should speak is authored per-playbook and uneven.</dd>
+          <dt>To reach 9+</dt><dd class="lever">An event-pro bench across all 39 playbooks. The doc is explicit that this is “not another raiser” — no engine change closes it.<span class="kind k-work">Corpus authoring</span></dd>
+          <details class="howto"><summary>How to run it</summary><div class="howbody">
+            <ol>
+              <li><strong>Build the census, and note that <code>groundingAudit.mjs</code> is the wrong instrument.</strong> That script measures whether a price is <em>cited</em>. This cap is about <em>when</em> a domain speaks. Write a probe that lists, per playbook, every <code>decisions[].when</code> and every domain that produces a row — and write its result to a JSON file rather than console, which this session measured as the cheaper probe loop.</li>
+              <li><strong>Sort by irregularity</strong> — boards whose decision windows bunch together or leave long silent stretches. That ranking is the bench's agenda.</li>
+              <li><strong>Bench per event family, not one generalist across 39.</strong> Wedding, cultural, corporate and watch-party windows are different trades.</li>
+              <li><strong>Author into <code>src/lib/playbooks/data/&lt;type&gt;.js</code></strong>, moving <code>decisions[].when</code> only. Move a date on the playbook's own authored prose; a date that disagrees only with a commercial source stays pinned — the standing house rule.</li>
+              <li><strong>Extend the guard rather than writing a new one.</strong> <code>theCardArguesWithItself.test.js</code> already catches a purchase whose <code>buyAt</code> contradicts its own note, with a proportional tolerance. The same shape covers decisions.</li>
+              <li><code>npm run test:one -- "playbookSchema|playbookContract|culturalContext"</code> → full jest → <code>npm run verify:push</code>.</li>
+            </ol>
+            <p class="donewhen"><b>Done when</b> — the gradient is even enough that a named event pro signs off per family, and the guard fails if a window regresses.</p>
+          </div></details>
+        </dl>
+      </div>
+      <div class="score">
+        <span class="sn">Over time</span>
+        <span class="track"><span class="fill" style="width:80%"></span><span class="prior" style="left:70%"></span></span>
+        <span class="sv">8<em>/10 · was 7</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>The guard sits at the engine. Nothing drives a snoozed task through the hostv2 <em>surface</em> to prove the host sees it suppressed there. <code>overduePolicyFork</code> pins the call site — but “the shell calls the right function” is a textual claim, not a driven one.</dd>
+          <dt>To reach 9+</dt><dd class="lever">One e2e that drives a snoozed task through hostv2 in Chromium. <strong>The cheapest lever on this board</strong> — three specs of exactly this shape shipped this session.<span class="kind k-work">One spec</span></dd>
+          <details class="howto"><summary>How to build it</summary><div class="howbody">
+            <ol>
+              <li><strong>Start the preview</strong> from <code>hostv2/</code>: <code>E2E_BASE=1 npx vite preview --port 5233 --strictPort --host 127.0.0.1</code>. Base URL is <code>http://127.0.0.1:5233/ngw-event-planner/hostv2/</code>. Chromium is at <code>/opt/pw-browsers/chromium</code> — never run <code>playwright install</code>.</li>
+              <li><strong>Write <code>hostv2/e2e/aSnoozedTaskStaysQuiet.spec.mjs</code></strong>, modelled on the 56 specs already in that folder — <code>aReadClockIsNotHerClock.spec.mjs</code> is the closest in shape.</li>
+              <li><strong>Seed an event with a task that is both overdue and snoozed</strong>, then drive it through the rendered board at 390px. Read the screen, not the engine — that is the entire point of the cap.</li>
+              <li><strong>Assert the host does not see “· past due”</strong> on the calm hero. That is the exact reader <code>HostShellV2.jsx:1746</code> resolves through <code>taskTimeStatus</code>.</li>
+              <li><strong>Red-proof it.</strong> Revert the <code>taskIsOverdue</code> delegation and confirm the spec goes red. This session deleted an e2e guard that passed with its own fix reverted — a guard that cannot fail is worse than none.</li>
+              <li><code>cd hostv2 &amp;&amp; npx playwright test aSnoozedTaskStaysQuiet</code> → <code>npm run verify:push</code> (70–100s, all five steps).</li>
+            </ol>
+            <p class="donewhen"><b>Done when</b> — suppression is proven at the surface. The engine half is already green in <code>src/__tests__/overduePolicyFork.test.js</code>; this closes the behavioural half the doc says is missing.</p>
+          </div></details>
+        </dl>
+      </div>
+      <div class="score">
+        <span class="sn">Visual</span>
+        <span class="track"><span class="fill" style="width:80%"></span><span class="prior" style="left:70%"></span></span>
+        <span class="sv">8<em>/10 · was 7</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>Four sub-dimensions never adversarially re-derived: density, hierarchy, type scale, motion. In its own words — “8 is what the evidence supports; it is not a claim that nothing is wrong.”</dd>
+          <dt>To reach 9+</dt><dd class="lever">Re-derive those four <em>against the running app at 390px</em>, not a fixture. The same doc names fixture-measurement as the failure mode that dissolved five findings that day, and calls Visual the dimension where that risk is highest.<span class="kind k-work">Driven QA pass</span></dd>
+          <details class="howto"><summary>How to run it</summary><div class="howbody">
+            <ol>
+              <li><strong>Load the scorecard that already exists</strong> — <code>/docs/claude-skills/ui-ux/UX_09_UI_QA_SCORECARD.md</code> carries the checklist and the severity classes. Do not author a second one.</li>
+              <li><strong>Drive the running app.</strong> Preview on 5233, Chromium at <code>/opt/pw-browsers/chromium</code>, at 390 / 768 / 1280 per <code>UX_03_MULTI_VIEWPORT_EXCELLENCE.md</code>.</li>
+              <li><strong>Score only the four untouched sub-dimensions</strong> — density, hierarchy, type scale, motion. The two stated caps were already re-derived and dissolved; re-doing them re-scores nothing.</li>
+              <li><strong>Use realistic event states.</strong> This is the named failure mode: a screenshot of an unrealistic state looks exactly as convincing as a real one, and it dissolved five findings in a single day. Drive a seeded event through the real board, not a hand-built fixture.</li>
+              <li><strong>Classify every finding by severity, fix P0/P1, then re-score.</strong> Scoring before the fixes records a number nobody can act on.</li>
+            </ol>
+            <p class="donewhen"><b>Done when</b> — all four sub-dimensions have a derived floor and the lowest one is the score. The current 8 is explicitly “what the evidence supports,” not a claim that nothing is wrong.</p>
+          </div></details>
+        </dl>
+      </div>
+      <div class="score">
+        <span class="sn">Ranking</span>
+        <span class="track"><span class="fill cap" style="width:70%"></span><span class="prior" style="left:40%"></span></span>
+        <span class="sv">7<em>/10 · was 4</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>Consequence <em>coverage</em> — “one surface of four declares.” The <code>gateHolder</code> fix lifted a sub-dimension without lifting the floor, so scoring it 8 was withdrawn as optimistic.</dd>
+          <dt>To reach 8+</dt><dd class="lever">“Author what a required vendor category blocks, per the board — content with event-pro judgment behind it, not an engine change.”<span class="kind k-decision">Needs a ruling</span></dd>
+          <dt>Caveat</dt><dd><strong>This cap is stale and the number should not be trusted until it is re-measured.</strong> The Decision Engine pass the next day already counted <em>two</em> of four declaring, with <code>risks</code> correctly declaring none. Today <code>vendor-coi</code> carries pass-through consequence wiring at <code>surfaceRegistry.js:1139–1141</code>. Separately, <code>vendor-reconfirm</code> declares nothing at all — measured and guarded this session.</dd>
+          <details class="howto"><summary>How to move it — two steps, in order</summary><div class="howbody">
+            <ol>
+              <li><strong>Re-derive the cap before touching the number.</strong> Sweep all five producing surfaces in <code>src/lib/surfaceRegistry.js</code> — <code>risks</code> (104), <code>vendor-reconfirm</code> (226), <code>vendor-unbooked</code> (324), <code>decisions</code> (804), <code>vendor-coi</code> (998).</li>
+              <li><strong>Count surfaces that emit a non-zero consequence on a real board — not surfaces that contain the wiring.</strong> <code>vendor-coi</code> passes <code>i.gateHolder</code> through at 1139–1141, but whether the item it reads ever carries one is a behavioural question. This is the exact trap the reconfirm row fell into: wiring present, value always zero.</li>
+              <li><strong>Give the probe a premise test.</strong> Before believing a count, make it report a surface already known to declare — <code>vendor-unbooked</code> hard-codes <code>gateHolder: true, unlocks: 0</code> at 419–420. A probe that cannot find the known positive has measured itself.</li>
+              <li><strong>Then take the two rulings.</strong> (i) what a missing COI blocks — see the Prioritization row below; (ii) the closing-window axis, whose packet is written and costed at <code>docs/audits/2026-09-19_CLOSING_WINDOW_BOARD_PACKET.md</code>, three shapes, guards counted for each.</li>
+              <li><strong>Do not retune to reach it.</strong> Measured candidate by candidate: every constant change that inverts the case breaks four of the same ruling's other guards. It is a missing term, not a mis-tuned one.</li>
+            </ol>
+            <p class="warnline">Guard in place by design: <code>theRulingsOwnBarIsUnmet.test.js</code> fails on any implementation of the closing-window term, so whoever adds the axis goes <em>through</em> the packet rather than past it.</p>
+            <p class="donewhen"><b>Done when</b> — the cap is re-derived against the shipping board and both rulings are recorded. The 7 may move on re-measurement alone, before any code is written.</p>
+          </div></details>
+        </dl>
+      </div>
+    </div>
+
+    <p class="legend">
+      <span><i class="swatch" style="background:var(--brass)"></i> current</span>
+      <span><i class="swatch" style="background:var(--conflict)"></i> cap is stale or synthetic</span>
+      <span><i class="swatch" style="width:2px;height:12px;background:var(--ink-3)"></i> prior score</span>
+    </p>
+
+    <h3 style="font-family:Newsreader,Georgia,serif;font-size:21px;font-weight:500;margin-top:40px;margin-bottom:10px">Decision Engine — 42/50</h3>
+    <div class="scores">
+      <div class="score">
+        <span class="sn">Grounding</span>
+        <span class="track"><span class="fill" style="width:90%"></span><span class="prior" style="left:50%"></span></span>
+        <span class="sv">9<em>/10 · was a mis-measured 5</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>A durable floor, not an omission. <strong>23 of the remaining gaps are exempt by a standing board ruling</strong> — a cultural-tradition item reads as “Cultural tradition” to a host <em>even when its cost is fully cited</em>, unless its <em>quantity</em> claim is independently researched too. The comment in <code>claimBasis.js</code> puts it plainly: attaching a per-pound price to half-smokes or the red drink and letting it headline “would trade cultural scholarship for a coverage percentage.”</dd>
+          <dt>To reach 10</dt><dd class="lever">Either research the <em>quantity</em> axis for every cultural item, or hold a product conversation about whether the cultural-basis rule should ever yield to a sufficiently well-cited dual-axis claim. The doc recommends the conversation <em>before</em> spending more research budget.<span class="kind k-decision">Values decision</span></dd>
+          <details class="howto"><summary>How to move it — do not start with research</summary><div class="howbody">
+            <ol>
+              <li><strong>Hold the conversation first.</strong> The doc's explicit recommendation, because research spent on the wrong side of the ruling is wasted. The question: should <code>claimBasis.js</code>'s rule <code>directCitationEligible &amp;&amp; !(culturalBasis &amp;&amp; !qtyCited)</code> ever yield to a claim cited on <em>both</em> axes — cost and quantity?</li>
+              <li><strong>If the answer is no, 10 is unreachable and the honest move is to restate the score with a documented ceiling.</strong> That is a legitimate outcome and costs nothing but saying so. Overriding the rule to hit a number would “trade cultural scholarship for a coverage percentage” — the project already made that call deliberately.</li>
+              <li><strong>If the answer is yes:</strong> research the <em>quantity</em> axis for the cultural items, ≥2 independent named sources each, register them in <code>src/lib/knowledge/costProvenance.js</code>, then attach <code>costProvenance: &#123; tier, confidence, verificationStatus: 'cited', sources: ['key-a','key-b'], lastVerified, claim, sufficientWhen &#125;</code> — <code>sources</code> are registry keys, never raw URLs.</li>
+              <li><strong>The three zero-cited boards are free work either way</strong>, independent of the ruling: <code>src/lib/playbooks/data/clientDinner.js</code> (0 of 4 priced), <code>fundraiserGala.js</code> (0 of 12), <code>ptaBoosterFundraiser.js</code> (0 of 11). Twenty-seven rows, no values question attached.</li>
+              <li><strong>Re-measure with <code>node scripts/groundingAudit.mjs</code></strong>; <code>--json</code> for the machine-readable form, <code>--stale 30</code> to list cited items overdue for re-verification.</li>
+            </ol>
+            <p class="warnline">Decide the denominator before you start. The 224 vendor cost ranges are not in this metric — widening it to include them moves the number <em>down</em> before it moves up.</p>
+            <p class="donewhen"><b>Done when</b> — the ruling is recorded, and the score either reaches 10 under it or is restated as capped with the ceiling written down.</p>
+          </div></details>
+        </dl>
+      </div>
+      <div class="score">
+        <span class="sn">Coverage</span>
+        <span class="track"><span class="fill" style="width:80%"></span><span class="prior" style="left:70%"></span></span>
+        <span class="sv">8<em>/10 · was 7</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>The same unevenly-authored decision-window gradient as the standalone Coverage score. The three thinnest boards were widened — sweet16 7→9 decisions, quinceañera 6→7, sundayDinner 4→6 — and all now sit at or above the 5.3 corpus average.</dd>
+          <dt>To reach 9+</dt><dd class="lever">A corpus-wide authoring pass across all 39 playbooks. Untouched.<span class="kind k-work">Corpus authoring</span></dd>
+          <details class="howto"><summary>How to run it</summary><div class="howbody">
+            <ol>
+              <li><strong>Census <code>decisions.length</code> per playbook</strong> against the 5.3 corpus average. The three thinnest were already widened and are the worked examples: sweet16 7→9, quinceañera 6→7, sundayDinner 4→6.</li>
+              <li><strong>Author to each playbook's own texture</strong>, not a template — match its existing <code>heartMoments</code> and <code>summary</code> register. A decision that reads like it came from a different board is a new defect, not coverage.</li>
+              <li><strong>Add a real fork, not a label.</strong> This session measured 138 rows that already ask the host a question through their own label; another 12 were genuinely too terse to answer. Count before you conclude — that exact mistake produced a “139 missing asks” claim where the real gap was 13.</li>
+              <li><strong>If a new decision's <code>culturalContext</code> cannot be cited, drop the block rather than ship it uncited.</strong> The grounding gate correctly rejected one that way during the last pass; that is the gate working, not an obstacle.</li>
+              <li><code>npm run test:one -- "playbookSchema|playbookContract|culturalContext"</code> — batching patterns is nearly free (2.1s for three).</li>
+            </ol>
+            <p class="donewhen"><b>Done when</b> — the decision-window gradient is even corpus-wide. This is the same underlying cap as the standalone Coverage score; one pass moves both.</p>
+          </div></details>
+        </dl>
+      </div>
+      <div class="score">
+        <span class="sn">Prioritization</span>
+        <span class="track"><span class="fill" style="width:80%"></span><span class="prior" style="left:70%"></span></span>
+        <span class="sv">8<em>/10 · was 7</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd><code>vendor-coi</code> — “the honest remainder before 9.” It was deliberately <em>not</em> given an invented <code>gateHolder</code>, because <strong>no board has ruled on what a missing certificate of insurance blocks.</strong></dd>
+          <dt>To reach 9</dt><dd class="lever">Rule on it. The 7→8 lever in this same document turned out to be already done — scoring it required re-measuring, not building, which is the standing warning here.<span class="kind k-decision">Needs a ruling</span></dd>
+          <details class="howto"><summary>How to take the ruling</summary><div class="howbody">
+            <ol>
+              <li><strong>Re-measure before building anything.</strong> The standing warning from this dimension's own history: the last lever was already done, and scoring it required a measurement, not a change.</li>
+              <li><strong>Put one question to the board: what does a missing certificate of insurance actually block?</strong> Venue access is the obvious candidate, but it needs ruling, not assuming.</li>
+              <li><strong>Respect the sibling ruling's bounds.</strong> <code>2026-08-17_VENDOR_CONSEQUENCE_RULING.md</code> rule 3 limits the unbooked-vendor precedent to “<code>required: true</code>, past <code>when</code>, genuinely unmatched.” A COI is a different shape; extending the scope is the board's to do, not the implementer's.</li>
+              <li><strong>Once ruled, declare it on the <code>vendor-coi</code> raise the way <code>vendor-unbooked</code> does</strong> at <code>surfaceRegistry.js:419–420</code> — <code>gateHolder: true, unlocks: 0</code>, deliberately <em>without</em> a fabricated <code>unlocks</code> count, because a missing certificate frees nothing.</li>
+              <li><strong>Red-proof the guard:</strong> remove the declaration and confirm the test goes red. Then <code>npm run verify:push</code>.</li>
+            </ol>
+            <p class="warnline">Until the board rules, leaving <code>vendor-coi</code> undeclared is correct. It was deliberately not given an invented <code>gateHolder</code>, and inventing one to move a score is the failure this dimension is scored against.</p>
+            <p class="donewhen"><b>Done when</b> — the ruling is recorded and the raise declares what it ruled. Shares a board sitting with the Ranking row above.</p>
+          </div></details>
+        </dl>
+      </div>
+      <div class="score">
+        <span class="sn">Adaptivity</span>
+        <span class="track"><span class="fill" style="width:80%"></span><span class="prior" style="left:80%"></span></span>
+        <span class="sv">8<em>/10 · held, not padded</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>Longitudinal momentum and velocity across sessions need session-history infrastructure that does not exist. Left alone rather than padded.</dd>
+          <dt>To reach 9+</dt><dd class="lever">An architecture decision first — storage, schema, retention policy — then the build. The doc flagged it rather than inventing one.<span class="kind k-decision">Architecture decision</span></dd>
+          <details class="howto"><summary>How to unblock it</summary><div class="howbody">
+            <ol>
+              <li><strong>Three decisions before any code.</strong> <em>Storage</em> — a Supabase table or local durability, given hostv2 already carries <code>ngw-hostv2-durability</code> and a write log. <em>Schema</em> — what one session record holds. <em>Retention</em> — how long it is kept, and whether a host can clear it.</li>
+              <li><strong>Sequence it behind Stage 5, not beside it.</strong> Session history is user data on a public surface, so it pulls in the Supabase RLS row that is already open on the security checklist. Building it first makes that row harder, not easier.</li>
+              <li><strong>Reuse the ledger shape that already ships.</strong> <code>decisionMemory</code> — <code>makeRecord</code>, <code>appendDecision</code>, <code>latestRationaleForSubject</code> — is live in hostv2 and is the nearest precedent for a per-event append-only record.</li>
+              <li><strong>Do not build it to move the score.</strong> This dimension was left at 8 deliberately rather than padded; inventing the infrastructure to raise a number is precisely what the rescore refused to do.</li>
+            </ol>
+            <p class="donewhen"><b>Done when</b> — a written architecture decision exists. The 8 holds honestly until then; it is the one row on this page where <em>doing nothing</em> is the correct state.</p>
+          </div></details>
+        </dl>
+      </div>
+      <div class="score">
+        <span class="sn">Honesty</span>
+        <span class="track"><span class="fill" style="width:90%"></span><span class="prior" style="left:90%"></span></span>
+        <span class="sv">9<em>/10</em></span>
+        <dl class="why">
+          <dt>Capped by</dt><dd>Unlabelled priced items — “an unlabelled number is the one place the product still lets a reader assume more rigour than exists.” Seven enforcement gates are green: <code>researchPolicyCompliance</code>, <code>claimBasis</code>, <code>venueSourceProof</code>, <code>taskInferenceProof</code>, <code>ctaNamesTheAct</code>, <code>raiseVocabulary</code>, <code>duesUnpricedRaise</code>.</dd>
+          <dt>To reach 10</dt><dd class="lever">The same gap that caps Grounding caps this, so it resolves with the same values decision — plus the vendor axis below, which no current gate counts.<span class="kind k-decision">Same ruling</span></dd>
+          <details class="howto"><summary>How to move it</summary><div class="howbody">
+            <ol>
+              <li><strong>No separate path from Grounding.</strong> Take that ruling; this moves with it. Running a second workstream here duplicates the same conversation.</li>
+              <li><strong>Then close the axis the gates do not count.</strong> All seven enforcement gates score <em>purchase</em> rows — 626 of them. The 224 vendor cost ranges sit outside every one: <code>moneyProvenance.js</code> records <code>vendor.playbookCostRange</code> at tier <code>estimate</code> with empty sources.</li>
+              <li><strong>Pick one of two honest ends, not neither.</strong> Either extend <code>claimBasis</code> coverage to vendor ranges and carry the number down until research catches up, or state in the score that Honesty is measured on purchases only. Leaving it unstated is the exact defect this session kept finding — a fact whose consumer never qualified it.</li>
+              <li><strong>The rows already carry the hook.</strong> <code>vendorPlan.js</code> now emits <code>costProvenance</code> and <code>provenanceKeys</code> per row and a deduped set on the plan, so a surface can mark an unsourced range without an engine change.</li>
+              <li><code>npm run test:one -- "claimBasis|researchPolicyCompliance|moneyProvenance"</code> after any gate change.</li>
+            </ol>
+            <p class="donewhen"><b>Done when</b> — the ruling lands and the vendor axis is either counted or explicitly excluded in writing. A 9 scored on a denominator that quietly omits 224 rows is the thing this dimension exists to prevent.</p>
+          </div></details>
+        </dl>
+      </div>
+    </div>
+
+    <div class="callout" style="border-color:var(--brass);background:var(--brass-soft)">
+      <h3 style="color:var(--brass)">Grounding, re-measured today — and one axis nobody is counting</h3>
+      <p>Running <code>scripts/groundingAudit.mjs</code> against HEAD: <strong>87.2% of priced items cited (546 of 626)</strong>, <strong>93.5% settled</strong> once established consensus counts (585 of 626). The August pass measured a denominator of 548; the corpus has grown to 626, so the percentage and the target both moved.</p>
+      <p>Three playbooks sit at <strong>zero</strong> — <code>clientDinner</code> (0/4), <code>fundraiserGala</code> (0/12), <code>ptaBoosterFundraiser</code> (0/11). Twenty-seven priced items, no citations. That is the most concrete research target on this page.</p>
+      <p><strong>And the denominator excludes the vendors entirely.</strong> All 626 are <em>purchase</em> rows. The 224 vendor cost ranges found this session — every one of them carrying no provenance, under a registry comment that claimed otherwise — are not in this metric at all. Grounding's 9 and Honesty's 9 are both scored on a corpus that leaves them out.</p>
+    </div>
+
+    <div class="ledger" style="margin-top:30px">
+      <div class="row">
+        <span class="rt">Six of the ten caps are decisions, not work</span><span class="pill p-conflict">The pattern</span>
+        <span class="rd">Hero's 10th needs a host panel. Ranking's and Prioritization's need a board ruling — including one on what a missing COI blocks. Grounding's and Honesty's need the same values conversation about the cultural-basis rule. Adaptivity's needs an architecture decision. <strong>Only Over time and the two Coverage rows are pure execution</strong>, and Over time's is a single e2e spec.</span>
+      </div>
+    </div>
+
+    <div class="callout">
+      <h3>The Ranking 7 rests on a row the shipping corpus never produces</h3>
+      <p><code>rankingFloor.test.js</code> is green, and its anchor is a hand-authored literal: <code>{ dueInDays: 1, priorityScore: 300, unlocks: 3, gateHolder: true }</code>. The shipping <code>vendor-reconfirm</code> raise emits no consequence field of any kind, so <code>actionConsequence</code> returns 0.00.</p>
+      <p>On the real board at T‑3 the dead certificate scores <strong>4.90</strong> and the reconfirm whose window closes scores <strong>0.00</strong>. The guard asserts a relation between two synthetic rows; the board does not invert. Measured 2026‑09‑19 in <code>theRulingsOwnBarIsUnmet.test.js</code>, and it cannot be reached by retuning — every candidate that inverts it breaks four of the same ruling's other guards.</p>
+      <p>The score is not wrong so much as untested at its own cap. Whoever raises Ranking past 7 has to widen consequence coverage <em>and</em> pass through the closing-window board packet.</p>
+    </div>
+
+    <p class="note"><strong>Not scored here:</strong> Sprint 56G's per-layer letter grades (Venue D, Market C, Outcome D, Stakeholder C, Attention B, Knowledge Capture C, Event Network F, and nine more). They are design-review judgments from 2026‑06‑17, three months stale, produced in a pass that explicitly built nothing — not measurements, and not comparable to the numbers above.</p>
+  </section>
+
+  <footer>
+    <p>Sources, all read or run today: <code class="mono">git log</code> and a full <code class="mono">react-scripts test</code> run · a throwaway jest probe over all eleven gates with a negative control · <code class="mono">scripts/groundingAudit.mjs</code> against HEAD · <code class="mono">docs/audits/2026-08-21_PATH_TO_PRODUCTION_AUDIT.md</code> · <code class="mono">docs/audits/2026-08-21_SECURITY_TRACK_CHECKLIST.md</code> · the five <code class="mono">2026-08-17_*_RESCORE.md</code> documents, which supplied every cap and lever quoted in the scores · <code class="mono">engine-audit/SPRINT_56G</code> and <code class="mono">SPRINT_61B</code>.</p>
+    <p>One correction carried into this page: the claim that the host experience is “merged and flagged off, and that outranks the six open calls” was made earlier today on Sprint 61B's authority without re-measuring. It does not hold — the flags are on and they do not reach the shipping shell.</p>
+  </footer>
+
+</div>
