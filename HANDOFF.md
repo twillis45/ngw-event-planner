@@ -352,6 +352,65 @@ this file is the short answer to "where is it, is it green, what's next."
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
 
+## BUILT 2026-10-13 (fiftieth entry) — the server-side entitlement, so a purchase can survive a cleared browser
+
+PR #87 merged (`3ae5c6d`). Branch restarted from the new `main` per the
+merged-PR rule. Owner picked the sequence and the scope: merge first, then
+**backend spine only** — no `passGate` change, no hostv2, billing still dormant.
+
+**What was wrong.** `2026-10-03_STRIPE_CONSUMER_CHECKOUT_READINESS.md` answered
+D-2 #3 with *no*: Stripe is "live, hardened and working — for a different job"
+(billing a host's CLIENT for a fee) and cannot sell the One-Event Pass. The
+blocker, in the 2026-08-07 ruling's own words already sitting in the router:
+*"There is no server-side entitlement (feeSchedule is localStorage and the
+webhook only logs), so an anonymous purchase produces a charge and nothing the
+host can ever recover."* Clearing the browser lost the purchase; editing
+localStorage granted it free. **Ten days, nothing built, no design posted.**
+
+**Built.** `supabase/migrations/017_event_passes.sql` — the CANONICAL folder,
+not `backend/migrations`, which its own README freezes as legacy; a shared
+table there would have tripped `check:migrations`. One row per event
+(`event_id` primary key) because the ruling says *"whichever door fired, one
+pass unlocks that whole event"*. `studio_id` is the tenant key; `purchased_by`
+is audit attribution and never an access decision. RLS on with **no policy**,
+so no client reaches it — the only writer is a signature-verified webhook,
+which is the whole of "editing localStorage grants it for free", closed.
+
+**Three design calls worth keeping:**
+
+| Call | Why |
+|---|---|
+| A SEPARATE route (`create-pass-session`), not a mode flag | `create-checkout-session` takes `amount_cents` from the caller, which is CORRECT for a planner invoicing their own client, and the audit's gap #3 for a fixed-price product. Two products, so two routes — a flag would leave a fixed price one boolean from a caller-set one. The pass request has **no price field at all**; the test asserts the field set exactly |
+| NO foreign keys on the table | Every delete rule is wrong for a receipt: `cascade` destroys the evidence somebody paid when an event or studio is deleted; restricting breaks unrelated deletes. Integrity comes from the write path, same argument `013_vendor_brief_links.sql` makes |
+| The webhook GRANTS; the redirect only informs | `success_url` carries the session id and the UI calls `/verify-session` — good signal, bad grant: the user controls whether their browser returns, so a closed tab would mean a charge with no pass. And this branch does **not** swallow errors the way the fee branch does; a 2xx on a failed write means Stripe never retries and a paying customer has nothing |
+
+**14 new tests, `test_stripe_pass_entitlement.py`, red-proofed both ways.** The
+one that matters most: **the money route never claims event ownership.**
+`communication._assert_event_access` claims an unowned event for the caller's
+studio on first touch — correct for comms, catastrophic on a route that then
+charges a card. That is PR #86's hole with a receipt attached, so
+`_studio_for_event` is deliberately STRICTER than the shared helper rather than
+a reuse of it: the event must have a `public.events` row, and an unsynced event
+is refused with its own status and a message saying so, because "you don't have
+access" would be a lie — the host does own it, the server has never seen it.
+
+Verified: backend **437 passed** (was 423, +14). Route sweep green, so both new
+routes gate their caller and answer 401 bare. `check:migrations` green. Red-proof
+driven in both directions — dropping the `payment_status == "paid"` check fails
+the unpaid test, adding `amount_cents` back fails the price-shape test.
+
+⚠️ **MERGING THIS APPLIES THE MIGRATION.** `supabase/migrations` is the folder
+the Supabase GitHub integration WATCHES — merge to `main` applies `017` to the
+live project. It is additive (one new table, no changes to existing schema) and
+nothing reads it yet, but it is a live schema change, not a file.
+
+**Still NOT sellable, and this entry does not claim otherwise.** The spine
+stores an entitlement; nothing consumes it. `passGate` still answers "allowed"
+while billing is dormant and has not been pointed at this table. hostv2 still
+has no Stripe code. Remaining before money: `passGate` reads the server record,
+hostv2 wiring, the pass sheet → checkout, then D-2 #1/#2/#4/#5 — all four
+owner-side.
+
 ## FIXED 2026-10-13 (forty-ninth entry) — three recorded claims re-measured, and the fixer that deleted this file's history
 
 PR #85 merged (`3b3c6d1`); Deploy Pages 562 success, and the footer fix was
