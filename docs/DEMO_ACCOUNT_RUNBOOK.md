@@ -4,15 +4,40 @@ Everything below except step 1 is one-tap inside the app. The tooling shipped
 2026-08-19 (`9cbd48ea`) — hostv2 now has the same seed/reset bar the legacy
 CRA shell had, riding the shared `src/lib/demoSeed.js` builder.
 
-## One-time setup (the only manual step — Todd does this)
+**Gated since 2026-10-07.** `hostv2/e2e/theDemoResetsToTheSamePlace.spec.mjs`
+drives steps 3–5 below in a real browser: arm, seed, reseed, remove, disarm.
+Until then nothing had checked this path since the day it was written —
+`demoSeed.test.js` gates the pure builder and cannot see the bar, the click, or
+the screen the host lands on. Both load-bearing promises are red-proven: the
+"Set your budget" beat fails the spec when the hero stops asking for it, and
+the fresh-id contract fails it when ids stop moving.
+
+## Step 1 is NOT a blocker — measured 2026-10-07
+
+The line below used to read "the only manual step", which made the whole
+precondition look like it was waiting on Todd. **It is not.** `demoSeed` writes
+through `saveCustomEvents` to localStorage and only touches the cloud
+`if (isSupabaseConfigured() && session)`. Driven signed out, with no account at
+all: `?demo=1` → **Seed / reset** → lands on the VFW event on the "Set your
+budget" beat; a second tap mints fresh ids; **Remove** clears and tombstones.
+Every test in the spec runs that way.
+
+So a **single-device demo owes nothing to step 1.** What the account buys is the
+cross-device half — the plan following you to another phone, and the cloud
+delete that backs up the tombstone. That half is NOT covered by the spec (it
+needs real credentials) and remains unverified.
+
+## One-time setup (only for a cross-device demo — Todd does this)
 
 1. Create the demo account in Supabase: any dedicated email (e.g.
    `demo@…`) + password, via the app's own sign-up flow on production.
    Nothing else to configure — the account is just a normal host account.
+   Skip this entirely if you are demoing from one device.
 
 ## Before each demo
 
-2. Sign in as the demo account on the demo device.
+2. Sign in as the demo account on the demo device — or don't, if this is a
+   single-device demo (see above).
 3. Open the app with `?demo=1` appended to the URL. A small "Demo" bar
    appears bottom-left (it stays armed on that device until disarmed).
 4. Tap **Seed / reset**. This deletes any previous demo event and seeds a

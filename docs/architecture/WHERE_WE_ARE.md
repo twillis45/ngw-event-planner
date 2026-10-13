@@ -1,5 +1,90 @@
 # Where We Are -- live status board
 
+## 2026-10-13 — the outage ended without me, and the branch was rebased on top of that
+
+**`main` @ `be03383`. Production shipped 2026-10-11 ~14:06 (Checks 887 green,
+Deploy Pages 561 green). `main-2utz0n` rebased onto it, five commits, one
+dropped.**
+
+A different session (`session_01XJjsh…`, Opus 5.5) landed the identical
+`budgetCopy.js` import move as **`55855e1`** on 2026-10-11, carried into its own
+PR #86 rather than waiting on mine — "Carried here so this PR can go green; it
+no-ops once main has it." That PR also closed a real security hole: the
+cross-studio event claim in comms and the RSVP fallback it fed, measured in
+production at **58 events with no owner row** (13 with guessable legacy ids
+across up to 5 studios) and one owner row naming the wrong studio.
+
+So my `e72f4c0` was redundant and is **dropped** in the rebase — main's
+`budgetCopy.js` was diffed against mine first to confirm. Main touched only
+that one file plus three backend files, none of which this branch edits, so the
+rebase was conflict-free. What the branch still carries that main does not: the
+sales-page footer company fix, the demo-bar e2e spec, and the handoff entries.
+
+⚠️ **Two numbers I published were wrong and are corrected rather than quietly
+edited.** I reported the outage as "~25 hours" and then "~30 hours". It ran
+**2026-10-07 06:01 → 2026-10-11 14:06, about 104 hours.** Both figures were
+true when written and neither was revisited — which is the same
+not-revisited failure as the "cra-build GREEN since 2026-10-03" sentence those
+entries existed to correct. The entry below also states "the fix is on
+`main-2utz0n`, NOT on `main` — main is still red until this branch lands
+there"; both halves are now false.
+
+**THE LESSON, and it cost four days.** I opened a PR for a one-line fix, then
+spent three safety-net check-ins waiting on a merge only the owner could
+perform, while a parallel session shipped the same line inside work that was
+already moving. **Port the fix into whatever is already in flight; do not hold
+it behind your own PR.**
+
+## 2026-10-07 — the other name on the sales page, and a demo nobody had ever driven twice
+
+**jest 8,281 / 602 · e2e 3,332 tests in 124 files · two commits on
+`main-2utz0n` (`b72d259`, `1497537`), branched from `main` @ `96a707c`. NO
+MATRIX AND NO CI THIS SESSION.** Both items were claims this repo had already
+written down and never pressured.
+
+**The sales page footer credited the retired COMPANY** — "No Guesswork Events —
+a New Ground Works build". The product name was right; the company was not, on
+the one line a buyer reads when they go looking for who they would be paying.
+`theNameOutsideTheApp.test.js`, written four days earlier for exactly this
+class of leak, could not have caught it: it sweeps the six shipped static files
+for the retired PRODUCT name, and this is a different string naming a different
+thing. Underneath it, `brand.js` already carried
+`company: 'No Guesswork Systems LLC'` **with no consumer anywhere in the tree**
+— the wordmark's failure again, one field over. Fixed, and the gate grew +7
+assertions: a retired-company sweep over all six files, plus a check that the
+footer carries `BRAND.company` by value (static HTML cannot import the module,
+so the test is the only binding possible, and it gives that field its first
+reader). Both red-proven.
+
+**The demo path had never been driven twice.** D-2 precondition 2's tooling
+shipped 2026-08-19 and the runbook has promised "one tap" ever since; nothing
+checked it after the day it was written. `demoSeed.test.js` gates the pure
+builder and cannot see the bar, the click, or the screen the host lands on —
+and seven weeks of engine work landed on top of that path.
+`hostv2/e2e/theDemoResetsToTheSamePlace.spec.mjs` now drives it end to end (8
+tests, desktop only via `VIEWPORT_INDEPENDENT`, confirmed by `--list`). Both
+load-bearing promises are red-proven: freezing the run suffix fails the
+fresh-id inequality, and replacing heroAsk's budget branch with the placeholder
+fails the "Set your budget" beat at line 125. **The first red-proof found a
+hole in my own spec** — with the seed's budget set, the stored assertion failed
+first and the hero poll never ran, so a guard that never executed looked green.
+
+**AND STEP 1 WAS NEVER A BLOCKER.** The runbook called the Supabase demo
+account "the only manual step", which made the whole precondition read as
+waiting on the owner. `demoSeed` writes to localStorage and only touches the
+cloud `if (isSupabaseConfigured() && session)`. Every test in the new spec runs
+signed out, with no account, and the full path works — a single-device demo
+owes that step nothing. The account buys the cross-device half, which needs
+real credentials and remains **unverified**; the runbook now says both instead
+of implying the whole thing is blocked.
+
+⚠️ **Read "e2e green" here narrowly.** One spec, one project, run against a
+session-local Playwright config: this cloud container ships chromium 1194 and
+the resolved `@playwright/test` wants 1228, so `executablePath` and
+`webServer.cwd` were overridden outside the repo. The repo config changed by
+exactly one line. No matrix ran, and `handoff:check` cannot run in a `--depth 1`
+clone at all — it needs `bdc8826f`'s ancestry.
+
 ## 2026-10-07 — the claim that was backwards, a 17-pixel door, and a spec asserting a fallback
 
 **jest 8,267 / 601 - e2e 3,263 tests - eight commits, all pushed and live
