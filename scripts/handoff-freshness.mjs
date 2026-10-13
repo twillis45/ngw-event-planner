@@ -61,8 +61,23 @@ const unpushed = (() => {
 // committed document is self-invalidating: stamping "0 unpushed" makes it
 // false the moment you commit the stamp. The count belongs in the check's
 // OUTPUT, where it is re-measured every run, not in prose that ages.
+//
+// `$4` IS THE REST OF THE ROW, AND DROPPING IT DELETED SESSIONS OF HISTORY.
+// This line read `$1${head}$3 |` until 2026-10-13 — no `$4`. ROW's fourth
+// group is `([^|]*)`, everything from the SHA's closing backtick to the cell's
+// closing pipe, and a table cell cannot contain an unescaped `|`, so that
+// group is the ENTIRE remainder of the row. Stamping therefore truncated the
+// Branch/HEAD cell to the SHA alone, every time, silently: the run it was
+// caught on destroyed ~7,000 characters — the 104-hour outage record and its
+// lesson, every jest/e2e count, and five sessions of matrix history — and
+// reported `✓`. The gate's own failure message tells you to run this.
+//
+// The comment below is right about intent and was read as covering the code:
+// the stamp adds no NEW prose. It was never licence to delete the prose that
+// is already there. "Writes the SHA and nothing else" is satisfied by
+// replacing the SHA in place, which is what `$4` restores.
 if (STAMP) {
-  writeFileSync(FILE, src.replace(ROW, `$1${head}$3 |`));
+  writeFileSync(FILE, src.replace(ROW, `$1${head}$3$4|`));
   console.log(`✓ HANDOFF.md stamped: ${claimed} -> ${head}`);
   if (unpushed) console.log(`  note: ${unpushed} commit(s) unpushed right now (Step 6c) — not written into the file, by design.`);
   process.exit(0);

@@ -335,7 +335,7 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main-2utz0n`, rebased onto `main` @ `be03383` — 2026-10-13. **THE OUTAGE BELOW IS OVER, AND NOT BY THIS BRANCH.** A different session (`session_01XJjsh…`, Opus 5.5) landed the identical `budgetCopy.js` import move as **`55855e1`** on 2026-10-11 13:35, carried into ITS own PR #86 rather than waiting on mine — its message says so: "Carried here so this PR can go green; it no-ops once main has it." Merge `be03383` at 14:01, **Checks 887 green, Deploy Pages 561 green, production shipped ~14:06.** My `e72f4c0` was therefore redundant and is **DROPPED** in this rebase; main's `budgetCopy.js` was diffed against mine first to confirm the fix is genuinely there. What is lost with it is a 3-line comment at the import site saying why the order is load-bearing — not re-added, to avoid a second diff on a file main just changed. ⚠️ **TWO NUMBERS IN THE ROW BELOW ARE WRONG AND ARE LEFT STANDING AS EVIDENCE.** It says "~25 hours" and the row after it "~30 hours"; the outage actually ran **2026-10-07 06:01 → 2026-10-11 14:06, about 104 hours.** Both figures were true when written and neither was ever revisited — the same not-revisited failure as the "cra-build GREEN" sentence they were correcting. ⚠️ It also says "**the fix is on `main-2utz0n`, NOT on `main`** — main is still red until this branch lands there." That is now false in both halves. **THE LESSON, which cost four days:** I opened a PR for a one-line fix and then waited on three safety-net check-ins for a merge only the owner could do, while a parallel session shipped the same line into work that was already moving. Porting the fix into whatever is already in flight beats holding it behind your own PR. What this branch still carries that main does not: the sales-page footer company fix, the demo-bar e2e spec, and these handoff entries. ─── **THE 2026-10-08 ENTRY FOLLOWS, LEFT AS WRITTEN:** 🔴 **`main` WAS RED FOR THREE COMMITS AND THE PAGES DEPLOY WITH IT — production had not shipped since 2026-10-07 06:01, ~25 hours** (wrong: ~104, corrected above). One import line: `src/lib/budgetCopy.js` carried `import { isOwnEvidence }` below an `export`, tripping `import/first`, which CRA escalates to a BUILD error the 241-warning baseline cannot absorb. CI on main: 878 `36248c35` PASS / Deploy 557 PASS → 879 `147dd7e3` FAIL / 558 FAIL → 880 `4bbd99df` FAIL / 559 FAIL → 881 `96a707c` FAIL / 560 FAIL. The runner log is byte-identical to the local reproduction, so it was never an environment artifact. Fixed in `e72f4c0`; `gate:cra` green at 241 of 241, the figure already recorded — the baseline was never the problem. ⚠️ **The row below this one said the opposite** ("`cra-build` GREEN since 2026-10-03") and that is how it survived: this is the forty-third entry's lesson verbatim, which records cra-build red SIX DAYS on one orphaned import "that the gate named in full every single run", surviving because the line was labelled pre-existing and nobody opened it. Same rule, same file class, same reason. **The fix is on `main-2utz0n`, NOT on `main`** — main is still red until this branch lands there. Before that, `main-2utz0n` @ `1497537` — 2026-10-07 (forty-eighth entry), **two commits**, branched from `main` @ `96a707c`. jest **8,281 / 602** (+7, one existing suite) · e2e **3,332 tests in 124 files** (+8 in 1 file, desktop only). **NO MATRIX AND NO CI THIS SESSION** — one spec on one project, run against a session-local Playwright config because this container ships chromium 1194 and the resolved `@playwright/test` wants 1228. The matrix numbers in the rows below describe `bdc8826f`/`3b83ebf4` and were not re-measured. `handoff:check` could not run at all: it needs `bdc8826f`'s ancestry and this is a `--depth 1` clone. Before that, `main` @ `bdc8826f` — 2026-10-07, **eight commits pushed that session** (`17dccc54..bdc8826f`), all live. jest **8,267 / 601** - e2e **3,263 tests**. Two full matrices: on `2218a203` **2,978 passed / 4 failed (35.6m)** where all four failures were the first five tests of the run, inside the cold-start window right after `vite preview` booted, and re-ran **17/17 clean on the same dist**; on `3b83ebf4` **3,024 passed / 238 skipped / 1 failed / 0 flaky (36.5m)**, and that one failure was a spec asserting a label-lookup FALLBACK as though it were authored copy. Worth keeping: the first matrix was launched while I then ran full jest suites four times over the following eight minutes, which is the same mistake as driving a browser during a matrix. Before that, `main` @ `e1536281` — 2026-10-06, **nine commits this session, eight pushed and live**; `8cb6acf3` (e2e ceiling 30→40) committed and held while the run on `e1536281` was measured. jest **8,247 / 598** · e2e **3,163 tests / 116 files**. Matrix on `bb378869` GREEN, all three shards (26m54s / 26m04s / 26m48s). Shard 3 was CANCELLED on the clock twice earlier the same evening — 30m19s and 30m13s, no test failing either time, both caused by creation-driving specs of mine left out of `VIEWPORT_INDEPENDENT`. Before that, 2026-10-04, five commits —  backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known flaky. Before that, the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
+| Branch / HEAD | `main-2utz0n`, rebased onto `main` @ `0eb12f85` — 2026-10-13. **THE OUTAGE BELOW IS OVER, AND NOT BY THIS BRANCH.** A different session (`session_01XJjsh…`, Opus 5.5) landed the identical `budgetCopy.js` import move as **`55855e1`** on 2026-10-11 13:35, carried into ITS own PR #86 rather than waiting on mine — its message says so: "Carried here so this PR can go green; it no-ops once main has it." Merge `be03383` at 14:01, **Checks 887 green, Deploy Pages 561 green, production shipped ~14:06.** My `e72f4c0` was therefore redundant and is **DROPPED** in this rebase; main's `budgetCopy.js` was diffed against mine first to confirm the fix is genuinely there. What is lost with it is a 3-line comment at the import site saying why the order is load-bearing — not re-added, to avoid a second diff on a file main just changed. ⚠️ **TWO NUMBERS IN THE ROW BELOW ARE WRONG AND ARE LEFT STANDING AS EVIDENCE.** It says "~25 hours" and the row after it "~30 hours"; the outage actually ran **2026-10-07 06:01 → 2026-10-11 14:06, about 104 hours.** Both figures were true when written and neither was ever revisited — the same not-revisited failure as the "cra-build GREEN" sentence they were correcting. ⚠️ It also says "**the fix is on `main-2utz0n`, NOT on `main`** — main is still red until this branch lands there." That is now false in both halves. **THE LESSON, which cost four days:** I opened a PR for a one-line fix and then waited on three safety-net check-ins for a merge only the owner could do, while a parallel session shipped the same line into work that was already moving. Porting the fix into whatever is already in flight beats holding it behind your own PR. What this branch still carries that main does not: the sales-page footer company fix, the demo-bar e2e spec, and these handoff entries. ─── **THE 2026-10-08 ENTRY FOLLOWS, LEFT AS WRITTEN:** 🔴 **`main` WAS RED FOR THREE COMMITS AND THE PAGES DEPLOY WITH IT — production had not shipped since 2026-10-07 06:01, ~25 hours** (wrong: ~104, corrected above). One import line: `src/lib/budgetCopy.js` carried `import { isOwnEvidence }` below an `export`, tripping `import/first`, which CRA escalates to a BUILD error the 241-warning baseline cannot absorb. CI on main: 878 `36248c35` PASS / Deploy 557 PASS → 879 `147dd7e3` FAIL / 558 FAIL → 880 `4bbd99df` FAIL / 559 FAIL → 881 `96a707c` FAIL / 560 FAIL. The runner log is byte-identical to the local reproduction, so it was never an environment artifact. Fixed in `e72f4c0`; `gate:cra` green at 241 of 241, the figure already recorded — the baseline was never the problem. ⚠️ **The row below this one said the opposite** ("`cra-build` GREEN since 2026-10-03") and that is how it survived: this is the forty-third entry's lesson verbatim, which records cra-build red SIX DAYS on one orphaned import "that the gate named in full every single run", surviving because the line was labelled pre-existing and nobody opened it. Same rule, same file class, same reason. **The fix is on `main-2utz0n`, NOT on `main`** — main is still red until this branch lands there. Before that, `main-2utz0n` @ `1497537` — 2026-10-07 (forty-eighth entry), **two commits**, branched from `main` @ `96a707c`. jest **8,281 / 602** (+7, one existing suite) · e2e **3,332 tests in 124 files** (+8 in 1 file, desktop only). **NO MATRIX AND NO CI THIS SESSION** — one spec on one project, run against a session-local Playwright config because this container ships chromium 1194 and the resolved `@playwright/test` wants 1228. The matrix numbers in the rows below describe `bdc8826f`/`3b83ebf4` and were not re-measured. `handoff:check` could not run at all: it needs `bdc8826f`'s ancestry and this is a `--depth 1` clone. Before that, `main` @ `bdc8826f` — 2026-10-07, **eight commits pushed that session** (`17dccc54..bdc8826f`), all live. jest **8,267 / 601** - e2e **3,263 tests**. Two full matrices: on `2218a203` **2,978 passed / 4 failed (35.6m)** where all four failures were the first five tests of the run, inside the cold-start window right after `vite preview` booted, and re-ran **17/17 clean on the same dist**; on `3b83ebf4` **3,024 passed / 238 skipped / 1 failed / 0 flaky (36.5m)**, and that one failure was a spec asserting a label-lookup FALLBACK as though it were authored copy. Worth keeping: the first matrix was launched while I then ran full jest suites four times over the following eight minutes, which is the same mistake as driving a browser during a matrix. Before that, `main` @ `e1536281` — 2026-10-06, **nine commits this session, eight pushed and live**; `8cb6acf3` (e2e ceiling 30→40) committed and held while the run on `e1536281` was measured. jest **8,247 / 598** · e2e **3,163 tests / 116 files**. Matrix on `bb378869` GREEN, all three shards (26m54s / 26m04s / 26m48s). Shard 3 was CANCELLED on the clock twice earlier the same evening — 30m19s and 30m13s, no test failing either time, both caused by creation-driving specs of mine left out of `VIEWPORT_INDEPENDENT`. Before that, 2026-10-04, five commits —  backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known flaky. Before that, the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
@@ -348,9 +348,161 @@ this file is the short answer to "where is it, is it green, what's next."
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
-| Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** — and its five preconditions now read as follows, 2026-10-07 (forty-eighth entry): **#2 (demo account) is NOT waiting on the owner and never was** — the path is driven end to end by `theDemoResetsToTheSamePlace.spec.mjs` and every test in it runs SIGNED OUT with no Supabase account, so a single-device demo needs no setup step at all; what stays unverified is the cross-device half, which needs real credentials. #1 (domain + policies), #4 (live-keys Stripe then `REACT_APP_BILLING_LIVE=1`) and #5 (three non-founder hosts asked for money) are untouched and owner-side. #3 (stranger-proof onboarding) is untouched, and the demo fixture it would be tested against is now guarded. The **stage-9 board has still never been convened.** ⚠️ **The workspace `CLAUDE.md` surfaces table contradicts this row** — it still says "stages 1–4 passed, 5 and 7 open, 9 pending" (true on 2026-08-21, stale since 2026-09-03) and its paths carry a `demo/` prefix the app repo does not have, which is why `demo/HANDOFF.md` resolves to nothing. That file is read FIRST every session, so it is the copy that actually misleads. Not fixed here — it lives in the other repo. ⚠️ Second contradiction, unresolved: `2026-08-21_SECURITY_TRACK_CHECKLIST.md` still lists **Sentry DSN as OPEN** while the Path to Production audit's own shortlist #2 records it DONE the same session. One of the two is wrong and neither was re-probed today |
+| Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** — and its five preconditions now read as follows, 2026-10-07 (forty-eighth entry): **#2 (demo account) is NOT waiting on the owner and never was** — the path is driven end to end by `theDemoResetsToTheSamePlace.spec.mjs` and every test in it runs SIGNED OUT with no Supabase account, so a single-device demo needs no setup step at all; what stays unverified is the cross-device half, which needs real credentials. #1 (domain + policies), #4 (live-keys Stripe then `REACT_APP_BILLING_LIVE=1`) and #5 (three non-founder hosts asked for money) are untouched and owner-side. #3 (stranger-proof onboarding) is untouched, and the demo fixture it would be tested against is now guarded. The **stage-9 board has still never been convened.** ✅ **BOTH contradictions this row flagged are CLOSED (2026-10-13) — and one of the two flags was itself half wrong.** (a) The workspace `CLAUDE.md` surfaces table, the copy read FIRST every session, said "stages 1–4 passed, 5 and 7 open, 9 pending" for six weeks after it went false; two stages had been recorded since and two more (6, 8) were never listed. Re-measured against this row and pushed, `ngw-event-planner-workspace` @ `d90b7fd`. It now also declares itself a `facing`/`platform` table and says the handoff wins any disagreement, so the next drift resolves instead of sitting. (b) **CORRECTION TO THIS ROW'S OWN CLAIM.** The `demo/` prefix is not a prefix "the app repo does not have" — it is CORRECT. The app repo is a separate repository cloned at `demo/` inside the workspace repo, and `.gitignore` carries a `/demo/` entry at the top for exactly that reason ("Nested repositories — these are independently version-controlled"), so every `demo/…` path resolves on the owner's machine. What breaks is CLOUD sessions, where the two are checked out as siblings. The fix this row implied — rewriting the prefixes — would have broken the authoritative layout; `CLAUDE.md` now carries a short section on stripping it instead. Reading `.gitignore` before editing is the whole difference. (c) The Sentry contradiction was settled by probing the shipped bundle instead of re-reading either document: the live Pages deploy's one JS chunk (`static/js/main.*.js`, 5.66 MB) contains a real `*.ingest.us.sentry.io` host, so the DSN ships, the Path to Production audit was right, and `2026-08-21_SECURITY_TRACK_CHECKLIST.md` was wrong for seven weeks — now DONE/verified, and its closing verdict goes from four user-side attestations to three |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-10-13 (forty-ninth entry) — three recorded claims re-measured, and the fixer that deleted this file's history
+
+PR #85 merged (`3b3c6d1`); Deploy Pages 562 success, and the footer fix was
+confirmed by fetching the live page rather than trusting a green badge: it
+serves `No Guesswork Events — by No Guesswork Systems LLC`, old string absent.
+
+Measured this session: jest **8,285 / 603 suites** (+4 tests, +1 suite — the
+stamp guard below, and nothing else). `gate:cra` green, **241 of 241**
+baselined. `npm run release` green. `handoff:check` green. **`verify:push` 5 of
+6** — the sixth is a container timeout, measured and written up at the end of
+this entry. No matrix and no e2e run this session: the diff is one script line,
+one jest suite and this file, none of it in `hostv2/`.
+
+Then three claims this file was carrying got re-measured instead of re-read.
+The pattern in all three: **two documents, one fact, opposite answers, and
+nobody re-probed the fact.**
+
+| Claim as recorded | Re-measured | Verdict |
+|---|---|---|
+| Security checklist: "Sentry DSN unset in prod", 7 weeks | Fetched the live Pages `index.html`, read its one JS chunk (`static/js/main.*.js`, 5.66 MB), grepped the served bytes — a real `*.ingest.us.sentry.io` host is there | **Checklist was wrong.** The DSN ships. Row now DONE/verified; closing verdict four user-side attestations → three |
+| `brand.js`: "RDAP and WHOIS are both blocked by this environment's egress proxy" — so its whole domain table was built from DNS resolution and every row hedged to "likely" | `rdap.verisign.com` answered **HTTP 200** from this container | **Method note was wrong.** Standing instruction added: TRY RDAP FIRST — it is the registry's answer; DNS is an inference about it. `noguessworkevents.com` upgraded from "likely free" to **404, genuinely available** — "does not resolve" cannot tell a free domain from a registered one parked with no DNS |
+| Workspace `CLAUDE.md`: "stages 1–4 passed, 5 and 7 open" — the file read FIRST every session | Against the State table above: 1–6 and 8 recorded passed, 7 passed-with-conditions by the board 2026-09-02 | **Stale six weeks**, and 6 and 8 were never listed at all. Fixed and pushed (`workspace` @ `d90b7fd`) |
+
+### The flag that was itself half wrong
+
+The State row also said the workspace file's paths "carry a `demo/` prefix the
+app repo does not have". **They don't, and the implied fix would have done
+damage.** `.gitignore` line 1–4 of that repo: *"Nested repositories — these are
+independently version-controlled"*, then `/demo/`. The app repo is cloned at
+`demo/` inside the workspace repo, so every `demo/…` path resolves on the
+owner's machine. Only CLOUD sessions break it, where the two are siblings.
+Rewriting the prefixes would have broken the authoritative layout to make a
+container happy. `CLAUDE.md` now explains how to strip it instead. One
+`.gitignore` read was the whole difference.
+
+### 🔴 `npm run handoff:stamp` DELETED 5,592 CHARACTERS AND PRINTED `✓`
+
+The worst find of the session, and the gate's own failure message is what sends
+you into it: `Fix: npm run handoff:stamp`.
+
+`scripts/handoff-freshness.mjs` matches the `Branch / HEAD` row with four
+capture groups. `$4` is `([^|]*)` — from the SHA's closing backtick to the
+cell's closing pipe — and since a markdown cell cannot carry an unescaped `|`,
+**that group is the entire rest of the row.** The replacement was:
+
+```js
+src.replace(ROW, `$1${head}$3 |`)          // no $4
+```
+
+So every stamp wrote back the label, the new SHA and a pipe, and dropped
+everything else. On the run it was caught, that was **5,592 characters**: the
+104-hour outage record and the four-day lesson under it, every jest and e2e
+count, and five sessions of matrix history. Then it reported success — and
+`handoff:check` passes afterwards, *because* the row was gutted: the SHA it
+checks is the one thing the stamp keeps.
+
+Nothing noticed because nothing tested this script at all. The comment above
+the line ("the stamp writes the SHA and NOTHING ELSE") is true of intent and
+was read as covering the code — the same shape this repo keeps finding: a
+correct comment sitting above code that does something else, with no pressure
+on either.
+
+Fixed (`$4` written back) and **red-proofed**:
+`src/lib/__tests__/theStampCannotEatTheRow.test.js`, 4 tests, which extract the
+real regex and the real replacement string *from the shipped source* rather
+than copying the pattern, so editing either re-points the test at the edit. One
+drives the live `HANDOFF.md` row and asserts the stamp is byte-identical. All 4
+pass on the fix; **all 4 fail when the buggy line is restored** — verified both
+directions, not assumed.
+
+The row destroyed in this session was recovered from git, not rewritten.
+
+### D-2: I had the wrong item filed as mine, and the real blocker is elsewhere
+
+I carried "**stranger-proof onboarding** — the only remaining ENGINEERING
+precondition to charging" as my own queue item. **It is not mine and never
+was.** Two places in this repo say so plainly:
+
+- `docs/RUNBOOK.md:125` — escalation table, *"Stranger-proof first run | Todd |
+  Needs people who have never seen it."* Listed with the things that **cannot
+  be delegated.**
+- `PROMOTION-DEFERRED.md:48-53` — *"OWED, and it is the oldest debt here… it is
+  owner-only."* Its code half is already ticked: `lib/welcomeGate` is pure and
+  unit-tested and the first-run path has e2e coverage. What is outstanding is
+  the **observation**, which needs strangers.
+
+So all five of D-2's preconditions, as `FLAGSHIP_DEMO_AND_PRICING_D2.md:27`
+states them, now read:
+
+| # | Precondition | Owner | State |
+|---|---|---|---|
+| 1 | Repeatable demo/staging account | **mostly closed** | single-device path driven end to end signed-out by `theDemoResetsToTheSamePlace.spec.mjs`; only the cross-device half needs real credentials |
+| 2 | Stranger-proof onboarding | **Todd, non-delegable** | code half done; the observation is owed |
+| 3 | Checkout path, audited | **ENGINEERING — and the audit says UNBUILT** | see below |
+| 4 | Real domain + terms/privacy | **Todd** | domain registration + policy content |
+| 5 | Support/refund story | **Todd** | one email address is enough; it is a decision, not a build |
+
+### 🔴 THE ACTUAL ENGINEERING BLOCKER TO TAKING MONEY — and it is 10 days old
+
+`docs/audits/2026-10-03_STRIPE_CONSUMER_CHECKOUT_READINESS.md` already answered
+D-2 #3, and the answer is **no**: *"The Stripe integration is live, hardened and
+working — for a different job."* It bills a host's client for an event fee. It
+cannot sell the One-Event Pass.
+
+The load-bearing gap, in the code's own words (2026-08-07 ruling comment in
+`stripe_payments.py`): *"There is no server-side entitlement (feeSchedule is
+localStorage and the webhook only logs), so an anonymous purchase produces a
+charge and nothing the host can ever recover."* So today:
+
+- clearing the browser loses the purchase
+- editing localStorage grants it for free
+- `passGate` has no server truth to consult even if it were switched on
+
+The audit's recommendation — *"the honest sequence is entitlement first: a
+server-side record of who bought what, written by the webhook, read by
+`passGate`"* — has had **nothing built against it in the ten days since it was
+written**, and no design posted either. That, not onboarding, is what stands
+between this product and revenue on the engineering side.
+
+**NOT STARTED HERE, deliberately.** It is a money path plus a schema migration
+plus the first Stripe code in `hostv2` (which the audit measured as having
+none), and the pass model is already ruled — per-EVENT, one SKU, three doors,
+grandfathered at creation (`src/lib/passGate.js:1-40`) — so the schema is
+implied rather than open. But scope on a billing feature is the owner's call,
+not something to half-land at the end of a session. Flagged for a ruling, with
+the sequence the audit already named.
+
+### TRAP, measured — `verify:push` fails on the vitest seam in a cloud container
+
+`npm run verify:push` reports **5 of 6 pass, `hostv2 vitest seam` FAIL** here,
+and it is not a code defect. `test/shellParses.test.mjs` asserts
+`../src/HostShellV2.jsx imports cleanly` against vitest's **default 5000ms**
+`testTimeout`, with no explicit timeout for a shell that size. On this
+container cold transform costs ~6.6s, so it times out at **5003ms** — and
+reproducibly: 5003ms, then 5004ms on a second run. Same spec with
+`--testTimeout=60000`: **18/18 pass, import 99ms once warm.** The shell
+compiles; the clock is the only thing failing.
+
+So do not read a red seam here as a broken shell, and do not "fix" it by
+widening a guard you did not break. Measure first:
+
+```
+cd hostv2 && npx vitest run test/shellParses.test.mjs --testTimeout=60000
+```
+
+Green there and red at the default means container capacity, not the tree. CI
+passes it on GitHub runners (`hostv2-build` green on PR #87), which is why this
+has never surfaced as a CI failure. **Unresolved question left open rather than
+answered:** whether the spec should carry an explicit generous timeout so the
+gate stops depending on runner speed. That is a change to someone else's guard
+and belongs in its own diff, not folded into a docs PR.
 
 ## FIXED 2026-10-07 (forty-eighth entry) — the other name on the sales page, and a demo nobody had ever driven twice
 
