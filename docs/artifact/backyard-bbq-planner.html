@@ -1,0 +1,537 @@
+<!doctype html>
+<title>Backyard BBQ Planner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+
+<style>
+  /* ---- tokens -------------------------------------------------------- */
+  :root{
+    --bg:        #eeeae2;
+    --surface:   #ffffff;
+    --surface-2: #f5f1e9;
+    --border:    #ddd5c5;
+    --ink:       #1c1a17;
+    --muted:     #746c5c;
+    --accent:    #c8460c;   /* ember */
+    --accent-ink:#ffffff;
+    --herb:      #4b7a3d;   /* success / booked */
+    --amber:     #a8791f;   /* warn / awaiting */
+    --brick:     #a83b34;   /* danger / declined */
+    --ring:      rgba(200,70,12,0.35);
+    --shadow:    0 1px 2px rgba(28,26,23,0.06), 0 8px 24px -12px rgba(28,26,23,0.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:        #17140f;
+      --surface:   #201c16;
+      --surface-2: #241f18;
+      --border:    #3a3226;
+      --ink:       #f2ece0;
+      --muted:     #9a8f7d;
+      --accent:    #ff7a34;
+      --accent-ink:#1c1206;
+      --herb:      #7fae5f;
+      --amber:     #e0a83f;
+      --brick:     #e2635a;
+      --ring:      rgba(255,122,52,0.35);
+      --shadow:    0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:        #17140f;
+    --surface:   #201c16;
+    --surface-2: #241f18;
+    --border:    #3a3226;
+    --ink:       #f2ece0;
+    --muted:     #9a8f7d;
+    --accent:    #ff7a34;
+    --accent-ink:#1c1206;
+    --herb:      #7fae5f;
+    --amber:     #e0a83f;
+    --brick:     #e2635a;
+    --ring:      rgba(255,122,52,0.35);
+    --shadow:    0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.6);
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Archivo', system-ui, sans-serif;
+    padding-inline: max(16px, env(safe-area-inset-left));
+  }
+  .tabular{ font-variant-numeric: tabular-nums; font-family: 'Space Mono', ui-monospace, monospace; }
+
+  .wrap{ max-width: 880px; margin: 0 auto; padding-block: 28px 56px; }
+
+  header.hero{
+    display:flex; flex-wrap:wrap; gap:20px 32px; align-items:flex-end; justify-content:space-between;
+    padding-bottom:20px; border-bottom:1px solid var(--border); margin-bottom:22px;
+  }
+  .eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent);
+    display:flex; align-items:center; gap:8px; margin-bottom:6px;
+  }
+  .eyebrow .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
+  h1{
+    font-family:'Big Shoulders Display', system-ui, sans-serif;
+    font-weight:800; font-size:clamp(32px,6vw,52px); line-height:0.92; letter-spacing:-0.01em;
+    margin:0; text-wrap:balance; text-transform:uppercase;
+  }
+  .sub{ color:var(--muted); font-size:14px; margin-top:8px; max-width:52ch; }
+  .countdown{
+    text-align:right; min-width:150px;
+  }
+  .countdown .num{
+    font-family:'Space Mono', monospace; font-weight:700; font-size:28px; color:var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .countdown .lbl{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-top:2px; }
+
+  nav.tabs{ display:flex; gap:4px; margin-bottom:22px; overflow-x:auto; padding-bottom:2px; }
+  nav.tabs button{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:15px; letter-spacing:0.02em;
+    text-transform:uppercase; white-space:nowrap;
+    padding:12px 16px; border-radius:9px 9px 0 0; border:none; cursor:pointer;
+    background:transparent; color:var(--muted); min-height:44px;
+    border-bottom:2px solid transparent;
+  }
+  nav.tabs button[aria-selected="true"]{
+    background:var(--surface); color:var(--ink); border-bottom:2px solid var(--accent);
+    box-shadow: var(--shadow);
+  }
+  nav.tabs button:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+
+  .grid-stats{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px; }
+  .stat{
+    flex:1 1 140px; background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .stat .l{ font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:8px; }
+  .stat .v{ font-family:'Space Mono', monospace; font-weight:700; font-size:24px; letter-spacing:-0.01em; }
+  .stat .s{ font-size:12px; color:var(--muted); margin-top:3px; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 22px; margin-bottom:16px; box-shadow:var(--shadow); }
+  .card-title{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin:0 0 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+
+  .sample-note{
+    font-size:12px; color:var(--muted); background:var(--surface-2); border:1px dashed var(--border);
+    border-radius:9px; padding:8px 12px; margin-bottom:18px; display:flex; gap:8px; align-items:baseline;
+  }
+  .sample-note b{ color:var(--ink); }
+
+  table{ width:100%; border-collapse:collapse; }
+  th{ text-align:left; font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; padding:0 10px 10px 0; border-bottom:1px solid var(--border); }
+  td{ padding:11px 10px 11px 0; border-bottom:1px solid var(--border); vertical-align:middle; }
+  tr:last-child td{ border-bottom:none; }
+
+  /* 16px is deliberate: anything smaller triggers iOS/iPadOS Safari's auto-zoom-on-focus */
+  input, select{
+    background:var(--bg); border:1px solid var(--border); border-radius:7px; color:var(--ink);
+    font-family:inherit; font-size:16px; padding:9px 10px; width:100%; outline:none;
+  }
+  input:focus-visible, select:focus-visible{ outline:2px solid var(--ring); outline-offset:1px; border-color:var(--accent); }
+  input[type="number"]{ font-family:'Space Mono', monospace; }
+
+  button.btn{
+    font-family:'Archivo', sans-serif; font-weight:600; font-size:13px; padding:10px 16px; border-radius:8px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--ink); cursor:pointer;
+    min-height:40px;
+  }
+  button.btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  button.btn.ghost{ background:transparent; border-color:transparent; color:var(--brick); padding:8px; min-height:36px; min-width:36px; }
+  button.btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+
+  .bar{ height:6px; border-radius:99px; background:var(--border); overflow:hidden; }
+  .bar > i{ display:block; height:100%; border-radius:99px; }
+
+  .check{
+    width:30px; height:30px; border-radius:50%; border:2px solid var(--border); background:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--herb); flex-shrink:0; padding:0;
+  }
+  .check.done{ border-color:var(--herb); }
+  .task-row{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .task-row input[type="text"]{ flex:1; }
+  .task-row input[disabled]{ opacity:0.55; text-decoration:line-through; }
+
+  .pill{ display:inline-block; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:700; }
+
+  footer.foot{ text-align:center; color:var(--muted); font-size:11.5px; margin-top:8px; }
+
+  @media (max-width:560px){
+    .row-scroll{ overflow-x:auto; }
+    table{ min-width:560px; }
+  }
+</style>
+
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+/* ---------------------------------------------------------------------
+   Backyard BBQ Planner — same-day event tool.
+   Party starts 3:00 PM TODAY. Everything below is a starter plan —
+   swap in real names/numbers before the first guest shows up.
+--------------------------------------------------------------------- */
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+const money = (n) => '$' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const STORE_KEY = 'bbq-planner-v1';
+
+const SEED = {
+  budget: [
+    { id: uid(), item: 'Meat (ribs, chicken, burgers)', budgeted: 120, actual: 95,  notes: 'Butcher run this morning' },
+    { id: uid(), item: 'Drinks & ice',                  budgeted: 60,  actual: 40,  notes: 'Beer, soda, 2 bags ice' },
+    { id: uid(), item: 'Sides & buns',                  budgeted: 35,  actual: 30,  notes: '' },
+    { id: uid(), item: 'Paper goods',                   budgeted: 25,  actual: 0,   notes: 'Plates, napkins, cups' },
+    { id: uid(), item: 'Charcoal / propane',             budgeted: 20,  actual: 18,  notes: '' },
+    { id: uid(), item: 'Tables & chairs',                budgeted: 0,   actual: 0,   notes: "Using brother's own" },
+  ],
+  guests: [
+    { id: uid(), name: '',                 party: 'You + plus-one', rsvp: 'Yes',   dietary: '—' },
+    { id: uid(), name: '',                 party: 'Brother (host)', rsvp: 'Yes',   dietary: '—' },
+    { id: uid(), name: '',                 party: 'Neighbors',      rsvp: 'Yes',   dietary: '—' },
+    { id: uid(), name: '',                 party: "Cousin's family",rsvp: 'Maybe', dietary: 'Kids' },
+    { id: uid(), name: '',                 party: 'Friend',         rsvp: 'Yes',   dietary: 'Vegetarian' },
+  ],
+  help: [
+    { id: uid(), who: 'Brother',        job: 'Grill + yard',      status: 'Confirmed', notes: 'Providing grill & space' },
+    { id: uid(), who: 'You',            job: 'Ice + drinks run',  status: 'In progress', notes: 'By 1:30 PM' },
+    { id: uid(), who: 'Plus-one',       job: 'Speaker / music',   status: 'Confirmed', notes: 'Bluetooth speaker, playlist ready' },
+    { id: uid(), who: '',               job: 'Extra chairs',      status: 'Open',      notes: 'Ask a neighbor?' },
+  ],
+  timeline: [
+    { id: uid(), when: 'This morning',        task: 'Buy ice, charcoal, drinks',        done: true },
+    { id: uid(), when: 'This morning',        task: 'Marinate meat',                    done: true },
+    { id: uid(), when: '1 hr before · 2:00',  task: 'Fire up the grill',                 done: false },
+    { id: uid(), when: '1 hr before · 2:00',  task: 'Set out tables & chairs',           done: false },
+    { id: uid(), when: '1 hr before · 2:00',  task: 'Chill drinks, ice the coolers',     done: false },
+    { id: uid(), when: '3:00 · Party starts', task: 'Greet guests, start grilling',      done: false },
+    { id: uid(), when: 'During',              task: 'Keep the grill fed',                done: false },
+    { id: uid(), when: 'During',              task: 'Refill ice / drinks',               done: false },
+    { id: uid(), when: 'Wind-down',           task: 'Pack leftovers, trash run',          done: false },
+    { id: uid(), when: 'Wind-down',           task: 'Thank-you texts',                    done: false },
+  ],
+};
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+}
+function save(state) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+function useCountdown() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
+  const target = new Date();
+  target.setHours(15, 0, 0, 0);
+  const endOfParty = new Date(target.getTime() + 4 * 3600 * 1000);
+  const diffMs = target - now;
+  if (now >= target && now <= endOfParty) return { label: "It's happening", value: 'NOW' };
+  if (now > endOfParty) return { label: 'Party status', value: 'Wrapped' };
+  const mins = Math.max(0, Math.round(diffMs / 60000));
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return { label: 'Until 3:00 PM', value: `${h}h ${m}m` };
+}
+
+function StatCard({ label, value, sub, color }) {
+  return (
+    <div className="stat">
+      <div className="l">{label}</div>
+      <div className="v" style={color ? { color } : undefined}>{value}</div>
+      {sub && <div className="s">{sub}</div>}
+    </div>
+  );
+}
+
+function Bar({ pct, color }) {
+  return <div className="bar"><i style={{ width: Math.min(pct, 100) + '%', background: color }} /></div>;
+}
+
+function SampleNote({ children }) {
+  return <div className="sample-note">🔥 <span><b>Starter plan.</b> {children}</span></div>;
+}
+
+/* ---- tabs ---- */
+
+function Overview({ data }) {
+  const totalBudgeted = data.budget.reduce((s, r) => s + r.budgeted, 0);
+  const totalActual = data.budget.reduce((s, r) => s + r.actual, 0);
+  const remaining = totalBudgeted - totalActual;
+  const confirmed = data.guests.filter(g => g.rsvp === 'Yes').length;
+  const doneTasks = data.timeline.filter(t => t.done).length;
+  const openHelp = data.help.filter(h => h.status === 'Open').length;
+
+  return (
+    <div>
+      <div className="grid-stats">
+        <StatCard label="Spent so far" value={money(totalActual)} sub={`of ${money(totalBudgeted)} planned`} />
+        <StatCard label="Left to spend" value={money(remaining)} color={remaining < 0 ? 'var(--brick)' : 'var(--herb)'} />
+        <StatCard label="Guests coming" value={confirmed} sub={`of ${data.guests.length} on the list`} />
+        <StatCard label="Prep done" value={`${doneTasks}/${data.timeline.length}`} sub="checklist items" />
+      </div>
+
+      {openHelp > 0 && (
+        <div className="card">
+          <div className="card-title">Still needs someone</div>
+          {data.help.filter(h => h.status === 'Open').map(h => (
+            <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+              <span>{h.job}</span>
+              <span className="pill" style={{ background: 'var(--amber)22', color: 'var(--amber)' }}>Open</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="card">
+        <div className="card-title">Budget by item</div>
+        {data.budget.map(r => {
+          const spent = r.budgeted > 0 ? (r.actual / r.budgeted) * 100 : (r.actual > 0 ? 100 : 0);
+          return (
+            <div key={r.id} style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 13 }}>
+                <span>{r.item}</span>
+                <span className="tabular" style={{ color: 'var(--muted)' }}>{money(r.actual)} / {money(r.budgeted)}</span>
+              </div>
+              <Bar pct={spent} color={spent > 100 ? 'var(--brick)' : spent > 85 ? 'var(--amber)' : 'var(--accent)'} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="card">
+        <div className="card-title">Up next</div>
+        {data.timeline.filter(t => !t.done).slice(0, 4).map(t => (
+          <div key={t.id} style={{ display: 'flex', gap: 10, marginBottom: 9, fontSize: 13 }}>
+            <span style={{ color: 'var(--border)' }}>○</span>
+            <div><div>{t.task}</div><div style={{ fontSize: 11, color: 'var(--muted)' }}>{t.when}</div></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BudgetTab({ budget, set }) {
+  const totalBudgeted = budget.reduce((s, r) => s + r.budgeted, 0);
+  const totalActual = budget.reduce((s, r) => s + r.actual, 0);
+  const add = () => set(b => [...b, { id: uid(), item: '', budgeted: 0, actual: 0, notes: '' }]);
+  const del = (id) => set(b => b.filter(r => r.id !== id));
+  const upd = (id, k, v) => set(b => b.map(r => r.id === id ? { ...r, [k]: (k === 'budgeted' || k === 'actual') ? (Number(v) || 0) : v } : r));
+
+  return (
+    <div>
+      <div className="grid-stats">
+        <StatCard label="Planned" value={money(totalBudgeted)} />
+        <StatCard label="Spent" value={money(totalActual)} color={totalActual > totalBudgeted ? 'var(--brick)' : undefined} />
+        <StatCard label="Left" value={money(totalBudgeted - totalActual)} color={(totalBudgeted - totalActual) < 0 ? 'var(--brick)' : 'var(--herb)'} />
+      </div>
+      <SampleNote>Numbers are a rough BBQ budget — edit to match your actual grocery run.</SampleNote>
+      <div className="card">
+        <div className="card-title">Line items <button className="btn primary" onClick={add}>+ Add item</button></div>
+        <div className="row-scroll">
+        <table>
+          <thead><tr>{['Item','Planned','Spent','Left','Notes',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {budget.map(r => {
+              const left = r.budgeted - r.actual;
+              return (
+                <tr key={r.id}>
+                  <td><input value={r.item} onChange={e => upd(r.id, 'item', e.target.value)} /></td>
+                  <td style={{ width: 90 }}><input type="number" value={r.budgeted} onChange={e => upd(r.id, 'budgeted', e.target.value)} /></td>
+                  <td style={{ width: 90 }}><input type="number" value={r.actual} onChange={e => upd(r.id, 'actual', e.target.value)} /></td>
+                  <td className="tabular" style={{ fontWeight: 700, color: left < 0 ? 'var(--brick)' : 'var(--herb)' }}>{money(left)}</td>
+                  <td><input value={r.notes} onChange={e => upd(r.id, 'notes', e.target.value)} /></td>
+                  <td><button className="btn ghost" onClick={() => del(r.id)} aria-label="Remove item">✕</button></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuestsTab({ guests, set }) {
+  const yes = guests.filter(g => g.rsvp === 'Yes').length;
+  const maybe = guests.filter(g => g.rsvp === 'Maybe').length;
+  const add = () => set(g => [...g, { id: uid(), name: '', party: '', rsvp: 'Maybe', dietary: '—' }]);
+  const del = (id) => set(g => g.filter(r => r.id !== id));
+  const upd = (id, k, v) => set(g => g.map(r => r.id === id ? { ...r, [k]: v } : r));
+  const rsvpColor = { Yes: 'var(--herb)', No: 'var(--brick)', Maybe: 'var(--amber)' };
+
+  return (
+    <div>
+      <div className="grid-stats">
+        <StatCard label="On the list" value={guests.length} />
+        <StatCard label="Coming" value={yes} color="var(--herb)" />
+        <StatCard label="Still deciding" value={maybe} color="var(--amber)" />
+      </div>
+      <SampleNote>Roles, not real names yet — swap in who's actually coming.</SampleNote>
+      <div className="card">
+        <div className="card-title">Guest list <button className="btn primary" onClick={add}>+ Add guest</button></div>
+        <div className="row-scroll">
+        <table>
+          <thead><tr>{['Name','Who','RSVP','Dietary',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {guests.map(g => (
+              <tr key={g.id}>
+                <td><input value={g.name} placeholder="Add name" onChange={e => upd(g.id, 'name', e.target.value)} /></td>
+                <td><input value={g.party} onChange={e => upd(g.id, 'party', e.target.value)} /></td>
+                <td>
+                  <select style={{ color: rsvpColor[g.rsvp] }} value={g.rsvp} onChange={e => upd(g.id, 'rsvp', e.target.value)}>
+                    {['Yes','No','Maybe'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </td>
+                <td><input value={g.dietary} onChange={e => upd(g.id, 'dietary', e.target.value)} /></td>
+                <td><button className="btn ghost" onClick={() => del(g.id)} aria-label="Remove guest">✕</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HelpTab({ help, set }) {
+  const open = help.filter(h => h.status === 'Open').length;
+  const add = () => set(h => [...h, { id: uid(), who: '', job: '', status: 'Open', notes: '' }]);
+  const del = (id) => set(h => h.filter(r => r.id !== id));
+  const upd = (id, k, v) => set(h => h.map(r => r.id === id ? { ...r, [k]: v } : r));
+  const statusColor = { Confirmed: 'var(--herb)', 'In progress': 'var(--amber)', Open: 'var(--brick)' };
+
+  return (
+    <div>
+      <div className="grid-stats">
+        <StatCard label="Jobs" value={help.length} />
+        <StatCard label="Still open" value={open} color={open > 0 ? 'var(--brick)' : 'var(--herb)'} />
+      </div>
+      <SampleNote>Who's grilling, running for ice, bringing chairs — not paid vendors, just people.</SampleNote>
+      <div className="card">
+        <div className="card-title">Rentals & help <button className="btn primary" onClick={add}>+ Add job</button></div>
+        <div className="row-scroll">
+        <table>
+          <thead><tr>{['Who','Job','Status','Notes',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {help.map(h => (
+              <tr key={h.id}>
+                <td><input value={h.who} placeholder="Name" onChange={e => upd(h.id, 'who', e.target.value)} /></td>
+                <td><input value={h.job} onChange={e => upd(h.id, 'job', e.target.value)} /></td>
+                <td>
+                  <select style={{ color: statusColor[h.status] }} value={h.status} onChange={e => upd(h.id, 'status', e.target.value)}>
+                    {['Confirmed','In progress','Open'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </td>
+                <td><input value={h.notes} onChange={e => upd(h.id, 'notes', e.target.value)} /></td>
+                <td><button className="btn ghost" onClick={() => del(h.id)} aria-label="Remove job">✕</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelineTab({ timeline, set }) {
+  const done = timeline.filter(t => t.done).length;
+  const whens = [...new Set(timeline.map(t => t.when))];
+  const toggle = (id) => set(t => t.map(r => r.id === id ? { ...r, done: !r.done } : r));
+  const add = () => set(t => [...t, { id: uid(), when: 'Today', task: '', done: false }]);
+  const del = (id) => set(t => t.filter(r => r.id !== id));
+  const upd = (id, k, v) => set(t => t.map(r => r.id === id ? { ...r, [k]: v } : r));
+
+  return (
+    <div>
+      <div className="grid-stats">
+        <StatCard label="Checklist" value={timeline.length} />
+        <StatCard label="Done" value={done} color="var(--herb)" />
+        <StatCard label="Left" value={timeline.length - done} color="var(--amber)" />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button className="btn primary" onClick={add}>+ Add task</button>
+      </div>
+      {whens.map(when => (
+        <div className="card" key={when}>
+          <div className="card-title">{when}</div>
+          {timeline.filter(t => t.when === when).map(t => (
+            <div className="task-row" key={t.id}>
+              <button className={"check" + (t.done ? ' done' : '')} onClick={() => toggle(t.id)} aria-label={t.done ? 'Mark not done' : 'Mark done'}>{t.done ? '✓' : ''}</button>
+              <input type="text" value={t.task} disabled={t.done} onChange={e => upd(t.id, 'task', e.target.value)} />
+              <button className="btn ghost" onClick={() => del(t.id)} aria-label="Remove task">✕</button>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const TABS = [
+  ['overview', 'Overview'],
+  ['budget',   'Budget'],
+  ['guests',   'Guests'],
+  ['help',     'Rentals & Help'],
+  ['timeline', 'Timeline'],
+];
+
+function App() {
+  const persisted = useMemo(load, []);
+  const [tab, setTab] = useState('overview');
+  const [budget, setBudget]     = useState(persisted?.budget   ?? SEED.budget);
+  const [guests, setGuests]     = useState(persisted?.guests   ?? SEED.guests);
+  const [help, setHelp]         = useState(persisted?.help     ?? SEED.help);
+  const [timeline, setTimeline] = useState(persisted?.timeline ?? SEED.timeline);
+  const countdown = useCountdown();
+
+  useEffect(() => { save({ budget, guests, help, timeline }); }, [budget, guests, help, timeline]);
+
+  return (
+    <div className="wrap">
+      <header className="hero">
+        <div>
+          <div className="eyebrow"><span className="dot" /> Today's event</div>
+          <h1>Backyard BBQ</h1>
+          <p className="sub">Brother's house · 3:00 PM today · edits save to this device as you go.</p>
+        </div>
+        <div className="countdown">
+          <div className="num tabular">{countdown.value}</div>
+          <div className="lbl">{countdown.label}</div>
+        </div>
+      </header>
+
+      <nav className="tabs" role="tablist">
+        {TABS.map(([key, label]) => (
+          <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>
+        ))}
+      </nav>
+
+      {tab === 'overview' && <Overview data={{ budget, guests, help, timeline }} />}
+      {tab === 'budget'   && <BudgetTab budget={budget} set={setBudget} />}
+      {tab === 'guests'   && <GuestsTab guests={guests} set={setGuests} />}
+      {tab === 'help'     && <HelpTab help={help} set={setHelp} />}
+      {tab === 'timeline' && <TimelineTab timeline={timeline} set={setTimeline} />}
+
+      <footer className="foot">Saved on this device only · no account, no sync</footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
