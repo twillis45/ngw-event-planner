@@ -360,25 +360,72 @@ jobs:
       # touches the app tree.
       - run: npm ci
         working-directory: hostv2
+      # ── WHY THE DOWNLOAD TOLERATES NOTHING ARRIVING ──────────────────────────
+      # `if: always()` above got this job to RUN on a cancelled shard matrix, and
+      # then it died anyway, at the wrong step, with the wrong reason.
+      #
+      # When the shards are CANCELLED — which `concurrency.cancel-in-progress`
+      # does routinely, e.g. a workflow_dispatch run superseded by a PR run on
+      # the same branch — no shard ever reaches its upload step, so no `blob-*`
+      # artifact exists. download-artifact then reports `Found 0 artifact(s)`,
+      # `all-blob-reports` is never created, and `merge-reports` fails on the
+      # missing path. The job goes red AT THE MERGE STEP with an artifact error.
+      #
+      # Two costs, both paid repeatedly: in the checks list a routine
+      # cancellation is indistinguishable from a real e2e failure, and the one
+      # step written to explain the verdict — below — is never reached, because
+      # the job is already dead. A gate that cannot state its own reason sends
+      # every reader to the shard logs to re-derive it.
+      #
+      # So: let the download come back empty, COUNT what arrived, and skip only
+      # the steps that need bytes. The verdict step then always runs and always
+      # names the cause.
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           pattern: blob-*
           merge-multiple: true
           path: all-blob-reports
+      - id: blobs
+        run: |
+          count=$(find all-blob-reports -type f 2>/dev/null | wc -l | tr -d ' ')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "blob report files downloaded: $count"
       # `--reporter=json`, NOT `list`. MEASURED on run 658 and reproduced locally:
       # piped into a log, `list` truncated at test 611 of 1216 and printed no
       # summary at all — so the job reported neither the per-test detail nor the
       # total, which is half of what it exists for. The per-test detail still
       # ships as the uploaded blobs, which render a full HTML report on download.
       - run: npx playwright merge-reports --reporter=json ../all-blob-reports > ../merged.json
+        if: steps.blobs.outputs.count != '0'
         working-directory: hostv2
       # Prints the combined total and fails on an empty or failure-carrying
       # merge — a SECOND verdict, independent of the shard results below.
       - run: node hostv2/scripts/e2eTotal.mjs merged.json
-      - name: Fail if any shard failed
-        if: needs.e2e-shard.result != 'success'
+        if: steps.blobs.outputs.count != '0'
+      # ── THE VERDICT ──────────────────────────────────────────────────────────
+      # Reachable in every case now, and it fails in exactly the cases it failed
+      # in before. NOTE the second clause: shards reporting success with ZERO
+      # blobs is still a failure — that is the empty-merge verdict the step above
+      # used to carry, and skipping that step must not become a way to pass.
+      - name: Verdict
+        if: needs.e2e-shard.result != 'success' || steps.blobs.outputs.count == '0'
         run: |
-          echo "e2e-shard result: ${{ needs.e2e-shard.result }}"
+          echo "e2e-shard result:   ${{ needs.e2e-shard.result }}"
+          echo "blob report files:  ${{ steps.blobs.outputs.count }}"
+          if [ "${{ needs.e2e-shard.result }}" = "cancelled" ]; then
+            echo "::error::e2e shards were CANCELLED, not failed. No blob reports were"\
+                 "uploaded, so there is nothing to merge and no test result to report."\
+                 "Usual cause: concurrency.cancel-in-progress superseded this run."\
+                 "Re-run only if you need the result for this SHA."
+          elif [ "${{ needs.e2e-shard.result }}" = "success" ]; then
+            echo "::error::Every e2e shard passed but ZERO blob reports arrived, so no"\
+                 "test was actually measured. Treat this as a failure: check the shards'"\
+                 "upload steps and the blob reporter config."
+          else
+            echo "::error::At least one e2e shard did not succeed"\
+                 "(result: ${{ needs.e2e-shard.result }}). See the shard logs."
+          fi
           exit 1
 
   # ── Backend suite ──────────────────────────────────────────────────────────
