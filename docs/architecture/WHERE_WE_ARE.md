@@ -1,5 +1,40 @@
 # Where We Are -- live status board
 
+## 2026-10-13 — the outage ended without me, and the branch was rebased on top of that
+
+**`main` @ `be03383`. Production shipped 2026-10-11 ~14:06 (Checks 887 green,
+Deploy Pages 561 green). `main-2utz0n` rebased onto it, five commits, one
+dropped.**
+
+A different session (`session_01XJjsh…`, Opus 5.5) landed the identical
+`budgetCopy.js` import move as **`55855e1`** on 2026-10-11, carried into its own
+PR #86 rather than waiting on mine — "Carried here so this PR can go green; it
+no-ops once main has it." That PR also closed a real security hole: the
+cross-studio event claim in comms and the RSVP fallback it fed, measured in
+production at **58 events with no owner row** (13 with guessable legacy ids
+across up to 5 studios) and one owner row naming the wrong studio.
+
+So my `e72f4c0` was redundant and is **dropped** in the rebase — main's
+`budgetCopy.js` was diffed against mine first to confirm. Main touched only
+that one file plus three backend files, none of which this branch edits, so the
+rebase was conflict-free. What the branch still carries that main does not: the
+sales-page footer company fix, the demo-bar e2e spec, and the handoff entries.
+
+⚠️ **Two numbers I published were wrong and are corrected rather than quietly
+edited.** I reported the outage as "~25 hours" and then "~30 hours". It ran
+**2026-10-07 06:01 → 2026-10-11 14:06, about 104 hours.** Both figures were
+true when written and neither was revisited — which is the same
+not-revisited failure as the "cra-build GREEN since 2026-10-03" sentence those
+entries existed to correct. The entry below also states "the fix is on
+`main-2utz0n`, NOT on `main` — main is still red until this branch lands
+there"; both halves are now false.
+
+**THE LESSON, and it cost four days.** I opened a PR for a one-line fix, then
+spent three safety-net check-ins waiting on a merge only the owner could
+perform, while a parallel session shipped the same line inside work that was
+already moving. **Port the fix into whatever is already in flight; do not hold
+it behind your own PR.**
+
 ## 2026-10-07 — the other name on the sales page, and a demo nobody had ever driven twice
 
 **jest 8,281 / 602 · e2e 3,332 tests in 124 files · two commits on
