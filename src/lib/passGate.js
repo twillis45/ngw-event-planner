@@ -26,6 +26,13 @@
 //    destination/multi-day toolkit. (Research: the category punishes gating
 //    the product itself — Punchbowl — and rewards a free tier that genuinely
 //    works: Evite, Paperless Post, Figma's view-free/edit-paid split.)
+//  · THE PASS FACT COMES FROM THE SERVER WHEN THE SERVER HAS SPOKEN (added
+//    2026-10-13) — `passHeld` below prefers `public.event_passes`, read through
+//    `GET /api/stripe/pass`, over the `ev.passPurchased` boolean on the event
+//    blob. A server answer of "no pass" overrides a blob that claims one; a
+//    server answer of "pass" survives a cleared browser, which the blob never
+//    could. See `passEntitlement.js` for why the blob is still a fallback
+//    rather than banned outright.
 //  · DORMANT UNTIL BILLING IS LIVE — every gate answers "allowed" while
 //    `isBillingLive()` is false. D-2's five preconditions govern flipping it;
 //    the flag is the same double-gate the pass sheet has always used
@@ -38,6 +45,7 @@
 // free-with-commission, OUTSIDE the pass. Board sitting required to unwind
 // either, copy first.
 import { spanIntel } from './eventSpan';
+import { serverPassHeld } from './passEntitlement';
 
 // Reads env at CALL time, not import time — stripeApi captures its BASE const
 // on import, which is fine for the app but untestable and one restart stale.
@@ -76,13 +84,42 @@ export function passVerdictAtCreation(ev, priorEvents) {
 }
 
 /**
+ * Does this event hold the pass, and HOW DO WE KNOW? Returns
+ * { held, source } where source is 'server' or 'claim'.
+ *
+ * Added 2026-10-13 when `public.event_passes` and `GET /api/stripe/pass`
+ * landed. Before that the only answer was `ev.passPurchased`, a boolean on the
+ * persisted event blob — which meant a host who paid and then cleared their
+ * browser had bought nothing recoverable. `passEntitlement` holds the server's
+ * answers; the precedence, and why the blob is still consulted rather than
+ * banned outright, is written up at the top of that module.
+ *
+ *   server true  → held, source 'server'
+ *   server false → NOT held even if the blob says otherwise (revocation)
+ *   never asked  → the blob's claim stands, source 'claim'
+ *
+ * The source is returned rather than discarded so the shell can say "pass
+ * confirmed" and "pass on file, not yet confirmed with the server" differently.
+ * Nothing in here fetches: these functions run inside render and are
+ * synchronous. Asking is the shell's job, once per event.
+ */
+export function passHeld(ev) {
+  const server = serverPassHeld(ev && ev.id);
+  if (server === true)  return { held: true,  source: 'server' };
+  if (server === false) return { held: false, source: 'server' };
+  return { held: !!(ev && ev.passPurchased === true), source: 'claim' };
+}
+
+/**
  * May the host GENERATE a vendor brief for `vendorId` on this event, right
  * now? Returns { allowed, reason }. Reasons when blocked name the door, so
  * the shell's copy can be honest about WHY.
  *
  * Order matters and is the ruling's order:
  *   billing dormant → allowed (gate off)
- *   pass purchased → allowed (the pass unlocks the whole event)
+ *   pass held → allowed (the pass unlocks the whole event); the reason names
+ *     whether the server confirmed it ('pass') or only the event blob claims
+ *     it ('pass-claimed')
  *   vendor already briefed → allowed, ALWAYS (never mid-conversation)
  *   event stamped pass-required (door 2/3) → blocked
  *   a different vendor already briefed (door 1) → blocked
@@ -91,7 +128,8 @@ export function passVerdictAtCreation(ev, priorEvents) {
 export function briefAllowed(ev, vendorId) {
   if (!isBillingLive()) return { allowed: true, reason: 'billing-dormant' };
   if (!ev) return { allowed: true, reason: 'no-event' };
-  if (ev.passPurchased === true) return { allowed: true, reason: 'pass' };
+  const pass = passHeld(ev);
+  if (pass.held) return { allowed: true, reason: pass.source === 'server' ? 'pass' : 'pass-claimed' };
   const shared = Array.isArray(ev.briefSharedVendorIds) ? ev.briefSharedVendorIds.filter(Boolean) : [];
   if (vendorId && shared.includes(vendorId)) return { allowed: true, reason: 'already-shared' };
   if (ev.passRequired === true) return { allowed: false, reason: 'pass-required' };
@@ -108,7 +146,8 @@ export function briefAllowed(ev, vendorId) {
  */
 export function destinationLocked(ev) {
   if (!isBillingLive()) return false;
-  if (!ev || ev.passPurchased === true) return false;
+  if (!ev) return false;
+  if (passHeld(ev).held) return false;
   const reasons = Array.isArray(ev.passReasons) ? ev.passReasons : [];
   return ev.passRequired === true && (reasons.includes('destination') || reasons.includes('multi-day'));
 }

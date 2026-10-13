@@ -1,5 +1,46 @@
 # Where We Are -- live status board
 
+## 2026-10-13 (later) — the pass fact moves to the server, and the rule I proposed for it was wrong
+
+**`main` @ `eaf43a5`** (PRs #87, #88 and #89 all merged today; production
+verified HTTP 200 after #88). Slice 1 of three on the One-Event Pass, authorized
+by the owner by name.
+
+`passGate` had read `ev.passPurchased` — a boolean on the persisted event blob —
+since the Model D engine landed. The hostv2 return handler that writes it was
+already stricter than trusting a redirect (session id required, `verifySession`
+called, `payment_status === 'paid'` and a matching metadata `fee_id`), but it
+could not survive a closed tab or a cleared browser. `public.event_passes`
+(migration 017) and `GET /api/stripe/pass` are the recoverable record; this
+slice is the frontend reading it.
+
+New `src/lib/passEntitlement.js` holds the server's answers in memory and
+`passGate.passHeld(ev)` returns `{ held, source }`. Precedence as shipped:
+
+- server **true** → held (`source: 'server'`)
+- server **false** → **not held, whatever the blob says** — revocation
+- server **never asked** → the blob's claim stands (`source: 'claim'`)
+
+**The rule I proposed before building was wrong and is not what shipped.** I had
+said "never grant from the persisted event blob." Refusing to grant while the
+server has not answered buys no security — `passGate` runs in the browser, so
+the real boundary is the route, where an `event_passes` row can only be created
+by the signature-verified webhook — and it costs a host who genuinely paid their
+unlock on every cold load and offline minute. What the server record buys is
+**recovery** and **revocation**, which is what the audit's "nothing the host can
+ever recover" actually named. The rejected rule is written into the module so it
+does not get re-adopted from the headline.
+
+A failed lookup records **nothing**: a 403 or cold backend written down as
+`held: false` would revoke a real purchase on a network blip.
+
+All 13 existing `passGate` tests pass untouched — the ruling's clauses did not
+change, only the source of the fact. Nothing calls the refresh yet, so no
+runtime behaviour changed; slice 2 is the hostv2 wiring, slice 3 the pass sheet
+(`/api/stripe/create-pass-session` remains deliberately unwired). jest
+**604 / 8,300**, `gate:cra` 241 of 241, hostv2 build and `check:migrations`
+green.
+
 ## 2026-10-13 — the outage ended without me, and the branch was rebased on top of that
 
 **`main` @ `be03383`. Production shipped 2026-10-11 ~14:06 (Checks 887 green,
