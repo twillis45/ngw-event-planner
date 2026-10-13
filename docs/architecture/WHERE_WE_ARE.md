@@ -1,5 +1,44 @@
 # Where We Are -- live status board
 
+## 2026-10-13 (later still) — the shell asks, and the race that arrives with the money
+
+Slice 2 of three. `HostShellV2.jsx` now calls `refreshEventPass(eventId)` once
+per event open, behind `isBillingLive()` (dormant, so this fires for nobody
+today) and `isUserCreatedEvent` (the route resolves the tenant key from a
+`public.events` row, which only the host's own events have).
+
+**The re-render seam was a real gap.** `passGate` is synchronous and reads the
+module store directly — which is what lets `briefAllowed` work inside a tap
+handler with no prop plumbing — but nothing told React when an answer landed.
+Checking every call site rather than assuming: `briefAllowed` is in an async
+handler and needs nothing; all three `destinationLocked` calls are in
+sheet-render IIFEs and would have left a teased lodging/ground/arrivals surface
+teased after the server confirmed the pass. React is 19.2.6, so the fix is
+`subscribePassEntitlements` + `useSyncExternalStore`, notifying only on an
+actual change.
+
+**The race, handled here rather than deferred.** Stripe redirects the browser
+and POSTs the webhook independently. If the redirect wins, the host lands with a
+blob claiming a pass and no row yet — and the refresh this slice adds would read
+`held: false` and revoke the unlock of someone who paid seconds ago. Adding the
+refresh without handling that would have shipped the defect, reachable the moment
+D-2 flips the billing flag. So `refreshEventPass(id, { claimed })` makes a "no"
+**provisional** while the blob claims a pass: three asks on a bounded backoff
+(`[2000, 4000]`), never a retry on a "yes" and never a retry that turns a
+failure into a revocation. A stale claim costs two extra requests and is then
+revoked — the right side to be wrong on for a $39 charge.
+
+**The in-flight dedupe had to become upgradeable.** On a paid return the shell
+asks on mount, before the handler has written the claim, then again with
+`claimed: true`; serving the first promise unchanged applied the first call's
+policy and wrote the race's "no" down anyway. The flag now lives in a record the
+running loop re-reads, and the negative test (same mock, same ordering, no
+second caller → the "no" IS written) is what makes that guard mean something.
+
+jest **604 / 8,312**, `gate:cra` 241 of 241, hostv2 build + parity green, vitest
+**49 / 4**. No production behaviour change. Slice 3 is the pass sheet calling
+`/api/stripe/create-pass-session`, the last route in `BUILT_NOT_WIRED`.
+
 ## 2026-10-13 (later) — the pass fact moves to the server, and the rule I proposed for it was wrong
 
 **`main` @ `eaf43a5`** (PRs #87, #88 and #89 all merged today; production

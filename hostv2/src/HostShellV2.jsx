@@ -29,7 +29,7 @@ const areaLabelFor = (id) => AREA_LABELS[id]
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
-import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, cloneElement } from 'react';
+import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, useSyncExternalStore, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { currentTheme, setStoredTheme } from './theme.js';
@@ -233,7 +233,8 @@ import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createCheckoutSession, verifySession } from '@app/lib/stripeApi';
-import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure } from '@app/lib/passGate';
+import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent } from '@app/lib/passGate';
+import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
 import { commApi, isCommApiConfigured } from '@app/lib/commApi';
@@ -890,6 +891,26 @@ function FoodModes({ mode, count, setSheet }) {
       {count ? btn('bringing', `Bringing · ${count}`, () => setSheet({ kind: 'bringing' })) : null}
       {btn('shop', 'Shop', () => setSheet({ kind: 'food' }))}
     </div>
+  );
+}
+
+// ─── THE PASS FACT, MADE REACTIVE ────────────────────────────────────────────
+// `passGate` is synchronous and reads `passEntitlement` directly, which is what
+// lets `briefAllowed` work inside a tap handler with no prop plumbing. The cost
+// is that nothing tells React when a server answer lands — and the three
+// `destinationLocked` call sites are in RENDER (the lodging, ground and
+// arrivals sheets), so without this a teased surface stays teased after the
+// server has confirmed the pass, until some unrelated state change happens to
+// re-render it.
+//
+// The VALUE is deliberately not used by the caller. What this hook buys is the
+// re-render; the gates read `serverPassHeld` themselves. Returned anyway so it
+// is a hook and not a side effect wearing a hook's name.
+function usePassEntitlement(eventId) {
+  return useSyncExternalStore(
+    subscribePassEntitlements,
+    () => serverPassHeld(eventId),
+    () => null,                       // no server snapshot: nothing is known yet
   );
 }
 
@@ -3173,6 +3194,36 @@ export default function HostShellV2() {
     if (eventId) { try { localStorage.setItem(LS_LAST_EVENT, eventId); } catch {} }
   }, [eventId, welcome, stage, eventIsTheHostsOwn]);
   useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
+
+  // ── ASK THE SERVER WHETHER THIS EVENT HOLDS A PASS ─────────────────────────
+  // Before this, the only answer was `ev.passPurchased` — written by the paid
+  // return handler below and then persisted with the event, which meant a host
+  // who paid and cleared their browser had bought nothing recoverable. The
+  // audit (`docs/audits/2026-10-03_STRIPE_CONSUMER_CHECKOUT_READINESS.md`)
+  // named that in the board's own words. `public.event_passes` is the durable
+  // record; this is the one place that asks for it.
+  //
+  // THE GUARDS ARE BOTH LOAD-BEARING:
+  //  · `isBillingLive()` — billing is dormant, so in production today this
+  //    fires for nobody. Asking anyway would be a request per event open for an
+  //    answer no gate consults.
+  //  · `isUserCreatedEvent` — the route resolves the tenant key from a
+  //    `public.events` row, which only the host's own events have. Samples and
+  //    pool events would get a 409 that means nothing, which is a worse outcome
+  //    than not asking. This is the engine's own predicate, not a second
+  //    definition of the same idea.
+  //
+  // `claimed` is the webhook/redirect race: Stripe redirects the browser and
+  // POSTs the webhook independently, so a host can land here with the blob
+  // already claiming a pass and the row not yet written. It makes a "no"
+  // provisional rather than a revocation — see `refreshEventPass`.
+  usePassEntitlement(eventId);
+  const passClaimed = event && event.passPurchased === true;
+  useEffect(() => {
+    if (!isBillingLive()) return;
+    if (!eventId || !isUserCreatedEvent({ id: eventId })) return;
+    refreshEventPass(eventId, { claimed: passClaimed });
+  }, [eventId, passClaimed]);
 
 
   const switchEvent = (id) => {

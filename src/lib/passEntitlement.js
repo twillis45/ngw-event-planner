@@ -58,6 +58,47 @@ const SERVER = new Map();
 // render pass; without this they would each issue their own request.
 const INFLIGHT = new Map();
 
+// Nothing in `passGate` is reactive — it is called inside render and reads this
+// module synchronously. So a landing answer has to tell React something moved,
+// or a teased surface stays teased until some unrelated state change happens to
+// re-render it. These are the `useSyncExternalStore` subscribers.
+const LISTENERS = new Set();
+
+function notify() {
+  // A copy, because a listener may unsubscribe while being notified.
+  for (const fn of [...LISTENERS]) { try { fn(); } catch { /* a bad listener is not this module's problem */ } }
+}
+
+function put(key, held) {
+  const before = SERVER.get(key);
+  SERVER.set(key, held === true);
+  if (before !== (held === true)) notify();     // no render for a repeat answer
+}
+
+/**
+ * Subscribe to changes in the recorded answers. Returns an unsubscribe.
+ *
+ * Shaped for `useSyncExternalStore`: it reports THAT something changed, not
+ * what. The consumer reads `serverPassHeld(id)` for the value, which is a
+ * primitive and therefore a stable snapshot across repeat reads.
+ */
+export function subscribePassEntitlements(fn) {
+  if (typeof fn !== 'function') return () => {};
+  LISTENERS.add(fn);
+  return () => { LISTENERS.delete(fn); };
+}
+
+/**
+ * How hard to push back on a "no" when the event's own blob claims a pass —
+ * see the race described over `refreshEventPass`. Two delays means three asks
+ * in total, which is bounded on purpose: this is a confirmation, not a poll.
+ *
+ * Exported because `refreshEventPass` takes it as an overridable option (so a
+ * test can run the real logic without waiting six seconds) and the production
+ * cadence then has to be pinnable rather than buried.
+ */
+export const CLAIM_RETRY_DELAYS_MS = [2000, 4000];
+
 /**
  * The server's answer for this event: `true`, `false`, or `null` for
  * "never asked". Synchronous — this is what `passGate` reads.
@@ -75,7 +116,7 @@ export function serverPassHeld(eventId) {
  */
 export function recordServerPass(eventId, held) {
   if (!eventId) return;
-  SERVER.set(String(eventId), held === true);
+  put(String(eventId), held);
 }
 
 /**
@@ -87,33 +128,77 @@ export function recordServerPass(eventId, held) {
  * real pass on a network blip, which is the worst outcome this module can
  * produce. On failure the event falls back to its blob claim, exactly as before
  * this module existed.
+ *
+ * ── `claimed`: THE WEBHOOK/REDIRECT RACE ───────────────────────────────────
+ * Pass `{ claimed: true }` when the event's own blob already says
+ * `passPurchased`. It changes nothing about a "yes" and nothing about a
+ * failure; it only makes a **"no" provisional**, re-asking on a bounded
+ * backoff before it is written down.
+ *
+ * The race it exists for is real and arrives with the money: Stripe redirects
+ * the browser back and POSTs the webhook INDEPENDENTLY. If the redirect wins,
+ * the host lands with a blob that claims a pass and an `event_passes` table
+ * that does not have the row yet. A refresh on event open — which is exactly
+ * what the shell now does — would read `held: false` and revoke the unlock of
+ * someone who just paid, seconds after they paid.
+ *
+ * The cost of being wrong the other way is two extra requests: a stale or
+ * hand-edited claim re-asks twice, gets the same "no", and is revoked. That is
+ * the right side to be wrong on when the subject is a $39 charge.
  */
-export async function refreshEventPass(eventId) {
+export async function refreshEventPass(
+  eventId,
+  { claimed = false, retryDelaysMs = CLAIM_RETRY_DELAYS_MS } = {},
+) {
   if (!eventId) return null;
   const key = String(eventId);
-  if (INFLIGHT.has(key)) return INFLIGHT.get(key);
 
-  const p = (async () => {
+  // AN IN-FLIGHT ASK CAN BE UPGRADED, AND HAS TO BE. On a paid return the shell
+  // asks once on mount — before the return handler has written the claim onto
+  // the event — and again a beat later with `claimed: true`. Handing the second
+  // caller the first caller's promise would apply the FIRST call's policy, so
+  // the "no" the race produces would be written down as a revocation. The flag
+  // lives in a record the running loop re-reads, so the upgrade reaches it.
+  const live = INFLIGHT.get(key);
+  if (live) {
+    if (claimed) live.claimed = true;
+    return live.p;
+  }
+
+  const rec = { claimed, p: null };
+  rec.p = (async () => {
     try {
-      const out = await fetchEventPass(key);
-      if (out && typeof out.held === 'boolean') {
-        SERVER.set(key, out.held);
-        return out;
+      // attempt 0 is the real ask; the rest only happen on a provisional "no".
+      for (let attempt = 0; ; attempt += 1) {
+        let out = null;
+        try {
+          out = await fetchEventPass(key);
+        } catch {
+          return null;                     // see A FAILURE RECORDS NOTHING
+        }
+        if (!out || typeof out.held !== 'boolean') return null;   // unknown shape
+
+        // `rec.claimed`, not the parameter — an upgrade that arrived while this
+        // request was in flight must count.
+        const retryable = rec.claimed && out.held === false && attempt < retryDelaysMs.length;
+        if (!retryable) {
+          put(key, out.held);
+          return out;
+        }
+        await new Promise((r) => setTimeout(r, retryDelaysMs[attempt]));
       }
-      return null;                       // shape we do not recognise: no record
-    } catch {
-      return null;                       // see the paragraph above
     } finally {
       INFLIGHT.delete(key);
     }
   })();
 
-  INFLIGHT.set(key, p);
-  return p;
+  INFLIGHT.set(key, rec);
+  return rec.p;
 }
 
 /** Test seam. Module state that leaks between tests is its own kind of lie. */
 export function resetPassEntitlements() {
   SERVER.clear();
   INFLIGHT.clear();
+  LISTENERS.clear();
 }

@@ -15,6 +15,7 @@
 import { fetchEventPass } from '../stripeApi';
 import {
   serverPassHeld, recordServerPass, refreshEventPass, resetPassEntitlements,
+  subscribePassEntitlements, CLAIM_RETRY_DELAYS_MS,
 } from '../passEntitlement';
 import { passHeld, briefAllowed, destinationLocked } from '../passGate';
 
@@ -112,6 +113,144 @@ describe('refresh writes down what the server said', () => {
   test('a no-op id never reaches the network', async () => {
     expect(await refreshEventPass('')).toBe(null);
     expect(fetchEventPass).not.toHaveBeenCalled();
+  });
+});
+
+// ─── THE RE-RENDER SEAM ──────────────────────────────────────────────────────
+// passGate is synchronous and the three destinationLocked call sites are in
+// RENDER. Without a subscription a landing answer is invisible: the teased
+// lodging/ground/arrivals surfaces stay teased until something unrelated
+// re-renders them. This is what useSyncExternalStore binds to.
+describe('subscribers hear a change, and only a change', () => {
+  test('a recorded answer notifies; an identical repeat does not', () => {
+    const seen = jest.fn();
+    subscribePassEntitlements(seen);
+
+    recordServerPass('cust-abc123', true);
+    expect(seen).toHaveBeenCalledTimes(1);
+
+    recordServerPass('cust-abc123', true);        // same answer
+    expect(seen).toHaveBeenCalledTimes(1);        // no needless render
+
+    recordServerPass('cust-abc123', false);       // changed
+    expect(seen).toHaveBeenCalledTimes(2);
+  });
+
+  test('unsubscribe stops the notifications', () => {
+    const seen = jest.fn();
+    const off = subscribePassEntitlements(seen);
+    off();
+    recordServerPass('cust-abc123', true);
+    expect(seen).not.toHaveBeenCalled();
+  });
+
+  test('a listener that throws does not stop the others, or the write', () => {
+    const good = jest.fn();
+    subscribePassEntitlements(() => { throw new Error('bad listener'); });
+    subscribePassEntitlements(good);
+    expect(() => recordServerPass('cust-abc123', true)).not.toThrow();
+    expect(good).toHaveBeenCalledTimes(1);
+    expect(serverPassHeld('cust-abc123')).toBe(true);
+  });
+
+  test('a non-function subscriber is a no-op, not a crash', () => {
+    expect(() => subscribePassEntitlements(null)()).not.toThrow();
+  });
+});
+
+// ─── THE WEBHOOK/REDIRECT RACE ───────────────────────────────────────────────
+// Stripe redirects the browser and POSTs the webhook INDEPENDENTLY. If the
+// redirect wins, the host lands with a blob claiming a pass and no row yet. A
+// refresh on event open would read held:false and revoke the unlock of someone
+// who paid seconds ago. `claimed` makes that "no" provisional.
+describe('a NO is provisional while the blob claims a pass', () => {
+  // REAL logic, real timers, a cadence of 1ms. `retryDelaysMs` is an option on
+  // the function rather than a constant closed over, so the retry path under
+  // test here is the same code production runs — only faster. CRA's jest has no
+  // `advanceTimersByTimeAsync`, and hand-flushing microtasks through three
+  // awaited fetches plus two awaited timers is the kind of test that passes for
+  // the wrong reason.
+  const FAST = { retryDelaysMs: [1, 1] };
+
+  test('the production cadence is what ships — two delays, three asks', () => {
+    // The guard on the line above: if this constant is widened into a poll, or
+    // the fast cadence above silently stops matching its SHAPE, say so here.
+    expect(CLAIM_RETRY_DELAYS_MS).toEqual([2000, 4000]);
+    expect(FAST.retryDelaysMs).toHaveLength(CLAIM_RETRY_DELAYS_MS.length);
+  });
+
+  test('the row arriving late is picked up, and nothing is revoked in between', async () => {
+    fetchEventPass
+      .mockResolvedValueOnce({ event_id: 'cust-abc123', held: false })   // webhook not landed
+      .mockResolvedValueOnce({ event_id: 'cust-abc123', held: true });   // it landed
+
+    const done = refreshEventPass('cust-abc123', { claimed: true, ...FAST });
+    await Promise.resolve();
+    // The provisional no was NOT written: the blob claim still stands here.
+    expect(serverPassHeld('cust-abc123')).toBe(null);
+
+    await done;
+    expect(serverPassHeld('cust-abc123')).toBe(true);
+    expect(fetchEventPass).toHaveBeenCalledTimes(2);
+  });
+
+  test('a claim the server never backs IS revoked, after bounded re-asks', async () => {
+    fetchEventPass.mockResolvedValue({ event_id: 'cust-abc123', held: false });
+
+    await refreshEventPass('cust-abc123', { claimed: true, ...FAST });
+
+    expect(serverPassHeld('cust-abc123')).toBe(false);
+    // Two delays configured, so three asks in total — not an open-ended poll.
+    expect(fetchEventPass).toHaveBeenCalledTimes(3);
+  });
+
+  test('a YES is never retried, claimed or not', async () => {
+    fetchEventPass.mockResolvedValue({ event_id: 'cust-abc123', held: true });
+    await refreshEventPass('cust-abc123', { claimed: true, ...FAST });
+    expect(fetchEventPass).toHaveBeenCalledTimes(1);
+  });
+
+  test('an UNCLAIMED no is written straight away — no retries for nobody', async () => {
+    fetchEventPass.mockResolvedValue({ event_id: 'cust-abc123', held: false });
+    await refreshEventPass('cust-abc123', FAST);
+    expect(serverPassHeld('cust-abc123')).toBe(false);
+    expect(fetchEventPass).toHaveBeenCalledTimes(1);
+  });
+
+  test('a FAILED ask is never retried into a revocation either', async () => {
+    fetchEventPass.mockRejectedValue(new Error('Pass lookup error 503'));
+    expect(await refreshEventPass('cust-abc123', { claimed: true, ...FAST })).toBe(null);
+    expect(serverPassHeld('cust-abc123')).toBe(null);
+    expect(fetchEventPass).toHaveBeenCalledTimes(1);
+  });
+
+  test('an in-flight ask is UPGRADED by a later claimed caller', async () => {
+    // The paid-return ordering: the shell asks on mount before the handler has
+    // written the claim, then again once it has. Applying the FIRST call's
+    // policy to the deduped answer would write the race's "no" down as a
+    // revocation of a purchase made seconds earlier.
+    fetchEventPass
+      .mockResolvedValueOnce({ event_id: 'cust-abc123', held: false })
+      .mockResolvedValueOnce({ event_id: 'cust-abc123', held: true });
+
+    const first = refreshEventPass('cust-abc123', FAST);                      // claimed: false
+    const second = refreshEventPass('cust-abc123', { claimed: true, ...FAST }); // the upgrade
+    await Promise.all([first, second]);
+
+    expect(fetchEventPass).toHaveBeenCalledTimes(2);   // ONE ask, which retried
+    expect(serverPassHeld('cust-abc123')).toBe(true);
+  });
+
+  test('…and without the upgrade that same ordering revokes — the bug it prevents', async () => {
+    // The negative that makes the test above mean something: identical mock,
+    // identical ordering, no second caller. The "no" is written down.
+    fetchEventPass
+      .mockResolvedValueOnce({ event_id: 'cust-abc123', held: false })
+      .mockResolvedValueOnce({ event_id: 'cust-abc123', held: true });
+
+    await refreshEventPass('cust-abc123', FAST);
+    expect(serverPassHeld('cust-abc123')).toBe(false);
+    expect(fetchEventPass).toHaveBeenCalledTimes(1);
   });
 });
 
