@@ -232,7 +232,11 @@ import { lodgingBasisFor, budgetComparableTotal } from '@app/lib/knowledge/lodgi
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
-import { isStripeApiConfigured, createCheckoutSession, verifySession } from '@app/lib/stripeApi';
+// `createCheckoutSession` is deliberately NOT imported here any more: it takes
+// an amount from the caller, which is right for a planner's own fee (App.js
+// still uses it for that) and wrong for a fixed-price product. hostv2 sells one
+// thing, and `createPassSession` is the route that prices it server-side.
+import { isStripeApiConfigured, createPassSession, verifySession } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
@@ -822,11 +826,33 @@ function CityField({ value, onChange, onPick, onEnter, placeholder, ariaLabel, s
 // verifySession and requires payment_status === 'paid' AND the session's own
 // metadata fee_id to match — the redirect params only tell us WHAT to verify.
 // No session id, no unlock.
+//
+// ── TWO SHAPES, AND THE OLD ONE DOES NOT GET DELETED (2026-10-13) ──────────
+// `kind: 'pass'` is the current flow: `create-pass-session` sets the price
+// server-side and the WEBHOOK grants, so the return trip does not verify a
+// payment at all — it reads `public.event_passes`, which only a
+// signature-verified webhook can write. Nothing in the URL is evidence.
+//
+// `kind: 'fee'` is the flow that shipped before it, where the pass was bought
+// through `create-checkout-session` with the amount passed from the browser.
+// It stays parsed because a host can still be holding one of those links: a
+// Stripe receipt email is permanent, and the handler's own copy tells people to
+// reopen the app from it. Deleting this branch would turn a real receipt into a
+// link that silently does nothing.
 const PASS_PAID_RETURN = (() => {
   try {
     const q = new URLSearchParams(window.location.search);
+    if (q.get('pass_paid') === '1' && String(q.get('event_id') || '').trim()) {
+      return {
+        kind: 'pass',
+        eventId: String(q.get('event_id')).trim(),
+        feeId: null,
+        sessionId: q.get('session_id') || null,
+      };
+    }
     if (q.get('stripe_paid') === '1' && String(q.get('fee_id') || '').startsWith('one-event-pass-')) {
       return {
+        kind: 'fee',
         eventId: String(q.get('fee_id')).slice('one-event-pass-'.length) || null,
         feeId: String(q.get('fee_id')),
         sessionId: q.get('session_id') || null,
@@ -3462,20 +3488,48 @@ export default function HostShellV2() {
   useEffect(() => {
     if (!PASS_PAID_RETURN || !PASS_PAID_RETURN.eventId || passPaidApplied.current) return;
     passPaidApplied.current = true;
+    const { kind, eventId: paidEventId, feeId, sessionId } = PASS_PAID_RETURN;
+    const unlocked = () => {
+      // The blob write is a CACHE of a confirmed fact, not the grant. Written
+      // only after the server or Stripe has confirmed, so nothing here can
+      // manufacture the claim that `passGate` falls back to.
+      setCustoms(list => list.map(c => (c && c.id === paidEventId) ? { ...c, passPurchased: true } : c));
+      toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
+    };
+
     (async () => {
-      if (!PASS_PAID_RETURN.sessionId) {
+      // ── THE PASS FLOW: ASK OUR OWN RECORD, NOT THE REDIRECT ──────────────
+      // `public.event_passes` is written only by the signature-verified
+      // webhook, so the row IS the proof. The redirect is not evidence of
+      // anything and is not treated as any.
+      //
+      // `claimed: true` because the host has just come back from a completed
+      // checkout: Stripe redirects the browser and POSTs the webhook
+      // INDEPENDENTLY, so a "no" here is far more likely to be a webhook that
+      // has not landed than a purchase that did not happen. It re-asks on a
+      // bounded backoff before believing it — see `refreshEventPass`.
+      if (kind === 'pass') {
+        await refreshEventPass(paidEventId, { claimed: true });
+        if (serverPassHeld(paidEventId) === true) { unlocked(); return; }
+        toast('Thanks — your payment went through, but we haven’t seen it land on this event yet. It usually takes a few seconds; reopen the event and it’ll be here.');
+        return;
+      }
+
+      // ── THE LEGACY FEE-SHAPED RETURN ─────────────────────────────────────
+      // Kept working for links already in people's inboxes. Verify-first, as
+      // before: the redirect params only say WHAT to check.
+      if (!sessionId) {
         toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.');
         return;
       }
       let v = null;
-      try { v = await verifySession(PASS_PAID_RETURN.sessionId); } catch { v = null; }
-      const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === PASS_PAID_RETURN.feeId);
+      try { v = await verifySession(sessionId); } catch { v = null; }
+      const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === feeId);
       if (!paid) {
         toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.');
         return;
       }
-      setCustoms(list => list.map(c => (c && c.id === PASS_PAID_RETURN.eventId) ? { ...c, passPurchased: true } : c));
-      toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
+      unlocked();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -17017,12 +17071,36 @@ export default function HostShellV2() {
               // "not ready to charge" decision — the API base being set for RSVP
               // must not silently turn on a real $39 charge.
               const canCharge = (() => { try { return isStripeApiConfigured() && process.env.REACT_APP_BILLING_LIVE === '1'; } catch { return false; } })();
+              // ── THE PRICE IS NOT OURS TO SEND (2026-10-13) ──────────────────
+              // This used to call `createCheckoutSession({ amountCents: 3900,
+              // feeId: 'one-event-pass-' + event.id, … })`, which is gap #3 of
+              // the 2026-10-03 checkout-readiness audit shipped in the shell:
+              // the amount came from the browser, so a buyer who edited the
+              // bundle paid one cent for the same entitlement. `createPassSession`
+              // takes no amount — the server charges PASS_AMOUNT_CENTS — and it
+              // must not grow one.
+              //
+              // The 409 is a real answer, not an error: the route refuses to sell
+              // a pass to an event that already holds one rather than taking the
+              // money twice. Saying "try again" to that would be a lie, so it
+              // gets its own line.
               const buyPass = async () => {
                 try {
-                  const out = await createCheckoutSession({ amountCents: 3900, label: `${BRAND.full} — One-Event Pass`, feeId: 'one-event-pass-' + event.id, eventId: event.id, clientName: (profile && profile.name) || '' });
+                  const out = await createPassSession({ eventId: event.id });
                   if (out && out.url) { window.location.assign(out.url); return; }
                   toast('Couldn’t open checkout just now — please try again.');
-                } catch { toast('Checkout isn’t available right now.'); }
+                } catch (e) {
+                  const why = String((e && e.message) || '');
+                  if (/already has a pass/i.test(why)) {
+                    toast('This event already has the pass — nothing more to buy. Reopen it and everything’s unlocked.');
+                    return;
+                  }
+                  if (/synced/i.test(why)) {
+                    toast('This event hasn’t finished syncing to your account yet — give it a moment and try again.');
+                    return;
+                  }
+                  toast('Checkout isn’t available right now.');
+                }
               };
               // MODEL D pass sheet (fourth sitting, 2026-08-19). Three rulings live
               // in this copy and none may drift:

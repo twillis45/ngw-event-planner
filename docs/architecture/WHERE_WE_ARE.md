@@ -1,5 +1,47 @@
 # Where We Are -- live status board
 
+## 2026-10-13 (last) — the price was coming from the browser, in shipped code
+
+Slice 3 of three, and the only one of them that fixes a live defect rather than
+building toward one.
+
+It was scoped as "wire the pass sheet to `create-pass-session`", on the
+assumption the sheet had no checkout. It had one:
+
+```js
+createCheckoutSession({ amountCents: 3900, feeId: 'one-event-pass-' + event.id, … })
+```
+
+That is gap #3 of the 2026-10-03 checkout-readiness audit — "the price cannot
+come from the caller" — living in the shell. A buyer who edited the bundle paid
+one cent and received the same entitlement. `amount_cents` is correct for a
+planner's own fee, where the planner sets the number, and `App.js` still uses it
+that way; on a fixed-price product it is the hole.
+
+`createPassSession({ eventId })` replaces it — no amount, no label, no fee id.
+hostv2 no longer imports `createCheckoutSession` at all.
+
+**The return trip stopped verifying a payment**, because it no longer has to: a
+pass session's metadata carries `kind: 'pass'` and no `fee_id`, so the old check
+could only fail, and the entitlement row is written only by the
+signature-verified webhook — the row is the proof, the redirect is evidence of
+nothing. The pass branch calls `refreshEventPass(id, { claimed: true })` and
+reads `serverPassHeld`. The legacy `?stripe_paid=1` shape stays parsed, because
+a Stripe receipt email is permanent and the handler's own copy tells people to
+reopen the app from it.
+
+**Two guards caught me and both were right.** `plannerFetchesCarryAuth` had a
+hole I left in slice 1 — `/api/stripe/pass` shipped a caller and was never
+added to its `GATED` list, and unauthenticated that route is a 401 or an answer
+for the wrong tenant. And `textGateRatchet` refused the new test file, demanding
+a justification rather than a bump; it got one, because the claim is an absence
+(no amount posted, no import present) and a rendered assertion cannot observe a
+field that is not sent.
+
+jest **605 / 8,324**, `gate:cra` 241 of 241, hostv2 build + parity, vitest
+49 / 4. `BUILT_NOT_WIRED` is empty again — both entries arrived and left on the
+same day, each forced out by the staleness test.
+
 ## 2026-10-13 (later still) — the shell asks, and the race that arrives with the money
 
 Slice 2 of three. `HostShellV2.jsx` now calls `refreshEventPass(eventId)` once

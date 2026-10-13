@@ -1,6 +1,17 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-10-13 (fifty-third entry:
+**Measured reality, not intentions.** Updated 2026-10-13 (fifty-fourth entry:
+the One-Event Pass checkout was taking its PRICE FROM THE BROWSER, in shipped
+code — the pass sheet called `createCheckoutSession({ amountCents: 3900, … })`,
+which is gap #3 of the 2026-10-03 checkout-readiness audit living in the shell.
+A buyer who edited the bundle paid one cent for the same entitlement. Slice 3
+was scoped as "wire the sheet to create-pass-session" on the assumption it had
+no checkout; it had one, and that is the find. Two guards caught me on the way:
+an auth-coverage list I had left a hole in during slice 1, and the text-gate
+ratchet, which demanded a justification instead of a bump and deserved one.
+See the fifty-fourth entry.)
+
+Before that, earlier on 2026-10-13 (fifty-third entry:
 the shell now asks the server whether an event holds a pass, once per event
 open, behind two load-bearing guards. The part worth reading is the race it
 forced into scope: Stripe redirects the browser and POSTs the webhook
@@ -365,7 +376,7 @@ this file is the short answer to "where is it, is it green, what's next."
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **8,312 passed**, 1 skipped, **0 failed**, **604 suites** (measured 2026-10-13 after the fifty-third entry: +12 and no new suite, all in `passEntitlement.test.js` — the subscribe seam and the webhook/redirect race. Before that **8,300 / 604** after the fifty-second entry: +15 / +1 suite for `passEntitlement.test.js`, the server-record precedence. The 8,285 / 603 the two entries before it recorded was +4 / +1 for `theStampCannotEatTheRow` — the data-loss guard — and the two `BUILT_NOT_WIRED` entries were a list edit, not new tests.) Before that **8,281 passed**, 1 skipped, **0 failed**, **602 suites** (measured 2026-10-07 after the forty-eighth entry. The delta is split and both halves were measured rather than inferred: excluding `theNameOutsideTheApp` entirely the tree reads **8,260 / 601**, that suite now holds **21** tests and held **14** at `96a707c`, so **+7 is mine** and no new suite — the other +7 / +1 above the 8,267 / 601 below arrived with `96a707c`, which I did not measure separately). Before that **8,267 passed**, 1 skipped, **0 failed**, **601 suites** (measured 2026-10-07 after the forty-seventh entry: +20 / +3 suites. One of them, `oneLabelMapForTheAreas`, raised the hostv2 text-gate ratchet 52 -> 53, and the ratchet's convention was honoured rather than waved at: the reason is CHECKED, not assumed. `thePlanPartsReadAsEnglish` is the rendered gate for that surface and it was GREEN across a full matrix with the duplicate map present, because two maps that agree render identically). Before that **8,247 passed**, 1 skipped, **0 failed**, **598 suites** (measured 2026-10-06 after the forty-sixth entry: +56 / +7 suites for the exclusions hinge, the per-event exclusion sweep across 45 playbooks, the kid-risk corpus gate, the altitude routing, and the parser field. Three gates were written and then REWRITTEN after red-proofing showed they could not fail — one of them three times; the third version is what shipped). Before that **8,191 passed**, 1 skipped, **591 suites** (2026-10-03, forty-fourth entry: +23 and +1 suite for the bedroom derivation, the numeric requirements, the stated pairing and the Vrbo refusal copy). Before that **8,168 / 590** (same day, forty-third entry: +5 for `unfurlListing`'s cold-start retry and +3 for the probe-duration gate, no new suite — all eight joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **8,324 passed**, 1 skipped, **0 failed**, **605 suites** (measured 2026-10-13 after the fifty-fourth entry: +12 and +1 suite, `thePriceIsNotTheBrowsersToSend.test.js` — the price-provenance guard, which also took the hostv2 text-gate ratchet 53 -> 54 with a written justification. Before that **8,312 / 604** after the fifty-third entry: +12 and no new suite, all in `passEntitlement.test.js` — the subscribe seam and the webhook/redirect race. Before that **8,300 / 604** after the fifty-second entry: +15 / +1 suite for `passEntitlement.test.js`, the server-record precedence. The 8,285 / 603 the two entries before it recorded was +4 / +1 for `theStampCannotEatTheRow` — the data-loss guard — and the two `BUILT_NOT_WIRED` entries were a list edit, not new tests.) Before that **8,281 passed**, 1 skipped, **0 failed**, **602 suites** (measured 2026-10-07 after the forty-eighth entry. The delta is split and both halves were measured rather than inferred: excluding `theNameOutsideTheApp` entirely the tree reads **8,260 / 601**, that suite now holds **21** tests and held **14** at `96a707c`, so **+7 is mine** and no new suite — the other +7 / +1 above the 8,267 / 601 below arrived with `96a707c`, which I did not measure separately). Before that **8,267 passed**, 1 skipped, **0 failed**, **601 suites** (measured 2026-10-07 after the forty-seventh entry: +20 / +3 suites. One of them, `oneLabelMapForTheAreas`, raised the hostv2 text-gate ratchet 52 -> 53, and the ratchet's convention was honoured rather than waved at: the reason is CHECKED, not assumed. `thePlanPartsReadAsEnglish` is the rendered gate for that surface and it was GREEN across a full matrix with the duplicate map present, because two maps that agree render identically). Before that **8,247 passed**, 1 skipped, **0 failed**, **598 suites** (measured 2026-10-06 after the forty-sixth entry: +56 / +7 suites for the exclusions hinge, the per-event exclusion sweep across 45 playbooks, the kid-risk corpus gate, the altitude routing, and the parser field. Three gates were written and then REWRITTEN after red-proofing showed they could not fail — one of them three times; the third version is what shipped). Before that **8,191 passed**, 1 skipped, **591 suites** (2026-10-03, forty-fourth entry: +23 and +1 suite for the bedroom derivation, the numeric requirements, the stated pairing and the Vrbo refusal copy). Before that **8,168 / 590** (same day, forty-third entry: +5 for `unfurlListing`'s cold-start retry and +3 for the probe-duration gate, no new suite — all eight joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **49 passed / 4 files** — measured 2026-10-13 (fifty-third entry). ⚠️ This row read **48** from 2026-09-29 until then; the extra test is not mine and arrived unrecorded somewhere in between, so it is written as measured rather than reconciled. Before that **48 passed / 4 files** (2026-09-29 — and see the fortieth entry: 9 of these fail on Node 22 until `Object.defineProperty` replaced `global.navigator = …`; CI pins Node 20, where all 48 always passed). Before that 43 / 4 (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **399 passed** — re-measured 2026-10-02 (forty-second entry: +6 for the results-card price reader). Before that **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
@@ -377,6 +388,90 @@ this file is the short answer to "where is it, is it green, what's next."
 | Path to Production | stage **1 recorded PASSED 2026-09-03** (who hits this today, sourced from the project's own competitive reads — not invented). Stage **8 (Maintain) recorded, passed-with-conditions, 2026-09-03** — first gate ever posted for this stage. Stage 6 PASSED WITH CONDITIONS (Todd, 2026-08-29). Stage 7 ruled `passed-with-conditions` by the review board 2026-09-02, under the owner's standing delegation. **Stage 5 (Security) also recorded 2026-09-03** — closing a tracking gap: the audit ran 2026-08-21 but the gate was never POSTed, so it read as historical/unanswered until this run. **Stage 9 entry: NO** — and its five preconditions now read as follows, 2026-10-07 (forty-eighth entry): **#2 (demo account) is NOT waiting on the owner and never was** — the path is driven end to end by `theDemoResetsToTheSamePlace.spec.mjs` and every test in it runs SIGNED OUT with no Supabase account, so a single-device demo needs no setup step at all; what stays unverified is the cross-device half, which needs real credentials. #1 (domain + policies), #4 (live-keys Stripe then `REACT_APP_BILLING_LIVE=1`) and #5 (three non-founder hosts asked for money) are untouched and owner-side. #3 (stranger-proof onboarding) is untouched, and the demo fixture it would be tested against is now guarded. The **stage-9 board has still never been convened.** ⏱ **TIMES IN THIS FILE ARE UTC UNLESS LABELLED**, because they are read off GitHub CI runs and deploy logs, which report UTC. The owner reads them in **Eastern** (EDT, UTC−4, until 2026-11-01; EST, UTC−5, after), so an unlabelled timestamp here is four hours later than the clock on his wall — enough to misdate an outage by a working morning. The repo's own gate records already carry explicit offsets (`2026-08-29T15:24:26-04:00`), so unlabelled times in the measured-state file were inconsistent with the project's own convention. The outage pair above is now labelled both ways; new entries should carry `Z` or an offset. ✅ **BOTH contradictions this row flagged are CLOSED (2026-10-13) — and one of the two flags was itself half wrong.** (a) The workspace `CLAUDE.md` surfaces table, the copy read FIRST every session, said "stages 1–4 passed, 5 and 7 open, 9 pending" for six weeks after it went false; two stages had been recorded since and two more (6, 8) were never listed. Re-measured against this row and pushed, `ngw-event-planner-workspace` @ `d90b7fd`. It now also declares itself a `facing`/`platform` table and says the handoff wins any disagreement, so the next drift resolves instead of sitting. (b) **CORRECTION TO THIS ROW'S OWN CLAIM.** The `demo/` prefix is not a prefix "the app repo does not have" — it is CORRECT. The app repo is a separate repository cloned at `demo/` inside the workspace repo, and `.gitignore` carries a `/demo/` entry at the top for exactly that reason ("Nested repositories — these are independently version-controlled"), so every `demo/…` path resolves on the owner's machine. What breaks is CLOUD sessions, where the two are checked out as siblings. The fix this row implied — rewriting the prefixes — would have broken the authoritative layout; `CLAUDE.md` now carries a short section on stripping it instead. Reading `.gitignore` before editing is the whole difference. (c) The Sentry contradiction was settled by probing the shipped bundle instead of re-reading either document: the live Pages deploy's one JS chunk (`static/js/main.*.js`, 5.66 MB) contains a real `*.ingest.us.sentry.io` host, so the DSN ships, the Path to Production audit was right, and `2026-08-21_SECURITY_TRACK_CHECKLIST.md` was wrong for seven weeks — now DONE/verified, and its closing verdict goes from four user-side attestations to three |
 | Standing conditions | **9**, gating stage 9 (Promotion) — 6 security, 3 marketing. No paid spend authorized. Unchanged by the stage 5/8 recordings — no new claims, only closing tracking gaps |
 | Path artifact | Republished 2026-09-03 (twice). Stage 5 and 8 cards show real recorded state. Three stage-7 checkboxes corrected: they described fixed problems (admin console key, 3-of-4 recovery functions, day-of probe) that had never been ticked off when the fix landed — found by re-verifying every open item against the repo, not by trusting the page |
+
+## FIXED 2026-10-13 (fifty-fourth entry) — the price was coming from the browser, in shipped code
+
+Times Eastern (EDT, UTC−4). Slice 3 of three. **This is the only slice of the
+three that fixes a live defect rather than building toward one.**
+
+**WHAT I FOUND WHEN I OPENED THE PASS SHEET.** Slice 3 was scoped as "wire the
+pass sheet to `create-pass-session`", on the assumption the sheet had no
+checkout. It had one, and it was this:
+
+```js
+createCheckoutSession({ amountCents: 3900,
+                        feeId: 'one-event-pass-' + event.id, … })
+```
+
+That is **gap #3 of `docs/audits/2026-10-03_STRIPE_CONSUMER_CHECKOUT_READINESS.md`
+living in the shell** — "the price cannot come from the caller" — and it was not
+hypothetical: a buyer who edited the bundle posted one cent and received the
+same entitlement. `amount_cents` is CORRECT for a planner's own fee, where the
+planner sets the number, and `App.js` still uses it that way. On a fixed-price
+product the same property is the hole.
+
+`createPassSession({ eventId })` replaces it. **No amount, no label, no
+fee id** — the server charges `PASS_AMOUNT_CENTS`, and
+`PassSessionRequest.model_fields` is asserted to be exactly
+`{event_id, success_url, cancel_url}`. hostv2 no longer **imports**
+`createCheckoutSession` at all: an import is an invitation, and this shell sells
+one thing at one price.
+
+**THE RETURN TRIP NO LONGER VERIFIES A PAYMENT, BECAUSE IT NO LONGER HAS TO.**
+The old handler called `verifySession` and matched a metadata `fee_id`. A pass
+session's metadata carries `kind: 'pass'` and no `fee_id`, so that check could
+only ever fail. More to the point, the entitlement row is written **only** by
+the signature-verified webhook — so the row IS the proof and the redirect is
+evidence of nothing. The pass branch now calls
+`refreshEventPass(eventId, { claimed: true })` and reads `serverPassHeld`.
+`claimed` because the host has just come back from a completed checkout, which
+is precisely the webhook/redirect race slice 2 built the provisional-no for.
+
+**THE LEGACY RETURN SHAPE IS NOT DELETED, AND THAT IS NOT TIDINESS.** A Stripe
+receipt email is permanent, and the handler's own copy tells people to reopen
+the app from it. `?stripe_paid=1&fee_id=one-event-pass-…` stays parsed and still
+verify-first; `?pass_paid=1&event_id=…` is the new shape. Deleting the old
+branch would turn a real receipt into a link that silently does nothing.
+
+**THE BLOB IS NOW ONLY EVER A CACHE OF A CONFIRMED FACT.** Both success paths
+write `passPurchased: true` through one `unlocked()` helper and neither failure
+path does — so the shell cannot manufacture the claim that `passGate` falls back
+to. A test counts the occurrences and asserts the single write is inside that
+helper.
+
+**TWO GUARDS CAUGHT ME, AND BOTH WERE RIGHT.**
+
+1. **`plannerFetchesCarryAuth` had a hole I put there.** `/api/stripe/pass`
+   shipped a caller in slice 1 and I never added it to that file's `GATED` list.
+   Both pass routes call `require_planner`, and `fetchEventPass`'s whole job is
+   to answer "does this event hold a pass" — unauthenticated that is a 401 or,
+   far worse, an answer for the wrong tenant. Added, one route and several hours
+   later than it should have been.
+2. **`textGateRatchet` refused the new test file** (54 gates, baseline 53) and
+   demanded a justification rather than a bump. It deserves one: the claim is an
+   **absence** — that no amount is posted and that `createCheckoutSession` is
+   not imported — and a rendered assertion cannot observe a field that is not
+   sent. The surface is also unreachable: billing is dormant, so the sheet
+   renders its "free while in preview" state and there is no checkout button for
+   an e2e to press. A test that waits for D-2 to flip a flag before it can fail
+   is not a guard. Raised to 54 with that written above the constant, in the
+   file's own idiom.
+
+**ALSO WORTH KNOWING:** the new suite's first run failed on its own
+documentation — the matcher for `amountCents:` hit the comment that QUOTES the
+old call. Comments are now stripped before the source-shape match. And
+`stripeApi` captures `BASE` at **import** time (the wart `isBillingLive()`
+exists to dodge), so the module is loaded after the env is set rather than at
+the top of the file; the first draft threw "No API backend configured" on every
+call.
+
+**QA.** jest **605 suites / 8,324 passed**, 1 skipped (+12, +1 suite).
+`gate:cra` green — 241 of 241 baselined. hostv2 `npm run build` green with the
+parity gate. vitest **49 / 4**. No e2e touches the pass surface — grepped, not
+assumed, which is also why the ratchet justification holds.
+
+**`BUILT_NOT_WIRED` IS EMPTY AGAIN.** Both entries arrived and left on
+2026-10-13, each forced out by the staleness test rather than remembered.
 
 ## BUILT 2026-10-13 (fifty-third entry) — the shell asks, and the race that arrives with the money
 

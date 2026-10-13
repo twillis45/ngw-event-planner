@@ -286,7 +286,37 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // of the surviving map against the engine's own id census is checked here too,
 // in the same breath, because a single map that misses an id is the identical
 // defect arriving by the other road.
-const MAX_HOSTV2_TEXT_GATES = 53;
+// 53 -> 54 (2026-10-13): thePriceIsNotTheBrowsersToSend.test.js.
+//
+// IT CANNOT BE AN E2E, for two independent reasons, and the first is the
+// cleaner one: THE CLAIM IS AN ABSENCE. The defect it guards was the hostv2
+// pass sheet calling
+//
+//     createCheckoutSession({ amountCents: 3900, feeId: 'one-event-pass-' + id })
+//
+// — gap #3 of the 2026-10-03 checkout-readiness audit, shipped in the shell:
+// the PRICE came from the browser, so a buyer who edited the bundle paid one
+// cent for the same entitlement. The fix routes the sheet at
+// `create-pass-session`, whose request model has no price field at all. What
+// has to stay true is that no amount is ever posted and that
+// `createCheckoutSession` — the helper that accepts one, still correct in
+// App.js where a planner sets their own fee — is not even imported here. "This
+// argument is not present" and "this import is not present" are facts about the
+// source. A rendered assertion cannot observe a field that is not sent.
+//
+// The second reason is that the surface is unreachable: billing is DORMANT
+// (`isBillingLive()` false, `REACT_APP_BILLING_LIVE` unset), so the sheet
+// renders its honest "free while in preview" state and the checkout button does
+// not exist for an e2e to press. A test that waits for D-2 to flip a flag
+// before it can fail is not a guard.
+//
+// The same file's assertions about the paid-return handler are the same kind of
+// claim: that the legacy `?stripe_paid=1` branch is NOT DELETED (a Stripe
+// receipt email is permanent, and the handler's own copy tells people to reopen
+// the app from it), and that the single `passPurchased: true` write lives
+// inside the one helper both confirmed paths call. "How many of a thing exist,
+// and inside what" is the fact `oneLabelMapForTheAreas` was admitted for.
+const MAX_HOSTV2_TEXT_GATES = 54;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
