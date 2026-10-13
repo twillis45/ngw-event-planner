@@ -1,6 +1,46 @@
 # Where We Are -- live status board
 
-## 2026-10-13 (last) — 🔴 slice 1 turned a log line into a free-pass minter
+## 2026-10-13 (last) — the money keys were the only secrets the blueprint never named
+
+The missing half of the entry below. `render.yaml` is the Render Blueprint:
+deploying from it **prompts** for every `sync: false` variable, as its own
+header says. It named 8 of the 16 environment variables the server reads — and
+among the missing were `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+
+So a fresh Blueprint deploy was never asked for either, and Stripe would come up
+silently unconfigured — while the 2026-10-03 audit recorded production as
+`{"configured":true}`, meaning a dashboard value no repo file records. **That is
+why "is the webhook secret set?" had no answer**: the variable existed nowhere a
+reader could find it. The fix below made the question checkable over HTTP; this
+makes it declared.
+
+Three keys added with what UNSET means, including `RESEND_WEBHOOK_SECRET`, which
+config.py already documented as "verification is skipped (dev/testing only — set
+this in production)" — the same shape as the Stripe one, missing for the same
+reason.
+
+The other six absences are now **written decisions** rather than silences, via
+`theBlueprintNamesWhatTheServerNeeds.test.js`: `ALLOW_DEV_TOKEN` is a deliberate
+security omission (declaring it puts the token bypass one dashboard field from
+being live), `SUPABASE_DB_URL` is an alternative spelling of a declared
+variable, `RESEND_FROM_NAME` has a working default, and the three `POSTHOG_*`
+vars are an **open question stated as one** — nobody has recorded whether
+production reads PostHog.
+
+Two of its tests earn their keep beyond the sweep: a commented-out example is
+not a declaration, and no `value:` line may carry a live secret prefix — which
+checks the header's "never commit secrets" promise instead of trusting it.
+
+Also recorded: run 905's `e2e` merge job went red with its shards cancelled by
+my own dispatch — blob count 0, merge skipped, Verdict failed deliberately. Read
+by opening the job's steps rather than assuming, because "my dispatch cancelled
+it" is exactly the story a real failure would hide behind. Sixth production
+firing of the instrument built this morning.
+
+jest **607 / 8,343**, backend pytest 440, `gate:cra` 241 of 241, hostv2 build +
+parity, `check:migrations` green.
+
+## 2026-10-13 (earlier) — 🔴 slice 1 turned a log line into a free-pass minter
 
 **A hole I opened today**, found by reading the code whose blast radius I had
 changed. The 2026-08-07 fix comment at that exact line had already written down
