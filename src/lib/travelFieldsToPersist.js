@@ -52,11 +52,36 @@ export function travelFieldsToPersist(o = {}) {
 
   const out = {};
 
+  // ── A GUESS IS NOT EVIDENCE, WHOEVER RESOLVED IT (2026-10-18, Sprint 0 P0-1)
+  // `smartParseEvent` fires isDestination TRUE for any bare resolved city and
+  // marks it `destinationBasis: 'place-named'` — deliberately, because a miss
+  // deletes the travel stack. Until now the ONLY thing stopping that guess
+  // becoming persisted truth was one line in HostShellV2 (:1724), which
+  // downgraded it to null before calling this function.
+  //
+  // That is a rule living in the shell we are about to replace, and the cost of
+  // losing it is not a wrong flag: `passGate.passVerdictAtCreation` reads
+  // `isDestination === true` as Model D door 2 and stamps the verdict ONCE, by
+  // the grandfather rule never recomputed. A redesigned creation surface that
+  // passed the parser's own finding straight through would look correct and
+  // would permanently mark local parties as owing $39, uncorrectably.
+  //
+  // So the refusal lives HERE, at the boundary that already owns what may be
+  // written down, and it no longer trusts its caller. The shell keeps its own
+  // downgrade because it needs the tri-state for the chip's "unanswered"
+  // display — but the shell is no longer the thing preventing the defect.
+  //
+  // The host is never overruled: a hand-set chip (manualIsDestination non-null)
+  // is her statement, not our inference, and commits either way.
+  const destinationIsGuess = destinationBasis === 'place-named' && manualIsDestination == null;
+
   // A POSITIVE FINDING, or the host saying so. Nothing else.
   // - true  -> a real signal (travel language, or a place away from their area)
+  //            that is NOT merely a bare place-name guess
   // - false -> ONLY when the host tapped "Local event" themselves
   // - anything else -> absent, which every engine already reads as "not told"
-  const destinationAnswered = effIsDestination === true || manualIsDestination === false;
+  const destinationAnswered = (effIsDestination === true && !destinationIsGuess)
+    || manualIsDestination === false;
   if (destinationAnswered) out.isDestination = effIsDestination;
 
   // The basis explains the app's own finding, so it rides only when the app is
