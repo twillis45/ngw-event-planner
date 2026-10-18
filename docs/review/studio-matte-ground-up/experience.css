@@ -1,0 +1,22 @@
+/* Host interaction proposal, authorized October 17: motion explains direct action.
+   Local to this concept. No global production doctrine changes. */
+:root{--motion-fast:160ms;--motion-panel:260ms;--motion-ease:cubic-bezier(.2,.8,.2,1)}
+.btn,.iconbtn,.navitem,.bottomnav a{transition:background-color var(--motion-fast),transform var(--motion-fast) var(--motion-ease)}
+.btn:active,.iconbtn:active{transform:scale(.97)}
+.preview-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.preview-actions .textbtn{padding:8px 0}
+.peek-trigger{min-height:44px;display:inline-flex;align-items:center;gap:8px;color:var(--steeltext);font-size:12px;font-weight:600;border-radius:8px;padding:8px 12px;background:var(--wash)}
+.peek-trigger:hover{outline:1px solid var(--line)}
+.guest-peek-label{display:block;font-size:11px;color:var(--steeltext);margin:2px 0}.guestrow[role=button]{cursor:pointer}.guestrow[role=button]:hover{background:var(--wash)}
+.demo-examples{display:grid;gap:12px}.demo-examples .btn{display:grid;gap:6px;text-align:left;justify-content:stretch}.demo-examples .btn span{font-weight:400;color:var(--muted);font-size:12px}
+dialog.peek{max-width:100%}
+dialog.peek{position:fixed;inset:36px 0 0 auto;margin:0;width:min(448px,48vw);height:calc(100dvh - 36px);max-height:none;border-radius:16px 0 0 16px;border-right:0;overflow:auto;overscroll-behavior:contain}
+dialog.peek::backdrop{background:#0003}dialog.peek .dialoghead{position:sticky;top:0;background:var(--panel);z-index:2}
+.peek-subtitle{font-size:11px;color:var(--muted);margin-bottom:16px}.peek-title{font-size:28px;line-height:1.15;letter-spacing:-1px;margin:12px 0 16px}
+.peek-facts{display:grid;gap:0;margin:20px 0}.peek-facts>div{display:flex;align-items:start;justify-content:space-between;gap:24px;border-top:1px solid var(--line);padding:16px 0}.peek-facts dt{font-size:12px;color:var(--muted)}.peek-facts dd{margin:0;font-size:13px;text-align:right}
+.peek-sticky{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:16px 0 0;margin-top:24px}.peek-sticky .btn{width:100%}.peek-handle{display:none}
+.receipt{display:grid;grid-template-columns:32px 1fr auto;gap:12px;align-items:center;background:var(--wash);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}.receipt .receipt-icon{color:var(--ok);border:1px solid var(--ok);width:32px;height:32px;border-radius:50%;display:grid;place-items:center}.receipt strong{display:block;font-size:13px}.receipt p{font-size:12px;color:var(--muted);margin-top:4px}.receipt button{font-size:12px;min-height:44px;padding:8px;color:var(--steeltext)}
+.choice-pips{display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:16px}.choice-pips button{width:44px;height:44px;display:grid;place-items:center;padding:8px}.choice-pips button:after{content:'';display:block;width:24px;height:4px;background:var(--line);border-radius:4px}.choice-pips button[aria-current=true]:after{background:var(--steeltext)}
+#decision-card{will-change:transform;transition:transform 180ms var(--motion-ease),opacity 180ms var(--motion-ease)}#decision-card.dragging{transition:none;user-select:none;cursor:grabbing}.gesture-hint{font-size:11px;text-align:center;color:var(--muted);margin-bottom:16px}
+.context-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:12px 16px;margin-bottom:20px}.context-actions p{font-size:12px;color:var(--muted)}.context-actions strong{color:var(--ink)}
+@media(max-width:599px){dialog.peek{inset:auto 0 0 0;width:100%;height:auto;max-height:88dvh;border-radius:20px 20px 0 0;border-bottom:0}.peek-handle{display:block;width:36px;height:4px;border-radius:4px;background:var(--muted);margin:12px auto 0}.peek-title{font-size:26px}.peek .dialogbody{padding-bottom:max(24px,env(safe-area-inset-bottom))}.receipt{grid-template-columns:28px 1fr auto;padding:12px;gap:8px}.receipt .receipt-icon{width:28px;height:28px}.receipt p{font-size:11px}.context-actions{align-items:start;flex-direction:column;gap:8px}.context-actions .btn{width:100%}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}#decision-card{will-change:auto}}
