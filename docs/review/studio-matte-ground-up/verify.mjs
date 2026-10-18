@@ -26,13 +26,13 @@ try{for(const theme of ['dark','light']){
  await page.setViewportSize({width:390,height:844});await page.goto(url+'#overview');await page.locator('.hero [data-action=venue]').click();
  await page.locator('#venue-agreement').waitFor();check(`${theme} hero lands on concrete venue agreement`,await page.locator('#venue-agreement').count()===1);
  await page.getByRole('button',{name:'Record confirmation',exact:true}).click();await page.locator('[name=reason]').fill('Step-free entry and room for our family.');await page.locator('[name=verified]').check();await page.getByRole('button',{name:'Record sample confirmation',exact:true}).click();
- await page.locator('.receipt').waitFor();check(`${theme} completion receipt`,(await page.locator('.receipt').innerText()).includes('Venue confirmation recorded'));
- await page.locator('[data-action=undo-confirm]').click();check(`${theme} confirmation undo restores priority`,(await page.locator('.hero').innerText()).includes('Secure the place'));
+ await page.locator('.completion-card').waitFor();check(`${theme} in-place completion`,(await page.locator('.completion-card').innerText()).includes('Place secured.')&&await page.evaluate(()=>location.hash==='#venue')); 
+ await page.locator('[data-action=undo-confirm]').click();check(`${theme} confirmation undo restores priority`,(await page.locator('#venue-agreement').innerText()).includes('Record confirmation'));
  await page.evaluate(()=>location.hash='venue');await page.locator('#venue-agreement').waitFor();check(`${theme} confirmation undo restores venue`,!(await page.locator('#venue-agreement').innerText()).includes('Confirmed in preview')); 
  await page.goto(url+'#overview');await page.reload(); // hash navigation alone is not a reload
  check(`${theme} reload clears local state`,(await page.locator('.hero').innerText()).includes('Secure the place'));
  await page.locator('.hero [data-action=venue]').click();await page.getByRole('button',{name:'Record confirmation',exact:true}).click();await page.locator('[name=reason]').fill('Accessible venue for the sample gathering.');await page.locator('[name=verified]').check();await page.getByRole('button',{name:'Record sample confirmation',exact:true}).click();
- await page.evaluate(()=>location.hash='overview');await page.waitForTimeout(50);check(`${theme} decision changes downstream priority`,(await page.locator('.hero h2').innerText()).includes('dinner'));
+ await page.evaluate(()=>location.hash='overview');await page.waitForTimeout(50);check(`${theme} decision changes downstream priority`,(await page.locator('.hero h2').innerText()).includes('Place secured'));
  await page.evaluate(()=>location.hash='food');await page.waitForTimeout(50);check(`${theme} food prerequisite updated`,(await page.locator('main').innerText()).includes('Ready to review'));
  await page.evaluate(()=>location.hash='decisions');await page.waitForTimeout(50);await page.getByRole('button',{name:'Shortlist',exact:true}).click();check(`${theme} shortlist state`,(await page.locator('#choice-status').innerText())==='Shortlisted');await page.getByRole('button',{name:'Undo last choice'}).click();check(`${theme} undo restores`,(await page.locator('#choice-status').innerText())==='Not reviewed');
  await page.getByRole('button',{name:'Next →',exact:true}).click();check(`${theme} button browses`,(await page.locator('#decision-card h2').innerText()).includes('buffet'));await page.locator('#decision-card').focus();await page.keyboard.press('ArrowLeft');check(`${theme} keyboard browses`,await page.locator('#decision-card h2').innerText()==='Community hall');
@@ -46,6 +46,6 @@ try{for(const theme of ['dark','light']){
 }
 check('No script errors',errors.length===0,errors);
 }finally{
- const hashes=Object.fromEntries(['concept.template.html','interaction.js','experience.js','experience.css','palette.snapshot.mjs'].map(f=>[f,createHash('sha256').update(readFileSync(new URL(f,base))).digest('hex')]));
+ const hashes=Object.fromEntries(['concept.template.html','interaction.js','experience.js','experience.css','personality.js','personality.css','palette.snapshot.mjs'].map(f=>[f,createHash('sha256').update(readFileSync(new URL(f,base))).digest('hex')]));
  writeFileSync(new URL('verification.json',base),JSON.stringify({scope:'Standalone concepts; Chromium viewport simulation. No production runtime, backend, device or live AI verification.',sizes,hashes,checks,errors},null,2));await browser.close();console.log(`${checks.filter(x=>x.pass).length}/${checks.length} checks passed`);
 }

@@ -38,10 +38,12 @@
     ]
   ],
   "hashes": {
-    "concept.template.html": "5e152bf5a7f0b9517bc264a8533e3563dfc229b0b45b0a36848e22b726e02542",
+    "concept.template.html": "43da43103cad83af373e303d1459b349fbbd470180cea3aa4818a4fa3d868461",
     "interaction.js": "ed8bcb1896dd829a6fe0d8293e2be905f7e2d433b4c0eb22367858153aa95836",
-    "experience.js": "a237812310ad3bfe3d4a8d1e079cdced76680451b9861009f76003a50e8d1d29",
+    "experience.js": "16a6be01d1e0a0e4b05d089703e0e1e8797c096f10136723be5434b774ad701a",
     "experience.css": "87a26304f23d5eac309a50911c47fbb2ace8321d2916a19233c5a3ebac8eae85",
+    "personality.js": "d845891d0decdbfe72b9408eca42ad774d337403f0c37c1aaa8c61d0520595f1",
+    "personality.css": "773afcdc276e621a953c0ce7a98ea90f4c320142f55f17c4eb91c53c09854082",
     "palette.snapshot.mjs": "cfb76b756bdaec79c446ea8dfbb015a195057ac7cddc9194548aef68b959fa72"
   },
   "checks": [
@@ -1254,7 +1256,7 @@
       "pass": true
     },
     {
-      "name": "dark completion receipt",
+      "name": "dark in-place completion",
       "pass": true
     },
     {
@@ -2550,7 +2552,7 @@
       "pass": true
     },
     {
-      "name": "light completion receipt",
+      "name": "light in-place completion",
       "pass": true
     },
     {

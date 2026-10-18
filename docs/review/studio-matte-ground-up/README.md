@@ -1,5 +1,28 @@
 # No Guesswork Events — host experience redesign
 
+## Revision 4 — selection, completion and event personality
+
+Open `events-light-interaction-v4.html` or `events-dark-interaction-v4.html` to
+distinguish this build from earlier downloaded previews. Both remain self-contained.
+Decision cards have a layered stack, persistent selected border, pressed buttons,
+adjacent undo, and a live shortlist count. Venue confirmation now changes the
+current card in place on Venue or Your event, exposes food/setup next actions, and
+keeps the route stable. It does not establish a real booking.
+
+**Make it yours** edits the event name, occasion and must-have moment, with a local
+JPEG/PNG/WebP photograph. The moment appears on the home, food and recognition
+screens. Photos use browser object URLs, never upload, and reset on reload along
+with other sample state. Cancel preserves the saved event; Remove requires Save.
+The shared button helper explicitly uses `type=button` to prevent unintended form
+submission by Cancel. Invalid/oversized image files receive an inline error.
+
+Validation includes 411 regression checks, 32 interaction checks, and 20 checks
+for personalization and persistent selection states. Mouse input at mobile/tablet
+viewport sizes is covered; physical touch-device usability remains unverified.
+Live DIFM integration and user enjoyment validation remain outstanding.
+
+Earlier revision notes below describe the history, not the current feature limits.
+
 ## Revision 3 — visible interaction entry points
 
 The preview bar now offers **Try demo · v3**, with direct examples for quick look,
