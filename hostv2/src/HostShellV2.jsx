@@ -1,3 +1,5 @@
+import VenueWorkspace, { EventPhotoBanner } from './VenueWorkspace';
+import { venueWorkspaceEnabled } from './venueWorkspace';
 // ─── ENGINE KEYS ARE NOT HOST COPY ──────────────────────────────────────────
 // `areaLabel` lived inside one render block, and the plan-parts list 300 lines
 // below it printed `{c.id}` raw — so a host read "location  handled" and
@@ -4571,7 +4573,9 @@ export default function HostShellV2() {
   // kind) — never from headings, child counts, copy, or whether the ice card
   // happens to be present. The mapping is pinned in responsiveSurface.test.js so a
   // sheet cannot start widening silently.
-  const stageMode = stagewrapClass({ stage, sheet: sheet && sheet.kind });
+  const venueWorkspaceOn = venueWorkspaceEnabled(window.location.search);
+  const stageMode = venueWorkspaceOn && sheet?.kind === 'venue'
+    ? 'stagewrap--responsive-data' : stagewrapClass({ stage, sheet: sheet && sheet.kind });
   // Same surface identity, one band wider: is the persistent section rail up?
   const railUp = showsRail({ bp, stage, sheet: sheet && sheet.kind });
   // ── COLLAPSE (host, 2026-08-21: "menus is supposed to be collapsible") ─────
@@ -9656,6 +9660,9 @@ export default function HostShellV2() {
           {/* ══════════ PLAN ══════════ */}
           {stage === 'plan' && (
             <section role="main">
+              {venueWorkspaceOn && <EventPhotoBanner key={event.id} event={event}
+                onPhoto={photo => patchEvent({ hostVenueWorkspace: { ...event.hostVenueWorkspace, photo } }, 'Event photo updated.')}
+                onOpen={() => setSheet({ kind: 'venue' })} />}
               {/* Event switching lives in the app-bar switcher (events sheet) —
                   the always-on shelf drew more attention than the plan itself. */}
 
@@ -13565,7 +13572,7 @@ export default function HostShellV2() {
       {sheet && (
         <>
           <div className="sheet-scrim" onClick={closeSheet} />
-          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
+          <div className={'sheet' + (venueWorkspaceOn && sheet.kind === 'venue' ? ' venue-workspace-sheet' : '')} role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
                 {/* Audit #1: cross-nav — from ANY sheet, hop to the Sections
@@ -13626,7 +13633,11 @@ export default function HostShellV2() {
                 Date & time): reuses the existing venue input + address suggestions + city field,
                 and — unlike the inline card, which only showed when venue was UNSET — lets a set
                 venue be changed here. */}
-            {sheet.kind === 'venue' && (
+            {sheet.kind === 'venue' && venueWorkspaceOn && <VenueWorkspace key={event.id} event={event} profile={profile}
+              decision={playbookDecisionOptions(event, 'venue')}
+              onPatch={patchEvent} onDraft={openDraft} onNext={() => setSheet({ kind: 'foodplan' })}
+              onDecide={settleDecision} legacyCapture={renderVenueCapture()} />}
+            {sheet.kind === 'venue' && !venueWorkspaceOn && (
               <div style={{ padding: 'var(--sp-2) 0' }}>
                 <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Where the event happens — invites, maps, weather, and the rain note all read from it.</p>
                 {vf.name && (
