@@ -1,0 +1,2369 @@
+{
+  "scope": "Standalone concepts; Chromium viewport simulation. No production runtime, backend, device or live AI verification.",
+  "sizes": [
+    [
+      "phone",
+      390,
+      844
+    ],
+    [
+      "phone-large",
+      430,
+      932
+    ],
+    [
+      "tablet-portrait",
+      768,
+      1024
+    ],
+    [
+      "tablet-landscape",
+      1024,
+      768
+    ],
+    [
+      "laptop",
+      1280,
+      654
+    ],
+    [
+      "desktop",
+      1440,
+      900
+    ],
+    [
+      "wide",
+      1920,
+      1080
+    ]
+  ],
+  "hashes": {
+    "concept.template.html": "5e152bf5a7f0b9517bc264a8533e3563dfc229b0b45b0a36848e22b726e02542",
+    "interaction.js": "ed8bcb1896dd829a6fe0d8293e2be905f7e2d433b4c0eb22367858153aa95836",
+    "palette.snapshot.mjs": "cfb76b756bdaec79c446ea8dfbb015a195057ac7cddc9194548aef68b959fa72"
+  },
+  "checks": [
+    {
+      "name": "dark phone overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone overview heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 41,
+        "y": 554.765625,
+        "width": 308,
+        "height": 44
+      }
+    },
+    {
+      "name": "dark phone plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone plan heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone venue heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone food heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone guests heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone budget heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone day heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone messages heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone decisions heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone modal fits",
+      "pass": true,
+      "detail": {
+        "x": 17,
+        "y": 229.25,
+        "width": 356,
+        "height": 385.5
+      }
+    },
+    {
+      "name": "dark phone Escape closes",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large overview heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 41,
+        "y": 507.96875,
+        "width": 348,
+        "height": 44
+      }
+    },
+    {
+      "name": "dark phone-large plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large plan heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large venue heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large food heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large guests heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large budget heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large day heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large messages heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark phone-large decisions heading",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large modal fits",
+      "pass": true,
+      "detail": {
+        "x": 17,
+        "y": 291.5,
+        "width": 396,
+        "height": 349
+      }
+    },
+    {
+      "name": "dark phone-large Escape closes",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait overview heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 137,
+        "y": 516.296875,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "dark tablet-portrait plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait plan heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait venue heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait food heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait guests heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait budget heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait day heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait messages heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-portrait decisions heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait modal fits",
+      "pass": true,
+      "detail": {
+        "x": 114,
+        "y": 337.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "dark tablet-portrait Escape closes",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape overview heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 137,
+        "y": 540.46875,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "dark tablet-landscape plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape plan heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape venue heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape food heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape guests heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape budget heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape day heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape messages heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark tablet-landscape decisions heading",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape modal fits",
+      "pass": true,
+      "detail": {
+        "x": 242,
+        "y": 209.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "dark tablet-landscape Escape closes",
+      "pass": true
+    },
+    {
+      "name": "dark laptop overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop overview heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 269,
+        "y": 465.859375,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "dark laptop plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop plan heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop venue heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop food heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop guests heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop budget heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop day heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop messages heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark laptop decisions heading",
+      "pass": true
+    },
+    {
+      "name": "dark laptop modal fits",
+      "pass": true,
+      "detail": {
+        "x": 370,
+        "y": 152.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "dark laptop Escape closes",
+      "pass": true
+    },
+    {
+      "name": "dark desktop overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop overview heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 277,
+        "y": 581.46875,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "dark desktop plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop plan heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop venue heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop food heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop guests heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop budget heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop day heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop messages heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark desktop decisions heading",
+      "pass": true
+    },
+    {
+      "name": "dark desktop modal fits",
+      "pass": true,
+      "detail": {
+        "x": 450,
+        "y": 275.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "dark desktop Escape closes",
+      "pass": true
+    },
+    {
+      "name": "dark wide overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide overview heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 317,
+        "y": 537.078125,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "dark wide plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide plan heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide venue heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide food heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide guests heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide budget heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide day heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide messages heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "dark wide decisions heading",
+      "pass": true
+    },
+    {
+      "name": "dark wide modal fits",
+      "pass": true,
+      "detail": {
+        "x": 690,
+        "y": 365.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "dark wide Escape closes",
+      "pass": true
+    },
+    {
+      "name": "dark hero lands on concrete venue agreement",
+      "pass": true
+    },
+    {
+      "name": "dark venue state recorded",
+      "pass": true
+    },
+    {
+      "name": "dark reload clears local state",
+      "pass": true
+    },
+    {
+      "name": "dark decision changes downstream priority",
+      "pass": true
+    },
+    {
+      "name": "dark food prerequisite updated",
+      "pass": true
+    },
+    {
+      "name": "dark shortlist state",
+      "pass": true
+    },
+    {
+      "name": "dark undo restores",
+      "pass": true
+    },
+    {
+      "name": "dark button browses",
+      "pass": true
+    },
+    {
+      "name": "dark keyboard browses",
+      "pass": true
+    },
+    {
+      "name": "dark pointer swipe browses",
+      "pass": true
+    },
+    {
+      "name": "dark swipe never accepts",
+      "pass": true
+    },
+    {
+      "name": "dark DIFM edited draft retained",
+      "pass": true
+    },
+    {
+      "name": "dark search deep link",
+      "pass": true
+    },
+    {
+      "name": "dark guest filter",
+      "pass": true
+    },
+    {
+      "name": "dark no results recovery",
+      "pass": true
+    },
+    {
+      "name": "dark unsent draft labeled",
+      "pass": true
+    },
+    {
+      "name": "dark empty state",
+      "pass": true
+    },
+    {
+      "name": "dark first-run sample recovers",
+      "pass": true
+    },
+    {
+      "name": "dark failure explicit",
+      "pass": true
+    },
+    {
+      "name": "dark retry recovers",
+      "pass": true
+    },
+    {
+      "name": "light phone overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone overview heading",
+      "pass": true
+    },
+    {
+      "name": "light phone primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 41,
+        "y": 554.765625,
+        "width": 308,
+        "height": 44
+      }
+    },
+    {
+      "name": "light phone plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone plan heading",
+      "pass": true
+    },
+    {
+      "name": "light phone venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone venue heading",
+      "pass": true
+    },
+    {
+      "name": "light phone food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone food heading",
+      "pass": true
+    },
+    {
+      "name": "light phone ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "light phone guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone guests heading",
+      "pass": true
+    },
+    {
+      "name": "light phone budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone budget heading",
+      "pass": true
+    },
+    {
+      "name": "light phone day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone day heading",
+      "pass": true
+    },
+    {
+      "name": "light phone messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone messages heading",
+      "pass": true
+    },
+    {
+      "name": "light phone decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 390,
+        "scroll": 390,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone decisions heading",
+      "pass": true
+    },
+    {
+      "name": "light phone modal fits",
+      "pass": true,
+      "detail": {
+        "x": 17,
+        "y": 229.25,
+        "width": 356,
+        "height": 385.5
+      }
+    },
+    {
+      "name": "light phone Escape closes",
+      "pass": true
+    },
+    {
+      "name": "light phone-large overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large overview heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 41,
+        "y": 507.96875,
+        "width": 348,
+        "height": 44
+      }
+    },
+    {
+      "name": "light phone-large plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large plan heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large venue heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large food heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large guests heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large budget heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large day heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large messages heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 430,
+        "scroll": 430,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light phone-large decisions heading",
+      "pass": true
+    },
+    {
+      "name": "light phone-large modal fits",
+      "pass": true,
+      "detail": {
+        "x": 17,
+        "y": 291.5,
+        "width": 396,
+        "height": 349
+      }
+    },
+    {
+      "name": "light phone-large Escape closes",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait overview heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 137,
+        "y": 516.296875,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "light tablet-portrait plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait plan heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait venue heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait food heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait guests heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait budget heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait day heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait messages heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 768,
+        "scroll": 768,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-portrait decisions heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait modal fits",
+      "pass": true,
+      "detail": {
+        "x": 114,
+        "y": 337.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "light tablet-portrait Escape closes",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape overview heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 137,
+        "y": 540.46875,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "light tablet-landscape plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape plan heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape venue heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape food heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape guests heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape budget heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape day heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape messages heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light tablet-landscape decisions heading",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape modal fits",
+      "pass": true,
+      "detail": {
+        "x": 242,
+        "y": 209.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "light tablet-landscape Escape closes",
+      "pass": true
+    },
+    {
+      "name": "light laptop overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop overview heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 269,
+        "y": 465.859375,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "light laptop plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop plan heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop venue heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop food heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop guests heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop budget heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop day heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop messages heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1280,
+        "scroll": 1280,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light laptop decisions heading",
+      "pass": true
+    },
+    {
+      "name": "light laptop modal fits",
+      "pass": true,
+      "detail": {
+        "x": 370,
+        "y": 152.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "light laptop Escape closes",
+      "pass": true
+    },
+    {
+      "name": "light desktop overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop overview heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 277,
+        "y": 581.46875,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "light desktop plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop plan heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop venue heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop food heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop guests heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop budget heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop day heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop messages heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light desktop decisions heading",
+      "pass": true
+    },
+    {
+      "name": "light desktop modal fits",
+      "pass": true,
+      "detail": {
+        "x": 450,
+        "y": 275.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "light desktop Escape closes",
+      "pass": true
+    },
+    {
+      "name": "light wide overview no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide overview heading",
+      "pass": true
+    },
+    {
+      "name": "light wide primary above navigation",
+      "pass": true,
+      "detail": {
+        "x": 317,
+        "y": 537.078125,
+        "width": 196.546875,
+        "height": 44
+      }
+    },
+    {
+      "name": "light wide plan no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide plan heading",
+      "pass": true
+    },
+    {
+      "name": "light wide venue no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide venue heading",
+      "pass": true
+    },
+    {
+      "name": "light wide food no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide food heading",
+      "pass": true
+    },
+    {
+      "name": "light wide ceremony no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide ceremony heading",
+      "pass": true
+    },
+    {
+      "name": "light wide guests no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide guests heading",
+      "pass": true
+    },
+    {
+      "name": "light wide budget no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide budget heading",
+      "pass": true
+    },
+    {
+      "name": "light wide day no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide day heading",
+      "pass": true
+    },
+    {
+      "name": "light wide messages no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide messages heading",
+      "pass": true
+    },
+    {
+      "name": "light wide decisions no overflow",
+      "pass": true,
+      "detail": {
+        "width": 1920,
+        "scroll": 1920,
+        "h1": 1
+      }
+    },
+    {
+      "name": "light wide decisions heading",
+      "pass": true
+    },
+    {
+      "name": "light wide modal fits",
+      "pass": true,
+      "detail": {
+        "x": 690,
+        "y": 365.5,
+        "width": 540,
+        "height": 349
+      }
+    },
+    {
+      "name": "light wide Escape closes",
+      "pass": true
+    },
+    {
+      "name": "light hero lands on concrete venue agreement",
+      "pass": true
+    },
+    {
+      "name": "light venue state recorded",
+      "pass": true
+    },
+    {
+      "name": "light reload clears local state",
+      "pass": true
+    },
+    {
+      "name": "light decision changes downstream priority",
+      "pass": true
+    },
+    {
+      "name": "light food prerequisite updated",
+      "pass": true
+    },
+    {
+      "name": "light shortlist state",
+      "pass": true
+    },
+    {
+      "name": "light undo restores",
+      "pass": true
+    },
+    {
+      "name": "light button browses",
+      "pass": true
+    },
+    {
+      "name": "light keyboard browses",
+      "pass": true
+    },
+    {
+      "name": "light pointer swipe browses",
+      "pass": true
+    },
+    {
+      "name": "light swipe never accepts",
+      "pass": true
+    },
+    {
+      "name": "light DIFM edited draft retained",
+      "pass": true
+    },
+    {
+      "name": "light search deep link",
+      "pass": true
+    },
+    {
+      "name": "light guest filter",
+      "pass": true
+    },
+    {
+      "name": "light no results recovery",
+      "pass": true
+    },
+    {
+      "name": "light unsent draft labeled",
+      "pass": true
+    },
+    {
+      "name": "light empty state",
+      "pass": true
+    },
+    {
+      "name": "light first-run sample recovers",
+      "pass": true
+    },
+    {
+      "name": "light failure explicit",
+      "pass": true
+    },
+    {
+      "name": "light retry recovers",
+      "pass": true
+    },
+    {
+      "name": "No script errors",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "errors": []
+}
