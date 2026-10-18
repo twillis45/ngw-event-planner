@@ -6,6 +6,8 @@
 .preview-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.preview-actions .textbtn{padding:8px 0}
 .peek-trigger{min-height:44px;display:inline-flex;align-items:center;gap:8px;color:var(--steeltext);font-size:12px;font-weight:600;border-radius:8px;padding:8px 12px;background:var(--wash)}
 .peek-trigger:hover{outline:1px solid var(--line)}
+.guest-peek-label{display:block;font-size:11px;color:var(--steeltext);margin:2px 0}.guestrow[role=button]{cursor:pointer}.guestrow[role=button]:hover{background:var(--wash)}
+.demo-examples{display:grid;gap:12px}.demo-examples .btn{display:grid;gap:6px;text-align:left;justify-content:stretch}.demo-examples .btn span{font-weight:400;color:var(--muted);font-size:12px}
 dialog.peek{max-width:100%}
 dialog.peek{position:fixed;inset:36px 0 0 auto;margin:0;width:min(448px,48vw);height:calc(100dvh - 36px);max-height:none;border-radius:16px 0 0 16px;border-right:0;overflow:auto;overscroll-behavior:contain}
 dialog.peek::backdrop{background:#0003}dialog.peek .dialoghead{position:sticky;top:0;background:var(--panel);z-index:2}

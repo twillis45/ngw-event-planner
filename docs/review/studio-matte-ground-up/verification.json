@@ -40,8 +40,8 @@
   "hashes": {
     "concept.template.html": "5e152bf5a7f0b9517bc264a8533e3563dfc229b0b45b0a36848e22b726e02542",
     "interaction.js": "ed8bcb1896dd829a6fe0d8293e2be905f7e2d433b4c0eb22367858153aa95836",
-    "experience.js": "4b3c8757e246952ef44626bee2de7c9dc6be21feab8ddb411529842353edce75",
-    "experience.css": "80e3658abf2479d7036e7c1af0bb0bba0006f6bb732058993bdf0c009ffe1db3",
+    "experience.js": "a237812310ad3bfe3d4a8d1e079cdced76680451b9861009f76003a50e8d1d29",
+    "experience.css": "87a26304f23d5eac309a50911c47fbb2ace8321d2916a19233c5a3ebac8eae85",
     "palette.snapshot.mjs": "cfb76b756bdaec79c446ea8dfbb015a195057ac7cddc9194548aef68b959fa72"
   },
   "checks": [

@@ -1,5 +1,20 @@
 # No Guesswork Events — host experience redesign
 
+## Revision 3 — visible interaction entry points
+
+The preview bar now offers **Try demo · v3**, with direct examples for quick look,
+swipe/shortlist/undo, venue confirmation, and editable sample drafts. Guest rows
+show **View details** instead of relying on an invisible click affordance.
+The completion handler no longer renders before the hash-navigation render, which
+could replace animated elements before the effect was visible. Motion now starts
+on the final rendered receipt and next-priority card (320–360 ms for completion).
+
+`verify-motion.mjs` adds 32 passing checks across both themes at phone/tablet widths:
+actual drag transforms, selection animation, undo, completion animation surviving
+navigation, all four demo launchers, and reduced motion. The 411 regression checks
+also pass. This does not validate physical touch devices or user enjoyment.
+Personal photograph/must-have-moment editing and engine-backed DIFM remain missing.
+
 ## Interaction refinement — October 18
 
 Quick look opens a phone bottom sheet or tablet/desktop side panel while preserving
