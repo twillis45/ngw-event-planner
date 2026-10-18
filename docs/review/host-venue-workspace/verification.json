@@ -1,0 +1,28 @@
+{
+  "checks": [
+    "Venue type recommendation writes through existing decision setter",
+    "Visible next button changes preview",
+    "Prepare for me opens real editable inquiry sheet",
+    "Selection persists canonical venue and host rationale",
+    "Undo restores venue and reasoning",
+    "Completion next action opens existing food workspace",
+    "Venue and shortlist survive reload",
+    "Editing shortlist updates the preview",
+    "Add and remove update persisted shortlist",
+    "small-phone: no page overflow; keyboard preview navigation",
+    "mobile: no page overflow; keyboard preview navigation",
+    "tablet: no page overflow; keyboard preview navigation",
+    "tablet-landscape: no page overflow; keyboard preview navigation",
+    "Mouse drag advances preview",
+    "Native touch swipe advances preview",
+    "Reduced motion disables preview and tablet sheet transitions",
+    "Dark theme renders the same persisted event",
+    "Oversized photo shows an actionable error",
+    "Valid photo uploads through event persistence",
+    "Empty shortlist invites entry; malformed city is rejected",
+    "Removing flag restores existing shell",
+    "No uncaught browser errors"
+  ],
+  "errors": [],
+  "scope": "Actual host shell, local test event; no cloud account or outbound messages"
+}
