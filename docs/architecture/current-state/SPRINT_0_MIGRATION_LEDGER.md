@@ -94,3 +94,38 @@ scheduled post-Sprint-2. No change was made there.
 | **Rollback risk** | **None to runtime.** Test-only. Reverting = delete one spec, one env file, three package scripts, and one webServer block. The only cost to the suite is ~9s of extra build and one more preview server per run. |
 | **Verification** | `gold07RsvpCascade` 2 passed; neighbouring specs (`guestReplyPicker`, `noKitchenNoShoppingList`, `theCouplesSheSaidReachTheList`, `guestTold`) 15 passed; `npm run parity` clean; CRA jest `guestMerge`/`rsvp` 35 passed. Suite total 3,334 tests in 125 files, the new spec routed to `desktop` only. |
 | **Harness note (environment, not repo)** | This container ships Playwright browser build 1194 while the repo pins a version wanting 1228. Worked around with a browsers-path shim in the scratchpad — **no repo file was changed for it**, and `npx playwright install` was not run. |
+
+---
+
+## Verdict rule — what may be carried into READY (adopted 2026-10-18)
+
+Sprint 0's P1-2 and P1-4 both instruct: *do not pretend parsing solves the
+capability — preserve as unapplied truth until a canonical model exists.* That
+is the right call, and it creates a hazard at the end of the sprint: a slice
+can legitimately close with a recorded gap instead of code, and a single
+boolean `READY` would hide it.
+
+So `READY` is not a boolean over "everything works." A gap may be carried into
+it only as **BOUNDED**, which requires all three:
+
+1. **Named** — in this ledger, with the evidence for why no truthful
+   destination exists. Not "we ran out of time"; "we looked, and here is what
+   we found."
+2. **Un-implied** — no redesigned surface will suggest the capability exists.
+3. **Tested** — a test proves the app does not CLAIM what it lacks.
+
+Anything failing any of the three is **BLOCKING**: the verdict stays NOT READY
+until the gap is closed or the owner explicitly accepts it. **A gap with no
+honesty test is automatically blocking** — that is the whole load-bearing
+clause, because an untested non-claim is just an intention.
+
+This is not a new mechanism. It is the rule the repo already applies to CTA
+truthfulness (UX_07), to `BUILT_NOT_WIRED`, and to `unusedClauses` itself —
+which exists precisely so the app can say "I did not use this" out loud instead
+of silently dropping it. The verdict should be held to the same standard the
+product is.
+
+**Expected application, measured 2026-10-18:** one candidate
+(`"2 excursions"`). The other three clauses previously classified as capability
+gaps were re-traced and found to be wiring gaps with existing destinations —
+see the CORRECTED table in `CREATION_TRUTH_AND_INTAKE_AUDIT.md` §2.

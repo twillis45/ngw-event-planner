@@ -62,18 +62,46 @@ statement is not — it lands in `unusedClauses`.
 
 The brief asked that these not all be treated as parser bugs. They are not.
 
+> ### ⚠ CORRECTED 2026-10-18 — three of these classifications were WRONG
+>
+> The first version of this table claimed four of the six clauses had no
+> canonical destination. **Three of those four claims were false, and all three
+> failed the same way:** I searched for a module *named after the concept*,
+> found none, and concluded the capability did not exist. Each one exists under
+> a different name.
+>
+> The corrected rows are below. The honest summary of the error: this table
+> reported a **capability gap** where the repo has a **wiring gap** — the
+> structure is there and intake does not write to it. That is the same shape as
+> the guest-count finding in the gate (the provenance was written; nothing read
+> it), and it is good news: wiring closes with code, capability gaps need
+> product decisions.
+>
+> Recorded rather than silently edited, because a planning artifact that
+> quietly changes its own findings is worse than one that was wrong once.
+
 | Dropped | Classification | Evidence |
 |---|---|---|
-| `"she uses a walker"` (Santa Fe) | **DOWNSTREAM CAPABILITY GAP** | There is no accessibility/mobility module anywhere in `src/lib` — only `dietRows.js` and `rsvp.js`, and `rsvp.js` (3 exports) captures no needs at all. Parsing it would produce a value with no schema to hold it and no consumer to read it. |
-| `"2 excursions"` (Anaheim) | **MISSING NORMALIZED SCHEMA** | Nights, lodging kind and destination all have fields. There is no itinerary/activity count field for a planned excursion to land in. |
-| `"formal Army recognition followed by a celebration"` | **MISSING NORMALIZED SCHEMA** | This is programme/run-of-show structure (two-part event ordering). No schema for ordered programme segments at intake. |
-| `"food"`, `"bar"`, `"photography"` | **MISSING NORMALIZED SCHEMA** (vendor intent) | These are vendor-category intents. Note `"DJ"` is absent from `unusedClauses` — it is consumed somewhere the other three are not, which is itself an inconsistency worth a follow-up trace. |
+| `"she uses a walker"` (Santa Fe) | **WIRING GAP** (was: downstream capability gap) | ~~No accessibility/mobility module anywhere in `src/lib`.~~ **False.** `src/lib/knowledge/accessibilityContext.js` (119 lines) is a grounded accessibility axis with real dated sources (ADA National Network temporary-events guide, MPI ADA mobility guide, inclusive-seating guidance), consumed by `playbooks/index.js:93,3634` so every decision carries `accessibilityContext` + `accessibilityGrounded`. Guest-level need is already structured too: `guest.access[]` rides the RSVP wire (`api/rsvp.js:188`), merges at `guestMerge.js:98`, and is READ by `seatingPlan.js:182`. `lodgingIntel` carries a `stepfree` must-have. **What is actually missing is narrow:** an EVENT-level operational need stated at intake (about the honoree, not a guest who RSVPs) has no home. That is P1-2's real scope. |
+| `"2 excursions"` (Anaheim) | **UNCONFIRMED — the one still open** | Candidate destinations exist (`event.timeline` / `event.ros` segments; an `Activities` vendor category appears in `vendorCategoriesByType`), but neither has been traced to a consumer that would read an excursion truthfully. **Not asserted either way.** To be resolved in P1-4 before the parser is touched. |
+| `"formal Army recognition followed by a celebration"` | **WIRING GAP** (was: missing normalized schema) | ~~No schema for ordered programme segments.~~ **False.** `event.ros` and `event.timeline` are both ordered segment arrays on the event blob, read by `vendorQuestions.js:243,372,435`, `rosOverlap.js`, and `dayPhases.js:123` (`programmeDays`). A two-part programme has a home; intake does not write to it. |
+| `"food"`, `"bar"`, `"photography"` | **WIRING GAP** (was: missing normalized schema) | ~~No schema for vendor intent.~~ **False.** `vendorCategoriesByType.js` defines a per-event-type canonical vocabulary in which `Catering`, `Mobile Bar` and `Photography` are all first-class, and `event.vendors[].category` is where they live. The `"DJ"` asymmetry noted below is therefore not evidence of a missing schema — all four share one. |
 | `"black"`, `"gold"` | **PARSER DEFECT** | `theme` requires the literal word. Reproduced: `"black and gold theme"` → `theme: "black and gold"`; `"black and gold"` → `null`. |
 | `venueCity: "the"` | **PARSER DEFECT** | Reproduced in isolation: `"40 guests in the Maryland/DC area"` → `venueCity "the"`. The `<token> <STATE>` match takes the word before the state abbreviation. Note `"in the Phoenix area"` → `null/null`, so the fault is specific to the slash + state-abbreviation form. |
 
-**Severity note.** The two parser defects are small and local. The three schema
-gaps are product decisions, not bugs. Only the walker gap is on the critical
-path for GOLD-04.
+**Severity note (revised).** Two parser defects, small and local. Three wiring
+gaps whose destinations are named above. **One genuinely open question**
+(excursions). The walker case is no longer a capability gap and is no longer
+the hardest item here — P1-2 narrows to normalising an intake-stated need and
+connecting it to consumers that already exist.
+
+**Why the original error matters beyond these six rows.** It is the third
+correction this planning package has needed, and the second of the same kind
+(after `guestEstimateSource`/`guestCountSource` and the `guestCountFor` consumer
+count). All three came from reasoning about the repo by name rather than by
+trace. Treat any remaining unverified "X does not exist" claim in these
+documents as unproven until someone greps for the capability instead of the
+word.
 
 ---
 
