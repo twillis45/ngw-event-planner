@@ -46,6 +46,17 @@ const SELF_PINNED = [
 const VIEWPORT_INDEPENDENT = [
   '**/crossDeviceSync.spec.mjs',
   '**/a11yFloor.spec.mjs',
+  // ── THE RSVP CASCADE (GOLD-07, 2026-10-18) ─────────────────────────────
+  // Belongs here on both counts this list cares about. It asserts only TEXT
+  // and payload fields — a headcount, a shopping-list length, a dollar total
+  // compared against its own baseline, which job the ranked plan is showing —
+  // and not one box. And it is the most expensive spec in the suite per run:
+  // three full browser contexts, a driven invite form, and two complete host
+  // boots so the before and after are measured on one bundle. Six more
+  // geometries would buy six identical results for six times that.
+  // It also addresses port 5255 directly, so it would measure the wrong
+  // bundle on any project pointed at the shared preview.
+  '**/gold07RsvpCascade.spec.mjs',
   // ── THE FOUR THAT TIMED SHARD 3 OUT (2026-10-06) ────────────────────────
   // These landed the same day and each drives the REAL creation flow — clear
   // storage, type the 179-character seed, wait for the parse, assemble, open
@@ -235,6 +246,32 @@ export default defineConfig({
       // what happened on the first run.
       command: 'REACT_APP_AUTH_BYPASS=false npx vite build --mode synctest --outDir dist-synctest && E2E_BASE=1 npx vite preview --outDir dist-synctest --port 5244 --strictPort --host 127.0.0.1',
       url: previewUrl(5244),
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      // ── THE GOLD-07 RSVP CASCADE HARNESS ─────────────────────────────────
+      // Its own bundle for the same reason the sync harness has one: it needs
+      // an env the shared bundle deliberately does not carry. The ordinary e2e
+      // build bakes NO REACT_APP_API_BASE_URL (measured 2026-10-18 — the built
+      // index chunk's whole env object is `{NODE_ENV:"production"}`), so
+      // isRsvpApiConfigured() is false and the entire backend leg of the RSVP
+      // cascade is unreachable from the browser suite: submitRsvp throws before
+      // it fetches, the read-back effect returns on its first line, and the
+      // snake_case normalisation in HostShellV2 has never been executed by any
+      // test in either suite.
+      //
+      // NOT baked into the shared bundle, deliberately. fixtures.mjs records
+      // what happened the last time a truthy API base reached all 126 specs at
+      // once: every surface that gates on it fired a request at a host that
+      // cannot resolve, and two specs asserting "no console errors" went red
+      // for a reason that had nothing to do with them.
+      //
+      // BUILDS FIRST, like the sync harness and for the same reason:
+      // dist-gold07 is gitignored and no other command produces it, so without
+      // the build this serves a stale bundle or nothing.
+      command: 'npx vite build --mode gold07 --outDir dist-gold07 && E2E_BASE=1 npx vite preview --outDir dist-gold07 --port 5255 --strictPort --host 127.0.0.1',
+      url: previewUrl(5255),
       reuseExistingServer: false,
       timeout: 120_000,
     },
