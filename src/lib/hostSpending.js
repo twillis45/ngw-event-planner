@@ -40,6 +40,7 @@
 // is clamped at ≥ 0).
 
 import { budgetTotal } from './budgetFor';
+import { guestCountIsConfirmed } from './guestCountFor';
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan } from './crabPlan';
 import { vendorOutstanding } from './vendorMoney';
@@ -113,9 +114,33 @@ export function hostSpending(event, priceFactor, itemFactors) {
   // ~8) — that guess is fine for a labeled preview, but it must NOT become budget money.
   // So the budget's food contribution is 0 until the host has a real count (an entered
   // number, a roster, or a resolved RSVP count).
-  const hasRealCount = num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0
-    || (Array.isArray(ev.guests) && ev.guests.length > 0)
-    || (() => { try { return !!guestCountResolved(ev).resolved; } catch { return false; } })();
+  //
+  // ── AND "REAL" MEANS THE HOST'S, NOT MERELY PRESENT (2026-10-18, P0-2) ────
+  // This gate asked whether a number EXISTS. The creation seam writes one even
+  // when the host gave none — a playbook typical, recorded as
+  // `guestCountSource: 'playbook-typical'` (HostShellV2:8155). So an event the
+  // host never put a headcount on still carried `guestEstimate: 40`, sailed
+  // through `num(ev.guestEstimate) > 0`, and turned the app's own guess into
+  // budget money — the precise thing the paragraph above forbids.
+  //
+  // `guestCountIsConfirmed` is the existing twin of `startTimeIsConfirmed` and
+  // is the repo's answer to this question; it was simply never adopted here. A
+  // locked `guestCount` and a hand-entered roster both resolve to the host by
+  // construction, so neither is affected — only the substituted estimate is.
+  // The `guestCountResolved(ev).resolved` branch that used to be OR'd in here
+  // is GONE, deliberately. It answers a different question — "are the RSVPs
+  // settled?" — and resolves an estimate-only event to true (playbooks:566,
+  // "we won't block a host who already gave a number"), so it routed straight
+  // around this gate. Everything it legitimately admitted is already admitted:
+  // a locked `guestCount` and a hand-entered roster are both the host by
+  // construction inside `guestCountFor`, and it cannot be true when no count
+  // exists at all (playbooks:551 returns resolved:false for n <= 0).
+  //
+  // CONSERVATIVE FOR LEGACY, BY DESIGN: `fromHost` is false only when the
+  // source was explicitly recorded as 'playbook-typical'. An older event with
+  // no provenance recorded still counts as the host's, so this withholds money
+  // only where we KNOW the number is ours.
+  const hasRealCount = guestCountIsConfirmed(ev);
   // ── THE BUDGET FOLLOWS THE LIST (2026-09-22) ──────────────────────────────
   // `foodSpanNote` withholds the shopping list entirely when it KNOWS there is
   // no kitchen — a room block, a hotel — and the food sheet has honoured that
