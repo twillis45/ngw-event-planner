@@ -40,6 +40,8 @@
   "hashes": {
     "concept.template.html": "5e152bf5a7f0b9517bc264a8533e3563dfc229b0b45b0a36848e22b726e02542",
     "interaction.js": "ed8bcb1896dd829a6fe0d8293e2be905f7e2d433b4c0eb22367858153aa95836",
+    "experience.js": "4b3c8757e246952ef44626bee2de7c9dc6be21feab8ddb411529842353edce75",
+    "experience.css": "80e3658abf2479d7036e7c1af0bb0bba0006f6bb732058993bdf0c009ffe1db3",
     "palette.snapshot.mjs": "cfb76b756bdaec79c446ea8dfbb015a195057ac7cddc9194548aef68b959fa72"
   },
   "checks": [
@@ -184,11 +186,29 @@
       "pass": true
     },
     {
+      "name": "dark phone peek fits",
+      "pass": true,
+      "detail": {
+        "x": 0,
+        "y": 130.609375,
+        "width": 390,
+        "height": 713.390625
+      }
+    },
+    {
+      "name": "dark phone peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "dark phone peek restores focus",
+      "pass": true
+    },
+    {
       "name": "dark phone modal fits",
       "pass": true,
       "detail": {
         "x": 17,
-        "y": 229.25,
+        "y": 237.25,
         "width": 356,
         "height": 385.5
       }
@@ -338,11 +358,29 @@
       "pass": true
     },
     {
+      "name": "dark phone-large peek fits",
+      "pass": true,
+      "detail": {
+        "x": 0,
+        "y": 218.609375,
+        "width": 430,
+        "height": 713.390625
+      }
+    },
+    {
+      "name": "dark phone-large peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "dark phone-large peek restores focus",
+      "pass": true
+    },
+    {
       "name": "dark phone-large modal fits",
       "pass": true,
       "detail": {
         "x": 17,
-        "y": 291.5,
+        "y": 299.5,
         "width": 396,
         "height": 349
       }
@@ -492,11 +530,29 @@
       "pass": true
     },
     {
+      "name": "dark tablet-portrait peek fits",
+      "pass": true,
+      "detail": {
+        "x": 399.375,
+        "y": 36,
+        "width": 368.625,
+        "height": 988
+      }
+    },
+    {
+      "name": "dark tablet-portrait peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-portrait peek restores focus",
+      "pass": true
+    },
+    {
       "name": "dark tablet-portrait modal fits",
       "pass": true,
       "detail": {
         "x": 114,
-        "y": 337.5,
+        "y": 345.5,
         "width": 540,
         "height": 349
       }
@@ -646,11 +702,29 @@
       "pass": true
     },
     {
+      "name": "dark tablet-landscape peek fits",
+      "pass": true,
+      "detail": {
+        "x": 576,
+        "y": 36,
+        "width": 448,
+        "height": 732
+      }
+    },
+    {
+      "name": "dark tablet-landscape peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "dark tablet-landscape peek restores focus",
+      "pass": true
+    },
+    {
       "name": "dark tablet-landscape modal fits",
       "pass": true,
       "detail": {
         "x": 242,
-        "y": 209.5,
+        "y": 217.5,
         "width": 540,
         "height": 349
       }
@@ -800,11 +874,29 @@
       "pass": true
     },
     {
+      "name": "dark laptop peek fits",
+      "pass": true,
+      "detail": {
+        "x": 832,
+        "y": 36,
+        "width": 448,
+        "height": 618
+      }
+    },
+    {
+      "name": "dark laptop peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "dark laptop peek restores focus",
+      "pass": true
+    },
+    {
       "name": "dark laptop modal fits",
       "pass": true,
       "detail": {
         "x": 370,
-        "y": 152.5,
+        "y": 160.5,
         "width": 540,
         "height": 349
       }
@@ -954,11 +1046,29 @@
       "pass": true
     },
     {
+      "name": "dark desktop peek fits",
+      "pass": true,
+      "detail": {
+        "x": 992,
+        "y": 36,
+        "width": 448,
+        "height": 864
+      }
+    },
+    {
+      "name": "dark desktop peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "dark desktop peek restores focus",
+      "pass": true
+    },
+    {
       "name": "dark desktop modal fits",
       "pass": true,
       "detail": {
         "x": 450,
-        "y": 275.5,
+        "y": 283.5,
         "width": 540,
         "height": 349
       }
@@ -1108,11 +1218,29 @@
       "pass": true
     },
     {
+      "name": "dark wide peek fits",
+      "pass": true,
+      "detail": {
+        "x": 1472,
+        "y": 36,
+        "width": 448,
+        "height": 1044
+      }
+    },
+    {
+      "name": "dark wide peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "dark wide peek restores focus",
+      "pass": true
+    },
+    {
       "name": "dark wide modal fits",
       "pass": true,
       "detail": {
         "x": 690,
-        "y": 365.5,
+        "y": 373.5,
         "width": 540,
         "height": 349
       }
@@ -1126,7 +1254,15 @@
       "pass": true
     },
     {
-      "name": "dark venue state recorded",
+      "name": "dark completion receipt",
+      "pass": true
+    },
+    {
+      "name": "dark confirmation undo restores priority",
+      "pass": true
+    },
+    {
+      "name": "dark confirmation undo restores venue",
       "pass": true
     },
     {
@@ -1175,6 +1311,10 @@
     },
     {
       "name": "dark guest filter",
+      "pass": true
+    },
+    {
+      "name": "dark filtered guest preview",
       "pass": true
     },
     {
@@ -1342,11 +1482,29 @@
       "pass": true
     },
     {
+      "name": "light phone peek fits",
+      "pass": true,
+      "detail": {
+        "x": 0,
+        "y": 130.609375,
+        "width": 390,
+        "height": 713.390625
+      }
+    },
+    {
+      "name": "light phone peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "light phone peek restores focus",
+      "pass": true
+    },
+    {
       "name": "light phone modal fits",
       "pass": true,
       "detail": {
         "x": 17,
-        "y": 229.25,
+        "y": 237.25,
         "width": 356,
         "height": 385.5
       }
@@ -1496,11 +1654,29 @@
       "pass": true
     },
     {
+      "name": "light phone-large peek fits",
+      "pass": true,
+      "detail": {
+        "x": 0,
+        "y": 218.609375,
+        "width": 430,
+        "height": 713.390625
+      }
+    },
+    {
+      "name": "light phone-large peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "light phone-large peek restores focus",
+      "pass": true
+    },
+    {
       "name": "light phone-large modal fits",
       "pass": true,
       "detail": {
         "x": 17,
-        "y": 291.5,
+        "y": 299.5,
         "width": 396,
         "height": 349
       }
@@ -1650,11 +1826,29 @@
       "pass": true
     },
     {
+      "name": "light tablet-portrait peek fits",
+      "pass": true,
+      "detail": {
+        "x": 399.375,
+        "y": 36,
+        "width": 368.625,
+        "height": 988
+      }
+    },
+    {
+      "name": "light tablet-portrait peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "light tablet-portrait peek restores focus",
+      "pass": true
+    },
+    {
       "name": "light tablet-portrait modal fits",
       "pass": true,
       "detail": {
         "x": 114,
-        "y": 337.5,
+        "y": 345.5,
         "width": 540,
         "height": 349
       }
@@ -1804,11 +1998,29 @@
       "pass": true
     },
     {
+      "name": "light tablet-landscape peek fits",
+      "pass": true,
+      "detail": {
+        "x": 576,
+        "y": 36,
+        "width": 448,
+        "height": 732
+      }
+    },
+    {
+      "name": "light tablet-landscape peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "light tablet-landscape peek restores focus",
+      "pass": true
+    },
+    {
       "name": "light tablet-landscape modal fits",
       "pass": true,
       "detail": {
         "x": 242,
-        "y": 209.5,
+        "y": 217.5,
         "width": 540,
         "height": 349
       }
@@ -1958,11 +2170,29 @@
       "pass": true
     },
     {
+      "name": "light laptop peek fits",
+      "pass": true,
+      "detail": {
+        "x": 832,
+        "y": 36,
+        "width": 448,
+        "height": 618
+      }
+    },
+    {
+      "name": "light laptop peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "light laptop peek restores focus",
+      "pass": true
+    },
+    {
       "name": "light laptop modal fits",
       "pass": true,
       "detail": {
         "x": 370,
-        "y": 152.5,
+        "y": 160.5,
         "width": 540,
         "height": 349
       }
@@ -2112,11 +2342,29 @@
       "pass": true
     },
     {
+      "name": "light desktop peek fits",
+      "pass": true,
+      "detail": {
+        "x": 992,
+        "y": 36,
+        "width": 448,
+        "height": 864
+      }
+    },
+    {
+      "name": "light desktop peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "light desktop peek restores focus",
+      "pass": true
+    },
+    {
       "name": "light desktop modal fits",
       "pass": true,
       "detail": {
         "x": 450,
-        "y": 275.5,
+        "y": 283.5,
         "width": 540,
         "height": 349
       }
@@ -2266,11 +2514,29 @@
       "pass": true
     },
     {
+      "name": "light wide peek fits",
+      "pass": true,
+      "detail": {
+        "x": 1472,
+        "y": 36,
+        "width": 448,
+        "height": 1044
+      }
+    },
+    {
+      "name": "light wide peek preserves route",
+      "pass": true
+    },
+    {
+      "name": "light wide peek restores focus",
+      "pass": true
+    },
+    {
       "name": "light wide modal fits",
       "pass": true,
       "detail": {
         "x": 690,
-        "y": 365.5,
+        "y": 373.5,
         "width": 540,
         "height": 349
       }
@@ -2284,7 +2550,15 @@
       "pass": true
     },
     {
-      "name": "light venue state recorded",
+      "name": "light completion receipt",
+      "pass": true
+    },
+    {
+      "name": "light confirmation undo restores priority",
+      "pass": true
+    },
+    {
+      "name": "light confirmation undo restores venue",
       "pass": true
     },
     {
@@ -2333,6 +2607,10 @@
     },
     {
       "name": "light guest filter",
+      "pass": true
+    },
+    {
+      "name": "light filtered guest preview",
       "pass": true
     },
     {

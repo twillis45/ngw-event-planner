@@ -1,5 +1,23 @@
 # No Guesswork Events — host experience redesign
 
+## Interaction refinement — October 18
+
+Quick look opens a phone bottom sheet or tablet/desktop side panel while preserving
+the current route. Guest records support the same preview after search and filtering.
+Awaiting replies expose a contextual reminder draft. Decision cards follow pointer
+travel, provide position controls, and retain explicit shortlist/defer and undo.
+Recording a sample venue confirmation returns to the next priority with an inline
+receipt and undo that restores the previous venue and history state.
+
+Motion is scoped to this review concept: 160–280 ms transitions, small directional
+travel, and press feedback. This is a proposed exception to the older static-motion
+doctrine, not a production-wide policy change. Reduced-motion preferences suppress
+animations (zero active animations observed with the preference enabled).
+
+Validation: 411 Chromium checks pass across both themes and seven viewport sizes,
+including panel bounds, Escape/focus restoration, confirmation undo and filtered
+guest previews. Device sheets were regenerated. Live AI and sending remain unconnected.
+
 Review-only carbon and light concepts. No production imports, routing, backend,
 entitlements, analytics, prompts, sending, bookings, or payment changes.
 
