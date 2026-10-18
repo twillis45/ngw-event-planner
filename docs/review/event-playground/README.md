@@ -1,51 +1,7 @@
-# No Guesswork — Gathering Playground 05
+# Playground 05 — retired
 
-Separate creative prototype requested after the Studio Matte v4 review. The user
-explicitly lifted the old layout, navigation and motion constraints for this concept.
-No production imports, shared engines, global doctrine or deployed app were changed.
+Status: rejected by the user on October 17, 2026 (America/New_York).
 
-Open `events-playground-v5.html`. It is self-contained, requires no network assets,
-and uses original inline SVG illustrations rather than photographs of real venues.
+The illustrated playground and its demo are removed from this review branch's active files. The prior experiment remains recoverable in Git history at e6408730a24362154e8a6f566645989f63652f62. Do not use it as an approved design direction.
 
-## What to try
-
-1. Browse Feeling with arrow buttons, mouse dragging, touch gestures or keyboard arrows.
-2. Choose “This feels right.” The card transforms, the canvas changes and Undo is immediate.
-3. Continue through Place, Food and Moment. Selected items change the estimate.
-4. Shape it shows the choices together, with direct Change links.
-5. Build a draft fills open choices with local sample rules while preserving chosen items.
-6. Adjust guest count/target to see estimate changes and over-target feedback.
-7. Personalize the name, occasion, must-have moment and photograph. Your day uses the selections.
-
-## Deliberate differences from v4
-
-Cream/purple/coral/lime palette, an illustrated event canvas, editorial typography,
-three purpose-based destinations, tactile cards, explicit selection, visible completion
-and an optional brief confetti response. The primary actions work with a mouse.
-System reduced-motion preference and an in-app motion switch suppress movement.
-
-## Truth boundaries
-
-All prices, capacity assumptions and timing are invented planning examples. The
-estimate is $600 essentials plus chosen items; unchosen items are excluded. Food
-uses sample unit price × guest count. Nothing is booked, sent, paid or researched.
-The draft builder is deterministic, not live AI and not the production DIFM engine.
-Photographs are read into this tab only, never uploaded; all edits reset on reload.
-
-## Verification
-
-60 checks passed in Chromium at 390×844, 768×1024, 1024×768 and 1440×900, including
-mouse drag, keyboard browse, choose/undo, completion, canvas updates, estimate math,
-draft retention of choices, timeline carry-through, photo upload/removal, cancel,
-budget warning, Escape and reduced motion. No script errors were observed.
-Screenshots were reviewed at desktop, tablet and phone sizes. This is not a physical
-device, assistive-technology or user-enjoyment study. This prototype is not a full
-replacement for operational guest, supplier, messaging or financial workflows.
-
-Run from repository root with Playwright available:
-
-```sh
-PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium node docs/review/event-playground/verify.cjs
-```
-
-The v1–v4 prototypes remain in `docs/review/studio-matte-ground-up/` for comparison.
+The next review is a static photography-led visual concept across desktop, tablet and mobile: a restrained light palette, event imagery, concise decisions, and a clear next action. Generated concept imagery is illustrative of the proposed photographic treatment, not evidence of actual people, venues or implementation. This direction is proposed, not approved. No new interactive demo or production UI changes are included.
