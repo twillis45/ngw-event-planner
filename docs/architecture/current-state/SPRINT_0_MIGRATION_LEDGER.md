@@ -129,3 +129,23 @@ product is.
 (`"2 excursions"`). The other three clauses previously classified as capability
 gaps were re-traced and found to be wiring gaps with existing destinations —
 see the CORRECTED table in `CREATION_TRUTH_AND_INTAKE_AUDIT.md` §2.
+
+---
+
+## P1-1 — Seating and Rain parity baselines
+
+| Field | Detail |
+|---|---|
+| **Before behaviour** | Both surfaces had real unit coverage (`seatingPlan.test.js`, `rainPlanReadiness.test.js`, `rainAssist.test.js`) and **zero browser coverage**. jest cannot execute hostv2, so everything between the engine and the host — which control exists, what it is labelled, what a tap writes, what the sheet says when the answer is absent — was unmeasured. That is precisely the surface a redesign touches. |
+| **Change** | **Test-only — no runtime code changed.** New `hostv2/e2e/seatingAndRainBaseline.spec.mjs`, 9 tests, added to `VIEWPORT_INDEPENDENT` (desktop only: all assertions are on text, stored state, or control presence; nine tests across six more geometries would buy 54 identical results). |
+| **Framing** | **Characterisation, not specification.** Every assertion records what the surface DOES today. If one goes red during the redesign the first question is "did we mean to change that?", not "fix the test". |
+| **Scope boundary** | Deliberately does not overlap GOLD-07, which owns seating's empty→populated transition as a consequence of replies. This file owns the populated surface's own behaviour. |
+| **Seating — what is pinned** | Only confirmed guests are seated (`0 of 5` from six rows; the NO is absent entirely) · the three tallies, each traceable to one roster field — `Veg 1` from `meal`, `Kids 2` from `kids`, `Wheelchair 1` from `access` · the table suggestion explains itself (*"1 table — what a reunion this size usually needs"*) rather than appearing as an unarguable number · tap-name-then-table assigns for real on both sides (`Seated so far 1 of 5`, `Table 1 Veg 1 1 seated`), is reversible in place (`unseat`), and opens the table's own shape/capacity settings with it. |
+| **Seating — the one most likely to be lost** | A structured `access` entry does not merely increment a counter; it produces a sentence naming who and what: **"Seat with easy access: Tonya Brooks — asked for a step-free spot."** A tally is not actionable while seating people; a named instruction is. |
+| **Rain — what is pinned** | The ask reaches the ranked plan · the sheet states the ABSENCE as the state (*"Open sky and no backup named yet"*) instead of rendering an empty control · all six options exist, including **"Rain or shine"** — declining a backup is a real answer the surface accepts, not a gap it nags about · the written-for-you text is previewed BEFORE it is accepted · picking writes the host's words verbatim and advances to telling the guests, where the draft is **host-sent, never app-sent** (*"Mark it sent — I sent it myself"*) · `"Do it for me"` writes exactly what it previewed, compared on the visible (pre-ellipsis) substring · an answered event is not asked again. |
+| **Rain — CTA truthfulness** | The forecast-watch offer states its own limit (*"While the app is open…"* / *"Lock-screen alerts land when the installable app ships"*) rather than claiming a push it cannot send. Pinned because a redesign rewriting this copy is exactly when a caveat goes missing (UX_07). |
+| **Negative control** | A Birthday in a named ballroom is never asked for a rain plan — the gate is `phaseProgress.js:322` (`OUTDOOR_TYPE` on the event type, or `isLikelyOutdoor` on venue/notes). Without this the whole rain block could pass on an app that asks everyone. |
+| **A discrepancy checked and dismissed** | `phaseProgress.js:12` says *"indoor events never count a rain plan"* while `:325` appeared to add the row unconditionally. Misread on my part — the row is gated by `outdoor && !noDate` at `:322`. The comment is accurate. Recorded so the next reader does not re-raise it. An earlier probe appearing to show an indoor event being asked used a fixture field (`indoor: true`) that does not exist in the app; the real field is `indoorVenue`. Not asserted. |
+| **Invariant** | These are the behaviours the redesign must either preserve or change on purpose. |
+| **Rollback risk** | **None to runtime.** Test-only; revert = delete one spec and one config entry. |
+| **Verification** | 9 passed on first run and again on a full-project run (11 passed with GOLD-07 alongside); routing confirmed `desktop` only. |

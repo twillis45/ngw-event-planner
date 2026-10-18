@@ -57,6 +57,14 @@ const VIEWPORT_INDEPENDENT = [
   // It also addresses port 5255 directly, so it would measure the wrong
   // bundle on any project pointed at the shared preview.
   '**/gold07RsvpCascade.spec.mjs',
+  // ── THE SEATING / RAIN PARITY BASELINES (P1-1, 2026-10-18) ─────────────
+  // Characterisation of what both surfaces DO today, written so a redesign
+  // that changes any of it fails on purpose. Every assertion is on text,
+  // stored state, or which control exists — the tallies, the access
+  // sentence, what a tap writes, which caveat the forecast offer carries.
+  // Nothing measures a box, and nine tests across six more geometries would
+  // buy fifty-four identical results.
+  '**/seatingAndRainBaseline.spec.mjs',
   // ── THE FOUR THAT TIMED SHARD 3 OUT (2026-10-06) ────────────────────────
   // These landed the same day and each drives the REAL creation flow — clear
   // storage, type the 179-character seed, wait for the parse, assemble, open
