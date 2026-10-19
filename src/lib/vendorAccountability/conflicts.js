@@ -5,6 +5,7 @@
 
 import { getVendorPlaybook } from './playbooks.js';
 import { parseStartMinutes } from '../eventWhen.js';
+import { guestCountFor } from '../guestCountFor';
 
 // Times in the seed + host input are 12-hour strings ("1:00 PM", "10:00 AM"),
 // but the old local parser split on ":" and dropped the meridiem — so "1:00 PM"
@@ -143,7 +144,30 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
     // || guestEstimate` did exactly that: a 7-of-75 roster read as "7", so a caterer
     // set to the real 75 looked "off by 68" (a false positive — the count matches the
     // plan, only the RSVPs are still coming in). Take the larger of entered-vs-estimate.
-    const est = event.guestEstimate != null && String(event.guestEstimate).trim() !== '' ? Number(event.guestEstimate) : 0;
+    // ── AND NEITHER MAY A NUMBER THE APP INVENTED (Sprint 0.5, 2026-10-19) ──
+    // MEASURED: with `guestCountSource: 'playbook-typical'` — the creation
+    // seam's substitution when the host gives no count — an estimate of 40
+    // against a CONTRACTED caterer set to the host's real 60 produced a HIGH
+    // severity conflict, a one-tap fix patching `{ guestCount: 40 }` onto the
+    // vendor, and the receipt "Caterer set to 40 — it matches your guest
+    // tracker now." An invented number arguing with a real arrangement, then
+    // being written onto it and reported as reconciled.
+    //
+    // Sprint 0's P0-2 swept every raw headcount reader and filed this module
+    // under "operational planning", left raw because "protection belongs at the
+    // boundary (outward communication, committed money)". The rule was right
+    // and the filing was wrong: this IS that boundary.
+    //
+    // ONLY THE ESTIMATE TERM IS GATED. The max() above it stays exactly as it
+    // is, for the reason recorded above: a partial roster must not shadow the
+    // host's intended number. When the app supplied the estimate there is no
+    // host intent for the caterer to disagree WITH, so there is nothing to
+    // reconcile — and `trackerCount` falls back to the roster, or to null,
+    // which is already the no-conflict path.
+    const estIsHers = (() => {
+      try { return guestCountFor(event).fromHost; } catch (_e) { return true; }
+    })();
+    const est = estIsHers && event.guestEstimate != null && String(event.guestEstimate).trim() !== '' ? Number(event.guestEstimate) : 0;
     const trackerCount = Math.max(guests.length, Number.isFinite(est) ? est : 0) || null;
     if (trackerCount !== null && Math.abs(Number(caterer.guestCount) - trackerCount) > 0) {
       conflicts.push({

@@ -316,7 +316,23 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // the app from it), and that the single `passPurchased: true` write lives
 // inside the one helper both confirmed paths call. "How many of a thing exist,
 // and inside what" is the fact `oneLabelMapForTheAreas` was admitted for.
-const MAX_HOSTV2_TEXT_GATES = 54;
+//
+// ── 54 → 55 (2026-10-19, Sprint 0.5 Decision 1) ─────────────────────────────
+//
+// `theHeadcountHasOneCanonicalReader.test.js`. It makes no behaviour claim and
+// could not: it asserts WHICH FILES read the raw headcount field, which is a
+// fact about the source and nothing else. An e2e cannot observe a file's import
+// and read patterns, and the shell is one of the 24 classified readers, so the
+// sweep has to cross into hostv2/src to be complete.
+//
+// Admitted for the reason `oneLabelMapForTheAreas` was: "how many of a thing
+// exist, and inside what". The thing it guards is consumer #33 — Sprint 0
+// classified 29 raw readers in a DOCUMENT, and Sprint 0.5 then found one
+// (`vendorAccountability/conflicts.js`) that was offering to write an
+// app-invented headcount onto a contracted caterer. A classification that lives
+// in prose cannot stop the next one; this moves it into a gate that names the
+// canonical readers when it fails.
+const MAX_HOSTV2_TEXT_GATES = 55;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
