@@ -5,7 +5,7 @@
 
 import { getVendorPlaybook } from './playbooks.js';
 import { parseStartMinutes } from '../eventWhen.js';
-import { guestCountFor } from '../guestCountFor';
+import { guestCountFor } from '../guestCountFor.js';
 
 // Times in the seed + host input are 12-hour strings ("1:00 PM", "10:00 AM"),
 // but the old local parser split on ":" and dropped the meridiem — so "1:00 PM"
