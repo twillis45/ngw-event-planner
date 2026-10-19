@@ -1,6 +1,69 @@
 # Where We Are -- live status board
 
-## 2026-10-13 (last) — merged, deployed, and the unattested question answered twice
+## 2026-10-19 (last) — Redesign Readiness Sprint 0 + Sprint 0.5: READY for one domain
+
+**`main-2utz0n` @ `715cd50`** — seventeen commits across two sprints, nothing
+merged to `main`, no PR opened. Full record:
+`docs/architecture/current-state/` documents 11-14.
+
+**VERDICT: READY FOR PEOPLE/ATTENDANCE REDESIGN.** Narrower than "ready for the
+redesign" on purpose. Weather/Day-of and the failure paths are **excluded** —
+they have no browser baseline, and parity cannot be demonstrated for behaviour
+never captured.
+
+**Both sprints spent most of their value falsifying their own planning
+package**, which is the part worth reading:
+
+- Sprint 0 planned to **build** a canonical attendance reader. `attendanceBand`
+  already was one, returning the exact proposed shape; the shell has called it
+  "the canonical reader" since before the plan was written. **None was built.**
+  Its real defect was provenance blindness — byte-identical output for the
+  host's number and one the app invented — and that reaches the AI orchestrator
+  too, as `get_headcount`.
+- **Three of four "missing schema" claims were false**, all failing identically:
+  search for a module *named* after a capability, find none, conclude absence.
+  `accessibilityContext.js`, `event.ros`/`timeline` and
+  `vendorCategoriesByType.js` all existed with live consumers. That correction
+  turned two slices from "build a model" into "connect what is there", and is
+  now a written condition of the bounded-gap rule.
+- Sprint 0.5 found **one raw headcount reader that was genuinely unsafe**:
+  `vendorAccountability/conflicts.js` offered to patch an app-invented count
+  onto a **contracted** caterer and tell the host it now matched.
+- And it found the permit advice the app had been giving all along sitting
+  **inert** — a note in the frozen CRA shell, in a collapsed card, unraised,
+  unanswerable, absent from the shipping shell entirely. "No permit capability"
+  would have been filed as a bounded gap; it was a blocker.
+
+**What is now enforced rather than written down:** the destination invariant
+(moved into the engine) · outward and money gating on headcount provenance · a
+ratchet requiring every raw headcount reader to declare which semantic question
+it asks · a composition root so `unusedClauses` has no optional-correctness
+argument to forget · eleven bounded-gap conditions with a test. Six of the
+fourteen redesign invariants moved from prose to a named module with tests.
+**None was weakened.**
+
+**Two bounded gaps are declared, not hidden:** `"2 excursions"` has no truthful
+destination (`itinerary.js:155` drops a programme row with no thing named — now
+pinned by a test, so the excuse fails if the destination changes), and events
+created before the sentence was stored have no clause list and cannot be
+backfilled.
+
+jest **618 suites / 8,502 passed**, 1 skipped. `gate:cra` 241 of 241, by exit
+code. **No matrix** — this container's chromium is 1194 against the repo's
+pinned 1228.
+
+⚠️ **One self-inflicted failure, recorded:** I pushed a broken build because
+`gate:cra 2>&1 | tail -2 && git commit` takes its exit status from `tail`. Fixed
+in `b8ea88c`; every gate since is checked by exit code.
+
+⚠️ **The canonical browser command is `cd hostv2 && npm run e2e:build && npm run
+test:e2e`** — not `npm run build`, which bakes no `REACT_APP_*`. That
+requirement lived in three places that disagreed and cost 33 false failures; it
+is one script now, called by CI too.
+
+---
+
+## 2026-10-13 — merged, deployed, and the unattested question answered twice
 
 **`main` @ `5770787`** — PR #90 merged as a merge commit, 20 files, +2,504/−49,
 validated on CI run 907 at `c97b34e` (all 9 jobs green; e2e 3,094 passed / 0

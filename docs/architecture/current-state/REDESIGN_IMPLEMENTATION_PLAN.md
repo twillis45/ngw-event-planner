@@ -174,3 +174,165 @@ outward-facing producers first.
 **Explicitly not blocking:** the missing raisers, the derived-question
 primitive, the CommandCenter extraction, and every P2 parser item. Those are
 redesign-era work and none of them is a prerequisite.
+
+---
+---
+
+# SUPERSEDED 2026-10-19 — and what replaces it
+
+The `NOT READY` verdict above is the **gate-time** verdict and is kept as that
+record. All five of its reasons are closed:
+
+| Gate reason | State | Evidence |
+|---|---|---|
+| 1 · Two guest-count authorities live | **CLOSED** | Sprint 0 P0-2 gated outward + both money paths; Sprint 0.5 D1 gave the existing canonical reader provenance and put a ratchet over the raw field. *(The reason's own numbers were wrong: `guestEstimateSource` does not exist — the field is `guestCountSource` — and `guestCountFor` had 1 runtime consumer, not 3.)* |
+| 2 · A P0 invariant lives only in the shell | **CLOSED** | Moved into `travelFieldsToPersist`; persisted output byte-identical |
+| 3 · Seating and rain have no browser proof | **CLOSED** | `seatingAndRainBaseline.spec.mjs`, 9 characterisation tests + a negative control |
+| 4 · GOLD-04 blocked by a true capability gap | **CLOSED** | `accessNeeds.js`; the "no needs model anywhere" claim was one of three false absence claims — `accessibilityContext.js` existed |
+| 5 · GOLD-07 has no end-to-end spec | **CLOSED** | `gold07RsvpCascade.spec.mjs`, 9 asserted boundaries |
+
+---
+
+# VERDICT (Sprint 0.5)
+
+# READY FOR PEOPLE/ATTENDANCE REDESIGN
+
+Narrower than "ready for the redesign", on purpose. The reasoning is in
+`SPRINT_0_5_ARCHITECTURE_DECISIONS.md`; the boundary is here.
+
+---
+
+## IMPLEMENTATION BOUNDARY — first redesign slice
+
+### Capabilities INCLUDED
+
+1. **Attendance intake** — the count editor, the lock/reopen control, and
+   switching between `guestMode: 'count'` and `'list'`.
+2. **The roster** — add, edit, remove, kids, RSVP state.
+3. **Attendance truth on screen** — the band, its basis, and its provenance:
+   confirmed · planning · low/high · *whose number it is*.
+4. **RSVP reply landing** — a public reply reaching the roster and re-ranking
+   the plan (the GOLD-07 path end to end).
+5. **Per-guest needs capture** that `accessNeeds.js` already owns — step-free,
+   and the existing `access` array on a guest.
+6. **The consequences attendance already raises**: the permit question
+   (`placeQuestions`), seating tallies and the access instruction, food and
+   supply sizing, per-head money.
+
+### Capabilities EXPLICITLY EXCLUDED
+
+| Excluded | Why |
+|---|---|
+| Weather / Day-of surfaces | No browser baseline. Parity cannot be demonstrated for behaviour never captured. |
+| Failure-path surfaces (invalid route, producer failure, write failure) | GOLD-10 open at medium. |
+| `CommandCenter.jsx` extraction | Untouched through two sprints and not required by any decision. Do not open it in this slice. |
+| Place/Venue redesign | `placeQuestions` is *read* by this slice, not redesigned by it. The CRA permit-note reconciliation belongs to the Place slice. |
+| Itinerary / excursions | Declared bounded gap. Do not build a destination for it to make the clause list shorter. |
+| A second prioritiser, a consequence graph, a derivation registry | Ruled out with evidence in D2 and D3. |
+| Backfilling `createdFromText` on existing events | Declared bounded gap #2. There is nothing to backfill from. |
+
+### Canonical READERS — the redesigned surface may read attendance only through these
+
+| Reader | Question it answers |
+|---|---|
+| `attendanceBand(event)` — `playbooks/index.js:600` | THE planning reader: confirmed / planning / low / high / basis / band / because / **countSource** / **countFromHost** |
+| `guestCountFor(event)` — `guestCountFor.js` | The number and whose it is. Cheap, leaf, no playbook load. |
+| `guestCountIsConfirmed(event)` | May this be stated outward? |
+| `guestCountNotice(event)` | What to tell the host about a number the app supplied |
+| `confirmedCovers(event)` | **Plates, not people** — catering and seating |
+| `headsFor(event)` / `perHeadOf` | Who is in the number, for per-head division |
+| `accessNeedsFor(event)` | Normalized needs + per-requirement reach |
+| `heardNotUsedFor(event)` | What she said that the plan does not hold |
+| `eventPlan(event)` | The ranked plan. **The only ranker.** |
+
+A new raw read of `guestCount` / `guestEstimate` / `guests.length` must add an
+entry to `theHeadcountHasOneCanonicalReader.test.js` with a semantic category
+and a reason, or use a reader above. The gate will say so.
+
+### Canonical WRITERS
+
+| Writer | Owns |
+|---|---|
+| `patchEvent(obj, msg, opts)` — `HostShellV2.jsx:6792` | **THE one write path.** Generic undo is built here once; a write that bypasses it is a write with no undo. |
+| `guestCountSource: 'host'` | Must be written beside any host-supplied count. `:7330` is the pattern. |
+| `acknowledgeClausePatch` / `unacknowledgeClausePatch` | Clause answers |
+| `answerPlaceQuestionPatch` | Place-question answers (`venueStepFree`, permit) |
+| `assignGuestToTable` / `unassignGuest` | Seating assignment — patches, never mutations |
+
+Every one returns or takes a **patch**. Nothing mutates the event in place.
+
+### Routes
+
+Three entry routes, code-split in `hostv2/src/main.jsx`:
+
+- `?rsvp=CODE` → `InviteV2.jsx` — the public guest surface, **its own chunk**.
+  The ~8,500-line host shell must never be downloaded for a guest;
+  `guestPayloadGate.spec.mjs` enforces it.
+- `?demo=lodging` → `LodgingCockpit.jsx`
+- default (`?elegant=1`) → `HostShellV2.jsx`
+
+In-shell surfaces are **sheets**, not URLs: `sheet.kind` of `guests`,
+`seating`, `food`, `foodplan`, `budget`, `costshare`, `vendors`, `space`,
+`venue`, `rain`, `tasks`, `decisions`, `risks`, `ask`, `qr`, `thanks` and the
+rest. A redesign that introduces real URL routing for these is out of scope for
+this slice.
+
+### Persistence
+
+| Key | Owner |
+|---|---|
+| `ngw-hostv2-custom-events` (`LS_CUSTOMS`) | `@app/lib/customEventStore` — **one definition, re-exported** by `eventPool.js`. Do not re-declare it; a 2026-09-02 board recorded what two owners for one bucket cost. |
+| `ngw-hostv2-last-event` (`LS_LAST_EVENT`) | `eventPool.js` |
+| `ngw-hostv2-deleted-events`, `ngw-hostv2-rail-min` | `HostShellV2.jsx:328,331` |
+| `ngw-rsvp-queue-*`, `ngw-hostv2-wxseen-*`, `ngw-hostv2-wxnotify-*` | per-event, swept by `eventPool.js:112` |
+
+Each event stores itself **whole** — no patch layer. Supabase sync is
+additive and already covered by `crossDeviceSync.spec.mjs`.
+
+### Consequence interactions the slice must keep working
+
+| Change | Consequence that must follow |
+|---|---|
+| A reply lands | Roster → attendance band → food/supplies → seating → money → **rerank**. GOLD-07's 9 boundaries. |
+| A host-given count crosses 50 outdoors | The permit question raises, answerable, naming the city |
+| An **app-invented** count crosses 50 outdoors | **Nothing raises.** The sharpest assertion in the slice. |
+| A step-free need + a named venue | The venue question raises; answering either way closes it and sticks |
+| A count is locked | Outward surfaces may state it; before that they may not |
+| A clause nothing consumed | Stays disclosed and answerable, through `heardNotUsedFor` |
+
+### Required browser tests (must stay green, and are the parity contract)
+
+`gold07RsvpCascade` · `seatingAndRainBaseline` · `theWalkerReachesThePlan` ·
+`theClauseGetsAnAnswer` · `weNowNeedToKnow` · `guestPayloadGate` ·
+`guestReplyPicker` · `guestTold` · `theCouplesSheSaidReachTheList` ·
+`crossDeviceSync` · `closeItAndOpenItAgain` · `handlingTheVenueMyself`.
+
+Command: `cd hostv2 && npm run e2e:build && npm run test:e2e`.
+
+### Parity requirements
+
+- `hostv2 npm run parity` clean — `e2e:build` runs it for you (3 kit atoms
+  locked, 11 hero CSS selectors token-clean, nothing re-inlined outside
+  `askKit.jsx`).
+  **Not `npm run gate:hostv2`.** That byte-exact artifact gate is RETIRED:
+  `/public/hostv2/` is gitignored (Model A), every release path builds it, and
+  the gate rested on vite being reproducible across machines — which it is not.
+  It failed continuously from 2026-08-01 and `checks.yml:499-512` carries the
+  record. A local run of it reports drift against stale disk output and means
+  nothing.
+- `gate:cra` at **241 of 241** baselined warnings, verified **by exit code**.
+- Ratchets are lower-never-raise: `textGateRatchet` (56), `spacingLadder` (269),
+  `theHeadcountHasOneCanonicalReader`, `registryCompleteness` CONTRACT_IDS.
+- All **14 redesign invariants** hold. Six are now enforced by named modules
+  with tests; none may be returned to prose.
+- `demo/src/App.js` stays **frozen** — donor-only.
+
+### Surfaces that must remain reachable throughout the migration
+
+Invariant 7: *every working capability needs a durable door before the old one
+retires.* No door may close in this slice.
+
+`?rsvp=CODE` invite · the guests sheet (count mode **and** list mode) · seating ·
+food and the food plan · shopping · budget and cost-share · the ranked plan
+board · the event switcher · the QR/share path · thank-yous · `?admin=1`
+(internal) · `?demo=1` (QA chrome).

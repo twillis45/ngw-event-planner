@@ -236,9 +236,12 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // Serves the EXISTING dist — run `npm run build` first (the deploy dance
-      // already does; CI chains them). Keeping the build out of here makes the
-      // readiness probe deterministic.
+      // Serves the EXISTING dist — run `npm run e2e:build` first (CI chains
+      // them). Keeping the build out of here makes the readiness probe
+      // deterministic.
+      // e2e:build, NOT build: this suite needs REACT_APP_API_BASE_URL baked,
+      // and `npm run build` bakes no REACT_APP_* at all. fixtures.mjs's header
+      // has the whole story and what following this line used to cost.
       // --host 127.0.0.1: under Node ≥17 'localhost' resolves IPv6-first, so a
       // bare preview binds ::1 and the IPv4 readiness probe refuses forever.
       command: 'E2E_BASE=1 npx vite preview --port 5233 --strictPort --host 127.0.0.1',

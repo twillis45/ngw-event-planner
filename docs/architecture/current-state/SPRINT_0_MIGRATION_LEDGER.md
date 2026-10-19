@@ -231,3 +231,103 @@ see the CORRECTED table in `CREATION_TRUTH_AND_INTAKE_AUDIT.md` §2.
 | **A guard that worked** | `registryCompleteness.test.js` failed on the new surface id — its contract list exists so *"a brand-new id arrives by expanding the contract consciously (and wiring its consumer), not by side door."* Declared with the reasoning, as the gate asks. |
 | **Rollback risk** | **Low.** One pure module, one raiser, one additive field, one UI block. Revert = remove the surface entry and the import; nothing else reads `venueStepFree`. |
 | **Regression** | Full jest **614 suites / 8,447 passed**, 1 skipped. Browser 4 passed. `gate:cra` 241 of 241. `parity` clean. |
+
+---
+---
+
+# Sprint 0.5 — architecture challenge
+
+Same format. Four decisions, recorded 2026-10-19. Full reasoning, alternatives
+and worked examples: `SPRINT_0_5_ARCHITECTURE_DECISIONS.md`.
+
+**A rename that reaches back into this document.** P1-5's row above describes
+`src/lib/openQuestions.js` and registry id `openquestions`. Decision 3 renamed
+both (`placeQuestions.js`, `placequestions`). The row is left as written —
+it records what P1-5 did — and this note is the forwarding address.
+
+---
+
+## D1 — Attendance provenance
+
+| Field | Detail |
+|---|---|
+| **Before behaviour** | `attendanceBand(event)` — which `HostShellV2:3887` calls *"the canonical reader"* and `:4040` says *"owns the question"* — returned **byte-identical output** for a headcount the host gave and a number the app substituted from a playbook typical. It is also the AI orchestrator's headcount tool (`orchestratorTools.js:36` `get_headcount`), so a model answering *"how many are coming?"* could not tell whose number it was reading either. |
+| **What Sprint 0 got wrong** | It planned to BUILD this authority (`attendanceFor()`). It already existed, returning the exact shape the challenge proposed — `{applicable, basis, low, high, planning, confirmed, maybe, pending, declined, kids, invited, band, because}`. **No new module was created.** A second reader would have duplicated truth across 42 dependent test files to make the architecture look tidier. |
+| **The genuine misclassification** | `vendorAccountability/conflicts.js` was filed under "operational planning" and left raw. It is the **outward/commitment boundary**. Measured with `guestCountSource: 'playbook-typical'` 40 against a CONTRACTED caterer at 60: severity `high`, *"Caterer expects 60; guest tracker shows 40."*, fix *"Match the guest tracker (40)"*, patch `{guestCount: 40}` onto the vendor, receipt *"Caterer set to 40 — it matches your guest tracker now."* The app offered to rewrite a contracted vendor's headcount to a number the host never gave. |
+| **Change** | (a) `playbooks/index.js:600` — `attendanceBand` gains `countSource` + `countFromHost` from `guestCountFor`, spread into all three branches; the roster branch hardcodes host, because people entered one at a time are hers by construction. (b) The `because` string gains *"— not a number you gave, we filled that in from what this kind of event usually runs"*, so every surface already printing the reason prints the provenance, with no new wiring. (c) `conflicts.js:167-170` gates the estimate term on `guestCountFor(event).fromHost`. |
+| **Numbers changed** | **None.** `guestCountFor`'s resolution order is the order every existing reader already used. Only the fact of whose number it is was added. |
+| **Raw reads: A, B or C** | **C — use the existing authority** for the one misclassified consumer. **A — keep raw** for the other 23, under a gate rather than a document. Mass migration was explicitly ruled out and would have broken sizing before RSVPs land. |
+| **How #33 is stopped** | `theHeadcountHasOneCanonicalReader.test.js` — a lower-never-raise ratchet over every file reading `guestCount`/`guestEstimate`/`guests.length`. A new reader must declare WHICH of seven semantic questions it asks and why the raw field answers it, or use a canonical reader; the failure path names all five canonical readers. Not a ban — a question #33 cannot avoid. Carries a THE-GATE-BITES guard against a dead regex and a staleness check, because a list that over-claims is a list that lies. |
+| **Invariant** | #8 (*a guessed headcount must not become money, or leave the app*) — now also enforced at the vendor-commitment boundary. #5 tightened. None weakened. |
+| **Tests** | `thePlanningCountKnowsWhoseItIs.test.js` (16) · `anInventedCountIsNotAVendorConflict.test.js` (7, **2 red first**) · `theHeadcountHasOneCanonicalReader.test.js` (5). GOLD-07's 9 boundaries re-run green. |
+| **Affected consumers** | `attendanceBand`: 2 additive fields, no existing field changed — every current caller is unaffected. `conflicts.js`: an invented count now produces no conflict row, no fix button and no patch. |
+| **Rollback risk** | **Low.** Two additive fields and one guard clause. Revert = drop `_provFields` from three spreads and one ternary. |
+| **A build I broke and how** | `npm run gate:cra 2>&1 \| tail -2 && git commit` — a pipeline's exit status is the LAST command's, so `tail` succeeding let a commit land on a gate that had printed *"This is a real build error"*. Root cause: `import { guestCountFor } from '../guestCountFor'` extensionless, in the one directory where webpack is strict ESM. Fixed with `.js` (`b8ea88c`), and every gate since is verified **by exit code**. |
+| **Regression** | Full jest **616 suites / 8,480 passed**. `gate:cra` 241 of 241, by exit code. |
+
+---
+
+## D2 — The clause derivation contract
+
+| Field | Detail |
+|---|---|
+| **Before behaviour** | `unusedClauses(text, { alsoDerives })` was the public entry point. A caller who omitted `alsoDerives` silently got three false *"we didn't use this"* alarms back — the host told her sentence was not understood, which is the one thing that list exists not to get wrong. The requirement was documented in a doc comment: the same shape as P0-2's provenance field, written everywhere and read by almost nothing. |
+| **Change** | `heardClauses.js` becomes the **composition root**: it imports `heardAccessNeeds`, `heardMustHaves`, `heardStayStyle` itself as `SEAM_READERS` and supplies them. `clausesNotUsed(text)` and `heardNotUsedFor(event)` take no options. **There is no second argument to forget.** `unusedClauses` is unchanged and still exported — its own tests drive it to reproduce the defect. |
+| **Rejected alternatives** | A register-on-import registry (moves correctness from "remember an argument" to "depend on load order" — same bug, harder to see) · a required argument you can pass `[]` to · parser-owned registration, which would import the planning engine into the parser and is forbidden. |
+| **Chunk boundary, measured not assumed** | `InviteV2.jsx` and `inviteShared.js` import neither `heardClauses` nor the parser, so the root adds nothing to the chunk a guest downloads — the boundary `guestPayloadGate.spec.mjs` protects. Dependency points down, root → parser: no cycle. |
+| **Enforcement** | `theClauseReadersAreNotOptional.test.js` — the repo's `CALLED_FROM_OUTSIDE` idiom: a scan of `src/lib` + `hostv2/src` for a *call or import* of `unusedClauses`, failing on anything outside the definition and the root, with a THE-GATE-BITES companion. Block comments stripped before line comments, because the shell discusses this mechanism in two JSX `{/* … */}` comments whose continuation lines carry no marker — a line-only strip reported the shell as a caller after it had already been migrated. |
+| **Future seam consumers** | One line in `SEAM_READERS`. The differential behaviour is untouched, so a new reader still removes its clause from the list on every existing event with nothing to backfill. |
+| **Invariant** | #3 (*unused clauses cannot silently disappear*) — correctness no longer optional. |
+| **Tests** | `theClauseReadersAreNotOptional.test.js` (6). **One existing test re-anchored, not weakened**, with the distinction recorded in place: `iHeardThisTooAndThenWhat`'s canonical-write-path test simulated a future reader through the removed `heardNotUsedFor(ev, opts)` argument; it now asserts the same property at `unusedClauses`, where the differential comparison actually lives. Required behaviour kept, obsolete implementation detail dropped. |
+| **Affected consumers** | `HostShellV2.jsx` — two call sites, both already using the root. No product surface calls the mechanism. |
+| **Rollback risk** | **Very low.** Two wrappers and one import list. |
+| **Regression** | Full jest green; `gate:cra` 241 of 241 by exit code. |
+
+---
+
+## D3 — The consequence primitive, challenged with two more cases
+
+| Field | Detail |
+|---|---|
+| **Before behaviour** | One rule (`openQuestions.js`), one raiser, and an open question about whether the abstraction was right. |
+| **CASE A · attendance × outdoors → a permit** | A materially different shape: not two facts coexisting but a **derived number crossing a line**. And the app had said it all along — `placeIntelligence.js:182` pushes exactly this sentence as a `notes` entry, `derivePlaceIntelligence` is **not** in `surfaceRegistry`, and the only renderer of `pi.notes` is `src/App.js:41420`, the **frozen** CRA shell, in a card collapsed by default. Unraised, unanswerable, unresolvable, and absent entirely from the shipping shell. **Found inert, not absent.** |
+| **CASE B · vendor × schedule window** | `vendorAsks.js:82` raises an arrival-time ask through `surfaceRegistry:62` — and did so before P1-5 was written. **Deliberately NOT moved.** Relocating a working rule into the new module would have manufactured evidence for the abstraction. |
+| **What the three cases proved** | Consequence generation was **already domain-specific**, with `surfaceRegistry` as the shared result contract and `eventPlan` as the only ranker. `openQuestions` was a fifth domain producer wearing a general name — one that **already collided** with `CommunicationHub.jsx:1349`. |
+| **Change** | Narrowed, not generalised. `git mv openQuestions.js placeQuestions.js`; `openQuestionsFor` → `placeQuestionsFor`; `answerOpenQuestionPatch` → `answerPlaceQuestionPatch`; `OPEN_QUESTION_FIELDS` → `PLACE_QUESTION_FIELDS`; registry id `placequestions`. Case A added as the module's second rule with `PERMIT_THRESHOLD = 50`. |
+| **The rule that survived** | **A consequence belongs to the domain where its ANSWER lives, not the domain that triggered it.** Case A is triggered by attendance and answered by a city, so it lives with place. |
+| **D1 composed in** | The permit rule reads `attendanceBand().countFromHost`: an app-invented typical count cannot manufacture a consequence. A fabricated consequence is worse than a missing one — it would send a host to a city office over a number she never gave. Asserted in unit and browser, paired with *"a real roster of 60 yeses DOES raise it"* so the refusal is proven to be about provenance, not the number. |
+| **A deliberate non-fix** | The CRA note stays ungated while the question is gated. They are not the same statement: a hedged, numberless nudge to check is honest on any basis; a ranked job quoting a derived number back to the host is not. Withholding *"you might need a permit"* from a host whose event is probably 60 people would be the "no confirmed count → useless planning" failure the brief forbids. |
+| **Invariant** | #4 (*`eventPlan()` is the sole final next-action authority*) — HELD; one surface, two rules, no second ranker. #12 (*the app must not invent a fact a venue has not supplied*) — extended to a city. |
+| **Tests** | `weNowNeedToKnow.test.js` 26 (7 new) · `hostv2/e2e/weNowNeedToKnow.spec.mjs` 7 (3 new). `registryCompleteness`'s contract entry records the rename reason, as that gate asks. |
+| **Affected consumers** | `surfaceRegistry.js`, `HostShellV2.jsx`, `registryCompleteness.test.js`, `weNowNeedToKnow.test.js` — all migrated; no parallel model left. |
+| **Rollback risk** | **Low.** A rename plus one pure rule. Revert = `git mv` back and drop the rule. |
+| **Regression** | Full jest **617 suites / 8,494 passed**; `gate:cra` GATE_OK by exit code; hostv2 build OK. |
+
+---
+
+## D4 — Bounded-gap governance
+
+| Field | Detail |
+|---|---|
+| **Before behaviour** | Sprint 0 adopted a **three-condition** rule mid-sprint (named · un-implied · tested) and recorded it in a paragraph of `SPRINT_0_VERDICT.md`. The implementer was also the judge. |
+| **Change** | The brief's eight conditions, kept in full, **plus three added and two sharpened from repository evidence** — the full rule and six worked examples are in `SPRINT_0_5_ARCHITECTURE_DECISIONS.md`. Added: **9 · ABSENT, NOT INERT** · **10 · the justification is pinned by a test** · **11 · the gap cannot grow silently**. Sharpened: **2** (evidence from the destination's own writer or validator, never a failed name search) · **5** (the honesty test asserts at the reader the SURFACE calls, and is red-proofed). |
+| **Why each addition exists, measured** | **9** — Decision 3 found the permit truth inert; Sprint 0 would have filed it as a bounded gap, and it was a false implication wearing a gap's clothes. **10** — CLAUDE.md's surfaces table stated a gate status that had been false for six weeks while being the first thing read every session. **11** — the false-alarm count grew by one *the moment P1-2 added a fourth seam consumer*; a gap whose size is a function of future work needs a ratchet, which is already how this repo handles exactly that. **2 sharpened** — Sprint 0 made three false "missing schema" claims, all by searching for a module NAMED after a capability. **5 sharpened** — the excursions honesty test was pinned at `unusedClauses`, which D2 then made non-public. |
+| **THE RULE HAS THREE OUTCOMES, not two** | The most useful finding: most things called gaps are not capability gaps at all. A two-way rule forces a coverage risk into one of the two buckets, and "no test" would launder unbaselined code into READY. |
+| **Applied** | **ACCEPT** — `"2 excursions"` (all 11, with condition 2 now proved from `itinerary.js:155`'s own validator: a programme row with no thing named is dropped) · **ACCEPT** — pre-existing events have no stored sentence (a missing *history*, un-backfillable, honestly silent, superseded going forward and proven to be) · **BLOCKER (fixed)** — the inert permit truth, fails 9 and 3 · **BLOCKER (fixed in Sprint 0)** — an estimate reaching money via `guestCountResolved`, fails 8 and 7 · **NOT A GAP** — GOLD-06 weather / GOLD-10 failure injection: the capability ships, the baseline is missing, and that is handled by scoping the verdict · **NOT A GAP** — the CRA note beside the new question: debt in a domain outside this slice. |
+| **Enforcement** | `aBoundedGapStaysBounded.test.js` (8). Asserts the two halves a test can honestly hold: the host is still told (through the reader the SHELL calls, not the mechanism underneath) and the justification is pinned. **Red-proofed**: patching `normRow` to accept a nameless row turns the pinned-justification test red, which is the point — the day the destination changes, the stale excuse fails instead of standing. Conditions 1 and 6 stay in the document, with a date: a test that greps a markdown file for its own paragraph is theatre. |
+| **Invariant** | None changed. #3 is why the excursions clause is disclosed at all. |
+| **Rollback risk** | **None** — one new test file, no runtime change. |
+| **Regression** | Full jest **618 suites / 8,502 passed**, 1 skipped. |
+
+---
+
+## D5 — Test / build reproducibility (brief §6)
+
+| Field | Detail |
+|---|---|
+| **Before behaviour** | The browser suite needs `REACT_APP_API_BASE_URL` baked into the Host V2 bundle, and that fact lived in **three places that disagreed**: `e2e/fixtures.mjs:3` said *"the e2e build bakes"* it (nothing local did), `playwright.config.mjs:239` said to run `npm run build` first (which bakes no `REACT_APP_*` at all — its own comment at :277 says so), and the only real definition was `checks.yml`'s `env:` block. Following the local comments produced a bundle the suite was never written against: 33 specs failed and the failures read as code defects. |
+| **Change** | `hostv2/package.json` gains `e2e:build` — the parity gate plus `REACT_APP_API_BASE_URL=https://e2e-mock.invalid vite build`. `checks.yml` now **calls that script** instead of carrying its own copy of the value. Both misleading comments point at it, with what following them used to cost. |
+| **The canonical command** | `cd hostv2 && npm run e2e:build && npm run test:e2e` |
+| **Why a script and not a paragraph** | Local and CI cannot drift apart when there is one definition, and the fake host is a never-resolving RFC 2606 `.invalid` name intercepted by `fixtures.mjs`'s global catch-all — nothing touches a network. |
+| **Verified** | `npm run e2e:build` exits 0 and the value is present in four built chunks (`HostShellV2`, `eventIdentityEngine`, `index`, `inviteShared`). |
+| **Rollback risk** | **Very low.** One script; CI calls it. Revert = restore the `env:` block. |

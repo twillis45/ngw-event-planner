@@ -79,7 +79,11 @@ npx playwright test --project=desktop        # expect 527 passed
 | **P1-2** normalized needs | one owner module; 2 consumers migrated | `src/lib/accessNeeds.js:70,137,196,214` · `seatingPlan.js:49,190` · `lodgingIntel.js:2073` | `oneAccessNeedOneAnswer.test.js` (29) + 2 browser |
 | **P1-3** clause resolution | 3 false alarms removed; sentence persisted | `smartParseEvent.js:1809` · `src/lib/heardClauses.js:85,100` · `HostShellV2.jsx:348,8257,9534,12119` | `iHeardThisTooAndThenWhat.test.js` (17) + 4 browser |
 | **P1-4** creation defects | `venueCity:"the"`; colour-pair theme | `smartParseEvent.js:55,1004` (town) · `:1590,1598` (theme) | `theTownAndTheColors.test.js` (14) |
-| **P1-5** consequence primitive | one rule, one raiser | `src/lib/openQuestions.js:72,107` · `surfaceRegistry.js:67,539` · `HostShellV2.jsx:12098` | `weNowNeedToKnow.test.js` (16) + 4 browser |
+| **P1-5** consequence primitive | one rule, one raiser | `src/lib/placeQuestions.js:92,115` · `surfaceRegistry.js:67,545` · `HostShellV2.jsx:12086` | `weNowNeedToKnow.test.js` (26) + 7 browser |
+| **D1** attendance provenance (0.5) | the canonical reader learns whose number it is | `playbooks/index.js:600` · `vendorAccountability/conflicts.js:8,167` | `thePlanningCountKnowsWhoseItIs` (16) · `anInventedCountIsNotAVendorConflict` (7) · `theHeadcountHasOneCanonicalReader` (5) |
+| **D2** clause derivation contract (0.5) | the composition root; no argument to forget | `src/lib/heardClauses.js:87,95,132` | `theClauseReadersAreNotOptional.test.js` (6) |
+| **D3** consequence abstraction (0.5) | two more cases; `openQuestions` → `placeQuestions` | `src/lib/placeQuestions.js:89,184` · `placeIntelligence.js:182` (the inert one) · `vendorAsks.js:82` | `weNowNeedToKnow.test.js` (26) + 7 browser |
+| **D4** bounded-gap governance (0.5) | 8 conditions → 11, enforced | `src/lib/itinerary.js:155` (the pinned justification) | `aBoundedGapStaysBounded.test.js` (8) |
 
 ---
 
@@ -176,12 +180,20 @@ the clause as dropped and needed a migration.
 trade-off? It is her own text and already in `localStorage`, but it is now also
 a durable field on a synced record.
 
-### 3.5 One raiser (`surfaceRegistry.js:539`, `openQuestions.js:72`)
+### 3.5 One raiser (`surfaceRegistry.js:545`, `placeQuestions.js:115`)
+
+> **RENAMED 2026-10-19 (Sprint 0.5 D3).** `openQuestions.js` is now
+> `placeQuestions.js`, with `openQuestionsFor` → `placeQuestionsFor`,
+> `answerOpenQuestionPatch` → `answerPlaceQuestionPatch` and registry id
+> `placequestions`. The coordinates in this section are the current ones; the
+> reasoning is in `SPRINT_0_5_ARCHITECTURE_DECISIONS.md` § Decision 3. The
+> module now holds a second rule (an outdoor permit question) of a materially
+> different shape.
 
 The mandate said explicitly not to add raisers for domain-count symmetry. This
 one requires all three of: a named venue, somebody needing a step-free route,
 and nobody having said whether that building has one. It cannot nag *for* a
-venue — `openQuestions.js:90` requires `venueName` truthy — which is what
+venue — `placeQuestions.js:133` requires `venueName` truthy — which is what
 GOLD-05 demands.
 
 The app does not answer it and cannot; it holds no accessibility data for any

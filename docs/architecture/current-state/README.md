@@ -1,18 +1,36 @@
 # Redesign architecture & capability-mapping gate — 2026-10-18
 
+*Extended 2026-10-19 with the Sprint 0 and Sprint 0.5 records (documents 11-14).
+The gate documents 1-10 are the planning package and were produced with no
+runtime change; Sprint 0 and 0.5 changed runtime code and say so per row.*
+
 Repository-grounded planning package produced **before** redesign
 implementation. **No runtime code was modified.** Runtime evidence outranks
 documentation throughout; where the two disagree, the code wins and the
 disagreement is recorded.
 
-## Verdict
+## Verdict — current
 
-# NOT READY FOR REDESIGN IMPLEMENTATION
+# READY FOR PEOPLE/ATTENDANCE REDESIGN
+
+**2026-10-19, after Sprint 0 (eight slices) and Sprint 0.5 (four architecture
+decisions).** Deliberately narrower than "ready for the redesign": ready for
+**Guests → Attendance → Consequence**, and not for Weather/Day-of or the
+failure paths, which still have no browser baseline. The boundary — what is in,
+what is out, canonical readers and writers, routes, persistence, required tests
+— is at the end of `REDESIGN_IMPLEMENTATION_PLAN.md`.
+
+<details>
+<summary><strong>The gate verdict this replaced (2026-10-18): NOT READY</strong></summary>
 
 Five specific blockers, listed in `REDESIGN_IMPLEMENTATION_PLAN.md`. The
 engine layer is in **better** shape than the brief assumed; the blockers are
 concentrated in creation wiring, a duplicated guest-count authority, and two
 surfaces that were never captured in a browser.
+
+All five are closed; two of the five were stated with numbers that turned out to
+be wrong, and the corrections are recorded rather than quietly fixed.
+</details>
 
 ## Documents
 
@@ -28,6 +46,10 @@ surfaces that were never captured in a browser.
 | 8 | [`REDESIGN_SURFACE_PARITY_MANIFEST.md`](REDESIGN_SURFACE_PARITY_MANIFEST.md) | 31 sheets + 4 stages → future doors; what `sections` is protecting |
 | 9 | [`GOLD_E2E_ACCEPTANCE_MATRIX.md`](GOLD_E2E_ACCEPTANCE_MATRIX.md) | GOLD-01..10 against 124 existing specs |
 | 10 | [`REDESIGN_IMPLEMENTATION_PLAN.md`](REDESIGN_IMPLEMENTATION_PLAN.md) | **INVARIANTS (14)**, P0/P1/P2 sequence, CommandCenter extraction proof, verdict |
+| 11 | [`SPRINT_0_MIGRATION_LEDGER.md`](SPRINT_0_MIGRATION_LEDGER.md) | One row per change, Sprint 0 (8 slices) + Sprint 0.5 (5): before → change → invariant → tests → consumers → rollback risk |
+| 12 | [`SPRINT_0_VERDICT.md`](SPRINT_0_VERDICT.md) | The ten GOLD cases and fourteen invariants re-run after Sprint 0 |
+| 13 | [`SPRINT_0_EXTERNAL_BRIEF.md`](SPRINT_0_EXTERNAL_BRIEF.md) | The same findings as coordinates (file:line + reproduction commands) for an outside reviewer with repo access |
+| 14 | [`SPRINT_0_5_ARCHITECTURE_DECISIONS.md`](SPRINT_0_5_ARCHITECTURE_DECISIONS.md) | **Attendance semantics · clause derivation contract · consequence abstraction (3 cases) · bounded-gap governance (11 conditions)** |
 
 ## The five findings that changed the plan
 

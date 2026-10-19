@@ -22,6 +22,15 @@ capability gap remains and is **BOUNDED** under the rule adopted mid-sprint:
 named, not implied by any surface, and covered by a test proving the app does
 not claim what it lacks.
 
+> **SUPERSEDED IN PART, 2026-10-19.** That three-condition rule is now
+> **eleven** conditions, enforced by a test, and this verdict's own gap was
+> re-measured against it: `SPRINT_0_5_ARCHITECTURE_DECISIONS.md` § Decision 4.
+> `"2 excursions"` still passes — on better evidence than the paragraph below
+> had — and a **second** bounded gap was found and declared. Sprint 0.5 also
+> found that one thing this document would have called a bounded gap was a
+> blocker, and fixed it. Where this file and Decision 4 disagree about the
+> rule, Decision 4 is the rule.
+
 ---
 
 ## The five gate blockers
@@ -72,7 +81,7 @@ is bounded.
 | 7 | Every working capability needs a durable door before the old one retires | **HELD** | Parity gate green; nothing retired this sprint |
 | 8 | A guessed headcount must not become money, or leave the app | **ENFORCED** | The outward payload and both money modules; the route-around via `guestCountResolved` removed |
 | 9 | No parallel math | **HELD, and improved** | No new math added. `accessNeeds` *removed* a parallel implementation (two vocabularies, two source fields) |
-| 10 | Venue truth is read through `venueFor`, never raw fields | **HELD** | `openQuestions` reads `venueFor`; `venueSourceProof` green |
+| 10 | Venue truth is read through `venueFor`, never raw fields | **HELD** | `placeQuestions` (named `openQuestions` until Sprint 0.5 D3) reads `venueFor`; `venueSourceProof` green |
 | 11 | One vendor-status vocabulary | **HELD** | Untouched |
 | 12 | The app must not invent a fact a venue has not supplied | **ENFORCED** | P1-5 is this invariant made actionable: it asks, names who can answer, and refuses to guess — asserted by a no-hedging-verb test |
 | 13 | An event that began free stays free | **ENFORCED** | Reinforced by #1; a guess can no longer reach `passVerdictAtCreation` |
@@ -133,6 +142,23 @@ Bounded under the rule adopted 2026-10-18:
 
 It will leave the list on its own the day a consumer can read it, on every
 existing event, with nothing to backfill.
+
+**RE-MEASURED 2026-10-19 against the eleven-condition rule (D4), and the
+evidence improved.** Condition 2 is no longer an argument about what a vendor
+row needs: `src/lib/itinerary.js:155` — the destination's own normaliser —
+drops any programme row with no thing named (`if (!title) return null`). The
+host named no outing, so the one structure that could hold the count would
+throw it away, and writing `"Excursion 1"` to give it a home would invent the
+thing she never said. That fact is now pinned by a test, so if `normRow` ever
+accepts a nameless row this gap is re-adjudicated instead of coasting.
+
+**A SECOND BOUNDED GAP, declared 2026-10-19.** Every event that already exists
+has **no stored sentence**, so "what did you not use from what I typed?" has no
+answer for it and cannot be backfilled — P1-3 stores the sentence from creation
+forward and nothing can reconstruct it backwards. Honest handling is silence:
+`heardNotUsedFor` returns `[]`, not a guess and not an error the host must read.
+Disposition **superseded**, and the test proves the supersession is real rather
+than asserted — an event created today does carry the list.
 
 ---
 

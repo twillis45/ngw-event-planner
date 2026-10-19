@@ -299,10 +299,15 @@ jobs:
       # so isUnfurlConfigured() was false and the two specs that depend on it
       # could never pass in CI — found live, 2026-08-06, trying to merge this
       # PR with a red e2e gate.
-      - run: npm run build
+      #
+      # IT IS A SCRIPT NOW (2026-10-19). The fake host used to live only in this
+      # `env:` block, so a local run of this suite had no way to reproduce the
+      # bundle CI tests — `npm run build` bakes no REACT_APP_* and the suite's
+      # own comments pointed at it. 33 specs failed that way in Sprint 0.
+      # hostv2/package.json's e2e:build now holds the one definition and this
+      # job calls it, so local and CI cannot drift apart again.
+      - run: npm run e2e:build
         working-directory: hostv2
-        env:
-          REACT_APP_API_BASE_URL: https://e2e-mock.invalid
       # PW_BLOB switches the reporter to `blob` (playwright.config.mjs), which is
       # the only format `merge-reports` can recombine. Local runs keep `list`.
       # THE DENOMINATOR IS DERIVED, NOT RESTATED. `strategy.job-total` is the

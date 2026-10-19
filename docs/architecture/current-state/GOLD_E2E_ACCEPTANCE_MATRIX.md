@@ -38,3 +38,27 @@ where two authorities disagree. This is the single most valuable spec to write
 and the easiest to lose. Adding a venue raiser (recommended elsewhere) could
 break it by producing "choose a venue" on an event that already has one. The
 raiser must read `venueFor().addressSettled` — the verdict that already exists.
+
+---
+
+## RE-MEASURED 2026-10-19 (after Sprint 0 and Sprint 0.5)
+
+The table above is the **gate-time** assessment and is kept as that record. Four
+rows have materially changed; the rest stand. `hostv2/e2e/` is now **129** spec
+files (counted, not estimated).
+
+| ID | Then | Now | Evidence |
+|---|---|---|---|
+| **GOLD-03** | *"'2 excursions' dropped — no activity schema"* | **BOUNDED, and the blocking dependency was named wrong.** It is not "excursion schema (P2)". The schema exists (`event.itinerary`, read by `itinerary.js`); what the host gave does not satisfy it. `itinerary.js:155` drops a programme row with no thing named, so a count of unnamed outings has nowhere truthful to go and inventing `"Excursion 1"` would fabricate it. Disclosed and answerable instead. | D4 ACCEPT · `aBoundedGapStaysBounded` |
+| **GOLD-04** | **hard blocker** — no normalized needs model | **CLOSED.** `accessNeeds.js` owns one vocabulary; wired to seating and lodging; the deliberately-unreached `place` domain now raises an answerable question instead of going quiet. | P1-2, P1-5 · `theWalkerReachesThePlan.spec.mjs` |
+| **GOLD-07** | *"no single spec walks the cascade"* | **CLOSED.** `gold07RsvpCascade.spec.mjs` walks public RSVP → attendance → food → shopping → seating → money → rerank, 9 asserted boundaries, on its own bundle for the backend leg. Seating/rain baselined beside it. | P1-1 · `seatingAndRainBaseline.spec.mjs` |
+| **GOLD-06** | weather has no e2e | **STILL OPEN, and it is the reason both verdicts are scoped.** Under D4 this is **not a capability gap**: weather ships, the baseline is missing. A coverage risk is handled by narrowing the verdict, never by bounding a gap. | D4 example 5 |
+
+**New browser specs since the gate:** `gold07RsvpCascade` (2 tests / 9
+boundaries) · `seatingAndRainBaseline` (9) · `theWalkerReachesThePlan` (2) ·
+`theClauseGetsAnAnswer` (4) · `weNowNeedToKnow` (7). All routed desktop-only via
+`VIEWPORT_INDEPENDENT`.
+
+**Run them with** `cd hostv2 && npm run e2e:build && npm run test:e2e` — not
+`npm run build`, which bakes no `REACT_APP_*` and costs 33 false failures. See
+Sprint 0.5 ledger row D5.
