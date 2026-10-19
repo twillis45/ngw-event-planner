@@ -74,6 +74,10 @@ const VIEWPORT_INDEPENDENT = [
   // whether a clause the app reads is wrongly listed, whether "Noted" sticks
   // across a reload. No geometry.
   '**/theClauseGetsAnAnswer.spec.mjs',
+  // ── THE CONSEQUENCE PRIMITIVE (P1-5, 2026-10-18) ───────────────────────
+  // Four tests on text and stored state, two of them negative controls. The
+  // question, its stated reason, and whether an answer sticks. No geometry.
+  '**/weNowNeedToKnow.spec.mjs',
   // ── THE FOUR THAT TIMED SHARD 3 OUT (2026-10-06) ────────────────────────
   // These landed the same day and each drives the REAL creation flow — clear
   // storage, type the 179-character seed, wait for the parse, assemble, open

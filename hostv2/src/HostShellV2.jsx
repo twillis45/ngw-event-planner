@@ -129,6 +129,7 @@ import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds } from '@app/lib/accessNeeds';
 import { heardNotUsedFor, acknowledgeClausePatch } from '@app/lib/heardClauses';
+import { openQuestionsFor, answerOpenQuestionPatch } from '@app/lib/openQuestions';
 
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
@@ -12073,6 +12074,46 @@ export default function HostShellV2() {
                       the differential stops reporting it, on every existing event,
                       with nothing to backfill — which is why heardClauses stores
                       her SENTENCE and not the list derived from it. */}
+                  {/* ── A QUESTION A DECISION MADE RELEVANT (P1-5) ──────────────
+                      Not a checklist and not a form. It appears only when a
+                      decision she already made turned something into a live
+                      unknown — v1's single case being a named venue plus
+                      somebody who needs a step-free route. accessNeeds.js
+                      records `place` as a domain it deliberately does not
+                      reach, because a step-free requirement cannot be checked
+                      against a venue the app knows nothing about. Naming a
+                      specific building is what changes that.
+
+                      THE APP DOES NOT ANSWER IT. It holds no accessibility
+                      data for any venue, so it says who to ask and records
+                      what she finds out. "No" closes it exactly as "Yes"
+                      does — there are steps is an answer, not a question. */}
+                  {(() => {
+                    let qs = [];
+                    try { qs = openQuestionsFor(event) || []; } catch { qs = []; }
+                    if (!qs.length) return null;
+                    return (
+                      <div className="line" style={{ display: 'block', marginTop: 12, padding: 'var(--sp-2) 0',
+                        borderTop: '1px solid var(--line)' }}>
+                        <div className="shelf-label" style={{ marginBottom: 4 }}>Worth finding out</div>
+                        {qs.map((q) => (
+                          <div key={q.id} style={{ padding: '6px 0' }}>
+                            <div className="f-name" style={{ fontSize: 'var(--t-body)' }}>{q.question}</div>
+                            <p className="grounding" style={{ margin: '2px 0 6px' }}>{q.because}{q.askWho ? ` Ask ${q.askWho}.` : ''}</p>
+                            <div className="line" style={{ gap: 'var(--sp-1)', padding: 0 }}>
+                              {[['Yes', true], ['No', false]].map(([label, val]) => (
+                                <button key={label} className="chip" style={{ minHeight: 44 }}
+                                  onClick={() => {
+                                    const patch = answerOpenQuestionPatch(q, val);
+                                    if (patch) patchEvent(patch, val ? 'Good — noted.' : 'Noted — the plan knows there are steps.');
+                                  }}>{label}</button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   {(() => {
                     let owed = [];
                     try { owed = heardNotUsedFor(event, { alsoDerives: SEAM_READERS }); } catch { owed = []; }

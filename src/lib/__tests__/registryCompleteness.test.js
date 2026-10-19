@@ -78,6 +78,26 @@ const CONTRACT_IDS = [
   // vendorPlan's `booked`, because that field means a row EXISTS in the category
   // — a Shortlisted caterer is matched and not booked, which is the whole case.
   'vendor-unbooked',
+  // ── THE CONSCIOUS EDIT, AGAIN (2026-10-18, Sprint 0 P1-5) ───────────────
+  // 'openquestions' is the ONE raiser that slice adds, and the brief it came
+  // from warns by name against raisers added for domain-count symmetry. This
+  // one is here on the merits: derive-on-read answers "given what is known,
+  // what is true?" and had no way to say "answering that has made a DIFFERENT
+  // question relevant, and nobody has asked it."
+  //
+  // Its only v1 condition is narrow and all three parts are required: the host
+  // has NAMED A VENUE, somebody NEEDS A STEP-FREE ROUTE, and nobody has said
+  // whether that building has one. P1-2 recorded `place` as a domain the
+  // access model deliberately does NOT reach, because a step-free requirement
+  // cannot be checked against a venue the app knows nothing about — and that
+  // stops being the whole story the moment a specific building is named.
+  //
+  // The app does not answer it and cannot: it holds no accessibility data for
+  // any venue. Naming the unknown is honest; guessing it would be the
+  // fabricated consequence Sprint 0 exists to prevent. Answered — INCLUDING
+  // answered "no" — closes it, because "there are steps" is information the
+  // plan can use and not an open question.
+  'openquestions',
   // 'dues-unpriced' closes the cost-sharing hole found 2026-08-17: the surface
   // had a sheet, an engine and a section-directory row, and NOTHING that could
   // raise. It raises about the host's own unfinished setup — a declared pool

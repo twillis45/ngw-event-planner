@@ -64,6 +64,7 @@ import { playbookRisks, playbookDecisionBoard } from './playbooks';
 import { raisesToCommandBoard } from './riskSeverity';
 import { evidenceFromDecisionRow } from './decisionEvidence';
 import { daysUntil, isEventDay, isPastEvent, daysUntilEnd, rsvpDeadlineFor } from './dates';
+import { openQuestionsFor } from './openQuestions';
 import { rsvpHasResponded } from './rsvp';
 import { buildVendorPlan } from './vendorPlan';
 import { venueFor } from './venueFor';
@@ -516,6 +517,47 @@ export const SURFACES = [
       }];
     },
   },
+  // ── An open question a decision made relevant ──────────────────────────────
+  // Sprint 0 P1-5. The ONE raiser added by that slice, and it is here on the
+  // merits rather than for domain symmetry — the brief warns against the
+  // latter by name.
+  //
+  // The attention condition is real and narrow: the host has named a venue AND
+  // somebody needs a step-free route AND nobody has said whether that building
+  // has one. All three. Drop any and this raises nothing: no venue, nothing to
+  // ask about; no access need, a question she never asked for; already
+  // answered, including answered "no", which is information and not an open
+  // question.
+  //
+  // THE APP CANNOT ANSWER THIS ONE. It holds no accessibility data for any
+  // venue, and `accessNeeds.js` records `place` as a domain it deliberately
+  // does NOT reach for exactly that reason. Naming the unknown is the honest
+  // move; guessing it would be the fabricated consequence this sprint exists
+  // to prevent. 'attention', never 'critical' — it is a thing to find out, not
+  // an emergency, the same line the risks surface above draws.
+  {
+    id: 'openquestions',
+    label: 'Where it happens',
+    domain: 'venue',
+    route: { tab: 'Event Details' },
+    bundleTitle: (n) => `${n} things to find out`,
+    raise(event) {
+      if (isPastEvent(event && event.date)) return [];
+      let qs = [];
+      try { qs = openQuestionsFor(event) || []; } catch (_e) { return []; }
+      return qs.map((q) => ({
+        severity: 'attention',
+        title: q.question,
+        // The raise carries its own reason, because the board shows `why` and
+        // a question with no stated cause reads as a form field.
+        why: q.because,
+        ask: q.askWho ? `Ask ${q.askWho}.` : null,
+        route: q.route || { tab: 'Event Details' },
+        key: q.id,
+      }));
+    },
+  },
+
   {
     id: 'seating',
     label: 'Who sits where',
