@@ -79,8 +79,12 @@ const CONTRACT_IDS = [
   // — a Shortlisted caterer is matched and not booked, which is the whole case.
   'vendor-unbooked',
   // ── THE CONSCIOUS EDIT, AGAIN (2026-10-18, Sprint 0 P1-5) ───────────────
-  // 'openquestions' is the ONE raiser that slice adds, and the brief it came
-  // from warns by name against raisers added for domain-count symmetry. This
+  // Admitted as 'openquestions'; renamed to 'placequestions' on 2026-10-19
+  // after Sprint 0.5 Decision 3 tested the abstraction against two more
+  // consequence cases and found it was a DOMAIN producer, not a general one —
+  // and that `openQuestions` was already taken by CommunicationHub for a
+  // different concept. It is the ONE raiser the slice adds, and the brief it
+  // came from warns by name against raisers added for domain-count symmetry. This
   // one is here on the merits: derive-on-read answers "given what is known,
   // what is true?" and had no way to say "answering that has made a DIFFERENT
   // question relevant, and nobody has asked it."
@@ -97,7 +101,7 @@ const CONTRACT_IDS = [
   // fabricated consequence Sprint 0 exists to prevent. Answered — INCLUDING
   // answered "no" — closes it, because "there are steps" is information the
   // plan can use and not an open question.
-  'openquestions',
+  'placequestions',
   // 'dues-unpriced' closes the cost-sharing hole found 2026-08-17: the surface
   // had a sheet, an engine and a section-directory row, and NOTHING that could
   // raise. It raises about the host's own unfinished setup — a declared pool

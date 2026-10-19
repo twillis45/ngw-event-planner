@@ -64,7 +64,7 @@ import { playbookRisks, playbookDecisionBoard } from './playbooks';
 import { raisesToCommandBoard } from './riskSeverity';
 import { evidenceFromDecisionRow } from './decisionEvidence';
 import { daysUntil, isEventDay, isPastEvent, daysUntilEnd, rsvpDeadlineFor } from './dates';
-import { openQuestionsFor } from './openQuestions';
+import { placeQuestionsFor } from './placeQuestions';
 import { rsvpHasResponded } from './rsvp';
 import { buildVendorPlan } from './vendorPlan';
 import { venueFor } from './venueFor';
@@ -517,10 +517,16 @@ export const SURFACES = [
       }];
     },
   },
-  // ── An open question a decision made relevant ──────────────────────────────
-  // Sprint 0 P1-5. The ONE raiser added by that slice, and it is here on the
-  // merits rather than for domain symmetry — the brief warns against the
-  // latter by name.
+  // ── Questions only the outside world can answer about the PLACE ───────────
+  // Sprint 0 P1-5, renamed and narrowed by Sprint 0.5 Decision 3 after testing
+  // the abstraction against two further consequence cases. It carries TWO rules
+  // now, both triggered elsewhere (a person's need; a headcount) and both
+  // answered by somebody at or around the place — which is what makes them one
+  // module. The third case found, a booked vendor owing an arrival time, is
+  // answered by a VENDOR and already raises through `openArrivalAsks` above;
+  // it was deliberately not moved here.
+  //
+  // Still one surface, still no second ranker, still not a dependency graph.
   //
   // The attention condition is real and narrow: the host has named a venue AND
   // somebody needs a step-free route AND nobody has said whether that building
@@ -536,7 +542,7 @@ export const SURFACES = [
   // to prevent. 'attention', never 'critical' — it is a thing to find out, not
   // an emergency, the same line the risks surface above draws.
   {
-    id: 'openquestions',
+    id: 'placequestions',
     label: 'Where it happens',
     domain: 'venue',
     route: { tab: 'Event Details' },
@@ -544,7 +550,7 @@ export const SURFACES = [
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let qs = [];
-      try { qs = openQuestionsFor(event) || []; } catch (_e) { return []; }
+      try { qs = placeQuestionsFor(event) || []; } catch (_e) { return []; }
       return qs.map((q) => ({
         severity: 'attention',
         title: q.question,

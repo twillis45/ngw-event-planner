@@ -106,3 +106,44 @@ test('"No" closes it as firmly as "Yes", and the answer survives a reload', asyn
   });
   expect(stored.venueStepFree).toBe(false);
 });
+
+// ─── CASE 2 ON SCREEN: THE PERMIT (Sprint 0.5 Decision 3) ───────────────────
+//
+// `placeIntelligence.js:182` has pushed this exact sentence as an inert NOTE
+// inside a card since long before any of this existed — unraised,
+// unanswerable, unresolvable, and `derivePlaceIntelligence` is not in
+// surfaceRegistry at all. This proves the same truth now reaches the board as
+// something the host can answer.
+test('a big outdoor event is asked about a permit, and the app does not answer it', async ({ page }) => {
+  await boot(page, EV({
+    id: 'e2e-permit', venue: 'Cedar Park pavilion',
+    guestMode: 'count', guestCount: undefined, guestEstimate: 60, guestCountSource: 'host',
+  }));
+  const body = await bodyText(page);
+  expect(body).toMatch(/Worth finding out/i);
+  expect(body).toMatch(/Does this need a city or park permit\?/i);
+  expect(body).toMatch(/outdoor event for 6\d/);
+  // Named, never asserted: permit rules are per-city and this app holds none.
+  expect(body).toMatch(/Ask your city or parks office/i);
+});
+
+test('NEGATIVE CONTROL — an app-invented headcount does not manufacture a permit question', async ({ page }) => {
+  // The sharpest guard in the slice. A fabricated consequence is worse than a
+  // missing one: it would send a host to a city office over a number she never
+  // gave. attendanceBand's countFromHost refuses it.
+  await boot(page, EV({
+    id: 'e2e-permit-invented', venue: 'Cedar Park pavilion',
+    guestMode: 'count', guestCount: undefined, guestEstimate: 60, guestCountSource: 'playbook-typical',
+  }));
+  const body = await bodyText(page);
+  expect(body).not.toMatch(/city or park permit/i);
+});
+
+test('NEGATIVE CONTROL — a small outdoor event is not asked', async ({ page }) => {
+  await boot(page, EV({
+    id: 'e2e-permit-small', venue: 'Cedar Park pavilion',
+    guestMode: 'count', guestCount: undefined, guestEstimate: 12, guestCountSource: 'host',
+  }));
+  const body = await bodyText(page);
+  expect(body).not.toMatch(/city or park permit/i);
+});

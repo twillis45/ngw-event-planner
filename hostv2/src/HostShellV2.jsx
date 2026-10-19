@@ -129,7 +129,7 @@ import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch } from '@app/lib/heardClauses';
-import { openQuestionsFor, answerOpenQuestionPatch } from '@app/lib/openQuestions';
+import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuestions';
 
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
@@ -12083,7 +12083,7 @@ export default function HostShellV2() {
                       does — there are steps is an answer, not a question. */}
                   {(() => {
                     let qs = [];
-                    try { qs = openQuestionsFor(event) || []; } catch { qs = []; }
+                    try { qs = placeQuestionsFor(event) || []; } catch { qs = []; }
                     if (!qs.length) return null;
                     return (
                       <div className="line" style={{ display: 'block', marginTop: 12, padding: 'var(--sp-2) 0',
@@ -12097,7 +12097,7 @@ export default function HostShellV2() {
                               {[['Yes', true], ['No', false]].map(([label, val]) => (
                                 <button key={label} className="chip" style={{ minHeight: 44 }}
                                   onClick={() => {
-                                    const patch = answerOpenQuestionPatch(q, val);
+                                    const patch = answerPlaceQuestionPatch(q, val);
                                     if (patch) patchEvent(patch, val ? 'Good — noted.' : 'Noted — the plan knows there are steps.');
                                   }}>{label}</button>
                               ))}
