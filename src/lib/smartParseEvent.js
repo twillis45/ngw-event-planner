@@ -45,6 +45,15 @@ const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 
 // Saturdays from (meteorological seasons, not exact solstice dates).
 const SEASON_MONTH = { winter: 0, spring: 3, summer: 6, fall: 9, autumn: 9 };
 
+// ─── WORDS THAT ARE NEVER A PLACE ───────────────────────────────────────────
+// Months, weekdays, and the handful of determiners that sit where a town name
+// sits. Lived inside parseSmartEventText until 2026-10-18 and was therefore
+// invisible to the one branch that needed it most: the spelled-out-state
+// matcher runs ~100 lines ABOVE the old declaration, so referencing it there
+// was a temporal-dead-zone throw and it simply had no guard. That is how
+// "40 guests in the Maryland/DC area" committed `venueCity: "the"`.
+const NOT_A_PLACE = /^(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|the|our|my|zoom)$/i;
+
 export function parseSmartEventText(text, opts = {}) {
   const t = String(text || '');
   const now = opts.now instanceof Date && !isNaN(opts.now) ? opts.now : new Date();
@@ -974,7 +983,26 @@ export function parseSmartEventText(text, opts = {}) {
       'i');
     const m = t.match(re);
     if (!m) return null;
-    return tryLoc(m[1].trim(), m[2].trim());
+    // ── THE `i` FLAG ATE THE PROPER-NOUN TEST (2026-10-18, Sprint 0 P1-4) ──
+    // The pattern is written `([A-Z][a-zA-Z…]+)\s+(<state names>)`, and that
+    // leading [A-Z] is load-bearing — the comment ~80 lines up calls the
+    // capital "a cheap proper-noun test standing between 'in the backyard' and
+    // a fabricated destination event." But `i` is on the whole regex so the
+    // state names can be typed in any case, and a case-insensitive [A-Z]
+    // matches lowercase. The test silently stopped happening, and
+    // "40 guests in the Maryland/DC area" committed `venueCity: "the"` — which
+    // geocodes to nothing, taking weather, the shopping list, lodging search
+    // and maps quietly down with it.
+    //
+    // Guarded by name rather than by re-tightening the case, because the flag
+    // is genuinely wanted for the state half and splitting the pattern in two
+    // would be a bigger change than the defect. NOT_A_PLACE is this file's own
+    // list and already names `the`, `our` and `my`; it moved to module scope
+    // in this commit for no other reason than that this branch could not see
+    // it from here.
+    const town = m[1].trim();
+    if (!town || town.split(/\s+/).some((w) => NOT_A_PLACE.test(w))) return null;
+    return tryLoc(town, m[2].trim());
   })();
 
   const locZip = locName || (() => {
@@ -1069,7 +1097,6 @@ export function parseSmartEventText(text, opts = {}) {
   //
   // Guarded against the obvious false friends: "in June", "in Saturday" and
   // bare years are not places.
-  const NOT_A_PLACE = /^(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|the|our|my|zoom)$/i;
   //
   // The multi-word capture must be TRIMMED, not just head-checked. "Reunion in
   // Annapolis Aug 3" matches "Annapolis Aug" — two capitalised words — and
@@ -1533,11 +1560,43 @@ export function parseSmartEventText(text, opts = {}) {
   // A real signal the host said; carried so the caller can seed the event's theme
   // instead of dropping it. Captured as the raw phrase, never invented.
   let theme = null;
+  let themeBasis = null;
   const thm = t.match(/\b([a-z][a-z\s&/-]{1,28}?)[- ]themed?\b/i)
     || t.match(/\btheme\s*(?:is|:)?\s*([a-z][a-z\s&/-]{1,28}?)(?:[,.]|$)/i);
   if (thm && thm[1]) {
     const raw = thm[1].trim().replace(/\s+/g, ' ');
-    if (raw && !/^the$/i.test(raw)) theme = raw;
+    if (raw && !/^the$/i.test(raw)) { theme = raw; themeBasis = 'stated'; }
+  }
+
+  // ── A COLOUR PAIR IS A THEME, SAID THE COMMONEST WAY ────────────────────
+  //
+  // MEASURED 2026-10-18: "black and gold theme" → theme "black and gold";
+  // "black and gold" → NULL, with both words reported to the host under
+  // "Didn't make it into the plan". She said the same thing twice as far as
+  // she is concerned, and the way most people say it was the way that failed.
+  //
+  // NARROW ON PURPOSE, because a colour word in a sentence is not a decision:
+  //   · TWO OR MORE colours. "gold" alone is a word; a palette has a pairing.
+  //   · The run must be colours and separators and NOTHING else, so
+  //     "black tie optional" (a dress code) and "red velvet cake" (a cake)
+  //     are not palettes.
+  //   · A closed vocabulary. No part of this infers a colour it has not been
+  //     given a name for.
+  //
+  // Recorded as `themeBasis: 'colors'`, weaker than the host using the word,
+  // and kept distinguishable rather than flattened — the same provenance
+  // discipline as typeBasis and destinationBasis.
+  if (!theme) {
+    const C = 'black|white|gold|silver|ivory|cream|champagne|blush|rose|pink|red|burgundy'
+      + '|maroon|coral|peach|orange|amber|yellow|mustard|green|emerald|sage|mint|olive'
+      + '|teal|aqua|turquoise|blue|navy|cobalt|lavender|lilac|plum|violet|purple'
+      + '|brown|copper|bronze|tan|beige|taupe|grey|gray|charcoal|slate';
+    const pair = t.match(new RegExp(
+      `\\b((?:${C})(?:\\s*(?:,|&|/|and)\\s*(?:${C}))+)\\b`, 'i'));
+    if (pair && pair[1]) {
+      theme = pair[1].trim().replace(/\s+/g, ' ');
+      themeBasis = 'colors';
+    }
   }
 
   // ── Per-person money — "$200 a person", "per head", "each", "pp" ─────────────
@@ -1569,9 +1628,19 @@ export function parseSmartEventText(text, opts = {}) {
   //   and lung health is what predicts who struggles. "80th" is not evidence
   //   and must never reach this field.
   //
-  //   A MOBILITY AID. A walker is not a cardiopulmonary condition. "She uses a
-  //   walker" stays in the disclosure block, honestly declared, because no
-  //   slot exists for it and inventing one would be the worse error.
+  //   A MOBILITY AID. A walker is not a cardiopulmonary condition, and it
+  //   still never reaches THIS field.
+  //
+  //   UPDATED 2026-10-18 (Sprint 0 P1-2): the reason given here was "no slot
+  //   exists for it and inventing one would be the worse error." A slot now
+  //   exists — `accessNeeds`, written at the creation seam by
+  //   `heardAccessNeeds` in lib/accessNeeds.js — so "she uses a walker" is no
+  //   longer in the disclosure block. It resolves to a STEP-FREE REQUIREMENT,
+  //   which is a statement about a route and a seat, and never to a condition.
+  //   Deliberately not routed here: this field answers "does altitude or a
+  //   heart/lung problem put someone at risk", and a walker is not evidence of
+  //   either. Two different questions, two slots, neither borrowing the
+  //   other's meaning.
   //
   //   ALTITUDE AS SCENERY. "the altitude is beautiful", "we love the thin
   //   mountain air" — the clause has to say someone finds it HARD, not that a
@@ -1602,7 +1671,7 @@ export function parseSmartEventText(text, opts = {}) {
   })();
 
   return {
-    type, typeBasis, secondaryType, theme, guests, guestPairs, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    type, typeBasis, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     healthNoted,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,

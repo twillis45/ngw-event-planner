@@ -72,7 +72,14 @@ export const PARSER_FIELDS = [
   // It carries the host's WORDS, not a boolean, because the recommendation it
   // feeds quotes them back as its reason. Age and mobility aids are refused
   // at the parse; see smartParseEvent#healthNoted for why each.
-  'type', 'typeBasis', 'secondaryType', 'theme', 'guests', 'guestPairs', 'budget', 'date', 'endDate', 'monthYear', 'healthNoted',
+  // `themeBasis` added 2026-10-18 (Sprint 0 P1-4): 'stated' when the host used
+  // the word theme, 'colors' when a run of two or more colour words was read as
+  // a palette. Before it, "black and gold theme" set a theme and plain "black
+  // and gold" — the commoner phrasing — set nothing and reported both words as
+  // dropped. The basis is kept because reading a colour pair as a decision is a
+  // weaker claim than the host naming it, and flattening the two would lose
+  // that.
+  'type', 'typeBasis', 'secondaryType', 'theme', 'themeBasis', 'guests', 'guestPairs', 'budget', 'date', 'endDate', 'monthYear', 'healthNoted',
   // `nights` and `lodgingKind` added 2026-09-25, from a host-reported parse:
   // "50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb
   // accomodations". Measured, every duration phrase was discarded unless the
