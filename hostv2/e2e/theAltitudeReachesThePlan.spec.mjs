@@ -19,13 +19,33 @@ test('THE ALTITUDE REACHES THE PLAN: the pacing task is on the host\'s checklist
   await page.getByRole('button', { name: 'Start my event' }).first().click();
   await page.getByPlaceholder(/crab feast/i).first().fill(SEED);
 
-  // BEFORE assembling: the altitude clause is no longer disclaimed as dropped,
-  // and the walker still is — the app should keep saying what it genuinely
-  // cannot carry.
+  // ── UPDATED 2026-10-19 (Sprint 0 P1-2 + P1-3) ───────────────────────────
+  // This block used to assert the opposite of what it asserts now, and the
+  // change is the point rather than a concession.
+  //
+  // IT READ: the altitude clause is no longer disclaimed as dropped, and the
+  // walker STILL is — "the app should keep saying what it genuinely cannot
+  // carry." That was exactly right when it was written. `healthNoted` owned
+  // the altitude sentence and nothing owned the walker, so the disclosure
+  // block naming it was the honest answer, and `smartParseEvent#healthNoted`
+  // recorded the reason in as many words: a mobility aid "stays in the
+  // disclosure block, honestly declared, because no slot exists for it and
+  // inventing one would be the worse error."
+  //
+  // A SLOT NOW EXISTS. P1-2 normalised the walker into a step-free
+  // requirement (`accessNeeds`, written at the creation seam) and wired it to
+  // seating and lodging; P1-3 taught `unusedClauses` about the seam readers so
+  // a clause the app USES is no longer reported as dropped. Measured on this
+  // exact seed: the dropped list went from ["she uses a walker"] to [].
+  //
+  // So the honest assertion is now that NEITHER clause is disclaimed, because
+  // both have somewhere to live. The old assertion would hold the app to a
+  // disclosure it no longer owes — and this spec's own law is that a fact
+  // reaching an object and stopping there is the defect. Both facts now reach
+  // the plan, which is what this file exists to prove.
   const creation = await page.evaluate(() => document.body.innerText || '');
-  expect(creation).toMatch(/didn.t make it into the plan/i);
-  expect(creation).toMatch(/walker/i);
-  expect(creation).not.toMatch(/altitude/i);
+  expect(creation, 'the altitude clause is carried, not disclaimed').not.toMatch(/altitude/i);
+  expect(creation, 'and so is the walker clause, since P1-2 gave it a slot').not.toMatch(/didn.t make it into the plan/i);
 
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
   await page.getByRole('button', { name: /^Open your plan$/ }).click();

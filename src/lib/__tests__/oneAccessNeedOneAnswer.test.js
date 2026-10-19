@@ -284,3 +284,33 @@ describe('LODGING — the honoree who never RSVPs to her own party', () => {
     expect(hasStepFree(ev)).toBe(false);
   });
 });
+
+describe('the clause boundary is punctuation AND "and"', () => {
+  // THE SENTENCE THIS FEATURE WAS BUILT FOR, in full. The earlier tests put
+  // the walker clause at the end of the line, so they never caught that a
+  // trailing "and …" rode along inside the stored phrase.
+  const SEED = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
+    + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard, '
+    + 'she uses a walker and the altitude is hard on her';
+
+  test('the requirement carries the walker clause and nothing else', () => {
+    const got = heardAccessNeeds(SEED);
+    expect(got).toHaveLength(1);
+    expect(got[0].phrase).toBe('she uses a walker');
+  });
+
+  test('THE HEALTH CLAUSE DOES NOT RIDE ALONG — it has its own field', () => {
+    // `healthNoted` owns "the altitude is hard on her", deliberately and
+    // separately. An access requirement that quotes it would be putting a
+    // health statement inside a statement about a route.
+    const phrase = heardAccessNeeds(SEED)[0].phrase;
+    expect(phrase).not.toMatch(/altitude/i);
+    expect(phrase).not.toMatch(/hard on her/i);
+  });
+
+  test('one clause is one statement about one person, said twice or not', () => {
+    // "step-free and ground floor" is one need stated two ways. Two
+    // requirements would read as two people in lodging's "N asked about stairs".
+    expect(heardAccessNeeds('we need step-free access and a ground floor room')).toHaveLength(1);
+  });
+});

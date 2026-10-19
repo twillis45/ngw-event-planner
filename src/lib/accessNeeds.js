@@ -146,8 +146,30 @@ export function heardAccessNeeds(text) {
   const hits = [];
   for (const c of clauses) {
     if (!kind.match.test(c)) continue;
-    if (hits.some((h) => h.phrase.toLowerCase() === c.toLowerCase())) continue;
-    hits.push({ kind: kind.kind, phrase: c, source: 'host-said' });
+    // ── "and" IS A BOUNDARY TOO (fixed 2026-10-19) ─────────────────────────
+    // MEASURED on the Santa Fe seed this whole feature came from:
+    //   "…, she uses a walker and the altitude is hard on her"
+    // Punctuation alone kept that as ONE clause, so the stored phrase carried
+    // the altitude sentence inside it. Two distinct failures:
+    //
+    //   · it puts a HEALTH statement inside an access requirement, which this
+    //     module's own hard line forbids — and `healthNoted` is the field that
+    //     owns the altitude clause, deliberately and separately;
+    //   · the P1-5 question then reads "you said 'she uses a walker and the
+    //     altitude is hard on her' needs a step-free route", conflating two
+    //     different facts in a sentence shown to the host.
+    //
+    // The first tests put the walker clause at the end of the line, so they
+    // never caught it. The sentence the feature was built for did.
+    //
+    // AT MOST ONE REQUIREMENT PER PUNCTUATED CLAUSE. "step-free and a ground
+    // floor room" is one person's need said twice, not two people — and two
+    // requirements would read as two in lodging's "N people asked about
+    // stairs". One clause is one statement about one person.
+    const part = c.split(/\s+and\s+/i).map((x) => x.trim())
+      .find((x) => x && kind.match.test(x)) || c;
+    if (hits.some((h) => h.phrase.toLowerCase() === part.toLowerCase())) continue;
+    hits.push({ kind: kind.kind, phrase: part, source: 'host-said' });
   }
   return hits;
 }

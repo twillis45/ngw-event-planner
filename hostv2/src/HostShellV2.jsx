@@ -12097,7 +12097,7 @@ export default function HostShellV2() {
                         borderTop: '1px solid var(--line)' }}>
                         <div className="shelf-label" style={{ marginBottom: 4 }}>Worth finding out</div>
                         {qs.map((q) => (
-                          <div key={q.id} style={{ padding: '6px 0' }}>
+                          <div key={q.id} style={{ padding: '8px 0' }}>
                             <div className="f-name" style={{ fontSize: 'var(--t-body)' }}>{q.question}</div>
                             <p className="grounding" style={{ margin: '2px 0 6px' }}>{q.because}{q.askWho ? ` Ask ${q.askWho}.` : ''}</p>
                             <div className="line" style={{ gap: 'var(--sp-1)', padding: 0 }}>
