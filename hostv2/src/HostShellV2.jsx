@@ -127,6 +127,7 @@ import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
+import { heardAccessNeeds } from '@app/lib/accessNeeds';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -8224,6 +8225,16 @@ export default function HostShellV2() {
       // not honour — searching "hotels in Santa Fe" for a host who asked for a
       // resort spa hands back the wrong results.
       ...(() => { const st = heardStayStyle(smartText); return st ? { lodgingStyle: st } : {}; })(),
+      // ── AN OPERATIONAL NEED SHE STATED (2026-10-18, Sprint 0 P1-2) ──────
+      // The measured case this whole surface's "Didn't make it into the plan"
+      // list was built for: "…sit-down lunch, she uses a walker" — both halves
+      // vanished, and :9455 already records why mobility mattered for that
+      // 80th. The need now has somewhere to live, matched against
+      // accessNeeds.js's own vocabulary and written only when her words
+      // actually matched — the same seam and the same rule as lodgingWants
+      // directly above. NO DIAGNOSIS is derived, and "she" is never resolved
+      // to a guest.
+      ...(() => { const an = heardAccessNeeds(smartText); return an.length ? { accessNeeds: an } : {}; })(),
       budget: [],
       guests: [], vendors: [], timeline: [],
     };

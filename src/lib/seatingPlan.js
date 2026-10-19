@@ -46,6 +46,7 @@
 
 import { playbookCapacity } from './playbooks';
 import { seatsForTable, tableTypeOf } from './tableTypes';
+import { guestNeedsStepFree } from './accessNeeds';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -176,12 +177,17 @@ export function filterGuestsByName(list, query) {
  */
 // A guest needs an accessible seat if the redesigned invite's structured
 // `access` array says so, OR (legacy / typed) the free-text `needs` matches.
-const NEEDS_ACCESSIBLE_RE = /wheel|accessib|\bada\b|step-?free|mobility/i;
-export function guestNeedsAccessibleSeat(g) {
-  if (!g) return false;
-  const access = Array.isArray(g.access) ? g.access.join(' ') : '';
-  return NEEDS_ACCESSIBLE_RE.test(access) || NEEDS_ACCESSIBLE_RE.test(String(g.needs || ''));
-}
+//
+// ── THE VOCABULARY MOVED OUT (2026-10-18, Sprint 0 P1-2) ───────────────────
+// This used to own a private `/wheel|accessib|ada|step-free|mobility/`, and
+// lodgingIntel owned a different one that DID include "walker" — the word the
+// measured 80th-birthday case actually used ("she uses a walker"). So the same
+// guest got a ground-floor bedroom and no reachable seat. Both now read one
+// list in `accessNeeds.js`; this function keeps its name and its contract
+// because 8 call sites and the seating e2e depend on it.
+// Imported, not re-exported straight through: `export { x } from` creates no
+// local binding, and this module calls it twice below (:203, :221).
+export const guestNeedsAccessibleSeat = guestNeedsStepFree;
 
 export function dietChipsFor(confirmed) {
   if (!Array.isArray(confirmed) || !confirmed.length) return [];

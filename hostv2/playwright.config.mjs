@@ -65,6 +65,10 @@ const VIEWPORT_INDEPENDENT = [
   // Nothing measures a box, and nine tests across six more geometries would
   // buy fifty-four identical results.
   '**/seatingAndRainBaseline.spec.mjs',
+  // ── THE WALKER ACCEPTANCE CASE (P1-2, 2026-10-18) ──────────────────────
+  // Two tests, both on text: whether the house requirements carry a ticked
+  // step-free line and the reason under it. No geometry.
+  '**/theWalkerReachesThePlan.spec.mjs',
   // ── THE FOUR THAT TIMED SHARD 3 OUT (2026-10-06) ────────────────────────
   // These landed the same day and each drives the REAL creation flow — clear
   // storage, type the 179-character seed, wait for the parse, assemble, open

@@ -30,6 +30,7 @@
 import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
+import { accessNeedsFor } from './accessNeeds';
 import { isListingPhoto } from './lodgingBookmarklet';
 import { googleTravelTs } from './googleTravelTs';
 // LEAF IMPORT ON PURPOSE (2026-08-16). Importing this from './playbooks'
@@ -2057,7 +2058,19 @@ export function suggestedMustHaves(event) {
   }
   // WHO IS ACTUALLY COMING — the roster decides these, not the event type.
   // Step-free access and kid-readiness are real regardless of house or hotel.
-  const access = roster.filter((g) => g && /wheelchair|step-free|stairs|mobility|walker|cane|elder/i.test(String(g.needs || ''))).length;
+  // ── READS BOTH BOXES NOW (2026-10-18, Sprint 0 P1-2) ────────────────────
+  // This used to test `g.needs` ONLY, against its own private vocabulary. A
+  // guest who answered the redesigned invite — where the access answer is a
+  // STRUCTURED chip landing in `g.access[]`, not free text — was invisible
+  // here, so the house search never asked for a ground floor for her. Seating
+  // had the opposite blind spot (it read both fields but its vocabulary had no
+  // "walker"). One list in `accessNeeds.js` now, read by both.
+  // Counts the HOST's stated need as well as the roster's. "She uses a walker"
+  // typed at intake is about someone who may never appear as a roster row —
+  // the honoree usually does not RSVP to her own party — and the house still
+  // needs a ground floor. This is the one domain an unnamed need can reach
+  // truthfully, because the search is sized by the COUNT, not by who.
+  const access = accessNeedsFor(ev).requirements.length;
   if (access > 0) add('stepfree', `${access === 1 ? 'Someone' : access + ' people'} asked about stairs — a ground-floor bed and bath is the most overlooked thing in a group house.`, 'multigen-rental-fit');
   const kids = roster.reduce((n, g) => n + (Number(g && g.kids) || 0), 0) || Number(ev.kidsCount) || 0;
   if (kids > 0) add('kids', `${kids} ${kids === 1 ? 'child' : 'children'} coming — cribs, a fence and doors that close matter more than square footage.`, 'multigen-rental-fit');
