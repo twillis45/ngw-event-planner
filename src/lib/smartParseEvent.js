@@ -1711,8 +1711,49 @@ const _FILLER = new Set([
 export function unusedClauses(text, opts = {}) {
   const t = String(text || '').trim();
   if (t.length < 12) return [];
-  let full;
-  try { full = parseSmartEventText(t, opts); } catch { return []; }
+
+  // ── THE PARSER IS NOT THE ONLY THING THAT READS HER SENTENCE ─────────────
+  //
+  // MEASURED 2026-10-18, three clauses, all consumed and all reported dropped:
+  //
+  //   "a house with a hot tub"  → lodgingWants: ['hottub']   "Didn't make it"
+  //   "resort spa"              → lodgingStyle: 'resort spa' "Didn't make it"
+  //   "she uses a walker"       → accessNeeds: [...]         "Didn't make it"
+  //
+  // The creation seam (HostShellV2:8222-8224) calls `heardMustHaves`,
+  // `heardStayStyle` and `heardAccessNeeds` on the SAME text and writes real
+  // fields from them. This function only ever re-parsed, so everything those
+  // three consumed looked unread. Three false alarms in the mechanism whose
+  // own rule is that "a false alarm costs them the belief that the list means
+  // anything" — and the count grows by one every time a new seam consumer is
+  // added, which is exactly how the third one appeared.
+  //
+  // INJECTED, NOT IMPORTED. Reaching for `lodgingIntel` from here would drag
+  // it onto the parse path, and the parse path is on the guest invite's
+  // critical chunk — `guestPayloadGate.spec.mjs` exists because that import
+  // graph has regressed once already. The caller passes the functions it
+  // actually uses; this file stays leaf.
+  //
+  // The differential mechanism is UNCHANGED. It still asks "does removing this
+  // clause change what we derived?" — the only difference is that "what we
+  // derived" now means everything creation derives, not just the parse.
+  const alsoDerives = Array.isArray(opts.alsoDerives) ? opts.alsoDerives.filter((f) => typeof f === 'function') : [];
+  const derive = (s) => {
+    let p;
+    try { p = parseSmartEventText(s, opts); } catch { return null; }
+    if (!alsoDerives.length) return p;
+    const out = { ...p };
+    alsoDerives.forEach((fn, i) => {
+      // A seam consumer that throws must not be read as "derived nothing" —
+      // that would silently restore the false alarm it was added to remove.
+      // Null is a value; the comparison below treats it like any other.
+      try { out[`_derived${i}`] = fn(s); } catch { out[`_derived${i}`] = '__threw__'; }
+    });
+    return out;
+  };
+
+  const full = derive(t);
+  if (!full) return [];
   const same = (a, b) => {
     const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
     for (const k of keys) if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) return false;
@@ -1720,8 +1761,8 @@ export function unusedClauses(text, opts = {}) {
   };
   const unchanged = (without) => {
     if (!without || without === t) return false;
-    let p;
-    try { p = parseSmartEventText(without, opts); } catch { return false; }
+    const p = derive(without);
+    if (!p) return false;
     return same(p, full);
   };
 

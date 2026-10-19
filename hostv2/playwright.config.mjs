@@ -69,6 +69,11 @@ const VIEWPORT_INDEPENDENT = [
   // Two tests, both on text: whether the house requirements carry a ticked
   // step-free line and the reason under it. No geometry.
   '**/theWalkerReachesThePlan.spec.mjs',
+  // ── THE CLAUSE RESOLUTION LOOP (P1-3, 2026-10-18) ──────────────────────
+  // Four tests on text and stored state: whether the list outlives creation,
+  // whether a clause the app reads is wrongly listed, whether "Noted" sticks
+  // across a reload. No geometry.
+  '**/theClauseGetsAnAnswer.spec.mjs',
   // ── THE FOUR THAT TIMED SHARD 3 OUT (2026-10-06) ────────────────────────
   // These landed the same day and each drives the REAL creation flow — clear
   // storage, type the 179-character seed, wait for the parse, assemble, open

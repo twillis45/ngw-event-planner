@@ -41,7 +41,7 @@
 
 import { budgetTotal } from './budgetFor';
 import { guestCountIsConfirmed } from './guestCountFor';
-import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
+import { playbookFoodPlan, playbookCapacity } from './playbooks';
 import { buildCrabPlan } from './crabPlan';
 import { vendorOutstanding } from './vendorMoney';
 import { lodgingCommitted } from './lodgingIntel';
