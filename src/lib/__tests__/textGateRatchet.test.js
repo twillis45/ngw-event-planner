@@ -332,7 +332,19 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // app-invented headcount onto a contracted caterer. A classification that lives
 // in prose cannot stop the next one; this moves it into a gate that names the
 // canonical readers when it fails.
-const MAX_HOSTV2_TEXT_GATES = 55;
+//
+// ── 55 → 56 (2026-10-19, Sprint 0.5 Decision 2) ─────────────────────────────
+//
+// `theClauseReadersAreNotOptional.test.js`. Same class as the entry above and
+// the same reason: it asserts WHICH FILES call `unusedClauses` directly, which
+// is a fact about the source. No rendered assertion can observe that a module
+// does not import something, and the shell is where the migrated call site
+// lives, so the sweep has to read hostv2/src.
+//
+// It replaces a trap Sprint 0 documented and left open: correctness depended on
+// every caller remembering `opts.alsoDerives`, and forgetting it told the host
+// her sentence was not understood. The argument is gone; this keeps it gone.
+const MAX_HOSTV2_TEXT_GATES = 56;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

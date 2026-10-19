@@ -128,7 +128,7 @@ import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds } from '@app/lib/accessNeeds';
-import { heardNotUsedFor, acknowledgeClausePatch } from '@app/lib/heardClauses';
+import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch } from '@app/lib/heardClauses';
 import { openQuestionsFor, answerOpenQuestionPatch } from '@app/lib/openQuestions';
 
 import { foodSpanNote } from '@app/lib/foodSpan';
@@ -204,7 +204,7 @@ import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 // in a shell scheduled for deletion. The engine is unchanged and shared; only
 // the button is new here.
 import { instacartCart, instacartConfigured, INSTACART_FALLBACK, instacartSearchUrl } from '@app/lib/instacart';
-import { parseSmartEventText, unusedClauses, HOST_TYPES } from '@app/lib/smartParseEvent';
+import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
 // imports of its own — and it carries the two guards this shell was missing:
@@ -338,14 +338,7 @@ const readDeletedIds = () => {
 // lazy-load this host shell while the public invite (InviteV2) pulls only the
 // pool, not the whole shell. Re-imported here; the invite imports from eventPool.
 import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile, AVA_TINTS } from './eventPool.js';
-// ── EVERY READER OF THE HOST'S OWN SENTENCE, IN ONE PLACE ──────────────────
-// The parser is not the only thing that reads what she typed: three seam
-// consumers below run on the same text at creation (:8222-8224) and write real
-// fields from it. `unusedClauses` compares derivations, so it needs the whole
-// set or it reports as "didn't make it into the plan" everything these three
-// actually used. Declared ONCE so the creation screen and the post-creation
-// list cannot drift apart — the drift is silent and looks like data.
-const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle];
+
 
 const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
 
@@ -9531,7 +9524,7 @@ export default function HostShellV2() {
                         // and "she uses a walker" were all read AND all reported
                         // dropped. Three false alarms in the mechanism whose own rule
                         // is that a false alarm costs the host her belief in the list.
-                        try { dropped = unusedClauses(smartText, { alsoDerives: SEAM_READERS }); } catch { dropped = []; }
+                        try { dropped = clausesNotUsed(smartText); } catch { dropped = []; }
                         if (!dropped.length) return null;
                         return (
                           <div className="line" style={{ display: 'block', marginTop: 18, padding: 'var(--sp-2) 0',
@@ -12116,7 +12109,7 @@ export default function HostShellV2() {
                   })()}
                   {(() => {
                     let owed = [];
-                    try { owed = heardNotUsedFor(event, { alsoDerives: SEAM_READERS }); } catch { owed = []; }
+                    try { owed = heardNotUsedFor(event); } catch { owed = []; }
                     if (!owed.length) return null;
                     return (
                       <div className="line" style={{ display: 'block', marginTop: 12, padding: 'var(--sp-2) 0',

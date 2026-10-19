@@ -49,6 +49,54 @@
 //
 // PURE: no I/O, no UI, no storage. The caller persists.
 import { unusedClauses } from './smartParseEvent';
+import { heardAccessNeeds } from './accessNeeds';
+import { heardMustHaves, heardStayStyle } from './lodgingIntel';
+
+// ── THIS FILE IS THE COMPOSITION ROOT (Sprint 0.5 Decision 2) ──────────────
+//
+// `unusedClauses` is the differential MECHANISM and a good one. It is not the
+// public entry point, because its correctness used to depend on the caller
+// remembering a second argument:
+//
+//   unusedClauses(text, { alsoDerives: [...the three seam readers] })
+//
+// Forget it and the host is told her sentence was not understood — silently,
+// and looking like data, in the one list that exists to be trusted about
+// exactly that. Sprint 0 wrote the requirement into a doc comment. A doc
+// comment is not enforcement; that is the whole lesson of P0-2, where a
+// provenance field was written at every site and read by almost nothing.
+//
+// So the readers live HERE and are supplied, not requested. There is no second
+// argument to forget.
+//
+// WHY THE ROOT CAN BE THIS FILE, measured not assumed: the guest invite path
+// (InviteV2.jsx, inviteShared.js) imports neither this module nor the parser,
+// so composing the readers here adds nothing to the chunk a guest downloads —
+// the boundary `guestPayloadGate.spec.mjs` protects. And the parser is not made
+// to import the planning engine, which Sprint 0.5 forbids: the dependency
+// points down from the root, never up into the parser.
+//
+// NO REGISTRY, DELIBERATELY. A register-on-import registry would move
+// correctness from "did you pass the argument" to "was the module loaded
+// first" — the same bug in a hat you cannot see.
+//
+// ADDING A FUTURE SEAM CONSUMER is one line in this array. That is the whole
+// extension point, and it is the reason the list is here rather than inlined at
+// a call site: a new reader added to the creation seam and not to this list is
+// a new false alarm, and this is the one place a reviewer has to look.
+const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle];
+
+/**
+ * clausesNotUsed(text) → the clauses NOTHING in creation read.
+ *
+ * The canonical entry point. Takes the host's sentence and nothing else,
+ * because everything else is this module's job to know.
+ */
+export function clausesNotUsed(text) {
+  const t = String(text == null ? '' : text).trim();
+  if (!t) return [];
+  try { return unusedClauses(t, { alsoDerives: SEAM_READERS }) || []; } catch { return []; }
+}
 
 /** The status map's own name, so callers never hand-type the field. */
 export const CLAUSE_STATUS_FIELD = 'clauseStatus';
@@ -76,18 +124,15 @@ export function clauseIsAcknowledged(event, clause) {
  * answered. Empty — not an error — for any event created before the sentence
  * was kept, which is every event that exists today.
  *
- * `opts.alsoDerives` is passed straight through to `unusedClauses`, and the
- * caller MUST supply the same seam consumers creation used. Omitting them does
- * not break anything; it just restores the false alarms the injection removes
- * (a clause consumed by `heardAccessNeeds` or `heardMustHaves` reads as
- * dropped). Stated here because the failure is silent and looks like data.
+ * Takes the event and nothing else. The seam readers are this module's to
+ * supply — see the composition-root note at the top. Sprint 0 required the
+ * caller to pass them and said so in a doc comment here; Sprint 0.5 removed
+ * the argument instead, because the failure was silent and looked like data.
  */
-export function heardNotUsedFor(event, opts = {}) {
+export function heardNotUsedFor(event) {
   const text = String((event && event.createdFromText) || '').trim();
   if (!text) return [];
-  let dropped = [];
-  try { dropped = unusedClauses(text, opts) || []; } catch { return []; }
-  return dropped.filter((c) => !clauseIsAcknowledged(event, c));
+  return clausesNotUsed(text).filter((c) => !clauseIsAcknowledged(event, c));
 }
 
 /**

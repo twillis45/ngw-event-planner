@@ -147,19 +147,31 @@ describe('answering one makes it stop asking — and it is recoverable', () => {
 });
 
 describe('THE CANONICAL-WRITE PATH NEEDS NO MIGRATION', () => {
-  // The reason this stores the SENTENCE and not the list. The day a consumer
-  // starts reading a clause, the differential stops reporting it — on every
-  // existing event, with nothing to backfill. Simulated here by handing the
-  // reader a consumer that understands the clause, which is exactly what
-  // adding a real one does.
+  // The reason heardClauses stores the SENTENCE and not the list: the day a
+  // consumer starts reading a clause, the differential stops reporting it — on
+  // every existing event, with nothing to backfill.
+  //
+  // ASSERTED AT THE MECHANISM, not through the root (updated Sprint 0.5
+  // Decision 2). This property belongs to `unusedClauses` — it is the
+  // differential comparison that makes a new reader self-registering in the
+  // result. The first version simulated a future reader by passing one through
+  // `heardNotUsedFor(ev, opts)`, and that argument is gone on purpose: the root
+  // now supplies the readers so no caller can forget them. Adding a real seam
+  // consumer is one line in heardClauses' SEAM_READERS, which is what this
+  // simulates.
   test('a clause becomes canonical and leaves the list on its own', () => {
-    const ev = { id: 'ev-canon', type: 'Birthday', createdFromText: WALKER };
-    expect(heardNotUsedFor(ev, SEAM)).toContain('sit-down lunch');
+    expect(unusedClauses(WALKER, SEAM)).toContain('sit-down lunch');
 
     const readsSitDown = (text) => (/sit-down/i.test(text) ? { service: 'seated' } : null);
-    const after = heardNotUsedFor(ev, { alsoDerives: [...SEAM.alsoDerives, readsSitDown] });
+    const after = unusedClauses(WALKER, { alsoDerives: [...SEAM.alsoDerives, readsSitDown] });
     expect(after).not.toContain('sit-down lunch');
-    // And nothing was acknowledged to achieve it — the host was never asked.
+  });
+
+  test('and the canonical entry point needs no argument to get it right', () => {
+    const ev = { id: 'ev-canon', type: 'Birthday', createdFromText: WALKER };
+    expect(heardNotUsedFor(ev)).toContain('sit-down lunch');
+    expect(heardNotUsedFor(ev)).not.toContain('she uses a walker');
+    // Nothing was acknowledged to achieve that — the host was never asked.
     expect(ev.clauseStatus).toBeUndefined();
   });
 });
