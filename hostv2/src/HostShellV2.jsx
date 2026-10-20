@@ -24630,6 +24630,7 @@ export default function HostShellV2() {
                         deadlineOpen={deadlineOpen}
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={deadlineOpen ? renderDeadlineEditor() : null}
+                        quiet={false}
                         primary={inviteTiers.primary}
                         secondary={inviteTiers.secondary}
                         more={inviteTiers.more}
@@ -24743,6 +24744,10 @@ export default function HostShellV2() {
                       controls below it are untouched. */}
                   {peopleMode ? (
                     <div id="guests-invites-anchor" style={{ scrollMarginTop: 12 }}>
+                      {/* `quiet`: the estimate state's own "Plan for N" is the
+                          page's filled primary, so this block stays dominant
+                          inside its own band without putting a second filled
+                          CTA in the same viewport. */}
                       <GetResponses
                         invited={0}
                         outstanding={0}
@@ -24751,6 +24756,7 @@ export default function HostShellV2() {
                         deadlineOpen={deadlineOpen}
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={deadlineOpen ? renderDeadlineEditor() : null}
+                        quiet
                         primary={_inviteActs.share}
                         secondary={[_inviteActs.qr]}
                         more={[_inviteActs.preview]}

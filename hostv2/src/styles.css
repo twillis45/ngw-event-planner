@@ -7116,3 +7116,68 @@ button.vc-pill::after{
   font-size:var(--t-body-s); color:var(--faint);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
+
+/* ── THE PANEL'S CONTROLS LINE UP ──────────────────────────────────────────
+   With a subject at the top the fields underneath still read as a ragged flow:
+   `reply:` and four chips, then `kids:` and a stepper and a +1 input of some
+   other width, then a dietary field beside a destructive button, then `meal:`
+   beside a phone box. Every row a different rhythm, every input a different
+   width, and a Remove sitting at the same weight as a text field.
+
+   No markup changes — these are the production controls and their handlers.
+   What changes is that each row takes the full column, the inline labels line
+   up, and the inputs share one width, so the panel reads as a record of a
+   person rather than as whatever fitted. Scoped to the rail; the inline mobile
+   accordion keeps the flow layout, which is right in a 390px row. */
+.people-aside .gdetail .actions-row{
+  display:flex; flex-wrap:wrap; align-items:center;
+  gap:var(--sp-2); width:100%; margin:0 0 var(--sp-3);
+}
+.people-aside .gdetail .actions-row > .of{
+  flex:0 0 56px; font-size:var(--t-body-s); color:var(--faint);
+}
+.people-aside .gdetail .field{
+  flex:1 1 100%; max-width:none!important; min-width:0;
+}
+.people-aside .gdetail .actions-row > .field{ flex:1 1 140px; }
+
+/* ── THE RAIL IS A PANEL ───────────────────────────────────────────────────
+   Serif heading, labelled fact rows, a closing full-width action — the
+   reference's "Team at a glance" grammar. It replaces unsurfaced text that
+   ended 340px short of the column it sat in. STATE B (a selected guest) uses
+   the same shell, so the rail is one object whose contents change rather than
+   two differently-shaped things. */
+.people-rail{ display:none; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-rail{ display:block; }
+.prl-card,
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-aside .gdetail{
+  border:1px solid var(--line); border-radius:var(--r-md);
+  background:var(--card); padding:var(--sp-4);
+}
+.prl-h, .people-aside .gdetail .people-ghead-n{
+  font-family:var(--serif-read); font-optical-sizing:auto; font-weight:500;
+}
+.prl-h{ margin:0 0 var(--sp-3); font-size:var(--t-sub); color:var(--ink); }
+.prl-ev{ font-size:var(--t-row); font-weight:650; color:var(--ink); }
+.prl-sub{ margin-top:2px; font-size:var(--t-body-s); color:var(--faint); }
+.prl-rows{ margin-top:var(--sp-3); }
+.prl-row{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-3); padding:var(--sp-2) 0;
+  border-top:1px solid var(--line-soft);
+}
+.prl-row:first-child{ border-top:none; }
+.prl-k{ font-size:var(--t-body-s); color:var(--faint); }
+.prl-v{ font-size:var(--t-row); color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+.prl-unknown{ margin-top:var(--sp-3); padding-top:var(--sp-3); border-top:1px solid var(--line-soft); }
+.prl-unknown-l{ margin-top:2px; font-size:var(--t-body-s); color:var(--ink-soft); }
+.prl-act{ width:100%; margin-top:var(--sp-4); }
+
+.pr-primary{ width:100%; margin-bottom:var(--sp-3); }
+/* The image-absent plate: shorter, and the statement carries it. */
+.people-plate--noimg{ min-height:0; }
+.people-plate--noimg .people-plate-say{ padding:var(--sp-5) var(--sp-4); }
+@media (min-width:768px){
+  .people-plate--noimg{ min-height:0; }
+  .people-plate--noimg .people-plate-say{ padding:var(--sp-6) var(--sp-5); max-width:38rem; }
+}

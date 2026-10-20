@@ -83,8 +83,14 @@ export function PeopleHero({ event, src, fixture }) {
   // The image-absent state is the DEFAULT — no host-supplied cover media
   // pipeline exists — and it is the plate without the photographic band, which
   // is a deliberate state rather than a fallback.
+  // THE IMAGE-ABSENT PLATE IS THE DEFAULT, AND IT IS NOT THE SAME SHAPE.
+  // No host-supplied cover media pipeline exists, so most hosts see this one —
+  // and rendering it at the photographic band's full height with the
+  // photographic band's type scale produced a flat near-black slab in a white
+  // page. Shorter, with the statement doing the work the photograph would
+  // otherwise have done.
   return (
-    <div className={'people-plate' + (hasImage ? ' people-plate--img' : '')}>
+    <div className={'people-plate' + (hasImage ? ' people-plate--img' : ' people-plate--noimg')}>
       {hasImage ? (
         <div className="people-plate-img">
           <img src={src} alt="" aria-hidden="true" />
@@ -482,7 +488,7 @@ export function SectionHead({ title, note, action }) {
  */
 export function GetResponses({
   invited, outstanding, replyBy, isPast, onSetReplyBy, deadlineOpen, editor,
-  primary, secondary, more,
+  primary, secondary, more, quiet,
 }) {
   const [open, setOpen] = React.useState(false);
   const n = Number(outstanding) || 0;
@@ -515,8 +521,13 @@ export function GetResponses({
         fontSize: 'var(--t-sub)', lineHeight: 1.35, color: 'var(--ink-soft)',
       }}>{line}</p>
 
+      {/* ONE FILLED PRIMARY PER VIEWPORT. In the estimate state the attendance
+          decision already owns a filled CTA ("Plan for 40"), and this block
+          rendered a second one a few hundred pixels below it — two co-equal
+          primaries, so neither won. `muted` keeps this block's dominant action
+          dominant WITHIN its own band without competing for the page. */}
       {primary ? (
-        <button className="cta" style={{ width: '100%', marginBottom: 'var(--sp-3)' }} onClick={primary.onClick}>
+        <button className={quiet ? 'mini pr-primary' : 'cta pr-primary'} onClick={primary.onClick}>
           {primary.label}
         </button>
       ) : null}
@@ -589,64 +600,59 @@ export function GetResponses({
  * width. Recorded rather than silently decided.
  */
 export function PeopleRail({ event, subtitle, counts, unknowns, onShowUnanswered }) {
-  const s = attendanceStatement(event);
   const name = String((event && event.name) || '').trim();
   const rows = (counts || []).filter((r) => r && Number(r.n) > 0);
 
+  // ── ONE PANEL, THE REFERENCE'S GRAMMAR ──────────────────────────────────
+  // The rail was unsurfaced text floating on the field: six facts across
+  // 314px, then 340px of nothing, no card, no divider, no closing action — a
+  // stub pinned to a tall column. The reference's own rail ("Team at a
+  // glance") is a bordered panel with a serif heading, labelled fact rows and
+  // a full-width action at its foot, and it fills its column.
+  //
+  // STATE B uses the same panel. The selected guest's detail is the production
+  // editor, unchanged, rendered inside this shell so the two states are one
+  // object that changes contents rather than two different-looking things.
   return (
     <aside className="people-rail" aria-label="Event context">
-      {/* NO COVER IMAGE HERE, DELIBERATELY. The plate above spans the full
-          width and carries the event's photography; repeating it 24px to the
-          right put two photographic modules at the same height with no
-          hierarchy between them. The reference's own desktop rail ("Team at a
-          glance") carries no photograph either — it carries counts. */}
-      <div style={{
-        fontFamily: 'var(--serif-read)', fontWeight: 500,
-        fontSize: 'var(--t-sub)', lineHeight: 1.2, color: 'var(--ink)',
-      }}>{name || 'Your event'}</div>
-      {subtitle ? (
-        <div style={{ marginTop: 2, fontSize: 'var(--t-body-s)', color: 'var(--faint)' }}>{subtitle}</div>
-      ) : null}
+      <div className="prl-card">
+        <h3 className="prl-h">At a glance</h3>
+        <div className="prl-ev">{name || 'Your event'}</div>
+        {subtitle ? <div className="prl-sub">{subtitle}</div> : null}
 
-      {/* NO SECOND COPY OF THE FIGURE. The main column carries it at display
-          size three inches to the left; repeating it here was the duplication
-          §26 rules out, and it pushed the one thing the rail uniquely offers —
-          the breakdown — further down. Identity and counts only. */}
-      {/* The reply breakdown is the one thing here that is NOT on screen while
-          the roster is scrolled: on mobile it lives in the lens chips above the
-          list, which leave the viewport immediately. Counted over the WHOLE
-          roster, not the filtered view — a pinned number that changed when you
-          typed in the search box would be worse than no number. */}
-      {rows.length ? (
-        <div style={{ marginTop: 'var(--sp-3)' }}>
-          {rows.map((r) => (
-            <div className="prl-row" key={r.label}>
-              <span className="prl-k">{r.label}</span>
-              <span className="prl-v">{r.n}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {/* THE RAIL'S OWN ACTION. The reference's rail ends with one ("View all
-          documents →"); ours ended in white space. This is not a new
-          capability — it sets the roster's existing reply-state lens, which is
-          the control a host would otherwise scroll down and find. Offered only
-          when there is actually someone to chase. */}
-      {onShowUnanswered ? (
-        <button className="pr-quiet" style={{ marginTop: 'var(--sp-2)' }} onClick={onShowUnanswered}>
-          See who hasn’t replied →
-        </button>
-      ) : null}
-
-      {unknowns > 0 ? (
-        <div style={{ marginTop: 'var(--sp-3)', paddingTop: 'var(--sp-2)', borderTop: '1px solid var(--line-soft)' }}>
-          <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>Still unknown</div>
-          <div style={{ marginTop: 2, fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>
-            {unknowns === 1 ? 'One need with no name on it.' : unknowns + ' needs with no name on them.'}
+        {/* The reply breakdown is the one thing here that is NOT already on
+            screen while the list is scrolled: on mobile it lives in the lens
+            chips above the list, which leave the viewport immediately. Counted
+            over the WHOLE list, not the filtered view — a pinned number that
+            changed when you typed in the search box would be worse than none. */}
+        {rows.length ? (
+          <div className="prl-rows">
+            {rows.map((r) => (
+              <div className="prl-row" key={r.label}>
+                <span className="prl-k">{r.label}</span>
+                <span className="prl-v">{r.n}</span>
+              </div>
+            ))}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {unknowns > 0 ? (
+          <div className="prl-unknown">
+            <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>Still unknown</div>
+            <div className="prl-unknown-l">
+              {unknowns === 1 ? 'One need with no name on it.' : unknowns + ' needs with no name on them.'}
+            </div>
+          </div>
+        ) : null}
+
+        {/* The panel closes on an action, as the reference's does. Not a new
+            capability — it sets the list's existing reply-state lens, which is
+            the control a host would otherwise scroll down to find. Offered
+            only when someone has actually not replied. */}
+        {onShowUnanswered ? (
+          <button className="mini prl-act" onClick={onShowUnanswered}>See who hasn’t replied →</button>
+        ) : null}
+      </div>
     </aside>
   );
 }
