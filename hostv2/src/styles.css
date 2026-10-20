@@ -6926,9 +6926,15 @@ button.vc-pill::after{
   font-size:var(--t-body-s); color:var(--ink-soft); line-height:1.4;
 }
 .people-move-cta{ flex:0 0 auto; white-space:nowrap; }
+/* At phone width the CTA takes its own row — but ONLY the CTA. `flex-wrap`
+   let the glyph wrap too once the containing field narrowed the band, so the
+   sparkle sat alone on a line above the consequence it belongs to. A grid
+   pins the glyph beside the title and spans the action underneath. */
 @media (max-width:539px){
-  .people-move{ flex-wrap:wrap; }
-  .people-move-cta{ width:100%; margin-top:var(--sp-2); }
+  .people-move{ display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; }
+  .people-move-glyph{ grid-column:1; line-height:1.4; }
+  .people-move-body{ grid-column:2; }
+  .people-move-cta{ grid-column:1 / -1; width:100%; margin-top:var(--sp-3); }
 }
 
 /* ── THE SECTION HEADER ────────────────────────────────────────────────────
@@ -7298,4 +7304,25 @@ button.vc-pill::after{
   top:auto; bottom:0; right:0; border-radius:0;
   background:rgba(0,0,0,.72); color:rgba(255,255,255,.72);
   letter-spacing:.14em; padding:2px var(--sp-3);   /* 3 is off the 4px ladder */
+}
+
+/* ── THE BODY SITS IN A FIELD, AT EVERY WIDTH ──────────────────────────────
+   The reference's phone frame holds its operational content in a field — the
+   ivory card under the photographic band — and without one the mobile body
+   read as five blocks on bare ground between the plate and the roster. Same
+   element as the desktop containing surface; only the second column is
+   conditional. */
+.people-grid > .people-main{
+  background:var(--card); border:1px solid var(--line-soft);
+  border-radius:var(--r-md);
+  margin:0 0 var(--sp-4);
+  padding:var(--sp-4);
+}
+@media (min-width:768px){
+  .people-grid > .people-main{ padding:var(--sp-5); }
+}
+/* A settled subhead, not a sixth eyebrow. */
+.people-subhead{
+  font-size:var(--t-body-s); font-weight:650; color:var(--muted);
+  letter-spacing:0; text-transform:none;
 }

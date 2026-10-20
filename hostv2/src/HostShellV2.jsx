@@ -23277,7 +23277,7 @@ export default function HostShellV2() {
                       <span className="chev" aria-hidden="true">{'\u203a'}</span>
                     </button>
                   ) : (<>
-                  <div className="shelf-label" style={{ marginBottom: 6 }}>
+                  <div className={peopleMode ? 'people-subhead' : 'shelf-label'} style={{ marginBottom: 6 }}>
                     Add names — one per line
                     {/* A FOLD THAT ONLY OPENS IS NOT A FOLD. `setQuickAddOpen(true)`
                         was the only call in the file, so once a host opened this on an
@@ -24193,7 +24193,7 @@ export default function HostShellV2() {
               ) : null;
               const peopleBody = (event.guests || []).length ? (
                 <>
-                  {peopleRailUp ? null : peoplePlate}
+                  {peopleMode ? null : peoplePlate}
                   {peopleZone}
                   {guestHero}
                   {!peopleMode && (plusOnes > 0 || kidsHere > 0) && (
@@ -24726,7 +24726,7 @@ export default function HostShellV2() {
                 </>
               ) : (
                 <>
-                  {peopleRailUp ? null : peoplePlate}
+                  {peopleMode ? null : peoplePlate}
                   {peopleZone}
                   {guestHero}
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
@@ -24823,7 +24823,20 @@ export default function HostShellV2() {
               //   a guest selected → the production detail panel, verbatim
               // which is §26's State A and State B with no third surface
               // invented and no JSX duplicated.
-              if (!peopleRailUp) return peopleBody;
+              // THE CONTAINING FIELD IS NOT A DESKTOP FEATURE. The reference's
+              // phone frame holds its operational content in a field too — the
+              // ivory card under the photographic band — and without it the
+              // mobile body read as one long stack on bare ground. The wrapper
+              // is the same element at every width; only the second column is
+              // conditional.
+              if (!peopleRailUp) {
+                return peopleMode ? (
+                  <>
+                    {peoplePlate}
+                    <div className="people-grid"><div className="people-main">{peopleBody}</div></div>
+                  </>
+                ) : peopleBody;
+              }
               const sel = guestOpen != null ? (event.guests || [])[guestOpen] : null;
               return (
                 <>

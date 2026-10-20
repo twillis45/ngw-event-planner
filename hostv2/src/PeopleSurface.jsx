@@ -326,7 +326,12 @@ export function StillUnknown({ needs }) {
     <div style={{ padding: '0 0 var(--sp-4)' }}>
       {known.length ? (
         <>
-          <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>Accounted for</div>
+          {/* ONE CAPS EYEBROW PER BAND. "Still unknown" keeps it — the owner
+              named that pattern as working and it is the one that has to
+              interrupt. Its settled counterpart does not need the same voice,
+              and six peer-weight caps labels in one scroll turn the eyebrow
+              from an editorial device into a form label. */}
+          <div className="people-subhead">Accounted for</div>
           {byLabel(known).map(([k, group]) => {
             const label = String(group[0].label || '').toLowerCase();
             const one = group.length === 1;
