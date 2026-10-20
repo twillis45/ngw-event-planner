@@ -80,10 +80,19 @@ test('AN APP-SUPPLIED NUMBER SAYS SO, and says it is being held back', async ({ 
   }));
   const body = await sheetText(page);
 
-  expect(body).toMatch(/Who’s coming/i);
-  // COMPRESSED ON THE FIRST VIEW: the state, and one move.
-  expect(body).toMatch(/our estimate/i);
-  expect(body).toMatch(/Yes, plan for 40/);
+  expect(body).toMatch(/who’s coming/i);
+  // ── WHY THESE MARKERS MOVED A SECOND TIME (owner §5, 2026-10-20) ────────
+  // OBSOLETE PRESENTATION: the "our estimate" chip plus a "Yes, plan for 40"
+  // button under the band read as a configuration form — "the decision is the
+  // story. The controls support the decision." The provenance now leads the
+  // composition instead of annotating it: the recommended number IS the
+  // headline, under a "Plan around" eyebrow, and the sentence beneath says in
+  // host language what the chip used to label.
+  // REQUIRED BEHAVIOUR, unchanged: an app-supplied number is still marked as
+  // ours, still offered rather than assumed, and still says nobody replied.
+  expect(body).toMatch(/Plan around/i);
+  expect(body).toMatch(/Nobody has replied yet/i);
+  expect(body).toMatch(/Plan for 40/);
   // It must NOT claim anyone replied or confirmed anything.
   expect(body).not.toMatch(/40 people said yes/i);
 
@@ -104,9 +113,10 @@ test('HER OWN NUMBER IS NOT APOLOGISED FOR — the paired fixture', async ({ pag
   }));
   const body = await sheetText(page);
 
-  expect(body).toMatch(/Who’s coming/i);
-  expect(body).not.toMatch(/our estimate/i);
-  expect(body).not.toMatch(/Yes, plan for 40/);
+  expect(body).toMatch(/who’s coming/i);
+  expect(body).not.toMatch(/Plan around/i);
+  expect(body).not.toMatch(/Nobody has replied yet/i);
+  expect(body).not.toMatch(/Plan for 40/);
   expect(body).not.toMatch(/not a number you gave/i);
 });
 
@@ -134,7 +144,7 @@ test('A ROSTER SAYS WHO SAID YES, and what is still out', async ({ page }) => {
   expect(body).toMatch(/3 said yes, 2 still to answer/i);
   // A roster is hers by construction — no provenance disclaimer, no offer.
   expect(body).not.toMatch(/not a number you gave/i);
-  expect(body).not.toMatch(/Yes, plan for/);
+  expect(body).not.toMatch(/Plan for \d/);
 });
 
 test('CONFIRMING IT MAKES IT HERS — and the write lands on the event', async ({ page }) => {
@@ -145,7 +155,7 @@ test('CONFIRMING IT MAKES IT HERS — and the write lands on the event', async (
 
   const clicked = await page.evaluate(() => {
     const b = [...document.querySelectorAll('.sheet button')]
-      .find((x) => /Yes, plan for 40/.test(x.innerText || ''));
+      .find((x) => /^Plan for 40$/.test((x.innerText || '').trim()));
     if (!b) return false;
     b.click();
     return true;
@@ -154,8 +164,8 @@ test('CONFIRMING IT MAKES IT HERS — and the write lands on the event', async (
   await page.waitForTimeout(700);
 
   const after = await sheetText(page);
-  expect(after, 'the estimate state is gone because the number is hers now').not.toMatch(/our estimate/i);
-  expect(after).not.toMatch(/Yes, plan for 40/);
+  expect(after, 'the estimate state is gone because the number is hers now').not.toMatch(/Plan around/i);
+  expect(after).not.toMatch(/Plan for 40/);
 
   // Asserted on the stored event, not just on the screen: the provenance field
   // is what every outward gate in the app reads.
@@ -184,8 +194,9 @@ test('NEGATIVE CONTROL — without ?people=1 the legacy body is untouched', asyn
   await openSectionByName(page, 'Guests', { settle: 600 });
 
   const body = await sheetText(page);
-  expect(body).not.toMatch(/our estimate/i);
-  expect(body).not.toMatch(/Yes, plan for 40/);
+  expect(body).not.toMatch(/Plan around/i);
+  expect(body).not.toMatch(/Plan for 40/);
+  expect(body).not.toMatch(/Know who’s coming/i);
 });
 
 // ─── A KNOWN NEED WITH AN OWNER WE DO NOT KNOW (step 7) ─────────────────────
@@ -269,4 +280,54 @@ test('NEGATIVE CONTROL — no need, no zone', async ({ page }) => {
   const t = await sheetText(page);
   expect(t).not.toMatch(/Step-free access/i);
   expect(t).not.toMatch(/STILL UNKNOWN/i);
+});
+
+// ─── A REPLY-BY DATE IS HERS, OR IT IS NOT ON SCREEN (owner §11) ────────────
+//
+// FOUND BY LOOKING AT A FRAME, NOT BY READING A DIFF. The §10 block renders a
+// reply-by as the outcome it buys ("a final headcount by November 27"), and the
+// first capture printed exactly that over a fixture whose host had never set
+// one — because `rsvpDeadlineFor(event)` RETURNS A DATE REGARDLESS. It carries
+// `source: 'derived'` (event.date − 7d) until the host commits, and
+// `source === 'override'` is the only value that means she chose it.
+//
+// This is the 2026-07-14 defect, reintroduced one composition later. It was
+// fixed then in the GUEST invite and left standing in the HOST line forty rows
+// away; the shell's own comment calls that "half a fix is its own kind of lie".
+// A third surface now reads the same field, so the invariant gets a test rather
+// than a third comment.
+test('A DERIVED REPLY-BY IS NEVER SPOKEN AS A DATE SHE SET', async ({ page }) => {
+  // No `rsvpDeadline` anywhere on this event. `rsvpDeadlineFor` will still
+  // return one, which is the whole trap.
+  await boot(page, EV({
+    id: 'e2e-people-noreplyby', guestMode: 'list',
+    guests: [...roster(2, 'Yes'), ...roster(3, '').map((g, i) => ({ ...g, id: 'q' + i }))],
+  }));
+  const body = await sheetText(page);
+
+  // The outcome block is there and names the real outstanding replies...
+  expect(body).toMatch(/GET RESPONSES/i);
+  expect(body).toMatch(/3 people haven’t answered yet/i);
+  // ...and offers the deadline as something to SET, never as something that is.
+  expect(body).toMatch(/Set a date you need the final number by/i);
+  expect(body).not.toMatch(/Replies close/i);
+  expect(body).not.toMatch(/A final headcount by/i);
+});
+
+test('AND WHEN SHE HAS SET ONE, IT IS SPOKEN AS THE OUTCOME IT BUYS', async ({ page }) => {
+  // The paired fixture. Without it the assertions above would pass on a surface
+  // that simply never shows a deadline — which is not the behaviour either.
+  const iso = dateIn(20);
+  await boot(page, EV({
+    id: 'e2e-people-replyby', guestMode: 'list', rsvpDeadline: iso,
+    guests: [...roster(2, 'Yes'), ...roster(3, '').map((g, i) => ({ ...g, id: 'q' + i }))],
+  }));
+  const body = await sheetText(page);
+
+  const pretty = new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  expect(body).toContain(pretty);
+  // §11: framed by what it buys — a reliable final headcount in time — not as a
+  // date field with a Change button beside it.
+  expect(body).toMatch(/A final headcount by/i);
+  expect(body).toMatch(/3 more replies/i);
 });

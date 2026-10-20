@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { applyStudioMatte } from './theme.js';
+import { applyPaletteAB } from './paletteAB.js';
 import { legacyVendorBriefUrl } from '@app/lib/vendorBriefPublicUrl';
 import { initSentry, captureError } from '@app/lib/sentry';
 import './styles.css';
@@ -42,6 +43,22 @@ initSentry();
 
 // Studio Matte doctrine tokens land on :root before first paint.
 applyStudioMatte();
+// PALETTE A/B REVIEW INSTRUMENT — no-op unless ?palette=warm. Overrides a few
+// surface/accent custom properties AFTER the production tokens so the two
+// variants can be photographed on identical composition and content. Production
+// doctrine (src/theme/palette.js) is untouched. See paletteAB.js.
+// Static import, not a top-level await: the build targets chrome87 and TLA is
+// not available there. The module is a few hundred bytes and is inert without
+// the flag, so there is nothing to defer.
+try {
+  applyPaletteAB((() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get('theme');
+      if (q === 'light' || q === 'dark') return q;
+      return localStorage.getItem('ngw-theme') === 'light' ? 'light' : 'dark';
+    } catch (_) { return 'dark'; }
+  })());
+} catch (_) { /* review-only: never block boot */ }
 
 // Fit the fixed 393×852 phone frame to the window without distorting its shape.
 function fitPhone() {

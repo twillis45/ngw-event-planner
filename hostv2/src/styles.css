@@ -6575,3 +6575,146 @@ button.vc-pill::after{
   min-height:var(--tap-min);
   vertical-align:middle;
 }
+
+/* ═══ §9 · THE ROSTER, IN THE REDESIGN'S REGISTER ════════════════════════════
+   Owner, 2026-10-20: *"The top of People belongs to the redesign. The body
+   still belongs to the old product."* The roster was the loudest part of that
+   seam — and the diagnosis was not that it lacked features. It has search, a
+   reply-state lens, grouping, an accordion and index-safe writers, all of which
+   stay exactly as they are. What it lacked was RESTRAINT.
+
+   The reference set's list-row grammar (ART_DIRECTION_GRAMMAR.md §4) is
+   `media + name + ONE status pill + ONE meta line + affordance`, and the note
+   under it is the operative one: *"Rows are quiet. One pill, one line of meta,
+   no competing emphasis. Density comes from restraint, not from shrinking."*
+
+   Measured against that, the production row carried FIVE emphasis signals at
+   once: a per-name coloured avatar, a 650-weight name, an `of`-weighted "+1",
+   tinted `.tag` capsules for every dietary note, and the reply pill. Five
+   things shouting is how a roster starts reading as a CRM contact table. So
+   this block removes four of them and keeps the fifth — the reply pill, which
+   is the one signal the host is actually scanning for, and which the references
+   keep as a tinted pill with darker text in a closed colour vocabulary.
+
+   SCOPED TO `.people-roster`, SO THE BASELINE IS UNTOUCHED. The pre-redesign
+   surface is the default (`?people=1` is opt-in) and renders without this
+   class, which is what makes the two compositions comparable on one build.
+   Nothing here changes a behaviour, a writer, or a count. */
+
+/* The avatar stops being a colour. A deterministic per-name tint is the
+   Slack/CRM signature, and the reference set has no equivalent: it shows a
+   photograph where one truthfully exists, and a monogram where one does not.
+   We have no guest photography and may not invent any, so this is always the
+   monogram — and a monogram's job is to anchor the row, not to compete with
+   the reply state for the eye. One quiet tone, ink at reading weight.
+   `!important` only because the tint is an inline style from `avaFor()`, which
+   the baseline composition still uses. */
+.people-roster .gav{
+  background:var(--bg-band)!important;
+  color:var(--ink-soft);
+  font-weight:650;
+  box-shadow:inset 0 0 0 1px var(--line-soft);
+}
+
+/* The name reads, it does not announce. 650 is the production weight and it is
+   right for a row that must be scanned against a dense toolbar; at this
+   register the hierarchy comes from the meta line going quiet beneath it. */
+.people-roster .grow{
+  font-weight:550;
+  padding:var(--sp-3) var(--sp-2);
+}
+.people-roster .grow .of{ font-weight:500; }
+
+/* ONE meta line, and it is meta — not a row of capsules. The dietary and needs
+   tags carry real, host-entered facts and every one of them is still on screen;
+   they simply stop being chips. A capsule is a control's shape, and none of
+   these are controls. */
+.people-roster .gmeta{
+  font-size:var(--t-body-s); color:var(--faint); font-weight:500;
+}
+.people-roster .gmeta .tag.plan{
+  background:none; border:none; padding:0;
+  color:var(--faint); font-weight:500; font-size:var(--t-body-s);
+}
+.people-roster .gmeta .tag.plan + .tag.plan::before{
+  content:'·'; padding:0 4px; color:var(--line-soft);
+}
+
+/* The one pill that stays. Closed vocabulary, both themes identical:
+   ok = coming, steel = unknown, danger = can't, muted = no reply. Unchanged
+   semantics — this only holds the shape steady now that nothing beside it is
+   competing for the same treatment. */
+.people-roster .grow > button[aria-expanded] .tag.plan{
+  font-weight:650;
+}
+
+/* ── THE TOOLBAR STOPS BEING A FILTER BAR ──────────────────────────────────
+   Five counted chips above a search field is the shape of a data table, and at
+   75 guests the host is not querying a table — she is answering "who hasn't
+   replied?" So the lens keeps all five cuts and all five counts, and loses the
+   chrome: a quiet scroll lane where the active cut is marked by weight and an
+   underline rather than by a filled capsule. The search field drops to a single
+   rule. Nothing collapses and nothing is removed — `.rtool-lens` is still the
+   same scroll lane with the same 32px targets and the same counts, which is the
+   note styles.css:5610 makes about why search never collapses here. */
+.people-rtoolbar{
+  gap:var(--sp-3);
+  padding:0 0 var(--sp-2);
+  border-bottom:1px solid var(--line-soft);
+}
+.people-rtoolbar .rtool-q{
+  background:none; border:none; border-radius:0;
+  padding:var(--sp-2) 0;
+}
+.people-rtoolbar .rtool-lens > .chip{
+  background:none!important; border:none; border-radius:0;
+  padding:var(--sp-2) 0;
+  color:var(--faint); font-weight:550;
+  border-bottom:2px solid transparent;
+}
+.people-rtoolbar .rtool-lens > .chip[aria-pressed="true"]{
+  color:var(--ink)!important; font-weight:700!important;
+  border-bottom-color:var(--steel-soft);
+}
+
+/* Group headings join the eyebrow register the rest of the surface speaks. */
+.people-roster .rgroup-l{
+  font-size:var(--t-pill); letter-spacing:.1em; text-transform:uppercase;
+  color:var(--steel-soft); font-weight:700;
+}
+
+/* ── §14 · THE EDITORIAL OPENING AT EACH BREAKPOINT ─────────────────────────
+   Owner: *"tablet and desktop should not look like a stretched phone — they
+   should be deliberate."* Two things were scaling when they should have been
+   composed:
+
+   · THE BAND. 38vh is the reference set's measured mobile proportion (§2 of
+     ART_DIRECTION_GRAMMAR) and it is a proportion of a 844px-tall phone. At
+     1440x1024 the same rule buys a 389px photograph carrying one 40px line —
+     the exact "giant decorative hero" the references are explicit about not
+     making. It is capped in absolute px from the tablet up, so the band stays
+     a band and the attendance decision stays above the fold.
+   · THE MEASURE. A serif statement set across 1440px is a banner, not a
+     sentence. The reference desktops set their page titles in a column and put
+     the operational surface beside or beneath them. */
+.people-hero--img{ min-height:38vh; }
+
+@media (min-width:768px){
+  .people-hero--img{ min-height:0; height:320px; }
+  .people-hero-say{ max-width:46ch; }
+}
+@media (min-width:1280px){
+  /* THE OPENING SPANS, THE OPERATIONAL SURFACE DOES NOT. At the data tier the
+     sheet becomes a two-column grid (`minmax(0,1fr) 340px`, styles.css:5655) so
+     the guest detail has a rail to open into. A plain child lands in column 1,
+     which left the photographic band stopping two-thirds across with dead space
+     beside it — a cropped banner rather than an editorial opening. Inert
+     wherever that grid is not in play. */
+  .people-hero{ grid-column:1 / -1; }
+  /* Shorter again, not taller: at desktop the host has the whole command
+     surface in view and the photograph's job is identity, which a 280px band
+     does as well as a 400px one. The references park the event photograph in
+     the right rail at this width for exactly that reason. */
+  .people-hero--img{ height:280px; }
+  .people-hero-say{ max-width:40ch; }
+}

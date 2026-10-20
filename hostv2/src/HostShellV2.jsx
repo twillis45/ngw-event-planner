@@ -37,7 +37,7 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
 // @app/lib/attendanceStatement. Reached by ?people=1 on the Guests door, with
 // the legacy body as the default until parity closes.
-import { PeopleHero, AttendanceTruth, StillUnknown } from './PeopleSurface';
+import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
@@ -2764,6 +2764,10 @@ export default function HostShellV2() {
   // 'rain' is deliberately absent: it already has a real editor (the rain
   // sheet) and routes there instead of a plain note.
   const [placeNoteOpen, setPlaceNoteOpen] = useState(null);
+  // PEOPLE REDESIGN: the estimate state leads with the DECISION, so the
+  // stepper only appears when the host chooses to adjust. The control is the
+  // legacy one, unchanged — only when it is shown has changed.
+  const [peopleAdjust, setPeopleAdjust] = useState(false);
   const [placeNoteDraft, setPlaceNoteDraft] = useState(''); // controlled draft for the place-note editor (address field autocompletes)
   const PLACE_NOTE_FIELD = { venue: 'venue', arrival: 'venueAddress', parking: 'parkingNotes', loadIn: 'loadInNotes', contact: 'venueContact', rules: 'houseRules' };
   const [shopStore, setShopStore] = useState(null); // shopping-run mode: 'I'm at X' filter (session-only)
@@ -13716,7 +13720,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -23539,82 +23543,41 @@ export default function HostShellV2() {
               // host-supplied media pipeline is not authorized, so this reads a
               // field that does not exist yet and never writes one. The fixture
               // override is review-only, never persisted, and labelled on screen.
-              const peopleZone = peopleMode ? (
-                <div>
-                  <PeopleHero
-                    event={event}
-                    src={(() => {
-                      const fix = (() => { try { return new URLSearchParams(window.location.search).get('peoplefixture'); } catch { return null; } })();
-                      if (fix && /^https?:\/\//i.test(fix)) return fix;
-                      const own = String((event && event.coverImageUrl) || '').trim();
-                      return /^https?:\/\//i.test(own) ? own : null;
-                    })()}
-                    fixture={(() => { try { return !!new URLSearchParams(window.location.search).get('peoplefixture'); } catch { return false; } })()}
-                  />
-                  <AttendanceTruth
-                    event={event}
-                    solemn={(() => { try { return isSolemnEvent(event); } catch { return false; } })()}
-                    onConfirmCount={(n) => patchEvent(
-                      { guestEstimate: n, guestCount: n, guestCountSource: 'host' },
-                      'Planning for ' + n + ' — it\u2019s your number now, so it can go in what we send.',
-                    )}
-                  />
-                  <StillUnknown needs={(() => {
-                    try { return accessNeedsFor(event); } catch { return null; }
-                  })()} />
-                </div>
-              ) : null;
-              return (event.guests || []).length ? (
-                <>
-                  {peopleZone}
-                  {guestHero}
-                  {(plusOnes > 0 || kidsHere > 0) && (
-                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
-                      {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsHere ? kidsHere + ' kid' + (kidsHere === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
-                    </div>
-                  )}
-                  {!chase && (
-                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
-                      You went by headcount — replies here are just for tracking, no chasing.
-                    </div>
-                  )}
-                  {/* One-line reply-by + edit hint — the count itself lives in the
-                      hero above (audit S3: was a third restatement of "N yes of M"). */}
-                  <div className="v-meta" style={{ padding: '2px 2px var(--sp-3)' }}>
-                    {(() => {
-                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
-                      const parts = [];
-                      if (heads !== yes.length) parts.push(`${heads} heads with plus-ones`);
-                      // I FIXED THE GUEST AND LEFT THE HOST (2026-07-14, same day). dc5abee gated
-                      // the INVITE on `source === 'override'` so a guest could never be shown a
-                      // deadline the host hadn't chosen — and this line, forty rows away, kept
-                      // printing the very same invented `event.date − 7d` to the HOST as a flat
-                      // fact ("replies by Jul 20"), sitting beside real RSVP counts, with a
-                      // "change" button implying a date already existed. Half a fix is its own
-                      // kind of lie: the host would have believed a deadline was set and never
-                      // opened the editor to set one.
-                      if (rsvpByIsSet && !isPast) parts.push(`replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
-                      return parts.join(' · ');
-                    })()}
-                    {!isPast && (
-                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'Done' : (rsvpByIsSet ? 'Change' : 'Set reply-by')}</button>
-                    )}
-                    {(() => {
-                      // leading separator only when something precedes the hint
-                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
-                      const hasPre = (heads !== yes.length) || (rsvpBy && rsvpBy.iso && !isPast) || !isPast;
-                      // Was "tap a tag to change an RSVP, a name to edit" — two doors
-                      // described as doing different things. Since the reply picker moved
-                      // into the guest's own row (2026-08-07) BOTH open the same one, so
-                      // the sentence promised a distinction the surface no longer makes.
-                      // Found by driving it, not by reading the diff.
-                      const hint = 'tap anyone to change their reply or edit them.';
-                      return hasPre ? ' — ' + hint : hint[0].toUpperCase() + hint.slice(1);
-                    })()}
+              const countInviteTools = (<>
+                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
+                    <button className="mini" onClick={showQr}>Show the QR</button>
+                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
+                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
+                        they'll see before sharing. Read-only: viewing the page files nothing. */}
+                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
+              </>);
+              const inviteTools = (<>
+                  {/* Balanced 2-up button grid (systematic .pill-grid). */}
+                  <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
+                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
+                    <button className="mini" onClick={showQr}>Show the QR</button>
+                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
+                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
+                        they'll see before sharing. Read-only: viewing the page files nothing. */}
+                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
+                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
+                    {/* WAVE-B: the full guest brief — legacy's draftGuestBrief
+                        (when/where/parking/bring/dress/gifts), DRAFT-only per
+                        UX_07: written for the host, sent by the host. */}
+                    <button className="mini" onClick={() => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn’t draft it.'); } }}>Draft the guest brief</button>
+                    <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
+                    {/* WAS "Nudge the quiet ones" — which promises the app will go and nudge
+                        them. It cannot: this bulk draft has no recipient list, and its only
+                        exits are share/copy (its sms: link has no number to address). The
+                        SHEET is scrupulously honest about this — it never fakes a "sent"
+                        state — so the LABEL was the only thing lying. UX_07: a CTA says
+                        exactly what happens when you tap it. This one opens a written message
+                        for the host to send themselves. (Guests who DID leave a phone or
+                        email get one-tap text/email nudge links on their own rows above.) */}
+                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Write a nudge to send</button>}
                   </div>
-                  {deadlineOpen && (() => {
+                  </>);
+              const renderDeadlineEditor = () => {
                     // DO-IT-FOR-ME, GROUNDED (2026-07-14). The reply-by date used to be an
                     // invented `event.date − 7d` that the INVITE printed as if the host had
                     // chosen it. Deleting it from the invite was only half an answer: an RSVP
@@ -23665,7 +23628,113 @@ export default function HostShellV2() {
                         )}
                       </div>
                     );
-                  })()}
+              };
+              const peopleZone = peopleMode ? (
+                <div>
+                  <PeopleHero
+                    event={event}
+                    src={(() => {
+                      const fix = (() => { try { return new URLSearchParams(window.location.search).get('peoplefixture'); } catch { return null; } })();
+                      if (fix && /^https?:\/\//i.test(fix)) return fix;
+                      const own = String((event && event.coverImageUrl) || '').trim();
+                      return /^https?:\/\//i.test(own) ? own : null;
+                    })()}
+                    fixture={(() => { try { return !!new URLSearchParams(window.location.search).get('peoplefixture'); } catch { return false; } })()}
+                  />
+                  <AttendanceDecision
+                    event={event}
+                    solemn={(() => { try { return isSolemnEvent(event); } catch { return false; } })()}
+                    adjusting={peopleAdjust}
+                    onAdjust={setPeopleAdjust}
+                    onConfirmCount={(n) => patchEvent(
+                      { guestEstimate: n, guestCount: n, guestCountSource: 'host' },
+                      'Planning for ' + n + ' — it\u2019s your number now, so it can go in what we send.',
+                    )}
+                  />
+                  {/* ── ONE MOVE (owner §7) ──────────────────────────────────
+                      `eventPlan()` is the sole final next-action authority, so
+                      People does not rank: it takes the FIRST item the engine
+                      already ranked whose `domain` is 'guests'. A filter can
+                      shorten that order; it cannot reorder it, which is the
+                      whole difference between reading the prioritizer and
+                      building a second one. Worries are included because a
+                      heads-up about the guest list is still the guest list's
+                      one move — the engine's own split decides which lane it
+                      arrived in, not this surface.
+                      If the engine has nothing for People, People shows nothing
+                      rather than inventing a chore to fill the slot. */}
+                  <OneMove move={(() => {
+                    try {
+                      const pool = [...(actions || []), ...(worries || [])];
+                      return pool.find((a) => a && a.domain === 'guests') || null;
+                    } catch { return null; }
+                  })()} />
+                  <StillUnknown needs={(() => {
+                    try { return accessNeedsFor(event); } catch { return null; }
+                  })()} />
+                </div>
+              ) : null;
+              return (event.guests || []).length ? (
+                <>
+                  {peopleZone}
+                  {guestHero}
+                  {!peopleMode && (plusOnes > 0 || kidsHere > 0) && (
+                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
+                      {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsHere ? kidsHere + ' kid' + (kidsHere === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                  {!chase && (
+                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
+                      You went by headcount — replies here are just for tracking, no chasing.
+                    </div>
+                  )}
+                  {/* One-line reply-by + edit hint — the count itself lives in the
+                      hero above (audit S3: was a third restatement of "N yes of M"). */}
+                  <div className="v-meta" style={{ padding: '2px 2px var(--sp-3)', display: peopleMode ? 'none' : undefined }}>
+                    {(() => {
+                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
+                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const parts = [];
+                      // §4: internal calculation, not a host decision. The redesigned
+                      // surface keeps it behind the attendance disclosure instead of
+                      // narrating it inline; the legacy body is unchanged.
+                      if (!peopleMode && heads !== yes.length) parts.push(`${heads} heads with plus-ones`);
+                      // I FIXED THE GUEST AND LEFT THE HOST (2026-07-14, same day). dc5abee gated
+                      // the INVITE on `source === 'override'` so a guest could never be shown a
+                      // deadline the host hadn't chosen — and this line, forty rows away, kept
+                      // printing the very same invented `event.date − 7d` to the HOST as a flat
+                      // fact ("replies by Jul 20"), sitting beside real RSVP counts, with a
+                      // "change" button implying a date already existed. Half a fix is its own
+                      // kind of lie: the host would have believed a deadline was set and never
+                      // opened the editor to set one.
+                      if (rsvpByIsSet && !isPast) parts.push(`replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
+                      return parts.join(' · ');
+                    })()}
+                    {!isPast && (
+                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'Done' : (rsvpByIsSet ? 'Change' : 'Set reply-by')}</button>
+                    )}
+                    {(() => {
+                      // leading separator only when something precedes the hint
+                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
+                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const hasPre = (heads !== yes.length) || (rsvpBy && rsvpBy.iso && !isPast) || !isPast;
+                      // Was "tap a tag to change an RSVP, a name to edit" — two doors
+                      // described as doing different things. Since the reply picker moved
+                      // into the guest's own row (2026-08-07) BOTH open the same one, so
+                      // the sentence promised a distinction the surface no longer makes.
+                      // Found by driving it, not by reading the diff.
+                      const hint = 'tap anyone to change their reply or edit them.';
+                      return hasPre ? ' — ' + hint : hint[0].toUpperCase() + hint.slice(1);
+                    })()}
+                  </div>
+                  {/* ── THE EDITOR, HOISTED (owner §11, 2026-10-20) ──────────────
+                      Unchanged behaviour, one definition. The redesigned surface
+                      frames the deadline by what it buys ("a date you need the
+                      final number by") instead of printing it as a fact with a
+                      Change button, so the editor it opens had to be reachable
+                      from the new block as well as the legacy one. Rendering it
+                      twice would put two date inputs on one field. */}
+                  {!peopleMode && deadlineOpen && renderDeadlineEditor()}
                   {/* Invite tools + settings relocated BELOW the roster (audit S3:
                       the roster is the reason the sheet exists — it now comes right
                       after the hero, not behind a wall of share/look/rules chips). */}
@@ -23711,7 +23780,7 @@ export default function HostShellV2() {
                             their word and never upgrades it. */}
                         {toldRollup(event).line}
                       </div> : null}
-                      <div className="rtoolbar">
+                      <div className={'rtoolbar' + (peopleMode ? ' people-rtoolbar' : '')}>
                         <input className="field rtool-q" type="search" value={rosterQ}
                           onChange={(e) => setRosterQ(e.target.value)}
                           placeholder="Find someone" aria-label="Find someone on the guest list" />
@@ -24098,7 +24167,7 @@ export default function HostShellV2() {
                     // filter that did it and offers the way back.
                     if (!withIdx.length && allIdx.length) {
                       return (
-                        <div className="roster">
+                        <div className={'roster' + (peopleMode ? ' people-roster' : '')}>
                           <div className="v-meta" style={{ padding: 'var(--sp-5) 0', color: 'var(--ink-soft)' }}>
                             No one on your list matches{rosterQ.trim() ? ` “${rosterQ.trim()}”` : ''}
                             {rosterLens !== 'all' ? ' in that reply state' : ''}.{' '}
@@ -24108,9 +24177,9 @@ export default function HostShellV2() {
                       );
                     }
                     const names = [...new Set(withIdx.map(x => String(x.g.group || '').trim()).filter(Boolean))];
-                    if (names.length <= 1) return (<div className="roster">{ghead}{withIdx.map(row)}</div>);
+                    if (names.length <= 1) return (<div className={'roster' + (peopleMode ? ' people-roster' : '')}>{ghead}{withIdx.map(row)}</div>);
                     const buckets = [...names, ''].map(gr => ({ gr, items: withIdx.filter(x => String(x.g.group || '').trim() === gr) })).filter(b => b.items.length);
-                    return (<div className="roster">{ghead}{buckets.map(b => (
+                    return (<div className={'roster' + (peopleMode ? ' people-roster' : '')}>{ghead}{buckets.map(b => (
                       <div className="rgroup" key={b.gr || 'ungrouped'}>
                         <div className="shelf-label rgroup-l" style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
                         {b.items.map(row)}
@@ -24127,31 +24196,48 @@ export default function HostShellV2() {
                   {/* Share & invite settings — relocated here from above the roster
                       (audit S3: list-first). The roster now sits right under the hero;
                       sharing + look/artwork/rules/counting live below it. */}
-                  <div id="guests-invites-anchor" className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)', scrollMarginTop: 12 }}>Share &amp; invite</div>
-                  {/* Balanced 2-up button grid (systematic .pill-grid). */}
-                  <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
-                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
-                    <button className="mini" onClick={showQr}>Show the QR</button>
-                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
-                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
-                        they'll see before sharing. Read-only: viewing the page files nothing. */}
-                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
-                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
-                    {/* WAVE-B: the full guest brief — legacy's draftGuestBrief
-                        (when/where/parking/bring/dress/gifts), DRAFT-only per
-                        UX_07: written for the host, sent by the host. */}
-                    <button className="mini" onClick={() => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn’t draft it.'); } }}>Draft the guest brief</button>
-                    <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
-                    {/* WAS "Nudge the quiet ones" — which promises the app will go and nudge
-                        them. It cannot: this bulk draft has no recipient list, and its only
-                        exits are share/copy (its sms: link has no number to address). The
-                        SHEET is scrupulously honest about this — it never fakes a "sent"
-                        state — so the LABEL was the only thing lying. UX_07: a CTA says
-                        exactly what happens when you tap it. This one opens a written message
-                        for the host to send themselves. (Guests who DID leave a phone or
-                        email get one-tap text/email nudge links on their own rows above.) */}
-                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Write a nudge to send</button>}
-                  </div>
+                  {/* ── §10: OUTCOME FIRST, MECHANISMS UNDER IT ──────────────────
+                      Owner: *"the outcome is GET RESPONSES. Share link / QR /
+                      preview are mechanisms."* So the heading states the outcome
+                      and the SAME six controls sit beneath it — not one of them
+                      re-pointed, re-labelled or re-classified, because each is
+                      already classified under UX_07 and every one of those labels
+                      says exactly what the tap does. `inviteTools` is one
+                      definition rendered in one place per branch.
+                      The anchor id rides the wrapper so the focus-scroll
+                      (`guests-invites-anchor`) still lands in both compositions.
+
+                      §11 AND THE DEFECT THE FIRST CAPTURE CAUGHT.
+                      `rsvpDeadlineFor` returns a DERIVED date — `event.date − 7d` —
+                      when the host has set none, and `source === 'override'` (i.e.
+                      `rsvpByIsSet`) is the only form that means she chose it. The
+                      legacy line gates on that for exactly this reason (2026-07-14:
+                      half a fix is its own kind of lie — the invite was cleaned up
+                      and the host line went on printing the invented date). The
+                      first frame of this block caught me reintroducing the whole
+                      thing: "Replies close November 27" over a fixture whose host
+                      never picked a date. `replyBy` is passed ONLY when it is hers,
+                      and `aReplyByDateIsHersOrItIsNotShown` holds it there. */}
+                  {peopleMode ? (
+                    <div id="guests-invites-anchor" style={{ scrollMarginTop: 12 }}>
+                      <GetResponses
+                        invited={(event.guests || []).length}
+                        outstanding={(event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length}
+                        replyBy={rsvpByIsSet ? rsvpBy : null}
+                        isPast={isPast}
+                        deadlineOpen={deadlineOpen}
+                        onSetReplyBy={() => setDeadlineOpen((o) => !o)}
+                        editor={renderDeadlineEditor()}
+                      >
+                        {inviteTools}
+                      </GetResponses>
+                    </div>
+                  ) : (
+                    <>
+                      <div id="guests-invites-anchor" className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)', scrollMarginTop: 12 }}>Share &amp; invite</div>
+                      {inviteTools}
+                    </>
+                  )}
                   {/* ONE quiet line, only when chasing is on, someone is silent, and not a
                       single silent guest left a way to reach them — pointing at where a
                       number or email gets captured. Never a per-row nag (restraint). */}
@@ -24216,7 +24302,7 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
                     No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
                   </div>
-                  <div id="guests-entry-anchor" style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', margin: '0 0 10px', scrollMarginTop: 12 }}>
+                  <div id="guests-entry-anchor" style={{ display: peopleMode && !peopleAdjust ? 'none' : 'flex', gap: 'var(--sp-2)', alignItems: 'center', margin: '0 0 10px', scrollMarginTop: 12 }}>
                     <button className="mini" onClick={() => { setGuestDraft(''); setGuests(Math.max(1, (Number(guests) || 0) - 1)); }} aria-label="Fewer guests">−</button>
                     <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 6px' }}
                       type="number" inputMode="numeric" min="1"
@@ -24247,7 +24333,7 @@ export default function HostShellV2() {
                     const setK = (v) => patchEvent({ kidsCount: Math.max(0, Math.min(Number(guests) || 0, Math.round(Number(v) || 0))) },
                       'Of your ' + guests + ', ' + Math.max(0, Math.min(Number(guests) || 0, Math.round(Number(v) || 0))) + ' are kids — food sizes them lighter.');
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', margin: '0 0 10px' }}>
+                      <div style={{ display: peopleMode && !peopleAdjust ? 'none' : 'flex', alignItems: 'center', gap: 'var(--sp-2)', margin: '0 0 10px' }}>
                         <button className="mini" onClick={() => setK(kids - 1)} aria-label="Fewer kids or light eaters">−</button>
                         <span className="step-val" style={{ minWidth: 20 }}>{kids}</span>
                         <button className="mini" onClick={() => setK(kids + 1)} aria-label="More kids or light eaters">+</button>
@@ -24255,14 +24341,30 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
-                  <div id="guests-invites-anchor" className="actions-row" style={{ margin: '0 0 var(--sp-1)', scrollMarginTop: 12 }}>
-                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
-                    <button className="mini" onClick={showQr}>Show the QR</button>
-                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
-                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
-                        they'll see before sharing. Read-only: viewing the page files nothing. */}
-                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
-                  </div>
+                  {/* §10 on the HEADCOUNT branch. A host here has no roster, so
+                      the outcome is not "chase 22 replies" — it is that nobody has
+                      been asked yet and this link is how they get asked.
+                      `GetResponses` says that itself from `invited: 0`; the three
+                      controls below it are untouched. */}
+                  {peopleMode ? (
+                    <div id="guests-invites-anchor" style={{ scrollMarginTop: 12 }}>
+                      <GetResponses
+                        invited={0}
+                        outstanding={0}
+                        replyBy={rsvpByIsSet ? rsvpBy : null}
+                        isPast={isPast}
+                        deadlineOpen={deadlineOpen}
+                        onSetReplyBy={() => setDeadlineOpen((o) => !o)}
+                        editor={renderDeadlineEditor()}
+                      >
+                        {countInviteTools}
+                      </GetResponses>
+                    </div>
+                  ) : (
+                    <div id="guests-invites-anchor" className="actions-row" style={{ margin: '0 0 var(--sp-1)', scrollMarginTop: 12 }}>
+                      {countInviteTools}
+                    </div>
+                  )}
                   <p className="grounding" style={{ margin: '0 0 6px' }}>Guests who open the link reply themselves — names, meals, kids, plus-ones — and the list builds on its own.</p>
                   {inviteRules}
                   {nudgeFor('guests') || nudgeFor('message')}

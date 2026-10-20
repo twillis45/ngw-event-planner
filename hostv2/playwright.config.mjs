@@ -187,6 +187,15 @@ export default defineConfig({
   use: {
     // vite preview serves dist under the build base.
     baseURL: previewUrl(5233),
+    // ── A PRE-INSTALLED BROWSER, WHERE ONE IS PROVIDED ─────────────────────
+    // Sandboxed CI images ship Chromium at a fixed path and forbid
+    // `playwright install`, so when @playwright/test's pinned build number
+    // moves ahead of the image's, every spec fails at launch with "Executable
+    // doesn't exist" — a browser-provisioning fact reported as ten red tests.
+    // Opt-in and absent by default: unset, this is `undefined` and Playwright
+    // resolves its own download exactly as before, so a developer machine is
+    // untouched.  PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e
+    launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },
   // Two real geometries (Up-Next #3): portrait phone + the wide-but-short
   // landscape that the min-height guards exist for. Every probe runs in both.

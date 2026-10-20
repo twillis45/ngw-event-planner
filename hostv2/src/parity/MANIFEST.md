@@ -85,3 +85,57 @@ Every Figma frame is grounded in the sheet's **real render code** — inventory 
 Editors/asks must compose the kit, never hand-style the atoms. If you find yourself typing
 `fontSize: 44` / `marginTop: 20` / a full-width tier `<button>` inline in a render, stop —
 use `BigValue` / `CtaRow` / `TierRow`. A raw hex/px in these families is the drift signal.
+
+## PEOPLE — the art-direction composition (2026-10-20, `?people=1`, REVIEW CHECKPOINT)
+
+Recorded here rather than in a new ledger, per the owner's decision that this
+file stays the single pattern/parity authority.
+
+**New surface module:** `hostv2/src/PeopleSurface.jsx` — `PeopleHero` ·
+`AttendanceDecision` · `StillUnknown` · `OneMove` · `GetResponses`. Display
+rules live in `src/lib/attendanceStatement.js`, not in the JSX, for the reason
+`sectionDirectory.js` already records: *"Layout and nav policy scattered through
+a 16k-line JSX file cannot be pinned by a test."*
+
+**Register, and why it is not a second kit.** askKit converges *display asks* —
+eyebrow / big value / guide / grounding / CTA — on the elegant ask loop.
+People's editorial opening is a different artifact: a photographic field with a
+serif domain statement over it, which the kit has no atom for and should not
+grow one for on the strength of one surface. What People DOES share it uses:
+`.mega` for the figure, `.grounding` for the reasoning, `.mini`/`.cta` for the
+controls, `.of` for eyebrows, `--serif-read` for the human voice.
+
+**The display register, settled.** `.mega` (clamp 52–68px, 800, tabular-nums)
+carries the attendance figure. An earlier cut used `BigValue` (44px) and the
+owner's read was exact — it made an editorial surface read as a utilitarian web
+app. The ask atom is right for an ask; a domain's headline number is not an ask.
+
+**Three places this surface steps outside the tokens, all structural:**
+1. Type over the photograph is light type in BOTH themes (`#FBF8F3`,
+   `rgba(255,255,255,.82)`, `rgba(255,255,255,.76)`). The band has its own
+   luminance regime — `--ink` is near-black in light mode and would be invisible
+   on the scrim. Measured against the veil's darkest stop, all three clear AA.
+2. The veil and the hand-off are two separate gradients. One ramp cannot both
+   make type legible over a photograph and dissolve that photograph into
+   `--bg`: in light mode the single ramp went from `rgba(0,0,0,.72)` to
+   near-white in 2% of the band, which is a seam, not a transition.
+3. `.people-roster .gav` overrides the per-name avatar tint with `!important`,
+   because `avaFor()` writes it inline on the baseline composition.
+
+**Roster register (`.people-roster`, `.people-rtoolbar`).** The reference
+grammar is `media + name + ONE status pill + ONE meta line + affordance`, and
+the note under it is the operative one: *rows are quiet, density comes from
+restraint*. The production row carried five emphasis signals at once (coloured
+avatar, 650 name, weighted "+1", tinted `.tag` capsules per dietary note, reply
+pill). Four are quieted; the reply pill stays, because it is the one signal the
+host is scanning for and the references keep it as a tinted pill in a closed
+colour vocabulary. **Nothing was removed** — every fact still renders, and
+search / lens / grouping / accordion / index-based writers are untouched.
+Anti-drift signal for this family: a capsule shape on something that is not a
+control.
+
+**Scoped, so the baseline survives.** Every rule above is behind
+`.people-roster` / `.people-rtoolbar` / `.people-hero`, and `?people=1` is
+opt-in, so the DEFAULT URL still renders the pre-redesign surface on the same
+build and the same event blob. Pinned by
+`src/lib/__tests__/theBaselineOutlivesTheRedesign.test.js`.

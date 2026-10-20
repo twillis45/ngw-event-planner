@@ -94,12 +94,16 @@ describe('the legacy People surface is still there to compare against', () => {
     const code = stripComments(src());
     // One Guests door either way (the Duplicate Surface Rule), with the new
     // zone composed inside it rather than replacing it.
-    // The composed zones, by their current names. This list moved once already
-    // (AttendanceZone/NeedsZone -> AttendanceTruth/StillUnknown, when the
-    // art-direction references arrived) and the gate caught it, which is the
-    // point: a rename is fine, a DELETION is what must not pass quietly.
+    // The composed zones, by their current names. This list has moved twice —
+    // AttendanceZone/NeedsZone -> AttendanceTruth/StillUnknown when the
+    // art-direction references arrived, then AttendanceTruth ->
+    // AttendanceDecision when the owner ruled that the estimate state "visually
+    // becomes a configuration form… the decision is the story". The gate caught
+    // both, which is the point: a rename is fine, a DELETION is what must not
+    // pass quietly. AttendanceTruth is gone from PeopleSurface.jsx too, rather
+    // than left behind as a second attendance component nothing renders.
     expect(code).toMatch(/<PeopleHero/);
-    expect(code).toMatch(/<AttendanceTruth/);
+    expect(code).toMatch(/<AttendanceDecision/);
     expect(code).toMatch(/<StillUnknown/);
     expect(code).toMatch(/\{peopleZone\}/);
     // And exactly one guests sheet RENDER, not a forked second one. Counting
