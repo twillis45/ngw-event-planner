@@ -37,7 +37,7 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
 // @app/lib/attendanceStatement. Reached by ?people=1 on the Guests door, with
 // the legacy body as the default until parity closes.
-import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail } from './PeopleSurface';
+import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail, SectionHead } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
@@ -4603,10 +4603,20 @@ export default function HostShellV2() {
   const stageMode = stagewrapClass({ stage, sheet: sheet && sheet.kind });
   // Same surface identity, one band wider: is the persistent section rail up?
   const railUp = showsRail({ bp, stage, sheet: sheet && sheet.kind });
-  // §26: the People rail band. `railUp` alone runs from 1024 — the exact
-  // misreading styles.css:5640 documents paying for twice — and at 1024 a
-  // 340px rail leaves no room for a list AND a detail. Desktop only.
-  const peopleRailUp = railUp && bp === 'desktop';
+  // §26: the People rail band. Two terms, and BOTH are load-bearing.
+  //
+  // `railUp` alone runs from 1024 — the exact misreading styles.css:5640
+  // documents paying for twice — and at 1024 a 340px rail leaves no room for a
+  // list AND a detail. Desktop only.
+  //
+  // AND `peopleMode`, WHICH I LEFT OUT AND AN AUDIT CAUGHT. Without it this is
+  // true on the legacy surface too, so `?people=1` absent still wrapped the
+  // pre-redesign guests sheet in `.people-grid` and hoisted its guest editor
+  // out of `.roster` — a composition that was supposed to be untouched losing
+  // 340px to a column that is always empty, twice over. The whole preservation
+  // guarantee runs through this one boolean, and every test passed anyway
+  // because they all pass the flag explicitly.
+  const peopleRailUp = peopleMode && railUp && bp === 'desktop';
   // ── COLLAPSE (host, 2026-08-21: "menus is supposed to be collapsible") ─────
   // The rail was BUILT for this — sectionIcons.jsx exists because a collapsed
   // rail needs a mark per door that survives losing its label, and `.srail-l`
@@ -4654,7 +4664,17 @@ export default function HostShellV2() {
       if (targets.includes('guests-counting-anchor')) setPeopleAdminOpen(true);
       setTimeout(() => {
         try {
-          const el = targets.map(t => document.getElementById(t)).find(Boolean);
+          // PRESENT IS NOT THE SAME AS REACHABLE. `find(Boolean)` took the first
+          // anchor that EXISTS, and `guests-entry-anchor` exists while being
+          // `display:none` under People — so a `focus:'entry'` route scrolled to
+          // a hidden node, focused nothing, and never tried the fallback. The
+          // whole point of the fallback list is "the first one PRESENT wins";
+          // it has to mean the first one a host could actually see.
+          const visible = (t) => {
+            const n = document.getElementById(t);
+            return n && n.getClientRects().length ? n : null;
+          };
+          const el = targets.map(visible).find(Boolean);
           if (!el) return;
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           const inp = el.querySelector('input');
@@ -23257,7 +23277,16 @@ export default function HostShellV2() {
                       <span className="chev" aria-hidden="true">{'\u203a'}</span>
                     </button>
                   ) : (<>
-                  <div className="shelf-label" style={{ marginBottom: 6 }}>Add names — one per line</div>
+                  <div className="shelf-label" style={{ marginBottom: 6 }}>
+                    Add names — one per line
+                    {/* A FOLD THAT ONLY OPENS IS NOT A FOLD. `setQuickAddOpen(true)`
+                        was the only call in the file, so once a host opened this on an
+                        established roster it stayed open for the session. */}
+                    {peopleMode && quickAddOpen && (event.guests || []).length >= 8 ? (
+                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }}
+                        onClick={() => setQuickAddOpen(false)}>Done</button>
+                    ) : null}
+                  </div>
                   <textarea className="field" style={{ maxWidth: 'none', minHeight: 74, resize: 'vertical', fontSize: 'var(--t-input)', fontWeight: 500 }}
                     /* ── A PLACEHOLDER MUST NOT READ AS TYPED TEXT ──────────────────
                        Board 2026-08-07, unanimous across two panels. This held
@@ -23997,11 +24026,19 @@ export default function HostShellV2() {
               const peopleZone = peopleMode ? (
                 <div>
                   <PeopleHero event={event} src={peopleCover.src} fixture={peopleCover.fixture} />
+                  {/* THE ADJUST CONTROL ONLY EXISTS WHERE THE STEPPER DOES.
+                      `guests-entry-anchor` lives in the no-roster branch, so on
+                      a roster that is nonetheless counting by headcount the
+                      button flipped to "Done" and revealed nothing — a dead
+                      control, which is the one thing a disclosure may never be.
+                      `AttendanceDecision` renders no button when `onAdjust` is
+                      null; found by an audit, not by a test, because a control
+                      that does nothing throws nothing. */}
                   <AttendanceDecision
                     event={event}
                     solemn={(() => { try { return isSolemnEvent(event); } catch { return false; } })()}
                     adjusting={peopleAdjust}
-                    onAdjust={setPeopleAdjust}
+                    onAdjust={(event.guests || []).length ? null : setPeopleAdjust}
                     onConfirmCount={(n) => patchEvent(
                       { guestEstimate: n, guestCount: n, guestCountSource: 'host' },
                       'Planning for ' + n + ' — it\u2019s your number now, so it can go in what we send.',
@@ -24121,6 +24158,32 @@ export default function HostShellV2() {
                       the generic band) — the standalone memory line was the 2nd/3rd competing
                       number the host flagged. Retired here on purpose. */}
                   {nudgeFor('guests')}
+                  {/* The reference opens every operational section with a serif
+                      heading and its one action. Without it the roster began
+                      with a filter toolbar, which is how a page starts reading
+                      as a table. The action opens the control that already
+                      exists below rather than introducing a second one. */}
+                  {peopleMode ? (
+                    <SectionHead
+                      title="Your guest list"
+                      note={(() => {
+                        const n = (event.guests || []).length;
+                        return n === 1 ? '1 person' : n + ' people';
+                      })()}
+                      action={{
+                        label: 'Add names',
+                        onClick: () => {
+                          setQuickAddOpen(true);
+                          setTimeout(() => {
+                            try {
+                              const t = document.querySelector('.sheet textarea');
+                              if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.focus({ preventScroll: true }); }
+                            } catch { /* best effort */ }
+                          }, 80);
+                        },
+                      }}
+                    />
+                  ) : null}
                   {/* ── THE ROSTER TOOLBAR ─────────────────────────────────────────
                       Only rendered once the list is big enough to need finding —
                       below 8 people a search field is furniture, and the leaders
@@ -24467,7 +24530,7 @@ export default function HostShellV2() {
                         isPast={isPast}
                         deadlineOpen={deadlineOpen}
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
-                        editor={renderDeadlineEditor()}
+                        editor={deadlineOpen ? renderDeadlineEditor() : null}
                         primary={inviteTiers.primary}
                         secondary={inviteTiers.secondary}
                         more={inviteTiers.more}
@@ -24515,7 +24578,7 @@ export default function HostShellV2() {
                     <div style={{ margin: 'var(--sp-6) 0 0' }}>
                       <button className="fold-btn" aria-expanded={peopleAdminOpen}
                         onClick={() => setPeopleAdminOpen((o) => !o)}>
-                        Invite look, rules and list tools
+                        How the invite looks, and your list
                         <span className="chev" aria-hidden="true">{peopleAdminOpen ? '\u2304' : '\u203a'}</span>
                       </button>
                       {peopleAdminOpen ? (<div style={{ marginTop: 'var(--sp-3)' }}>
@@ -24587,7 +24650,7 @@ export default function HostShellV2() {
                         isPast={isPast}
                         deadlineOpen={deadlineOpen}
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
-                        editor={renderDeadlineEditor()}
+                        editor={deadlineOpen ? renderDeadlineEditor() : null}
                         primary={_inviteActs.share}
                         secondary={[_inviteActs.qr]}
                         more={[_inviteActs.preview]}

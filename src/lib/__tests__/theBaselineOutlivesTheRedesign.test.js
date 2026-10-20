@@ -60,6 +60,25 @@ describe('the redesign is opt-in, so the default is the baseline', () => {
     expect(code).not.toMatch(/peopleMode\s*=\s*true/);
   });
 
+  test('EVERY STRUCTURAL SWITCH CARRIES THE FLAG — not just the zone', () => {
+    // FOUND BY AN AUDIT, NOT BY A TEST, AND THAT IS THE POINT.
+    // `peopleRailUp` decides whether the whole guests sheet is wrapped in the
+    // two-column `.people-grid` and whether the guest editor is hoisted out of
+    // `.roster` into a rail. It shipped as `railUp && bp === 'desktop'` — no
+    // flag term — so at desktop the PRE-REDESIGN surface was recomposed too,
+    // losing 340px to a column that is always empty on that branch.
+    //
+    // Every test in the suite passed, because every test passes `?people=1`
+    // explicitly. The opt-in assertion above cannot see this: the flag was read
+    // correctly and then simply not consulted by the second switch. So the
+    // guarantee is per-SWITCH, not per-flag.
+    const code = stripComments(src());
+    expect(code).toMatch(/peopleRailUp\s*=\s*peopleMode\s*&&/);
+    // And the switches that consume it must not reintroduce the gap by
+    // defaulting the other way.
+    expect(code).not.toMatch(/peopleRailUp\s*=\s*railUp/);
+  });
+
   test('THE GATE BITES — the flag really is in this file', () => {
     // Guard against a dead ratchet: if the flag is renamed or moved, the
     // assertions above would pass forever on an absent pattern.

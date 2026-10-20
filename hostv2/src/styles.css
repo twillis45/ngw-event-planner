@@ -6619,9 +6619,14 @@ button.vc-pill::after{
 /* The name reads, it does not announce. 650 is the production weight and it is
    right for a row that must be scanned against a dense toolbar; at this
    register the hierarchy comes from the meta line going quiet beneath it. */
+/* DENSITY COMES FROM RESTRAINT, NOT FROM SHRINKING — but 69px for a single
+   name is not restraint, it is slack. The 44px floor lives on the button now
+   (the tap-target fix), so the row's own padding no longer has to carry it:
+   8px puts a one-line row at 60 and a three-line row at ~79, inside the
+   reference set's measured 56–73 band for two-line rows. */
 .people-roster .grow{
   font-weight:550;
-  padding:var(--sp-3) var(--sp-2);
+  padding:var(--sp-2) var(--sp-2);
 }
 .people-roster .grow .of{ font-weight:500; }
 
@@ -6683,45 +6688,6 @@ button.vc-pill::after{
   color:var(--steel-soft); font-weight:700;
 }
 
-/* ── §14 · THE EDITORIAL OPENING AT EACH BREAKPOINT ─────────────────────────
-   Owner: *"tablet and desktop should not look like a stretched phone — they
-   should be deliberate."* Two things were scaling when they should have been
-   composed:
-
-   · THE BAND. 38vh is the reference set's measured mobile proportion (§2 of
-     ART_DIRECTION_GRAMMAR) and it is a proportion of a 844px-tall phone. At
-     1440x1024 the same rule buys a 389px photograph carrying one 40px line —
-     the exact "giant decorative hero" the references are explicit about not
-     making. It is capped in absolute px from the tablet up, so the band stays
-     a band and the attendance decision stays above the fold.
-   · THE MEASURE. A serif statement set across 1440px is a banner, not a
-     sentence. The reference desktops set their page titles in a column and put
-     the operational surface beside or beneath them. */
-.people-hero--img{ min-height:38vh; }
-
-@media (min-width:768px){
-  .people-hero--img{ min-height:0; height:320px; }
-  .people-hero-say{ max-width:46ch; }
-}
-@media (min-width:1280px){
-  /* MEASURED, NOT ASSUMED. I added `grid-column:1 / -1` here first, reading the
-     desktop capture as the band being trapped in column 1 of the data-tier grid
-     (`minmax(0,1fr) 340px`, styles.css:5655). The re-capture was byte-identical:
-     the rule is inert, because `.roster` is what becomes that grid, not the
-     sheet body, and the band already spans the full content column.
-     What is actually beside the photograph is the 340px rail the roster
-     reserves for a guest detail that is not open yet. That is a composition
-     question — the references park a persistent event card there — and it is
-     recorded as an open decision rather than patched with a rule that does
-     nothing. */
-  /* Shorter again, not taller: at desktop the host has the whole command
-     surface in view and the photograph's job is identity, which a 280px band
-     does as well as a 400px one. The references park the event photograph in
-     the right rail at this width for exactly that reason. */
-  .people-hero--img{ height:280px; }
-  .people-hero-say{ max-width:40ch; }
-}
-
 /* ── §7/§8 · FOUR CONCEPTS, FOUR PLACES ────────────────────────────────────
    identity · party · need · RSVP state. The row's job is to be scannable at
    75 rows, so each line has ONE job and a weight that says which job it is:
@@ -6729,105 +6695,31 @@ button.vc-pill::after{
    to be noticed and not enough to shout. */
 .people-roster .pr-name{
   display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  font-size:var(--t-row); font-weight:600; color:var(--ink); line-height:1.3;
+  font-family:var(--serif-read); font-optical-sizing:auto;
+  font-size:var(--t-sub); font-weight:500; color:var(--ink); line-height:1.25;
+  letter-spacing:-.005em;
 }
 .people-roster .pr-party{
   display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  margin-top:1px;
+  margin-top:2px;
   font-size:var(--t-body-s); font-weight:500; color:var(--faint); line-height:1.35;
 }
 /* The need line is the only place on a row that may interrupt. It is marked,
    not chipped — a capsule is a control's shape and this is not a control — and
-   it takes the ink-soft weight the party line deliberately does not, because
-   this is the line that changes what the host has to BUY or ARRANGE. */
+   it takes a heavier neutral than the party line, because this is the line
+   that changes what the host has to BUY or ARRANGE.
+   MEASURED FROM A FRAME, NOT CHOSEN: it was `--ink-soft`, production's
+   blue-grey secondary, and at list density a run of blue text reads as links.
+   `--muted` is the neutral step and keeps the steel for the one mark that
+   earns it. */
 .people-roster .pr-need{
   display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   margin-top:2px;
   font-size:var(--t-body-s); font-weight:500; color:var(--muted); line-height:1.35;
 }
-/* MEASURED FROM A FRAME, NOT CHOSEN. The need line was `--ink-soft`, which is
-   production's blue-grey secondary (#849eb8 dark / #4e6c84 light) — correct as
-   a token and wrong here: at list density a run of blue text reads as links,
-   and "Fish · Shellfish · +3 more" is content, not navigation. `--muted` is the
-   neutral step and keeps the steel for the one mark that earns it. */
 .people-roster .pr-dot{
   color:var(--steel-soft); padding-right:4px; font-size:12px;
 }
-
-/* ── §19/§26 · DESKTOP: A QUIET LIST AND A CONTEXTUAL RAIL ────────────────
-   OWNER §19: *"The CRM-style NAME | KIDS | MEAL | DIETARY table is NOT the
-   default desktop direction. Bring the quieter People / household row grammar
-   to desktop."*  §26: *"Use the existing ~340px desktop rail. Do NOT leave it
-   as unexplained empty acreage. Do NOT turn it into another dashboard."*
-
-   TWO MEASURED CORRECTIONS ARE BAKED INTO THIS BLOCK, both from frames:
-
-   1. I first cancelled the data-tier grid under `.people-roster` so the rows
-      would stay rows. Wrong target: that grid is not the table, it is what puts
-      the detail in a rail. 2. So I reused it — and the desktop capture killed
-      THAT, because on a 75-guest event the roster begins far below the fold, so
-      a rail living inside it did not exist until the host had scrolled past the
-      hero, the attendance decision and the One Move. The entire upper right of
-      the screen was the empty acreage §26 names.
-
-   The answer is neither: the GUESTS SHEET BODY is the grid, the rail is sticky
-   against the whole page, and the roster goes back to being a plain list at
-   every width. The table appearance disappears with the grid, so `.ghead` has
-   nothing to label and is hidden.
-
-   The baseline composition is untouched — without `?people=1` the data-tier
-   table is exactly what it was. */
-.people-grid{ display:block; }
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-grid{
-  display:grid; grid-template-columns:minmax(0,1fr) 340px;
-  column-gap:var(--sp-5); align-items:start;
-}
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-aside{
-  position:sticky; top:0; align-self:start;
-  max-height:88vh; overflow:auto;
-}
-/* The roster is a list, not a table, at every width under People. */
-.people-roster{ display:block!important; grid-template-columns:none!important; }
-.people-roster .rrow, .people-roster .rgroup{ display:block!important; }
-.people-roster .ghead{ display:none!important; }
-/* The detail panel in the rail keeps its own identity but drops the roster
-   grid's placement, which no longer applies to it. */
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-aside .gdetail{
-  grid-column:auto; grid-row:auto; position:static;
-  margin-left:0; padding:var(--sp-4);
-  background:var(--card); border-left:1px solid var(--line-soft);
-  border-radius:var(--r-md);
-}
-
-/* ── STATE A · NOTHING SELECTED ────────────────────────────────────────────
-   The event's context, not a second copy of the main column and not a
-   dashboard. Everything in it is on screen at the top of the page and gone by
-   the time the host is forty rows down — which is exactly when she needs it.
-   Hidden below the rail band: on mobile this context IS the photographic
-   opening and the attendance decision, which are better at it. */
-.people-rail{ display:none; }
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-rail{
-  display:block;
-  padding:var(--sp-4); border-left:1px solid var(--line-soft);
-  border-radius:var(--r-md); background:var(--card);
-}
-.people-rail .prl-cover{
-  position:relative; height:120px; margin:0 0 var(--sp-3);
-  border-radius:var(--r-md); overflow:hidden; background:var(--bg-band);
-}
-.people-rail .prl-cover img{ width:100%; height:100%; object-fit:cover; }
-.people-rail .prl-cover::after{
-  content:''; position:absolute; inset:0;
-  background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 70%);
-}
-.people-rail .prl-row{
-  display:flex; align-items:baseline; justify-content:space-between;
-  gap:var(--sp-3); padding:var(--sp-2) 0;
-  border-top:1px solid var(--line-soft);
-}
-.people-rail .prl-row:first-of-type{ border-top:none; }
-.people-rail .prl-k{ font-size:var(--t-body-s); color:var(--faint); }
-.people-rail .prl-v{ font-size:var(--t-row); color:var(--ink); font-weight:600; }
 
 /* ── §24 · THE ACTION TIERS ────────────────────────────────────────────────
    One dominant CTA (full width, the shell's own `.cta`), a quiet secondary
@@ -6871,10 +6763,6 @@ button.vc-pill::after{
        shrink-to-fit rather than filling, so the composition was squeezed into
        two-thirds of the width and the rest read as the empty acreage the rail
        was supposed to end. */
-.people-roster .grow > button:first-of-type{
-  display:flex; flex-direction:column; justify-content:center;
-  min-height:44px;
-}
 .people-roster .grow > button:focus-visible,
 .people-rail button:focus-visible,
 .people-aside button:focus-visible{
@@ -6888,3 +6776,273 @@ button.vc-pill::after{
    and party lines would have pushed the main column wider than its track and
    squeezed the rail instead of truncating. */
 .people-main{ min-width:0; }
+
+/* ── §19 · THE DATA-TIER TRACKS MUST LET GO OF THE PEOPLE ROW ──────────────
+   FOUND IN A FRAME (G1-desktop-selected), not in review. At the data tier the
+   production row is a TABLE: `.grow > button` becomes a flex row with a
+   `--gt-name` fixed track on its first span and `flex:1 1 auto` on its second
+   (styles.css:5165-5190). Those selectors are positional — `span:first-child`,
+   `span:nth-child(2)` — so the moment the People row started rendering
+   `.pr-name` and `.pr-party` as the first two spans of that same button, the
+   table grabbed them. The result was a 350px-tall row with the name centred at
+   the top, the avatar floating in the middle and the party line at the bottom.
+
+   This is the `.ghead` problem one layer down: hiding the headers removed the
+   LOOK of the table, and the tracks underneath were still doing table work.
+   The People row is a stacked block — identity over party over need — so it
+   opts out of the column model entirely. Scoped to `.people-roster`, so the
+   baseline composition keeps every one of those measured tracks. */
+.people-roster .grow > button:first-of-type{
+  display:flex !important; flex-direction:column; justify-content:center;
+  align-items:flex-start; gap:0; min-height:44px; flex:1 1 auto; min-width:0;
+}
+.people-roster .grow > button:first-of-type > span{
+  flex:0 0 auto !important; margin-top:0; max-width:100%;
+}
+.people-roster .grow{ align-items:center !important; gap:var(--sp-2) !important; }
+
+/* ═══ THE PLATE ═════════════════════════════════════════════════════════════
+   Measured off the reference sheets, not recalled. Nine frames — three sheets
+   x three breakpoints x six Place states — and every one of them is
+
+       DARK TOP PLATE  →  hard edge  →  OPERATIONAL FIELD
+
+   The plate is dark in EVERY frame, including the frames whose body is ivory.
+   That relationship is what makes the reference read as an editorial masthead
+   over a body rather than as an application, and reproducing it is the single
+   largest parity move available.
+
+   `--people-plate` is a near-black with a warm cast, declared here rather than
+   taken from `--bg`, precisely because it must NOT follow the theme: a plate
+   that goes near-white in light mode is not a plate. Type on it is light in
+   both themes for the same reason the photograph is — the band has its own
+   luminance regime. Measured against the plate ground, the three values below
+   run 14.9:1, 11.3:1 and 8.4:1. */
+.people-plate{
+  --people-plate: #15130F;
+  --people-plate-ink: #FBF8F3;
+  position:relative;
+  margin:0 calc(var(--sp-4) * -1);     /* bleed past the sheet gutter */
+  background:var(--people-plate);
+  overflow:hidden;
+}
+
+/* THE PHOTOGRAPHIC BAND. ~127px of 844 on the phone frames (~15%), not the
+   38vh the previous cut ran — which pushed every operational element off the
+   first viewport and left the screen reading as a poster. */
+.people-plate-img{ position:relative; height:150px; }
+.people-plate-img img{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; object-position:center 42%;
+}
+/* On the phone the veil only has to stop the photograph fighting the plate it
+   sits on — the statement is BELOW it, on the plate itself. */
+.people-plate-veil{
+  position:absolute; inset:0;
+  background:linear-gradient(to top, var(--people-plate) 0%, rgba(21,19,15,.55) 34%, rgba(21,19,15,.12) 100%);
+}
+.people-plate-fix{
+  position:absolute; top:8px; right:var(--sp-4); z-index:2;
+  font-size:10px; font-weight:700; letter-spacing:.1em;
+  padding:2px 8px; border-radius:999px;
+  background:rgba(0,0,0,.55); color:rgba(255,255,255,.78);
+}
+
+.people-plate-say{ position:relative; z-index:1; padding:var(--sp-4) var(--sp-4) var(--sp-6); }
+.people-plate-eyebrow{
+  font-size:var(--t-pill); font-weight:700; letter-spacing:.18em;
+  text-transform:uppercase; color:rgba(255,255,255,.62);
+}
+.people-plate-h{
+  margin:var(--sp-2) 0 0;
+  font-family:var(--serif-read); font-optical-sizing:auto;
+  font-weight:500; font-size:clamp(30px,8.5vw,38px); line-height:1.1;
+  letter-spacing:-.015em; color:var(--people-plate-ink); text-wrap:balance;
+}
+.people-plate-deck{
+  margin:var(--sp-3) 0 0; max-width:34ch;
+  font-size:var(--t-body-s); line-height:1.55; color:rgba(255,255,255,.76);
+}
+
+/* ── DESKTOP AND TABLET: THE COMPOSITION TRANSFORMS ────────────────────────
+   The reference does not scale the phone plate up — it overlays the statement
+   on the LEFT of a full-bleed photograph behind a left-to-right gradient, and
+   the band is ~26% of the frame (~265px at 1024 tall). Two compositions, one
+   grammar. */
+@media (min-width:768px){
+  .people-plate--img{ display:grid; }
+  .people-plate--img > *{ grid-area:1 / 1; }
+  .people-plate-img{ height:265px; }
+  .people-plate-veil{
+    background:linear-gradient(to right, rgba(21,19,15,.94) 0%, rgba(21,19,15,.80) 38%, rgba(21,19,15,.18) 78%, rgba(21,19,15,.06) 100%);
+  }
+  .people-plate-say{
+    align-self:center; max-width:30rem;
+    padding:var(--sp-5) var(--sp-5) var(--sp-5) var(--sp-5);
+  }
+  .people-plate-h{ font-size:clamp(38px,3.4vw,52px); }
+  .people-plate-deck{ max-width:40ch; }
+}
+
+/* ── THE EDGE ──────────────────────────────────────────────────────────────
+   The other half of the relationship. The reference's operational field is a
+   different SURFACE from the plate, so the boundary is unmissable; here the
+   field takes the THEME's background — the owner has ruled twice that
+   tokenized light/dark stands and that the warm-neutral question is still open
+   evidence (PEOPLE_VISUAL_PARITY.md §4). In light mode that tonal jump is the
+   edge on its own. In dark mode the two grounds are within a few points of
+   each other, so the plate carries a hairline and a touch of warmth to keep
+   the boundary legible rather than relying on a difference that is not there.
+   No `.people-field` element: the field IS the sheet, and inventing a wrapper
+   to restate the background it already has would be a surface for its own
+   sake. */
+.people-plate{ border-bottom:1px solid rgba(255,255,255,.07); }
+
+/* ── THE RECOMMENDATION BAND ───────────────────────────────────────────────
+   The reference's ✦ band: glyph, short bold title, one line, and the action
+   BESIDE it rather than under it. The previous cut dropped the glyph and put
+   the CTA underneath, which turned a band into a card and lost the one
+   consistent intelligence signature in the whole reference set. */
+.people-move{
+  display:flex; gap:var(--sp-3); align-items:center;
+  padding:var(--sp-4); margin:var(--sp-5) 0;
+  background:var(--steel-tint); border-radius:var(--r-md);
+}
+.people-move-glyph{ color:var(--steel-soft); font-size:14px; line-height:1; flex:0 0 auto; }
+.people-move-body{ min-width:0; flex:1 1 auto; }
+.people-move-t{ font-size:var(--t-row); font-weight:700; color:var(--ink); line-height:1.3; }
+.people-move-l{
+  margin-top:2px; font-family:var(--serif-read); font-style:italic;
+  font-size:var(--t-body-s); color:var(--ink-soft); line-height:1.4;
+}
+.people-move-cta{ flex:0 0 auto; white-space:nowrap; }
+@media (max-width:539px){
+  .people-move{ flex-wrap:wrap; }
+  .people-move-cta{ width:100%; margin-top:var(--sp-2); }
+}
+
+/* ── THE SECTION HEADER ────────────────────────────────────────────────────
+   Serif heading left, one action right. Measured on every operational section
+   in the reference set. */
+.people-sechead{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:var(--sp-3); margin:var(--sp-6) 0 var(--sp-3);
+}
+.people-sechead-h{
+  margin:0; font-family:var(--serif-read); font-optical-sizing:auto;
+  font-weight:500; font-size:var(--t-sub); line-height:1.2; color:var(--ink);
+}
+.people-sechead-n{ margin-top:2px; font-size:var(--t-body-s); color:var(--faint); }
+.people-sechead-a{ flex:0 0 auto; white-space:nowrap; }
+
+/* ── THE ROW IS A CARD ─────────────────────────────────────────────────────
+   Measured: ~76px tall, a ~56px rounded-rect media tile, a hairline border and
+   an 8px gap to the next one. The previous cut ran flat hairline-separated
+   rows with a 32px circle — denser than the reference and, at 75 rows, more
+   uniform than it: nothing told the eye where one person ended and the next
+   began except a 1px line.
+
+   THE MEDIA TILE IS A MONOGRAM, NOT A PHOTOGRAPH, AND THAT IS PERMANENT. The
+   reference's rows carry vendor photography. No guest photography exists, none
+   may be invented, and nothing about a person's face may be inferred — so the
+   tile is the truthful analogue at the reference's weight. */
+.people-roster .rrow{ margin:0 0 var(--sp-2); }
+.people-roster .grow{
+  border:1px solid var(--line-soft); border-radius:var(--r-md);
+  background:var(--card); padding:var(--sp-3);
+  min-height:76px;
+}
+.people-roster .grow:hover{ background:var(--card); border-color:var(--line); }
+.people-roster .gav{
+  width:48px!important; height:48px!important; border-radius:var(--r-sm)!important;
+  font-size:14px!important;
+}
+/* The affordance is a circular chevron at the row's right edge, which is where
+   the reference puts its circular arrow. The PILL stays the trigger — board
+   ruling 2026-08-07 made it a disclosure control that displays status, and a
+   row whose status is not also its door costs the host a second target — so
+   the circle is drawn on the trigger rather than beside it. */
+.people-roster .grow > button[aria-expanded]::after{
+  content:'›'; display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border-radius:50%;
+  border:1px solid var(--line-soft); color:var(--muted);
+  font-size:13px; transform:none;
+}
+.people-roster .grow > button[aria-expanded="true"]::after{
+  content:'⌄'; transform:none; color:var(--steel-soft); border-color:var(--steel-soft);
+}
+
+/* ═══ DESKTOP: A QUIET LIST AND A CONTEXTUAL RAIL ═══════════════════════════
+   RESTORED AFTER I DELETED IT. A span-delete aimed at the superseded hero
+   rules took this whole block with it, and the next render showed the symptom
+   immediately — no rail, the main column back inside the 820px prose cap, and
+   the rail's cover image orphaned in the page's top-right corner. Rewritten
+   here rather than reverted, because the reference measurement changed the
+   proportion it should use.
+
+   MEASURED FROM THE REFERENCE: the operational field splits list ≈ 56% / rail
+   ≈ 23% of the frame, i.e. roughly 70 / 30 of the content width. 340px against
+   an ~1150px sheet body is 30%.
+
+   Two corrections are baked in, both from frames:
+   1. The rail began inside `.roster`, reusing the production data-tier grid's
+      second column — but on a 75-guest event the roster starts below the fold,
+      so the rail did not exist until the host had scrolled past everything.
+   2. The grid then computed `460px 340px` inside an 1150px sheet, because
+      `.stagewrap--responsive-data > .sheet > *{ max-width:820px }` — a host
+      ruling, "one measure across modes" — was capping it. The rule's own text
+      names the exception ("the row lists below opt back out") and its PURPOSE
+      survives: the resulting main column (~786px) is narrower than the 820 it
+      protects, so no line of prose here gets longer than the ruling allows. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-grid{
+  display:grid; grid-template-columns:minmax(0,1fr) 340px;
+  column-gap:var(--sp-5); align-items:start; max-width:none;
+}
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-aside{
+  position:sticky; top:0; align-self:start;
+  max-height:88vh; overflow:auto;
+}
+/* The roster is a list, not a table, at every width under People. */
+.people-roster{ display:block!important; grid-template-columns:none!important; }
+.people-roster .rrow, .people-roster .rgroup{ display:block!important; }
+.people-roster .ghead{ display:none!important; }
+
+/* ── STATE A · NOTHING SELECTED ────────────────────────────────────────────
+   The event's context, not a second copy of the main column and not a
+   dashboard. Everything in it is on screen at the top of the page and gone by
+   the time the host is forty rows down — which is exactly when she needs it.
+   A COLUMN, not a widget: a hairline and a left inset, because a card here
+   would be one more panel on a surface whose whole argument is that it is not
+   a dashboard. Hidden below the rail band — on mobile this context IS the
+   plate and the attendance decision, which are better at it. */
+.people-rail{ display:none; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-rail{
+  display:block; padding:0 0 0 var(--sp-5);
+  border-left:1px solid var(--line-soft);
+}
+.people-rail .prl-cover{
+  position:relative; height:120px; margin:0 0 var(--sp-3);
+  border-radius:var(--r-md); overflow:hidden; background:var(--bg-band);
+}
+.people-rail .prl-cover img{ width:100%; height:100%; object-fit:cover; }
+.people-rail .prl-cover::after{
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 70%);
+}
+.people-rail .prl-row{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-3); padding:var(--sp-2) 0;
+  border-top:1px solid var(--line-soft);
+}
+.people-rail .prl-row:first-of-type{ border-top:none; }
+.people-rail .prl-k{ font-size:var(--t-body-s); color:var(--faint); }
+.people-rail .prl-v{ font-size:var(--t-row); color:var(--ink); font-weight:600; }
+
+/* The DETAIL keeps a surface: it is an editing panel with live inputs, and a
+   field needs a ground to sit on. State A is context; State B is work. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-aside .gdetail{
+  grid-column:auto; grid-row:auto; position:static;
+  margin-left:0; padding:var(--sp-4);
+  background:var(--card); border-left:2px solid var(--steel);
+  border-radius:var(--r-md);
+}

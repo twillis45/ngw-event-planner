@@ -50,103 +50,68 @@ import { attendanceStatement } from '@app/lib/attendanceStatement';
  * masquerade as production truth. No stock photography is bundled, and the
  * image-absent state is the DEFAULT rather than a fallback.
  */
-export function PeopleHero({ event, src, fixture, statement }) {
+export function PeopleHero({ event, src, fixture }) {
   const name = String((event && event.name) || '').trim();
   const hasImage = !!src;
 
-  // The domain statement. Fixed, because it is the domain's identity rather
-  // than a status — the same way the references' "Right people. Right roles.
-  // Less stress." does not change with the data.
-  // §14: the band's HEIGHT and the statement's MEASURE are the two things that
-  // must not simply scale with the viewport, so both are handed to CSS
-  // (`.people-hero`, styles.css) where a media query can hold them. 38vh is the
-  // references' mobile proportion and it is wrong at 1440x1024, where it buys a
-  // 389px-tall photograph above a 40px line of type.
+  // ── THE PLATE, NOT A HERO (parity pass, measured 2026-10-20) ─────────────
+  //
+  // Measured off the reference sheets rather than recalled: across nine frames
+  // (three sheets x three breakpoints x six Place states) the composition is
+  // always DARK TOP PLATE -> hard edge -> operational field. The plate carries
+  // the photograph AND the statement; it is dark in every frame, including the
+  // frames whose body is ivory.
+  //
+  // What that corrected, in order of size:
+  //
+  //   1. THE PLATE IS A SURFACE, NOT A SCRIM. The previous cut dissolved the
+  //      photograph into `--bg`, so in light mode the band faded to near-white
+  //      and there was no plate at all — one surface from the top of the page
+  //      to the bottom. The reference has a hard edge there, and that edge is
+  //      what makes the thing read as a masthead over a body.
+  //   2. THE PHOTOGRAPH WAS 2.5x TOO TALL. Measured on the phone frames the
+  //      photograph is ~127px of 844 (~15%) with the statement BELOW it on the
+  //      same dark ground, ~288px of plate in total (~34%). The previous cut
+  //      ran 38vh (~321px) of photograph with the statement laid over it, so
+  //      the first viewport ended at the deck and no operational content
+  //      reached the screen at all.
+  //   3. THE COMPOSITION TRANSFORMS, IT DOES NOT SHRINK. Mobile stacks
+  //      (photograph, then statement on dark). Desktop overlays the statement
+  //      on the LEFT of a full-bleed photograph behind a left-to-right
+  //      gradient. Those are two compositions, not one scaled.
+  //
+  // The image-absent state is the DEFAULT — no host-supplied cover media
+  // pipeline exists — and it is the plate without the photographic band, which
+  // is a deliberate state rather than a fallback.
   return (
-    <div className={'people-hero' + (hasImage ? ' people-hero--img' : '')} style={{
-      position: 'relative',
-      margin: '0 calc(var(--sp-4) * -1)',          // bleed past the sheet gutter
-      padding: hasImage ? '0' : 'var(--sp-7) var(--sp-4) var(--sp-6)',
-      display: 'flex', alignItems: 'flex-end',
-      overflow: 'hidden',
-      borderRadius: 0,
-    }}>
+    <div className={'people-plate' + (hasImage ? ' people-plate--img' : '')}>
       {hasImage ? (
-        <>
-          <img src={src} alt="" aria-hidden="true" style={{
-            position: 'absolute', inset: 0, width: '100%', height: '100%',
-            objectFit: 'cover', objectPosition: 'center 40%',
-          }} />
-          {/* ── THE TRANSITION, IN TWO LAYERS (owner §12, 2026-10-20) ────────
-              It was one gradient doing two incompatible jobs: making type
-              legible over a photograph, and handing the photograph off to the
-              page. In dark mode those jobs happen to agree, because the page is
-              already near-black. IN LIGHT MODE THEY DO NOT — the single ramp
-              went from rgba(0,0,0,.72) to a near-white `--bg` inside 2% of the
-              band, which is not a transition but a seam, and the statement sat
-              on it in `--ink`, i.e. near-black type on a near-black veil.
-
-              So: the VEIL is for legibility and is the same in both themes,
-              because type over a photograph is light type over a photograph —
-              the image is its own surface and does not take the page's
-              foreground. The HAND-OFF is a short, separate dissolve into
-              `--bg` at the very bottom edge, long enough not to read as a cut
-              and short enough not to grey out the lower third of the picture.
-              The references do the same thing: a defined photographic band,
-              then the operational surface. */}
-          <div aria-hidden="true" style={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.52) 34%, rgba(0,0,0,.18) 66%, rgba(0,0,0,.04) 100%)',
-          }} />
-          <div aria-hidden="true" style={{
-            position: 'absolute', left: 0, right: 0, bottom: -1, height: 28,
-            background: 'linear-gradient(to top, var(--bg), rgba(0,0,0,0))',
-          }} />
+        <div className="people-plate-img">
+          <img src={src} alt="" aria-hidden="true" />
+          {/* On mobile this only has to keep the photograph from fighting the
+              plate it sits on; on desktop it also has to carry type, so the
+              gradient runs from the left there. Both are the photograph's own
+              luminance regime, not the page's. */}
+          <div className="people-plate-veil" aria-hidden="true" />
           {fixture ? (
             /* NON-PRODUCTION, AND IT SAYS SO. A review fixture that could be
                mistaken for a host's own uploaded cover would be exactly the
                fabricated truth this project forbids. */
-            <div style={{
-              position: 'absolute', top: 8, right: 'var(--sp-4)', zIndex: 2,
-              fontSize: 10, fontWeight: 700, letterSpacing: '.1em',
-              padding: '3px 8px', borderRadius: 999,
-              background: 'rgba(0,0,0,.6)', color: 'rgba(255,255,255,.78)',
-            }}>DESIGN FIXTURE — NOT YOUR PHOTO</div>
+            <div className="people-plate-fix">DESIGN FIXTURE — NOT YOUR PHOTO</div>
           ) : null}
-        </>
+        </div>
       ) : null}
 
-      <div className="people-hero-say" style={{
-        position: 'relative', zIndex: 1, width: '100%',
-        padding: hasImage ? 'var(--sp-7) var(--sp-4) var(--sp-5)' : 0,
-      }}>
-        {/* OVER A PHOTOGRAPH, THE FOREGROUND IS THE PHOTOGRAPH'S, NOT THE
-            PAGE'S. `--ink` is near-black in light mode and would be invisible
-            on the veil above; `--steel-soft` likewise loses the eyebrow. These
-            three values are the only place in this file that steps outside the
-            tokens, and the reason is structural rather than stylistic: the band
-            has its own luminance regime. Measured against the veil's darkest
-            stop (rgba(0,0,0,.78) over the fixture) all three clear AA. */}
-        <div className="of" style={{ letterSpacing: '.14em', textTransform: 'uppercase', color: hasImage ? 'rgba(255,255,255,.76)' : 'var(--steel-soft)' }}>
-          People
-        </div>
-        {/* THE DOMAIN STATEMENT — serif, light, two lines, sentence case,
-            full stop. The references' most consistent single element. */}
-        <h2 style={{
-          margin: '6px 0 0',
-          fontFamily: 'var(--serif-read)', fontOpticalSizing: 'auto',
-          fontWeight: 500, fontSize: 'clamp(30px,9vw,40px)', lineHeight: 1.08,
-          letterSpacing: '-.015em', color: hasImage ? '#FBF8F3' : 'var(--ink)', textWrap: 'balance',
-        }}>
-          Know who’s coming.
-        </h2>
-        <p style={{
-          margin: '10px 0 0', maxWidth: '30ch',
-          fontSize: 'var(--t-body-s)', lineHeight: 1.5,
-          color: hasImage ? 'rgba(255,255,255,.82)' : 'var(--ink-soft)',
-        }}>
-          {name ? `Replies, needs and who’s bringing whom for ${name}.`
-            : 'Replies, needs and who’s bringing whom — in one place.'}
+      <div className="people-plate-say">
+        <div className="people-plate-eyebrow">People</div>
+        {/* THE DOMAIN STATEMENT — serif, light, sentence case, full stop. The
+            reference set's most consistent single element, and the one piece of
+            this surface that never changes with the data. */}
+        <h2 className="people-plate-h">Know who’s coming.</h2>
+        <p className="people-plate-deck">
+          {name
+            ? `Replies, needs and who’s bringing whom for ${name}. Everything about your guests in one place.`
+            : 'Replies, needs and who’s bringing whom — everything about your guests in one place.'}
         </p>
       </div>
     </div>
@@ -187,7 +152,7 @@ export function PeopleHero({ event, src, fixture, statement }) {
  * — `confirmedCovers` and `kidsTotal` still drive food and seating exactly as
  * before; they simply stopped narrating themselves on the primary surface.
  */
-export function AttendanceDecision({ event, solemn, onConfirmCount, onAdjust, adjusting, detail }) {
+export function AttendanceDecision({ event, solemn, onConfirmCount, onAdjust, adjusting }) {
   const s = attendanceStatement(event);
   const [why, setWhy] = React.useState(false);
   if (!s.known) {
@@ -236,11 +201,13 @@ export function AttendanceDecision({ event, solemn, onConfirmCount, onAdjust, ad
             <button className="cta" onClick={() => onConfirmCount && onConfirmCount(s.confirmable)}>
               Plan for {s.confirmable}
             </button>
-            <button className="mini" onClick={() => onAdjust && onAdjust(!adjusting)} aria-expanded={!!adjusting}>
-              {adjusting ? 'Done' : 'Use a different number'}
-            </button>
+            {/* Rendered only where the control it reveals actually exists. */}
+            {onAdjust ? (
+              <button className="mini" onClick={() => onAdjust(!adjusting)} aria-expanded={!!adjusting}>
+                {adjusting ? 'Done' : 'Use a different number'}
+              </button>
+            ) : null}
           </div>
-          {adjusting ? <div style={{ marginTop: 'var(--sp-3)' }}>{detail}</div> : null}
           <More label="Why this number">
             {s.because ? <p className="grounding" style={{ margin: '0 0 6px' }}>{s.because}</p> : null}
             <p className="grounding" style={{ margin: 0 }}>
@@ -268,7 +235,6 @@ export function AttendanceDecision({ event, solemn, onConfirmCount, onAdjust, ad
                   The plan buys for {s.preparingFor} — the larger of your yeses and the number you told us to expect.
                 </p>
               ) : null}
-              {detail}
             </More>
           ) : null}
         </>
@@ -444,23 +410,42 @@ export function OneMove({ move, cta, onGo }) {
   if (!title) return null;
   const line = String(move.ask || move.why || move.consequence || '').trim();
   return (
-    <div style={{
-      display: 'flex', gap: 12, alignItems: 'flex-start',
-      padding: 'var(--sp-4)', margin: 'var(--sp-5) 0',
-      background: 'var(--steel-tint)',
-      borderLeft: '2px solid var(--steel-soft)',
-      borderRadius: '0 var(--r-md) var(--r-md) 0',
-    }}>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        {/* THE CONSEQUENCE LEADS. No eyebrow, no glyph competing with it. */}
-        <div style={{ fontSize: 'var(--t-sub)', fontWeight: 650, color: 'var(--ink)', lineHeight: 1.25 }}>{title}</div>
-        {line && line !== title ? (
-          <div style={{ marginTop: 4, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>{line}</div>
-        ) : null}
-        {onGo && cta ? (
-          <button className="mini" style={{ marginTop: 'var(--sp-3)' }} onClick={onGo}>{cta}</button>
-        ) : null}
+    <div className="people-move">
+      <span className="people-move-glyph" aria-hidden="true">✦</span>
+      <div className="people-move-body">
+        {/* THE CONSEQUENCE LEADS. The reference's band is captioned "Why we're
+            recommending this" — which is precisely the label for NGW's own
+            reasoning the owner ruled out ("LEAD WITH THE HOST CONSEQUENCE, NOT
+            WITH A LABEL EXPLAINING NGW'S REASONING"). So this takes the
+            reference's FORM — glyph, short bold title, one line, the action
+            beside it rather than under it — and the owner's CONTENT rule. */}
+        <div className="people-move-t">{title}</div>
+        {line && line !== title ? <div className="people-move-l">{line}</div> : null}
       </div>
+      {onGo && cta ? (
+        <button className="cta people-move-cta" onClick={onGo}>{cta} →</button>
+      ) : null}
+    </div>
+  );
+}
+
+/* ── THE SECTION HEADER ───────────────────────────────────────────────────
+ * Measured from the reference: every operational section opens with a SERIF
+ * heading on the left and its one action on the right — "Your team by
+ * category / Add vendor →". The implementation had no section header at all,
+ * so the roster began with a filter toolbar, which is how an operational
+ * surface starts reading as a table rather than as a part of a page.
+ */
+export function SectionHead({ title, note, action }) {
+  return (
+    <div className="people-sechead">
+      <div style={{ minWidth: 0 }}>
+        <h3 className="people-sechead-h">{title}</h3>
+        {note ? <div className="people-sechead-n">{note}</div> : null}
+      </div>
+      {action ? (
+        <button className="mini people-sechead-a" onClick={action.onClick}>{action.label} →</button>
+      ) : null}
     </div>
   );
 }

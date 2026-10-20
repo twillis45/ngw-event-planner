@@ -139,3 +139,57 @@ control.
 opt-in, so the DEFAULT URL still renders the pre-redesign surface on the same
 build and the same event blob. Pinned by
 `src/lib/__tests__/theBaselineOutlivesTheRedesign.test.js`.
+
+## PEOPLE — execution pass 2 (2026-10-20, `?people=1`, REVIEW CHECKPOINT)
+
+**New atoms in `PeopleSurface.jsx`:** `OneMove` · `GetResponses` · `PeopleRail`,
+joining `PeopleHero` · `AttendanceDecision` · `StillUnknown`.
+
+### The four-concept row, and the anti-drift signal for it
+
+`identity (.pr-name) · party (.pr-party) · need (.pr-need) · reply (the pill)`.
+The defect this replaced was not missing data — it was four concepts sharing two
+slots and one separator, so `with Georgia` and `Vegetarian` read as one phrase.
+**Anti-drift signal: any change that merges two of these four lines to save
+vertical space.** That is how they were merged the first time.
+
+### Action tiers
+
+`dominant (one full-width .cta, chosen by STATE) · secondary (quiet .mini row) ·
+disclosure (a LABELLED fold, never an anonymous overflow)`. The tiers are passed
+INTO `GetResponses`; it decides emphasis and may not re-label, re-point or drop
+an action. **Anti-drift signal: a `.pill-grid` of peer `.mini` buttons returning
+to this surface** — that shape is an inventory, not a hierarchy.
+
+### Positional selectors are a coupling, and this is where it bit
+
+The data tier styles the roster row by POSITION —
+`.grow > button:first-of-type > span:first-child` gets the `--gt-name` track,
+`> span:nth-child(2)` gets `flex:1 1 auto` (styles.css:5165-5190). The moment
+People rendered `.pr-name` / `.pr-party` as the first two spans of that same
+button, the table grabbed them: a 350px-tall row with the name centred at the
+top and the avatar floating in the middle. Hiding `.ghead` had removed the LOOK
+of the table while the tracks underneath went on doing table work.
+
+**The rule that comes out of it:** a composition that changes a row's INNER
+SPANS must opt out of the positional tracks explicitly, not assume that hiding
+the header is enough. `.people-roster` does, scoped, so the baseline keeps every
+one of those measured tracks.
+
+### The prose measure, and the one legitimate way out of it
+
+`.stagewrap--responsive-data > .sheet > *{ max-width:820px }` is a host ruling
+("one measure across modes", 2026-08-21) and it is why the People composition
+computed `460px 340px` inside an 1150px sheet. `.people-grid` opts out via the
+rule's own stated exception — it is a two-column composition, not prose — and
+the ruling's PURPOSE survives untouched, because the resulting main column
+(~786px at 1440) is narrower than the 820 the ruling protects.
+
+### Desktop: one detail, two placements
+
+`guestDetail(g, i)` is hoisted and rendered inline in the row below the rail
+band, or into the sticky 340px rail at desktop — never both, so no guest ever
+has two live copies of their own inputs. State A (nothing selected) is
+`PeopleRail`: the event's own context, sticky, so identity survives a 75-row
+scroll. The rail is a COLUMN (hairline + inset), the detail is a PANEL
+(`--card` + a steel rule), because context is reading and detail is work.

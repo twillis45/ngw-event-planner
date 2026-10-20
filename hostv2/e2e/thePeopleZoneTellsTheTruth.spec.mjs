@@ -398,7 +398,7 @@ test('THE ADMIN TAIL IS SUBORDINATED, NOT REMOVED', async ({ page }) => {
   expect(before).not.toMatch(/By headcount/);
   expect(before).not.toMatch(/Import a guest list/);
   // ...and it is one labelled tap away, with everything in it.
-  expect(await open(page, 'Invite look, rules and list tools')).toBe(true);
+  expect(await open(page, 'How the invite looks, and your list')).toBe(true);
   await page.waitForTimeout(250);
   const after = await sheetText(page);
   for (const m of ['Invite look', 'By headcount', 'Import a guest list', 'Download the guest list']) {
@@ -470,4 +470,37 @@ test('“USE A DIFFERENT NUMBER” REVEALS THE STEPPER, and only then', async ({
   expect(await open(page, 'Use a different number')).toBe(true);
   await page.waitForTimeout(300);
   expect(await shown(), 'and the control is one tap away, not gone').toBe(true);
+});
+
+test('NEGATIVE CONTROL AT DESKTOP — the legacy sheet is not recomposed', async ({ page }) => {
+  // The browser half of the per-switch guarantee. `theBaselineOutlivesTheRedesign`
+  // pins the source; this pins what paints. Without the flag at the rail band
+  // there must be no People grid, no People rail, and the roster must still be
+  // the production data-tier table it has always been there.
+  await page.setViewportSize({ width: 1440, height: 1024 });
+  await page.addInitScript((e) => {
+    if (!localStorage.getItem('ngw-hostv2-custom-events')) {
+      localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    }
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+  }, EV({ id: 'e2e-people-legacy-desktop', guestMode: 'list', guests: roster(10, 'Yes') }));
+  await page.goto('?elegant=1');
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 600 });
+
+  const shape = await page.evaluate(() => ({
+    grid: !!document.querySelector('.people-grid'),
+    rail: !!document.querySelector('.people-rail'),
+    peopleRoster: !!document.querySelector('.people-roster'),
+    // The production table's own marks: a visible column header, and a
+    // `.gdetail` that is still a child of the roster when one is open.
+    headerVisible: (() => {
+      const h = document.querySelector('.roster .ghead');
+      return !!h && h.getClientRects().length > 0;
+    })(),
+  }));
+  expect(shape).toEqual({ grid: false, rail: false, peopleRoster: false, headerVisible: true });
 });
