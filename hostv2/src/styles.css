@@ -7220,3 +7220,47 @@ button.vc-pill::after{
 /* The gap stays at var(--sp-2) — 8px, the reference's. 6 is off the ratified
    4px ladder and `spacingLadder` refuses it, correctly: the row felt loose
    because of its own padding, not because of the gap. */
+
+/* ── THE MAIN COLUMN IS A SURFACE TOO ──────────────────────────────────────
+   The rail became a card and the main column did not, so the page carried two
+   structural grammars at once: a layered card on the right, a bare stream on
+   the left, with rows floating directly on the page background. The reference
+   holds its operational field in a containing surface at every breakpoint —
+   that is what makes it read as card-on-field rather than as a document.
+
+   Only at the rail band: on the phone a card inside a sheet inside a stage is
+   three frames deep for no gain, and the reference's phone frame does not do
+   it either. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-main{
+  background:var(--card); border:1px solid var(--line);
+  border-radius:var(--r-md); padding:var(--sp-5);
+}
+/* Rows sit INSIDE that surface now, so their own card edge would be a frame
+   within a frame. They keep their hairline separation and lose the box. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-roster .grow{
+  background:none; border:none; border-top:1px solid var(--line-soft);
+  border-radius:0; padding:var(--sp-3) var(--sp-2);
+}
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-roster .rrow{ margin:0; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-roster .rrow:first-of-type .grow{ border-top:none; }
+
+/* ── LABELLED FIELDS, AND A DESTRUCTIVE ACTION THAT LOOKS LIKE ONE ─────────
+   The panel's inputs wore their labels as placeholders, so a filled panel was
+   five anonymous boxes. The caption is additional to each input's existing
+   `aria-label`, not a replacement for it. And "Remove" sat at the same weight
+   as "+1 name" — the one irreversible control on the surface, styled like a
+   text field's neighbour. */
+.people-fld{
+  display:flex; flex-direction:column; gap:4px;
+  flex:1 1 150px; min-width:0;
+}
+.people-fld > .field{ max-width:none!important; width:100%; }
+.people-fld{
+  font-size:var(--t-caption-min); font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--faint);
+}
+.people-destructive{
+  margin-left:auto; color:var(--danger); border-color:transparent; background:none;
+  font-weight:600;
+}
+.people-destructive:hover{ border-color:var(--danger); }

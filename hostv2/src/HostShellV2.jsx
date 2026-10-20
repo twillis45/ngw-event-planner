@@ -23668,6 +23668,17 @@ export default function HostShellV2() {
               // where they stand, who they arrive with. Nothing here derives a
               // new fact; it restates the row's own four concepts at panel
               // scale so the editing below has a subject.
+              // ── §5D · A FIELD WITH NO LABEL IS A GUESS ──────────────────
+              // The detail panel's inputs carried their label as a placeholder,
+              // which vanishes the moment anyone types — so a filled panel read
+              // as five anonymous boxes, and the review called it a debug form.
+              // `fld` adds a visible caption under People and returns the input
+              // untouched on the legacy surface, so the baseline composition is
+              // byte-identical. The inputs keep their own `aria-label`; the
+              // caption is additional, not a replacement.
+              const fld = (label, input) => (peopleMode
+                ? <label className="people-fld">{label}{input}</label>
+                : input);
               const guestHead = (g) => {
                 const partner = g.coupleId
                   ? (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId)
@@ -23811,11 +23822,15 @@ export default function HostShellV2() {
                               <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
                               <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
                               <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
+                              {fld('Who they’re bringing', (
                               <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="+1 name"
                                 value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
+                              ))}
+                              {fld('Dietary needs', (
                               <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="Dietary needs"
                                 value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
-                              <button className="mini" onClick={() => removeGuest(i)}>Remove</button>
+                              ))}
+                              <button className={'mini' + (peopleMode ? ' people-destructive' : '')} onClick={() => removeGuest(i)}>Remove</button>
                             </div>
                             <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                               {/* Meal edit (guests parity gap #5): writes the SAME
@@ -23846,12 +23861,18 @@ export default function HostShellV2() {
                                   aria-label={'Meal for ' + (g.name || 'guest') + ': ' + (String(g.meal || '—') === '—' ? 'not answered' : g.meal) + ' — tap to change'}
                                   onClick={() => setMealPickFor(i)}>{String(g.meal || '—') === '—' ? 'not answered' : g.meal}</button>
                               )}
+                              {fld('Phone', (
                               <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="phone" type="tel"
                                 value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Phone" />
+                              ))}
+                              {fld('Email', (
                               <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
                                 value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-label="Email" aria-invalid={isMalformedEmail(g.email)} />
+                              ))}
+                              {fld('Group', (
                               <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="group" list="v2-groups"
                                 value={g.group || ''} onChange={e => writeGuest(i, { group: e.target.value }, null)} aria-label="Group" />
+                              ))}
                             </div>
                             {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
                               // PER-GUEST chase — the engine's nudge (with the real
