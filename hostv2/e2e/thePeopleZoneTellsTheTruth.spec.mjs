@@ -331,3 +331,143 @@ test('AND WHEN SHE HAS SET ONE, IT IS SPOKEN AS THE OUTCOME IT BUYS', async ({ p
   expect(body).toMatch(/A final headcount by/i);
   expect(body).toMatch(/3 more replies/i);
 });
+
+// ─── §24/§25/§36 · HIERARCHY IS NOT DELETION ────────────────────────────────
+//
+// The owner's instruction on both the invite actions and the administrative
+// tail was the same, twice: *"Do NOT delete capability. Do NOT bury capability
+// so deeply that it becomes effectively lost. This is progressive disclosure,
+// not removal."*
+//
+// That is a testable claim, and it is the one a composition pass is most likely
+// to break by accident — a control does not throw when it stops being rendered.
+// So the rule these pin is: EVERY action is reachable in at most ONE disclosure
+// from the state the host is already in.
+const ACTIONS = [
+  'Share the RSVP link', 'Show the QR', 'Preview the RSVP', 'Copy the invite',
+  'Draft the guest brief', 'Update everyone', 'Write a nudge to send',
+];
+
+const buttonTexts = (page) => page.evaluate(() => [...document.querySelectorAll('.sheet button')]
+  .map((b) => (b.innerText || '').trim()));
+
+test('ALL SEVEN INVITE ACTIONS SURVIVE — one fold away at most', async ({ page }) => {
+  await boot(page, EV({
+    id: 'e2e-people-acts', guestMode: 'list',
+    guests: [...roster(2, 'Yes'), ...roster(3, '').map((g, i) => ({ ...g, id: 'q' + i }))],
+  }));
+
+  // DOMINANT: one full-width CTA, and it is the one the STATE calls for —
+  // replies are outstanding, so the job is getting them.
+  // SCOPED TO THE BLOCK, not to the sheet. The sheet has other `.cta`s — the
+  // quick-add "Add them" is one, and it comes first in the DOM — so a loose
+  // `.sheet button.cta` query answers a different question than the one being
+  // asked. (It did, on the first run.)
+  const primary = await page.evaluate(() => {
+    const b = document.querySelector('#guests-invites-anchor button.cta');
+    return b ? (b.innerText || '').trim() : null;
+  });
+  expect(primary, 'with replies outstanding the dominant action is the share link').toBe('Share the RSVP link');
+
+  // The rest are reachable after exactly one tap on a LABELLED fold — not an
+  // anonymous overflow, because a labelled fold says what is inside it.
+  expect(await open(page, 'More ways to reach people')).toBe(true);
+  await page.waitForTimeout(250);
+  const labels = await buttonTexts(page);
+  const missing = ACTIONS.filter((a) => !labels.some((t) => t.startsWith(a)));
+  expect(missing, 'every production invite action is still reachable').toEqual([]);
+});
+
+test('THE DOMINANT ACTION FOLLOWS THE STATE, not a preference', async ({ page }) => {
+  // The paired fixture. Everyone has answered, so there is nothing to chase and
+  // the loudest button on the screen must stop telling her to chase it.
+  await boot(page, EV({ id: 'e2e-people-allin', guestMode: 'list', guests: roster(4, 'Yes') }));
+  const cta = await page.evaluate(() => {
+    const b = document.querySelector('#guests-invites-anchor button.cta');
+    return b ? (b.innerText || '').trim() : null;
+  });
+  expect(cta).toBe('Update everyone');
+  const body = await sheetText(page);
+  expect(body).toMatch(/Everyone has answered/i);
+});
+
+test('THE ADMIN TAIL IS SUBORDINATED, NOT REMOVED', async ({ page }) => {
+  await boot(page, EV({ id: 'e2e-people-admin', guestMode: 'list', guests: roster(3, 'Yes') }));
+  const before = await sheetText(page);
+  // Configuration is not competing with the guest work...
+  expect(before).not.toMatch(/By headcount/);
+  expect(before).not.toMatch(/Import a guest list/);
+  // ...and it is one labelled tap away, with everything in it.
+  expect(await open(page, 'Invite look, rules and list tools')).toBe(true);
+  await page.waitForTimeout(250);
+  const after = await sheetText(page);
+  for (const m of ['Invite look', 'By headcount', 'Import a guest list', 'Download the guest list']) {
+    expect(after, `${m} survives inside the fold`).toContain(m);
+  }
+});
+
+// ─── §7/§8 · FOUR CONCEPTS, FOUR PLACES, ON HOSTILE DATA ────────────────────
+//
+// The owner's defect report was three strings: `+1 Pat · with Ray`,
+// `with Georgia Vegetarian`, `+1 Georgia · with ... no stairs`. Each is a
+// relationship fact and a dietary fact sharing one separator, so they read as
+// one phrase. The fix is structural — identity, party and need are three
+// elements — and the thing that would silently undo it is someone merging them
+// back to save a line, which is exactly how they got merged the first time.
+test('IDENTITY, PARTY AND NEED ARE THREE ELEMENTS — never one sentence', async ({ page }) => {
+  await boot(page, EV({
+    id: 'e2e-people-grammar', guestMode: 'list',
+    guests: [
+      { id: 'a1', name: 'Tonya Brooks', rsvp: 'Yes', coupleId: 'cA', plusOne: 'Pat', kids: 2, diets: ['Vegetarian'] },
+      { id: 'a2', name: 'Ray Brooks', rsvp: 'No', coupleId: 'cA' },
+      // An unnamed +1: `plusOne` truthy but blank is real data, and "+1" with
+      // nothing after it is the string this guards against.
+      { id: 'a3', name: 'Alma Reyes', rsvp: 'Yes', plusOne: '   ' },
+    ],
+  }));
+
+  const first = await page.evaluate(() => {
+    const row = document.querySelector('.people-roster .rrow');
+    if (!row) return null;
+    const q = (c) => { const el = row.querySelector(c); return el ? (el.innerText || '').trim() : null; };
+    return { name: q('.pr-name'), party: q('.pr-party'), need: q('.pr-need') };
+  });
+  expect(first).not.toBeNull();
+  // IDENTITY is the name and only the name.
+  expect(first.name).toBe('Tonya Brooks');
+  // PARTY is who else arrives because of her — one concept, one line.
+  expect(first.party).toMatch(/with Ray/);
+  expect(first.party).toMatch(/\+1 Pat/);
+  expect(first.party).toMatch(/2 kids/);
+  // NEED is what the plan must do differently, and it is NOT in the party line.
+  expect(first.party).not.toMatch(/Vegetarian/);
+  expect(first.need).toMatch(/Vegetarian/);
+
+  // An unnamed +1 never renders as a dangling "+1".
+  const blank = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.people-roster .rrow')];
+    const r = rows.find((x) => /Alma Reyes/.test(x.innerText || ''));
+    const el = r && r.querySelector('.pr-party');
+    return el ? (el.innerText || '').trim() : '';
+  });
+  expect(blank).not.toMatch(/\+1\s*$/);
+});
+
+test('“USE A DIFFERENT NUMBER” REVEALS THE STEPPER, and only then', async ({ page }) => {
+  // §5: *"the decision is the story. The controls support the decision."* The
+  // headcount stepper is suppressed until the host asks to adjust — which means
+  // there are now two ways to lose the control entirely (suppress it and never
+  // reveal it), and neither throws.
+  await boot(page, EV({
+    id: 'e2e-people-adjust',
+    guestMode: 'count', guestEstimate: 40, guestCountSource: 'playbook-typical',
+  }));
+  const shown = () => page.evaluate(() => {
+    const el = document.getElementById('guests-entry-anchor');
+    return !!el && getComputedStyle(el).display !== 'none';
+  });
+  expect(await shown(), 'the form is not the decision').toBe(false);
+  expect(await open(page, 'Use a different number')).toBe(true);
+  await page.waitForTimeout(300);
+  expect(await shown(), 'and the control is one tap away, not gone').toBe(true);
+});

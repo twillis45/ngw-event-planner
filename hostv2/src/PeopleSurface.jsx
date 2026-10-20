@@ -255,8 +255,13 @@ export function AttendanceDecision({ event, solemn, onConfirmCount, onAdjust, ad
             <span style={{ fontSize: 'var(--t-sub)', fontWeight: 600, color: 'var(--muted)' }}>{s.unit}</span>
           </div>
           <Guide>{s.headline}</Guide>
+          {/* §3: "What's behind this" was a label for NGW's reasoning, and
+              sitting one line above the One Move card it read as that card's
+              heading. These name what the disclosure actually CONTAINS — who is
+              counted — so it attaches upward to the number instead of downward
+              to the consequence. */}
           {(s.because || s.preparingFor) ? (
-            <More label={s.standing === 'replied' ? 'What’s behind this' : 'How we got there'}>
+            <More label={s.standing === 'replied' ? 'Who’s counted' : 'How that’s counted'}>
               {s.because ? <p className="grounding" style={{ margin: '0 0 6px' }}>{s.because}</p> : null}
               {s.preparingFor ? (
                 <p className="grounding" style={{ margin: '0 0 6px' }}>
@@ -296,21 +301,51 @@ export function AttendanceDecision({ event, solemn, onConfirmCount, onAdjust, ad
  * attached to a need by proximity, order, or being the likely honoree.
  */
 export function StillUnknown({ needs }) {
+  const [openIds, setOpenIds] = React.useState({});
   const reqs = (needs && needs.requirements) || [];
   const open = reqs.filter((r) => r && !r.who);
   const known = reqs.filter((r) => r && r.who);
   if (!open.length && !known.length) return null;
 
-  const Row = ({ mark, title, note }) => (
-    <div style={{ display: 'flex', gap: 10, padding: '9px 0', alignItems: 'flex-start' }}>
-      <span aria-hidden="true" style={{ color: 'var(--steel-soft)', fontSize: 13, lineHeight: '20px', flex: '0 0 auto' }}>{mark}</span>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--t-row)', color: 'var(--ink)', lineHeight: 1.35 }}>{title}</div>
-        {note ? (
-          <div style={{ marginTop: 2, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>
-            {note}
-          </div>
-        ) : null}
+  // ── FOUND IN A DESKTOP FRAME, NOT IN THE CODE ──────────────────────────
+  // On a five-guest fixture this rendered one row per requirement and read
+  // fine. On a 75-guest roster it rendered FIVE rows that each said "<name>
+  // needs step-free access" over the identical sentence "Their seat and where
+  // they stay are both checked against it." — a wall of prose claiming to be a
+  // labelled list, which is the exact register §18 exists to protect.
+  //
+  // So accounted-for needs group by WHAT IS NEEDED, which is what the host is
+  // actually scanning for, and the names come back on tap. One row per kind of
+  // need, however many people share it. The grouping changes presentation only:
+  // every requirement is still present, still named, still unguessed.
+  const byLabel = (list) => {
+    const m = new Map();
+    for (const r of list) {
+      const k = String(r.label || '').toLowerCase();
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(r);
+    }
+    return [...m.entries()];
+  };
+
+  const Row = ({ mark, title, note, onToggle, expanded, children }) => (
+    <div style={{ padding: '9px 0' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <span aria-hidden="true" style={{ color: 'var(--steel-soft)', fontSize: 13, lineHeight: '20px', flex: '0 0 auto' }}>{mark}</span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 'var(--t-row)', color: 'var(--ink)', lineHeight: 1.35 }}>{title}</div>
+          {note ? (
+            <div style={{ marginTop: 2, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>
+              {note}
+            </div>
+          ) : null}
+          {onToggle ? (
+            <button className="pr-quiet" aria-expanded={!!expanded} onClick={onToggle}>
+              {expanded ? 'Hide who' : 'Who'}
+            </button>
+          ) : null}
+          {expanded ? children : null}
+        </div>
       </div>
     </div>
   );
@@ -320,10 +355,21 @@ export function StillUnknown({ needs }) {
       {known.length ? (
         <>
           <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>Accounted for</div>
-          {known.map((r, i) => (
-            <Row key={'k' + i} mark="✓" title={`${r.who} needs ${String(r.label).toLowerCase()}`}
-              note="Their seat and where they stay are both checked against it." />
-          ))}
+          {byLabel(known).map(([k, group]) => {
+            const label = String(group[0].label || '').toLowerCase();
+            const one = group.length === 1;
+            return (
+              <Row key={'k' + k} mark="✓"
+                title={one ? `${group[0].who} needs ${label}` : `${group.length} people need ${label}`}
+                note="Their seat and where they stay are both checked against it."
+                onToggle={one ? null : () => setOpenIds((m) => ({ ...m, [k]: !m[k] }))}
+                expanded={!one && !!openIds[k]}>
+                <div style={{ marginTop: 4, fontSize: 'var(--t-body-s)', color: 'var(--muted)', lineHeight: 1.5 }}>
+                  {group.map((r) => r.who).join(' · ')}
+                </div>
+              </Row>
+            );
+          })}
         </>
       ) : null}
 
@@ -332,11 +378,20 @@ export function StillUnknown({ needs }) {
           <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase', marginTop: known.length ? 'var(--sp-4)' : 0 }}>
             Still unknown
           </div>
-          {open.map((r, i) => (
-            <Row key={'o' + i} mark="○"
-              title={<>Who needs {String(r.label).toLowerCase()}</>}
-              note={r.phrase ? `“${r.phrase}” — we won’t guess which person.` : 'We won’t guess which person.'} />
-          ))}
+          {byLabel(open).map(([k, group]) => {
+            const label = String(group[0].label || '').toLowerCase();
+            // The phrases are the host's OWN words and may differ between two
+            // requirements of the same kind, so they are all kept — joined, not
+            // dropped, and still never attached to a person.
+            const phrases = group.map((r) => r.phrase).filter(Boolean);
+            return (
+              <Row key={'o' + k} mark="○"
+                title={group.length === 1 ? `Who needs ${label}` : `Who needs ${label} (${group.length} mentions)`}
+                note={phrases.length
+                  ? `${phrases.map((x) => '\u201c' + x + '\u201d').join(' \u00b7 ')} — we won’t guess which person.`
+                  : 'We won’t guess which person.'} />
+            );
+          })}
         </>
       ) : null}
     </div>
@@ -345,8 +400,23 @@ export function StillUnknown({ needs }) {
 
 /* ── ONE MOVE ─────────────────────────────────────────────────────────────
  *
- * The references' "Why we're recommending this" register: ✦ glyph, short bold
- * title, ONE line, and the action beside it. One attention moment per screen.
+ * OWNER §3, 2026-10-20: *"'What's behind this' is vague and makes the
+ * intelligence sound like an explanation of the system… LEAD WITH THE HOST
+ * CONSEQUENCE, NOT WITH A LABEL FOR NGW'S REASONING."*
+ *
+ * Two changes came out of that, and only one of them is here.
+ *
+ * The orphan label was NOT this component — it was `AttendanceDecision`'s
+ * disclosure toggle sitting one line above, so "What's behind this" read as a
+ * heading for the card below it. That is fixed at its source.
+ *
+ * Here, the consequence leads WITHOUT an extra heading. The owner offered
+ * "NEEDS ATTENTION" as the alternative and I did not take it: this screen
+ * already carries two eyebrows (PLAN AROUND, STILL UNKNOWN) and a third would
+ * make it read as a stack of labelled sections rather than a composition. The
+ * attention signal is carried by the steel rule and the tinted ground instead
+ * of by a word, which is how the reference set marks its own
+ * "Why we're recommending this" moments.
  *
  * ── WHERE THE MOVE COMES FROM, AND WHERE IT MAY NOT ─────────────────────
  *
@@ -356,30 +426,39 @@ export function StillUnknown({ needs }) {
  * second order — and if the engine has nothing for People, People shows nothing
  * rather than inventing a chore to fill the slot.
  *
- * Why a filter is not a ranking: changing `domain === 'guests'` to any other
- * predicate cannot REORDER what eventPlan returned, only shorten it. A
- * People-local engine would have to score, and scoring is what the one
- * prioritizer exists to prevent two of.
+ * ── THE CTA (owner §12) ──────────────────────────────────────────────────
+ *
+ * *"CTA only when an exact, useful destination exists. Do not route the user
+ * back to the surface they are already on. If no exact destination exists, no
+ * fake CTA. Record the gap."*
+ *
+ * So `cta`/`onGo` arrive already resolved: the shell runs the engine item's
+ * route through the production `resolveRoute()` and passes a handler ONLY when
+ * that resolves to a real landing that is not this sheet. No route, an
+ * unroutable one, or one that lands back on Guests → the consequence is stated
+ * and nothing pretends to be a door.
  */
-export function OneMove({ move, onGo }) {
+export function OneMove({ move, cta, onGo }) {
   if (!move) return null;
   const title = String(move.title || '').trim();
   if (!title) return null;
   const line = String(move.ask || move.why || move.consequence || '').trim();
   return (
     <div style={{
-      display: 'flex', gap: 10, alignItems: 'flex-start',
-      padding: 'var(--sp-4)', margin: '0 0 var(--sp-5)',
-      background: 'var(--steel-tint)', borderRadius: 'var(--r-md)',
+      display: 'flex', gap: 12, alignItems: 'flex-start',
+      padding: 'var(--sp-4)', margin: 'var(--sp-5) 0',
+      background: 'var(--steel-tint)',
+      borderLeft: '2px solid var(--steel-soft)',
+      borderRadius: '0 var(--r-md) var(--r-md) 0',
     }}>
-      <span aria-hidden="true" style={{ color: 'var(--steel-soft)', fontSize: 13, lineHeight: '20px', flex: '0 0 auto' }}>✦</span>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 'var(--t-row)', fontWeight: 650, color: 'var(--ink)', lineHeight: 1.3 }}>{title}</div>
+        {/* THE CONSEQUENCE LEADS. No eyebrow, no glyph competing with it. */}
+        <div style={{ fontSize: 'var(--t-sub)', fontWeight: 650, color: 'var(--ink)', lineHeight: 1.25 }}>{title}</div>
         {line && line !== title ? (
-          <div style={{ marginTop: 3, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>{line}</div>
+          <div style={{ marginTop: 4, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>{line}</div>
         ) : null}
-        {onGo ? (
-          <button className="mini" style={{ marginTop: 'var(--sp-3)' }} onClick={onGo}>Take care of it</button>
+        {onGo && cta ? (
+          <button className="mini" style={{ marginTop: 'var(--sp-3)' }} onClick={onGo}>{cta}</button>
         ) : null}
       </div>
     </div>
@@ -388,25 +467,45 @@ export function OneMove({ move, onGo }) {
 
 /* ── GET RESPONSES ────────────────────────────────────────────────────────
  *
- * OWNER §10: *"the actions should be outcome-first… the outcome is GET
- * RESPONSES. Share link / QR / preview are mechanisms."*
+ * OWNER §24, 2026-10-20: *"The current full mobile view exposes too many peer
+ * actions… Design around the OUTCOME: GET RESPONSES. Choose the highest-value /
+ * current action as dominant. Move less-frequent mechanisms into secondary
+ * actions, disclosure, overflow, contextual availability. Do NOT delete
+ * capability. Do NOT bury capability so deeply that it becomes effectively
+ * lost."*
  *
- * So the block states the outcome, then the reply-by as the outcome it buys
- * (§11: *"a reliable final headcount in time"* — not a date field), and the
- * six existing drafts and links sit underneath as what they are. Not one of
- * them changed behaviour: `children` is the shell's own `.pill-grid`, passed
- * through verbatim, because every one of those handlers is a real integration
- * whose truthfulness is already classified under UX_07.
+ * Seven equal `.mini` buttons in a 2-up grid is not a hierarchy, it is an
+ * inventory. All seven survive, in three tiers:
+ *
+ *   DOMINANT    one full-width CTA, chosen by STATE, not by taste
+ *   SECONDARY   the two a host reaches for in the same moment, quiet and inline
+ *   DISCLOSURE  the rest, one tap away behind a labelled fold — not an overflow
+ *               menu, because a labelled fold says what is inside it
+ *
+ * WHY THE TIERS ARE PASSED IN RATHER THAN DECIDED HERE: every one of these
+ * labels is classified under UX_07 ("a CTA says exactly what happens when you
+ * tap it") and wired to a real handler in the shell. This component decides
+ * EMPHASIS. It never re-labels, re-points or re-classifies an action, and it
+ * cannot drop one — `more` renders whatever it is given.
+ *
+ * ── §11 · THE DEADLINE IS FRAMED BY WHAT IT BUYS ─────────────────────────
+ *
+ * Not a date field with a Change button. `replyBy` arrives ONLY when the host
+ * actually set one (`source === 'override'`); a derived `event.date − 7d` is
+ * never spoken, which is the 2026-07-14 defect this surface reintroduced once
+ * and is now pinned against.
  */
-export function GetResponses({ invited, outstanding, replyBy, isPast, onSetReplyBy, deadlineOpen, children, editor }) {
+export function GetResponses({
+  invited, outstanding, replyBy, isPast, onSetReplyBy, deadlineOpen, editor,
+  primary, secondary, more,
+}) {
+  const [open, setOpen] = React.useState(false);
   const n = Number(outstanding) || 0;
   const asked = Number(invited) || 0;
   const by = replyBy && replyBy.iso
     ? new Date(replyBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
     : null;
 
-  // THE OUTCOME, in host language. Never a count the host cannot move: when
-  // everyone has answered there is no chasing to do and this says so.
   // NOBODY ASKED IS NOT EVERYONE ANSWERED. A host on a headcount has no roster
   // and no outstanding replies, and a block telling her "everyone has answered"
   // would be stating a fact about people who were never invited.
@@ -418,30 +517,158 @@ export function GetResponses({ invited, outstanding, replyBy, isPast, onSetReply
         : `${n === 1 ? 'One person hasn’t' : n + ' people haven’t'} answered yet.`)
       : 'Everyone has answered.';
 
+  const rest = (more || []).filter(Boolean);
+
   return (
     <div style={{ margin: 'var(--sp-6) 0 var(--sp-3)' }}>
       <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>
         {n > 0 || !asked ? 'Get responses' : 'Invites'}
       </div>
       <p style={{
-        margin: '4px 0 var(--sp-3)', maxWidth: '34ch',
+        margin: '4px 0 var(--sp-4)', maxWidth: '34ch',
         fontFamily: 'var(--serif-read)', fontStyle: 'italic',
         fontSize: 'var(--t-sub)', lineHeight: 1.35, color: 'var(--ink-soft)',
       }}>{line}</p>
+
+      {primary ? (
+        <button className="cta" style={{ width: '100%', marginBottom: 'var(--sp-3)' }} onClick={primary.onClick}>
+          {primary.label}
+        </button>
+      ) : null}
+
+      {(secondary || []).filter(Boolean).length ? (
+        <div className="pr-acts" style={{ marginBottom: 'var(--sp-3)' }}>
+          {(secondary || []).filter(Boolean).map((a) => (
+            <button key={a.label} className="mini" onClick={a.onClick}>{a.label}</button>
+          ))}
+        </div>
+      ) : null}
+
       {!isPast ? (
         <div style={{ margin: '0 0 var(--sp-3)' }}>
-          {/* §11: the deadline is framed by what it BUYS, never as a field with
-              a date in it. And it is still never invented — `replyBy.iso` is
-              only read when the host actually set one, the same gate the guest
-              invite has used since 2026-07-14. */}
-          <button className="mini" onClick={onSetReplyBy} aria-expanded={!!deadlineOpen}>
+          <button className="pr-quiet" onClick={onSetReplyBy} aria-expanded={!!deadlineOpen}>
             {deadlineOpen ? 'Done' : by ? `Replies close ${by} — change it` : 'Set a date you need the final number by'}
           </button>
           {deadlineOpen ? editor : null}
         </div>
       ) : null}
-      {children}
+
+      {rest.length ? (
+        <>
+          <button className="fold-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            More ways to reach people
+            <span className="chev" aria-hidden="true">{open ? '⌄' : '›'}</span>
+          </button>
+          {open ? (
+            <div className="pr-acts" style={{ marginTop: 'var(--sp-2)' }}>
+              {rest.map((a) => <button key={a.label} className="mini" onClick={a.onClick}>{a.label}</button>)}
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </div>
+  );
+}
+
+/* ── §26 · THE DESKTOP CONTEXTUAL RAIL, STATE A ───────────────────────────
+ *
+ * OWNER: *"Use the existing ~340px desktop rail. Do NOT leave it as unexplained
+ * empty acreage. Do NOT turn it into another dashboard. STATE A — nothing
+ * selected: restrained People/event context… Do not duplicate the main
+ * column."*
+ *
+ * STATE B is not this component. Selecting a guest renders the shell's OWN
+ * `.gdetail` panel into the same grid track — the production detail surface,
+ * unchanged, with its radiogroup, meal picker, contact fields and helper roles
+ * intact. Rebuilding it here would have duplicated several hundred lines of
+ * wired JSX to gain nothing, and would have created exactly the second source
+ * of truth §33 forbids. The two states are mutually exclusive by construction:
+ * the shell renders this only while nothing is open, so they can never both
+ * claim `grid-column:2`.
+ *
+ * ── WHY THIS IS PERSISTENCE AND NOT DUPLICATION ─────────────────────────
+ *
+ * The rail is STICKY. Everything in it is already on screen at the top of the
+ * page and gone by the time the host is forty rows into a 75-guest roster —
+ * which is the precise moment she needs to remember whose event this is and how
+ * many have answered. ART_DIRECTION_GRAMMAR §4 records the same reasoning from
+ * the reference set: *"The event photograph lives here permanently — this is
+ * how identity persists once the hero has scrolled away."*
+ *
+ * ── WHAT IS DELIBERATELY NOT IN IT ──────────────────────────────────────
+ *
+ * The One Move. It is listed as permitted rail content, but it derives from the
+ * attendance truth it sits beneath and reads as a consequence of it; lifted
+ * into the rail it becomes a floating notification, and left in both places it
+ * is the duplication the owner ruled out. It stays in the main column at every
+ * width. Recorded rather than silently decided.
+ */
+export function PeopleRail({ event, src, fixture, subtitle, counts, unknowns }) {
+  const s = attendanceStatement(event);
+  const name = String((event && event.name) || '').trim();
+  const rows = (counts || []).filter((r) => r && Number(r.n) > 0);
+
+  return (
+    <aside className="people-rail" aria-label="Event context">
+      <div className="prl-cover">
+        {src ? <img src={src} alt="" aria-hidden="true" /> : null}
+        {src && fixture ? (
+          <div style={{
+            position: 'absolute', top: 6, right: 6, zIndex: 2,
+            fontSize: 9, fontWeight: 700, letterSpacing: '.08em',
+            padding: '2px 6px', borderRadius: 999,
+            background: 'rgba(0,0,0,.6)', color: 'rgba(255,255,255,.78)',
+          }}>FIXTURE</div>
+        ) : null}
+      </div>
+
+      <div style={{
+        fontFamily: 'var(--serif-read)', fontWeight: 500,
+        fontSize: 'var(--t-sub)', lineHeight: 1.2, color: 'var(--ink)',
+      }}>{name || 'Your event'}</div>
+      {subtitle ? (
+        <div style={{ marginTop: 2, fontSize: 'var(--t-body-s)', color: 'var(--faint)' }}>{subtitle}</div>
+      ) : null}
+
+      {s.known ? (
+        <div style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-.02em', color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
+              {s.figure}
+            </span>
+            <span style={{ fontSize: 'var(--t-body-s)', color: 'var(--muted)' }}>{s.unit}</span>
+          </div>
+          <div style={{ marginTop: 2, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>
+            {s.headline}
+          </div>
+        </div>
+      ) : null}
+
+      {/* The reply breakdown is the one thing here that is NOT on screen while
+          the roster is scrolled: on mobile it lives in the lens chips above the
+          list, which leave the viewport immediately. Counted over the WHOLE
+          roster, not the filtered view — a pinned number that changed when you
+          typed in the search box would be worse than no number. */}
+      {rows.length ? (
+        <div style={{ marginTop: 'var(--sp-3)' }}>
+          {rows.map((r) => (
+            <div className="prl-row" key={r.label}>
+              <span className="prl-k">{r.label}</span>
+              <span className="prl-v">{r.n}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {unknowns > 0 ? (
+        <div style={{ marginTop: 'var(--sp-3)', paddingTop: 'var(--sp-2)', borderTop: '1px solid var(--line-soft)' }}>
+          <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>Still unknown</div>
+          <div style={{ marginTop: 2, fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>
+            {unknowns === 1 ? 'One need with no name on it.' : unknowns + ' needs with no name on them.'}
+          </div>
+        </div>
+      ) : null}
+    </aside>
   );
 }
 

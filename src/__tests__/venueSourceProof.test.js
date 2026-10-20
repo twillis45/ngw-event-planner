@@ -65,12 +65,39 @@ const walk = (dir, out = []) => {
   return out;
 };
 
+// ── COMMENTS ARE NOT READS (2026-10-20) ─────────────────────────────────────
+// This gate used to scan raw source, so it counted its own documentation. A
+// People change added a comment explaining WHY a line had been migrated — "was
+// a raw `event.venueCity` read" — and the gate failed on the explanation after
+// the code was already correct. That is the identical trap spacingLadder's
+// header records paying for once ("Comments quote the very values the gate
+// bans... so they are stripped before counting"), and the cost is worse than
+// noise: the cheapest way out is to stop writing the comment, so the gate
+// quietly teaches people not to document their own migrations.
+//
+// Stripping comments cannot weaken it — a comment is not a read — and the
+// canary below now pins both halves: real code still bites, prose does not.
+// Block comments first, then line comments, the same order the other scanners
+// in this repo use and for the same reason.
+// LINE ALIGNMENT IS LOAD-BEARING. `// venue-exempt:` is itself a comment, so a
+// stripper that simply deletes comments deletes the exemption markers with
+// them — the first version of this did, and three already-exempt files in
+// src/lib started failing a gate they had passed for months. Block comments are
+// replaced by their own newlines so numbering survives, and the exemption is
+// read from the ORIGINAL line while the count is taken from the stripped one.
+const stripComments = (src) => src
+  .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+  .split('\n')
+  .map((l) => (/^\s*\/\//.test(l) ? '' : l.replace(/\/\/.*$/, '')))
+  .join('\n');
+
 const countRawReads = (file) => {
-  const src = fs.readFileSync(file, 'utf8');
+  const raw = fs.readFileSync(file, 'utf8').split('\n');
+  const code = stripComments(raw.join('\n')).split('\n');
   let n = 0;
-  for (const line of src.split('\n')) {
-    if (line.includes('venue-exempt:')) continue;
-    n += (line.match(RAW_READ) || []).length;
+  for (let i = 0; i < code.length; i += 1) {
+    if ((raw[i] || '').includes('venue-exempt:')) continue;
+    n += (code[i].match(RAW_READ) || []).length;
   }
   return n;
 };
@@ -91,6 +118,19 @@ describe('PART A — raw venue reads may only shrink', () => {
   test('canary: the scanner bites a planted raw read and spares the accessor form', () => {
     expect(('x = event.venueCity'.match(RAW_READ) || []).length).toBe(1);
     expect(('x = venueFor(ev).city'.match(RAW_READ) || []).length).toBe(0);
+  });
+  test('canary: code still bites after stripping, prose does not', () => {
+    // The gate must keep failing on a real read...
+    expect((stripComments('const c = event.venueCity;').match(RAW_READ) || []).length).toBe(1);
+    // ...and must stop failing on a line that only TALKS about one, in either
+    // comment form. Without this pair, a stripper that ate everything would
+    // look like a passing gate.
+    expect((stripComments('// was a raw event.venueCity read').match(RAW_READ) || []).length).toBe(0);
+    expect((stripComments('/* event.venueCity */').match(RAW_READ) || []).length).toBe(0);
+    expect((stripComments('const c = vf.city; // not event.venueCity any more').match(RAW_READ) || []).length).toBe(0);
+    // And the stripper must not eat the exemption marker it travels beside:
+    // line numbering survives a multi-line block comment.
+    expect(stripComments('a\n/* x\ny */\nb').split('\n').length).toBe(4);
   });
   test('sanctioned modules really contain raw reads (exclusions stay load-bearing)', () => {
     expect(countRawReads(path.join(DEMO, 'src/lib/venueFor.js'))).toBeGreaterThan(0);

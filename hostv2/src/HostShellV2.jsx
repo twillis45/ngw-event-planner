@@ -37,7 +37,7 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
 // @app/lib/attendanceStatement. Reached by ?people=1 on the Guests door, with
 // the legacy body as the default until parity closes.
-import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses } from './PeopleSurface';
+import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
@@ -2768,6 +2768,12 @@ export default function HostShellV2() {
   // stepper only appears when the host chooses to adjust. The control is the
   // legacy one, unchanged — only when it is shown has changed.
   const [peopleAdjust, setPeopleAdjust] = useState(false);
+  // §25: the People surface's secondary-management fold. Opened by the host, or
+  // by a route that focuses an anchor living inside it — a deep link that lands
+  // on a collapsed section looks broken, and that is the failure mode this
+  // whole disclosure introduces if nobody wires it.
+  const [peopleAdminOpen, setPeopleAdminOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [placeNoteDraft, setPlaceNoteDraft] = useState(''); // controlled draft for the place-note editor (address field autocompletes)
   const PLACE_NOTE_FIELD = { venue: 'venue', arrival: 'venueAddress', parking: 'parkingNotes', loadIn: 'loadInNotes', contact: 'venueContact', rules: 'houseRules' };
   const [shopStore, setShopStore] = useState(null); // shopping-run mode: 'I'm at X' filter (session-only)
@@ -4597,6 +4603,10 @@ export default function HostShellV2() {
   const stageMode = stagewrapClass({ stage, sheet: sheet && sheet.kind });
   // Same surface identity, one band wider: is the persistent section rail up?
   const railUp = showsRail({ bp, stage, sheet: sheet && sheet.kind });
+  // §26: the People rail band. `railUp` alone runs from 1024 — the exact
+  // misreading styles.css:5640 documents paying for twice — and at 1024 a
+  // 340px rail leaves no room for a list AND a detail. Desktop only.
+  const peopleRailUp = railUp && bp === 'desktop';
   // ── COLLAPSE (host, 2026-08-21: "menus is supposed to be collapsible") ─────
   // The rail was BUILT for this — sectionIcons.jsx exists because a collapsed
   // rail needs a mark per door that survives losing its label, and `.srail-l`
@@ -4638,6 +4648,10 @@ export default function HostShellV2() {
       const targets = sheet.focus === 'entry'
         ? ['guests-entry-anchor', 'guests-counting-anchor']
         : ['guests-invites-anchor'];
+      // `guests-counting-anchor` is inside the §25 fold on the redesigned
+      // surface, so the scroll below would land on a collapsed section. Open it
+      // FIRST, in the same tick, and let the 120ms timeout find a mounted node.
+      if (targets.includes('guests-counting-anchor')) setPeopleAdminOpen(true);
       setTimeout(() => {
         try {
           const el = targets.map(t => document.getElementById(t)).find(Boolean);
@@ -23231,6 +23245,18 @@ export default function HostShellV2() {
               const bandLbl = (() => { try { return attendanceBandLabel(band); } catch { return null; } })();
               const quickAdd = (
                 <div style={{ marginTop: 'var(--sp-3)' }}>
+                  {/* §25 · PRIMARY WORK IS STATE-DEPENDENT. With no list, adding
+                      names IS the job and the box is open. With a list already
+                      built, a permanently open textarea sits between the roster
+                      and the invite actions occupying prime space to do nothing
+                      — caught in the A2 capture, not in the code. Folded once
+                      the roster can stand on its own; one tap, same control. */}
+                  {peopleMode && (event.guests || []).length >= 8 && !quickAddOpen ? (
+                    <button className="fold-btn" onClick={() => setQuickAddOpen(true)}>
+                      Add more names
+                      <span className="chev" aria-hidden="true">{'\u203a'}</span>
+                    </button>
+                  ) : (<>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>Add names — one per line</div>
                   <textarea className="field" style={{ maxWidth: 'none', minHeight: 74, resize: 'vertical', fontSize: 'var(--t-input)', fontWeight: 500 }}
                     /* ── A PLACEHOLDER MUST NOT READ AS TYPED TEXT ──────────────────
@@ -23286,6 +23312,7 @@ export default function HostShellV2() {
                   <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                     <button className="cta" disabled={!rosterText.trim()} style={!rosterText.trim() ? { opacity: .45 } : undefined} onClick={addRoster}>Add them</button>
                   </div>
+                  </>)}
                 </div>
               );
               const chase = showsReplyTracking(event); // count-only hosts are never chased
@@ -23551,385 +23578,59 @@ export default function HostShellV2() {
                         they'll see before sharing. Read-only: viewing the page files nothing. */}
                     <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
               </>);
-              const inviteTools = (<>
-                  {/* Balanced 2-up button grid (systematic .pill-grid). */}
-                  <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
-                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
-                    <button className="mini" onClick={showQr}>Show the QR</button>
-                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
-                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
-                        they'll see before sharing. Read-only: viewing the page files nothing. */}
-                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
-                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
-                    {/* WAVE-B: the full guest brief — legacy's draftGuestBrief
-                        (when/where/parking/bring/dress/gifts), DRAFT-only per
-                        UX_07: written for the host, sent by the host. */}
-                    <button className="mini" onClick={() => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn’t draft it.'); } }}>Draft the guest brief</button>
-                    <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
-                    {/* WAS "Nudge the quiet ones" — which promises the app will go and nudge
-                        them. It cannot: this bulk draft has no recipient list, and its only
-                        exits are share/copy (its sms: link has no number to address). The
-                        SHEET is scrupulously honest about this — it never fakes a "sent"
-                        state — so the LABEL was the only thing lying. UX_07: a CTA says
-                        exactly what happens when you tap it. This one opens a written message
-                        for the host to send themselves. (Guests who DID leave a phone or
-                        email get one-tap text/email nudge links on their own rows above.) */}
-                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Write a nudge to send</button>}
-                  </div>
-                  </>);
-              const renderDeadlineEditor = () => {
-                    // DO-IT-FOR-ME, GROUNDED (2026-07-14). The reply-by date used to be an
-                    // invented `event.date − 7d` that the INVITE printed as if the host had
-                    // chosen it. Deleting it from the invite was only half an answer: an RSVP
-                    // deadline genuinely helps, because the whole point of a reply is to LOCK
-                    // THE COUNT, and the count has real downstream walls.
-                    //
-                    // So the app proposes, SHOWS ITS WORK, and the host owns the result. The
-                    // proposal is derived from the things that actually cannot proceed without
-                    // a headcount — each real vendor's own count promise (catering wants it 7
-                    // days out, staffing 14, a florist 21) and the playbook's own
-                    // count-dependent tasks (a crab pre-order is T-5d) — plus the days needed
-                    // to chase whoever hasn't answered.
-                    //
-                    // Nothing is written until the host taps. Until then `rsvpDeadline` is
-                    // unset, `rsvpDeadlineFor` reports source:'derived', and the invite stays
-                    // silent — it will only ever speak a date the host actually committed to.
-                    const prop = (() => { try { return proposeReplyBy(event); } catch (_e) { return null; } })();
-                    const already = String(event.rsvpDeadline || '').trim();
-                    return (
-                      <div style={{ margin: '0 0 10px' }}>
-                        <div className="actions-row" style={{ alignItems: 'center' }}>
-                          <span className="of">replies by:</span>
-                          <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
-                            value={already || ''}
-                            onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
-                            aria-label="RSVP deadline" />
-                          {prop && prop.iso && already !== prop.iso && (
-                            <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
-                              'Reply-by date set — your invite says it now.')}>
-                              {already ? 'use ours' : 'pick one for me'}
-                            </button>
-                          )}
-                        </div>
-                        {prop && (
-                          <p className="grounding" style={{ margin: '6px 2px 0' }}>
-                            {prop.tooClose
-                              ? prop.why
-                              : <>
-                                  {!already && <><b>{new Date(prop.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</b>{' — '}</>}
-                                  {prop.why}
-                                </>}
-                          </p>
-                        )}
-                        {!already && (
-                          <p className="grounding" style={{ margin: '4px 2px 0', opacity: .8 }}>
-                            Your invite won’t show a reply-by date until you set one — we won’t put a deadline in your name that you didn’t choose.
-                          </p>
-                        )}
-                      </div>
-                    );
+              // ── §24 · THE SEVEN ACTIONS, TIERED BY STATE ────────────────
+              // Every handler and every label below is the production one,
+              // moved but not touched: each is classified under UX_07 and says
+              // exactly what the tap does. What changes is EMPHASIS.
+              //
+              // The dominant action is chosen by the host's actual situation,
+              // not by taste:
+              //   nobody invited, or replies outstanding  → share the link
+              //   everyone has answered                   → keep them informed
+              // Anything else would make the loudest button on the screen the
+              // wrong one for the state the host is actually in.
+              const _inviteActs = {
+                share:   { label: 'Share the RSVP link', onClick: shareInviteLink },
+                qr:      { label: 'Show the QR', onClick: showQr },
+                preview: { label: 'Preview the RSVP', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
+                copy:    { label: 'Copy the invite', onClick: () => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() })) },
+                brief:   { label: 'Draft the guest brief', onClick: () => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn\u2019t draft it.'); } } },
+                update:  { label: 'Update everyone', onClick: () => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn\u2019t draft it.'); } } },
+                // WAS "Nudge the quiet ones", which promised the app would go
+                // and nudge them. It cannot: this bulk draft has no recipient
+                // list. The label was the only thing lying; the sheet never
+                // faked a "sent" state. Offered only where reply tracking is on.
+                nudge:   showsReplyTracking(event) ? { label: 'Write a nudge to send', onClick: () => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() })) } : null,
               };
-              const peopleZone = peopleMode ? (
-                <div>
-                  <PeopleHero
-                    event={event}
-                    src={(() => {
-                      const fix = (() => { try { return new URLSearchParams(window.location.search).get('peoplefixture'); } catch { return null; } })();
-                      if (fix && /^https?:\/\//i.test(fix)) return fix;
-                      const own = String((event && event.coverImageUrl) || '').trim();
-                      return /^https?:\/\//i.test(own) ? own : null;
-                    })()}
-                    fixture={(() => { try { return !!new URLSearchParams(window.location.search).get('peoplefixture'); } catch { return false; } })()}
-                  />
-                  <AttendanceDecision
-                    event={event}
-                    solemn={(() => { try { return isSolemnEvent(event); } catch { return false; } })()}
-                    adjusting={peopleAdjust}
-                    onAdjust={setPeopleAdjust}
-                    onConfirmCount={(n) => patchEvent(
-                      { guestEstimate: n, guestCount: n, guestCountSource: 'host' },
-                      'Planning for ' + n + ' — it\u2019s your number now, so it can go in what we send.',
-                    )}
-                  />
-                  {/* ── ONE MOVE (owner §7) ──────────────────────────────────
-                      `eventPlan()` is the sole final next-action authority, so
-                      People does not rank: it takes the FIRST item the engine
-                      already ranked whose `domain` is 'guests'. A filter can
-                      shorten that order; it cannot reorder it, which is the
-                      whole difference between reading the prioritizer and
-                      building a second one. Worries are included because a
-                      heads-up about the guest list is still the guest list's
-                      one move — the engine's own split decides which lane it
-                      arrived in, not this surface.
-                      If the engine has nothing for People, People shows nothing
-                      rather than inventing a chore to fill the slot. */}
-                  <OneMove move={(() => {
-                    try {
-                      const pool = [...(actions || []), ...(worries || [])];
-                      return pool.find((a) => a && a.domain === 'guests') || null;
-                    } catch { return null; }
-                  })()} />
-                  <StillUnknown needs={(() => {
-                    try { return accessNeedsFor(event); } catch { return null; }
-                  })()} />
-                </div>
-              ) : null;
-              return (event.guests || []).length ? (
-                <>
-                  {peopleZone}
-                  {guestHero}
-                  {!peopleMode && (plusOnes > 0 || kidsHere > 0) && (
-                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
-                      {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsHere ? kidsHere + ' kid' + (kidsHere === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
-                    </div>
-                  )}
-                  {!chase && (
-                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
-                      You went by headcount — replies here are just for tracking, no chasing.
-                    </div>
-                  )}
-                  {/* One-line reply-by + edit hint — the count itself lives in the
-                      hero above (audit S3: was a third restatement of "N yes of M"). */}
-                  <div className="v-meta" style={{ padding: '2px 2px var(--sp-3)', display: peopleMode ? 'none' : undefined }}>
-                    {(() => {
-                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
-                      const parts = [];
-                      // §4: internal calculation, not a host decision. The redesigned
-                      // surface keeps it behind the attendance disclosure instead of
-                      // narrating it inline; the legacy body is unchanged.
-                      if (!peopleMode && heads !== yes.length) parts.push(`${heads} heads with plus-ones`);
-                      // I FIXED THE GUEST AND LEFT THE HOST (2026-07-14, same day). dc5abee gated
-                      // the INVITE on `source === 'override'` so a guest could never be shown a
-                      // deadline the host hadn't chosen — and this line, forty rows away, kept
-                      // printing the very same invented `event.date − 7d` to the HOST as a flat
-                      // fact ("replies by Jul 20"), sitting beside real RSVP counts, with a
-                      // "change" button implying a date already existed. Half a fix is its own
-                      // kind of lie: the host would have believed a deadline was set and never
-                      // opened the editor to set one.
-                      if (rsvpByIsSet && !isPast) parts.push(`replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
-                      return parts.join(' · ');
-                    })()}
-                    {!isPast && (
-                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'Done' : (rsvpByIsSet ? 'Change' : 'Set reply-by')}</button>
-                    )}
-                    {(() => {
-                      // leading separator only when something precedes the hint
-                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
-                      const hasPre = (heads !== yes.length) || (rsvpBy && rsvpBy.iso && !isPast) || !isPast;
-                      // Was "tap a tag to change an RSVP, a name to edit" — two doors
-                      // described as doing different things. Since the reply picker moved
-                      // into the guest's own row (2026-08-07) BOTH open the same one, so
-                      // the sentence promised a distinction the surface no longer makes.
-                      // Found by driving it, not by reading the diff.
-                      const hint = 'tap anyone to change their reply or edit them.';
-                      return hasPre ? ' — ' + hint : hint[0].toUpperCase() + hint.slice(1);
-                    })()}
+              const _outstanding = (event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length;
+              const _chasing = _outstanding > 0 || !(event.guests || []).length;
+              const inviteTiers = _chasing ? {
+                primary: _inviteActs.share,
+                secondary: [_inviteActs.qr, _inviteActs.nudge].filter(Boolean),
+                more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.update],
+              } : {
+                primary: _inviteActs.update,
+                secondary: [_inviteActs.share, _inviteActs.qr],
+                more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.nudge].filter(Boolean),
+              };
+              // The BASELINE composition keeps its flat 2-up grid, unchanged, so
+              // the two are still comparable on one build.
+              const inviteTools = (<>
+                  <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
+                    <button className="mini" onClick={_inviteActs.share.onClick}>Share the RSVP link</button>
+                    <button className="mini" onClick={_inviteActs.qr.onClick}>Show the QR</button>
+                    <button className="mini" onClick={_inviteActs.preview.onClick}>Preview the RSVP</button>
+                    <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
+                    <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
+                    <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
+                    {_inviteActs.nudge && <button className="mini" onClick={_inviteActs.nudge.onClick}>Write a nudge to send</button>}
                   </div>
-                  {/* ── THE EDITOR, HOISTED (owner §11, 2026-10-20) ──────────────
-                      Unchanged behaviour, one definition. The redesigned surface
-                      frames the deadline by what it buys ("a date you need the
-                      final number by") instead of printing it as a fact with a
-                      Change button, so the editor it opens had to be reachable
-                      from the new block as well as the legacy one. Rendering it
-                      twice would put two date inputs on one field. */}
-                  {!peopleMode && deadlineOpen && renderDeadlineEditor()}
-                  {/* Invite tools + settings relocated BELOW the roster (audit S3:
-                      the roster is the reason the sheet exists — it now comes right
-                      after the hero, not behind a wall of share/look/rules chips). */}
-                  {/* Turnout is now stated ONCE in guestHero (single-source, memory-preferred over
-                      the generic band) — the standalone memory line was the 2nd/3rd competing
-                      number the host flagged. Retired here on purpose. */}
-                  {nudgeFor('guests')}
-                  {/* ── THE ROSTER TOOLBAR ─────────────────────────────────────────
-                      Only rendered once the list is big enough to need finding —
-                      below 8 people a search field is furniture, and the leaders
-                      that ship one are all showing sets you cannot hold in your head.
-                      The lens chips are the read's 10+ note in its cheapest honest
-                      form: they filter by REPLY STATE, which is the cut a host
-                      actually holds ("who hasn't answered"), rather than by an
-                      arbitrary property. Each chip states its own count, so the
-                      filter is also the rollup and there is no second number to keep
-                      truthful. */}
-                  {(event.guests || []).length >= 8 && (() => {
-                    // COUNTED AFTER THE SEARCH, like the vendor toolbar — the same
-                    // fix, which had never been carried across. These chips counted
-                    // the raw guest array while the rows below them were search
-                    // filtered, so typing "sam" left "Coming 24" sitting above two
-                    // people. The search predicate is the one the row filter uses,
-                    // read from the same fields, so the chips and the list cannot
-                    // disagree about who is on screen.
-                    const qL = rosterQ.trim().toLowerCase();
-                    const matchesQ = (g) => !qL
-                      || [g && g.name, g && g.plusOne, g && g.group, g && g.email]
-                        .some((v) => String(v || '').toLowerCase().includes(qL));
-                    const all = (event.guests || []).filter(matchesQ);
-                    const n = (v) => all.filter((g) => String(g && g.rsvp || '') === v).length;
-                    // No count on "Everyone" — it is not a group, and the leaders
-                    // (Linear, Plane, ClickUp, Asana) put counts only on groups.
-                    const LENS = [['all', 'Everyone', null], ['yes', 'Coming', n('Yes')], ['none', 'No reply', n('')], ['maybe', 'Maybe', n('Maybe')], ['no', 'Can’t make it', n('No')]];
-                    return (
-                      <>{toldRollup(event).line ? <div className="told-rollup v-meta">
-                        {/* WHO STILL DOES NOT KNOW -- the question the rails could
-                            not answer. Counted against guests who can actually BE
-                            told: someone with no phone and no email is unreachable,
-                            not outstanding, and putting them in a number the host is
-                            meant to drive to zero makes it a nag they can never
-                            satisfy. Attested by the host throughout; the app takes
-                            their word and never upgrades it. */}
-                        {toldRollup(event).line}
-                      </div> : null}
-                      <div className={'rtoolbar' + (peopleMode ? ' people-rtoolbar' : '')}>
-                        <input className="field rtool-q" type="search" value={rosterQ}
-                          onChange={(e) => setRosterQ(e.target.value)}
-                          placeholder="Find someone" aria-label="Find someone on the guest list" />
-                        <span className="rtool-lens" role="group" aria-label="Show only">
-                          {LENS.map(([k, lbl, c]) => (
-                            <button key={k} className="chip" aria-pressed={rosterLens === k}
-                              onClick={() => setRosterLens(k)}
-                              style={rosterLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
-                              {lbl}{c === null ? '' : ' ' + c}
-                            </button>
-                          ))}
-                        </span>
-                      </div></>
-                    );
-                  })()}
-                  {(() => {
-                    // Grouped roster: when the host has sorted people into groups,
-                    // the list reads by group; indexes stay the ORIGINAL array
-                    // positions (every writer here is index-based).
-                    // Render the FULL roster (per-screen audit: a prior .slice(0,60)
-                    // silently hid guests 61+ while the hero counts still included
-                    // them — they were uneditable). Rows are lightweight (text + two
-                    // buttons, index-keyed); a plain full render handles realistic
-                    // host lists without virtualization.
-                    // FILTER AFTER INDEXING, NEVER BEFORE. Every writer on this
-                    // surface (setRsvpValue, writeGuest, removeGuest) is INDEX-BASED
-                    // against event.guests. Filtering the array first and then
-                    // mapping would renumber everyone, so hiding one guest would
-                    // silently make every edit below it write to the wrong person.
-                    // Index first, then filter the {g,i} pairs — i stays the true
-                    // position in the original array no matter what is on screen.
-                    const allIdx = (event.guests || []).map((g, i) => ({ g, i }));
-                    const q = rosterQ.trim().toLowerCase();
-                    const withIdx = allIdx.filter(({ g }) => {
-                      if (rosterLens !== 'all') {
-                        const r = String(g.rsvp || '');
-                        const want = rosterLens === 'none' ? '' : rosterLens === 'yes' ? 'Yes' : rosterLens === 'no' ? 'No' : 'Maybe';
-                        if (r !== want) return false;
-                      }
-                      if (!q) return true;
-                      // Search what a host actually remembers: the name, who they are
-                      // with, and the group they filed them under.
-                      return [g.name, g.plusOne, g.group, g.email].some((v) => String(v || '').toLowerCase().includes(q));
-                    });
-                    // Lightweight visual layer (per-screen audit: Guests scored lowest,
-                    // no glanceability vs Partiful's avatars). Deterministic initials +
-                    // a MUTED on-brand tint (not a rainbow — respects the colour budget);
-                    // no photo pipeline, keeping the structural-data advantage.
-                    // AVA_TINTS now shared from eventPool (audit Cr1).
-                    const avaFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
-                    const initialsOf = (nm) => { const p = String(nm || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
-                    const row = ({ g, i }) => (
-                      <div className="rrow" key={i}>
-                        <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
-                          <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
-                          <button style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}
-                            onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
-                            {/* Mobile fit (393px stage): name owns line 1 (nowrap +
-                                ellipsis so it never breaks mid-word); the meta — kids,
-                                meal, the nowrap needs-tag — drops to a wrapping line 2.
-                                One inline run made the tag fight the name for the row's
-                                width and overflow the sheet (min-width:auto held it wide). */}
-                            <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {g.name || 'Guest ' + (i + 1)}
-                              {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
-                              {g.coupleId ? (() => {
-                                const p = (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId);
-                                return p ? <span className="of"> · with {String(p.name || '').split(' ')[0]}</span> : null;
-                              })() : null}
-                            </span>
-                            {/* Audit #8: meal shown on the collapsed row (short form) so
-                                the whole roster's meals read at a glance, not one-by-one. */}
-                            {/* ── ALWAYS THREE SLOTS, EVEN WHEN EMPTY (2026-08-07) ────
-                                On the phone this is one wrapping line of chips and a
-                                missing chip should collapse — which is why it was
-                                written conditionally. At the data tier the same
-                                markup is laid out as COLUMNS, and columns only line
-                                up if every row renders the same slots: one guest
-                                without a meal must not slide the next guest's
-                                dietary tags a track to the left.
-
-                                So the slots are unconditional and each carries its
-                                own class; what stays conditional is their CONTENT.
-                                Empty slots render nothing visible and cost nothing
-                                on the phone (the flex row ignores zero-width
-                                children), and they give the grid a track to hold. */}
-                            <span className="gmeta" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                              <span className="gm-kids">
-                                {Number(g.kids) > 0 ? <span className="of">{g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
-                              </span>
-                              <span className="gm-meal">
-                                {String(g.meal || '').trim() && g.meal !== '—' ? <span className="of">{MEAL_SHORT[g.meal] || g.meal}</span> : null}
-                              </span>
-                              {/* WAVE-5 (UX_02 amber budget): a guest's needs note identifies
-                                  the guest, it doesn't warn about a gap — neutral .tag.plan,
-                                  same treatment as the RSVP tag on this row.
-                                  Structured dietary from the invite (allergens/diets arrays)
-                                  reach the LIST itself (host ask 2026-07-27) — deduped
-                                  against the free-text needs tag so nothing double-chips. */}
-                              <span className="gm-diet">
-                                {String(g.needs || '').trim() ? <span className="tag plan">{g.needs}</span> : null}
-                                {[...(Array.isArray(g.allergens) ? g.allergens : []), ...(Array.isArray(g.diets) ? g.diets : [])]
-                                  .filter((x) => x && !String(g.needs || '').toLowerCase().includes(String(x).toLowerCase()))
-                                  .map((x) => <span key={x} className="tag plan">{x}</span>)}
-                              </span>
-                            </span>
-                          </button>
-                          {/* ── THE PICKER LEFT ITS OWN TRIGGER (board call, 2026-08-07) ──
-                              This slot was `rsvpPickFor === i ? <picker> : <trigger>` — the
-                              picker REPLACED the control that opened it. Three costs, all
-                              paid by the host:
-
-                                · the value you came to change vanished the instant you
-                                  went to change it, so "is this a Yes already?" could
-                                  only be answered by dismissing the thing you opened;
-                                · focus died with the unmounted trigger — keyboard and
-                                  screen-reader users were dropped to the body mid-task;
-                                · a ~26px tag became four chips, so THIS row and every row
-                                  under it reflowed under the finger. UX_05:174 allows a
-                                  row to change height only in an accordion, and this list
-                                  already HAS one (guestOpen) — the picker was just not
-                                  using it.
-
-                              UX_05:66 ("a status chip is display-only, clicking it does
-                              nothing") pulls the other way, since a dead `no reply` is the
-                              exact looks-available-but-isn't failure the rail rule at
-                              styles.css:3986 was written to kill. Both are satisfied by
-                              changing the SHAPE rather than picking a side: this is a
-                              DISCLOSURE control that displays status, not a status chip
-                              that acts. It answers "expand this guest", the picker lives
-                              in what it expands, and the chip inside it stays display-only.
-
-                              Cost is unchanged — two taps then, two taps now — but the
-                              first one is a full-width row instead of a 26px chip. */}
-                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                            aria-expanded={guestOpen === i} aria-controls={'v2-guest-detail-' + i}
-                            /* ONE STRING, BOTH PLACES (WCAG 2.5.3, board 2026-08-07).
-                               This said "replied nothing yet" while the chip below
-                               rendered "no reply" — so a voice-control user saying
-                               "tap no reply" missed a control whose accessible name
-                               was different words. The visible text must be IN the
-                               accessible name, not a paraphrase of it. */
-                            aria-label={(g.name || 'Guest') + ': ' + (g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')) + ' — open to change it'}
-                            onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
-                            {/* UX_02: a Maybe is UNKNOWN → steel; amber is needs-attention only. */}
-                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')}</span>
-                          </button>
-                        </div>
-                        {guestOpen === i && (
+              </>);
+              // ── THE GUEST DETAIL, HOISTED (owner §26) ───────────────────
+              // Unchanged markup and unchanged handlers — every writer here is
+              // still index-based against `event.guests`, which is why `i` is
+              // passed rather than recomputed from the guest object.
+              const guestDetail = (g, i) => (
                           <div className="brow gdetail" id={'v2-guest-detail-' + i} style={{ margin: '0 0 var(--sp-2)' }}>
                             {(() => {
                               // Single source of truth: reads the SAME aggregation the
@@ -24138,7 +23839,546 @@ export default function HostShellV2() {
                               );
                             })()}
                           </div>
+              );
+              const peopleAdmin = (<>
+                  {/* Invite look — the tone engine guesses from the event's mood
+                      (paper by day, elegant by night, muted when somber); the
+                      host's word always wins (lib/inviteTone). */}
+                  {/* Label on its own line + a 3-col grid so the three looks read as
+                      an even segmented control instead of a 2+1 ragged wrap. */}
+                  {/* Fold-behind-Change (parity/MANIFEST) — one settled look; folds
+                      to a hairline row, opens the 3-up segmented control on tap. */}
+                  {(() => {
+                    const styles = [['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']];
+                    const cur = event.inviteStyle || '';
+                    const curLabel = (styles.find(([v]) => v === cur) || styles[0])[1];
+                    if (!settledOpen.inviteStyle) {
+                      return <SettledRow label="Invite look" value={curLabel} style={{ margin: '0 0 10px' }}
+                        onOpen={() => setSettledOpen(m => ({ ...m, inviteStyle: true }))} />;
+                    }
+                    return (
+                      <>
+                        <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>invite look</div>
+                        <OptionList ariaLabel="Invite look" style={{ margin: '0 0 10px' }}
+                          options={styles.map(([val, label]) => ({ label, value: val }))}
+                          value={cur}
+                          onPick={(val) => { const label = (styles.find(([v]) => v === val) || styles[0])[1]; patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.'); setSettledOpen(m => ({ ...m, inviteStyle: false })); }} />
+                      </>
+                    );
+                  })()}
+                  {/* Crest choice — only offered when this event HAS registered
+                      artwork (never a toggle that does nothing). The host's
+                      call: artwork on the invite, or purely typographic. */}
+                  {eventArtworkFile(event) && (
+                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                      <span className="of">artwork:</span>
+                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest !== 'off'}
+                        onClick={() => patchEvent({ inviteCrest: '' }, 'The artwork is on the invite.')}>On the invite</button>
+                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest === 'off'}
+                        onClick={() => patchEvent({ inviteCrest: 'off' }, 'Words only — the invite stays purely typographic.')}>Words only</button>
+                    </div>
+                  )}
+                  {inviteRules}
+                  {countingChips}
+                  {csvBlock}
+                  {pastImports}
+                  {exportRow}
+              </>);
+              const renderDeadlineEditor = () => {
+                    // DO-IT-FOR-ME, GROUNDED (2026-07-14). The reply-by date used to be an
+                    // invented `event.date − 7d` that the INVITE printed as if the host had
+                    // chosen it. Deleting it from the invite was only half an answer: an RSVP
+                    // deadline genuinely helps, because the whole point of a reply is to LOCK
+                    // THE COUNT, and the count has real downstream walls.
+                    //
+                    // So the app proposes, SHOWS ITS WORK, and the host owns the result. The
+                    // proposal is derived from the things that actually cannot proceed without
+                    // a headcount — each real vendor's own count promise (catering wants it 7
+                    // days out, staffing 14, a florist 21) and the playbook's own
+                    // count-dependent tasks (a crab pre-order is T-5d) — plus the days needed
+                    // to chase whoever hasn't answered.
+                    //
+                    // Nothing is written until the host taps. Until then `rsvpDeadline` is
+                    // unset, `rsvpDeadlineFor` reports source:'derived', and the invite stays
+                    // silent — it will only ever speak a date the host actually committed to.
+                    const prop = (() => { try { return proposeReplyBy(event); } catch (_e) { return null; } })();
+                    const already = String(event.rsvpDeadline || '').trim();
+                    return (
+                      <div style={{ margin: '0 0 10px' }}>
+                        <div className="actions-row" style={{ alignItems: 'center' }}>
+                          <span className="of">replies by:</span>
+                          <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
+                            value={already || ''}
+                            onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
+                            aria-label="RSVP deadline" />
+                          {prop && prop.iso && already !== prop.iso && (
+                            <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
+                              'Reply-by date set — your invite says it now.')}>
+                              {already ? 'use ours' : 'pick one for me'}
+                            </button>
+                          )}
+                        </div>
+                        {prop && (
+                          <p className="grounding" style={{ margin: '6px 2px 0' }}>
+                            {prop.tooClose
+                              ? prop.why
+                              : <>
+                                  {!already && <><b>{new Date(prop.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</b>{' — '}</>}
+                                  {prop.why}
+                                </>}
+                          </p>
                         )}
+                        {!already && (
+                          <p className="grounding" style={{ margin: '4px 2px 0', opacity: .8 }}>
+                            Your invite won’t show a reply-by date until you set one — we won’t put a deadline in your name that you didn’t choose.
+                          </p>
+                        )}
+                      </div>
+                    );
+              };
+              // ── THE COVER, RESOLVED ONCE ────────────────────────────────
+              // Read-only and forward-compatible: the host-supplied media
+              // pipeline is NOT authorized, so this reads an `coverImageUrl`
+              // that does not exist yet and never writes one. The fixture
+              // override is review-only, never persisted, and labelled on
+              // screen wherever it paints. The hero and the desktop rail read
+              // THIS, not two copies of the same parsing.
+              const peopleCover = (() => {
+                let fix = null;
+                try { fix = new URLSearchParams(window.location.search).get('peoplefixture'); } catch { fix = null; }
+                if (fix && /^https?:\/\//i.test(fix)) return { src: fix, fixture: true };
+                const own = String((event && event.coverImageUrl) || '').trim();
+                return { src: /^https?:\/\//i.test(own) ? own : null, fixture: false };
+              })();
+              // ── §26 STATE A · the rail, rendered only while nothing is open ──
+              // Mutually exclusive with `.gdetail` by construction: both claim
+              // grid-column 2, and `guestOpen == null` is the only state in
+              // which this exists at all.
+              const peopleRail = peopleMode ? (
+                <PeopleRail
+                  event={event}
+                  src={peopleCover.src}
+                  fixture={peopleCover.fixture}
+                  subtitle={(() => {
+                    const bits = [];
+                    try {
+                      if (event.date) bits.push(new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' }));
+                    } catch { /* a malformed date is simply not shown */ }
+                    // `venueFor` IS THE ONE READER — `venueSourceProof` caught
+                    // this as a raw `event.venueCity` read the moment it shipped,
+                    // which is the gate doing exactly its job. A raw read here
+                    // would have shown nothing for every host whose town lives in
+                    // the venue NAME field ("Santa Fe, NM"), the fork venueFor
+                    // exists to reconcile. `vf` is the memoised call already in
+                    // scope. It also fixes a second bug in the same line: the
+                    // state lives at `venueState`, not `state`.
+                    const where = [vf.city, vf.state].filter(Boolean).join(', ');
+                    if (where) bits.push(where);
+                    return bits.join(' \u00b7 ');
+                  })()}
+                  counts={(() => {
+                    // The SAME predicate the lens chips use, over the whole
+                    // roster rather than the filtered view.
+                    const all = event.guests || [];
+                    const n = (v) => all.filter((g) => String((g && g.rsvp) || '') === v).length;
+                    return [
+                      { label: 'Coming', n: n('Yes') },
+                      { label: 'No reply', n: n('') },
+                      { label: 'Maybe', n: n('Maybe') },
+                      { label: 'Can\u2019t make it', n: n('No') },
+                    ];
+                  })()}
+                  unknowns={(() => {
+                    try { return (accessNeedsFor(event).requirements || []).filter((r) => r && !r.who).length; }
+                    catch { return 0; }
+                  })()}
+                />
+              ) : null;
+              const peopleZone = peopleMode ? (
+                <div>
+                  <PeopleHero event={event} src={peopleCover.src} fixture={peopleCover.fixture} />
+                  <AttendanceDecision
+                    event={event}
+                    solemn={(() => { try { return isSolemnEvent(event); } catch { return false; } })()}
+                    adjusting={peopleAdjust}
+                    onAdjust={setPeopleAdjust}
+                    onConfirmCount={(n) => patchEvent(
+                      { guestEstimate: n, guestCount: n, guestCountSource: 'host' },
+                      'Planning for ' + n + ' — it\u2019s your number now, so it can go in what we send.',
+                    )}
+                  />
+                  {/* ── ONE MOVE (owner §7, §3, §12) ────────────────────────
+                      `eventPlan()` is the sole final next-action authority, so
+                      People does not rank: it takes the FIRST item the engine
+                      already ranked whose `domain` is 'guests'. A filter can
+                      shorten that order; it cannot reorder it, which is the
+                      whole difference between reading the prioritizer and
+                      building a second one. Worries are included because a
+                      heads-up about the guest list is still the guest list's
+                      one move — the engine's own split decides which lane it
+                      arrived in, not this surface.
+                      If the engine has nothing for People, People shows nothing
+                      rather than inventing a chore to fill the slot.
+
+                      §12 — THE CTA IS EARNED, NOT ASSUMED. The route is run
+                      through the production `resolveRoute()`, the same pure
+                      function `routeSheet` dispatches on, and a handler is
+                      passed ONLY when it resolves to a real landing that is not
+                      this sheet. The live example proves why: the top guests
+                      raise is "3 confirmed guests still need seats", whose
+                      route is SEATING — a real destination, worth a door. A
+                      raise that routes back to Guests gets no button, because a
+                      button that reopens the surface you are already on is the
+                      fake CTA UX_07 exists to prevent. */}
+                  {(() => {
+                    const move = (() => {
+                      try {
+                        const pool = [...(actions || []), ...(worries || [])];
+                        return pool.find((a) => a && a.domain === 'guests') || null;
+                      } catch { return null; }
+                    })();
+                    if (!move) return null;
+                    const r = (() => { try { return resolveRoute(move.route); } catch { return null; } })();
+                    const elsewhere = !!(r && r.kind && r.kind !== 'guests');
+                    return (
+                      <OneMove
+                        move={move}
+                        cta={elsewhere ? ctaLabelFor(move.cta, move.route, event) : null}
+                        onGo={elsewhere ? () => routeSheet(move.route) : null}
+                      />
+                    );
+                  })()}
+                  <StillUnknown needs={(() => {
+                    try { return accessNeedsFor(event); } catch { return null; }
+                  })()} />
+                </div>
+              ) : null;
+              const peopleBody = (event.guests || []).length ? (
+                <>
+                  {peopleZone}
+                  {guestHero}
+                  {!peopleMode && (plusOnes > 0 || kidsHere > 0) && (
+                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
+                      {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsHere ? kidsHere + ' kid' + (kidsHere === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                  {!chase && (
+                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
+                      You went by headcount — replies here are just for tracking, no chasing.
+                    </div>
+                  )}
+                  {/* One-line reply-by + edit hint — the count itself lives in the
+                      hero above (audit S3: was a third restatement of "N yes of M"). */}
+                  <div className="v-meta" style={{ padding: '2px 2px var(--sp-3)', display: peopleMode ? 'none' : undefined }}>
+                    {(() => {
+                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
+                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const parts = [];
+                      // §4: internal calculation, not a host decision. The redesigned
+                      // surface keeps it behind the attendance disclosure instead of
+                      // narrating it inline; the legacy body is unchanged.
+                      if (!peopleMode && heads !== yes.length) parts.push(`${heads} heads with plus-ones`);
+                      // I FIXED THE GUEST AND LEFT THE HOST (2026-07-14, same day). dc5abee gated
+                      // the INVITE on `source === 'override'` so a guest could never be shown a
+                      // deadline the host hadn't chosen — and this line, forty rows away, kept
+                      // printing the very same invented `event.date − 7d` to the HOST as a flat
+                      // fact ("replies by Jul 20"), sitting beside real RSVP counts, with a
+                      // "change" button implying a date already existed. Half a fix is its own
+                      // kind of lie: the host would have believed a deadline was set and never
+                      // opened the editor to set one.
+                      if (rsvpByIsSet && !isPast) parts.push(`replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
+                      return parts.join(' · ');
+                    })()}
+                    {!isPast && (
+                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'Done' : (rsvpByIsSet ? 'Change' : 'Set reply-by')}</button>
+                    )}
+                    {(() => {
+                      // leading separator only when something precedes the hint
+                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
+                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const hasPre = (heads !== yes.length) || (rsvpBy && rsvpBy.iso && !isPast) || !isPast;
+                      // Was "tap a tag to change an RSVP, a name to edit" — two doors
+                      // described as doing different things. Since the reply picker moved
+                      // into the guest's own row (2026-08-07) BOTH open the same one, so
+                      // the sentence promised a distinction the surface no longer makes.
+                      // Found by driving it, not by reading the diff.
+                      const hint = 'tap anyone to change their reply or edit them.';
+                      return hasPre ? ' — ' + hint : hint[0].toUpperCase() + hint.slice(1);
+                    })()}
+                  </div>
+                  {/* ── THE EDITOR, HOISTED (owner §11, 2026-10-20) ──────────────
+                      Unchanged behaviour, one definition. The redesigned surface
+                      frames the deadline by what it buys ("a date you need the
+                      final number by") instead of printing it as a fact with a
+                      Change button, so the editor it opens had to be reachable
+                      from the new block as well as the legacy one. Rendering it
+                      twice would put two date inputs on one field. */}
+                  {!peopleMode && deadlineOpen && renderDeadlineEditor()}
+                  {/* Invite tools + settings relocated BELOW the roster (audit S3:
+                      the roster is the reason the sheet exists — it now comes right
+                      after the hero, not behind a wall of share/look/rules chips). */}
+                  {/* Turnout is now stated ONCE in guestHero (single-source, memory-preferred over
+                      the generic band) — the standalone memory line was the 2nd/3rd competing
+                      number the host flagged. Retired here on purpose. */}
+                  {nudgeFor('guests')}
+                  {/* ── THE ROSTER TOOLBAR ─────────────────────────────────────────
+                      Only rendered once the list is big enough to need finding —
+                      below 8 people a search field is furniture, and the leaders
+                      that ship one are all showing sets you cannot hold in your head.
+                      The lens chips are the read's 10+ note in its cheapest honest
+                      form: they filter by REPLY STATE, which is the cut a host
+                      actually holds ("who hasn't answered"), rather than by an
+                      arbitrary property. Each chip states its own count, so the
+                      filter is also the rollup and there is no second number to keep
+                      truthful. */}
+                  {(event.guests || []).length >= 8 && (() => {
+                    // COUNTED AFTER THE SEARCH, like the vendor toolbar — the same
+                    // fix, which had never been carried across. These chips counted
+                    // the raw guest array while the rows below them were search
+                    // filtered, so typing "sam" left "Coming 24" sitting above two
+                    // people. The search predicate is the one the row filter uses,
+                    // read from the same fields, so the chips and the list cannot
+                    // disagree about who is on screen.
+                    const qL = rosterQ.trim().toLowerCase();
+                    const matchesQ = (g) => !qL
+                      || [g && g.name, g && g.plusOne, g && g.group, g && g.email]
+                        .some((v) => String(v || '').toLowerCase().includes(qL));
+                    const all = (event.guests || []).filter(matchesQ);
+                    const n = (v) => all.filter((g) => String(g && g.rsvp || '') === v).length;
+                    // No count on "Everyone" — it is not a group, and the leaders
+                    // (Linear, Plane, ClickUp, Asana) put counts only on groups.
+                    const LENS = [['all', 'Everyone', null], ['yes', 'Coming', n('Yes')], ['none', 'No reply', n('')], ['maybe', 'Maybe', n('Maybe')], ['no', 'Can’t make it', n('No')]];
+                    return (
+                      <>{toldRollup(event).line ? <div className="told-rollup v-meta">
+                        {/* WHO STILL DOES NOT KNOW -- the question the rails could
+                            not answer. Counted against guests who can actually BE
+                            told: someone with no phone and no email is unreachable,
+                            not outstanding, and putting them in a number the host is
+                            meant to drive to zero makes it a nag they can never
+                            satisfy. Attested by the host throughout; the app takes
+                            their word and never upgrades it. */}
+                        {toldRollup(event).line}
+                      </div> : null}
+                      <div className={'rtoolbar' + (peopleMode ? ' people-rtoolbar' : '')}>
+                        <input className="field rtool-q" type="search" value={rosterQ}
+                          onChange={(e) => setRosterQ(e.target.value)}
+                          placeholder="Find someone" aria-label="Find someone on the guest list" />
+                        <span className="rtool-lens" role="group" aria-label="Show only">
+                          {LENS.map(([k, lbl, c]) => (
+                            <button key={k} className="chip" aria-pressed={rosterLens === k}
+                              onClick={() => setRosterLens(k)}
+                              style={rosterLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
+                              {lbl}{c === null ? '' : ' ' + c}
+                            </button>
+                          ))}
+                        </span>
+                      </div></>
+                    );
+                  })()}
+                  {(() => {
+                    // Grouped roster: when the host has sorted people into groups,
+                    // the list reads by group; indexes stay the ORIGINAL array
+                    // positions (every writer here is index-based).
+                    // Render the FULL roster (per-screen audit: a prior .slice(0,60)
+                    // silently hid guests 61+ while the hero counts still included
+                    // them — they were uneditable). Rows are lightweight (text + two
+                    // buttons, index-keyed); a plain full render handles realistic
+                    // host lists without virtualization.
+                    // FILTER AFTER INDEXING, NEVER BEFORE. Every writer on this
+                    // surface (setRsvpValue, writeGuest, removeGuest) is INDEX-BASED
+                    // against event.guests. Filtering the array first and then
+                    // mapping would renumber everyone, so hiding one guest would
+                    // silently make every edit below it write to the wrong person.
+                    // Index first, then filter the {g,i} pairs — i stays the true
+                    // position in the original array no matter what is on screen.
+                    const allIdx = (event.guests || []).map((g, i) => ({ g, i }));
+                    const q = rosterQ.trim().toLowerCase();
+                    const withIdx = allIdx.filter(({ g }) => {
+                      if (rosterLens !== 'all') {
+                        const r = String(g.rsvp || '');
+                        const want = rosterLens === 'none' ? '' : rosterLens === 'yes' ? 'Yes' : rosterLens === 'no' ? 'No' : 'Maybe';
+                        if (r !== want) return false;
+                      }
+                      if (!q) return true;
+                      // Search what a host actually remembers: the name, who they are
+                      // with, and the group they filed them under.
+                      return [g.name, g.plusOne, g.group, g.email].some((v) => String(v || '').toLowerCase().includes(q));
+                    });
+                    // Lightweight visual layer (per-screen audit: Guests scored lowest,
+                    // no glanceability vs Partiful's avatars). Deterministic initials +
+                    // a MUTED on-brand tint (not a rainbow — respects the colour budget);
+                    // no photo pipeline, keeping the structural-data advantage.
+                    // AVA_TINTS now shared from eventPool (audit Cr1).
+                    const avaFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
+                    const initialsOf = (nm) => { const p = String(nm || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
+                    const row = ({ g, i }) => (
+                      <div className="rrow" key={i}>
+                        <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+                          <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
+                          <button style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}
+                            onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
+                            {peopleMode ? (() => {
+                              /* ── §7 · RELATIONSHIP GRAMMAR ───────────────────
+                                 OWNER, 2026-10-20: *"`+1 Pat · with Ray`, `with
+                                 Georgia Vegetarian`, `+1 Georgia · with … no
+                                 stairs` … technically accurate while still being
+                                 hard to parse. Separate identity / relationship /
+                                 RSVP state / consequential need. Do not
+                                 concatenate unrelated concepts into one metadata
+                                 sentence merely to save space."*
+
+                                 The legacy row ran four concepts through two
+                                 slots: the name line carried identity AND party
+                                 ("Tonya Brooks +1 Pat · with Ray"), and the meta
+                                 line carried kids AND meal AND dietary AND access
+                                 with the same dot between all of them — which is
+                                 how "with Georgia" and "Vegetarian" ended up
+                                 reading as one phrase. Nothing was wrong; it was
+                                 unparseable.
+
+                                 Four concepts, four places:
+                                   identity    the name, alone, ellipsised
+                                   party       who else arrives BECAUSE of them
+                                   need        what the plan must do differently
+                                   RSVP        the pill, already its own slot
+
+                                 §8: the need line exists only when there IS one,
+                                 and shows at most two before deferring to the
+                                 row's own accordion. At 75 guests most rows carry
+                                 neither extra line, which is what keeps the list
+                                 from becoming a wall of chips. */
+                              const partner = g.coupleId
+                                ? (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId)
+                                : null;
+                              const party = [
+                                partner && partner.name ? 'with ' + String(partner.name).split(' ')[0] : null,
+                                String(g.plusOne || '').trim() ? '+1 ' + String(g.plusOne).trim() : null,
+                                Number(g.kids) > 0 ? g.kids + ' kid' + (Number(g.kids) === 1 ? '' : 's') : null,
+                              ].filter(Boolean);
+                              const meal = String(g.meal || '').trim();
+                              const needs = [
+                                meal && meal !== '—' ? (MEAL_SHORT[meal] || meal) : null,
+                                String(g.needs || '').trim() || null,
+                                ...[...(Array.isArray(g.allergens) ? g.allergens : []), ...(Array.isArray(g.diets) ? g.diets : [])]
+                                  .filter((x) => x && !String(g.needs || '').toLowerCase().includes(String(x).toLowerCase())),
+                              ].filter(Boolean);
+                              const shown = needs.slice(0, 2);
+                              const rest = needs.length - shown.length;
+                              return (
+                                <>
+                                  <span className="pr-name">{g.name || 'Guest ' + (i + 1)}</span>
+                                  {party.length ? <span className="pr-party">{party.join(' · ')}</span> : null}
+                                  {shown.length ? (
+                                    <span className="pr-need">
+                                      <span aria-hidden="true" className="pr-dot">•</span>
+                                      {shown.join(' · ')}{rest > 0 ? ' · +' + rest + ' more' : ''}
+                                    </span>
+                                  ) : null}
+                                </>
+                              );
+                            })() : (<>
+                            {/* Mobile fit (393px stage): name owns line 1 (nowrap +
+                                ellipsis so it never breaks mid-word); the meta — kids,
+                                meal, the nowrap needs-tag — drops to a wrapping line 2.
+                                One inline run made the tag fight the name for the row's
+                                width and overflow the sheet (min-width:auto held it wide). */}
+                            <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {g.name || 'Guest ' + (i + 1)}
+                              {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
+                              {g.coupleId ? (() => {
+                                const p = (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId);
+                                return p ? <span className="of"> · with {String(p.name || '').split(' ')[0]}</span> : null;
+                              })() : null}
+                            </span>
+                            {/* Audit #8: meal shown on the collapsed row (short form) so
+                                the whole roster's meals read at a glance, not one-by-one. */}
+                            {/* ── ALWAYS THREE SLOTS, EVEN WHEN EMPTY (2026-08-07) ────
+                                On the phone this is one wrapping line of chips and a
+                                missing chip should collapse — which is why it was
+                                written conditionally. At the data tier the same
+                                markup is laid out as COLUMNS, and columns only line
+                                up if every row renders the same slots: one guest
+                                without a meal must not slide the next guest's
+                                dietary tags a track to the left.
+
+                                So the slots are unconditional and each carries its
+                                own class; what stays conditional is their CONTENT.
+                                Empty slots render nothing visible and cost nothing
+                                on the phone (the flex row ignores zero-width
+                                children), and they give the grid a track to hold. */}
+                            <span className="gmeta" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                              <span className="gm-kids">
+                                {Number(g.kids) > 0 ? <span className="of">{g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
+                              </span>
+                              <span className="gm-meal">
+                                {String(g.meal || '').trim() && g.meal !== '—' ? <span className="of">{MEAL_SHORT[g.meal] || g.meal}</span> : null}
+                              </span>
+                              {/* WAVE-5 (UX_02 amber budget): a guest's needs note identifies
+                                  the guest, it doesn't warn about a gap — neutral .tag.plan,
+                                  same treatment as the RSVP tag on this row.
+                                  Structured dietary from the invite (allergens/diets arrays)
+                                  reach the LIST itself (host ask 2026-07-27) — deduped
+                                  against the free-text needs tag so nothing double-chips. */}
+                              <span className="gm-diet">
+                                {String(g.needs || '').trim() ? <span className="tag plan">{g.needs}</span> : null}
+                                {[...(Array.isArray(g.allergens) ? g.allergens : []), ...(Array.isArray(g.diets) ? g.diets : [])]
+                                  .filter((x) => x && !String(g.needs || '').toLowerCase().includes(String(x).toLowerCase()))
+                                  .map((x) => <span key={x} className="tag plan">{x}</span>)}
+                              </span>
+                            </span>
+                            </>)}
+                          </button>
+                          {/* ── THE PICKER LEFT ITS OWN TRIGGER (board call, 2026-08-07) ──
+                              This slot was `rsvpPickFor === i ? <picker> : <trigger>` — the
+                              picker REPLACED the control that opened it. Three costs, all
+                              paid by the host:
+
+                                · the value you came to change vanished the instant you
+                                  went to change it, so "is this a Yes already?" could
+                                  only be answered by dismissing the thing you opened;
+                                · focus died with the unmounted trigger — keyboard and
+                                  screen-reader users were dropped to the body mid-task;
+                                · a ~26px tag became four chips, so THIS row and every row
+                                  under it reflowed under the finger. UX_05:174 allows a
+                                  row to change height only in an accordion, and this list
+                                  already HAS one (guestOpen) — the picker was just not
+                                  using it.
+
+                              UX_05:66 ("a status chip is display-only, clicking it does
+                              nothing") pulls the other way, since a dead `no reply` is the
+                              exact looks-available-but-isn't failure the rail rule at
+                              styles.css:3986 was written to kill. Both are satisfied by
+                              changing the SHAPE rather than picking a side: this is a
+                              DISCLOSURE control that displays status, not a status chip
+                              that acts. It answers "expand this guest", the picker lives
+                              in what it expands, and the chip inside it stays display-only.
+
+                              Cost is unchanged — two taps then, two taps now — but the
+                              first one is a full-width row instead of a 26px chip. */}
+                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                            aria-expanded={guestOpen === i} aria-controls={'v2-guest-detail-' + i}
+                            /* ONE STRING, BOTH PLACES (WCAG 2.5.3, board 2026-08-07).
+                               This said "replied nothing yet" while the chip below
+                               rendered "no reply" — so a voice-control user saying
+                               "tap no reply" missed a control whose accessible name
+                               was different words. The visible text must be IN the
+                               accessible name, not a paraphrase of it. */
+                            aria-label={(g.name || 'Guest') + ': ' + (g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')) + ' — open to change it'}
+                            onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
+                            {/* UX_02: a Maybe is UNKNOWN → steel; amber is needs-attention only. */}
+                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')}</span>
+                          </button>
+                        </div>
+                        {/* §26 · ONE DETAIL, TWO PLACEMENTS. On mobile and
+                            tablet this opens inline under its row — the
+                            accordion the surface has always used. At the
+                            desktop rail band it is NOT rendered here; the same
+                            function renders it into the 340px rail instead.
+                            One definition, so the radiogroup, meal picker,
+                            contact fields and helper roles cannot drift apart
+                            between the two expressions, and no guest ever has
+                            two live copies of their own inputs. */}
+                        {guestOpen === i && !peopleRailUp && guestDetail(g, i)}
                       </div>
                     );
                     // ── COLUMN HEADER, WIDE ONLY ────────────────────────────
@@ -24222,15 +24462,16 @@ export default function HostShellV2() {
                     <div id="guests-invites-anchor" style={{ scrollMarginTop: 12 }}>
                       <GetResponses
                         invited={(event.guests || []).length}
-                        outstanding={(event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length}
+                        outstanding={_outstanding}
                         replyBy={rsvpByIsSet ? rsvpBy : null}
                         isPast={isPast}
                         deadlineOpen={deadlineOpen}
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={renderDeadlineEditor()}
-                      >
-                        {inviteTools}
-                      </GetResponses>
+                        primary={inviteTiers.primary}
+                        secondary={inviteTiers.secondary}
+                        more={inviteTiers.more}
+                      />
                     </div>
                   ) : (
                     <>
@@ -24252,48 +24493,39 @@ export default function HostShellV2() {
                       </p>
                     );
                   })()}
-                  {/* Invite look — the tone engine guesses from the event's mood
-                      (paper by day, elegant by night, muted when somber); the
-                      host's word always wins (lib/inviteTone). */}
-                  {/* Label on its own line + a 3-col grid so the three looks read as
-                      an even segmented control instead of a 2+1 ragged wrap. */}
-                  {/* Fold-behind-Change (parity/MANIFEST) — one settled look; folds
-                      to a hairline row, opens the 3-up segmented control on tap. */}
-                  {(() => {
-                    const styles = [['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']];
-                    const cur = event.inviteStyle || '';
-                    const curLabel = (styles.find(([v]) => v === cur) || styles[0])[1];
-                    if (!settledOpen.inviteStyle) {
-                      return <SettledRow label="Invite look" value={curLabel} style={{ margin: '0 0 10px' }}
-                        onOpen={() => setSettledOpen(m => ({ ...m, inviteStyle: true }))} />;
-                    }
-                    return (
-                      <>
-                        <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>invite look</div>
-                        <OptionList ariaLabel="Invite look" style={{ margin: '0 0 10px' }}
-                          options={styles.map(([val, label]) => ({ label, value: val }))}
-                          value={cur}
-                          onPick={(val) => { const label = (styles.find(([v]) => v === val) || styles[0])[1]; patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.'); setSettledOpen(m => ({ ...m, inviteStyle: false })); }} />
-                      </>
-                    );
-                  })()}
-                  {/* Crest choice — only offered when this event HAS registered
-                      artwork (never a toggle that does nothing). The host's
-                      call: artwork on the invite, or purely typographic. */}
-                  {eventArtworkFile(event) && (
-                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
-                      <span className="of">artwork:</span>
-                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest !== 'off'}
-                        onClick={() => patchEvent({ inviteCrest: '' }, 'The artwork is on the invite.')}>On the invite</button>
-                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest === 'off'}
-                        onClick={() => patchEvent({ inviteCrest: 'off' }, 'Words only — the invite stays purely typographic.')}>Words only</button>
+                  {/* ── §25 · SECONDARY MANAGEMENT, SUBORDINATED ─────────────
+                      OWNER: *"Administrative capabilities such as Invite look,
+                      invite rules, counting mode, CSV import, CSV export and
+                      other configuration must not visually compete with current
+                      guest operations. Preserve them. Subordinate them."*
+
+                      Everything below is configuration the host touches once,
+                      and it was sitting at the same visual weight as the
+                      roster and the invite actions — seven more controls at the
+                      foot of the screen, after the work. One labelled fold, so
+                      what is inside it is named rather than hidden behind an
+                      anonymous overflow, and every control is exactly where it
+                      was once opened.
+
+                      `guests-counting-anchor` and the CSV blocks live inside,
+                      so the fold OPENS when a route focuses one of them —
+                      otherwise a deep link would scroll to a collapsed section
+                      and look broken. */}
+                  {peopleMode ? (
+                    <div style={{ margin: 'var(--sp-6) 0 0' }}>
+                      <button className="fold-btn" aria-expanded={peopleAdminOpen}
+                        onClick={() => setPeopleAdminOpen((o) => !o)}>
+                        Invite look, rules and list tools
+                        <span className="chev" aria-hidden="true">{peopleAdminOpen ? '\u2304' : '\u203a'}</span>
+                      </button>
+                      {peopleAdminOpen ? (<div style={{ marginTop: 'var(--sp-3)' }}>
+                        {peopleAdmin}
+                      </div>) : null}
                     </div>
-                  )}
-                  {inviteRules}
-                  {countingChips}
-                  {csvBlock}
-                  {pastImports}
-                  {exportRow}
+                  ) : (<>
+                    {peopleAdmin}
+                  </>)}
+
                 </>
               ) : (
                 <>
@@ -24356,9 +24588,10 @@ export default function HostShellV2() {
                         deadlineOpen={deadlineOpen}
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={renderDeadlineEditor()}
-                      >
-                        {countInviteTools}
-                      </GetResponses>
+                        primary={_inviteActs.share}
+                        secondary={[_inviteActs.qr]}
+                        more={[_inviteActs.preview]}
+                      />
                     </div>
                   ) : (
                     <div id="guests-invites-anchor" className="actions-row" style={{ margin: '0 0 var(--sp-1)', scrollMarginTop: 12 }}>
@@ -24376,6 +24609,31 @@ export default function HostShellV2() {
                   {csvBlock}
                   {pastImports}
                 </>
+              );
+              // ── §26 · THE SHEET IS THE GRID, NOT THE ROSTER ─────────────
+              // MEASURED CORRECTION. The rail began life inside `.roster`,
+              // reusing the production data-tier grid's second column. The
+              // desktop capture killed that: the roster starts well below the
+              // fold on a 75-guest event, so the rail only existed once you had
+              // scrolled past the hero, the attendance decision and the One
+              // Move — and the entire upper right of the screen was the
+              // "unexplained empty acreage" §26 names.
+              //
+              // So the GUESTS SHEET BODY carries the grid, the rail is sticky
+              // against the whole page, and it holds exactly one of two things:
+              //   nothing selected → the event's own context (PeopleRail)
+              //   a guest selected → the production detail panel, verbatim
+              // which is §26's State A and State B with no third surface
+              // invented and no JSX duplicated.
+              if (!peopleRailUp) return peopleBody;
+              const sel = guestOpen != null ? (event.guests || [])[guestOpen] : null;
+              return (
+                <div className="people-grid">
+                  <div className="people-main">{peopleBody}</div>
+                  <div className="people-aside">
+                    {sel ? guestDetail(sel, guestOpen) : peopleRail}
+                  </div>
+                </div>
               );
             })()}
           </div>

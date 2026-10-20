@@ -6721,3 +6721,170 @@ button.vc-pill::after{
   .people-hero--img{ height:280px; }
   .people-hero-say{ max-width:40ch; }
 }
+
+/* ── §7/§8 · FOUR CONCEPTS, FOUR PLACES ────────────────────────────────────
+   identity · party · need · RSVP state. The row's job is to be scannable at
+   75 rows, so each line has ONE job and a weight that says which job it is:
+   the name reads, the party line informs, the need line interrupts just enough
+   to be noticed and not enough to shout. */
+.people-roster .pr-name{
+  display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-size:var(--t-row); font-weight:600; color:var(--ink); line-height:1.3;
+}
+.people-roster .pr-party{
+  display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  margin-top:1px;
+  font-size:var(--t-body-s); font-weight:500; color:var(--faint); line-height:1.35;
+}
+/* The need line is the only place on a row that may interrupt. It is marked,
+   not chipped — a capsule is a control's shape and this is not a control — and
+   it takes the ink-soft weight the party line deliberately does not, because
+   this is the line that changes what the host has to BUY or ARRANGE. */
+.people-roster .pr-need{
+  display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  margin-top:2px;
+  font-size:var(--t-body-s); font-weight:500; color:var(--muted); line-height:1.35;
+}
+/* MEASURED FROM A FRAME, NOT CHOSEN. The need line was `--ink-soft`, which is
+   production's blue-grey secondary (#849eb8 dark / #4e6c84 light) — correct as
+   a token and wrong here: at list density a run of blue text reads as links,
+   and "Fish · Shellfish · +3 more" is content, not navigation. `--muted` is the
+   neutral step and keeps the steel for the one mark that earns it. */
+.people-roster .pr-dot{
+  color:var(--steel-soft); padding-right:4px; font-size:12px;
+}
+
+/* ── §19/§26 · DESKTOP: A QUIET LIST AND A CONTEXTUAL RAIL ────────────────
+   OWNER §19: *"The CRM-style NAME | KIDS | MEAL | DIETARY table is NOT the
+   default desktop direction. Bring the quieter People / household row grammar
+   to desktop."*  §26: *"Use the existing ~340px desktop rail. Do NOT leave it
+   as unexplained empty acreage. Do NOT turn it into another dashboard."*
+
+   TWO MEASURED CORRECTIONS ARE BAKED INTO THIS BLOCK, both from frames:
+
+   1. I first cancelled the data-tier grid under `.people-roster` so the rows
+      would stay rows. Wrong target: that grid is not the table, it is what puts
+      the detail in a rail. 2. So I reused it — and the desktop capture killed
+      THAT, because on a 75-guest event the roster begins far below the fold, so
+      a rail living inside it did not exist until the host had scrolled past the
+      hero, the attendance decision and the One Move. The entire upper right of
+      the screen was the empty acreage §26 names.
+
+   The answer is neither: the GUESTS SHEET BODY is the grid, the rail is sticky
+   against the whole page, and the roster goes back to being a plain list at
+   every width. The table appearance disappears with the grid, so `.ghead` has
+   nothing to label and is hidden.
+
+   The baseline composition is untouched — without `?people=1` the data-tier
+   table is exactly what it was. */
+.people-grid{ display:block; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-grid{
+  display:grid; grid-template-columns:minmax(0,1fr) 340px;
+  column-gap:var(--sp-5); align-items:start;
+}
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-aside{
+  position:sticky; top:0; align-self:start;
+  max-height:88vh; overflow:auto;
+}
+/* The roster is a list, not a table, at every width under People. */
+.people-roster{ display:block!important; grid-template-columns:none!important; }
+.people-roster .rrow, .people-roster .rgroup{ display:block!important; }
+.people-roster .ghead{ display:none!important; }
+/* The detail panel in the rail keeps its own identity but drops the roster
+   grid's placement, which no longer applies to it. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-aside .gdetail{
+  grid-column:auto; grid-row:auto; position:static;
+  margin-left:0; padding:var(--sp-4);
+  background:var(--card); border-left:1px solid var(--line-soft);
+  border-radius:var(--r-md);
+}
+
+/* ── STATE A · NOTHING SELECTED ────────────────────────────────────────────
+   The event's context, not a second copy of the main column and not a
+   dashboard. Everything in it is on screen at the top of the page and gone by
+   the time the host is forty rows down — which is exactly when she needs it.
+   Hidden below the rail band: on mobile this context IS the photographic
+   opening and the attendance decision, which are better at it. */
+.people-rail{ display:none; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-rail{
+  display:block;
+  padding:var(--sp-4); border-left:1px solid var(--line-soft);
+  border-radius:var(--r-md); background:var(--card);
+}
+.people-rail .prl-cover{
+  position:relative; height:120px; margin:0 0 var(--sp-3);
+  border-radius:var(--r-md); overflow:hidden; background:var(--bg-band);
+}
+.people-rail .prl-cover img{ width:100%; height:100%; object-fit:cover; }
+.people-rail .prl-cover::after{
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 70%);
+}
+.people-rail .prl-row{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-3); padding:var(--sp-2) 0;
+  border-top:1px solid var(--line-soft);
+}
+.people-rail .prl-row:first-of-type{ border-top:none; }
+.people-rail .prl-k{ font-size:var(--t-body-s); color:var(--faint); }
+.people-rail .prl-v{ font-size:var(--t-row); color:var(--ink); font-weight:600; }
+
+/* ── §24 · THE ACTION TIERS ────────────────────────────────────────────────
+   One dominant CTA (full width, the shell's own `.cta`), a quiet secondary
+   row, and a labelled fold. `.pr-acts` is a wrap row rather than the 2-up
+   `.pill-grid`: a grid forces every action to the same width and therefore the
+   same apparent importance, which is the thing being fixed. */
+.pr-acts{
+  display:flex; flex-wrap:wrap; gap:var(--sp-2);
+}
+.pr-acts > .mini{ flex:0 1 auto; }
+
+/* The reply-by control is a sentence the host can act on, not a button. Same
+   treatment as `.whytog` — the disclosure register this surface already uses —
+   so it cannot be mistaken for one of the tiered actions above it. */
+.pr-quiet{
+  background:none; border:none; padding:var(--sp-2) 0;
+  font:inherit; font-size:var(--t-pill); font-weight:650;
+  color:var(--steel-soft); cursor:pointer; text-align:left;
+  min-height:var(--tap-min);
+}
+
+/* ── §29/§30 · WHAT THE INTERACTION PROBE FOUND ────────────────────────────
+   Three measured defects, none visible in a screenshot. `interaction.json`
+   carries the readings.
+
+   1 · THE NAME BUTTON WAS A 21px TARGET. `.grow` is 57–67px tall, but the
+       button wrapping the name has `padding:0; display:block`, so its own box
+       was the height of the text — 21px on a one-line row, 42 on two. The RSVP
+       pill beside it already clears the floor through the 44px `::before` at
+       styles.css:5570; the name never had one. UX_03's mobile floor is 44 and
+       it is the binding rule on a phone-first roster.
+
+   2 · AND IT HAD NO FOCUS RING. Measured on the focused element:
+       `outline-width: 0px; outline-style: none; box-shadow: none`. A keyboard
+       user could reach every guest row and never see which one they were on
+       (WCAG 2.4.7). Enter already opened the right guest — the behaviour was
+       there, the indication was not.
+
+   3 · THE MAIN COLUMN WAS NOT TAKING ITS SPACE. `grid-template-columns`
+       computed to `460px 340px` inside an ~1150px sheet body: the grid was
+       shrink-to-fit rather than filling, so the composition was squeezed into
+       two-thirds of the width and the rest read as the empty acreage the rail
+       was supposed to end. */
+.people-roster .grow > button:first-of-type{
+  display:flex; flex-direction:column; justify-content:center;
+  min-height:44px;
+}
+.people-roster .grow > button:focus-visible,
+.people-rail button:focus-visible,
+.people-aside button:focus-visible{
+  outline:2px solid var(--steel-soft); outline-offset:2px; border-radius:var(--r-sm);
+}
+.people-grid{ width:100%; }
+
+/* `min-width:0` is the rule this class exists for, and `classNameHasRule`
+   caught it shipping without one. A grid child defaults to `min-width:auto`,
+   which refuses to shrink below its content — so the roster's ellipsised name
+   and party lines would have pushed the main column wider than its track and
+   squeezed the rail instead of truncating. */
+.people-main{ min-width:0; }
