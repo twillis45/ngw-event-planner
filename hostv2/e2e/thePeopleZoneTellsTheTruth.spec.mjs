@@ -52,6 +52,24 @@ const sheetText = (p) => p.evaluate(() => {
   return ((el && el.innerText) || '').replace(/\s+/g, ' ');
 });
 
+// ── THE DISCLOSURE, AND WHY THESE ASSERTIONS MOVED (owner correction, 2026-10-20)
+//
+// OBSOLETE IMPLEMENTATION, not required behaviour: the first cut rendered every
+// sentence the engine holds on the first viewport. The owner stopped it — "the
+// audit must not become the UI" — so the reasoning moved behind a disclosure.
+//
+// REQUIRED BEHAVIOUR, unchanged and still asserted below: every one of those
+// sentences is still REACHABLE and still true. These tests now open the
+// disclosure to prove compression did not become deletion. A test that simply
+// dropped the assertion would have let the truth go with the prose.
+const open = (page, label) => page.evaluate((l) => {
+  const b = [...document.querySelectorAll('.sheet button')]
+    .find((x) => (x.innerText || '').trim().startsWith(l));
+  if (!b) return false;
+  b.click();
+  return true;
+}, label);
+
 const roster = (n, rsvp) => Array.from({ length: n }, (_, i) => ({
   id: 'g' + i, name: 'Guest ' + i, rsvp,
 }));
@@ -63,14 +81,18 @@ test('AN APP-SUPPLIED NUMBER SAYS SO, and says it is being held back', async ({ 
   const body = await sheetText(page);
 
   expect(body).toMatch(/Who’s coming/i);
-  // The engine's own disclosure, reaching a host for the first time.
-  expect(body).toMatch(/not a number you gave/i);
-  // The actionable half: what withholding actually means for her.
-  expect(body).toMatch(/stays out of anything we send/i);
-  // And the offer to make it hers, naming the number.
+  // COMPRESSED ON THE FIRST VIEW: the state, and one move.
+  expect(body).toMatch(/our estimate/i);
   expect(body).toMatch(/Yes, plan for 40/);
   // It must NOT claim anyone replied or confirmed anything.
   expect(body).not.toMatch(/40 people said yes/i);
+
+  // AND THE TRUTH IS STILL THERE, one tap away — both halves of it.
+  expect(await open(page, 'Where this number came from')).toBe(true);
+  await page.waitForTimeout(250);
+  const more = await sheetText(page);
+  expect(more).toMatch(/not a number you gave/i);
+  expect(more).toMatch(/stays out of anything we send/i);
 });
 
 test('HER OWN NUMBER IS NOT APOLOGISED FOR — the paired fixture', async ({ page }) => {
@@ -83,9 +105,9 @@ test('HER OWN NUMBER IS NOT APOLOGISED FOR — the paired fixture', async ({ pag
   const body = await sheetText(page);
 
   expect(body).toMatch(/Who’s coming/i);
-  expect(body).not.toMatch(/not a number you gave/i);
-  expect(body).not.toMatch(/stays out of anything we send/i);
+  expect(body).not.toMatch(/our estimate/i);
   expect(body).not.toMatch(/Yes, plan for 40/);
+  expect(body).not.toMatch(/not a number you gave/i);
 });
 
 test('A SETTLED HEADCOUNT NEVER SAYS ANYONE REPLIED', async ({ page }) => {
@@ -132,8 +154,8 @@ test('CONFIRMING IT MAKES IT HERS — and the write lands on the event', async (
   await page.waitForTimeout(700);
 
   const after = await sheetText(page);
-  expect(after, 'the disclosure is gone because the number is hers now').not.toMatch(/not a number you gave/i);
-  expect(after).not.toMatch(/stays out of anything we send/i);
+  expect(after, 'the estimate state is gone because the number is hers now').not.toMatch(/our estimate/i);
+  expect(after).not.toMatch(/Yes, plan for 40/);
 
   // Asserted on the stored event, not just on the screen: the provenance field
   // is what every outward gate in the app reads.
@@ -162,7 +184,7 @@ test('NEGATIVE CONTROL — without ?people=1 the legacy body is untouched', asyn
   await openSectionByName(page, 'Guests', { settle: 600 });
 
   const body = await sheetText(page);
-  expect(body).not.toMatch(/stays out of anything we send/i);
+  expect(body).not.toMatch(/our estimate/i);
   expect(body).not.toMatch(/Yes, plan for 40/);
 });
 
@@ -181,13 +203,18 @@ test('an unowned need is stated, in her words, WITHOUT inventing a person', asyn
   }));
   const body = await sheetText(page);
 
-  expect(body).toMatch(/What someone needs/i);
   expect(body).toMatch(/Step-free access/i);
-  // HER OWN WORDS, verbatim — the reason the engine keeps `phrase` at all.
-  expect(body).toMatch(/she uses a walker/);
-  // The unknown, said as an unknown.
-  expect(body).toMatch(/don’t know which person this is for/i);
-  expect(body).toMatch(/won’t guess/i);
+  // THE COMPRESSED MOMENT: the consequence, then the unknown. Two lines.
+  expect(body).toMatch(/Someone in your group needs it/i);
+  expect(body).toMatch(/don’t know who yet/i);
+
+  // HER OWN WORDS and the refusal to guess are still reachable — the reason
+  // the engine keeps `phrase` at all.
+  expect(await open(page, 'What we do know')).toBe(true);
+  await page.waitForTimeout(250);
+  const more = await sheetText(page);
+  expect(more).toMatch(/she uses a walker/);
+  expect(more).toMatch(/won’t guess/i);
 
   // THE SHARPEST GUARD IN THE SLICE. Two named people are on this roster and
   // neither of them said anything about stairs. If the surface attached the
@@ -211,8 +238,15 @@ test('and it claims only the reach an unowned need actually has', async ({ page 
   await boot(page, EV({ id: 'e2e-people-reach', guestMode: 'count', guestEstimate: 20, guestCountSource: 'host', accessNeeds: WALKER }));
   const body = await sheetText(page);
 
-  expect(body).toMatch(/Where everyone stays is already planned around it/i);
-  expect(body).toMatch(/can’t be until we know who/i);
+  expect(body).toMatch(/Someone in your group needs it/i);
+  expect(await open(page, 'What we do know')).toBe(true);
+  await page.waitForTimeout(250);
+  const more = await sheetText(page);
+  expect(more).toMatch(/Where everyone stays is already planned around it/i);
+  expect(more).toMatch(/can’t be until we know who/i);
+  // AND NO RAW ENGINE IDS. A capture caught "the-day" on screen in the first
+  // cut; ACCESS_DOMAINS are ids, and an id with no host name is dropped.
+  expect(more).not.toMatch(/the-day|notYetApplied/);
 });
 
 test('a NAMED need says both reaches are real, because they are', async ({ page }) => {
@@ -226,14 +260,16 @@ test('a NAMED need says both reaches are real, because they are', async ({ page 
   const body = await sheetText(page);
 
   expect(body).toMatch(/Step-free access/i);
-  expect(body).toMatch(/Tonya Brooks/);
-  expect(body).toMatch(/Their seat and where they stay are both checked/i);
-  expect(body).not.toMatch(/don’t know which person/i);
+  expect(body).toMatch(/Tonya Brooks needs it/);
+  expect(body).not.toMatch(/don’t know who yet/i);
+  expect(await open(page, 'What that changes')).toBe(true);
+  await page.waitForTimeout(250);
+  expect(await sheetText(page)).toMatch(/Their seat and where they stay are both checked/i);
 });
 
 test('NEGATIVE CONTROL — no need, no zone', async ({ page }) => {
   // The guard against a primitive that grows into a checklist: a host with
   // nothing to accommodate is asked nothing and shown no empty section.
   await boot(page, EV({ id: 'e2e-people-noneed', guestMode: 'count', guestEstimate: 20, guestCountSource: 'host' }));
-  expect(await sheetText(page)).not.toMatch(/What someone needs/i);
+  expect(await sheetText(page)).not.toMatch(/Step-free access/i);
 });

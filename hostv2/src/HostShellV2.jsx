@@ -23379,6 +23379,18 @@ export default function HostShellV2() {
               // home hero, fed by the SAME resolvers every other surface reads
               // (yes-heads math below, attendanceBand label). No new counting.
               const guestHero = (() => {
+                // ONE LOUD THING. With ?people=1 the AttendanceZone above is the
+                // hero, and rendering this one under it put TWO big values on
+                // one screen stating different numbers — "Who's coming 32-46"
+                // directly above "Your people 40". A capture caught it; reading
+                // the diff never would have, which is the parity manifest's own
+                // lesson about checking the screen rather than the code.
+                //
+                // SUPPRESSED, NOT DELETED, and only the HERO: every control,
+                // the roster, the share block and the counting chips below it
+                // stay exactly where they are, so the flag costs no capability
+                // and the baseline is untouched with the flag off.
+                if (peopleMode) return null;
                 const roster = (event.guests || []).length > 0;
                 // SINGLE-SOURCE TURNOUT (2026-07-16, host report "how did we get different
                 // numbers"): the count `n` is the FACT; the sub states exactly ONE turnout

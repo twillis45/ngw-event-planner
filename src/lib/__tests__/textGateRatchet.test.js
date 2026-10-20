@@ -344,7 +344,28 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // It replaces a trap Sprint 0 documented and left open: correctness depended on
 // every caller remembering `opts.alsoDerives`, and forgetting it told the host
 // her sentence was not understood. The argument is gone; this keeps it gone.
-const MAX_HOSTV2_TEXT_GATES = 56;
+// ── 56 → 57 (2026-10-20, the People redesign's preservation requirement) ────
+//
+// `theBaselineOutlivesTheRedesign.test.js`. It asserts file CONTENT on purpose,
+// and the owner requirement it serves is why: the pre-redesign Host V2 People
+// surface must stay runnable and inspectable throughout the redesign, and git
+// history alone does not count.
+//
+// What keeps it runnable is that `?people=1` is OPT-IN — absent the flag, the
+// default IS the baseline, on the same shell and the same event blob, with no
+// Host V3 and no duplicated application. That is a property ONE CHARACTER can
+// delete: `=== '1'` becomes `!== '0'` and the baseline stops existing silently,
+// with every test still green because they all pass the flag explicitly.
+//
+// A rendered assertion cannot see that. It can only observe what the flag it
+// was given produced — which is exactly the state the edit would preserve. The
+// BEHAVIOUR half (with no flag, the redesigned sentences are absent) is covered
+// where it belongs, by the negative control in
+// hostv2/e2e/thePeopleZoneTellsTheTruth.spec.mjs. This gate holds the
+// source-level invariants that make that control meaningful: the flag is
+// opt-in, and the legacy body's own markers are still present rather than
+// deleted out from under the comparison.
+const MAX_HOSTV2_TEXT_GATES = 57;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
