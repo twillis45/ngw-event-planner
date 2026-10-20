@@ -504,3 +504,43 @@ test('NEGATIVE CONTROL AT DESKTOP — the legacy sheet is not recomposed', async
   }));
   expect(shape).toEqual({ grid: false, rail: false, peopleRoster: false, headerVisible: true });
 });
+
+test('SELECTING A GUEST DOES NOT BLANK THE SURFACE', async ({ page }) => {
+  // A RENDER THAT THROWS LOOKS EXACTLY LIKE A RENDER THAT CHOSE NOT TO DRAW.
+  // The guest detail is hoisted out of the roster row so one definition can
+  // serve the inline accordion and the desktop rail. That hoist moves its
+  // BODY out of the row's closure too, and the first thing added to it after
+  // the move called a helper declared 650 lines below — a ReferenceError that
+  // unmounted the whole People subtree. At desktop, selecting a guest blanked
+  // the sheet: no roster, no grid, no rail, no text.
+  //
+  // Nothing threw in a test, because no test selected a guest at the rail
+  // band. It surfaced only because a screenshot step could not find the roster
+  // it meant to scroll to. This asserts the obvious thing nobody had asserted.
+  await page.setViewportSize({ width: 1440, height: 1024 });
+  await boot(page, EV({
+    id: 'e2e-people-select', guestMode: 'list',
+    guests: [...roster(6, 'Yes'), ...roster(4, '').map((g, i) => ({ ...g, id: 'n' + i }))],
+  }));
+
+  const before = await page.evaluate(() => document.querySelectorAll('.people-roster .rrow').length);
+  expect(before).toBe(10);
+
+  await page.evaluate(() => {
+    const b = document.querySelector('.people-roster .grow button');
+    if (b) b.click();
+  });
+  await page.waitForTimeout(600);
+
+  const after = await page.evaluate(() => ({
+    rows: document.querySelectorAll('.people-roster .rrow').length,
+    grid: !!document.querySelector('.people-grid'),
+    detail: !!document.querySelector('.people-aside .gdetail'),
+    // The panel leads with the person, not with a field (owner §5D).
+    head: ((document.querySelector('.people-aside .people-ghead-n') || {}).innerText || '').trim(),
+  }));
+  expect(after.rows, 'the list is still there behind the selection').toBe(10);
+  expect(after.grid).toBe(true);
+  expect(after.detail, 'and the detail opened in the rail, not in the row').toBe(true);
+  expect(after.head).toBe('Guest 0');
+});

@@ -588,7 +588,7 @@ export function GetResponses({
  * is the duplication the owner ruled out. It stays in the main column at every
  * width. Recorded rather than silently decided.
  */
-export function PeopleRail({ event, subtitle, counts, unknowns }) {
+export function PeopleRail({ event, subtitle, counts, unknowns, onShowUnanswered }) {
   const s = attendanceStatement(event);
   const name = String((event && event.name) || '').trim();
   const rows = (counts || []).filter((r) => r && Number(r.n) > 0);
@@ -626,6 +626,17 @@ export function PeopleRail({ event, subtitle, counts, unknowns }) {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {/* THE RAIL'S OWN ACTION. The reference's rail ends with one ("View all
+          documents →"); ours ended in white space. This is not a new
+          capability — it sets the roster's existing reply-state lens, which is
+          the control a host would otherwise scroll down and find. Offered only
+          when there is actually someone to chase. */}
+      {onShowUnanswered ? (
+        <button className="pr-quiet" style={{ marginTop: 'var(--sp-2)' }} onClick={onShowUnanswered}>
+          See who hasn’t replied →
+        </button>
       ) : null}
 
       {unknowns > 0 ? (

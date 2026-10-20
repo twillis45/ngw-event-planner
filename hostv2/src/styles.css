@@ -6850,9 +6850,13 @@ button.vc-pill::after{
   position:absolute; inset:0;
   background:linear-gradient(to top, rgba(21,19,15,.92) 0%, rgba(21,19,15,.78) 38%, rgba(21,19,15,.30) 72%, rgba(21,19,15,.06) 100%);
 }
+/* `--t-caption-min`, not a raw 10px — styles.css calls that token "smallest
+   legal type: the 11px floor" and `nothingIsBelowTheFloor` enforces it. The
+   badge is review-only, which is not a reason to be the one thing on screen
+   under the floor. */
 .people-plate-fix{
   position:absolute; top:8px; right:var(--sp-4); z-index:2;
-  font-size:10px; font-weight:700; letter-spacing:.1em;
+  font-size:var(--t-caption-min); font-weight:700; letter-spacing:.1em;
   padding:2px 8px; border-radius:999px;
   background:rgba(0,0,0,.55); color:rgba(255,255,255,.78);
 }
@@ -7086,4 +7090,29 @@ button.vc-pill::after{
   background:var(--steel-tint)!important; color:var(--steel-soft);
   box-shadow:inset 0 0 0 1px var(--line-soft);
   font-weight:700;
+}
+
+/* ── THE SELECTED GUEST HAS A SUBJECT ──────────────────────────────────────
+   The panel opened straight into a ragged two-up flow of unlabeled inputs —
+   phone, email, +1 name, Dietary needs, Family — with nothing saying whose
+   they were. A header: the monogram at panel scale, the serif name, the reply
+   state and the party on one line. Every control below is unchanged. */
+.people-ghead{
+  display:flex; gap:var(--sp-3); align-items:center;
+  padding:0 0 var(--sp-3); margin:0 0 var(--sp-3);
+  border-bottom:1px solid var(--line-soft);
+}
+.people-ghead .gav{ width:44px!important; height:44px!important; flex:0 0 auto; }
+.people-ghead-n{
+  font-family:var(--serif-read); font-optical-sizing:auto;
+  font-weight:500; font-size:var(--t-sub); line-height:1.2; color:var(--ink);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.people-ghead-m{
+  display:flex; align-items:center; gap:var(--sp-2); margin-top:4px;
+  min-width:0;
+}
+.people-ghead-p{
+  font-size:var(--t-body-s); color:var(--faint);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }

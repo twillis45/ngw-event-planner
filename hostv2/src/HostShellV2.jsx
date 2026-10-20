@@ -23659,8 +23659,58 @@ export default function HostShellV2() {
               // Unchanged markup and unchanged handlers — every writer here is
               // still index-based against `event.guests`, which is why `i` is
               // passed rather than recomputed from the guest object.
+              // ── §5D · THE PANEL IS ABOUT A PERSON, NOT A FORM ───────────
+              // Owner: *"the selected guest rail currently reads like controls
+              // placed into a dark container… Recompose it around the
+              // PERSON/HOUSEHOLD first. Then expose editing naturally."*
+              // The controls are untouched — every one is wired and
+              // index-based — and a person header now leads them: who this is,
+              // where they stand, who they arrive with. Nothing here derives a
+              // new fact; it restates the row's own four concepts at panel
+              // scale so the editing below has a subject.
+              const guestHead = (g) => {
+                const partner = g.coupleId
+                  ? (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId)
+                  : null;
+                const party = [
+                  partner && partner.name ? 'with ' + String(partner.name).split(' ')[0] : null,
+                  String(g.plusOne || '').trim() ? '+1 ' + String(g.plusOne).trim() : null,
+                  Number(g.kids) > 0 ? g.kids + ' kid' + (Number(g.kids) === 1 ? '' : 's') : null,
+                  String(g.group || '').trim() || null,
+                ].filter(Boolean);
+                const state = g.rsvp === 'No' ? 'Can\u2019t make it' : (g.rsvp === 'Yes' ? 'Coming' : (g.rsvp || 'No reply'));
+                return (
+                  <div className="people-ghead">
+                    {/* INITIALS COMPUTED HERE, NOT BORROWED. `initialsOf` is
+                        declared inside the roster's own render closure 650 lines
+                        below; this function is hoisted above it, so calling it
+                        threw a ReferenceError and took the entire People subtree
+                        down — at desktop, selecting a guest blanked the sheet.
+                        It cost nothing to catch because the capture tried to
+                        scroll to a roster that was no longer in the DOM; it
+                        would have cost a lot to ship. */}
+                    <span className="gav" aria-hidden="true">{(() => {
+                      const parts = String(g.name || '').trim().split(/\s+/).filter(Boolean);
+                      if (!parts.length) return '?';
+                      return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+                    })()}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="people-ghead-n">{g.name || 'This guest'}</div>
+                      <div className="people-ghead-m">
+                        <span className={'tag plan pr-state'}
+                          style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
+                            : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
+                              : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)' }
+                                : { color: 'var(--muted)', background: 'var(--bg-band)' }}>{state}</span>
+                        {party.length ? <span className="people-ghead-p">{party.join(' \u00b7 ')}</span> : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              };
               const guestDetail = (g, i) => (
                           <div className="brow gdetail" id={'v2-guest-detail-' + i} style={{ margin: '0 0 var(--sp-2)' }}>
+                            {peopleMode ? guestHead(g) : null}
                             {(() => {
                               // Single source of truth: reads the SAME aggregation the
                               // Helpers panel (space sheet) uses — a food/task/setup/supply
@@ -24019,6 +24069,15 @@ export default function HostShellV2() {
                     try { return (accessNeedsFor(event).requirements || []).filter((r) => r && !r.who).length; }
                     catch { return 0; }
                   })()}
+                  onShowUnanswered={(event.guests || []).some((g) => g && !String(g.rsvp || '').trim())
+                    ? () => {
+                      setRosterLens('none');
+                      try {
+                        const el = document.querySelector('.people-roster');
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      } catch { /* the lens is the point; the scroll is a courtesy */ }
+                    }
+                    : null}
                 />
               ) : null;
               // ── THE PLATE SPANS, THE COLUMNS START UNDER IT ──────────────

@@ -159,7 +159,7 @@ const settle = async (page) => {
  * a 390px screen; what matters is what the host actually has in front of her.
  * `scrollTo` and `scrollBy` move within the sheet's own scroller.
  */
-const shot = async (page, { ev, theme, img, palette, vp, name, scrollTo, scrollBy, click }) => {
+const shot = async (page, { ev, theme, img, palette, vp, name, scrollTo, scrollBy, click, legacy }) => {
   const [w, h] = VP[vp];
   await page.setViewportSize({ width: w, height: h });
   await page.addInitScript((e) => {
@@ -172,7 +172,9 @@ const shot = async (page, { ev, theme, img, palette, vp, name, scrollTo, scrollB
       localStorage.setItem('ngw-v2-welcomed', '1');
     } catch (_) { /* private mode */ }
   }, ev);
-  const q = ['elegant=1', 'people=1', 'theme=' + theme];
+  // `legacy` drops the flag: the SAME state on the pre-redesign composition,
+  // which is how a shell-level behaviour gets told apart from one of mine.
+  const q = legacy ? ['elegant=1', 'theme=' + theme] : ['elegant=1', 'people=1', 'theme=' + theme];
   if (img) q.push('peoplefixture=' + encodeURIComponent(FIXTURE));
   if (palette) q.push('palette=' + palette);
   await page.goto('?' + q.join('&'));
@@ -275,6 +277,9 @@ test('§38 · the decisive evidence set', async ({ page }) => {
 
   // ── TABLET ───────────────────────────────────────────────────────────────
   await shot(page, { ev: E.roster75, theme: 'dark', img: true, vp: 'tablet', name: 'M1-tablet-dark' });
+  // CONTROL: the same viewport without the flag. If the sheet floats and clips
+  // here too, the tablet geometry is the shell's and not this surface's.
+  await shot(page, { ev: E.roster75, theme: 'dark', img: false, vp: 'tablet', legacy: true, name: 'M0-tablet-LEGACY-dark' });
   await shot(page, { ev: E.roster75, theme: 'dark', img: true, vp: 'tablet', scrollTo: '.people-roster', name: 'M2-tablet-roster-dark' });
 
   // ── PALETTE A / B / C · identical content, identical composition ──────────
