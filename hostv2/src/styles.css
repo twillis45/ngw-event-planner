@@ -7235,14 +7235,15 @@ button.vc-pill::after{
   background:var(--card); border:1px solid var(--line);
   border-radius:var(--r-md); padding:var(--sp-5);
 }
-/* Rows sit INSIDE that surface now, so their own card edge would be a frame
-   within a frame. They keep their hairline separation and lose the box. */
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-roster .grow{
-  background:none; border:none; border-top:1px solid var(--line-soft);
-  border-radius:0; padding:var(--sp-3) var(--sp-2);
+/* AND THE ROWS KEEP THEIR CARDS. I stripped them to hairline dividers here on
+   the theory that a card inside a card is a frame within a frame — and the
+   next review caught the cost: the same object had two different rows, cards
+   on the phone and dividers at desktop. One row grammar, every width. The
+   containing surface sits a step back instead, which is what lets the cards
+   read as cards on it. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-main{
+  background:var(--bg-band);
 }
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-roster .rrow{ margin:0; }
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-roster .rrow:first-of-type .grow{ border-top:none; }
 
 /* ── LABELLED FIELDS, AND A DESTRUCTIVE ACTION THAT LOOKS LIKE ONE ─────────
    The panel's inputs wore their labels as placeholders, so a filled panel was
@@ -7264,3 +7265,37 @@ button.vc-pill::after{
   font-weight:600;
 }
 .people-destructive:hover{ border-color:var(--danger); }
+
+/* ── ONE CAPTION SYSTEM ────────────────────────────────────────────────────
+   The detail panel ran two label vocabularies against each other: lowercase
+   inline `reply:` `kids:` `meal:` beside the uppercase field captions added
+   with the labelled inputs. Same panel, two grammars. `.people-cap` is the
+   one caption, and `.of` stays exactly as it is on the legacy surface. */
+.people-cap{
+  flex:0 0 100%;
+  font-size:var(--t-caption-min); font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--faint); line-height:1.4;
+}
+
+/* ── A PRIMARY THAT DOES NOT READ AS DISABLED ──────────────────────────────
+   Measured complaint, and a fair one: on the operational field the steel fill
+   sits close enough in value to its ground that "Share the RSVP link" and
+   "Open seating" both read as unavailable. The fill goes to the solid identity
+   steel with carbon text, which is the value the brand's own CTA gradient
+   starts from — not a new colour, the top of the existing one. */
+.people-move-cta, .pr-primary{
+  background:var(--steel); border-color:var(--steel); color:var(--carbon-text);
+  font-weight:700;
+}
+.people-move-cta:hover, .pr-primary:hover{ background:var(--steel-strong, var(--steel)); }
+
+/* ── THE FIXTURE MARK IS A REVIEW OVERLAY, NOT PRODUCT CHROME ──────────────
+   Sitting inside the hero's top-right corner in the brand's own pill shape, it
+   read as a feature of the product. It now sits on the plate's bottom edge in
+   a flat review-tape treatment that no part of the real UI uses, so it cannot
+   be mistaken for one. */
+.people-plate-fix{
+  top:auto; bottom:0; right:0; border-radius:0;
+  background:rgba(0,0,0,.72); color:rgba(255,255,255,.72);
+  letter-spacing:.14em; padding:2px var(--sp-3);   /* 3 is off the 4px ladder */
+}

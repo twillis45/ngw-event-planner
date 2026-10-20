@@ -23537,7 +23537,7 @@ export default function HostShellV2() {
                           event.plusOnePolicy === 'no_plus_ones' ? 'Unset — the RSVP page offers a plus-one again.' : 'Named guests only — the RSVP page won’t offer a plus-one.')}>Named guests only</button>
                     </div>
                     <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className="of">kids:</span>
+                      <span className={peopleMode ? 'people-cap' : 'of'}>CHILDREN</span>
                       <button className="chip" style={chipSm} aria-pressed={event.kidsPolicy === 'kids_welcome'}
                         onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'kids_welcome' ? null : 'kids_welcome' },
                           event.kidsPolicy === 'kids_welcome' ? 'Unset — the invite stays quiet on kids.' : 'Kids welcome — the invite says so.')}>Welcome</button>
@@ -23765,7 +23765,7 @@ export default function HostShellV2() {
                                 and the open fix is a replies-only pass — name + the
                                 four chips on every row, nothing expanding. */}
                             <div className="actions-row" style={{ alignItems: 'center' }}>
-                              <span className="of">reply:</span>
+                              <span className={peopleMode ? 'people-cap' : 'of'}>REPLY</span>
                               {/* ── A RADIOGROUP OWES A KEYBOARD CONTRACT ──────────────
                                   Board 2026-08-07, Norman seat: this shipped as four
                                   buttons wearing role="radio" with no roving tabindex
@@ -23818,7 +23818,7 @@ export default function HostShellV2() {
                               </span>
                             </div>
                             <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                              <span className="of">kids:</span>
+                              <span className={peopleMode ? 'people-cap' : 'of'}>CHILDREN</span>
                               <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
                               <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
                               <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
@@ -23838,7 +23838,7 @@ export default function HostShellV2() {
                                   Audit #6 — was tap-to-cycle (couldn't jump to a choice
                                   or see the set); now the chip opens an inline PICKER of
                                   the real meal choices, tap one to set it directly. */}
-                              <span className="of">meal:</span>
+                              <span className={peopleMode ? 'people-cap' : 'of'}>MEAL</span>
                               {mealPickFor === i ? (
                                 <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }} role="group" aria-label={'Meal for ' + (g.name || 'guest')}>
                                   {['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'].map(m => {
