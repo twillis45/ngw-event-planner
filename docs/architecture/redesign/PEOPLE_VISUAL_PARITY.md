@@ -111,3 +111,68 @@ body the reference does not show.
 **Consequence for review: LIGHT MODE is the mode that should be judged against
 these sheets.** Most of the evidence so far has been dark, which is the mode the
 reference never shows.
+
+
+---
+
+## 5 · THE PARITY LOOP — SEVEN SCORED ROUNDS
+
+Each round: render the full set → an independent reviewer with the reference
+sheets and the owner's fixed constraints scores it → fix the largest delta →
+render again. The reviewer never saw my delta map, only the sheets and the
+frames.
+
+| | R1 | R3 | R4 | R5 | R6 | R7 |
+|---|---|---|---|---|---|---|
+| Macro composition | 3 | 7.5 | 8.5 | 8.5 | 8.5 | 8.0 |
+| Photography | 2 | 6.5 | 7.5 | 8.5 | 8.0 | **9.0** |
+| Editorial hierarchy | 4 | 7.0 | 8.5 | 8.5 | 8.5 | 8.5 |
+| Typography | 6 | 7.5 | 7.5 | 8.0 | 8.0 | 8.5 |
+| Information density | 3 | 6.5 | 8.0 | 8.0 | **9.0** | **9.0** |
+| Whitespace rhythm | 4 | 6.5 | 8.0 | 8.5 | 8.5 | 8.0 |
+| Action hierarchy | 2 | 5.5 | 7.5 | 7.5 | 8.0 | 8.0 |
+| List-row grammar | 4 | 7.5 | 8.0 | 8.0 | 8.5 | 8.5 |
+| Context / detail | 2 | 5.0 | 7.0 | 7.0 | 8.0 | 8.5 |
+| Family resemblance | 3 | 8.0 | 7.5 | 8.5 | 8.5 | **9.0** |
+
+**Round 7 named two causes for the three 8.0s, and both are now fixed
+(unscored):** the page ran on two left edges (the plate bled past the sheet
+gutter while the field sat inside it and then inside its own card — nobody had
+reconciled the arithmetic), and the light-mode surface ladder was inverted (the
+content panel computed DARKER than the page behind it, and on the phone the
+panel and the sheet were both pure white, so the operational field had no plane
+at all).
+
+### What the loop cost me, honestly
+
+Three of the changes I made between rounds were regressions the next round
+caught:
+
+1. A `quiet` CTA variant to avoid two filled primaries in one viewport — which
+   made the same label render at two different weights across states.
+2. Stripping the desktop rows to hairline dividers "because a card inside a
+   card is a frame within a frame" — which gave one object two different rows.
+3. Shortening the image-absent plate, which only made the slab smaller.
+
+And one was a crash: a person header added to the hoisted detail called a
+helper declared 650 lines below it, so selecting a guest at desktop blanked the
+whole sheet. Nineteen browser tests passed through it. What caught it was a
+screenshot step failing to find a roster it meant to scroll to.
+
+---
+
+## 6 · THE LIMIT ON THIS WORK
+
+**Three of the sixteen supplied reference sheets are on disk, and none of them
+is a People sheet.** The grammar above is measured from the Vendors sheet
+("Build your team"), which is the structural analogue — a list of people with
+status pills, a context rail, a recommendation band — plus two Place sheets
+that establish what is invariant across six states and three breakpoints.
+
+That is enough to fix composition, proportion, row grammar and surface ladder.
+It is not enough to settle anything People-specific: what the domain statement
+should be beside the reference's own, what the reference does with an
+attendance figure, whether a guest list gets a filter rail or a segmented
+control, what its empty state looks like. Those are currently my judgement
+against an analogous domain, and a People sheet would replace judgement with
+measurement.

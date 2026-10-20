@@ -6861,9 +6861,17 @@ button.vc-pill::after{
   background:rgba(0,0,0,.55); color:rgba(255,255,255,.78);
 }
 
+/* ── ONE LEFT AXIS ─────────────────────────────────────────────────────────
+   Measured: the plate's eyebrow and headline sat at x≈270 while the numeral,
+   the section head and the rail all began at x≈291, so the page ran on two
+   left edges. The cause is nesting, not taste — the plate bleeds past the
+   sheet gutter while the field sits inside it and then inside its own card,
+   and nobody had reconciled the arithmetic.
+   The plate's text inset is therefore the gutter PLUS the field's own padding,
+   so both land on the same axis however the sheet's gutter changes. */
 .people-plate-say{
   position:relative; z-index:1; align-self:end;
-  padding:var(--sp-5) var(--sp-4) var(--sp-5);
+  padding:var(--sp-5) calc(var(--sp-4) + var(--sp-5));
 }
 .people-plate-eyebrow{
   font-size:var(--t-pill); font-weight:700; letter-spacing:.18em;
@@ -6889,7 +6897,7 @@ button.vc-pill::after{
   .people-plate-veil{
     background:linear-gradient(to right, rgba(21,19,15,.94) 0%, rgba(21,19,15,.80) 38%, rgba(21,19,15,.18) 78%, rgba(21,19,15,.06) 100%);
   }
-  .people-plate-say{ align-self:center; max-width:30rem; padding:var(--sp-5); }
+  .people-plate-say{ align-self:center; max-width:34rem; padding:var(--sp-5) calc(var(--sp-4) + var(--sp-5)); }
   .people-plate-h{ font-size:clamp(38px,3.2vw,50px); }
   .people-plate-deck{ max-width:40ch; }
 }
@@ -7202,7 +7210,7 @@ button.vc-pill::after{
     radial-gradient(90% 70% at 92% -10%, rgba(138,163,176,.14) 0%, rgba(138,163,176,0) 60%);
 }
 .people-plate--noimg .people-plate-say{
-  padding:var(--sp-6) var(--sp-4) var(--sp-5);
+  padding:var(--sp-6) calc(var(--sp-4) + var(--sp-5)) var(--sp-5);
 }
 .people-plate--noimg .people-plate-eyebrow{
   padding-bottom:var(--sp-3);
@@ -7211,7 +7219,7 @@ button.vc-pill::after{
 }
 @media (min-width:768px){
   .people-plate--noimg{ min-height:230px; }
-  .people-plate--noimg .people-plate-say{ padding:var(--sp-6) var(--sp-5); max-width:38rem; }
+  .people-plate--noimg .people-plate-say{ padding:var(--sp-6) calc(var(--sp-4) + var(--sp-5)); max-width:38rem; }
 }
 
 /* ── THE PRE-LIST STACK HAD NO VERTICAL BUDGET ─────────────────────────────
@@ -7227,7 +7235,7 @@ button.vc-pill::after{
    4px ladder and `spacingLadder` refuses it, correctly: the row felt loose
    because of its own padding, not because of the gap. */
 
-/* ── THE MAIN COLUMN IS A SURFACE TOO ──────────────────────────────────────
+/* ── THE MAIN COLUMN IS A SURFACE TOO (superseded by the ladder above) ──────────────────────────────────────
    The rail became a card and the main column did not, so the page carried two
    structural grammars at once: a layered card on the right, a bare stream on
    the left, with rows floating directly on the page background. The reference
@@ -7237,19 +7245,12 @@ button.vc-pill::after{
    Only at the rail band: on the phone a card inside a sheet inside a stage is
    three frames deep for no gain, and the reference's phone frame does not do
    it either. */
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-main{
-  background:var(--card); border:1px solid var(--line);
-  border-radius:var(--r-md); padding:var(--sp-5);
-}
 /* AND THE ROWS KEEP THEIR CARDS. I stripped them to hairline dividers here on
    the theory that a card inside a card is a frame within a frame — and the
    next review caught the cost: the same object had two different rows, cards
-   on the phone and dividers at desktop. One row grammar, every width. The
-   containing surface sits a step back instead, which is what lets the cards
-   read as cards on it. */
-.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .people-main{
-  background:var(--bg-band);
-}
+   on the phone and dividers at desktop. One row grammar, every width; the
+   recessed field above is what lets them read as cards. */
+.people-roster .grow{ background:var(--bg-band); }
 
 /* ── LABELLED FIELDS, AND A DESTRUCTIVE ACTION THAT LOOKS LIKE ONE ─────────
    The panel's inputs wore their labels as placeholders, so a filled panel was
@@ -7312,14 +7313,23 @@ button.vc-pill::after{
    read as five blocks on bare ground between the plate and the roster. Same
    element as the desktop containing surface; only the second column is
    conditional. */
+/* ── THE SURFACE LADDER, RIGHT WAY UP ──────────────────────────────────────
+   Measured and inverted: the content panel was computing DARKER than the page
+   behind it in light mode, and on the phone the panel and the sheet were both
+   pure white, so the operational field had no plane at all.
+   The reference's ladder is recessed field, raised cards. So the field bleeds
+   to the sheet's edges and takes the recessed tone; the panel and the rail sit
+   on it in `--card`. Three planes instead of one, in both themes. */
+.people-grid{
+  margin:0 calc(var(--sp-4) * -1);
+  padding:var(--sp-4);
+  background:var(--bg-band);
+}
 .people-grid > .people-main{
   background:var(--card); border:1px solid var(--line-soft);
   border-radius:var(--r-md);
   margin:0 0 var(--sp-4);
-  padding:var(--sp-4);
-}
-@media (min-width:768px){
-  .people-grid > .people-main{ padding:var(--sp-5); }
+  padding:var(--sp-5);
 }
 /* A settled subhead, not a sixth eyebrow. */
 .people-subhead{
