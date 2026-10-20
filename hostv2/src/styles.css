@@ -6704,13 +6704,16 @@ button.vc-pill::after{
   .people-hero-say{ max-width:46ch; }
 }
 @media (min-width:1280px){
-  /* THE OPENING SPANS, THE OPERATIONAL SURFACE DOES NOT. At the data tier the
-     sheet becomes a two-column grid (`minmax(0,1fr) 340px`, styles.css:5655) so
-     the guest detail has a rail to open into. A plain child lands in column 1,
-     which left the photographic band stopping two-thirds across with dead space
-     beside it — a cropped banner rather than an editorial opening. Inert
-     wherever that grid is not in play. */
-  .people-hero{ grid-column:1 / -1; }
+  /* MEASURED, NOT ASSUMED. I added `grid-column:1 / -1` here first, reading the
+     desktop capture as the band being trapped in column 1 of the data-tier grid
+     (`minmax(0,1fr) 340px`, styles.css:5655). The re-capture was byte-identical:
+     the rule is inert, because `.roster` is what becomes that grid, not the
+     sheet body, and the band already spans the full content column.
+     What is actually beside the photograph is the 340px rail the roster
+     reserves for a guest detail that is not open yet. That is a composition
+     question — the references park a persistent event card there — and it is
+     recorded as an open decision rather than patched with a rule that does
+     nothing. */
   /* Shorter again, not taller: at desktop the host has the whole command
      surface in view and the photograph's job is identity, which a 280px band
      does as well as a 400px one. The references park the event photograph in
