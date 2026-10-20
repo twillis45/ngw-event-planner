@@ -78,6 +78,14 @@ const VIEWPORT_INDEPENDENT = [
   // Four tests on text and stored state, two of them negative controls. The
   // question, its stated reason, and whether an answer sticks. No geometry.
   '**/weNowNeedToKnow.spec.mjs',
+  // ── THE PEOPLE ATTENDANCE ZONE (redesign step 3, 2026-10-20) ───────────
+  // Six tests on text and stored state, including a paired fixture that
+  // differs by ONE field (guestCountSource) and a negative control proving
+  // the legacy body is untouched without ?people=1. Every assertion is a
+  // sentence or a persisted value — the figure, whose number it is, whether
+  // anyone is said to have replied, what a confirm writes. No geometry here;
+  // the responsive composition gets its own captures in steps 9-11.
+  '**/thePeopleZoneTellsTheTruth.spec.mjs',
   // ── THE FOUR THAT TIMED SHARD 3 OUT (2026-10-06) ────────────────────────
   // These landed the same day and each drives the REAL creation flow — clear
   // storage, type the 179-character seed, wait for the parse, assemble, open

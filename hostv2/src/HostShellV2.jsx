@@ -34,6 +34,10 @@ import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { currentTheme, setStoredTheme } from './theme.js';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
+// PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
+// @app/lib/attendanceStatement. Reached by ?people=1 on the Guests door, with
+// the legacy body as the default until parity closes.
+import { AttendanceZone } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
@@ -1101,6 +1105,15 @@ export default function HostShellV2() {
   // Newsreader chosen over Fraunces for the Apple-register calm (warmth from the italic, not
   // the letterform). ?voice=sans stays an escape hatch for A/B.
   let elegantMode = false, elegantVoice = 'newsreader';
+  // ── PEOPLE/ATTENDANCE REDESIGN, OPT-IN WHILE IT EARNS THE DOOR ───────────
+  // ?people=1 renders the redesigned People composition in the Guests sheet;
+  // without it the legacy body is unchanged. Same migration shape the repo has
+  // used twice before — ?demo=lodging ("driven and judged before it replaces
+  // anything") and ?elegant=0 (the v2 fallback kept after the v3 cut) — and it
+  // is what keeps invariant 7 true: no door retires until the new one is proven.
+  // ONE door either way, so the Duplicate Surface Rule holds: the directory
+  // still has exactly one Guests row.
+  let peopleMode = false;
   try {
     const q = new URLSearchParams(window.location.search);
     splashHold = q.has('splashhold');
@@ -1109,6 +1122,7 @@ export default function HostShellV2() {
     // DEFAULT — the v2 → v3 cut (host approved 2026-07-21). `?elegant=0` is the
     // v2 fallback / escape hatch; reverting this one line makes v2 default again.
     elegantMode = q.get('elegant') !== '0';
+    peopleMode = q.get('people') === '1';
     if (q.get('voice') === 'sans') elegantVoice = 'sans';
   } catch { /* leave both false */ }
   const splashSeenRecently = (() => {
@@ -23496,8 +23510,33 @@ export default function HostShellV2() {
                   </div>
                 );
               })();
+              // ── THE REDESIGNED ATTENDANCE ZONE (?people=1) ─────────────────
+              // SCAFFOLD STATE, and deliberately additive: the new zone renders
+              // ABOVE the legacy body while the remaining zones are built, so no
+              // commit in this slice is ever capability-negative — everything a
+              // host can do today is still here, with the flag on or off. Later
+              // steps replace the legacy blocks one at a time; the day the last
+              // one goes, the flag's default flips and this comment goes with it.
+              const peopleZone = peopleMode ? (
+                <div style={{ marginBottom: 'var(--sp-6)' }}>
+                  <AttendanceZone
+                    event={event}
+                    solemn={(() => { try { return isSolemnEvent(event); } catch { return false; } })()}
+                    onOpenRoster={() => {
+                      // The roster already lives below; take her to it rather
+                      // than growing a second way to add names.
+                      try { document.getElementById('guests-counting-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no DOM scroll */ }
+                    }}
+                    onConfirmCount={(n) => patchEvent(
+                      { guestEstimate: n, guestCount: n, guestCountSource: 'host' },
+                      'Planning for ' + n + ' — it’s your number now, so it can go in what we send.',
+                    )}
+                  />
+                </div>
+              ) : null;
               return (event.guests || []).length ? (
                 <>
+                  {peopleZone}
                   {guestHero}
                   {(plusOnes > 0 || kidsHere > 0) && (
                     <div className="v-meta" style={{ padding: '0 2px 6px' }}>
@@ -24142,6 +24181,7 @@ export default function HostShellV2() {
                 </>
               ) : (
                 <>
+                  {peopleZone}
                   {guestHero}
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
                     No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
