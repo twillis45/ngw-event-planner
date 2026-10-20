@@ -312,6 +312,29 @@ primary — the zone states truth and the board keeps the move.
 3. **`guestCountResolved`** remains CRA-only and is deliberately not adopted by
    the new surface: it answers "are replies settled / did she give a number",
    which Sprint 0 proved is not a provenance gate.
-4. **The roster row may be the one genuinely new pattern People introduces** —
+4. **DECLARED BOUNDED GAP (new, 2026-10-20): an unowned access need cannot be
+   assigned to a roster person.** Measured against the eleven-condition rule:
+
+   | # | |
+   |---|---|
+   | 1 named | here, and in `PeopleSurface.jsx`'s `NeedsZone` header |
+   | 2 evidence **from the destination's own consumer** | `lodgingIntel.js:2073` sizes the step-free line on `accessNeedsFor(ev).requirements.length` and prints that count as prose — *"2 people asked about stairs"*. `accessNeedsFor` builds requirements from `event.accessNeeds` **and** from roster rows **with no dedupe**, so assigning a host-stated need to a guest yields two requirements for one person and the lodging sheet says two people asked. |
+   | 3 no false implication | the zone says *"a specific seat can't be until we know who"* and offers no control |
+   | 4 handled honestly | the need, her verbatim words, and the unknown are all stated; lodging reach is claimed because `domainsFor` makes it true |
+   | 5 regression test, at the surface's reader | `thePeopleZoneTellsTheTruth.spec.mjs` — the unowned case asserts **neither roster name appears in the needs block** |
+   | 6 disposition | **planned** — engine work: a dedupe in `accessNeedsFor`, or an owner field that does not duplicate the entry. Not a control on a screen. |
+   | 7 invariants | #14 holds (no diagnosis inferred); #9 holds (no parallel needs model) |
+   | 8 corruption | none — nothing is written at all |
+   | 9 absent not inert | the capability genuinely does not exist; nothing shows a half-version of it |
+   | 10 justification pinned | the double-count is asserted in the spec above via the no-names check; closing the gap means changing `accessNeedsFor`, which its own 29-test suite guards |
+   | 11 cannot grow | one requirement kind exists (`step-free`); a second kind would multiply this, which is the trigger to fix the engine first |
+
+   The alternatives were weighed and all lose something real: dropping the
+   intake entry loses her verbatim words and relabels a host statement as the
+   guest's own; keeping both double-counts; filling only `who` would make
+   `appliedTo` claim seating while `seatingPlan` — which reads the **guest
+   row** — still cannot see it, promising a check that never happens.
+
+5. **The roster row may be the one genuinely new pattern People introduces** —
    `askKit` converges display-ask atoms and a roster is a list. Any new atom
    gets a manifest row and a `check-parity.mjs` rule, or it is not an atom.

@@ -37,7 +37,7 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
 // @app/lib/attendanceStatement. Reached by ?people=1 on the Guests door, with
 // the legacy body as the default until parity closes.
-import { AttendanceZone } from './PeopleSurface';
+import { AttendanceZone, NeedsZone } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
@@ -131,7 +131,7 @@ import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
-import { heardAccessNeeds } from '@app/lib/accessNeeds';
+import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch } from '@app/lib/heardClauses';
 import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuestions';
 
@@ -23532,6 +23532,9 @@ export default function HostShellV2() {
                       'Planning for ' + n + ' — it’s your number now, so it can go in what we send.',
                     )}
                   />
+                  <NeedsZone needs={(() => {
+                    try { return accessNeedsFor(event); } catch { return null; }
+                  })()} />
                 </div>
               ) : null;
               return (event.guests || []).length ? (

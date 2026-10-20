@@ -165,3 +165,75 @@ test('NEGATIVE CONTROL — without ?people=1 the legacy body is untouched', asyn
   expect(body).not.toMatch(/stays out of anything we send/i);
   expect(body).not.toMatch(/Yes, plan for 40/);
 });
+
+// ─── A KNOWN NEED WITH AN OWNER WE DO NOT KNOW (step 7) ─────────────────────
+//
+// Exactly what `heardAccessNeeds` writes from "…, she uses a walker" — the
+// measured case P1-2 was built for. `who` is null because "she" is not a name.
+const WALKER = [{ kind: 'step-free', phrase: 'she uses a walker', source: 'host-said' }];
+
+test('an unowned need is stated, in her words, WITHOUT inventing a person', async ({ page }) => {
+  await boot(page, EV({
+    id: 'e2e-people-need',
+    guestMode: 'list',
+    guests: [{ id: 'g1', name: 'Tonya Brooks', rsvp: 'Yes' }, { id: 'g2', name: 'Ray Okafor', rsvp: 'Yes' }],
+    accessNeeds: WALKER,
+  }));
+  const body = await sheetText(page);
+
+  expect(body).toMatch(/What someone needs/i);
+  expect(body).toMatch(/Step-free access/i);
+  // HER OWN WORDS, verbatim — the reason the engine keeps `phrase` at all.
+  expect(body).toMatch(/she uses a walker/);
+  // The unknown, said as an unknown.
+  expect(body).toMatch(/don’t know which person this is for/i);
+  expect(body).toMatch(/won’t guess/i);
+
+  // THE SHARPEST GUARD IN THE SLICE. Two named people are on this roster and
+  // neither of them said anything about stairs. If the surface attached the
+  // need to one of them — by proximity, by order, by "probably the honoree" —
+  // it would be inventing a fact about a real person.
+  const needsBlock = await page.evaluate(() => {
+    const labels = [...document.querySelectorAll('.shelf-label')]
+      .find((el) => /what someone needs/i.test(el.innerText || ''));
+    let t = '', n = labels && labels.nextElementSibling;
+    for (let i = 0; i < 4 && n; i += 1, n = n.nextElementSibling) t += ' ' + (n.innerText || '');
+    return t.replace(/\s+/g, ' ');
+  });
+  expect(needsBlock).not.toMatch(/Tonya|Ray/);
+});
+
+test('and it claims only the reach an unowned need actually has', async ({ page }) => {
+  // `domainsFor` gives an unowned requirement LODGING ONLY — the one domain it
+  // can reach truthfully, because that search is sized by the count, not by
+  // who. A surface promising a seat check would be promising something
+  // seatingPlan cannot do: it reads the guest row, which has nothing on it.
+  await boot(page, EV({ id: 'e2e-people-reach', guestMode: 'count', guestEstimate: 20, guestCountSource: 'host', accessNeeds: WALKER }));
+  const body = await sheetText(page);
+
+  expect(body).toMatch(/Where everyone stays is already planned around it/i);
+  expect(body).toMatch(/can’t be until we know who/i);
+});
+
+test('a NAMED need says both reaches are real, because they are', async ({ page }) => {
+  // A roster row HAS a name, so `who` is known by construction and
+  // `guestNeedsStepFree` lets seatingPlan act on it.
+  await boot(page, EV({
+    id: 'e2e-people-named',
+    guestMode: 'list',
+    guests: [{ id: 'g1', name: 'Tonya Brooks', rsvp: 'Yes', access: ['Step-free / wheelchair'] }],
+  }));
+  const body = await sheetText(page);
+
+  expect(body).toMatch(/Step-free access/i);
+  expect(body).toMatch(/Tonya Brooks/);
+  expect(body).toMatch(/Their seat and where they stay are both checked/i);
+  expect(body).not.toMatch(/don’t know which person/i);
+});
+
+test('NEGATIVE CONTROL — no need, no zone', async ({ page }) => {
+  // The guard against a primitive that grows into a checklist: a host with
+  // nothing to accommodate is asked nothing and shown no empty section.
+  await boot(page, EV({ id: 'e2e-people-noneed', guestMode: 'count', guestEstimate: 20, guestCountSource: 'host' }));
+  expect(await sheetText(page)).not.toMatch(/What someone needs/i);
+});

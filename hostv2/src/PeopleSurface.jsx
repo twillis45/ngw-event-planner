@@ -103,4 +103,99 @@ export function AttendanceZone({ event, solemn, onConfirmCount, onOpenRoster }) 
   );
 }
 
+/**
+ * The needs zone — a known need with an owner we may not know.
+ *
+ * ── THE PRODUCT GAP THIS CLOSES ───────────────────────────────────────────
+ *
+ * P1-2 normalised "she uses a walker" into a step-free requirement and wired it
+ * to the domains that could act on it. What it never did was SAY SO: the host
+ * told us something operational and the only evidence was a line in a lodging
+ * list. `accessNeedsFor` has carried `who: null` — "we were told about a need,
+ * not about a person" — since the day it was written, and no surface showed it.
+ *
+ * ── THE RULE THIS SURFACE CANNOT BREAK ────────────────────────────────────
+ *
+ * "she" is not a name, and this zone never guesses which guest. No diagnosis is
+ * inferred, ever: a mobility aid is not evidence of a condition, `healthNoted`
+ * owns health, and that is a different question.
+ *
+ * ── A RESOLUTION THIS SLICE DELIBERATELY DOES NOT OFFER ───────────────────
+ *
+ * The obvious next control is "which of these people is it for?", writing the
+ * need onto a roster row. It is NOT built here, because the data model cannot
+ * carry the result truthfully yet, and that was measured rather than assumed:
+ *
+ *   `lodgingIntel.js:2073` sizes the step-free line on
+ *   `accessNeedsFor(ev).requirements.length` and prints that count as prose —
+ *   "2 people asked about stairs". `accessNeedsFor` builds requirements from
+ *   `event.accessNeeds` AND from roster rows with no dedupe, so assigning a
+ *   host-stated need to a guest produces TWO requirements for ONE person and
+ *   the lodging sheet says two people asked.
+ *
+ * The alternatives all lose something real: dropping the intake entry loses her
+ * verbatim words and relabels a host statement as the guest's own; keeping both
+ * double-counts. Filling only `who` would make `appliedTo` claim seating while
+ * `seatingPlan` — which reads the GUEST ROW, not this module — still cannot see
+ * it, so the surface would promise a check that never happens.
+ *
+ * So this zone states the unknown and stops. Declared as a bounded gap in
+ * PEOPLE_ATTENDANCE_PRODUCT_CONTRACT.md §7 under the eleven-condition rule:
+ * named, evidenced from the destination's own consumer, honestly handled, and
+ * with a regression test. Closing it is engine work — a dedupe or an owner
+ * field — not a control on a screen.
+ */
+export function NeedsZone({ needs }) {
+  const reqs = (needs && needs.requirements) || [];
+  if (!reqs.length) return null;
+
+  return (
+    <div>
+      <div className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)' }}>
+        What someone needs
+      </div>
+      {reqs.map((r, i) => (
+        <div key={i} style={{ padding: '10px 0', borderTop: i ? '1px solid var(--line-soft)' : 'none' }}>
+          <div style={{ fontSize: 'var(--t-body-s)', fontWeight: 650 }}>
+            {r.label}
+            {r.who ? <span style={{ fontWeight: 500, color: 'var(--ink-soft)' }}> — {r.who}</span> : null}
+          </div>
+
+          {/* HER OWN WORDS, verbatim. `phrase` is the fragment she typed, not a
+              rewrite of it, so she can tell at a glance whether we read her
+              correctly — which is the whole reason the engine keeps it. */}
+          {r.phrase ? (
+            <GuideLine gap={4} style={{ fontSize: 'var(--t-body-s)' }}>“{r.phrase}”</GuideLine>
+          ) : null}
+
+          {/* THE UNKNOWN, STATED AS AN UNKNOWN. Not a warning and not an error:
+              it is ordinary for a host to mention someone before listing them,
+              and the honoree usually never RSVPs to her own party.
+              The claim about reach is narrowed to what is TRUE for an unowned
+              need — lodging, which `domainsFor` is the authority on, and which
+              is honest because that search is sized by the count, not by who. */}
+          {!r.who ? (
+            <Grounding gap={6}>
+              We don’t know which person this is for, and we won’t guess. Where everyone stays is
+              already planned around it; a specific seat can’t be until we know who.
+            </Grounding>
+          ) : (
+            <Grounding gap={6}>
+              Their seat and where they stay are both checked against this.
+            </Grounding>
+          )}
+        </div>
+      ))}
+
+      {/* WHERE IT HAS NOT REACHED, computed for THIS event rather than listed
+          as a static set of unbuilt features. */}
+      {(needs.notYetApplied || []).length ? (
+        <Grounding gap={8}>
+          Not yet carried into: {(needs.notYetApplied).join(', ')}.
+        </Grounding>
+      ) : null}
+    </div>
+  );
+}
+
 export default AttendanceZone;
