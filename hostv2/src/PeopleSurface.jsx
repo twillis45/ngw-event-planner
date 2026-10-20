@@ -1,231 +1,277 @@
-// ─── PEOPLE — the attendance truth, in the hero register ───────────────────
+// ─── PEOPLE — the domain, composed to the art direction ────────────────────
 //
-// FIRST PRODUCTION SLICE of the NGW redesign. Rules live in
-// `@app/lib/attendanceStatement` (pure, 16 tests, red-proofed); this file is
-// composition only. See docs/architecture/redesign/.
+// THIRD DRAFT. The first was built from the capability contract and read as
+// documentation. The second fixed the register but had no art direction to work
+// from. This one is composed against the owner's reference set, extracted in
+// docs/architecture/redesign/ART_DIRECTION_GRAMMAR.md.
 //
-// ── THE CORRECTION THIS FILE IS THE SECOND DRAFT OF (owner, 2026-10-20) ────
+// THE GRAMMAR, in the order the references use it:
 //
-// The first draft was built from the capability contract and it showed: every
-// piece of reasoning the engine holds arrived as prose on the first viewport,
-// at body size, with no void. It read as documentation — "utilitarian web app,
-// settings/detail screen, CRM guest list" — and the owner stopped it.
+//   EDITORIAL OPENING   photographic field · domain eyebrow · SERIF statement · deck
+//          ↓
+//   ORIENTATION         what is true right now, and how certain we are
+//          ↓
+//   STILL UNKNOWN       truthful uncertainty as a LABELLED LIST, never prose
+//          ↓
+//   OPERATIONAL         the roster — quiet, fast, and not styled like this file
 //
-// THE DIAGNOSIS, from comparing it against the approved direction rather than
-// against the old shell (review-shots/marketing/390x844/01-decision-hero.png):
+// WHY THE SERIF CARRIES THE DOMAIN STATEMENT. `styles.css:751` already rules
+// that "the serif is the whole HUMAN voice — the event NAME (identity) joins the
+// guide voice". A domain statement is identity, so it is the human voice, so it
+// is serif. The references only change its SCALE and POSITION, not which family
+// speaks — which is why this is an extension of the production doctrine rather
+// than a second one.
 //
-//   · THE WRONG REGISTER. I composed with `BigValue` — the 44px ASK-SURFACE
-//     atom, correct for a budget editor inside a sheet. The approved hero uses
-//     `.mega`, clamp(52-68px)/800/-.045em, and surrounds it with ~450px of
-//     void. A domain's first viewport is the hero register, not the ask one.
-//   · THE AUDIT BECAME THE UI. `because`, the withholding sentence, the reach
-//     sentence and the not-carried-into list all rendered at once. Every one
-//     is true; none of them is the first thing a host needs.
-//   · NOTHING WAS LOUD. Eight blocks at one size compete, so none wins.
-//
-// THE RULE THIS FILE NOW FOLLOWS: **preserve the truth, compress the
-// explanation.** Nothing true was deleted — the detail moved behind a
-// disclosure, which is where the approved direction puts reasoning.
+// WHAT THE REFERENCES SHOW THAT THIS FILE DELIBERATELY DOES NOT COPY (owner
+// ruling: art direction is authoritative, obsolete implementation detail is
+// not): warm tan/brass accents → steel, because gold is on the locked palette's
+// never-reintroduce list; a mobile bottom tab bar → Nav B; full-page domains
+// under a horizontal top nav → composed inside the existing sheet. All recorded
+// in ART_DIRECTION_GRAMMAR.md §7 with the conflict stated rather than hidden.
 import React from 'react';
-import { CtaRow } from './parity/askKit';
 import { attendanceStatement } from '@app/lib/attendanceStatement';
 
-/** The quiet "tell me more" affordance — one shared treatment, not per-block. */
-function More({ label, children }) {
-  const [open, setOpen] = React.useState(false);
-  return (
-    <>
-      {/* QUIET BY CONSTRUCTION. The first cut used `.mini`, and two bordered
-          buttons stacked under the hero read as the primary actions on the
-          screen — the opposite of what a disclosure is. This mirrors the
-          approved hero's `.whytog`: 11px, steel-soft, no border, no surface. */}
-      <button aria-expanded={open} onClick={() => setOpen((o) => !o)}
-        style={{
-          marginTop: 'var(--sp-2)', background: 'none', border: 'none', padding: '6px 0',
-          font: 'inherit', fontSize: 'var(--t-pill)', fontWeight: 650, letterSpacing: '.02em',
-          color: 'var(--steel-soft)', cursor: 'pointer', textAlign: 'left',
-        }}>
-        {open ? 'Less' : label} {open ? '▴' : '▾'}
-      </button>
-      {open ? <div style={{ marginTop: 'var(--sp-2)' }}>{children}</div> : null}
-    </>
-  );
-}
-
-const Why = ({ children }) => (
-  <p className="grounding" style={{ margin: '0 0 6px' }}>{children}</p>
-);
-
-/**
- * The attendance zone — People's dominant first viewport.
+/* ── THE EDITORIAL OPENING ────────────────────────────────────────────────
  *
- * ONE LOUD THING: the figure, in the hero register. The guide voice says how
- * it is going in a single line. Everything else waits.
+ * PHOTOGRAPHY IS STRUCTURAL HERE, not decoration: it carries event identity and
+ * the emotional register, and it hands off to operational truth immediately
+ * beneath. Measured from the references, the field is ~38-45% of a 390x844
+ * viewport — enough to establish the event, never enough to bury the headcount.
  *
- * `solemn` carries the day-of 331:61 ruling outward — a repast drops
- * celebratory framing. The tone is read, never re-decided here.
+ * ── WHERE THE IMAGE COMES FROM, AND WHAT THIS FILE MAY NOT DO ───────────
+ *
+ * The canonical source is HOST-SUPPLIED EVENT COVER MEDIA. That field does not
+ * exist yet and the media pipeline is NOT authorized, so this component only
+ * ever READS a forward-compatible `event.coverImageUrl` and NEVER writes one.
+ *
+ * `fixtureSrc` is a review-only override, passed from a URL parameter, used to
+ * judge the image-present composition before the pipeline exists. It is never
+ * persisted, never written to the event, and is marked on screen so it cannot
+ * masquerade as production truth. No stock photography is bundled, and the
+ * image-absent state is the DEFAULT rather than a fallback.
  */
-export function AttendanceZone({ event, solemn, onConfirmCount, onOpenRoster }) {
-  const s = attendanceStatement(event);
+export function PeopleHero({ event, src, fixture, statement }) {
+  const name = String((event && event.name) || '').trim();
+  const hasImage = !!src;
 
-  // VOID IS THE MATERIAL — the doctrine's "about 45 percent void", and the
-  // single biggest difference between this and the approved decision hero,
-  // which carries roughly 450px above its headline at 390px.
-  const Frame = ({ children }) => (
-    <div style={{ padding: 'var(--sp-7) 0 calc(var(--sp-7) * 2)' }}>{children}</div>
-  );
-  const Eyebrow = ({ children }) => (
-    <div className="of" style={{ letterSpacing: '.08em', textTransform: 'uppercase' }}>{children}</div>
-  );
-
-  // NOTHING HONEST TO SAY IS A REAL STATE — no figure, no placeholder zero.
-  if (!s.known) {
-    return (
-      <Frame>
-        <Eyebrow>Who’s coming</Eyebrow>
-        <div className="mega" style={{ color: 'var(--faint)' }}>—</div>
-        <p style={{ margin: 0, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-sub)', color: 'var(--ink-soft)' }}>
-          Nobody is counted yet.
-        </p>
-        {onOpenRoster ? (
-          <CtaRow><button className="cta" onClick={onOpenRoster}>Start the guest list</button></CtaRow>
-        ) : null}
-      </Frame>
-    );
-  }
-
+  // The domain statement. Fixed, because it is the domain's identity rather
+  // than a status — the same way the references' "Right people. Right roles.
+  // Less stress." does not change with the data.
   return (
-    <Frame>
-      <Eyebrow>Who’s coming</Eyebrow>
+    <div style={{
+      position: 'relative',
+      margin: '0 calc(var(--sp-4) * -1)',          // bleed past the sheet gutter
+      padding: hasImage ? '0' : 'var(--sp-7) var(--sp-4) var(--sp-6)',
+      minHeight: hasImage ? '38vh' : 0,
+      display: 'flex', alignItems: 'flex-end',
+      overflow: 'hidden',
+      borderRadius: 0,
+    }}>
+      {hasImage ? (
+        <>
+          <img src={src} alt="" aria-hidden="true" style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: 'cover', objectPosition: 'center 40%',
+          }} />
+          {/* THE SCRIM is what makes type over photography legible, and it is
+              a composition element rather than a patch: it rises from the
+              bottom so the statement sits in deep tone while the image stays
+              readable above it. */}
+          <div aria-hidden="true" style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(to top, var(--bg) 2%, rgba(0,0,0,.72) 38%, rgba(0,0,0,.28) 70%, rgba(0,0,0,.1) 100%)',
+          }} />
+          {fixture ? (
+            /* NON-PRODUCTION, AND IT SAYS SO. A review fixture that could be
+               mistaken for a host's own uploaded cover would be exactly the
+               fabricated truth this project forbids. */
+            <div style={{
+              position: 'absolute', top: 8, right: 'var(--sp-4)', zIndex: 2,
+              fontSize: 10, fontWeight: 700, letterSpacing: '.1em',
+              padding: '3px 8px', borderRadius: 999,
+              background: 'rgba(0,0,0,.6)', color: 'var(--faint)',
+            }}>DESIGN FIXTURE — NOT YOUR PHOTO</div>
+          ) : null}
+        </>
+      ) : null}
 
-      {/* THE LOUD THING. `.mega` is the system's display register — the same
-          one the approved decision hero uses — and it already carries
-          tabular-nums, which a range like "32–46" needs. */}
-      <div className="mega" style={solemn ? { fontWeight: 700, fontFamily: 'var(--serif-read)' } : null}>
-        {s.figure}
-      </div>
-      <div className="mega-sub" style={{ color: 'var(--muted)', fontWeight: 600 }}>{s.unit}</div>
-
-      {/* THE GUIDE VOICE — one line, how it is going. Never an instruction. */}
-      <p style={{ margin: '2px 0 0', fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-sub)', color: 'var(--ink-soft)' }}>
-        {s.headline}
-      </p>
-
-      {/* PROVENANCE AS ONE MOMENT, not two paragraphs. The state reads as a
-          chip because colour means state here; the full reasoning — including
-          the engine's own `because` — waits behind the disclosure. */}
-      {s.confirmable ? (
-        <div style={{ marginTop: 'var(--sp-5)' }}>
-          <span className="chip" style={{ background: 'var(--steel-tint)', color: 'var(--steel-soft)', border: 'none', fontSize: 'var(--t-pill)' }}>
-            our estimate
-          </span>
-          <CtaRow>
-            <button className="cta" onClick={() => onConfirmCount && onConfirmCount(s.confirmable)}>
-              Yes, plan for {s.confirmable}
-            </button>
-          </CtaRow>
-          <More label="Where this number came from">
-            {s.because ? <Why>{s.because}</Why> : null}
-            <Why>It stays out of anything we send — invites, vendor briefs, the caterer — until you confirm it.</Why>
-          </More>
+      <div style={{
+        position: 'relative', zIndex: 1, width: '100%',
+        padding: hasImage ? 'var(--sp-7) var(--sp-4) var(--sp-5)' : 0,
+      }}>
+        <div className="of" style={{ letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--steel-soft)' }}>
+          People
         </div>
-      ) : (
-        /* Her own number needs no defence on the first view; the reasoning is
-           still one tap away for a host who wants it. */
-        s.because || s.preparingFor ? (
-          <More label="How we got there">
-            {s.because ? <Why>{s.because}</Why> : null}
-            {s.preparingFor ? (
-              <Why>The plan buys for {s.preparingFor} — the larger of your yeses and the number you told us to expect.</Why>
-            ) : null}
-          </More>
-        ) : null
-      )}
-    </Frame>
-  );
-}
-
-/**
- * The needs zone — ONE attention moment, not a report.
- *
- * ── THE PRODUCT GAP THIS CLOSES ───────────────────────────────────────────
- *
- * P1-2 normalised "she uses a walker" and wired it to the domains that could
- * act on it. What no surface ever did was SAY SO: `accessNeedsFor` has carried
- * `who: null` — "we were told about a need, not about a person" — since the day
- * it was written.
- *
- * ── A RESOLUTION THIS SLICE DELIBERATELY DOES NOT OFFER ───────────────────
- *
- * The obvious control is "identify the guest", writing the need onto a roster
- * row. It is NOT built, and that was measured rather than assumed:
- * `lodgingIntel.js:2073` sizes the step-free line on
- * `accessNeedsFor(ev).requirements.length` and prints that count as prose —
- * "2 people asked about stairs". `accessNeedsFor` builds requirements from
- * `event.accessNeeds` AND from roster rows WITH NO DEDUPE, so assigning would
- * make the lodging sheet say two people asked about one person. Filling only
- * `who` would make `appliedTo` claim seating while `seatingPlan` — which reads
- * the GUEST ROW — still cannot see it, promising a check that never happens.
- *
- * So this states the unknown and stops. Declared as a bounded gap against all
- * eleven conditions in PEOPLE_ATTENDANCE_PRODUCT_CONTRACT.md §7. Closing it is
- * ENGINE work — a dedupe, or an owner field that does not duplicate the entry —
- * and the control arrives with it, not before.
- *
- * "she" is not a name and this zone never guesses which guest. No diagnosis is
- * inferred: a mobility aid is not evidence of a condition, and `healthNoted`
- * owns health as a separate question.
- */
-export function NeedsZone({ needs }) {
-  const reqs = (needs && needs.requirements) || [];
-  if (!reqs.length) return null;
-
-  // Host language for engine ids. An id with no host name is DROPPED rather
-  // than guessed at — the first cut printed `the-day` raw and a capture caught
-  // it on screen, which is the developer vocabulary the contract forbids.
-  const say = {
-    seating: 'who sits where',
-    lodging: 'where everyone stays',
-    place: 'the venue',
-    ground: 'getting around',
-    'the-day': 'the day-of plan',
-  };
-  const unreached = (needs.notYetApplied || []).map((d) => say[d]).filter(Boolean);
-
-  return (
-    <div style={{ paddingBottom: 'calc(var(--sp-7) * 2)' }}>
-      {reqs.map((r, i) => {
-        const named = !!r.who;
-        return (
-          <div key={i} style={{ marginTop: i ? 'var(--sp-6)' : 0 }}>
-            <div className="of" style={{ letterSpacing: '.08em', textTransform: 'uppercase' }}>
-              {r.label}
-            </div>
-            {/* TWO LINES. The consequence, then the unknown — or who it is for.
-                Everything else is behind the disclosure. */}
-            <p style={{ margin: '6px 0 0', fontSize: 'var(--t-sub)', color: 'var(--ink)', lineHeight: 1.45 }}>
-              {named
-                ? <>{r.who} needs it.</>
-                : <>Someone in your group needs it. We don’t know who yet.</>}
-            </p>
-            <More label={named ? 'What that changes' : 'What we do know'}>
-              {r.phrase ? (
-                <p style={{ margin: '0 0 6px', fontFamily: 'var(--serif-read)', fontStyle: 'italic', color: 'var(--ink-soft)', fontSize: 'var(--t-body-s)' }}>
-                  “{r.phrase}”
-                </p>
-              ) : null}
-              <Why>
-                {named
-                  ? 'Their seat and where they stay are both checked against this.'
-                  : 'Where everyone stays is already planned around it. A specific seat can’t be until we know who — and we won’t guess.'}
-              </Why>
-              {unreached.length ? <Why>Not carried into {unreached.join(', ')} yet.</Why> : null}
-            </More>
-          </div>
-        );
-      })}
+        {/* THE DOMAIN STATEMENT — serif, light, two lines, sentence case,
+            full stop. The references' most consistent single element. */}
+        <h2 style={{
+          margin: '6px 0 0',
+          fontFamily: 'var(--serif-read)', fontOpticalSizing: 'auto',
+          fontWeight: 500, fontSize: 'clamp(30px,9vw,40px)', lineHeight: 1.08,
+          letterSpacing: '-.015em', color: 'var(--ink)', textWrap: 'balance',
+        }}>
+          Know who’s coming.
+        </h2>
+        <p style={{
+          margin: '10px 0 0', maxWidth: '30ch',
+          fontSize: 'var(--t-body-s)', lineHeight: 1.5, color: 'var(--ink-soft)',
+        }}>
+          {name ? `Replies, needs and who’s bringing whom for ${name}.`
+            : 'Replies, needs and who’s bringing whom — in one place.'}
+        </p>
+      </div>
     </div>
   );
 }
 
-export default AttendanceZone;
+/* ── ORIENTATION: what is true, and how certain ───────────────────────────
+ *
+ * Directly beneath the editorial opening, so the host never scrolls a hero to
+ * reach the number. The word for `confirmed` is chosen by
+ * `attendanceStatement` from the BASIS, because on a settled headcount the
+ * engine reports `confirmed: n` with nobody having replied.
+ */
+export function AttendanceTruth({ event, solemn, onConfirmCount }) {
+  const s = attendanceStatement(event);
+  const [why, setWhy] = React.useState(false);
+
+  if (!s.known) {
+    return (
+      <div style={{ padding: 'var(--sp-6) 0 var(--sp-5)' }}>
+        <div className="mega" style={{ color: 'var(--faint)' }}>—</div>
+        <p style={{ margin: 0, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-sub)', color: 'var(--ink-soft)' }}>
+          Nobody is counted yet.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 'var(--sp-6) 0 var(--sp-5)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <span className="mega" style={{ margin: 0, ...(solemn ? { fontFamily: 'var(--serif-read)', fontWeight: 600 } : null) }}>
+          {s.figure}
+        </span>
+        <span style={{ fontSize: 'var(--t-sub)', fontWeight: 600, color: 'var(--muted)' }}>{s.unit}</span>
+      </div>
+      <p style={{ margin: '4px 0 0', fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-sub)', color: 'var(--ink-soft)' }}>
+        {s.headline}
+      </p>
+
+      {s.confirmable ? (
+        <div style={{ marginTop: 'var(--sp-4)' }}>
+          <span className="chip" style={{ background: 'var(--steel-tint)', color: 'var(--steel-soft)', border: 'none', fontSize: 'var(--t-pill)' }}>
+            our estimate
+          </span>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', marginTop: 'var(--sp-3)', flexWrap: 'wrap' }}>
+            <button className="cta" onClick={() => onConfirmCount && onConfirmCount(s.confirmable)}>
+              Yes, plan for {s.confirmable}
+            </button>
+            <button onClick={() => setWhy((o) => !o)} aria-expanded={why}
+              style={{ background: 'none', border: 'none', padding: '6px 0', font: 'inherit', fontSize: 'var(--t-pill)', fontWeight: 650, color: 'var(--steel-soft)', cursor: 'pointer' }}>
+              {why ? 'Less' : 'Why this number'}
+            </button>
+          </div>
+          {why ? (
+            <div style={{ marginTop: 'var(--sp-2)' }}>
+              {s.because ? <p className="grounding" style={{ margin: '0 0 6px' }}>{s.because}</p> : null}
+              <p className="grounding" style={{ margin: 0 }}>
+                It stays out of anything we send — invites, vendor briefs, the caterer — until you confirm it.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : (s.because || s.preparingFor) ? (
+        <>
+          <button onClick={() => setWhy((o) => !o)} aria-expanded={why}
+            style={{ marginTop: 'var(--sp-2)', background: 'none', border: 'none', padding: '6px 0', font: 'inherit', fontSize: 'var(--t-pill)', fontWeight: 650, color: 'var(--steel-soft)', cursor: 'pointer' }}>
+            {why ? 'Less' : 'How we got there'}
+          </button>
+          {why ? (
+            <div style={{ marginTop: 'var(--sp-2)' }}>
+              {s.because ? <p className="grounding" style={{ margin: '0 0 6px' }}>{s.because}</p> : null}
+              {s.preparingFor ? (
+                <p className="grounding" style={{ margin: 0 }}>
+                  The plan buys for {s.preparingFor} — the larger of your yeses and the number you told us to expect.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/* ── STILL UNKNOWN ────────────────────────────────────────────────────────
+ *
+ * The references productize truthful uncertainty as a LABELLED LIST — the
+ * Understanding step's "You want / Still unknown" columns — not as a paragraph
+ * explaining the system's reasoning. That is the register an unowned access
+ * need belongs in, and it is the single biggest compression available here:
+ * the previous draft spent four sentences saying what one labelled row says.
+ *
+ * ── THE RESOLUTION THIS SLICE STILL DOES NOT OFFER ──────────────────────
+ *
+ * "Identify guest" is NOT built, measured rather than assumed:
+ * `lodgingIntel.js:2073` sizes the step-free line on
+ * `accessNeedsFor(ev).requirements.length` and prints that count as prose —
+ * "2 people asked about stairs". `accessNeedsFor` builds requirements from
+ * `event.accessNeeds` AND from roster rows WITH NO DEDUPE, so assigning a
+ * host-stated need to a guest makes the lodging sheet say two people asked
+ * about one person. Declared as a bounded gap against all eleven conditions in
+ * PEOPLE_ATTENDANCE_PRODUCT_CONTRACT.md §7. Closing it is engine work, and the
+ * control arrives with it — not before.
+ *
+ * No diagnosis is inferred. "she" is not a name, and no roster person is
+ * attached to a need by proximity, order, or being the likely honoree.
+ */
+export function StillUnknown({ needs }) {
+  const reqs = (needs && needs.requirements) || [];
+  const open = reqs.filter((r) => r && !r.who);
+  const known = reqs.filter((r) => r && r.who);
+  if (!open.length && !known.length) return null;
+
+  const Row = ({ mark, title, note }) => (
+    <div style={{ display: 'flex', gap: 10, padding: '9px 0', alignItems: 'flex-start' }}>
+      <span aria-hidden="true" style={{ color: 'var(--steel-soft)', fontSize: 13, lineHeight: '20px', flex: '0 0 auto' }}>{mark}</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 'var(--t-row)', color: 'var(--ink)', lineHeight: 1.35 }}>{title}</div>
+        {note ? (
+          <div style={{ marginTop: 2, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>
+            {note}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: '0 0 var(--sp-6)' }}>
+      {known.length ? (
+        <>
+          <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>Accounted for</div>
+          {known.map((r, i) => (
+            <Row key={'k' + i} mark="✓" title={`${r.who} needs ${String(r.label).toLowerCase()}`}
+              note="Their seat and where they stay are both checked against it." />
+          ))}
+        </>
+      ) : null}
+
+      {open.length ? (
+        <>
+          <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase', marginTop: known.length ? 'var(--sp-4)' : 0 }}>
+            Still unknown
+          </div>
+          {open.map((r, i) => (
+            <Row key={'o' + i} mark="○"
+              title={<>Who needs {String(r.label).toLowerCase()}</>}
+              note={r.phrase ? `“${r.phrase}” — we won’t guess which person.` : 'We won’t guess which person.'} />
+          ))}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+export default PeopleHero;

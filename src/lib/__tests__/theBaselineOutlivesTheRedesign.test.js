@@ -94,8 +94,13 @@ describe('the legacy People surface is still there to compare against', () => {
     const code = stripComments(src());
     // One Guests door either way (the Duplicate Surface Rule), with the new
     // zone composed inside it rather than replacing it.
-    expect(code).toMatch(/<AttendanceZone/);
-    expect(code).toMatch(/<NeedsZone/);
+    // The composed zones, by their current names. This list moved once already
+    // (AttendanceZone/NeedsZone -> AttendanceTruth/StillUnknown, when the
+    // art-direction references arrived) and the gate caught it, which is the
+    // point: a rename is fine, a DELETION is what must not pass quietly.
+    expect(code).toMatch(/<PeopleHero/);
+    expect(code).toMatch(/<AttendanceTruth/);
+    expect(code).toMatch(/<StillUnknown/);
     expect(code).toMatch(/\{peopleZone\}/);
     // And exactly one guests sheet RENDER, not a forked second one. Counting
     // every mention would be wrong and was: the shell also tests this kind in a

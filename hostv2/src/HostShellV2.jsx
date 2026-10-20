@@ -37,7 +37,7 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
 // @app/lib/attendanceStatement. Reached by ?people=1 on the Guests door, with
 // the legacy body as the default until parity closes.
-import { AttendanceZone, NeedsZone } from './PeopleSurface';
+import { PeopleHero, AttendanceTruth, StillUnknown } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
@@ -23529,22 +23529,37 @@ export default function HostShellV2() {
               // host can do today is still here, with the flag on or off. Later
               // steps replace the legacy blocks one at a time; the day the last
               // one goes, the flag's default flips and this comment goes with it.
+              // ── THE REDESIGNED PEOPLE COMPOSITION (?people=1) ─────────────
+              // Composed to the owner's reference grammar — editorial opening,
+              // orientation, truthful unknowns — then handing off to the legacy
+              // operational body below, which is untouched. See
+              // docs/architecture/redesign/ART_DIRECTION_GRAMMAR.md.
+              //
+              // The cover image is READ ONLY and forward-compatible: the
+              // host-supplied media pipeline is not authorized, so this reads a
+              // field that does not exist yet and never writes one. The fixture
+              // override is review-only, never persisted, and labelled on screen.
               const peopleZone = peopleMode ? (
-                <div style={{ marginBottom: 'var(--sp-6)' }}>
-                  <AttendanceZone
+                <div>
+                  <PeopleHero
+                    event={event}
+                    src={(() => {
+                      const fix = (() => { try { return new URLSearchParams(window.location.search).get('peoplefixture'); } catch { return null; } })();
+                      if (fix && /^https?:\/\//i.test(fix)) return fix;
+                      const own = String((event && event.coverImageUrl) || '').trim();
+                      return /^https?:\/\//i.test(own) ? own : null;
+                    })()}
+                    fixture={(() => { try { return !!new URLSearchParams(window.location.search).get('peoplefixture'); } catch { return false; } })()}
+                  />
+                  <AttendanceTruth
                     event={event}
                     solemn={(() => { try { return isSolemnEvent(event); } catch { return false; } })()}
-                    onOpenRoster={() => {
-                      // The roster already lives below; take her to it rather
-                      // than growing a second way to add names.
-                      try { document.getElementById('guests-counting-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no DOM scroll */ }
-                    }}
                     onConfirmCount={(n) => patchEvent(
                       { guestEstimate: n, guestCount: n, guestCountSource: 'host' },
-                      'Planning for ' + n + ' — it’s your number now, so it can go in what we send.',
+                      'Planning for ' + n + ' — it\u2019s your number now, so it can go in what we send.',
                     )}
                   />
-                  <NeedsZone needs={(() => {
+                  <StillUnknown needs={(() => {
                     try { return accessNeedsFor(event); } catch { return null; }
                   })()} />
                 </div>

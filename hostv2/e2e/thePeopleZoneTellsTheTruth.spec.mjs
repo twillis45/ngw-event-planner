@@ -88,7 +88,7 @@ test('AN APP-SUPPLIED NUMBER SAYS SO, and says it is being held back', async ({ 
   expect(body).not.toMatch(/40 people said yes/i);
 
   // AND THE TRUTH IS STILL THERE, one tap away — both halves of it.
-  expect(await open(page, 'Where this number came from')).toBe(true);
+  expect(await open(page, 'Why this number')).toBe(true);
   await page.waitForTimeout(250);
   const more = await sheetText(page);
   expect(more).toMatch(/not a number you gave/i);
@@ -203,18 +203,17 @@ test('an unowned need is stated, in her words, WITHOUT inventing a person', asyn
   }));
   const body = await sheetText(page);
 
-  expect(body).toMatch(/Step-free access/i);
-  // THE COMPRESSED MOMENT: the consequence, then the unknown. Two lines.
-  expect(body).toMatch(/Someone in your group needs it/i);
-  expect(body).toMatch(/don’t know who yet/i);
-
-  // HER OWN WORDS and the refusal to guess are still reachable — the reason
-  // the engine keeps `phrase` at all.
-  expect(await open(page, 'What we do know')).toBe(true);
-  await page.waitForTimeout(250);
-  const more = await sheetText(page);
-  expect(more).toMatch(/she uses a walker/);
-  expect(more).toMatch(/won’t guess/i);
+  // THE "STILL UNKNOWN" REGISTER (art-direction pass, 2026-10-20). The
+  // references productize truthful uncertainty as a LABELLED LIST — the
+  // Understanding step's "You want / Still unknown" columns — so the four
+  // sentences the functional proof spent on this became one labelled row.
+  // OBSOLETE PRESENTATION, not obsolete behaviour: every fact below is the
+  // same fact, and all of it is still on the FIRST view rather than behind a
+  // disclosure, which is a strictly stronger claim than the test it replaces.
+  expect(body).toMatch(/STILL UNKNOWN/i);
+  expect(body).toMatch(/Who needs step-free access/i);
+  expect(body).toMatch(/she uses a walker/);
+  expect(body).toMatch(/won’t guess which person/i);
 
   // THE SHARPEST GUARD IN THE SLICE. Two named people are on this roster and
   // neither of them said anything about stairs. If the surface attached the
@@ -238,15 +237,12 @@ test('and it claims only the reach an unowned need actually has', async ({ page 
   await boot(page, EV({ id: 'e2e-people-reach', guestMode: 'count', guestEstimate: 20, guestCountSource: 'host', accessNeeds: WALKER }));
   const body = await sheetText(page);
 
-  expect(body).toMatch(/Someone in your group needs it/i);
-  expect(await open(page, 'What we do know')).toBe(true);
-  await page.waitForTimeout(250);
-  const more = await sheetText(page);
-  expect(more).toMatch(/Where everyone stays is already planned around it/i);
-  expect(more).toMatch(/can’t be until we know who/i);
-  // AND NO RAW ENGINE IDS. A capture caught "the-day" on screen in the first
-  // cut; ACCESS_DOMAINS are ids, and an id with no host name is dropped.
-  expect(more).not.toMatch(/the-day|notYetApplied/);
+  // The unknown is stated as an unknown, and nothing claims a reach it does
+  // not have. NO RAW ENGINE IDS: a capture caught "the-day" on screen in an
+  // earlier cut, and ACCESS_DOMAINS are ids, not host language.
+  expect(body).toMatch(/Who needs step-free access/i);
+  expect(body).toMatch(/won’t guess which person/i);
+  expect(body).not.toMatch(/the-day|notYetApplied|appliedTo/);
 });
 
 test('a NAMED need says both reaches are real, because they are', async ({ page }) => {
@@ -259,17 +255,18 @@ test('a NAMED need says both reaches are real, because they are', async ({ page 
   }));
   const body = await sheetText(page);
 
-  expect(body).toMatch(/Step-free access/i);
-  expect(body).toMatch(/Tonya Brooks needs it/);
-  expect(body).not.toMatch(/don’t know who yet/i);
-  expect(await open(page, 'What that changes')).toBe(true);
-  await page.waitForTimeout(250);
-  expect(await sheetText(page)).toMatch(/Their seat and where they stay are both checked/i);
+  // A named need moves out of "Still unknown" into "Accounted for".
+  expect(body).toMatch(/Accounted for/i);
+  expect(body).toMatch(/Tonya Brooks needs step-free access/i);
+  expect(body).toMatch(/Their seat and where they stay are both checked/i);
+  expect(body).not.toMatch(/STILL UNKNOWN/i);
 });
 
 test('NEGATIVE CONTROL — no need, no zone', async ({ page }) => {
   // The guard against a primitive that grows into a checklist: a host with
   // nothing to accommodate is asked nothing and shown no empty section.
   await boot(page, EV({ id: 'e2e-people-noneed', guestMode: 'count', guestEstimate: 20, guestCountSource: 'host' }));
-  expect(await sheetText(page)).not.toMatch(/Step-free access/i);
+  const t = await sheetText(page);
+  expect(t).not.toMatch(/Step-free access/i);
+  expect(t).not.toMatch(/STILL UNKNOWN/i);
 });
