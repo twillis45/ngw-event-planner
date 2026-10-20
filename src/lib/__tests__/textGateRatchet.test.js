@@ -346,10 +346,26 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // her sentence was not understood. The argument is gone; this keeps it gone.
 // ── 56 → 57 (2026-10-20, the People redesign's preservation requirement) ────
 //
-// `theBaselineOutlivesTheRedesign.test.js`. It asserts file CONTENT on purpose,
-// and the owner requirement it serves is why: the pre-redesign Host V2 People
-// surface must stay runnable and inspectable throughout the redesign, and git
-// history alone does not count.
+// `theBaselineOutlivesTheRedesign.test.js`, and NOTHING ELSE — verified before
+// the bump stood, by applying THIS FILE'S OWN predicate (comment-stripped
+// source containing both `readFileSync` and `hostv2`) to two git trees and
+// diffing the populations:
+//
+//     03d5cc4   56 gates    ← the commit this baseline was last green at
+//     HEAD      57 gates
+//     added:    src/lib/__tests__/theBaselineOutlivesTheRedesign.test.js
+//     removed:  (none)
+//
+// Reproducing 56 EXACTLY at the old commit is what makes the diff worth
+// anything: it proves the predicate was reimplemented faithfully rather than
+// approximated, so "one file in, none out" is a measurement and not a hope.
+// A baseline bump is the easiest place in this repo to smuggle an unrelated
+// gate through, and the owner asked for that specifically — this is the proof
+// that nothing else rode along.
+//
+// It asserts file CONTENT on purpose, and the owner requirement it serves is
+// why: the pre-redesign Host V2 People surface must stay runnable and
+// inspectable throughout the redesign, and git history alone does not count.
 //
 // What keeps it runnable is that `?people=1` is OPT-IN — absent the flag, the
 // default IS the baseline, on the same shell and the same event blob, with no
