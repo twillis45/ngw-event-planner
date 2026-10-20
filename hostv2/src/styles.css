@@ -6802,22 +6802,25 @@ button.vc-pill::after{
 .people-roster .grow{ align-items:center !important; gap:var(--sp-2) !important; }
 
 /* ═══ THE PLATE ═════════════════════════════════════════════════════════════
-   Measured off the reference sheets, not recalled. Nine frames — three sheets
-   x three breakpoints x six Place states — and every one of them is
+   MEASURED OFF THE REFERENCE PHONE FRAME AT 3x, AFTER GETTING IT WRONG TWICE.
 
-       DARK TOP PLATE  →  hard edge  →  OPERATIONAL FIELD
+   First cut: 38vh of photograph with the statement over it — too tall, and the
+   first viewport ended at the deck.
+   Second cut: I "measured" a 150px photograph with the statement BELOW it on a
+   flat plate. That was wrong in kind, not just in size. Enlarging the frame
+   shows the eyebrow, the serif statement AND the deck all sitting ON the
+   photograph, which continues behind them and darkens downward. It is ONE
+   fused band.
+   Third cut, this one: fused, and ~26% of the screen — 440 of 1705 on the
+   reference frame, ≈220px at 844.
 
-   The plate is dark in EVERY frame, including the frames whose body is ivory.
-   That relationship is what makes the reference read as an editorial masthead
-   over a body rather than as an application, and reproducing it is the single
-   largest parity move available.
+   The error is worth recording because of how it happened: I measured a
+   downscaled mock, read a dark lower region as "flat plate", and built from
+   the reading instead of from the image. The band had to be rendered and the
+   reference re-cropped before the mistake was visible.
 
-   `--people-plate` is a near-black with a warm cast, declared here rather than
-   taken from `--bg`, precisely because it must NOT follow the theme: a plate
-   that goes near-white in light mode is not a plate. Type on it is light in
-   both themes for the same reason the photograph is — the band has its own
-   luminance regime. Measured against the plate ground, the three values below
-   run 14.9:1, 11.3:1 and 8.4:1. */
+   Type on the plate is light in both themes — the band has its own luminance
+   regime, like the photograph it sits on. */
 .people-plate{
   --people-plate: #15130F;
   --people-plate-ink: #FBF8F3;
@@ -6825,21 +6828,27 @@ button.vc-pill::after{
   margin:0 calc(var(--sp-4) * -1);     /* bleed past the sheet gutter */
   background:var(--people-plate);
   overflow:hidden;
+  display:grid;
+  min-height:220px;
+  /* Opts out of the sheet's prose measure for the same reason `.people-grid`
+     does: a full-bleed photographic band is not prose. Capped at 820 it stopped
+     two-thirds across the desktop sheet and left the top-right corner empty
+     under a rail that starts below it — which is the "unexplained acreage" the
+     rail exists to end. */
+  max-width:none!important;
 }
+.people-plate > *{ grid-area:1 / 1; }
 
-/* THE PHOTOGRAPHIC BAND. ~127px of 844 on the phone frames (~15%), not the
-   38vh the previous cut ran — which pushed every operational element off the
-   first viewport and left the screen reading as a poster. */
-.people-plate-img{ position:relative; height:150px; }
+.people-plate-img{ position:relative; }
 .people-plate-img img{
   position:absolute; inset:0; width:100%; height:100%;
-  object-fit:cover; object-position:center 42%;
+  object-fit:cover; object-position:center 38%;
 }
-/* On the phone the veil only has to stop the photograph fighting the plate it
-   sits on — the statement is BELOW it, on the plate itself. */
+/* The veil has one job on the phone: carry type over the lower half of the
+   photograph while the upper half stays a photograph. */
 .people-plate-veil{
   position:absolute; inset:0;
-  background:linear-gradient(to top, var(--people-plate) 0%, rgba(21,19,15,.55) 34%, rgba(21,19,15,.12) 100%);
+  background:linear-gradient(to top, rgba(21,19,15,.92) 0%, rgba(21,19,15,.78) 38%, rgba(21,19,15,.30) 72%, rgba(21,19,15,.06) 100%);
 }
 .people-plate-fix{
   position:absolute; top:8px; right:var(--sp-4); z-index:2;
@@ -6848,39 +6857,36 @@ button.vc-pill::after{
   background:rgba(0,0,0,.55); color:rgba(255,255,255,.78);
 }
 
-.people-plate-say{ position:relative; z-index:1; padding:var(--sp-4) var(--sp-4) var(--sp-6); }
+.people-plate-say{
+  position:relative; z-index:1; align-self:end;
+  padding:var(--sp-5) var(--sp-4) var(--sp-5);
+}
 .people-plate-eyebrow{
   font-size:var(--t-pill); font-weight:700; letter-spacing:.18em;
-  text-transform:uppercase; color:rgba(255,255,255,.62);
+  text-transform:uppercase; color:rgba(255,255,255,.66);
 }
 .people-plate-h{
   margin:var(--sp-2) 0 0;
   font-family:var(--serif-read); font-optical-sizing:auto;
-  font-weight:500; font-size:clamp(30px,8.5vw,38px); line-height:1.1;
+  font-weight:500; font-size:clamp(28px,8vw,36px); line-height:1.08;
   letter-spacing:-.015em; color:var(--people-plate-ink); text-wrap:balance;
 }
 .people-plate-deck{
-  margin:var(--sp-3) 0 0; max-width:34ch;
-  font-size:var(--t-body-s); line-height:1.55; color:rgba(255,255,255,.76);
+  margin:var(--sp-2) 0 0; max-width:34ch;
+  font-size:var(--t-body-s); line-height:1.5; color:rgba(255,255,255,.80);
 }
 
 /* ── DESKTOP AND TABLET: THE COMPOSITION TRANSFORMS ────────────────────────
-   The reference does not scale the phone plate up — it overlays the statement
-   on the LEFT of a full-bleed photograph behind a left-to-right gradient, and
-   the band is ~26% of the frame (~265px at 1024 tall). Two compositions, one
-   grammar. */
+   The reference does not scale the phone band up — it overlays the statement
+   on the LEFT of a full-bleed photograph behind a left-to-right gradient, at
+   ~26% of the frame (~265px at 1024 tall). Two compositions, one grammar. */
 @media (min-width:768px){
-  .people-plate--img{ display:grid; }
-  .people-plate--img > *{ grid-area:1 / 1; }
-  .people-plate-img{ height:265px; }
+  .people-plate{ min-height:265px; }
   .people-plate-veil{
     background:linear-gradient(to right, rgba(21,19,15,.94) 0%, rgba(21,19,15,.80) 38%, rgba(21,19,15,.18) 78%, rgba(21,19,15,.06) 100%);
   }
-  .people-plate-say{
-    align-self:center; max-width:30rem;
-    padding:var(--sp-5) var(--sp-5) var(--sp-5) var(--sp-5);
-  }
-  .people-plate-h{ font-size:clamp(38px,3.4vw,52px); }
+  .people-plate-say{ align-self:center; max-width:30rem; padding:var(--sp-5); }
+  .people-plate-h{ font-size:clamp(38px,3.2vw,50px); }
   .people-plate-deck{ max-width:40ch; }
 }
 
@@ -7020,15 +7026,6 @@ button.vc-pill::after{
   display:block; padding:0 0 0 var(--sp-5);
   border-left:1px solid var(--line-soft);
 }
-.people-rail .prl-cover{
-  position:relative; height:120px; margin:0 0 var(--sp-3);
-  border-radius:var(--r-md); overflow:hidden; background:var(--bg-band);
-}
-.people-rail .prl-cover img{ width:100%; height:100%; object-fit:cover; }
-.people-rail .prl-cover::after{
-  content:''; position:absolute; inset:0;
-  background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 70%);
-}
 .people-rail .prl-row{
   display:flex; align-items:baseline; justify-content:space-between;
   gap:var(--sp-3); padding:var(--sp-2) 0;
@@ -7045,4 +7042,48 @@ button.vc-pill::after{
   margin-left:0; padding:var(--sp-4);
   background:var(--card); border-left:2px solid var(--steel);
   border-radius:var(--r-md);
+}
+
+/* ── IDENTITY AND STATE SHARE A LINE ───────────────────────────────────────
+   The reference puts the status pill immediately after the serif name, inside
+   the editorial block, and gives the row a circled arrow at its right edge.
+   The previous cut exiled the pill to the far right and left ~40px of dead
+   space between it and a bare glyph. */
+.people-roster .pr-id{
+  display:flex; align-items:center; gap:var(--sp-2);
+  min-width:0; max-width:100%;
+}
+.people-roster .pr-id .pr-name{ flex:0 1 auto; }
+.people-roster .pr-state{
+  flex:0 0 auto; font-size:var(--t-caption-min); font-weight:650;
+  padding:2px var(--sp-2); border-radius:999px; white-space:nowrap;
+}
+/* "No" rendered as a strikethrough through the word, which reads as a bug
+   rather than a decline. The state has a name — say it. */
+
+/* THE ROW: ~64px on the reference frame (130 of 1705 at 844), not 76. */
+.people-roster .grow{ min-height:64px; padding:var(--sp-2) var(--sp-3); }
+.people-roster .gav{ width:44px!important; height:44px!important; }
+/* The trigger is now just the affordance, so it sizes to the circle. */
+.people-roster .grow > button[aria-expanded]{ flex:0 0 auto; margin-left:auto; }
+
+/* ── UNUSED SPACE IS NOT INTENTIONAL VOID ──────────────────────────────────
+   Measured on the rendered phone frame against the reference: between the
+   plate's hard edge and the first guest the render spent ~560px where the
+   reference spends ~260 and has four people on screen. None of that was
+   composed — it was block margins stacking. The void that IS intentional (the
+   air around the serif statement, the gap before the recommendation) stays.
+
+   `.people-roster` rows and cards below also had a hairline at `--line-soft`,
+   which in light mode is ~6% ink: the reference's card edge is plainly
+   visible at every breakpoint, and without it 75 rows read as one grey field. */
+.people-tight{ padding-top:var(--sp-4)!important; padding-bottom:var(--sp-3)!important; }
+.people-roster .grow{ border-color:var(--line); }
+/* The media tile is the row's anchor. At `--bg-band` with `--ink-soft` text it
+   was washing out against a white card; the reference's thumbnail carries real
+   weight there. A deeper ground and brighter initials, still a monogram. */
+.people-roster .gav{
+  background:var(--steel-tint)!important; color:var(--steel-soft);
+  box-shadow:inset 0 0 0 1px var(--line-soft);
+  font-weight:700;
 }

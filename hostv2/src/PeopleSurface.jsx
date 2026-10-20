@@ -157,7 +157,7 @@ export function AttendanceDecision({ event, solemn, onConfirmCount, onAdjust, ad
   const [why, setWhy] = React.useState(false);
   if (!s.known) {
     return (
-      <div style={{ padding: 'var(--sp-6) 0 var(--sp-5)' }}>
+      <div className="people-tight" style={{ padding: 'var(--sp-6) 0 var(--sp-5)' }}>
         <div className="mega" style={{ color: 'var(--faint)' }}>—</div>
         <p style={{ margin: 0, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-sub)', color: 'var(--ink-soft)' }}>
           Nobody is counted yet.
@@ -184,7 +184,7 @@ export function AttendanceDecision({ event, solemn, onConfirmCount, onAdjust, ad
   );
 
   return (
-    <div style={{ padding: 'var(--sp-6) 0 var(--sp-5)' }}>
+    <div className="people-tight" style={{ padding: 'var(--sp-6) 0 var(--sp-5)' }}>
       {estimate ? (
         <>
           {/* THE DECISION, not the form. The recommended number is the hero;
@@ -317,7 +317,7 @@ export function StillUnknown({ needs }) {
   );
 
   return (
-    <div style={{ padding: '0 0 var(--sp-6)' }}>
+    <div style={{ padding: '0 0 var(--sp-4)' }}>
       {known.length ? (
         <>
           <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>Accounted for</div>
@@ -588,25 +588,18 @@ export function GetResponses({
  * is the duplication the owner ruled out. It stays in the main column at every
  * width. Recorded rather than silently decided.
  */
-export function PeopleRail({ event, src, fixture, subtitle, counts, unknowns }) {
+export function PeopleRail({ event, subtitle, counts, unknowns }) {
   const s = attendanceStatement(event);
   const name = String((event && event.name) || '').trim();
   const rows = (counts || []).filter((r) => r && Number(r.n) > 0);
 
   return (
     <aside className="people-rail" aria-label="Event context">
-      <div className="prl-cover">
-        {src ? <img src={src} alt="" aria-hidden="true" /> : null}
-        {src && fixture ? (
-          <div style={{
-            position: 'absolute', top: 6, right: 6, zIndex: 2,
-            fontSize: 9, fontWeight: 700, letterSpacing: '.08em',
-            padding: '2px 6px', borderRadius: 999,
-            background: 'rgba(0,0,0,.6)', color: 'rgba(255,255,255,.78)',
-          }}>FIXTURE</div>
-        ) : null}
-      </div>
-
+      {/* NO COVER IMAGE HERE, DELIBERATELY. The plate above spans the full
+          width and carries the event's photography; repeating it 24px to the
+          right put two photographic modules at the same height with no
+          hierarchy between them. The reference's own desktop rail ("Team at a
+          glance") carries no photograph either — it carries counts. */}
       <div style={{
         fontFamily: 'var(--serif-read)', fontWeight: 500,
         fontSize: 'var(--t-sub)', lineHeight: 1.2, color: 'var(--ink)',
@@ -615,20 +608,10 @@ export function PeopleRail({ event, src, fixture, subtitle, counts, unknowns }) 
         <div style={{ marginTop: 2, fontSize: 'var(--t-body-s)', color: 'var(--faint)' }}>{subtitle}</div>
       ) : null}
 
-      {s.known ? (
-        <div style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-.02em', color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
-              {s.figure}
-            </span>
-            <span style={{ fontSize: 'var(--t-body-s)', color: 'var(--muted)' }}>{s.unit}</span>
-          </div>
-          <div style={{ marginTop: 2, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)' }}>
-            {s.headline}
-          </div>
-        </div>
-      ) : null}
-
+      {/* NO SECOND COPY OF THE FIGURE. The main column carries it at display
+          size three inches to the left; repeating it here was the duplication
+          §26 rules out, and it pushed the one thing the rail uniquely offers —
+          the breakdown — further down. Identity and counts only. */}
       {/* The reply breakdown is the one thing here that is NOT on screen while
           the roster is scrolled: on mobile it lives in the lens chips above the
           list, which leave the viewport immediately. Counted over the WHOLE

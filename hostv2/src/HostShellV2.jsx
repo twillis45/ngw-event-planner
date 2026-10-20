@@ -23986,8 +23986,6 @@ export default function HostShellV2() {
               const peopleRail = peopleMode ? (
                 <PeopleRail
                   event={event}
-                  src={peopleCover.src}
-                  fixture={peopleCover.fixture}
                   subtitle={(() => {
                     const bits = [];
                     try {
@@ -24023,9 +24021,18 @@ export default function HostShellV2() {
                   })()}
                 />
               ) : null;
+              // ── THE PLATE SPANS, THE COLUMNS START UNDER IT ──────────────
+              // Measured: the reference's photographic band runs the full frame
+              // width and the two-column split begins BELOW it. Rendered inside
+              // the main column the plate stopped at ~70% and the rail's own
+              // cover sat beside it — two photographic modules at the same
+              // height with no hierarchy between them, which is the one thing
+              // §5E of the owner's read names explicitly.
+              const peoplePlate = peopleMode ? (
+                <PeopleHero event={event} src={peopleCover.src} fixture={peopleCover.fixture} />
+              ) : null;
               const peopleZone = peopleMode ? (
                 <div>
-                  <PeopleHero event={event} src={peopleCover.src} fixture={peopleCover.fixture} />
                   {/* THE ADJUST CONTROL ONLY EXISTS WHERE THE STEPPER DOES.
                       `guests-entry-anchor` lives in the no-roster branch, so on
                       a roster that is nonetheless counting by headcount the
@@ -24092,6 +24099,7 @@ export default function HostShellV2() {
               ) : null;
               const peopleBody = (event.guests || []).length ? (
                 <>
+                  {peopleRailUp ? null : peoplePlate}
                   {peopleZone}
                   {guestHero}
                   {!peopleMode && (plusOnes > 0 || kidsHere > 0) && (
@@ -24157,7 +24165,14 @@ export default function HostShellV2() {
                   {/* Turnout is now stated ONCE in guestHero (single-source, memory-preferred over
                       the generic band) — the standalone memory line was the 2nd/3rd competing
                       number the host flagged. Retired here on purpose. */}
-                  {nudgeFor('guests')}
+                  {/* A PROMPT IS NOT TRUTH, AND IT WAS COSTING THE FOLD. The
+                      guests nudge sat between the unknowns and the roster, so
+                      on a 390px screen it pushed the first guest below the fold
+                      to offer an optional invite line. Under People it runs
+                      after the list, where the reference puts its own
+                      recommendation band. Unchanged otherwise, and still the
+                      engine's — this moves it, it does not mute it. */}
+                  {peopleMode ? null : nudgeFor('guests')}
                   {/* The reference opens every operational section with a serif
                       heading and its one action. Without it the roster began
                       with a filter toolbar, which is how a page starts reading
@@ -24329,7 +24344,29 @@ export default function HostShellV2() {
                               const rest = needs.length - shown.length;
                               return (
                                 <>
-                                  <span className="pr-name">{g.name || 'Guest ' + (i + 1)}</span>
+                                  {/* IDENTITY AND STATE ON ONE LINE, which is where
+                                      the reference puts them: serif name, then the
+                                      status pill immediately after it. The pill here
+                                      is DISPLAY-ONLY and aria-hidden — the row's
+                                      trigger on the right carries the accessible name
+                                      and the 44px target, so the state is announced
+                                      once and shown once.
+                                      UX_05:66 ("a status chip is display-only") and
+                                      the 2026-08-07 board ruling (which made the chip
+                                      the trigger because a dead chip looks tappable)
+                                      are both satisfied: the chip is display-only
+                                      again, and the affordance it used to stand in for
+                                      now exists beside it as a real circled arrow. */}
+                                  <span className="pr-id">
+                                    <span className="pr-name">{g.name || 'Guest ' + (i + 1)}</span>
+                                    <span aria-hidden="true" className={'tag plan pr-state'}
+                                      style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
+                                        : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
+                                          : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)' }
+                                            : { color: 'var(--muted)', background: 'var(--bg-band)' }}>
+                                      {g.rsvp === 'No' ? 'Can’t make it' : (g.rsvp === 'Yes' ? 'Coming' : (g.rsvp || 'No reply'))}
+                                    </span>
+                                  </span>
                                   {party.length ? <span className="pr-party">{party.join(' · ')}</span> : null}
                                   {shown.length ? (
                                     <span className="pr-need">
@@ -24429,7 +24466,9 @@ export default function HostShellV2() {
                             aria-label={(g.name || 'Guest') + ': ' + (g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')) + ' — open to change it'}
                             onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
                             {/* UX_02: a Maybe is UNKNOWN → steel; amber is needs-attention only. */}
-                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')}</span>
+                            {peopleMode ? null : (
+                              <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')}</span>
+                            )}
                           </button>
                         </div>
                         {/* §26 · ONE DETAIL, TWO PLACEMENTS. On mobile and
@@ -24495,6 +24534,7 @@ export default function HostShellV2() {
                   {/* ADD A GUEST sits FIRST below the roster — it is the primary action on
                       this sheet. Burying it under the share/look/rules stack made "add who's
                       coming" feel like a dead end (host 2026-07-22). */}
+                  {peopleMode ? nudgeFor('guests') : null}
                   {quickAdd}
                   {/* Share & invite settings — relocated here from above the roster
                       (audit S3: list-first). The roster now sits right under the hero;
@@ -24592,6 +24632,7 @@ export default function HostShellV2() {
                 </>
               ) : (
                 <>
+                  {peopleRailUp ? null : peoplePlate}
                   {peopleZone}
                   {guestHero}
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
@@ -24691,12 +24732,15 @@ export default function HostShellV2() {
               if (!peopleRailUp) return peopleBody;
               const sel = guestOpen != null ? (event.guests || [])[guestOpen] : null;
               return (
-                <div className="people-grid">
-                  <div className="people-main">{peopleBody}</div>
-                  <div className="people-aside">
-                    {sel ? guestDetail(sel, guestOpen) : peopleRail}
+                <>
+                  {peoplePlate}
+                  <div className="people-grid">
+                    <div className="people-main">{peopleBody}</div>
+                    <div className="people-aside">
+                      {sel ? guestDetail(sel, guestOpen) : peopleRail}
+                    </div>
                   </div>
-                </div>
+                </>
               );
             })()}
           </div>
