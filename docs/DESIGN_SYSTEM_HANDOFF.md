@@ -59,9 +59,28 @@ a screen halves it.
 Green is settled. Steel is identity and action. A colour used for flavour is a
 defect.
 
-**No white surfaces.** This is a dark-only app. A white card or CTA is a
-regression, gated in CI. Confirmations read green on the single --ok token;
-errors stay neutral rather than shouting red.
+**One accent, one meaning — and dark is the default register.** Confirmations
+read green on the single --ok token; errors stay neutral rather than shouting
+red.
+
+> **CORRECTED 2026-10-20.** This paragraph read *"No white surfaces. This is a
+> dark-only app. A white card or CTA is a regression, gated in CI."* Both
+> halves were measured false:
+>
+> - **`hostv2/src/theme.js` has shipped a full light mode since 2026-09-28** —
+>   `?theme=light` plus a stored key, every colour token selected by mode, each
+>   with its own recorded WCAG measurement for both sides. Dark is the
+>   **default** (an empty or blocked store reads dark, which is what every host
+>   has today), not the only mode.
+> - **There is no CI gate on white surfaces.** Searched 2026-10-20: nothing in
+>   `src/lib/__tests__/` or the hostv2 suites tests for one. The sentence
+>   described an intention as if it were enforcement.
+>
+> What survives, and is the rule: **do not scatter a white surface into the
+> dark register by hand.** A light surface is legitimate only as the light
+> mode's own token, selected by mode — never as a literal in a dark-mode
+> composition. Found while recovering the redesign for the People slice; the
+> stale version had been the first thing a designer was handed.
 
 **Never invent data.** A surface shows what the engine derived. If the engine
 does not know, the surface says so. Wider screens may reorganise and expose
@@ -79,8 +98,27 @@ handler actually routes somewhere. An in-place settle earns no glyph.
 
 ## 2. Colour
 
-Mode is dark. ACTIVE_MODE = 'dark' in palette.js. Light values exist in the
-palette but the shell does not ship them.
+**Two modes ship; dark is the default.** The values tabled below are the DARK
+ones — read them as the dark register, not as the only register.
+
+`ACTIVE_MODE = 'dark'` in `palette.js` is **not** what decides this for the host
+shell. `hostv2/src/theme.js` stopped consulting `ACTIVE_MODE` on 2026-09-28 and
+selects the mode bundle directly, because importing `dark` and
+`carbonNeutral.mid` by name meant flipping `ACTIVE_MODE` did nothing (text went
+near-black while surfaces stayed dark — reverted on sight 2026-09-27). The
+switch is `?theme=light` / `?theme=dark` plus one stored key (`ngw-theme`), not a
+rebuild; `setStoredTheme` drops the query parameter so the stored key stays the
+single source. A blocked or empty store reads dark.
+
+Light is a **deliberate inversion of the carbon ramp's own character**
+(`palette.js` `carbonNeutral.light`, added the same day), not an imported
+light palette — and it runs two grey tiers where dark runs one, because a
+single tier could not clear 4.5:1 on both grounds. Every token in §2 has a
+light value with its own measurement in `theme.js`.
+
+*(Corrected 2026-10-20. The previous text — "Mode is dark… Light values exist in
+the palette but the shell does not ship them" — was true when written and false
+from 2026-09-28.)*
 
 ### Ground and surface
 
