@@ -488,7 +488,7 @@ export function SectionHead({ title, note, action }) {
  */
 export function GetResponses({
   invited, outstanding, replyBy, isPast, onSetReplyBy, deadlineOpen, editor,
-  primary, secondary, more, quiet,
+  primary, secondary, more,
 }) {
   const [open, setOpen] = React.useState(false);
   const n = Number(outstanding) || 0;
@@ -521,13 +521,17 @@ export function GetResponses({
         fontSize: 'var(--t-sub)', lineHeight: 1.35, color: 'var(--ink-soft)',
       }}>{line}</p>
 
-      {/* ONE FILLED PRIMARY PER VIEWPORT. In the estimate state the attendance
-          decision already owns a filled CTA ("Plan for 40"), and this block
-          rendered a second one a few hundred pixels below it — two co-equal
-          primaries, so neither won. `muted` keeps this block's dominant action
-          dominant WITHIN its own band without competing for the page. */}
+      {/* ONE WEIGHT PER LABEL, EVERYWHERE. I tried the other rule first — a
+          `quiet` variant so the estimate state would not put a second filled
+          CTA in the same viewport as "Plan for 40" — and the next review
+          caught the cost: "Share the RSVP link" came out outlined in one state
+          and filled in another. The same words changing weight between screens
+          is a worse defect than two filled buttons in two different bands
+          doing two different jobs, because it teaches the host that weight
+          means nothing. The block owns its primary; the page's hierarchy comes
+          from the bands, not from demoting an action by context. */}
       {primary ? (
-        <button className={quiet ? 'mini pr-primary' : 'cta pr-primary'} onClick={primary.onClick}>
+        <button className="cta pr-primary" onClick={primary.onClick}>
           {primary.label}
         </button>
       ) : null}
@@ -599,7 +603,7 @@ export function GetResponses({
  * is the duplication the owner ruled out. It stays in the main column at every
  * width. Recorded rather than silently decided.
  */
-export function PeopleRail({ event, subtitle, counts, unknowns, onShowUnanswered }) {
+export function PeopleRail({ event, subtitle, counts, unknowns, needs, onShowUnanswered }) {
   const name = String((event && event.name) || '').trim();
   const rows = (counts || []).filter((r) => r && Number(r.n) > 0);
 
@@ -636,7 +640,15 @@ export function PeopleRail({ event, subtitle, counts, unknowns, onShowUnanswered
           </div>
         ) : null}
 
-        {unknowns > 0 ? (
+        {/* THE SAME COMPONENT, NOT A SUMMARY OF IT. At the rail band the
+            accounted-for / still-unknown list renders here in full rather than
+            as a count — a second, shorter telling of the same facts would be
+            exactly the duplicate truth this surface is built to avoid. */}
+        {needs ? (
+          <div className="prl-unknown">
+            <StillUnknown needs={needs} />
+          </div>
+        ) : unknowns > 0 ? (
           <div className="prl-unknown">
             <div className="of" style={{ letterSpacing: '.1em', textTransform: 'uppercase' }}>Still unknown</div>
             <div className="prl-unknown-l">

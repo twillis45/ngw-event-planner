@@ -7066,7 +7066,7 @@ button.vc-pill::after{
    rather than a decline. The state has a name — say it. */
 
 /* THE ROW: ~64px on the reference frame (130 of 1705 at 844), not 76. */
-.people-roster .grow{ min-height:64px; padding:var(--sp-2) var(--sp-3); }
+.people-roster .grow{ min-height:60px; padding:var(--sp-2) var(--sp-3); }
 .people-roster .gav{ width:44px!important; height:44px!important; }
 /* The trigger is now just the affordance, so it sizes to the circle. */
 .people-roster .grow > button[aria-expanded]{ flex:0 0 auto; margin-left:auto; }
@@ -7174,10 +7174,49 @@ button.vc-pill::after{
 .prl-act{ width:100%; margin-top:var(--sp-4); }
 
 .pr-primary{ width:100%; margin-bottom:var(--sp-3); }
-/* The image-absent plate: shorter, and the statement carries it. */
-.people-plate--noimg{ min-height:0; }
-.people-plate--noimg .people-plate-say{ padding:var(--sp-5) var(--sp-4); }
+
+/* ── THE IMAGE-ABSENT PLATE IS THE STATE MOST HOSTS SEE ────────────────────
+   No host-supplied cover media pipeline exists, so this is the DEFAULT. Two
+   wrong answers so far: at the photographic band's full height with no image
+   it was a flat near-black slab, and then shortening it only made the slab
+   smaller. Neither was composed — the band simply lost the thing that was
+   carrying it and got nothing in return.
+
+   What carries it instead: a deep tonal field with a warm light rising from
+   the lower left, the way the photograph's own candlelight does, plus a hairline
+   rule under the eyebrow so the type has a structure to sit in. It is not
+   pretending to be a photograph; it is a plate that was designed for the
+   absence of one. Measured a shade shorter than the photographic band,
+   because there is less to look at and more of the page should be useful. */
+.people-plate--noimg{ min-height:190px; }
+.people-plate--noimg::before{
+  content:''; position:absolute; inset:0;
+  background:
+    radial-gradient(120% 90% at 8% 108%, rgba(199,146,74,.20) 0%, rgba(199,146,74,0) 58%),
+    radial-gradient(90% 70% at 92% -10%, rgba(138,163,176,.14) 0%, rgba(138,163,176,0) 60%);
+}
+.people-plate--noimg .people-plate-say{
+  padding:var(--sp-6) var(--sp-4) var(--sp-5);
+}
+.people-plate--noimg .people-plate-eyebrow{
+  padding-bottom:var(--sp-3);
+  border-bottom:1px solid rgba(255,255,255,.14);
+  display:block;
+}
 @media (min-width:768px){
-  .people-plate--noimg{ min-height:0; }
+  .people-plate--noimg{ min-height:230px; }
   .people-plate--noimg .people-plate-say{ padding:var(--sp-6) var(--sp-5); max-width:38rem; }
 }
+
+/* ── THE PRE-LIST STACK HAD NO VERTICAL BUDGET ─────────────────────────────
+   Measured against the reference: it spends ~13.5% of the phone between the
+   hero and the first row and shows four people above the fold; this spent 42%
+   and showed none. The blocks are the owner's and their ORDER is the owner's —
+   what was missing was a budget. Each one keeps its voice and loses the
+   padding it had stacked on its neighbour. */
+.people-tight{ padding-top:var(--sp-3)!important; padding-bottom:var(--sp-2)!important; }
+.people-move{ padding:var(--sp-3) var(--sp-4); margin:var(--sp-4) 0; }
+.people-sechead{ margin:var(--sp-4) 0 var(--sp-2); }
+/* The gap stays at var(--sp-2) — 8px, the reference's. 6 is off the ratified
+   4px ladder and `spacingLadder` refuses it, correctly: the row felt loose
+   because of its own padding, not because of the gap. */

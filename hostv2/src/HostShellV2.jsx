@@ -24069,6 +24069,7 @@ export default function HostShellV2() {
                     try { return (accessNeedsFor(event).requirements || []).filter((r) => r && !r.who).length; }
                     catch { return 0; }
                   })()}
+                  needs={(() => { try { return accessNeedsFor(event); } catch { return null; } })()}
                   onShowUnanswered={(event.guests || []).some((g) => g && !String(g.rsvp || '').trim())
                     ? () => {
                       setRosterLens('none');
@@ -24151,9 +24152,22 @@ export default function HostShellV2() {
                       />
                     );
                   })()}
-                  <StillUnknown needs={(() => {
-                    try { return accessNeedsFor(event); } catch { return null; }
-                  })()} />
+                  {/* ── §26 · THE TRUTH BLOCKS ARE CONTEXT AT DESKTOP ───────
+                      On the phone these sit where the owner put them: under the
+                      attendance truth, above the list. At the rail band they
+                      move into the rail, and the reason is measured rather than
+                      stylistic — in the main column they pushed the first guest
+                      to 95% of a 1024px viewport while the rail's lower half
+                      sat empty, so the first desktop screen contained the whole
+                      argument and none of the people.
+                      This is a PLACEMENT, not a reorder: the owner's block
+                      order is unchanged at every width, and §26 names "compact
+                      unresolved need" as rail content in so many words. */}
+                  {peopleRailUp ? null : (
+                    <StillUnknown needs={(() => {
+                      try { return accessNeedsFor(event); } catch { return null; }
+                    })()} />
+                  )}
                 </div>
               ) : null;
               const peopleBody = (event.guests || []).length ? (
@@ -24630,7 +24644,6 @@ export default function HostShellV2() {
                         deadlineOpen={deadlineOpen}
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={deadlineOpen ? renderDeadlineEditor() : null}
-                        quiet={false}
                         primary={inviteTiers.primary}
                         secondary={inviteTiers.secondary}
                         more={inviteTiers.more}
@@ -24744,10 +24757,6 @@ export default function HostShellV2() {
                       controls below it are untouched. */}
                   {peopleMode ? (
                     <div id="guests-invites-anchor" style={{ scrollMarginTop: 12 }}>
-                      {/* `quiet`: the estimate state's own "Plan for N" is the
-                          page's filled primary, so this block stays dominant
-                          inside its own band without putting a second filled
-                          CTA in the same viewport. */}
                       <GetResponses
                         invited={0}
                         outstanding={0}
@@ -24756,7 +24765,6 @@ export default function HostShellV2() {
                         deadlineOpen={deadlineOpen}
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={deadlineOpen ? renderDeadlineEditor() : null}
-                        quiet
                         primary={_inviteActs.share}
                         secondary={[_inviteActs.qr]}
                         more={[_inviteActs.preview]}
