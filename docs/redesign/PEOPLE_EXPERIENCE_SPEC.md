@@ -24,13 +24,17 @@ People makes one argument, in one order, and every breakpoint tells the same
 story. The breakpoints change *simultaneity*, never *sequence*.
 
 ```
+H  THE HEADER          shell chrome · back · event context
 A  THE PLATE           this event, named, photographic
+J  JOURNEY ORIENTATION where I stand with my people   (justified in §J)
 B  THE ATTENDANCE      the number · whose it is · how firm
 C  THE ONE MOVE        one action · why it matters elsewhere
+K  ATTENTION           what changed · what another domain now needs
 D  THE ASK             how people get asked, and what's outstanding
 E  THE LIST            the people, searchable, filterable
 F  WHAT THEY NEED      accounted for · still unknown
 G  THE TOOLS           import, export, invite rules, counting mode
+N  NAVIGATION          how the host leaves
 ```
 
 **Why this order and not another.** The host's question on arrival is *how
@@ -50,6 +54,21 @@ beside B; it may not render D *before* B.
 
 The flagship. 390px is the design width. Everything below is specified at 390
 and must survive 320.
+
+## H · THE HEADER AND EVENT CONTEXT
+
+```
+┌────────────────────────────────────┐
+│ ‹  NGW                        ☰ 👤 │   ← shell chrome, ~51px, NOT People's
+└────────────────────────────────────┘
+```
+
+| | |
+|---|---|
+| **Owner** | The shell. People renders *inside* a sheet; it does not own the top bar, the back affordance, the menu or the account control. |
+| **People's only claim on it** | The back affordance must return the host to where she came from — one of the five measured doors (Phase A §4) — and must not lose her scroll position in the roster. |
+| **Event context** | The event's **name, date and area** are the plate's job (§A deck), not the header's. Repeating them in the header would be the same fact twice in 340px of vertical space. At desktop the aside carries them too, because there they are genuinely out of view once the host scrolls. |
+| **Forbidden** | People adding its own second header, its own back button, or a title bar that duplicates the plate's statement. |
 
 ## A · THE PLATE
 
@@ -79,6 +98,39 @@ and must survive 320.
 reachable in the first viewport at every breakpoint. On a 390×844 phone the
 plate plus the top bar must leave the attendance statement visible without a
 scroll. That is a measured constraint, not a taste.
+
+## J · JOURNEY ORIENTATION — AND WHY IT IS NOT A STEPPER
+
+The reference gives every domain a numbered stepper under the plate. **People
+does not get one, and the reason is a capability argument, not a taste one.**
+
+Place's stepper is honest because Place's stages are real and sequential: you
+cannot Compare before Discovery, and Selected is a state the data actually
+holds. People's five states (Phase A §3) are **not sequential and not
+exclusive** — a host can hold a headcount and a roster at once, can be
+"asked, waiting" and "settling" simultaneously, and can go backwards by
+reopening a locked count. A numbered 1–5 rail over that would:
+
+1. imply an order the product does not enforce,
+2. imply completion the product deliberately does not measure (the family has
+   no progress bar and no percentage — Reference §22), and
+3. make a legitimate terminal state (count-only, no roster, forever) read as
+   stalled at step 2.
+
+**What People renders instead** is orientation in a sentence, carried by the
+attendance block's own eyebrow, which already names the state:
+
+| State | Eyebrow | Reads as |
+|---|---|---|
+| Nobody yet | `WHO'S COMING` | an invitation to start |
+| A number | `PLAN AROUND` / `THE NUMBER YOU SET` | a figure to work from |
+| Asked, waiting | `WHO'S COMING` + the balance | work outstanding |
+| Settling | `WHO'S COMING` + the balance shrinking | nearly done |
+
+**This is justified, not skipped.** If the owner wants the stepper drawn for
+family consistency, that is a legitimate call and it is listed as an open
+decision — but it should be made knowing it draws a sequence the runtime does
+not have.
 
 ## B · THE ATTENDANCE
 
@@ -159,6 +211,49 @@ this block is where its loss becomes visible to a host.
 | CTA | Rendered **only** when `resolveRoute` lands somewhere that is not `guests`. A button linking to where the host already is is worse than no button. |
 | If the top move belongs elsewhere | People shows **no competing primary**. The attendance block states truth; the board keeps the move. |
 | One, not three | The ladder's premise is singularity. |
+
+## K · ATTENTION AND CONSEQUENCE SURFACES
+
+Two different things, and conflating them is how a domain turns into a second
+to-do list.
+
+### K1 · Attention — something here needs the host
+
+```
+⚠  Two people replied yes after you locked the count.
+   The number you set is 75; replies now total 78.          [ Review → ]
+```
+
+| | |
+|---|---|
+| Source | `nudgeFor('guests')` and any `eventPlan()` raise with `domain === 'guests'` that is a *worry* rather than an *action* |
+| Position | Directly under the One Move, because it is the same altitude of concern |
+| Gating | Reply-shaped attention is gated on `showsReplyTracking(event)` |
+| Dismissal | A dismissed nudge stays dismissed (`contextNudges`), across reloads |
+| Forbidden | A permanent "attention" panel that is empty most of the time. **No raise, no block.** |
+
+### K2 · Consequence — something here changed somewhere else
+
+```
+✦  This changes your plan
+   🍽  Food & Drink    52 confirmed covers, not 75
+   🪑  Experience      Seating capacity can now be planned
+   ✈   Travel          2 guests need step-free lodging
+```
+
+| | |
+|---|---|
+| Source | Only effects the engine actually produces — the GOLD-07 reply cascade (food, shopping, seating, money, re-rank), and `accessNeedsFor` → lodging |
+| Register | **Unlocks, not chores.** *"can now be planned"*, matching the reference's own idiom |
+| Position | After the list, before needs — the host has just seen the people whose replies caused it |
+| Rule | **People explains; it never re-decides.** No control here changes another domain's answer. |
+| Rule | **No consequence is claimed that the engine does not produce.** An unowned access need reaches **lodging only**; the copy may not imply seating. |
+| Empty | The block is **absent**. There is no "nothing has changed" card. |
+
+**Why K2 is not merged into K1.** Attention is work the host still owes;
+consequence is value the host has already earned. Rendering them in one list
+would make an unlock look like a chore, which is precisely the inversion the
+reference's language is built to avoid.
 
 ## D · THE ASK
 
@@ -339,13 +434,41 @@ One labelled fold, closed by default, containing everything configurational:
 | Import history | Device-local, outside the event blob, outside undo. The copy says *latest batch only* because that is what `undoLastImportBatch` does. |
 | Label | *"How the invite looks, and your list."* Not *"Invite look, rules and list tools"* — hosts do not have teams and do not run tools. |
 
+## N · NAVIGATION — HOW THE HOST LEAVES
+
+**People does not own navigation, and this spec does not change it.**
+
+| | |
+|---|---|
+| **Current** | Host V2 ships **Nav B**, the owner-ruled mobile navigation authority. The retired dock stays retired. |
+| **The reference** | Puts a persistent bottom tab bar on mobile and tablet — `Home · Plan · Chat · Progress · More`, or `Event · Place · People · More` — with People as a destination. |
+| **The assignment** | *"Do not blindly copy navigation from a concept if it conflicts with current Host architecture. Reconcile it."* |
+| **The reconciliation** | **Adopting a bottom bar is a shell decision, taken once for every domain. People does not introduce one for itself.** A bottom bar that exists only on the People sheet would be a second navigation system, reachable from one domain — worse than either option. |
+| **What People does require** | That it is reachable as a first-class destination from whatever Nav B exposes. It already is (Phase B #61 — five routes, one door). |
+| **Open for the owner** | Whether the shell adopts a bottom bar at all. It is listed as a decision, not assumed, and it is explicitly **out of this slice's scope**. |
+
+## EDIT STATES — THE FULL SET
+
+Specified once here because they recur in every block.
+
+| State | Treatment | Rule |
+|---|---|---|
+| **Read** | The default. Values render as text, not as filled inputs. | A screen of input boxes reads as a form; People is not a form. |
+| **Editing** | The field becomes an input in place, labelled. | No modal. No separate edit mode for the whole surface. |
+| **Written** | A toast confirms, carrying **Undo** where the write is undoable. | **No optimistic UI.** Nothing claims a write landed that has not. |
+| **Written, not undoable** | The toast says so, or the field says so. | Today this set is an accident of which call sites pass a message (Phase B §6.1). This spec requires it become a ruling. |
+| **Invalid** | Flagged beside the field; **never blocking**. | A malformed email is worth saying and not worth refusing — a host mid-typing is not an error. |
+| **Destructive** | Its own register, separated from the field set, never adjacent to a primary. | Removing a person is undoable and the undo restores the row's reply, meal, children, contact and group. |
+| **Derived** | Rendered as the product's guess, with the offer to adopt it. | `rsvpDeadlineFor().source === 'derived'` is never spoken as a date she set; nothing is written until she taps. |
+| **Not ours** | An incoming guest reply. | Lands with `{noUndo:true}`. The host may change it; the product must not present that as correcting the guest. |
+
 ## MOBILE — ORDER OF COMPLETION
 
 | Viewport | What is visible without scrolling at 390×844 |
 |---|---|
 | 1 | Plate (≈288px) + the attendance eyebrow and figure |
 | 2 | The rest of the attendance block + the One Move |
-| 3 | The ask block |
+| 3 | Attention/consequence if present, then the ask block |
 | 4+ | The list, then needs, then tools |
 
 **This is the acceptance criterion for mobile composition.** If the attendance
@@ -379,6 +502,7 @@ column is comfortable. The width is better spent making the single column
 | A · Plate | Grows to ~265px of photograph; the statement may move to an overlaid left third | At this width the photograph is finally wide enough that an overlay has somewhere to sit without crossing the subject. The reference's own tablet frames do exactly this. |
 | B · Attendance | Figure and statement sit **side by side** rather than stacked | The figure is a display-register number; at 390px it needs its own line, at 768px it does not, and recovering that vertical space moves the One Move up a viewport. |
 | C · One Move | CTA moves to the right of the band instead of under it | Same recovery. The reference's band is always horizontal where width allows. |
+| K · Attention / consequence | Consequence rows go two-up | Each row is a domain icon, a name and one clause — at 768px two fit comfortably and the block stops being a tall stack of short lines. |
 | D · Ask | Secondary row and the fold's contents can share a line | — |
 | E · Row | Party and need lines **merge onto one line** separated by `·` | The row's facts finally fit. This is the first thing extra width should buy, because it makes the list scannable rather than tall. |
 | E3 · Detail | **Still inline.** No rail. | Below 1280 there is not enough width for a 340px rail plus a usable list. Hoisting the detail here would leave a ~400px list column — worse than the accordion. |
@@ -425,10 +549,11 @@ comparisons and detailed information."*
 │                              │                           │
 │  B  attendance               │  ┌─── AT A GLANCE ─────┐  │
 │  C  one move                 │  │ Wanda's 50th        │  │
-│  D  ask                      │  │ Feb 22 · Maryland   │  │
-│  E  list                     │  │                     │  │
-│  F  needs                    │  │ Invited        75   │  │
-│  G  tools                    │  │ Said yes       52   │  │
+│  K  attention / consequence  │  │ Feb 22 · Maryland   │  │
+│  D  ask                      │  │                     │  │
+│  E  list                     │  │ Invited        75   │  │
+│  F  needs                    │  │ Said yes       52   │  │
+│  G  tools                    │  │                     │  │
 │                              │  │ Haven't replied 23  │  │
 │                              │  │ Children        6   │  │
 │                              │  │                     │  │
@@ -490,12 +615,31 @@ A refinement, not a new breakpoint — adding an enum value would break every
 never shows a dark body, so dark-mode evidence cannot settle a composition
 argument.
 
-**🔴 Unresolved:** the reference's action accent in dark theme is brass/amber
-(`≈#E8C07A`); the owner's standing decision is steel blue `#4c6675`, with the
-`palette.js` ban on `#f0bc44` / `#e08c38` in force. Three palette variants exist
-as a review instrument (A production, B the reference's own brass, C steel on a
-warm neutral field); all three measured AA-clean in both themes from the live
-DOM. **This spec does not choose. It is an owner decision.**
+### The accent — resolved by supersession, flagged for confirmation
+
+The calibration-slice assignment's own visual authority (§5, §7) names *"warm
+ivory working surfaces in light mode"* and *"restrained brass / warm gold
+accents"* in both modes. That is a later, more specific owner statement than the
+2026-10-20 decisions it contradicts (*"steel blue `#4c6675` is the identity
+accent"*, *"do not force warm ivory light surfaces"*).
+
+**This spec is written to the newer instruction**, which makes the three palette
+variants an answer rather than a question:
+
+| Variant | URL | What it is | Status under the newer instruction |
+|---|---|---|---|
+| A | *(no flag)* | production steel on production neutrals | superseded |
+| **B** | `?palette=warm` | **brass / ivory — the reference's own** | **the described direction** |
+| C | `?palette=warmsteel` | production steel on a warm neutral field | the fallback if the earlier steel decision is reaffirmed |
+
+All three measured AA-clean in both themes from the live DOM, so this is a
+product decision and not a contrast one. **Flagged rather than applied silently**
+— flipping an accent system on an inference is exactly the kind of thing that
+should be said out loud, and the owner should confirm it was meant.
+
+The `palette.js` ban on `#f0bc44` / `#e08c38` exists to prevent a **second**
+decorative accent system, and that purpose survives intact: brass as *the*
+accent is one system; brass *plus* steel would be two, and remains forbidden.
 
 ## Motion
 
@@ -552,4 +696,88 @@ Ordered so that nothing is built on top of a known lie.
 | 7 | Conform the existing surface to Parts One–Three | The composition work this spec describes. |
 | 8 | Tablet layout (640–1279) | The band that has never had one — **after** the shell clipping defect is fixed, not around it. |
 | 9 | Convert the six WIRED capabilities to PROVEN | Browser tests, not arguments: the `lockcount` raise, the desktop rail, the live reply round trip, the seating drag. |
-| — | **Not in this slice** | The media pipeline (G11), the `accessNeedsFor` dedupe (G7, engine), a host writer for structured diet tags (G3), `headsFor` adoption (G8), `partyNotes` (G9), the shell's tablet clipping, any retirement of any door. |
+| — | **Not in this slice** | The media pipeline (G11), the `accessNeedsFor` dedupe (G7, engine), a host writer for structured diet tags (G3), `headsFor` adoption (G8), `partyNotes` (G9), the shell's tablet clipping, bottom navigation (a shell decision), any retirement of any door. |
+
+## Files expected to change
+
+| File | Why | Risk |
+|---|---|---|
+| `hostv2/src/PeopleSurface.jsx` | The composed zones — attendance, needs, One Move, ask, rail | Low; it is the redesign's own module |
+| `hostv2/src/HostShellV2.jsx` | The guests sheet body, the roster row, the guest detail, the `peopleMode` switches | **Highest.** ~24.7k lines, frozen-adjacent, and the file where the one crash happened |
+| `hostv2/src/styles.css` | The `people-*` blocks | Low; gated by `classNameHasRule`, `spacingLadder`, `nothingIsBelowTheFloor` |
+| `src/lib/guestCountFor.js` | Nothing — **read only** | — |
+| `hostv2/src/HostShellV2.jsx` (`writeGuest`, `removeGuest`, `applyCsv`, `undoLastCsvImport`, `announceReplies`) | **G2** — stop recomputing `kidsCount` over a host-stated figure | **High.** Five call sites, and the food engine consumes the result |
+| `hostv2/src/HostShellV2.jsx` (guest detail) | **G1** — a name field through the existing `writeGuest` | Low |
+| `hostv2/src/parity/MANIFEST.md` | A row per new atom | Low; `check-parity.mjs` enforces it |
+| `hostv2/e2e/*.spec.mjs` | New and extended browser tests | — |
+| `src/lib/__tests__/*.test.js` | Source-level ratchets | — |
+
+**Not expected to change, and a diff touching them is a scope breach:**
+`src/App.js` (frozen donor) · `hostv2/src/InviteV2.jsx` · `hostv2/src/main.jsx`
+· `src/CommandCenter.jsx` · `src/lib/accessNeeds.js` · `src/lib/playbooks/` ·
+`src/lib/confirmedCovers.js` · `src/lib/guestMerge.js` · anything under
+`src/lib/` that is a canonical reader.
+
+## Tests that will prove parity
+
+| # | Test | Proves |
+|---|---|---|
+| 1 | `theBaselineOutlivesTheRedesign` — existing, extended | `?people=1` is opt-in; every structural switch carries the flag; legacy markers survive |
+| 2 | Negative control at every breakpoint | Without the flag, the pre-redesign surface renders unchanged |
+| 3 | **`theKidsCountSurvivesTheNextWrite`** — new | **G2.** State a headcount kids figure, add one roster name, assert the figure holds and the protein engine did not resize |
+| 4 | **`aTypoIsNotAReason toDeleteAPerson`** — new | **G1.** Editing a name preserves reply, meal, children, contact and group |
+| 5 | `twoEventsDifferingOnlyInProvenance` | The substituted and host-given numbers render visibly differently, and the substituted one never renders as confirmed |
+| 6 | `aDerivedReplyByIsNeverSpokenAsADateSheSet` — existing | The 2026-07-14 defect stays fixed |
+| 7 | `confirmedMeansRepliedOnlyOnRsvpBasis` | The one-field-two-meanings defect cannot return |
+| 8 | `allSevenInviteActionsSurvive` — existing | Nothing was lost to the fold |
+| 9 | `theAdminTailIsSubordinatedNotRemoved` — existing | Subordination ≠ retirement |
+| 10 | `selectingAGuestDoesNotBlankTheSurface` — existing | The ReferenceError class of crash |
+| 11 | `theUnownedNeedNamesNobody` — existing | Neither roster name appears in the needs block |
+| 12 | `everyLensCountMatchesItsFilteredLength` | The toolbar cannot promise rows the search removed |
+| 13 | `aRowIsNotACover` / `catererDriftCountsCovers` — existing | Rows never stand in for plates |
+| 14 | `countingChipsReadOneField` — new | **G10.** Both chips derive `aria-pressed` from `guestPlanningMode` |
+| 15 | `headcountIsReachableOnARosterEvent` — new | **G6** |
+| 16 | `theNoticeReachesThePeopleSurface` — new | **G4.** `guestCountNotice()`'s text renders where the host can see it |
+| 17 | `check-parity.mjs` | No new atom without a manifest row |
+| 18 | `classNameHasRule` · `spacingLadder` · `nothingIsBelowTheFloor` | CSS ratchets; none baselined |
+| 19 | Adversarial roster fixtures (150 rows, 1-char and 80-char names, no contacts) | Exception states (Phase A §10) |
+| 20 | The six **WIRED** conversions | The `lockcount` raise, the desktop rail, the live reply round trip, the seating drag |
+
+---
+
+# PART SIX — EVIDENCE ARTIFACTS ON DISK
+
+Review-only and gitignored (`/review-artifacts/`). Captured from the running
+surface at HEAD, not drawn.
+
+### `review-artifacts/2026-10-20_people_baseline_vs_redesign/` — 24 frames
+
+The comparison that matters: **the same URL, one flag apart.** Two data states
+(`sparse`, `populated`) × three widths (390, 834, 1440) × two themes × baseline
+and redesigned. This is the set that proves `?people=1` is genuinely opt-in and
+the pre-redesign baseline is genuinely still runnable.
+
+### `review-artifacts/2026-10-20_people_art_direction/` — 25 frames + 2 JSON
+
+| Set | What it shows |
+|---|---|
+| `A1`–`A5` | The reply/RSVP path open, its body, its actions, light, and at 430px |
+| `B1`–`B2` | The estimate state — the provenance case — both themes |
+| `C1`–`C3` | A 75-guest roster, both themes, plus the surface's foot |
+| `E1`–`E2` | **The image-absent plate**, both themes — the production case, since `coverImageUrl` has no writer |
+| `F1`–`F2` | Desktop, nothing selected, both themes |
+| `G1` | Desktop with a guest selected — the frame that caught the ReferenceError crash |
+| `H1` | Desktop at 150 guests — the adversarial roster |
+| `J-A` / `J-B` / `J-C` | The three palette variants, both themes — the instrument for the accent decision |
+| `M0` | **Tablet, flag OFF** — the control frame proving the clipping is the shell's, not People's |
+| `M1`–`M2` | Tablet with the flag on |
+| `_tok-*` | Token swatches per variant per theme |
+| `tokens.json` | Every text token's measured contrast, both themes, all three variants |
+| `interaction.json` | The `PEOPLE_QA=1` diagnostic pass |
+
+### Wireframes
+
+The ASCII compositions in Parts One–Three of this document **are** the
+wireframes. They are deliberately not drawn as images: a drawn wireframe invites
+pixel arguments about a composition whose job here is to fix *order and
+grammar*, and the rendered frames above already carry the pixels.

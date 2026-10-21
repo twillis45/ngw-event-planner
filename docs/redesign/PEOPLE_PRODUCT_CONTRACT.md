@@ -42,7 +42,7 @@ People has failed — regardless of how it looks — if the host would say any o
 - *"It told me someone needs a walker. Who?"*
 - *"I typed the name wrong and now I have to delete the whole person."*
 
-Three of those five are measured defects at HEAD (§17).
+Three of those five are measured defects at HEAD (§20).
 
 ---
 
@@ -64,7 +64,7 @@ Ranked by how often the measured engine is asked for them.
 | J10 | *"What should I do next?"* | Always | Exactly one move, with its consequence |
 
 **J8 is partially unserved at HEAD**: a guest's *name* cannot be edited
-(§17 G1). **J5's children path is actively lossy** (§17 G2).
+(§20 G1). **J5's children path is actively lossy** (§20 G2).
 
 ---
 
@@ -197,7 +197,7 @@ one."*
    There is no silent promotion.
 4. `guestCountNotice()` — the sentence written for exactly this — **must be
    rendered on the People surface.** At HEAD it is computed and discarded there,
-   and only the vendor draft sheet renders it (§17 G4).
+   and only the vendor draft sheet renders it (§20 G4).
 
 ---
 
@@ -284,7 +284,7 @@ you cannot identify.
    sentences.
 5. Dietary needs are free text per guest *and* structured allergen/diet tags.
    **The structured tags have no host writer at HEAD** — they arrive only from
-   the guest's own reply or a CSV import (§17 G3).
+   the guest's own reply or a CSV import (§20 G3).
 
 ---
 
@@ -300,11 +300,11 @@ States the surface must hold without breaking or lying.
 | Every guest has replied | The balance is zero; the chase block becomes a settled statement, not an empty card |
 | Nobody has been invited yet | The ask is the dominant action; the balance is not framed as people ignoring her |
 | A count-only event with no roster | The roster block is absent; the attendance block is the whole surface |
-| A roster event counting by headcount | **Currently unreachable** — the stepper is hidden and "Use a different number" is suppressed (§17 G6) |
+| A roster event counting by headcount | **Currently unreachable** — the stepper is hidden and "Use a different number" is suppressed (§20 G6) |
 | A CSV with malformed rows | The preview states what read cleanly, what is new, what is a duplicate, *before* anything is written |
 | The reply backend is unreachable | The share toast downgrades honestly; replies queue locally and merge on next read |
 | A legacy event with no `guestCountSource` | Treated as hers, deliberately, per §6 |
-| Two needs of the same kind from two sources | **Currently double-counts in lodging** (§17 G7) |
+| Two needs of the same kind from two sources | **Currently double-counts in lodging** (§20 G7) |
 
 ---
 
@@ -438,7 +438,73 @@ comparisons and detailed information."*
 
 ---
 
-## 17 · KNOWN CAPABILITY GAPS
+## 17 · LIGHT THEME
+
+Light is not the secondary mode. The reference family's operational field is
+**warm ivory in every light frame**, and the assignment's own visual authority
+names *"warm ivory working surfaces in light mode"* and *"restrained brass /
+warm gold accents."*
+
+| Surface | Rule |
+|---|---|
+| **The plate** | **Dark, even in light mode.** It is a photographic surface with its own luminance regime, and nine reference frames in both themes are unanimous. It is not "the hero in dark mode". |
+| **The operational field** | Warm ivory / paper-like. This is the plane the work happens on. |
+| **The surface ladder** | page → panel → card must get **lighter**, step by step. This was inverted once: the content panel computed darker than the page behind it, and on a phone the panel and the sheet were both pure white, so the operational field had no plane at all. |
+| **Text and actions** | Near-black. The dominant action is a near-black filled button, not a coloured one. |
+| **Accent** | Restrained brass / warm gold, used for state and emphasis — never as a second decorative system, never as a gradient, never as "AI styling". |
+| **Borders** | Thin, warm, low-opacity. Separators are quiet. Shadows are not a hierarchy device. |
+
+**Light mode is the mode to judge composition against the reference sheets**,
+because the family never shows a dark body. Most prior People evidence was
+captured dark, which is the one mode the reference cannot settle.
+
+**🔴 This section records a superseded decision — see Appendix B.**
+
+---
+
+## 18 · DARK THEME
+
+Dark is the same product, not a second one. One tokenized system; both modes
+derive from the same tokens.
+
+| Surface | Rule |
+|---|---|
+| **The plate** | Dark — unchanged from light mode. This is the one element that does not move between themes. |
+| **The operational field** | Near-black / charcoal foundation, with warm-tinted panels above it. |
+| **The surface ladder** | page → panel → card gets **lighter**, same direction as light mode, from a darker floor. |
+| **Photographic highlights** | Controlled. The photograph is the brightest thing on the screen and nothing competes with it. |
+| **Accent** | Restrained gold / brass. |
+| **Contrast** | AA on every text token, measured from the live DOM, not estimated from hex values. |
+| **Forbidden** | Glow, neon, cyberpunk saturation, gradient "intelligence" styling. |
+
+**The theme switch changes the field, never the plate, and never the
+information.** No capability, figure, provenance line or control appears in one
+theme and not the other.
+
+---
+
+## 19 · EMPTY STATES
+
+Every one of these is a legitimate state of a well-run event, not a failure.
+
+| State | What leads | What must not happen |
+|---|---|---|
+| No roster, no count | The ask: *tell us roughly how many* | A zero. A "0 guests" figure. An error register. |
+| A count, no names | The number and whose it is | Framing the absent list as incomplete work |
+| Names, nobody asked | The invite route | *"0 replies"* as though people are ignoring her |
+| Asked, nobody replied yet | The balance, with the reply-by if she set one | A derived date spoken as hers |
+| All replied | A settled statement | An empty chase card |
+| No access needs | **Nothing.** The block is absent | A "no needs" card, which is a zero-card |
+| Filter empties the list | *"Show everyone"*, as a control | A dead end |
+| No contactable quiet guests | One grounding line explaining why no contact actions appear | Disabled-looking buttons |
+
+**Contract:** an empty state is a sentence, not a card. The reference's own
+"Still unknown" column proves the register: calm, named, co-equal with what is
+known.
+
+---
+
+## 20 · KNOWN CAPABILITY GAPS
 
 Measured at HEAD. Each is named, with its evidence, and none is to be papered
 over by the redesign.
@@ -465,7 +531,7 @@ rebuilding a surface on top of silent data loss makes the loss harder to see.
 
 ---
 
-## 18 · EXPLICIT NON-GOALS
+## 21 · EXPLICIT NON-GOALS
 
 People is **not**, and this redesign will not make it:
 
@@ -484,7 +550,7 @@ People is **not**, and this redesign will not make it:
 
 ---
 
-## 19 · ACCESSIBILITY EXPECTATIONS
+## 22 · ACCESSIBILITY EXPECTATIONS
 
 1. **Every control is reachable and operable by keyboard**, with a visible focus
    ring. (The row's name button shipped with `outline:none; box-shadow:none` and
@@ -504,62 +570,6 @@ People is **not**, and this redesign will not make it:
 9. **Motion respects `prefers-reduced-motion`.**
 10. **A list that filters to empty announces the recovery route**, and the
     recovery route is a control, not prose.
-
----
-
-## 20 · EMPTY STATES
-
-Every one of these is a legitimate state of a well-run event, not a failure.
-
-| State | What leads | What must not happen |
-|---|---|---|
-| No roster, no count | The ask: *tell us roughly how many* | A zero. A "0 guests" figure. An error register. |
-| A count, no names | The number and whose it is | Framing the absent list as incomplete work |
-| Names, nobody asked | The invite route | *"0 replies"* as though people are ignoring her |
-| Asked, nobody replied yet | The balance, with the reply-by if she set one | A derived date spoken as hers |
-| All replied | A settled statement | An empty chase card |
-| No access needs | **Nothing.** The block is absent | A "no needs" card, which is a zero-card |
-| Filter empties the list | *"Show everyone"*, as a control | A dead end |
-| No contactable quiet guests | One grounding line explaining why no contact actions appear | Disabled-looking buttons |
-
-**Contract:** an empty state is a sentence, not a card. The reference's own
-"Still unknown" column proves the register: calm, named, co-equal with what is
-known.
-
----
-
-## 21 · THE VOCABULARY, AND WHAT IT FORBIDS
-
-| Say | Never say | Because |
-|---|---|---|
-| *N have said yes* | *N confirmed* on a `count`-basis event | §5 |
-| *The number you set* | *Confirmed* | §5 |
-| *We'd expect N on the day* | *N are coming* | §6 |
-| *We filled that in from what this kind of event usually runs* | *Estimated* (a system word) | §6 |
-| *Who's coming* | *Attendees* / *invitees* | planner language |
-| *Hasn't answered yet* | *Non-responder* / *pending* | §8 |
-| *Who they're bringing* | *Plus-one count* | §7 |
-| *Someone needs step-free access — we won't guess who* | *Unassigned requirement* | §9 |
-| *Send the link* | *Send invitations* (we don't send) | §8.5 |
-
-**Hosts do not have teams.** "Team" in this product is the vendor domain —
-photographer, DJ, caterer. It is not the host's people and People must never
-borrow Vendors' language for guests.
-
----
-
-## 22 · THE DOCUMENT THIS SUPERSEDES
-
-`docs/architecture/redesign/PEOPLE_ATTENDANCE_PRODUCT_CONTRACT.md` was written
-2026-10-20 at the start of the authorized slice and says, on line 3, *"No JSX
-written yet, by instruction."* It classifies **A3 (count provenance on screen)**
-and **D2 (known need, unknown owner)** as ENGINE ONLY with "none" as the door.
-
-**Both now have doors** — `AttendanceDecision` and `StillUnknown`, behind
-`?people=1`. That document is stale at HEAD. It is not deleted, because its
-reasoning about vocabulary, covers-versus-rows and reply landing is sound and
-still cited here. **Where it disagrees with the code, the code is right.** This
-contract is the current one.
 
 ---
 
@@ -585,12 +595,12 @@ and they are:
 - [x] Consequences announce, they do not re-decide (§12).
 - [x] One write path; undo coverage measured and its gaps named (§13).
 - [x] Behaviour is specified per breakpoint, mobile first (§§14–16).
-- [x] Twelve capability gaps are named with evidence and severity (§17).
-- [x] Non-goals are explicit (§18).
-- [x] Accessibility expectations are testable, not aspirational (§19).
-- [x] Every empty state is a sentence and none is a zero-card (§20).
-- [x] The vocabulary is fixed and its forbidden forms listed (§21).
-- [x] The stale predecessor is identified (§22).
+- [x] Twelve capability gaps are named with evidence and severity (§20).
+- [x] Non-goals are explicit (§21).
+- [x] Accessibility expectations are testable, not aspirational (§22).
+- [x] Every empty state is a sentence and none is a zero-card (§19).
+- [x] The vocabulary is fixed and its forbidden forms listed (Appendix A).
+- [x] The stale predecessor is identified (Appendix B).
 
 ### 23.2 · 🔴 WHAT THIS CONTRACT CANNOT CLAIM — AND THE OWNER MUST RULE ON
 
@@ -610,7 +620,7 @@ glossed:
 > the first written specification of work that is **already 19 commits old**,
 > measured against what that work actually does. Where the implementation
 > already satisfies a clause, the clause is a *ratchet*. Where it does not
-> (§17), the clause is a *defect list*.
+> (§20), the clause is a *defect list*.
 
 Which of those two framings the owner wants is a decision only the owner can
 make, and it changes what the implementation slice is:
@@ -621,10 +631,16 @@ make, and it changes what the implementation slice is:
 | **The 19 commits are a prototype** | Reset to `132af4f` and rebuild to the spec, losing 19 commits of measured, tested work and the three regressions the parity loop already caught |
 | **Hold** | Nothing proceeds; the surface stays flag-gated and the baseline stays runnable, which it already is |
 
-**3. The brass-versus-steel accent conflict is unresolved** (Experience
-Reference §10 item 1). The reference's own action accent is brass/amber; the
-owner's standing decision is steel blue `#4c6675`. Three palette variants exist
-as a review instrument. **This is an owner decision and is not taken here.**
+**3. The brass-versus-steel accent conflict is now RESOLVED BY SUPERSESSION,
+and the owner should confirm that is what was meant.** The calibration-slice
+assignment's own visual authority (§5, §7) names *"warm ivory working surfaces
+in light mode"* and *"restrained brass / warm gold accents"* in both modes. That
+is a **later and more specific** owner statement than the 2026-10-20 decisions
+it contradicts (*"steel blue `#4c6675` is the identity accent"*, *"do not force
+warm ivory light surfaces"*). §§17–18 and Appendix B are written to the newer
+instruction. **Flagged rather than applied silently**, because flipping an
+accent system on an inference is exactly the kind of thing that should be said
+out loud.
 
 **4. The tablet clipping defect belongs to the app shell**, not to People, and
 fixing it is outside this slice's scope (§15.4).
@@ -632,3 +648,72 @@ fixing it is outside this slice's scope (§15.4).
 **5. `event.coverImageUrl` has no writer.** Host-supplied cover media is a
 product requirement; the media pipeline is explicitly not authorized. Until it
 is, the plate's photograph is a visibly-labelled review fixture or nothing.
+
+**6. Bottom navigation is a reconciliation, not a copy.** The reference puts a
+persistent bottom tab bar on mobile and tablet, with People as a destination.
+Host V2 ships Nav B, which the owner ruled is the mobile navigation authority
+and which does not have one. The assignment says to reconcile rather than copy.
+**People does not get to change the shell's navigation**, so the contract is:
+People is reachable as a first-class destination from whatever Nav B exposes,
+and adopting a bottom bar is a shell decision taken once for every domain — not
+something People introduces for itself.
+
+---
+
+## APPENDIX A · THE VOCABULARY, AND WHAT IT FORBIDS
+
+| Say | Never say | Because |
+|---|---|---|
+| *N have said yes* | *N confirmed* on a `count`-basis event | §5 |
+| *The number you set* | *Confirmed* | §5 |
+| *We'd expect N on the day* | *N are coming* | §6 |
+| *We filled that in from what this kind of event usually runs* | *Estimated* (a system word) | §6 |
+| *Who's coming* | *Attendees* / *invitees* | planner language |
+| *Hasn't answered yet* | *Non-responder* / *pending* | §8 |
+| *Who they're bringing* | *Plus-one count* | §7 |
+| *Someone needs step-free access — we won't guess who* | *Unassigned requirement* | §9 |
+| *Send the link* | *Send invitations* (we don't send) | §8.5 |
+
+**Hosts do not have teams.** "Team" in this product is the vendor domain —
+photographer, DJ, caterer. It is not the host's people and People must never
+borrow Vendors' language for guests.
+
+---
+
+## APPENDIX B · SUPERSEDED DOCUMENTS AND DECISIONS
+
+### B1 · Two colour decisions, superseded by the calibration-slice assignment
+
+| Superseded decision | Dated | Replaced by | Status |
+|---|---|---|---|
+| *"Steel blue `#4c6675` is the identity accent. The `palette.js` ban on `#f0bc44` / `#e08c38` stands. No second decorative accent system."* | 2026-10-20 | Calibration-slice assignment §5 and §7: *"restrained brass / warm gold accents"*, *"restrained gold/brass"* | **Superseded — flagged for confirmation** (§23.2 item 3) |
+| *"Do not force warm ivory light surfaces."* / *"warmer light neutral is the preferred direction… do not change production doctrine until the evidence is complete"* | 2026-10-20 | Calibration-slice assignment §5 and §7: *"warm ivory working surfaces in light mode"*, *"warm ivory / paper-like work surfaces"* | **Superseded — flagged for confirmation** |
+
+**What this changes in practice.** The three palette variants built as a review
+instrument stop being a question and become an answer: Variant B — the
+reference's own brass on ivory — is the direction the newer instruction
+describes. Variant C (production steel on a warm neutral field) becomes the
+fallback if the owner confirms the earlier steel decision instead. All three
+measured AA-clean in both themes from the live DOM, so the choice is a product
+decision, not a contrast one.
+
+**What it does not change.** The `palette.js` ban exists to stop a *second
+decorative accent system*, and that purpose survives intact. Brass as **the**
+accent is one system; brass *plus* steel would be two, and that remains
+forbidden either way.
+
+### B2 · The predecessor contract
+
+`docs/architecture/redesign/PEOPLE_ATTENDANCE_PRODUCT_CONTRACT.md` was written
+2026-10-20 at the start of the authorized slice and says, on line 3, *"No JSX
+written yet, by instruction."* It classifies **A3 (count provenance on screen)**
+and **D2 (known need, unknown owner)** as ENGINE ONLY with "none" as the door.
+
+**Both now have doors** — `AttendanceDecision` and `StillUnknown`, behind
+`?people=1`. That document is stale at HEAD. It is not deleted, because its
+reasoning about vocabulary, covers-versus-rows and reply landing is sound and
+still cited here. **Where it disagrees with the code, the code is right.** This
+contract is the current one.
+
+---
+

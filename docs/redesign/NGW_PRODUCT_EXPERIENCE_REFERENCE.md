@@ -11,6 +11,28 @@ is split into **INVARIANT** (holds across the family and is therefore a rule),
 **VARIANT** (the family does it more than one way, so the choice is open), and
 **ACCIDENT** (appears once or twice and carries no authority).
 
+### Required records — where each one lives
+
+| Record | § |
+|---|---|
+| Product thesis | 1 |
+| Creation journey | 12 |
+| Your Event role | 8, 13 |
+| Domain-journey pattern | 3 |
+| One Move pattern | 4 |
+| Reasoning pattern | 14 |
+| Decision / consequence pattern | 5 |
+| Photography rules | 15 |
+| Typography hierarchy | 16 |
+| Colour / material rules | 17 |
+| Light / dark relationship | 2, 17 |
+| Responsive principles | 18 |
+| Navigation principles | 19 |
+| Density principles | 20 |
+| Action hierarchy | 21 |
+| Anti-patterns | 22 |
+| Precedence rules | 23 |
+
 ---
 
 ## 0 · THE CORPUS, STATED EXACTLY
@@ -430,3 +452,416 @@ Recorded, not resolved. Resolving any of these is an owner decision.
 Visual acceptance of a People surface against this family is acceptance of
 *family resemblance*, never of parity, until a People sheet exists. That
 distinction belongs in every report that scores People against these images.
+
+---
+
+## 12 · THE CREATION JOURNEY
+
+Five sheets render it (1, 3, 4, 6, 7), in both themes, at every breakpoint. It
+is the most heavily repeated thing in the whole family, which is how you know it
+is the product's spine rather than one exploration.
+
+```
+CREATE → UNDERSTAND → CLARIFY → REVEAL / INITIAL PLAN → YOUR EVENT
+```
+
+### 12.1 · CREATE is natural-language first
+
+**INVARIANT — the primary input is a paragraph, not a form.** Every single
+Create frame leads with *"Tell me about your event"* and a free-text area
+pre-filled with prose the way a person would actually say it:
+
+> *"Wanda's 50th birthday and 30-year Army retirement, about 75 guests in the
+> Maryland/DC area, black and gold, formal Army recognition followed by a
+> celebration, food, bar, DJ and photography, budget $5,000."*
+
+**INVARIANT — the deck gives permission**: *"Share it however you'd describe it
+to a friend. You don't need to know all the details yet."* The product's first
+sentence to a new host removes a precondition rather than imposing one.
+
+**INVARIANT — structured entry is a fallback, and is visibly subordinate.**
+It appears as *"Or enter the details yourself"* / *"I'd rather enter the details
+myself"* — a quiet text link under the primary button, never a peer tab.
+
+**INVARIANT — the supporting affordances are three and only three**: a filled
+primary (*Build my event →*), an attach control (*Add a file or inspiration*),
+and a microphone. Plus a row of event-type chips (Birthday · Wedding ·
+Retirement · Reunion · Cookout · Something else) which **seed** the paragraph
+rather than replacing it.
+
+**ACCIDENT — the chip list's exact membership.** It differs between sheets
+(`Corporate` appears in sheet 4, `Cookout` in sheets 1 and 7). The count and the
+*Something else* escape hatch are the invariants.
+
+### 12.2 · UNDERSTAND shows its work
+
+**INVARIANT — four things are distinguished, and the distinction is the
+feature:**
+
+| | How it renders |
+|---|---|
+| What NGW understood | the `Your event` fact list — event type, date, guests, location, budget, style, summary |
+| What is still unknown | the `Still unknown` column, hollow icons, named in plain language |
+| What the host wants | the `You want` column, filled icons |
+| What the host can correct | an `Edit` affordance on the fact block, and *Not quite right* / *Make changes* beside *Looks right →* |
+
+**INVARIANT — the two-column `You want` / `Still unknown` layout is the
+product's native way of holding a gap** (§6), and `More?` is a real row, because
+the product admits its own list may be incomplete.
+
+**INVARIANT — the confirm action is a judgement, not an acknowledgement.**
+*Looks right →* asks the host to agree, and *Not quite right* is its equal peer,
+not a cancel.
+
+**[TRANSFERRED] — "what was heard but could not be applied" is the one of the
+four that the family does NOT show** as a distinct zone. The repository has the
+capability (`heardNotUsedFor`, rendered at the plan stage as *"You said this,
+and the plan doesn't hold it"*). Its absence from the reference is an absence,
+not a prohibition.
+
+### 12.3 · CLARIFY asks only consequential questions
+
+**INVARIANT — every question states why it is being asked.** *"The date changes
+venue availability, pricing and how quickly you need to start."* / *"This helps
+us find the right venues, plan the schedule and match the right vendors."*
+
+**INVARIANT — the frame is short and says so.** Sheet 6 shows `3 of 6`; sheet 3
+shows two questions total. It is never a questionnaire.
+
+**INVARIANT — a question's options are photographic where the answer is a
+feeling** (Formal / Balanced / Casual rendered as three images) **and plain
+where the answer is a fact** (a date picker). Tone is shown; data is typed.
+
+**INVARIANT — Back is always present and is quiet.**
+
+### 12.4 · REVEAL gives a plan, not a congratulation
+
+**INVARIANT — the reveal is a plan with priority next steps**, not a success
+screen. Even where a check mark appears (sheet 3), the content below it is
+`Top Priorities` / `Priority next steps` — four or five concrete actions, the
+first tagged `Highest impact`.
+
+**INVARIANT — the event's own identity leads**: name, date, guest count,
+location, budget, style — the facts the host just gave, handed back.
+
+**INVARIANT — one filled primary out**: *Open Your Event →* / *View full plan →*.
+
+---
+
+## 13 · THE ROLE OF "YOUR EVENT"
+
+**INVARIANT — Your Event is the command centre and the product's home.** It is
+where every journey returns and where the next move lives.
+
+Its anatomy, constant across sheets 1 ·5, 3 ·6, 4 ·5, 6 ·4 and 7 ·6:
+
+1. **Event identity** — name, date, guest count, area, and a `View details →`.
+2. **The next move**, in a dark photographic band: `YOUR NEXT MOVE` eyebrow,
+   serif statement, one deck line, a filled CTA and a quiet *See why this
+   matters*.
+3. **The domains**, each with name, status and a one-line *what's next here*.
+
+**INVARIANT — Your Event never duplicates a domain's interior.** It states each
+domain's status and routes. It is a table of contents with intelligence, not a
+dashboard that reproduces the pages beneath it.
+
+**INVARIANT — the One Move at Your Event level is the same single authority as
+the One Move inside a domain.** Sheet 7's ladder makes this explicit: `Your
+Event` is the first card of the same seven-card strip as `Food`, `People`,
+`Team`. One prioritiser, consulted at two altitudes.
+
+---
+
+## 14 · THE REASONING PATTERN
+
+The family exposes its reasoning in four named forms, and they are all the same
+object at different moments:
+
+| Label | Where | What it does |
+|---|---|---|
+| **Why we're recommending this** | after a recommendation | justifies the option set |
+| **Why we're asking** | beside a question | justifies the interruption |
+| **Why this works** | after a selection | justifies the fit, as a checklist |
+| **Why:** | on every One Move card | names the domains the move unblocks |
+
+**INVARIANT — reasoning is a quiet tinted band with a glyph, never a card and
+never a modal.** It sits directly under or beside the thing it explains and
+carries no action of its own.
+
+**INVARIANT — reasoning is one or two sentences.** *"Your event needs enough
+structure to keep planning manageable without making the celebration feel
+generic."* It is not a derivation and not a confidence score.
+
+**INVARIANT — reasoning references the host's own inputs**, not the system's
+internals: guest count, priorities, style, budget. No model talk, no percentages,
+no "based on similar events" without evidence.
+
+**🔴 THE RULE THAT OVERRIDES THE PATTERN:** reasoning may only be shown where
+existing intelligence actually supports it. **Fabricating a rationale to fill
+this band is the single most tempting failure this family invites**, and it is
+forbidden outright by `06_AI_GROUNDING_NO_FAKE_INTELLIGENCE`. Where the engine
+has a `because`, show it. Where it does not, show nothing — not a plausible
+sentence.
+
+---
+
+## 15 · PHOTOGRAPHY RULES
+
+**INVARIANT — photography is structural, not decorative.** It appears in exactly
+four roles, and nowhere else:
+
+| Role | Example |
+|---|---|
+| The **plate** behind a domain's statement | every domain hero |
+| The **subject** of a list row | a venue's own photograph |
+| A **choice between tones** | Formal / Balanced / Casual |
+| The **event's identity** at Your Event | the cover |
+
+**INVARIANT — the plate's photograph is always dark enough to carry type**, and
+the type sits in the frame's quietest third.
+
+**INVARIANT — a photograph always depicts the thing it labels.** A venue row
+shows that venue. A tone choice shows that tone. There is no stock imagery used
+as texture.
+
+**INVARIANT — photographs are warm, low-key, candle-lit or dusk.** The palette
+of the imagery and the palette of the interface are the same palette.
+
+**🔴 THE CONSTRAINT THE FAMILY CANNOT SEE.** The family's rows carry photographs
+of *venues*. A People row would, by the same grammar, want a face. **No guest
+image may be inferred, and no photograph may be attached to a named guest
+unless the data explicitly establishes that relationship.** This is a permanent
+product rule, not a gap to close. The implementation's initials treatment is a
+reasoned substitution and this document does **not** promote it to doctrine.
+
+**Bounded gap:** `event.coverImageUrl` has no writer in the repository. Until
+the media pipeline is authorized, a plate's photograph is a visibly-labelled
+review fixture or nothing — and a fixture must never masquerade as persisted
+truth.
+
+---
+
+## 16 · TYPOGRAPHY HIERARCHY
+
+Four registers, and they never trade jobs:
+
+| Register | Used for | Treatment |
+|---|---|---|
+| **Caps eyebrow** | the domain or state name — `VENUE`, `YOUR NEXT MOVE`, `COMPARE`, `INITIAL PLAN` | small, letterspaced, quiet; **11px floor** |
+| **Serif display** | the statement — *"Find the right setting for the event"*, *"Freedom Hall is your venue"* | two lines maximum, generous leading, never a sentence of utility text |
+| **Serif name** | the identity of a listed thing — a venue, a person | one weight, one size, inside the row |
+| **Sans utility** | everything operational — decks, meta lines, chips, labels, buttons, tables | restrained, one or two weights |
+
+**INVARIANT — the serif is for identity and statement only.** A serif button, a
+serif chip or a serif table cell would break the system.
+
+**INVARIANT — emphasis is made with size and space, not with weight.** The
+family almost never uses bold sans for hierarchy; it uses a bigger serif and more
+room around it.
+
+**INVARIANT — a figure is a display-register object**, not a bold number in a
+paragraph.
+
+**ACCIDENT — the exact serif.** The sheets are generated imagery; the production
+register is already fixed (`--serif-read` Newsreader for the host's human voice,
+`--serif` Playfair reserved for guest stationery and doctrine-locked). Matching
+the mock's letterforms is not a goal; matching its *role assignment* is.
+
+---
+
+## 17 · COLOUR AND MATERIAL RULES
+
+**INVARIANT — two planes, and the relationship between them is the system.**
+A dark photographic plate over an operational field. The plate is dark in both
+themes; the field takes the theme.
+
+| | Light | Dark |
+|---|---|---|
+| Plate | dark photographic | dark photographic |
+| Field | warm ivory / paper | near-black / charcoal |
+| Panels | lighter than the field | lighter than the field |
+| Text | near-black | warm off-white |
+| Primary action | near-black fill, light label | brass fill, dark label |
+| Accent | restrained brass / warm gold | restrained brass / warm gold |
+| Borders | thin, warm, low opacity | thin, warm, low opacity |
+
+**INVARIANT — the surface ladder only ever goes one way**: page → panel → card
+gets lighter, in both themes. Inverting it was shipped once and produced a phone
+screen where the panel and the sheet were both pure white and the operational
+field had no plane at all.
+
+**INVARIANT — one accent system.** Brass is the accent. A second decorative
+accent alongside it is forbidden — that prohibition is what the `palette.js` ban
+on `#f0bc44` / `#e08c38` exists to enforce, and it survives whichever single
+accent is chosen.
+
+**INVARIANT — colour never carries state alone.** Every status chip carries a
+word.
+
+**INVARIANT — material is flat.** Thin warm borders and quiet separators do the
+dividing. Shadows are not a hierarchy device; there are no gradients used as
+"intelligence" styling.
+
+**🔴 Recorded supersession.** The 2026-10-20 decisions (*steel blue `#4c6675` is
+the identity accent*; *do not force warm ivory*) are contradicted by the
+calibration-slice assignment's own §5 and §7 (*warm ivory working surfaces*,
+*restrained brass / warm gold accents*). The newer instruction is written into
+the table above; the conflict is flagged in `PEOPLE_PRODUCT_CONTRACT.md`
+Appendix B rather than resolved silently.
+
+---
+
+## 18 · RESPONSIVE PRINCIPLES
+
+The family states its own, in captions, on sheet 2:
+
+> **Desktop** — *"Full planning experience with side-by-side comparisons and detailed information."*
+> **Tablet** — *"Focused planning with the same core experience, optimized for touch."*
+> **Mobile** — *"Key actions and next steps, beautiful and easy to use on the go."*
+
+**INVARIANT — mobile is a composition, not a reduction.** Sheets 5, 8 and 9 draw
+mobile at full size beside desktop, not as a thumbnail. The phone frames are
+labelled `390 × 844` and the tablet frames `1024 × 1366`; these are designed
+viewports.
+
+**INVARIANT — no capability disappears at a narrower width.** What changes is
+what *leads* and what is *disclosed*.
+
+**INVARIANT — comparison is the thing desktop earns.** The side-by-side matrix
+exists only at desktop and tablet; at mobile the same information becomes a
+sequence of cards. That is the clearest statement in the family about what width
+is actually for.
+
+**INVARIANT — the order of the argument never changes.** Plate, orientation,
+next move, working content. Every breakpoint tells the same story; wider ones
+tell more of it at once.
+
+---
+
+## 19 · NAVIGATION PRINCIPLES
+
+**INVARIANT — one domain, one door.** The top-nav item, the mobile tab and the
+command-centre tile all lead to the same surface. There is no second entry to a
+domain anywhere in the family.
+
+**INVARIANT — the top nav is the domain list**: `Your Event · Place · People ·
+Food & Drink · Team · Money · Schedule · The Day`. It is flat. There are no
+sub-menus and no nesting.
+
+**INVARIANT — the domain's own journey is navigated by the stepper**, not by the
+global nav. Global nav moves between domains; the stepper moves within one.
+
+**VARIANT — the nav's exact membership and labels.** Sheets 2 and 8 show a
+shorter `Overview · Venue · Planning · Vendors · Timeline`; the rest show the
+eight-domain form. The eight-domain form is the product's own and the shorter
+one is an exploration.
+
+**ACCIDENT — `✦ Ask NGW` in the top bar** (sheets 2, 8). **This must not be
+built.** No such capability exists, and rendering the chrome for one would be
+exactly the failure `06_AI_GROUNDING_NO_FAKE_INTELLIGENCE` names.
+
+**🔴 RECONCILIATION REQUIRED — bottom navigation.** Sheets 2, 5 and 8 put a
+persistent bottom tab bar on mobile (`Home · Plan · Chat · Progress · More`, or
+`Event · Place · People · More`), with People as a destination. **Host V2 ships
+Nav B, which the owner ruled is the mobile navigation authority and which does
+not have one.** The assignment's own instruction is to reconcile, not copy.
+
+> **The reconciliation:** adopting a bottom bar is a **shell** decision taken
+> once for every domain. People does not get to introduce one for itself. What
+> People *does* require is that it is reachable as a first-class destination
+> from whatever Nav B exposes — which it already is.
+
+---
+
+## 20 · DENSITY PRINCIPLES
+
+**INVARIANT — one screen makes one argument.** Every frame in the family has a
+single dominant statement and everything else is subordinate to it. There is no
+frame in which four things compete.
+
+**INVARIANT — generous spacing is the premium signal.** The family's rhythm is
+large: ~32px content margins at desktop, 8px between rows, substantial air
+around every statement. Density is bought with hierarchy, never with compression.
+
+**INVARIANT — information is tiered, not flattened.** A row has three tiers; a
+screen has a lead, a working body and a tail. A grid of twelve equal-weight
+cards does not appear anywhere in the family — the command centre's tile grid is
+the closest thing, and every tile there carries the same three fields in the
+same order, which makes it a *list in two columns*, not a card wall.
+
+**INVARIANT — chips are nouns, and few.** One evaluative badge per row at most;
+the rest are facts. No chip is a verb and no chip is a count.
+
+**INVARIANT — empty is calm.** `Still unknown` is a first-class column at equal
+weight with `You want`, not a warning. The product's posture toward its own
+ignorance is the opposite of an alert.
+
+---
+
+## 21 · ACTION HIERARCHY
+
+**INVARIANT — exactly one filled primary per screen.** Across every frame in the
+family, there is never a second filled button competing with the first.
+
+| Tier | Treatment | Example |
+|---|---|---|
+| **Primary** | one filled button, high contrast, often full width at mobile | `Build my event →` · `Explore this direction →` · `Open Your Event →` |
+| **Secondary** | outlined or quiet text, side by side | `See why this matters` · `Not quite right` · `View details →` |
+| **Tertiary** | plain text links, inside folds | `Or enter the details yourself` |
+| **Destructive** | its own register, never adjacent to the primary | `Remove ×` on the comparison columns |
+
+**INVARIANT — the primary is the One Move whenever a move exists.** The
+product's recommended action and the screen's dominant button are the same thing.
+
+**INVARIANT — a row's action is on the right edge** and is the same affordance
+for every row (`View details →` at width, a circular arrow at mobile).
+
+**INVARIANT — Back is always quiet and always present** in a journey.
+
+---
+
+## 22 · ANTI-PATTERNS
+
+Absent from the family by construction. Their absence is as informative as
+anything present, and each one is a thing a well-meaning implementation would
+otherwise add:
+
+| Not in the family | Why it would break it |
+|---|---|
+| A progress bar or completion percentage | The product states *what is unknown*, not *how done you are* |
+| A score, gauge, rating dial or health meter | Manufactures certainty the runtime does not have |
+| A grid of equal-weight cards | Every frame makes one argument |
+| Endless boxed widgets | Material is flat and tiered |
+| Excessive pills and badges | One evaluative chip per row, the rest are facts |
+| Neon, gradients-as-AI-styling, glow | The palette is warm, low-key and photographic |
+| Random shadows | Shadows are not a hierarchy device |
+| "AI assistant" chatter | Reasoning is one quiet band attached to one decision |
+| A sortable data table | A list of things, not a database view |
+| Two filled primaries | §21 |
+| A desktop layout scaled into a phone | §18 |
+| Information density without prioritization | §20 |
+| A zero-card (*"No needs yet"*) | Empty is absence, not a card |
+| A modal for reasoning | Reasoning sits beside its subject |
+| Generic startup / admin-dashboard aesthetic | The target is a premium editorial planning service |
+
+---
+
+## 23 · PRECEDENCE WHEN THE CONCEPTS DISAGREE
+
+The family contains intentional exploration and real contradictions. They are
+not averaged. This is the order, and it is the assignment's own:
+
+| Rank | Authority | Beats |
+|---|---|---|
+| **1** | **Runtime truth / accepted architecture** | every mockup assumption |
+| **2** | **Accepted NGW product doctrine** | a concept's behaviour |
+| **3** | **Creation: natural-language-first** | any structured-entry-first reading |
+| **4** | **The domain-journey pattern** — Venue's `Direction → Discovery → Compare → Inquiry → Selected → Operational` is the strongest mature reference, **but stages must fit the domain** | a stage imposed to complete a stepper |
+| **5** | **The cinematic / editorial responsive Venue family** | any other visual treatment in the set |
+| **6** | **Dedicated desktop / tablet / mobile compositions** | a scaled desktop |
+| **7** | **Intelligence — One Move, reasoning, consequence** | conventional dashboard or progress UI |
+
+**And one rule that sits above all seven:** a capability the runtime does not
+have is not created to satisfy any of them. A stepper stage with no capability
+behind it, a reasoning band with no `because`, a consequence the engine does not
+produce — each is a concept winning an argument it is not entitled to win.
