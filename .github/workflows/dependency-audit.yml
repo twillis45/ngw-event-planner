@@ -1,0 +1,79 @@
+# Dependency audit on a written cadence — board condition, stage 8, 2026-11-02.
+#
+# WHY THIS EXISTS. The 2026-08-21 security track recorded "0 vulnerabilities".
+# By 2026-11-02 that was false (DOMPurify, among others), and nothing had
+# re-run the audit in between: it ran when someone remembered. This runs it
+# weekly, on every lockfile change, and on demand.
+#
+# TWO TREES, TWO POSTURES — deliberately different:
+#
+#   hostv2 (the app the public uses)  STRICT. Any high or critical production
+#                                      advisory fails the run.
+#   root (frozen CRA donor shell)      REPORT-ONLY until its disposition is
+#                                      re-decided (board condition s8-cra).
+#
+# The root tree carries react-scripts as a regular dependency, so `--omit=dev`
+# still audits the whole CRA build toolchain: 106 findings on 2026-11-02, most
+# of them build-time. One ships to users and has no fix: `xlsx` (parses
+# uploaded files, src/App.js:210). Failing the run every week on that would be
+# a red nobody reads, which is worse than no gate. So the root job reports
+# counts and names xlsx in the run summary, and goes strict the day the CRA
+# disposition is ruled — change `continue-on-error` below, nothing else.
+#
+# --package-lock-only: audits the committed lockfile, which is what CI installs
+# and what ships; no install needed.
+name: Dependency audit
+
+on:
+  schedule:
+    # Mondays 13:17 UTC. Off the hour on purpose (scheduled runs at :00 queue).
+    - cron: '17 13 * * 1'
+  pull_request:
+    paths:
+      - package-lock.json
+      - hostv2/package-lock.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hostv2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Audit hostv2 production dependencies (fails on high)
+        working-directory: hostv2
+        run: npm audit --package-lock-only --omit=dev --audit-level=high
+
+  root-cra:
+    runs-on: ubuntu-latest
+    # REPORT-ONLY until the CRA dependency disposition is ruled (s8-cra).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Audit root (CRA) production dependencies — report
+        run: |
+          set -uo pipefail
+          npm audit --package-lock-only --omit=dev --json > audit.json || true
+          node -e '
+            const j = require("./audit.json");
+            const v = j.metadata.vulnerabilities;
+            const x = (j.vulnerabilities || {}).xlsx;
+            const lines = [
+              "### Root (CRA) production audit — report-only",
+              "",
+              `critical ${v.critical} · high ${v.high} · moderate ${v.moderate} · low ${v.low} · total ${v.total}`,
+              "",
+              x ? `**xlsx: ${x.severity}, fix available: ${JSON.stringify(x.fixAvailable)}** — ships in the CRA bundle; disposition owed (s8-cra).` : "xlsx: no advisory",
+            ];
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+            console.log(lines.join("\n"));
+          '
+          npm audit --package-lock-only --omit=dev --audit-level=high

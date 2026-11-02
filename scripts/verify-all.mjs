@@ -30,6 +30,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import verifySummary from './verify-summary.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -128,8 +129,6 @@ for (const r of results) {
   const state = r.code === null ? 'SKIP' : r.code === 0 ? 'pass' : `FAIL(${r.code})`;
   console.log(`  ${pad(state, 9)} ${pad(r.label, 34)} ${r.ms ? `${(r.ms / 1000).toFixed(1)}s` : r.note || ''}`);
 }
-const failed = results.filter((r) => r.code !== null && r.code !== 0);
-const skipped = results.filter((r) => r.code === null);
-if (skipped.length) console.log(`\n  NOT RUN: ${skipped.map((s) => s.label).join(', ')}`);
-console.log(failed.length ? `\n✗ ${failed.length} of ${results.length} failed\n` : `\n✓ all ${results.length} passed\n`);
-process.exit(failed.length ? 1 : 0);
+const { line, code } = verifySummary.summarize(results);
+console.log(`\n${line}\n`);
+process.exit(code);

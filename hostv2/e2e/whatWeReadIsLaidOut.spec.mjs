@@ -67,12 +67,19 @@ test.describe('what we read, laid out', () => {
   test('every row is the same height — no ragged list', async ({ page }) => {
     await stage(page);
     const boxes = await page.locator('.lc-staged').evaluateAll(
-      (ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)));
+      (ns) => ns.map((n) => n.getBoundingClientRect().height));
     expect(boxes.length).toBe(4);
-    // Identical, and one of these four is an UNREAD row with no chips and no
+    // Level, and one of these four is an UNREAD row with no chips and no
     // facts — which is exactly the case the first version of this test could
     // not see. On the phone it stood 64px against 111px.
-    expect(new Set(boxes).size, `row heights: ${boxes.join(', ')}`).toBe(1);
+    //
+    // WITHIN 1px, measured unrounded (2026-11-02). Under real phone emulation
+    // (deviceScaleFactor 3) the unread row lays out at 87.84px against 88.53px
+    // — a 0.69px text-metric difference no eye can see — and exact equality
+    // after rounding read that as ragged (89, 89, 89, 88). The 64-vs-111 bug
+    // this guards is a 47px spread; 1px is three orders of magnitude inside it.
+    const spread = Math.max(...boxes) - Math.min(...boxes);
+    expect(spread, `row heights: ${boxes.map((h) => h.toFixed(2)).join(', ')}`).toBeLessThan(1);
   });
 
   test('a link we learned nothing from sorts LAST, not first', async ({ page }) => {

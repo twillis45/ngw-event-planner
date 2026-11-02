@@ -47,6 +47,16 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   unauthenticated server-side** (the client sent auth since 2026-08-07;
   the backend never demanded it) — now gated. It also surfaced finding
   #8 below.
+  **Superseded 2026-11-02 (board condition C4-2 / cond. 6):** the sweep no
+  longer hand-lists routers — it walks the routes the deployed app actually
+  serves (`app.main`, all 16 mounted routers plus main.py's own three), and
+  `test_the_sweep_reaches_every_router_main_mounts` goes red if the walk ever
+  misses one. research, kas and kcr are now hit bare and answer 401. The five
+  reference proxies (weather, food prices, Instacart, Kroger, lodging) sit on
+  the PUBLIC allowlist with written reasons, including the accepted cost:
+  anyone can spend our third-party quota through them; no rate limit exists.
+  Red-proofed three ways: drop an allowlist entry, stop the walk descending,
+  strip research's admin gate — each goes red.
 
 ## Stage-5 — the consolidated gate
 
@@ -84,7 +94,11 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   router is unchanged). **Gate:** `src/lib/__tests__/everyPublicTableHasRls.test.js`
   reads both migration folders and fails by table name on any `create
   table` without a matching enable — red-proofed by removing 018 (7 of 10
-  red, all six named). **Live exposure could not be probed from here:**
+  red, all six named). **Widened 2026-11-02 (board condition 7):** the
+  gate also reads `src/lib/knowledge/kaw1-migration.sql` (seven
+  hand-applied tables, all RLS-enabled) and fails on any `.sql` file in
+  the repo outside a scanned source — red-proofed by dropping one kaw1
+  enable and by adding a stray file; 14 tests. **Live exposure could not be probed from here:**
   the public Pages bundle is the demo profile and carries no Supabase
   URL. Until 018 reaches `main` and the integration applies it, the live
   project is presumed exposed; check A's query is how the owner confirms
@@ -103,6 +117,11 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   npm → `hostv2` shipped tree **0 vulnerabilities**. The 8/21 "0 vulnerabilities"
   line above was true on its day; a dependency tree is not a fact that stays
   true, which is why stage 8 owes a review on a cadence.
+  **Cadence written 2026-11-02:** `.github/workflows/dependency-audit.yml`
+  runs weekly (Mondays 13:17 UTC), on every lockfile PR, and on demand.
+  hostv2 is STRICT (fails on any high); the CRA root is REPORT-ONLY by
+  decision until s8-cra is ruled, with counts and `xlsx` in the run summary.
+  Pinned by `theAuditRunsOnACadence.test.js`, red-proofed.
 - **NO-OP with note — dependency audit (CRA root).** *(2026-11-02: now 106
   findings, not 51 — 3 critical, all in the react-scripts dev server
   (`proxy-addr`, `shell-quote`, `websocket-driver`); `xlsx` high as before;
@@ -194,8 +213,11 @@ no secrets in source) are DONE with citations. The second pass closed
 five more: the per-route sweep now exists AND caught a live gap
 (verify-session gated), the license check is clean, Sprint C+D turned
 out to be shipped under the Release Integrity name, and the
-token-in-query residual is closed. Remaining OPENs: the pentest, finding
-#8 (portal authz design — board question), and four user-side
+token-in-query residual is closed. Remaining OPENs: the pentest, ~~finding
+#8 (portal authz design — board question)~~ *(stale in this verdict: the
+body above records #8 RESOLVED, third pass, 2026-08-21, and the sweep's
+stale-entry test enforces it; ruled closed by the board 2026-11-02 — five
+opens, not six)*, and four user-side
 attestations (RLS applied in the live dashboard, backups on + one
 restore drill, login rate-limit check on Supabase defaults). **The
 Sentry-DSN item that used to sit in this list is CLOSED — probed in the

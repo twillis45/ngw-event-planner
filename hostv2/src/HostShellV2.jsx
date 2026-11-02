@@ -1267,6 +1267,11 @@ export default function HostShellV2() {
   // single-level snapshot restore of just the fields the write changed. Not a
   // history system; only money-moving writes (the budget number) set it.
   const [toastAction, setToastAction] = useState(null); // { label, fn } | null
+  // The action on screen RIGHT NOW, readable from callbacks that close over an
+  // older render (a save result lands after the edit's own Undo toast). Lets a
+  // follow-up notice keep that Undo instead of wiping it (Nielsen re-run N4).
+  const toastActionRef = useRef(null);
+  useEffect(() => { toastActionRef.current = toastAction; }, [toastAction]);
   // Confirmation semantics (CONFIRM-GREEN, 2026-07-16): one tone drives the toast's
   // color so "you did it" reads green everywhere from ONE place, instead of per-call
   // styling. 'ok' ⇒ green success; null/undefined ⇒ the neutral pill (errors keep it).
@@ -1892,7 +1897,14 @@ export default function HostShellV2() {
         // queue entry and is uploaded by the flush immediately below.
         try {
           const dirty = new Set(getPendingEventIds());
-          markEventSynced(evs.map(e => e && e.id).filter(Boolean).filter(id => !dirty.has(id)));
+          // A REFUSED save is dirty too, and it is never queued (retrying would
+          // refuse again). Stamping it here erased its conflict record, the adopt
+          // loop below then read "synced", and the host's edit was replaced by the
+          // account copy on the next reload — after she had been told it was safe
+          // on this device. (Nielsen re-run N2, 2026-11-02; e2e test 3 in
+          // aRefusedSaveIsNotCalledSaved.) Leave it unstamped: local wins below.
+          const refused = (id) => { try { return getEventSyncStatus({ id }) === SYNC_STATUS.CONFLICT; } catch { return false; } };
+          markEventSynced(evs.map(e => e && e.id).filter(Boolean).filter(id => !dirty.has(id) && !refused(id)));
         } catch { /* stamping is best-effort, never blocks hydration */ }
         flushSync().then(res => {
           if (!dead && res && res.flushed > 0) {
@@ -3562,7 +3574,10 @@ export default function HostShellV2() {
       if (kind === 'pass') {
         await refreshEventPass(paidEventId, { claimed: true });
         if (serverPassHeld(paidEventId) === true) { unlocked(); return; }
-        toast('Thanks — your payment went through, but we haven’t seen it land on this event yet. It usually takes a few seconds; reopen the event and it’ll be here.');
+        // Says what we know — the pass has not reached this event — and never
+        // that money moved: the redirect is not evidence of a payment (Nielsen
+        // re-run N8, 2026-11-02; thePassSurvivesTheWebhookRace).
+        toast('We haven’t seen the pass reach this event yet. If you completed checkout it usually lands within a few seconds — reopen the event to check, and your Stripe receipt email has the details.');
         return;
       }
 
@@ -5801,13 +5816,19 @@ export default function HostShellV2() {
   const [draftTone, setDraftTone] = useState(() => { try { return localStorage.getItem('ngw-hostv2-voice') || 'as-written'; } catch { return 'as-written'; } });
   const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
   const [sendingEmail, setSendingEmail] = useState(false); // slice (b): one send at a time
+  // One checkout at a time: a second tap on a slow network opened a second
+  // Stripe session (Nielsen re-run N7, 2026-11-02).
+  const [openingCheckout, setOpeningCheckout] = useState(false);
   useEffect(() => { try { localStorage.setItem('ngw-hostv2-voice', draftTone); } catch {} }, [draftTone]);
   // Nielsen H3 (stage-4 gate, 2026-08-21): a host's typed words must survive
   // closing the sheet. Edits are kept per draft title for the session; reopening
   // the same draft restores them. Picking a voice is the one deliberate discard
   // (it always meant "regenerate"), so it clears the kept copy too.
   const draftEditsRef = useRef({});
-  const draftEditKey = (title) => String(title || 'draft');
+  // Keyed by EVENT and title. Title alone let words typed for one event's
+  // "Your shopping list" reappear in another event's, labeled as hers (Nielsen
+  // re-run N5, 2026-11-02; e2e yourWordsStayWithTheirEvent).
+  const draftEditKey = (title) => `${eventId || 'none'}::${String(title || 'draft')}`;
   const openDraft = (title, d, queue, opts) => {
     const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
     if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
@@ -6826,13 +6847,25 @@ export default function HostShellV2() {
     if (res && res.reason === 'conflict') {
       if (!conflictCueShown.current) {
         conflictCueShown.current = true;
-        toast('This event changed somewhere else after you opened it. Your edit is saved on this device only — the newer version in your account was left alone.');
+        toast('This event changed somewhere else after you opened it. Your edit is saved on this device only — the newer version in your account was left alone.', toastActionRef.current);
       }
       return;
     }
-    if (!syncCueShown.current) {
+    // Say WHY it is waiting, and only when it really is waiting (N9,
+    // 2026-11-02): 'error' is the connection; 'no-studio' is an account still
+    // being set up — blaming the network sent a host with a working one to
+    // wait for it. Any other non-success ('local-studio') never reaches an
+    // account at all, so "it will reach your account" would be false.
+    const why = res && res.queued
+      ? (res.reason === 'error' ? 'it will reach your account when the connection is back.'
+        : res.reason === 'no-studio' ? 'it will reach your account as soon as your account finishes setting up.'
+        : null)
+      : null;
+    if (why && !syncCueShown.current) {
       syncCueShown.current = true;
-      toast('Saved on this device — it will reach your account when the connection is back.');
+      // Keep the edit's Undo if it is still showing — one toast slot, and this
+      // notice must not cost her the way back (N4).
+      toast('Saved on this device — ' + why, toastActionRef.current);
     }
   };
   // ── THE CHECKLIST FOLLOWS THE DECISIONS (audit 2026-08-21) ────────────────
@@ -17333,11 +17366,16 @@ export default function HostShellV2() {
               // money twice. Saying "try again" to that would be a lie, so it
               // gets its own line.
               const buyPass = async () => {
+                if (openingCheckout) return;
+                setOpeningCheckout(true);
                 try {
                   const out = await createPassSession({ eventId: event.id });
+                  // Leaving for Stripe: stay busy — the page is navigating away.
                   if (out && out.url) { window.location.assign(out.url); return; }
+                  setOpeningCheckout(false);
                   toast('Couldn’t open checkout just now — please try again.');
                 } catch (e) {
+                  setOpeningCheckout(false);
                   const why = String((e && e.message) || '');
                   if (/already has a pass/i.test(why)) {
                     toast('This event already has the pass — nothing more to buy. Reopen it and everything’s unlocked.');
@@ -17395,7 +17433,7 @@ export default function HostShellV2() {
                     </div>
                   ) : canCharge ? (
                     <>
-                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass}>Get the pass — $39</button>
+                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
                     </>
                   ) : (
@@ -18692,7 +18730,7 @@ export default function HostShellV2() {
                       ? `That address for ${missingVendorEmail.name} doesn't look right, so this can't send yet.`
                       : `No email for ${missingVendorEmail.name} yet — hand it off below, or add one and you can send it from here.`}
                     {' '}
-                    <button className="mini rowlink" onClick={() => setSheet({ kind: 'vendors', focus: missingVendorEmail.id, from: { kind: 'draft', title: sheet.title, vendorId: sheet.vendorId } })}>
+                    <button className="mini rowlink" onClick={() => setSheet({ kind: 'vendors', focus: missingVendorEmail.id, from: sheet /* the WHOLE draft — a partial parent came back as "undefined" (Nielsen N1, 2026-11-02) */ })}>
                       {missingVendorEmail.malformed ? 'Fix their address' : 'Add their email'}
                     </button>
                   </p>
@@ -18704,7 +18742,21 @@ export default function HostShellV2() {
                   <OptionList ariaLabel="Voice"
                     options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => ({ label, value: k }))}
                     value={draftBody == null ? draftTone : ''}
-                    onPick={(k) => { setDraftTone(k); setDraftBody(null); try { delete draftEditsRef.current[draftEditKey(sheet.title)]; } catch { /* kept copy is best-effort */ } }} />
+                    onPick={(k) => {
+                      // Picking a voice still means "rewrite it" — but her typed words
+                      // are no longer thrown away with no way back (Nielsen re-run N6,
+                      // 2026-11-02; e2e yourWordsStayWithTheirEvent).
+                      const key = draftEditKey(sheet.title);
+                      const hers = draftBody; const prevTone = draftTone;
+                      setDraftTone(k); setDraftBody(null);
+                      try { delete draftEditsRef.current[key]; } catch { /* kept copy is best-effort */ }
+                      if (hers != null) {
+                        toast('Rewritten in a new voice.', { label: 'Undo', fn: () => {
+                          setDraftTone(prevTone); setDraftBody(hers);
+                          try { draftEditsRef.current[key] = hers; } catch { /* best-effort */ }
+                        } });
+                      }
+                    }} />
                   {draftBody != null && <div className="of" style={{ marginTop: 6, color: 'var(--steel-soft)' }}>Your words — showing your edits</div>}
                 </div>
                 <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"

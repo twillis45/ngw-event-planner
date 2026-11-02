@@ -27,16 +27,29 @@ if "asyncpg" not in sys.modules:
     sys.modules["asyncpg"] = _stub
 
 import pytest
-from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from app.routers import admin, ai, communication, docusign, rsvp, stripe_payments, vendor_brief, webhooks
+from app.main import app as MOUNTED_APP
 
-# The security-sensitive routers: money, messages, documents, AI spend, the
-# admin console, and anything that writes on behalf of a person. Read-only
-# price/weather feeds (kroger, weather, food_prices, …) are out of scope.
-ROUTERS = [admin, ai, communication, docusign, rsvp, stripe_payments, vendor_brief, webhooks]
+
+def _walk(routes):
+    """Every APIRoute the app serves. FastAPI 0.115 (the pinned version)
+    flattens included routers into app.routes; newer FastAPI keeps each one
+    behind an _IncludedRouter wrapper with .original_router. Walk both, so the
+    sweep sees the same surface whichever version runs it."""
+    for r in routes:
+        if isinstance(r, APIRoute):
+            yield r
+        elif hasattr(r, "original_router"):
+            yield from _walk(r.original_router.routes)
+
+
+# ENUMERATED, not hand-listed (board condition C4-2, 2026-11-02). Until then
+# this was a hand list of 8 of the 16 routers main.py mounts, so a new router
+# could ship with no gate and nothing here would go red. Now the sweep is
+# whatever the deployed app actually serves — main.py's own routes included.
+MOUNTED = list(_walk(MOUNTED_APP.routes))
 
 # Routes that are PUBLIC by design. Every entry carries its reason — an entry
 # without a defensible reason is a finding, not a config.
@@ -64,6 +77,34 @@ PUBLIC = {
     # against metadata.portal_token stamped on the approval_request message.
     "POST /api/events/{event_id}/communication/messages/{message_id}/portal-respond":
         "portal_token in body is the credential",
+    # ── main.py's own routes ────────────────────────────────────────────────
+    "GET /health": "liveness probe — no data, no writes",
+    "GET /api/capabilities": "booleans only (is X configured) — never a secret",
+    # ── Read-only reference feeds (board condition 6, 2026-11-02) ──────────
+    # These serve no account data and write nothing, so there is no caller to
+    # authenticate: the planner app calls them before and without sign-in.
+    # THE COST WE ACCEPT, written down because nothing recorded it before:
+    # anyone who finds the API can spend OUR third-party quota through them
+    # (OpenWeather, BLS, Instacart, Kroger) and use the server as a fetcher for
+    # the two lodging hosts. There is no per-IP rate limit today. If a quota
+    # bill or a provider ban ever shows up, the fix is a rate limit or a
+    # require_planner gate here — not a quieter allowlist.
+    "GET /api/weather/status": "config presence only",
+    "GET /api/weather/geocode": "public reference data; spends OUR OpenWeather quota",
+    "GET /api/weather/onecall": "public reference data; spends OUR OpenWeather quota",
+    "GET /api/food-prices/status": "config presence only",
+    "GET /api/food-prices": "public BLS averages, cached per region+month; spends OUR BLS quota",
+    "GET /api/shopping/instacart/status": "config presence only",
+    "POST /api/shopping/instacart-cart":
+        "builds a shopping-list link from the body, stores nothing; spends OUR Instacart key",
+    "GET /api/shopping/kroger/status": "config presence only",
+    "POST /api/shopping/kroger/search-list":
+        "public product prices, stores nothing; spends OUR Kroger client credentials",
+    "GET /api/shopping/kroger/locations": "public store locations; spends OUR Kroger client credentials",
+    "GET /api/lodging/unfurl":
+        "https Airbnb/Vrbo listing hosts only, every redirect hop re-checked by safe_get (no SSRF)",
+    "GET /api/lodging/results":
+        "https Airbnb/Vrbo search pages only, same safe_get hop check (no SSRF)",
 }
 
 # Source markers that count as a caller gate.
@@ -71,27 +112,25 @@ GATES = (
     "require_planner",
     "require_admin",             # admin console: app_metadata.role, server-side
     "Webhook.construct_event",   # Stripe signature verification (fixed 2026-08-07)
+    "_verify_resend_signature",  # Resend (Svix) HMAC, main.py
 )
 
 
 def _routes():
-    for mod in ROUTERS:
-        for r in mod.router.routes:
-            if isinstance(r, APIRoute):
-                for m in sorted(r.methods - {"HEAD", "OPTIONS"}):
-                    yield mod, m, r
+    for r in MOUNTED:
+        for m in sorted(r.methods - {"HEAD", "OPTIONS"}):
+            yield m, r
 
 
-def _key(method, route, mod):
-    prefix = getattr(mod.router, "prefix", "") or ""
-    return f"{method} {prefix}{route.path}" if not route.path.startswith(prefix) else f"{method} {route.path}"
+def _key(method, route):
+    return f"{method} {route.path}"
 
 
 def test_every_sensitive_route_is_gated_or_argued_public():
     ungated = []
-    for mod, method, r in _routes():
+    for method, r in _routes():
         src = inspect.getsource(r.endpoint)
-        key = _key(method, r, mod)
+        key = _key(method, r)
         if any(g in src for g in GATES):
             continue
         if key in PUBLIC:
@@ -105,22 +144,32 @@ def test_every_sensitive_route_is_gated_or_argued_public():
 def test_public_allowlist_matches_reality():
     # An allowlist entry for a route that no longer exists (or now gates) is
     # stale doctrine — it would silently bless a FUTURE route at that path.
-    keys = {_key(m, r, mod) for mod, m, r in _routes()}
+    keys = {_key(m, r) for m, r in _routes()}
     stale = [k for k in PUBLIC if k not in keys]
     assert stale == [], "PUBLIC entries with no matching route: " + ", ".join(stale)
 
 
+def test_the_sweep_reaches_every_router_main_mounts():
+    # The enumeration's own guard: if the walk ever stops descending into
+    # included routers (a FastAPI upgrade changing the wrapper again), this
+    # goes red instead of the sweep silently checking three routes.
+    import app.main as main_mod
+    import pathlib, re
+    mounted = set(re.findall(r"app\.include_router\((\w+)\.router\)",
+                             pathlib.Path(main_mod.__file__).read_text()))
+    reached = {r.endpoint.__module__.rsplit(".", 1)[-1] for r in MOUNTED}
+    assert len(mounted) >= 16, f"main.py mounts {len(mounted)} routers — parse broke?"
+    assert mounted - reached == set(), f"mounted but not swept: {sorted(mounted - reached)}"
+
+
 @pytest.fixture()
 def bare_client():
-    app = FastAPI()
-    for mod in ROUTERS:
-        app.include_router(mod.router)
-    return TestClient(app, raise_server_exceptions=False)
+    return TestClient(MOUNTED_APP, raise_server_exceptions=False)
 
 
 def test_planner_gated_routes_answer_401_bare(bare_client):
     hit = 0
-    for mod, method, r in _routes():
+    for method, r in _routes():
         src = inspect.getsource(r.endpoint)
         if "require_planner" not in src and "require_admin" not in src:
             continue

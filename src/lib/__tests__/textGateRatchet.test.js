@@ -381,7 +381,19 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // source-level invariants that make that control meaningful: the flag is
 // opt-in, and the legacy body's own markers are still present rather than
 // deleted out from under the comparison.
-const MAX_HOSTV2_TEXT_GATES = 57;
+//
+// ── 57 → 58 (2026-11-02): src/__tests__/theAuditRunsOnACadence.test.js ──────
+// Measured, not counted: the predicate run over origin/main and over this
+// branch differs by exactly one file added and none removed — this one.
+//
+// It matches the predicate by vocabulary, not by reading the shell: it reads
+// .github/workflows/dependency-audit.yml (the board's stage-8 condition, an
+// audit on a written cadence), and that workflow names its `hostv2` job and
+// `hostv2/package-lock.json`. It asserts WORKFLOW content — the schedule, the
+// strict audit level on hostv2, the explicit report-only on the CRA tree —
+// which is a file-content claim by definition and has no rendered equivalent.
+// It never opens a file under hostv2/.
+const MAX_HOSTV2_TEXT_GATES = 58;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

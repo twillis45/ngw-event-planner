@@ -67,7 +67,10 @@ const install = async (page, { mode }) => {
     const req = route.request();
     const url = req.url();
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-    if (url.includes('/rest/v1/studio_members')) return json([{ studio_id: STUDIO, role: 'owner' }]);
+    if (url.includes('/rest/v1/studio_members')) return json(mode === 'nostudio' ? [] : [{ studio_id: STUDIO, role: 'owner' }]);
+    // No membership AND no ensure_studio RPC to provision one: the account is
+    // genuinely not set up, so saveEvent answers 'no-studio' (queued).
+    if (mode === 'nostudio' && url.includes('/rest/v1/rpc/')) return json({ message: 'not found' }, 404);
     if (url.includes('/rest/v1/studio_settings')) return json([]);
     if (url.includes('/auth/v1/')) return json({});
     if (url.includes('/rest/v1/events')) {
@@ -78,6 +81,7 @@ const install = async (page, { mode }) => {
         return json([{ id: EVENT_ID, data: localCopy(), updated_at: T1 }]);
       }
       writes.push({ method: req.method(), url });
+      if (mode === 'offline') return route.abort('internetdisconnected');
       if (req.method() === 'PATCH') return json(mode === 'conflict' ? [] : [{ id: EVENT_ID, updated_at: T3 }]);
       return json([{ updated_at: T3 }]);   // a blind upsert, which must not happen here
     }
@@ -86,7 +90,12 @@ const install = async (page, { mode }) => {
 
   await page.addInitScript(([sess, local, evId]) => {
     localStorage.setItem('sb-synctest-auth-token', JSON.stringify(sess));
-    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([local]));
+    // Seed ONCE. An init script re-runs on every navigation, and re-seeding on
+    // reload would put the original copy back and hide exactly what test 3
+    // measures: what the shell itself does to a refused edit across a reload.
+    if (!localStorage.getItem('ngw-hostv2-custom-events')) {
+      localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([local]));
+    }
     localStorage.setItem('ngw-hostv2-last-event', evId);
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
@@ -193,6 +202,61 @@ test.describe('a refused save is not called saved — the shell half', () => {
     await openSettings(page);
     const row = page.locator('.later-row').filter({ hasText: CONFLICT_ROW }).first();
     await expect(row, 'the settings sheet does not show the conflict state').toBeVisible({ timeout: 5000 });
+  });
+
+  // ── 3 · AND IT IS STILL HERE AFTER A RELOAD ──────────────────────────────
+  // Nielsen re-run N2 (2026-11-02, P1/P0): hydrate stamped every unqueued event
+  // SYNCED — a refused save is never queued — which also erased the conflict
+  // record; the adopt loop then saw "synced", found the account's copy
+  // different, and replaced the host's edit with it. The only message was
+  // "Updated with a newer version from your account." Test 1 never reloaded,
+  // so it could not see it. Red-proofed by removing the conflict exemption at
+  // the hydrate stamp.
+  test('a refused edit survives a reload: not overwritten, still flagged', async ({ page }) => {
+    await install(page, { mode: 'conflict' });
+    await boot(page);
+    await makeAnEdit(page);
+    expect((await readState(page)).guestMode, 'premise: the edit landed locally').toBe(EDIT.guestMode);
+
+    await page.reload();
+    await boot(page);
+    const s = await readState(page);
+    expect(s.guestMode, 'the refused edit was overwritten by the account copy on reload').toBe(EDIT.guestMode);
+    expect(s.toasts.filter((t) => /newer version from your account/i.test(t)),
+      'the host was told the account copy replaced theirs').toHaveLength(0);
+    await openSettings(page);
+    await expect(page.locator('.later-row').filter({ hasText: CONFLICT_ROW }).first(),
+      'the conflict state was erased by the reload').toBeVisible({ timeout: 5000 });
+  });
+
+  // ── 4 · OFFLINE: THE WARNING DOES NOT TAKE THE EDIT'S UNDO AWAY ───────────
+  // Nielsen re-run N4 (2026-11-02, P2): there is one toast slot. The edit's
+  // "… Undo" toast was replaced a moment later by the "waiting for the
+  // connection" notice, which had no action — so the first offline edit lost
+  // its Undo. Red-proofed by dropping the carried action from the notice.
+  test('offline: the save notice keeps the edit\'s Undo', async ({ page }) => {
+    await install(page, { mode: 'offline' });
+    await boot(page);
+    await makeAnEdit(page);
+    const s = await readState(page);
+    const notice = s.toasts.filter((t) => /connection is back/i.test(t));
+    expect(notice.length, `premise: no offline notice. Toasts seen: ${JSON.stringify(s.toasts)}`).toBeGreaterThanOrEqual(1);
+    expect(notice[notice.length - 1], `the offline notice dropped the edit's Undo. Toasts seen: ${JSON.stringify(s.toasts)}`).toMatch(/Undo/);
+  });
+
+  // ── 5 · WAITING ON THE ACCOUNT IS NOT WAITING ON THE CONNECTION ─────────
+  // Nielsen re-run N9 (2026-11-02, P3): a save queued because the account has
+  // no studio yet ('no-studio') was blamed on the connection, telling a host
+  // with a working network to wait for one. Red-proofed against the old copy.
+  test('no account yet: the notice names the account, not the connection', async ({ page }) => {
+    await install(page, { mode: 'nostudio' });
+    await boot(page);
+    await makeAnEdit(page);
+    const s = await readState(page);
+    const saved = s.toasts.filter((t) => /Saved on this device/i.test(t));
+    expect(saved.length, `premise: no save notice. Toasts seen: ${JSON.stringify(s.toasts)}`).toBeGreaterThanOrEqual(1);
+    expect(saved.filter((t) => /connection/i.test(t)), 'a no-account wait was blamed on the connection').toHaveLength(0);
+    expect(saved[saved.length - 1]).toMatch(/account/i);
   });
 
   // ── 2 · THE CONTROL: A SAVE THAT LANDS SAYS NOTHING, AND ADOPTS ITS STAMP ─

@@ -21,14 +21,29 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../../..');
-const FOLDERS = ['supabase/migrations', 'backend/migrations'];
+// Each source is checked on its own, so none can cover for another. The third
+// is a single hand-applied file (board condition 7, 2026-11-02): kaw1 creates
+// seven tables in `public` and lived outside this gate until then.
+const FOLDERS = ['supabase/migrations', 'backend/migrations', 'src/lib/knowledge/kaw1-migration.sql'];
 
 const readFolder = (rel) => {
-  const dir = path.join(ROOT, rel);
-  return fs.readdirSync(dir)
+  const target = path.join(ROOT, rel);
+  if (rel.endsWith('.sql')) return [{ file: rel, sql: fs.readFileSync(target, 'utf8') }];
+  return fs.readdirSync(target)
     .filter((f) => f.endsWith('.sql'))
     .sort()
-    .map((f) => ({ file: `${rel}/${f}`, sql: fs.readFileSync(path.join(dir, f), 'utf8') }));
+    .map((f) => ({ file: `${rel}/${f}`, sql: fs.readFileSync(path.join(target, f), 'utf8') }));
+};
+
+// Every .sql file in the repo, so the NEXT hand-applied file cannot sit
+// outside the gate the way kaw1 did.
+const SKIP_DIRS = new Set(['node_modules', '.git', 'build', 'dist', 'coverage', 'test-results', 'playwright-report']);
+const allSql = (dir = ROOT, out = []) => {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name) && !e.name.startsWith('.')) allSql(path.join(dir, e.name), out); }
+    else if (e.name.endsWith('.sql')) out.push(path.relative(ROOT, path.join(dir, e.name)).split(path.sep).join('/'));
+  }
+  return out;
 };
 
 // Strip SQL comments first: a commented-out `create table` or `enable row
@@ -75,5 +90,21 @@ describe('the six research tables specifically', () => {
     'research_evidence', 'research_observations', 'provider_run_logs',
   ])('%s has RLS enabled', (t) => {
     expect(enabled.has(t)).toBe(true);
+  });
+});
+
+describe('no SQL file sits outside the gate', () => {
+  test('every .sql file in the repo is in a scanned source', () => {
+    const covered = (f) => FOLDERS.some((src) => (src.endsWith('.sql') ? f === src : f.startsWith(`${src}/`)));
+    const outside = allSql().filter((f) => !covered(f));
+    // A new file here means: add it to FOLDERS (and give its tables RLS), or
+    // move it into supabase/migrations where the Supabase integration applies it.
+    expect(outside).toEqual([]);
+  });
+
+  test('kaw1 is scanned and its seven tables have RLS', () => {
+    const { created, enabled } = scan('src/lib/knowledge/kaw1-migration.sql');
+    expect(created.size).toBe(7);
+    expect([...created.keys()].filter((t) => !enabled.has(t))).toEqual([]);
   });
 });
