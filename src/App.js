@@ -46098,7 +46098,22 @@ export default function App() {
           ...events.map(ev => saveEvent(ev)),
           ...removedIds.map(id => cloudDeleteEvent(id)),
         ])
-          .then(() => { setSyncState('saved'); setPendingCount(0); })
+          .then((results) => {
+            // A SAVE NEVER SILENTLY OVERWRITES (2026-11-02, data-honesty fix in
+            // the frozen shell): saveEvent now REFUSES a write against a row
+            // another device changed since this one loaded it, and answers
+            // `reason: 'conflict'` instead of throwing — so it lands here, not
+            // in the catch. "Saved" would be a lie for it: the edit is on this
+            // device only and the newer version in the account was left alone.
+            const refused = results.filter(r => r && r.reason === 'conflict');
+            if (refused.length) {
+              setSyncState('sync_failed');
+              setPendingCount(getPendingCount());
+              showToast('An event changed somewhere else after you opened it. Your edit is saved on this device only — the newer version in your account was left alone.', 'error');
+              return;
+            }
+            setSyncState('saved'); setPendingCount(0);
+          })
           .catch(() => { setSyncState('sync_failed'); setPendingCount(getPendingCount()); });
       }
     }, 1500);

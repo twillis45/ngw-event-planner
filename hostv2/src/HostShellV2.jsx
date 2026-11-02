@@ -1949,14 +1949,36 @@ export default function HostShellV2() {
           const localList = JSON.parse(localStorage.getItem(LS_CUSTOMS)) || [];
           const byId = new Map(localList.map(e => [e && e.id, e]));
           const adopted = [];
+          const stampOnly = [];
+          const stripStamp = ({ _cloudUpdatedAt, ...rest }) => rest;
           for (const cloudEv of evs) {
             if (!cloudEv || !cloudEv.id || tombstoned.has(cloudEv.id)) continue;
             const localEv = byId.get(cloudEv.id);
             if (!localEv) continue;                       // new here — `fresh` has it
             if (getEventSyncStatus(localEv) !== SYNC_STATUS.SYNCED) continue;  // dirty/unstamped → local wins
-            if (JSON.stringify(localEv) === JSON.stringify(cloudEv)) continue; // nothing changed
+            // Compare CONTENT. `_cloudUpdatedAt` is the row's version stamp, not
+            // the event — two copies that differ only there are the same event,
+            // and treating the stamp as a change would announce "updated from
+            // your account" after this device's own save. When content matches
+            // but the stamp is newer, adopt the stamp alone, silently: it is
+            // what makes this device's next save conditional on the RIGHT
+            // version instead of being refused against its own history.
+            const sameContent = JSON.stringify(stripStamp(localEv)) === JSON.stringify(stripStamp(cloudEv));
+            if (sameContent) {
+              if (cloudEv._cloudUpdatedAt && cloudEv._cloudUpdatedAt !== localEv._cloudUpdatedAt) {
+                stampOnly.push(cloudEv.id);
+                byId.set(cloudEv.id, { ...localEv, _cloudUpdatedAt: cloudEv._cloudUpdatedAt });
+              }
+              continue;
+            }
             adopted.push(cloudEv.id);
             byId.set(cloudEv.id, { ...cloudEv });
+          }
+          if (stampOnly.length && !adopted.length) {
+            // Provenance only. No toast: nothing the host can see changed.
+            const next = localList.map(e => (e && byId.get(e.id)) || e);
+            const res = saveCustomEvents(next, { reason: 'hostshell:refresh-cloud-stamp' });
+            if (res && res.ok) setCustoms(next);
           }
           if (adopted.length) {
             const next = localList.map(e => (e && byId.get(e.id)) || e);
@@ -6785,9 +6807,29 @@ export default function HostShellV2() {
   // later offline stretch gets its own single cue. The online flush toast
   // ("N changes synced") already announces the recovery.
   const syncCueShown = useRef(false);
+  const conflictCueShown = useRef(false);
   const noteSaveResult = (ev, res) => {
     try { recordSaveResult(ev, res); } catch { /* stamping is best-effort */ }
+    // ── A SAVE NEVER SILENTLY OVERWRITES (2026-11-02) ──────────────────────
+    // On success the cloud row has a NEW `updated_at`, and the local copy must
+    // carry it: saveEvent writes conditionally against `_cloudUpdatedAt`, so a
+    // stale stamp here would make this device's own next edit read as someone
+    // else's newer write and be refused. A provenance-only patch, not an edit —
+    // it goes nowhere near the cloud and shows nothing.
+    if (res && res.ok && res.updatedAt && ev && ev.id) {
+      setCustoms(list => list.map(c => (c && c.id === ev.id) ? { ...c, _cloudUpdatedAt: res.updatedAt } : c));
+    }
     if (res && res.ok) { syncCueShown.current = false; return; }
+    // A refusal is an answer, told once: what happened, and where the edit is.
+    // It is NOT queued and there is no "retry" — retrying a refused overwrite
+    // would refuse again. The settings sheet keeps the state visible.
+    if (res && res.reason === 'conflict') {
+      if (!conflictCueShown.current) {
+        conflictCueShown.current = true;
+        toast('This event changed somewhere else after you opened it. Your edit is saved on this device only — the newer version in your account was left alone.');
+      }
+      return;
+    }
     if (!syncCueShown.current) {
       syncCueShown.current = true;
       toast('Saved on this device — it will reach your account when the connection is back.');

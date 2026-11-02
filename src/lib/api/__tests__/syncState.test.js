@@ -31,7 +31,9 @@ beforeEach(() => localStorage.clear());
 describe('status vocabulary and labels', () => {
   test('every status has a plain-language label and nothing extra', () => {
     const statuses = Object.values(SYNC_STATUS);
-    expect(statuses.sort()).toEqual(['local-only', 'pending', 'sync-failed', 'synced']);
+    // 'conflict' joined 2026-11-02 (a save never silently overwrites): a write
+    // refused because the row moved on — not failed, not pending, not retried.
+    expect(statuses.sort()).toEqual(['conflict', 'local-only', 'pending', 'sync-failed', 'synced']);
     for (const s of statuses) {
       expect(typeof SYNC_STATUS_LABEL[s]).toBe('string');
       expect(SYNC_STATUS_LABEL[s].trim().length).toBeGreaterThan(0);

@@ -55,6 +55,8 @@ export const SYNC_STATUS = {
   PENDING:     'pending',     // a write is queued; no failed cloud attempt recorded
   SYNCED:      'synced',      // real success stamp, and no newer write queued
   SYNC_FAILED: 'sync-failed', // a write is queued and the last attempt failed
+  CONFLICT:    'conflict',    // the cloud row moved on since this device loaded it; the
+                              // edit was REFUSED (not written, not queued) and lives here only
 };
 
 // Plain host language (UX_06 / no jargon). "not synced yet" is deliberately not
@@ -64,6 +66,7 @@ export const SYNC_STATUS_LABEL = {
   'pending':     'Waiting to sync',
   'synced':      'Synced',
   'sync-failed': 'Couldn’t sync — will retry',
+  'conflict':    'Changed somewhere else — your edit is on this device only',
 };
 
 // ─── Storage helpers (corrupt-safe) ──────────────────────────────────────────
@@ -128,6 +131,16 @@ export function markEventSyncAttemptFailed(eventId, error = null) {
 }
 
 /**
+ * Record a REFUSED write: the cloud row changed since this device loaded it, so
+ * the save was not applied and not queued. Lives in the attempts map under a
+ * fixed marker so one successful save (markEventSynced clears attempts) ends it.
+ */
+export const CONFLICT_MARKER = 'conflict';
+export function markEventConflict(eventId) {
+  markEventSyncAttemptFailed(eventId, CONFLICT_MARKER);
+}
+
+/**
  * Last confirmed cloud success.
  *   getLastSyncTime(eventId) — ISO string for that event, or null (never confirmed).
  *   getLastSyncTime()        — most recent success across all events, falling back
@@ -166,6 +179,11 @@ export function getEventSyncStatus(event) {
     const a = readMap(ATTEMPTS_KEY)[id];
     return a && a.error ? SYNC_STATUS.SYNC_FAILED : SYNC_STATUS.PENDING;
   }
+  // A refused write is not queued (retrying would refuse again) and it
+  // outranks an older success stamp: the stamp says a PREVIOUS snapshot
+  // reached the cloud, which is true and not the point.
+  const a = readMap(ATTEMPTS_KEY)[id];
+  if (a && a.error === CONFLICT_MARKER) return SYNC_STATUS.CONFLICT;
   if (readMap(STAMPS_KEY)[id]) return SYNC_STATUS.SYNCED;
   return SYNC_STATUS.LOCAL_ONLY;
 }
@@ -190,6 +208,10 @@ export function recordSaveResult(event, result) {
   if (result && result.ok) {
     markEventSynced(id);
     return SYNC_STATUS.SYNCED;
+  }
+  if (result && result.reason === CONFLICT_MARKER) {
+    markEventConflict(id);
+    return SYNC_STATUS.CONFLICT;
   }
   if (result && result.queued) {
     // reason 'error' = the cloud attempt genuinely failed; 'no-studio' = queued
@@ -216,7 +238,9 @@ export async function flushPendingEvents(flushFn = eventsFlushPendingEvents) {
   const flushedIds = Array.isArray(res.flushedIds) ? res.flushedIds : [];
   if (flushedIds.length) markEventSynced(flushedIds);
   for (const op of (Array.isArray(res.failedOps) ? res.failedOps : [])) {
-    if (op && op.type === 'upsert') markEventSyncAttemptFailed(op.id, op.error || 'Retry didn’t reach the cloud');
+    if (!op || op.type !== 'upsert') continue;
+    if (op.error === CONFLICT_MARKER) markEventConflict(op.id);
+    else markEventSyncAttemptFailed(op.id, op.error || 'Retry didn’t reach the cloud');
   }
   return {
     flushed: res.flushed || 0,
