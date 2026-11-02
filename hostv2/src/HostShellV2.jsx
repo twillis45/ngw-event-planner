@@ -6851,11 +6851,21 @@ export default function HostShellV2() {
       }
       return;
     }
-    if (!syncCueShown.current) {
+    // Say WHY it is waiting, and only when it really is waiting (N9,
+    // 2026-11-02): 'error' is the connection; 'no-studio' is an account still
+    // being set up — blaming the network sent a host with a working one to
+    // wait for it. Any other non-success ('local-studio') never reaches an
+    // account at all, so "it will reach your account" would be false.
+    const why = res && res.queued
+      ? (res.reason === 'error' ? 'it will reach your account when the connection is back.'
+        : res.reason === 'no-studio' ? 'it will reach your account as soon as your account finishes setting up.'
+        : null)
+      : null;
+    if (why && !syncCueShown.current) {
       syncCueShown.current = true;
       // Keep the edit's Undo if it is still showing — one toast slot, and this
       // notice must not cost her the way back (N4).
-      toast('Saved on this device — it will reach your account when the connection is back.', toastActionRef.current);
+      toast('Saved on this device — ' + why, toastActionRef.current);
     }
   };
   // ── THE CHECKLIST FOLLOWS THE DECISIONS (audit 2026-08-21) ────────────────
