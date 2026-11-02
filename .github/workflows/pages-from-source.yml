@@ -240,11 +240,17 @@ jobs:
           echo "${RELEASE_SHA}" > build/RELEASE_SHA.txt
           echo "release_profile=${RELEASE_PROFILE}" >> build/RELEASE_SHA.txt
           echo "built $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${RELEASE_SHA}" >> build/RELEASE_SHA.txt
-          if [ "${RELEASE_PROFILE}" = "demo" ]; then
-            echo "capability=open-demo-localstorage-only (NOT live-production capable)" >> build/RELEASE_SHA.txt
-          else
-            echo "capability=live-authenticated-backend-connected" >> build/RELEASE_SHA.txt
-          fi
+          # One line per profile, named for what it can actually do. Until
+          # 2026-11-02 this was demo-or-else, so a `services` release (backend on,
+          # NO sign-in) was stamped "live-authenticated" on the live site.
+          # An unknown profile fails here rather than borrow another's claim.
+          # Pinned by src/__tests__/theStampSaysWhatShipped.test.js.
+          case "${RELEASE_PROFILE}" in
+            demo)     echo "capability=open-demo-localstorage-only (NOT live-production capable)" >> build/RELEASE_SHA.txt ;;
+            services) echo "capability=services-backend-connected-no-sign-in (localStorage-only for the visitor)" >> build/RELEASE_SHA.txt ;;
+            live)     echo "capability=live-authenticated-backend-connected" >> build/RELEASE_SHA.txt ;;
+            *)        echo "::error::unknown release profile '${RELEASE_PROFILE}' — refusing to stamp a capability it cannot name"; exit 1 ;;
+          esac
 
       # ── prove BOTH bundles received the intended configuration ───────────
       # CRA and hostv2 are compiled by different toolchains from different
