@@ -95,16 +95,14 @@ If you confirm back through that link, we store your confirmation.
   ⟶ `src/lib/sentry.js:25` (`sendDefaultPii: false`), `:23`
 - To learn which parts of the app help: product analytics go to **PostHog**
   with automatic click and form capture **off**, session recording **off**,
-  page views tracked by hand. Name, email and phone fields are stripped
-  before any event is sent. ⟶ `src/lib/analytics.js:48-60, 101-103`
-  **CORRECTED 2026-11-02 — not true yet, do not ship as written:** this draft
-  said the identity is "a hashed studio label rather than your email or name."
-  It is not hashed: `identifyStudio()` (`src/lib/analytics.js:73-85`, called by
-  the CRA shell at `src/App.js:46176`) sends a slug of the business name and the
-  business name itself. And the only opt-out is the `?noanalytics=1` URL flag,
-  with no visible control. Both are open items in
-  `CONSENT_AND_TRACKING_COPY_DRAFT.md` §2; this bullet is rewritten once they
-  are fixed.
+  page views tracked by hand, and the identity set to a one-way hash of your
+  business name — never the name itself, your email, or your personal name.
+  Name, email and phone fields are stripped before any event is sent. You can
+  turn analytics off any time in **You & settings → Help improve the app**.
+  ⟶ `src/lib/analytics.js:47` (opt-out), `:65` (hash), `:85-89`, `:114`
+  (identify), `:139-141` (stripping)
+  *(Rewritten 2026-11-02 after the fix: until then the identity carried the
+  readable business name and the only opt-out was a URL flag.)*
 - **We do not sell personal data, we do not run advertising, and we do not
   share your data with data brokers.** ⟶ no such code path exists
 

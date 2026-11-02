@@ -1,6 +1,10 @@
 # Consent and tracking copy — DRAFT for owner ruling and attorney review
 
-**Status: DRAFT, unreviewed, not wired into the product.** Gate row `s5-consent`
+**Owner ruling 2026-11-02: option A; hash `identifyStudio`; build the toggle — all
+three built the same day (§2, §6).** Attorney review is still owed before the
+Privacy link ships.
+
+**Status: copy DRAFT (attorney review owed); the notice and toggle are BUILT.** Gate row `s5-consent`
 (marketing track, stage 5): "consent and tracking-prompt copy — marketing copy
 with a legal consequence." Written 2026-11-02 from what the code does today. Not
 legal advice; nothing here ships until the owner rules it and an attorney has
@@ -20,7 +24,13 @@ read it.
 | Never reports from local development. | `src/lib/analytics.js:22, 24` |
 | **Sentry** error reports, `sendDefaultPii: false`, 10% performance-trace sample. | `src/lib/sentry.js:18-26` |
 
-## 2. Two things that must be FIXED before any copy can be true
+## 2. Two things that had to be FIXED before any copy could be true — both FIXED 2026-11-02
+
+> **Fixed:** `identifyStudio` now sends `studio_` + the first 16 hex characters of a SHA-256 of the normalized business name, and only `role` — no `studio_name` (`src/lib/analytics.js:114`, hash at `:65`). An opted-out host is never identified, and a browser that cannot hash is not identified at all. The Settings row "Help improve the app" writes the opt-out (`setAnalyticsOptOut`, `:47`). Pinned by `src/lib/__tests__/analyticsPrivacy.test.js` (red on the old module) and `hostv2/e2e/aHostCanTurnAnalyticsOff.spec.mjs`.
+>
+> **One limit, stated:** a hash of a business name is pseudonymous, not anonymous — someone who already knows the name could compute the same label. It no longer carries the name to PostHog, which is what the copy promises.
+
+As found:
 
 1. **A business name can reach PostHog today.** `identifyStudio()`
    (`src/lib/analytics.js:73-85`) identifies the visitor as
@@ -89,7 +99,7 @@ return — with the file reference to the hashing code.
 
 ## 6. Owner checklist
 
-- [ ] Pick **A** or **B** (§3).
-- [ ] Rule on the §2.1 fix (hash or remove `identifyStudio`).
-- [ ] Approve building the Settings toggle (§2.2).
+- [x] Pick **A** or **B** (§3). **A, 2026-11-02.**
+- [x] Rule on the §2.1 fix (hash or remove `identifyStudio`). **Hash — built.**
+- [x] Approve building the Settings toggle (§2.2). **Built**, plus the one-time first-open notice (§4, option A copy; its Privacy link joins when the policy is published).
 - [ ] Send this file and the privacy draft to the attorney with the §3 question.
