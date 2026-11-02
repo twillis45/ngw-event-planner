@@ -87,6 +87,12 @@ const VIEWPORT_INDEPENDENT = [
   // directly, so any project pointed at the shared preview would measure a
   // bundle with billing dormant and pass without executing the path.
   '**/thePassSurvivesTheWebhookRace.spec.mjs',
+  // ── FAILURE INJECTION (GOLD-10, 2026-11-02) ───────────────────────────
+  // Asserts only which sentence appeared and how many times, plus that an
+  // unknown event id does not white-screen. No geometry, and three of its
+  // four tests sit through a 9s boot-and-settle window, so six more
+  // viewports would buy six identical results for six times the wall clock.
+  '**/aFailedSaveIsNotSilent.spec.mjs',
   // ── THE PEOPLE ATTENDANCE ZONE (redesign step 3, 2026-10-20) ───────────
   // Six tests on text and stored state, including a paired fixture that
   // differs by ONE field (guestCountSource) and a negative control proving

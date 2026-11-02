@@ -656,6 +656,59 @@ Also verified in the same probe and already correct: all **11 service-worker
 precache entries resolve 200** (the offline shell is intact), and hostv2 is
 live and serving at `/hostv2/`.
 
+### GOLD-09 and two thirds of GOLD-10 closed — the money path finally has a browser
+
+The owner's read was right: scenario coverage was incomplete. Measured against
+`docs/architecture/current-state/GOLD_E2E_ACCEPTANCE_MATRIX.md`, which scores
+ten end-to-end scenarios, and the worst open row was the one under the money.
+
+🔴 **GOLD-09: the pass entitlement had ZERO browser coverage.** A grep across
+all 133 specs for `passGate|event_passes|passPurchased|stripe` returned one
+hit, a negative control in the demo spec asserting a demo id is NOT a
+purchase. Stage-9 precondition #4 is a live-keys Stripe purchase: the money
+path was about to be switched on with no browser having walked it.
+
+**Why it survived two green unit suites, and this is the part worth keeping.**
+`passGate.js` answers "allowed" at every gate while `isBillingLive()` is false,
+and that needs BOTH a truthy API base and `REACT_APP_BILLING_LIVE === '1'`.
+The shared e2e bundle carries neither. Driven against it, the pass sheet reads
+**"fully unlocked right now"** — a spec written there passes having executed
+none of the entitlement path. The unit suites drive the MODULES; nothing drove
+the SHELL. So: its own bundle (`.env.passgate`, port 5266) and a premise test
+that goes red if that bundle ever loses the switch.
+
+Seven tests. The race is the reason it exists — Stripe redirects the browser
+and POSTs the webhook independently, so a host who just paid can land with the
+blob claiming a pass and the row not written. **Red-proofed rather than
+observed:** claim present with answers F,F,T gives 3 asks and ends unlocked;
+claim removed with the same answers gives 1 ask and ends locked. Remove the
+thing under test and it fails.
+
+**GOLD-10: two of three closed, and the third is NOT claimed.** Write failure
+and invalid route now have guards; producer failure does not and is written
+down as still open. The write is the one that matters: HostShellV2's own
+comment says quota-exceeded is realistic rather than theoretical because a
+patch carries photos, and "swallowed, the host keeps editing an event that is
+no longer being saved and finds out when they reopen it." Measured on a real
+boot with `setItem` throwing for `ngw-hostv2-patch-*` only: **2 failed
+attempts, exactly 1 notice**, naming cause and remedy. The dedupe is asserted
+separately because it is the regression-prone half.
+
+⚠️ **An instrument that lies is worse than no instrument.** The save-failure
+toast auto-dismisses AND arrives inside a re-rendered subtree. Sampling at the
+end found nothing; a MutationObserver on `addedNodes` also found nothing. Both
+were tried here and both reported a clean run against a shell that was warning
+correctly — i.e. both would have recorded the opposite of the truth. An 80ms
+poll across the run is what sees it.
+
+**Two bugs of mine on the way, both recorded at their lines.** The catch-all
+Playwright route was registered AFTER the specific stub, so it swallowed every
+`/api/stripe/pass` call and the suite reported zero asks — reading exactly like
+"the shell never asked". That is the fifty-ninth entry's own trap, quoted
+earlier in this same session and still written backwards. And the first
+control arm only counted writes when it was also throwing them, so it asserted
+"nothing happened" instead of "writes happened and the shell stayed quiet".
+
 ### Path to Production, re-read 2026-11-02
 
 Stage 9's six preconditions, from
