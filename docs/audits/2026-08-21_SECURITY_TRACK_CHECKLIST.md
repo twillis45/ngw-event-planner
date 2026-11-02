@@ -47,6 +47,16 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   unauthenticated server-side** (the client sent auth since 2026-08-07;
   the backend never demanded it) — now gated. It also surfaced finding
   #8 below.
+  **Superseded 2026-11-02 (board condition C4-2 / cond. 6):** the sweep no
+  longer hand-lists routers — it walks the routes the deployed app actually
+  serves (`app.main`, all 16 mounted routers plus main.py's own three), and
+  `test_the_sweep_reaches_every_router_main_mounts` goes red if the walk ever
+  misses one. research, kas and kcr are now hit bare and answer 401. The five
+  reference proxies (weather, food prices, Instacart, Kroger, lodging) sit on
+  the PUBLIC allowlist with written reasons, including the accepted cost:
+  anyone can spend our third-party quota through them; no rate limit exists.
+  Red-proofed three ways: drop an allowlist entry, stop the walk descending,
+  strip research's admin gate — each goes red.
 
 ## Stage-5 — the consolidated gate
 
