@@ -18692,7 +18692,7 @@ export default function HostShellV2() {
                       ? `That address for ${missingVendorEmail.name} doesn't look right, so this can't send yet.`
                       : `No email for ${missingVendorEmail.name} yet — hand it off below, or add one and you can send it from here.`}
                     {' '}
-                    <button className="mini rowlink" onClick={() => setSheet({ kind: 'vendors', focus: missingVendorEmail.id, from: { kind: 'draft', title: sheet.title, vendorId: sheet.vendorId } })}>
+                    <button className="mini rowlink" onClick={() => setSheet({ kind: 'vendors', focus: missingVendorEmail.id, from: sheet /* the WHOLE draft — a partial parent came back as "undefined" (Nielsen N1, 2026-11-02) */ })}>
                       {missingVendorEmail.malformed ? 'Fix their address' : 'Add their email'}
                     </button>
                   </p>
