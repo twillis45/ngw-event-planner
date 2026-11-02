@@ -287,6 +287,16 @@ only on a working branch the dispatch API returned 404; PR #63 landed it on
 
 ### Live path — `pages-from-source.yml`
 
+> **Current trigger (2026-11-02).** The section below describes it as
+> dispatch-only, which was true when written; a push trigger followed on
+> 2026-08-03. Since 2026-11-02 a merge to `main` runs **Checks** first and the
+> deploy starts from its completion (`workflow_run`), publishing only when that
+> run concluded `success` — so a red e2e spec (GOLD-09 included) now stops a
+> release. The deploy builds and stamps the SHA Checks tested
+> (`RELEASE_SHA`), still runs its own tests, and `workflow_dispatch` (rollback,
+> `live`) does not wait on Checks. Pinned by
+> `src/__tests__/theDeployWaitsForChecks.test.js`.
+
 Triggered by **`workflow_dispatch` only**. It runs backend
 tests, the unit suite, then `npm run release`, writes `build/RELEASE_SHA.txt`
 recording the commit, uploads `build/`, and deploys that exact artifact.

@@ -1,8 +1,9 @@
 # Source-built GitHub Pages deployment — Release Integrity C4 (2026-07-30).
 #
-# STATUS: THIS IS THE LIVE PATH, AND THE ONLY ONE. Every push to main publishes
-# Pages, built from source in CI. `workflow_dispatch` remains for manual runs and
-# for the `live` release profile.
+# STATUS: THIS IS THE LIVE PATH, AND THE ONLY ONE. Every merge to main publishes
+# Pages, built from source in CI — once Checks (unit, backend, build AND the e2e
+# matrix) has passed on that commit (since 2026-11-02; see `workflow_run` below).
+# `workflow_dispatch` remains for manual runs and for the `live` release profile.
 #
 # It was dispatch-only until it had been run by hand and the published site
 # confirmed — that happened on 96dd25c7, verified at the chunk level (the live
@@ -35,7 +36,7 @@ on:
         type: choice
         options: [demo, services, live]
   # THE LIVE PATH (2026-08-03). Every merge to main publishes Pages, built from
-  # source in CI.
+  # source in CI — since 2026-11-02, only after Checks passes (workflow_run below).
   #
   # A push carries NO inputs, so release_profile is empty here and the env below
   # falls back to the repository variable DEFAULT_RELEASE_PROFILE, and then to
@@ -51,7 +52,29 @@ on:
   # `demo` is still the default when the variable is unset, so the safety
   # property holds for anyone who has not deliberately changed it. Set it at:
   # Settings → Secrets and variables → Actions → Variables.
-  push:
+  #
+  # DEPLOY ONLY AFTER CHECKS IS GREEN ON MAIN (board, stage 6, 2026-11-02).
+  # This used to be `push: branches: [main]`, which started the deploy in
+  # parallel with Checks — so the browser specs guarding the money path
+  # (GOLD-09 and the rest of the e2e matrix, which run ONLY in checks.yml) could
+  # go red AFTER the site was already published. Now a merge to main runs
+  # Checks, and this workflow starts when that run completes; the build job
+  # below refuses unless it concluded `success`, and checks out the exact SHA
+  # Checks tested — not whatever main points at by then.
+  #
+  # ADDITIVE, NOT A HAND-OFF: the build job still runs its own unit tests,
+  # pytest and release build. Trusting an upstream green INSTEAD of testing is
+  # the hole this file was written to close (see the header); this trusts it
+  # IN ADDITION.
+  #
+  # TRADE: a deploy now waits for the e2e matrix (~25 min) after a merge. And
+  # because Checks cancels a superseded run on the same branch, two quick
+  # merges publish only the second — the first's run concludes `cancelled`.
+  # workflow_dispatch is unchanged: a manual run (rollback, `live`) does not
+  # wait on Checks.
+  workflow_run:
+    workflows: [Checks]
+    types: [completed]
     branches: [main]
 
 permissions:
@@ -67,6 +90,13 @@ concurrency:
 
 jobs:
   build:
+    # A workflow_run fires on EVERY completion — failed and cancelled included —
+    # and for Checks runs started by a PR whose head branch is named main. Only
+    # a green Checks run from a push to main may publish.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     # PUBLIC production configuration, job-scoped so BOTH builds inherit it.
     #
@@ -99,6 +129,10 @@ jobs:
       # A dispatch input wins; otherwise the repository default; otherwise demo.
       # See the trigger comment above for why this is no longer a hard floor.
       RELEASE_PROFILE: ${{ inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE || 'demo' }}
+      # The commit actually built and published. On workflow_run this is the SHA
+      # Checks passed, NOT GITHUB_SHA (main's tip when this run started) — the
+      # release stamp must name what shipped.
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       # The API base reaches a proxy that returns PUBLIC data (BLS prices, the
       # forecast, Kroger shelf prices) and holds its keys server-side. It is
       # therefore available to `services` as well as `live` — it does not bring
@@ -120,6 +154,11 @@ jobs:
       # ABSENT and are rejected by the validator if ever introduced.
     steps:
       - uses: actions/checkout@v4
+        with:
+          # On workflow_run, github.sha is main's tip WHEN THIS STARTED, which
+          # may be a later merge Checks has not finished testing. Build the
+          # commit Checks actually passed. Manual runs keep the ref chosen.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -198,9 +237,9 @@ jobs:
 
       - name: Record the deployed commit
         run: |
-          echo "${GITHUB_SHA}" > build/RELEASE_SHA.txt
+          echo "${RELEASE_SHA}" > build/RELEASE_SHA.txt
           echo "release_profile=${RELEASE_PROFILE}" >> build/RELEASE_SHA.txt
-          echo "built $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${GITHUB_SHA}" >> build/RELEASE_SHA.txt
+          echo "built $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${RELEASE_SHA}" >> build/RELEASE_SHA.txt
           if [ "${RELEASE_PROFILE}" = "demo" ]; then
             echo "capability=open-demo-localstorage-only (NOT live-production capable)" >> build/RELEASE_SHA.txt
           else
@@ -233,9 +272,9 @@ jobs:
             || { echo "::error::CRA bundle is missing REACT_APP_API_BASE_URL"; exit 1; }
           grep -rqF "$api" build/hostv2/assets/ \
             || { echo "::error::hostv2 bundle is missing REACT_APP_API_BASE_URL — the two surfaces would disagree"; exit 1; }
-          test -s build/RELEASE_SHA.txt && grep -qF "${GITHUB_SHA}" build/RELEASE_SHA.txt \
+          test -s build/RELEASE_SHA.txt && grep -qF "${RELEASE_SHA}" build/RELEASE_SHA.txt \
             || { echo "::error::artifact is not stamped with the commit SHA"; exit 1; }
-          echo "both bundles carry the intended public configuration; artifact stamped ${GITHUB_SHA}"
+          echo "both bundles carry the intended public configuration; artifact stamped ${RELEASE_SHA}"
 
       # ── demo profile: prove the live values are NOT in the bundle ────────
       # The mirror of the live parity check. A demo artifact that contained a
@@ -262,9 +301,9 @@ jobs:
           fi
           grep -q 'release_profile=demo' build/RELEASE_SHA.txt \
             || { echo "::error::artifact is not stamped release_profile=demo"; exit 1; }
-          test -s build/RELEASE_SHA.txt && grep -qF "${GITHUB_SHA}" build/RELEASE_SHA.txt \
+          test -s build/RELEASE_SHA.txt && grep -qF "${RELEASE_SHA}" build/RELEASE_SHA.txt \
             || { echo "::error::artifact is not stamped with the commit SHA"; exit 1; }
-          echo "demo artifact verified: no live configuration, stamped ${GITHUB_SHA} / release_profile=demo"
+          echo "demo artifact verified: no live configuration, stamped ${RELEASE_SHA} / release_profile=demo"
 
       # ── final net: no server secret may leave in the artifact ────────────
       # VALUE shapes only, deliberately. The control on NAMES lives in

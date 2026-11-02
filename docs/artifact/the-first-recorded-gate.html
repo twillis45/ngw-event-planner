@@ -287,7 +287,7 @@
       <li><input type="checkbox" checked disabled aria-label="handled"> <b>Stage 8, Maintain &mdash; passed with conditions, 3&ndash;0</b> (Janca, Forsgren, Fowler).</li>
       <li><span class="mark skip">&ndash;</span> <b>Not ruled by the board, deliberately:</b> stages 1 and 2. Whether the owner ruled them on 2026-09-03 is a fact only he holds; their records are drafted for him to confirm or re-rule.</li>
       <li><span class="mark skip">&ndash;</span> <b>Where the records are:</b> drafted with a poster the owner runs locally &mdash; the Command Center is unreachable from a cloud session. Until he posts them, this page is ahead of the server record, and says so here.</li>
-      <li><span class="mark skip">&ndash;</span> <b>Since the ruling, same day:</b> conditions C4-2, C4-4, 6 and 7 are closed, each red-proofed &mdash; the sweep walks every mounted router, research/kas/kcr answer 401, kaw1 is under the RLS gate, a skip no longer reads as a pass. The two dissents above are recorded as the seats gave them; Bach/Bolton&rsquo;s device-emulation point and Janca&rsquo;s live-database point still stand.</li>
+      <li><span class="mark skip">&ndash;</span> <b>Since the ruling, same day:</b> conditions C4-2, C4-4, 6 and 7 are closed, each red-proofed &mdash; the sweep walks every mounted router, research/kas/kcr answer 401, kaw1 is under the RLS gate, a skip no longer reads as a pass &mdash; and Farley&rsquo;s stage-6 point (e2e gates the deploy) is closed in source, live from the next merge. The two dissents above are recorded as the seats gave them; Bach/Bolton&rsquo;s device-emulation point and Janca&rsquo;s live-database point still stand.</li>
     </ul>
   </section>
 
@@ -505,7 +505,7 @@
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>Prod error responses carry no stack traces</b> &mdash; checklist DONE.</li>
             <li><input type="checkbox" data-k="s6-backup"> <span class="tag">Security track</span> <b>Backup exists and restore is verified.</b> <b>Why unchecked:</b> the same item as condition <code>c-backup</code>; the drill is written as RUNBOOK check B.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Axis 1</span> <b>Platform deploy:</b> web only, on your schedule; no store review pipeline because store submission is not a target.</li>
-            <li><input type="checkbox" data-k="s6-e2e"> <span class="tag">Board 2026-11-02, Farley</span> <b>The browser specs guarding the money path do not gate deployment.</b> They run in <code>checks.yml</code>; <code>pages-from-source.yml</code> runs unit tests, pytest and the release build only, so a red GOLD-09 cannot stop a release. Fix before stage 6 is re-ruled.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Board 2026-11-02, Farley</span> <b>The browser specs guarding the money path do not gate deployment.</b> They run in <code>checks.yml</code>; <code>pages-from-source.yml</code> runs unit tests, pytest and the release build only, so a red GOLD-09 cannot stop a release. Fix before stage 6 is re-ruled. <b>Closed in source 2026-11-02:</b> the deploy now starts when Checks completes on main (<code>workflow_run</code>), publishes only on <code>success</code>, and builds and stamps the SHA Checks tested; manual dispatch is unchanged. Pinned by <code>theDeployWaitsForChecks.test.js</code>, red-proofed three ways. <b>Takes effect on the next merge to main</b> &mdash; until then the live deploy still starts on push.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -1055,6 +1055,7 @@
     apply();
   })();
 </script>
+
 
 
 
