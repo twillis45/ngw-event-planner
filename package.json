@@ -75,5 +75,8 @@
       "import": "./dist-design/index.mjs",
       "require": "./dist-design/index.cjs"
     }
+  },
+  "overrides": {
+    "dompurify": "3.4.17"
   }
 }
