@@ -117,6 +117,11 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   npm → `hostv2` shipped tree **0 vulnerabilities**. The 8/21 "0 vulnerabilities"
   line above was true on its day; a dependency tree is not a fact that stays
   true, which is why stage 8 owes a review on a cadence.
+  **Cadence written 2026-11-02:** `.github/workflows/dependency-audit.yml`
+  runs weekly (Mondays 13:17 UTC), on every lockfile PR, and on demand.
+  hostv2 is STRICT (fails on any high); the CRA root is REPORT-ONLY by
+  decision until s8-cra is ruled, with counts and `xlsx` in the run summary.
+  Pinned by `theAuditRunsOnACadence.test.js`, red-proofed.
 - **NO-OP with note — dependency audit (CRA root).** *(2026-11-02: now 106
   findings, not 51 — 3 critical, all in the react-scripts dev server
   (`proxy-addr`, `shell-quote`, `websocket-driver`); `xlsx` high as before;
