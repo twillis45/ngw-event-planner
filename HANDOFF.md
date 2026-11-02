@@ -626,6 +626,36 @@ query runs (`backend/app/routers/rsvp.py:230`), with new events minting 22-char
 tokens. Rate limiting on that route would be defence in depth, not a blocker,
 so none was invented for it.
 
+### Two defects the probe turned up, both fixed, both invisible to every existing check
+
+**1 · The parse gate's ceiling was under its own cost.** `shellParses.test.mjs`
+ran `../src/HostShellV2.jsx imports cleanly` on vitest's 5000ms default and
+failed about one run in two — always a TIMEOUT, never an assertion. Measured
+with the ceiling lifted: **6101 / 6088 / 5691 ms**. Systematically over budget,
+passing only when the machine squeezed under. It first went red while an
+unrelated change was in flight, so the tree was STASHED and the clean tree
+reproduced 2-of-3 red on its own — the change was exonerated by measurement
+rather than by argument. Raised to 20s (~3.3x worst case, still a hang
+detector), **5/5 green after**. A gate that fails half the time is worse than
+no gate: it teaches whoever hits it to re-run until green, which is the habit
+that lets a real failure through.
+
+**2 · hostv2 had no tab icon, and the 404 was invisible by construction.** The
+live shell was driven in a real browser at 390px — it boots, renders, 0 failed
+requests — with one console error reproduced 3/3: `Failed to load resource:
+404`, no URL. No URL because **no response listener ever saw it**. The head
+declared `rel="manifest"` and `rel="apple-touch-icon"` but no `rel="icon"`, so
+Chromium fell back to the ORIGIN root, `twillis45.github.io/favicon.ico` — the
+GitHub user-site root, not this project's. A browser-initiated favicon fetch
+raises no page response event, so every check that watches network traffic was
+structurally blind to it and the only trace was a bare console line. Fixed with
+`rel="icon"` on both favicon.ico and icon-192.png, **both verified 200 live
+before being referenced**.
+
+Also verified in the same probe and already correct: all **11 service-worker
+precache entries resolve 200** (the offline shell is intact), and hostv2 is
+live and serving at `/hostv2/`.
+
 ### Path to Production, re-read 2026-11-02
 
 Stage 9's six preconditions, from
