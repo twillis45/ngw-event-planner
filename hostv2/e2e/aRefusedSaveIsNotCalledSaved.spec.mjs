@@ -78,6 +78,7 @@ const install = async (page, { mode }) => {
         return json([{ id: EVENT_ID, data: localCopy(), updated_at: T1 }]);
       }
       writes.push({ method: req.method(), url });
+      if (mode === 'offline') return route.abort('internetdisconnected');
       if (req.method() === 'PATCH') return json(mode === 'conflict' ? [] : [{ id: EVENT_ID, updated_at: T3 }]);
       return json([{ updated_at: T3 }]);   // a blind upsert, which must not happen here
     }
@@ -223,6 +224,21 @@ test.describe('a refused save is not called saved — the shell half', () => {
     await openSettings(page);
     await expect(page.locator('.later-row').filter({ hasText: CONFLICT_ROW }).first(),
       'the conflict state was erased by the reload').toBeVisible({ timeout: 5000 });
+  });
+
+  // ── 4 · OFFLINE: THE WARNING DOES NOT TAKE THE EDIT'S UNDO AWAY ───────────
+  // Nielsen re-run N4 (2026-11-02, P2): there is one toast slot. The edit's
+  // "… Undo" toast was replaced a moment later by the "waiting for the
+  // connection" notice, which had no action — so the first offline edit lost
+  // its Undo. Red-proofed by dropping the carried action from the notice.
+  test('offline: the save notice keeps the edit\'s Undo', async ({ page }) => {
+    await install(page, { mode: 'offline' });
+    await boot(page);
+    await makeAnEdit(page);
+    const s = await readState(page);
+    const notice = s.toasts.filter((t) => /connection is back/i.test(t));
+    expect(notice.length, `premise: no offline notice. Toasts seen: ${JSON.stringify(s.toasts)}`).toBeGreaterThanOrEqual(1);
+    expect(notice[notice.length - 1], `the offline notice dropped the edit's Undo. Toasts seen: ${JSON.stringify(s.toasts)}`).toMatch(/Undo/);
   });
 
   // ── 2 · THE CONTROL: A SAVE THAT LANDS SAYS NOTHING, AND ADOPTS ITS STAMP ─

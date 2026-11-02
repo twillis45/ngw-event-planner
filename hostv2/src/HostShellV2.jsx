@@ -1267,6 +1267,11 @@ export default function HostShellV2() {
   // single-level snapshot restore of just the fields the write changed. Not a
   // history system; only money-moving writes (the budget number) set it.
   const [toastAction, setToastAction] = useState(null); // { label, fn } | null
+  // The action on screen RIGHT NOW, readable from callbacks that close over an
+  // older render (a save result lands after the edit's own Undo toast). Lets a
+  // follow-up notice keep that Undo instead of wiping it (Nielsen re-run N4).
+  const toastActionRef = useRef(null);
+  useEffect(() => { toastActionRef.current = toastAction; }, [toastAction]);
   // Confirmation semantics (CONFIRM-GREEN, 2026-07-16): one tone drives the toast's
   // color so "you did it" reads green everywhere from ONE place, instead of per-call
   // styling. 'ok' ⇒ green success; null/undefined ⇒ the neutral pill (errors keep it).
@@ -6836,13 +6841,15 @@ export default function HostShellV2() {
     if (res && res.reason === 'conflict') {
       if (!conflictCueShown.current) {
         conflictCueShown.current = true;
-        toast('This event changed somewhere else after you opened it. Your edit is saved on this device only — the newer version in your account was left alone.');
+        toast('This event changed somewhere else after you opened it. Your edit is saved on this device only — the newer version in your account was left alone.', toastActionRef.current);
       }
       return;
     }
     if (!syncCueShown.current) {
       syncCueShown.current = true;
-      toast('Saved on this device — it will reach your account when the connection is back.');
+      // Keep the edit's Undo if it is still showing — one toast slot, and this
+      // notice must not cost her the way back (N4).
+      toast('Saved on this device — it will reach your account when the connection is back.', toastActionRef.current);
     }
   };
   // ── THE CHECKLIST FOLLOWS THE DECISIONS (audit 2026-08-21) ────────────────
