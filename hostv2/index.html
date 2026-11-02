@@ -51,6 +51,17 @@
          open since 2019), so shipping it would be a promise the phone cannot
          keep. -->
     <link rel="manifest" href="%SITE_BASE%hostv2-manifest.json" />
+    <!-- THE TAB ICON, which was missing and cost a 404 on every load (probed in
+         production 2026-11-02, reproduced 3/3). This head declared `manifest`
+         and `apple-touch-icon` but no `rel="icon"`, so Chromium fell back to
+         the ORIGIN root — `twillis45.github.io/favicon.ico` — which is the
+         user-site root, not ours, and 404s. It never showed up in a page
+         response listener because a browser-initiated favicon fetch does not
+         raise one; it surfaced only as a bare "Failed to load resource: 404"
+         in the console, which is why it survived.
+         Both targets verified live before being referenced (200 each). -->
+    <link rel="icon" href="%SITE_BASE%favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="%SITE_BASE%icon-192.png" />
     <link rel="apple-touch-icon" href="%SITE_BASE%icon-192.png" />
     <meta name="theme-color" content="#141518" />
     <!-- Playfair Display — the production display face (FF_SERIF in App.js),
