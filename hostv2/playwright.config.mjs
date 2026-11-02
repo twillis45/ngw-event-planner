@@ -250,7 +250,17 @@ export default defineConfig({
   // that does not, leave it out — the default is the full matrix, which is the
   // safe direction to be wrong in.
   projects: [
-    { name: 'mobile',    use: { viewport: { width: 430, height: 860 } }, testIgnore: NON_RESPONSIVE },
+    // A PHONE, not a narrow desktop window (board, stage 4, 2026-11-02 —
+    // Bach/Bolton: "a 430px desktop window checked as a phone is checking, not
+    // testing"). isMobile makes Chromium honour the meta viewport and mobile
+    // layout rules, hasTouch turns on touch events and (pointer: coarse),
+    // deviceScaleFactor 3 is a current iPhone's density, and the UA is a
+    // phone's — so a branch on any of those is exercised the way a host's
+    // phone exercises it. Still Chromium, not WebKit: Safari-engine behaviour
+    // is NOT covered here, and the gate page says so.
+    { name: 'mobile',    use: { viewport: { width: 430, height: 860 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3,
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' },
+      testIgnore: NON_RESPONSIVE },
     { name: 'landscape', use: { viewport: { width: 860, height: 430 } }, testIgnore: NON_RESPONSIVE },
     // Tablet joined the matrix with the first ported tablet ruling (T1,
     // 2026-07-22) — every probe now guards the full-bleed tablet layouts.
