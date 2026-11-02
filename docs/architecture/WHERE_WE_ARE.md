@@ -1,6 +1,51 @@
 # Where We Are -- live status board
 
-## 2026-10-19 (last) — Redesign Readiness Sprint 0 + Sprint 0.5: READY for one domain
+## 2026-11-02 (last) — merged, deployed, four GOLD rows closed, and the design parked
+
+**`main` @ `2ec704e`** (PR #93 merged — 55 commits, 86 files, first deploy since
+2026-10-13). **Production verified by fetching it:** bundle moved from
+`main.69037cdc.js` to `main.cbde5e5e.js` at 04:27:38Z; post-merge Checks #919
+and Deploy Pages #567 both green on `main`. Follow-on work on `main-2utz0n`
+restarted from the merged `main`: `8dfd03f` (Blueprint plan), `858e639`
+(GOLD-09), `c1304a6` (GOLD-10), and the GOLD-06 commit.
+
+**The People/Attendance redesign is PARKED by owner ruling** ("get hostv2 ready
+for prod, pick up v3 later"). It merged inert — `peopleMode` defaults `false` at
+`hostv2/src/HostShellV2.jsx:1116`, reachable only by `?people=1`. The art
+direction sheets were found to be **generated images, not a design file** (the
+same caption renders `MOBILE` and `ΠABLLE` on one sheet; card copy is not
+English), so pixel parity was never a reachable target; the per-viewport
+register was measured and applied instead. `UX_01`/`UX_02` still contradict
+the ruled direction in three named lines — open on purpose, see HANDOFF's
+sixtieth entry.
+
+**GOLD acceptance matrix moved four rows** (`docs/architecture/current-state/
+GOLD_E2E_ACCEPTANCE_MATRIX.md`): **06 weather, 09 pass entitlement, 10 failure
+injection (all three) — CLOSED.** The matrix's 2026-10-19 scoping sentence —
+"Weather/Day-of and the failure paths have no browser baseline" — is no longer
+true. Open: 01, 02, 05, 08 (refinements, not critical-path gaps). 136 spec
+files. Full matrix green locally (3,136 / 273 / 0 / 1 flaky — contention,
+20/20 clean in isolation) and in CI (3,137 / 273 / 0 / 0).
+
+**Two defects fixed that no existing check could see:** a vitest gate whose
+5000ms ceiling sat under its own measured 5.7–6.1s cost (failed ~1 in 2, read
+as a flake); hostv2 had no `rel="icon"`, so Chromium fetched the user-site
+root favicon and 404'd on every load, invisible to every page response
+listener.
+
+**Backend:** owner upgraded `ngw-events-api` to Starter (0.5 CPU / 512 MB)
+this session. Verified by a 21-minute idle window: first call after idle
+0.516s against a 0.416s control — no spin-down. `render.yaml` corrected from
+`plan: free` (a Blueprint re-sync would have downgraded the paid instance).
+
+**Stage 9 still has no record.** Live Path to Production Board re-read
+2026-11-02: gates 1–8 recorded, 9 absent, snapshot 2026-09-30. Four of its six
+preconditions are owner-side. See the production-readiness deep dive in
+HANDOFF's sixtieth entry for what is actually missing.
+
+---
+
+## 2026-10-19 — Redesign Readiness Sprint 0 + Sprint 0.5: READY for one domain
 
 **`main-2utz0n` @ `715cd50`** — seventeen commits across two sprints, nothing
 merged to `main`, no PR opened. Full record:
