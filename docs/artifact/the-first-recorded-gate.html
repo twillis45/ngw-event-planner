@@ -168,6 +168,12 @@
     font-size:11px; line-height:14px; text-align:center; font-weight:700;
   }
   .toolbar .count{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
+
+  .tag{display:inline-block; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); border:1px solid var(--line); border-radius:2px; padding:0 5px; margin-right:4px; text-indent:0}
+  .ratio{margin:6px 0 0 !important; font-size:12.5px !important; color:var(--ink-soft) !important; font-variant-numeric:tabular-nums}
+  .ratio b{color:var(--ink)}
+  .items input[type=checkbox]:disabled:checked{accent-color:var(--ok); opacity:1}
   [hidden]{display:none !important}
   :focus-visible{outline:2px solid var(--ember); outline-offset:2px}
   @media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important}}
@@ -250,13 +256,13 @@
       never been attempted.
     </p>
     <ul class="items" style="margin-top:4px">
-      <li><span class="mark ok">&check;</span> <b>Shipped.</b> PR #93 (55 commits) merged to <code>main</code> as <code>2ec704e</code> on 2026-11-02 at the owner's explicit ask, deploy verified live. Nothing had reached production since 2026-10-13.</li>
-      <li><span class="mark ok">&check;</span> <b>A 104-hour deploy outage, recorded.</b> 2026-10-07 06:01Z to 2026-10-11 14:06Z: one <code>import</code> below an <code>export</code> in <code>src/lib/budgetCopy.js</code> tripped <code>import/first</code>, which CRA escalates to a build error. Four CI runs failed identically; jest never saw it because <code>react-scripts test</code> does not run eslint. Neither stage 6 nor 8 was re-ruled on the strength of it.</li>
-      <li><span class="mark ok">&check;</span> <b>The backend tier was misrecorded, by the repo not the service.</b> <code>render.yaml</code> declared <code>plan: free</code> while the live service was already on the owner-upgraded 0.5&nbsp;CPU / 512&nbsp;MB tier; an idle probe answered in 0.516s with no spin-down. The declaration is corrected (<code>8dfd03f</code>) &mdash; a Blueprint re-sync pushes it <em>to</em> the service, so a stale declaration is not harmless.</li>
-      <li><span class="mark ok">&check;</span> <b>Three GOLD acceptance rows closed in a browser.</b> GOLD-09 (the pass entitlement: 7 tests on an own bundle, including the Stripe redirect-vs-webhook race and its negative control), GOLD-10 (a failed write tells the host once and names the remedy; an unknown event id lands somewhere usable; a failing weather producer shows nothing rather than the sample), GOLD-06 (the weather baseline as a configured/unconfigured differential). Each red-proofed by removing the thing under test.</li>
-      <li><span class="mark ok">&check;</span> <b>The full matrix ran in the cloud for the first time in three sessions:</b> <span class="num">3,136</span> passed / <span class="num">273</span> skipped / 0 failed / 1 flaky (re-run 20/20 clean in isolation), 54.5 minutes, seven projects, <span class="num">136</span> spec files. The pin gap two sessions had shimmed around was already answered by <code>PW_CHROMIUM</code> inside the config.</li>
-      <li><span class="mark ok">&check;</span> <b>A save never silently overwrites</b> (<code>34d2931</code>). LIVE_MODE_CENSUS &sect;5's NOT MET since 2026-08-08: every cloud write was last-write-wins on the whole blob. A write against a row another device changed is now refused, kept locally and named, in both shells &mdash; and a device's own back-to-back writes are never mistaken for someone else's, which the first cut got wrong and a test caught.</li>
-      <li><span class="mark ok">&check;</span> <b>Counts, re-measured:</b> jest <span class="num">8,535</span> / <span class="num">621</span> suites; vitest <span class="num">51</span>; backend pytest <span class="num">440</span>; <code>verify:fast</code> 10 of 10. The load-bearing table below carries them with their history.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Shipped.</b> PR #93 (55 commits) merged to <code>main</code> as <code>2ec704e</code> on 2026-11-02 at the owner's explicit ask, deploy verified live. Nothing had reached production since 2026-10-13.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>A 104-hour deploy outage, recorded.</b> 2026-10-07 06:01Z to 2026-10-11 14:06Z: one <code>import</code> below an <code>export</code> in <code>src/lib/budgetCopy.js</code> tripped <code>import/first</code>, which CRA escalates to a build error. Four CI runs failed identically; jest never saw it because <code>react-scripts test</code> does not run eslint. Neither stage 6 nor 8 was re-ruled on the strength of it.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>The backend tier was misrecorded, by the repo not the service.</b> <code>render.yaml</code> declared <code>plan: free</code> while the live service was already on the owner-upgraded 0.5&nbsp;CPU / 512&nbsp;MB tier; an idle probe answered in 0.516s with no spin-down. The declaration is corrected (<code>8dfd03f</code>) &mdash; a Blueprint re-sync pushes it <em>to</em> the service, so a stale declaration is not harmless.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Three GOLD acceptance rows closed in a browser.</b> GOLD-09 (the pass entitlement: 7 tests on an own bundle, including the Stripe redirect-vs-webhook race and its negative control), GOLD-10 (a failed write tells the host once and names the remedy; an unknown event id lands somewhere usable; a failing weather producer shows nothing rather than the sample), GOLD-06 (the weather baseline as a configured/unconfigured differential). Each red-proofed by removing the thing under test.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>The full matrix ran in the cloud for the first time in three sessions:</b> <span class="num">3,136</span> passed / <span class="num">273</span> skipped / 0 failed / 1 flaky (re-run 20/20 clean in isolation), 54.5 minutes, seven projects, <span class="num">136</span> spec files. The pin gap two sessions had shimmed around was already answered by <code>PW_CHROMIUM</code> inside the config.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>A save never silently overwrites</b> (<code>34d2931</code>). LIVE_MODE_CENSUS &sect;5's NOT MET since 2026-08-08: every cloud write was last-write-wins on the whole blob. A write against a row another device changed is now refused, kept locally and named, in both shells &mdash; and a device's own back-to-back writes are never mistaken for someone else's, which the first cut got wrong and a test caught.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Counts, re-measured:</b> jest <span class="num">8,535</span> / <span class="num">621</span> suites; vitest <span class="num">51</span>; backend pytest <span class="num">440</span>; <code>verify:fast</code> 10 of 10. The load-bearing table below carries them with their history.</li>
       <li><span class="mark skip">&ndash;</span> <b>Stage 9's preconditions, re-read.</b> #1 domain + privacy/refund policies: owner. #2 demo account: the single-device half is driven by spec; the cross-device half needs real credentials. #3 stranger-proof onboarding: owner recruits, never attempted. #4 live-keys Stripe then <code>REACT_APP_BILLING_LIVE=1</code>: keys set and the webhook verified <code>true</code> 2026-10-13, the entitlement now browser-driven, the switch still 0 in CI. #5 three non-founder hosts asked for money: owner. #6 the stage-9 board: never convened.</li>
       <li><span class="mark skip">&ndash;</span> <b>What is missing is a stranger.</b> <code>docs/alpha/COORDINATOR_TEST_SCRIPT.md</code> exists and has never been run by anyone who had not already seen the product. Automated coverage is not the gap.</li>
       <li><span class="mark skip">&ndash;</span> <b>Store submission is not a target and never was.</b> <code>docs/alpha/README.md</code> declares web-only; the PWA manifest and service worker shipped 2026-09-27; push is parked. Recorded recommendation: stay a PWA, consider a TWA only after the domain and stage 9, no iOS wrapper.</li>
@@ -271,6 +277,18 @@
     <span class="count" id="hideCount">&nbsp;</span>
   </section>
 
+
+  <section class="panel" data-retrofit="2026-11-02">
+    <p class="eyebrow">Axis 1 &mdash; surfaces, each declared</p>
+    <h2 style="font-family:var(--serif); font-size:22px; font-weight:600; margin:6px 0 6px">Four surfaces, one of them reachable by more people than it faces</h2>
+    <p style="margin:0 0 16px; color:var(--ink-soft); max-width:70ch">Each surface traverses the spine on its own, with a declared <code>facing</code> and <code>platform</code>. Reach and facing are independent, and where they disagree the spine calls the disagreement the finding.</p>
+    <ul class="items" style="margin:0">
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>hostv2 host shell</b> &mdash; facing <b>public</b>, platform <b>web</b> (mobile-flagship, 390px-first), reach <b>public</b>. Facing and reach agree.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Demo tools bar</b> (<code>?demo=1</code>) &mdash; facing internal, web; QA chrome, runbook <code>docs/DEMO_ACCOUNT_RUNBOOK.md</code>.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Legacy CRA shell</b> &mdash; facing internal, web; FROZEN donor, deletion scheduled post-Sprint-2.</li>
+      <li><input type="checkbox" data-k="sf-admin-reach"> <b>Admin console</b> (<code>?admin=1</code>, CRA) &mdash; facing <b>internal</b>, reach <b>public</b>: it ships in the public bundle. Writes are gated server-side (<code>require_admin</code>), and the 8/21 internal review ruled it standalone-capable. <b>Why unchecked:</b> the mismatch stands, and <code>docs/ADMIN-CONSOLE.md:82</code> records that the review&rsquo;s retirement plan has not been executed.</li>
+    </ul>
+  </section>
   <section class="panel" style="border-left:3px solid var(--open)">
     <p class="eyebrow" style="color:var(--open)">The conditions &mdash; a standing flag</p>
     <h2 style="font-family:var(--serif); font-size:22px; font-weight:600; margin:6px 0 6px">
@@ -313,6 +331,7 @@
         <div class="st">
           <h3>Adopt</h3>
           <p>Re-baselining an inbound project. Inbound only.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
             <li><span class="mark skip">&ndash;</span> Not applicable: built here, not adopted.</li>
           </ul>
@@ -325,10 +344,18 @@
         <div class="st">
           <h3>Problem</h3>
           <p>What is broken or missing, for whom.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Work exists: the product ships and its problem statement is carried in CLAUDE.md and the competitive reads.</li>
-            <li><span class="mark ok">&check;</span> <b>Who hits this today, recorded 2026-09-03:</b> the person planning a wedding, milestone birthday, family reunion or similar event with no paid staff to run it &mdash; no coordinator, no venue-side operations team, no admin assistant &mdash; doing every vendor call, every guest chase, every day-of decision themselves. Sourced from this project's own competitive reads (Mobbin, Triply), which converge on one split: every observed competitor assumes someone paid is operating the tool; this product's premise is that the host has none. Not invented for this gate &mdash; the research already said it.</li>
-            <li><span class="mark ok">&check;</span> <b>Ruled passed</b> by Todd Willis, 3 September 2026.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Work exists: the product ships and its problem statement is carried in CLAUDE.md and the competitive reads.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Who hits this today, recorded 2026-09-03:</b> the person planning a wedding, milestone birthday, family reunion or similar event with no paid staff to run it &mdash; no coordinator, no venue-side operations team, no admin assistant &mdash; doing every vendor call, every guest chase, every day-of decision themselves. Sourced from this project's own competitive reads (Mobbin, Triply), which converge on one split: every observed competitor assumes someone paid is operating the tool; this product's premise is that the host has none. Not invented for this gate &mdash; the research already said it.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Ruled passed</b> by Todd Willis, 3 September 2026.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Step 3c</span> <b>Third-party content precondition:</b> answered in the record &mdash; &ldquo;None &mdash; not applicable. Built from original code and the project&rsquo;s own competitive research.&rdquo;</li>
+            <li><input type="checkbox" data-k="s1-basis"> <span class="tag">Spine 8/28</span> <b>Declare the basis at intake</b> &mdash; wedge, execution, distribution, internal use, or portfolio &mdash; because the basis selects which gate applies. <b>Why unchecked:</b> the stage-1 record carries <code>whoHitsThisToday</code> and <code>thirdPartyContent</code> only; no basis is recorded.</li>
+            <li><input type="checkbox" data-k="s1-killgate"> <span class="tag">Spine 8/28</span> <b>Kill-gate board for anything meant to earn:</b> the cheapest check that would kill it, its threshold <b>pre-registered</b>, and a spend cap until it clears. <b>Why unchecked:</b> not in the stage-1 record. The $39 pass is revenue, so the gate applies; D-2&rsquo;s &ldquo;three non-founder hosts asked for money&rdquo; is the nearest thing and was never written as a pre-registered threshold.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Required skill</span> <code>convene-review-board</code> &mdash; the project core is convened and called for decisions (boards from 2026-08-16 onward; standing delegation recorded 2026-09-02).</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Required skill</span> <code>path-artifact</code> &mdash; this page.</li>
+            <li><input type="checkbox" data-k="s1-skills"> <span class="tag">Required skills</span> <code>demand-scan</code>, <code>claim-verification</code>, <code>superpowers:brainstorming</code>, <code>dispatch-subagents</code>. <b>Why unchecked:</b> the stage-1 record has no <code>skillsUsed</code>, so nothing shows these ran; the competitive reads are supply-side (Mobbin, Triply), and demand-side research is the half the spine says gets skipped.</li>
+            <li><input type="checkbox" data-k="s1-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 1 is not in the record.</b> See Corrections. Confirm you ruled it, or re-rule.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed</span>
@@ -339,12 +366,20 @@
         <div class="st">
           <h3>Scope &amp; design</h3>
           <p>Checkable success criteria, and the design that meets them.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Three review boards sat and ruled: task ownership (6&ndash;2 ship, narrow, commit <code>e006f52d</code>), guest transport (6&ndash;2 defer), vendors sheet (all six clauses shipped) &mdash; <code>docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md</code>.</li>
-            <li><span class="mark ok">&check;</span> <b>Reference scan, checked 2026-09-03:</b> own design system exists first (<code>docs/claude-skills/02_STUDIO_MATTE_UI_STANDARD.md</code>, UX_01&ndash;09) and is cited by every later scan. Six dated competitive reads on disk (Mobbin &times;4, Triply), each recording the decision reason, not only the finding. No scan-run-after-design defect found.</li>
-            <li><span class="mark ok">&check;</span> <b>Success criteria machine-checkable, checked 2026-09-03:</b> not abstract &mdash; the 6,228-test corpus is built from specifically-named checkable behaviors (<code>dietVocabularyResolves.test.js</code>, <code>parkedRowReasonIsSpecific.test.js</code>, <code>textGateRatchet.test.js</code>, among many). The "add validation" fails / "blank and malformed email each show a specific error" passes standard, in practice.</li>
-            <li><span class="mark ok">&check;</span> <b>Activation/UX doctrine, checked 2026-09-03:</b> applied early, not bolted on &mdash; <code>docs/audits/2026-07-14_ATTENTION_SYSTEM_AUDIT.md</code> and <code>2026-08-18_HOST_LANDING_NEXT_ACTION_MOBBIN_READ.md</code> predate this recording by seven weeks. Re-run retroactively at stage 9, unchanged.</li>
-            <li><span class="mark ok">&check;</span> <b>Ruled passed</b> by Todd Willis, 3 September 2026 &mdash; the board verdicts above ARE this gate record, POSTed for the first time. The ruling existed on disk since 2026-08-21 and had never been recorded via the API, same pattern as the stage-1 and stage-5 gaps closed earlier this session.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Three review boards sat and ruled: task ownership (6&ndash;2 ship, narrow, commit <code>e006f52d</code>), guest transport (6&ndash;2 defer), vendors sheet (all six clauses shipped) &mdash; <code>docs/audits/2026-08-21_NINE_DIMENSION_LEADER_RESCORE.md</code>.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Reference scan, checked 2026-09-03:</b> own design system exists first (<code>docs/claude-skills/02_STUDIO_MATTE_UI_STANDARD.md</code>, UX_01&ndash;09) and is cited by every later scan. Six dated competitive reads on disk (Mobbin &times;4, Triply), each recording the decision reason, not only the finding. No scan-run-after-design defect found.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Success criteria machine-checkable, checked 2026-09-03:</b> not abstract &mdash; the 6,228-test corpus is built from specifically-named checkable behaviors (<code>dietVocabularyResolves.test.js</code>, <code>parkedRowReasonIsSpecific.test.js</code>, <code>textGateRatchet.test.js</code>, among many). The "add validation" fails / "blank and malformed email each show a specific error" passes standard, in practice.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Activation/UX doctrine, checked 2026-09-03:</b> applied early, not bolted on &mdash; <code>docs/audits/2026-07-14_ATTENTION_SYSTEM_AUDIT.md</code> and <code>2026-08-18_HOST_LANDING_NEXT_ACTION_MOBBIN_READ.md</code> predate this recording by seven weeks. Re-run retroactively at stage 9, unchanged.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Ruled passed</b> by Todd Willis, 3 September 2026 &mdash; the board verdicts above ARE this gate record, POSTed for the first time. The ruling existed on disk since 2026-08-21 and had never been recorded via the API, same pattern as the stage-1 and stage-5 gaps closed earlier this session.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Axis 1</span> <b>Platform declared, mobile first:</b> hostv2 is <code>web</code>, mobile-flagship, 390px-first (workspace <code>CLAUDE.md</code> surfaces table; <code>UX_03</code>).</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Axis 1, 8/28</span> <b>The admin console declared as its own surface</b> (<code>?admin=1</code>, internal) and reviewed on its own &mdash; <code>docs/audits/2026-08-21_ADMIN_CONSOLE_INTERNAL_REVIEW.md</code>. The stage-2 record itself does not name it.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>Threat-model the data; auth model decided here:</b> data inventory (host email, guest dietary needs as health data, payments via hosted checkout) and the studio-membership authZ model are DONE in <code>docs/audits/2026-08-21_SECURITY_TRACK_CHECKLIST.md</code>. The inventory did not enumerate every <code>public</code> table &mdash; see the stage-5 RLS row.</li>
+            <li><input type="checkbox" data-k="s2-leaders"> <span class="tag">Spine 9/6</span> <b>Name the leaders&rsquo; 3&ndash;4 structural properties, dated before the first generation, and score every board against them.</b> <b>Why unchecked:</b> post-dates this record, and the People redesign (parked 2026-11-02) iterated four rounds against generated reference sheets rather than leaders &mdash; the failure this amendment was written about.</li>
+            <li><input type="checkbox" data-k="s2-clearance"> <span class="tag">Required skill, revenue</span> <code>clearance</code> before a name fronts a revenue line. <b>Why unchecked:</b> <code>src/lib/brand.js</code> records the domain as RDAP-checked and says in its own words that &ldquo;an available domain is not a cleared mark&rdquo; &mdash; no USPTO search or attorney review is recorded.</li>
+            <li><input type="checkbox" data-k="s2-skills"> <span class="tag">Required skills</span> <code>motion-design</code>, <code>pick-generation-model</code>, <code>frontend-design</code>, <code>impeccable</code>, <code>superpowers:writing-plans</code>. <b>Why unchecked:</b> the stage-2 record has no <code>skillsUsed</code>; several ran in later sessions (impeccable, motion work) but none is recorded against the gate.</li>
+            <li><input type="checkbox" data-k="s2-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 2 is not in the record.</b> See Corrections.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed</span>
@@ -355,13 +390,19 @@
         <div class="st">
           <h3>Build</h3>
           <p>Implementation against scope.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> <span class="num">8,535</span> unit tests across <span class="num">621</span> suites; <span class="num">3,410</span> browser tests collected across seven projects in <span class="num">136</span> files (re-checked 2026-11-02 on <code>verify:fast</code> and a full matrix; was 6,228/441/909 on 2026-09-03 and 6,179/432/791 on 29 Aug -- corrected alongside the same figures in the load-bearing table below).</li>
-            <li><span class="mark ok">&check;</span> <b>Tests-first, checked 2026-09-03:</b> not auditable as one historical claim over a build this large and old &mdash; named honestly as current, demonstrated practice instead: every gate this session (stages 1, 2, 4, 5, 8) was preceded by reading the actual schema before writing, the same discipline this field asks of code.</li>
-            <li><span class="mark ok">&check;</span> <b>Surgical, checked 2026-09-03:</b> yes.</li>
-            <li><span class="mark ok">&check;</span> <b>Declined scope, checked 2026-09-03:</b> CLAUDE.md's Non-Negotiables (no duplicate surfaces, <code>src/App.js</code> frozen donor-only since 2026-07-16, no invented data, no faked AI) plus HANDOFF's OWNER-ONLY section (PostHog/Sentry console reads, the stranger-proof run, the rollback rehearsal) &mdash; named, not silently skipped.</li>
-            <li><span class="mark ok">&check;</span> <b>Ops console, checked 2026-09-03:</b> <code>docs/ADMIN-CONSOLE.md</code>, answering what an operator cannot see or do. <b>Deviation named, not backdated:</b> required at stage 3, actually created 2026-08-29 at the stage 7 recording &mdash; four stages late. Recorded as the condition on this gate.</li>
-            <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; POSTed for the first time. This card previously read "no gate defined by design," which had itself gone stale: the spine granted stage 3 real gate fields on 2026-09-03 and the page was not updated until asked.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="num">8,535</span> unit tests across <span class="num">621</span> suites; <span class="num">3,410</span> browser tests collected across seven projects in <span class="num">136</span> files (re-checked 2026-11-02 on <code>verify:fast</code> and a full matrix; was 6,228/441/909 on 2026-09-03 and 6,179/432/791 on 29 Aug -- corrected alongside the same figures in the load-bearing table below).</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Tests-first, checked 2026-09-03:</b> not auditable as one historical claim over a build this large and old &mdash; named honestly as current, demonstrated practice instead: every gate this session (stages 1, 2, 4, 5, 8) was preceded by reading the actual schema before writing, the same discipline this field asks of code.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Surgical, checked 2026-09-03:</b> yes.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Declined scope, checked 2026-09-03:</b> CLAUDE.md's Non-Negotiables (no duplicate surfaces, <code>src/App.js</code> frozen donor-only since 2026-07-16, no invented data, no faked AI) plus HANDOFF's OWNER-ONLY section (PostHog/Sentry console reads, the stranger-proof run, the rollback rehearsal) &mdash; named, not silently skipped.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Ops console, checked 2026-09-03:</b> <code>docs/ADMIN-CONSOLE.md</code>, answering what an operator cannot see or do. <b>Deviation named, not backdated:</b> required at stage 3, actually created 2026-08-29 at the stage 7 recording &mdash; four stages late. Recorded as the condition on this gate.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; POSTed for the first time. This card previously read "no gate defined by design," which had itself gone stale: the spine granted stage 3 real gate fields on 2026-09-03 and the page was not updated until asked.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>Secrets in env vars, never source or history</b> &mdash; checklist DONE; secret scan DONE.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>Authorization checked server-side on every route</b> &mdash; the per-route sweep, <code>backend/tests/test_protected_routes_sweep.py</code>.</li>
+            <li><input type="checkbox" data-k="s3-scoped"> <span class="tag">Security track</span> <b>Every query scoped to its owner.</b> True for every tenant table (RLS all verbs). <b>Why unchecked:</b> six research tables from <code>012_research_execution.sql</code> were created with RLS off, so the anon key could read and write them through PostgREST. Fixed in repo by <code>018_research_tables_rls.sql</code> and gated by <code>everyPublicTableHasRls.test.js</code>; <b>not live until PR #94 merges</b>, then confirmed by RUNBOOK check A.</li>
+            <li><input type="checkbox" data-k="s3-skills"> <span class="tag">Required skill, public</span> <code>web-design-guidelines</code> on UI code that ships. <b>Why unchecked:</b> not recorded against the gate.</li>
+            <li><input type="checkbox" data-k="s3-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 3 is not in the record.</b> See Corrections.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -372,12 +413,20 @@
         <div class="st">
           <h3>Verify</h3>
           <p>Automated checks pass. Not &ldquo;looks done.&rdquo;</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Nielsen heuristics pass, 21 August: <b>zero P0/P1</b> &mdash; <code>docs/audits/2026-08-21_PATH_TO_PRODUCTION_AUDIT.md:66-68</code>, verified by reading the source.</li>
-            <li><span class="mark ok">&check;</span> Measurement pass caught three defects invisible to both visual and heuristic review &mdash; a sheet painting a phone corner inside a desktop frame, a splash painting a phone bezel, a surface 80px narrower than its neighbours.</li>
-            <li><span class="mark ok">&check;</span> <b>Guard script, checked 2026-09-03, inventory corrected by independent audit:</b> none general exists. Three hits, not two: <code>review-artifacts/_guestsguard.mjs</code> (gitignored scratch), <code>hostv2/e2e/lodgingSpendGuard.spec.mjs</code> (a scoped lodging e2e spec), and <code>src/lib/api/__tests__/studioGuard.test.js</code> (a unit test for one validation function, not previously counted). None is a general project guard, so the underlying verdict is unchanged &mdash; the earlier count was incomplete. "No guard exists" is a real answer per the gate's own schema, not a blank &mdash; recorded as a condition, not a block.</li>
-            <li><span class="mark ok">&check;</span> <b>Red-proof:</b> not this session's new work &mdash; carried by the stage's own record of four false zeroes caught and fixed. Gate P0/P1 rule: stages 4 and 5 resolved first; stage 4 contributes none.</li>
-            <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; the Nielsen verdict above IS this gate record, POSTed for the first time. It ran 2026-08-21 and had never been recorded via the API, same pattern closed at stages 1, 2 and 5.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Nielsen heuristics pass, 21 August: <b>zero P0/P1</b> &mdash; <code>docs/audits/2026-08-21_PATH_TO_PRODUCTION_AUDIT.md:66-68</code>, verified by reading the source.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Measurement pass caught three defects invisible to both visual and heuristic review &mdash; a sheet painting a phone corner inside a desktop frame, a splash painting a phone bezel, a surface 80px narrower than its neighbours.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Guard script, checked 2026-09-03, inventory corrected by independent audit:</b> none general exists. Three hits, not two: <code>review-artifacts/_guestsguard.mjs</code> (gitignored scratch), <code>hostv2/e2e/lodgingSpendGuard.spec.mjs</code> (a scoped lodging e2e spec), and <code>src/lib/api/__tests__/studioGuard.test.js</code> (a unit test for one validation function, not previously counted). None is a general project guard, so the underlying verdict is unchanged &mdash; the earlier count was incomplete. "No guard exists" is a real answer per the gate's own schema, not a blank &mdash; recorded as a condition, not a block.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Red-proof:</b> not this session's new work &mdash; carried by the stage's own record of four false zeroes caught and fixed. Gate P0/P1 rule: stages 4 and 5 resolved first; stage 4 contributes none.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; the Nielsen verdict above IS this gate record, POSTed for the first time. It ran 2026-08-21 and had never been recorded via the API, same pattern closed at stages 1, 2 and 5.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Re-measured 2026-11-02</span> <b>The guard script now exists and passes.</b> The stage-4 record says &ldquo;no guard exists&rdquo;; <code>npm run verify:all</code> / <code>verify:fast</code> is that guard &mdash; ten gates, each with its own exit code, <b>10 of 10</b> on 2026-11-02. The record&rsquo;s answer is left standing; this is the measurement after it.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>An enumerating sweep, not a named test:</b> routes (the per-route sweep) and, since 2026-11-02, tables (<code>everyPublicTableHasRls.test.js</code>, which fails by table name on the next one).</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine 9/6</span> <b>Every env var the server reads is a declared seam:</b> <code>theBlueprintNamesWhatTheServerNeeds.test.js</code> holds <code>render.yaml</code> against what the server reads.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine 9/7</span> <b>A sweep with an unevaluated row is not a result:</b> the collecting runner reports a per-gate verdict; the last run had none unevaluated.</li>
+            <li><input type="checkbox" data-k="s4-device"> <span class="tag">Axis 1</span> <b>Real device emulation, not a resized viewport.</b> <b>Why unchecked:</b> every matrix project in <code>hostv2/playwright.config.mjs</code> sets a viewport size and nothing else &mdash; no <code>isMobile</code>, no <code>hasTouch</code>, no device descriptor. The meta-viewport bug this rule was written about cannot recur here, but the gate as written is not met.</li>
+            <li><input type="checkbox" data-k="s4-rescore"> <span class="tag">Spine 9/6</span> <b>The builder never scores its own work.</b> <b>Why unchecked:</b> the 2026-11-02 builds (the sync-conflict disclosure, the GOLD closures, the RLS migration) were verified by their own author&rsquo;s red-proofs and have not been re-scored on the code by a board.</li>
+            <li><input type="checkbox" data-k="s4-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 4 is not in the record.</b> See Corrections.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -388,16 +437,23 @@
         <div class="st">
           <h3>Security</h3>
           <p>Mandatory for anything public-facing &mdash; which this is.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Load-bearing items done with citations: RLS all-verbs on tenant data, server-side auth on money routes, hosted-checkout isolation, zero-vuln bundle, no secrets in source.</li>
-            <li><span class="mark ok">&check;</span> Per-route sweep exists as a standing gate over eight routers, and caught a live unauthenticated route on its first run.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Load-bearing items done with citations: RLS all-verbs on tenant data, server-side auth on money routes, hosted-checkout isolation, zero-vuln bundle, no secrets in source.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Per-route sweep exists as a standing gate over eight routers, and caught a live unauthenticated route on its first run.</li>
             <li><input type="checkbox" data-k="s5-pentest"> External pentest. <b>Why unchecked:</b> owed to an outside firm &mdash; not run, no engagement report exists.</li>
             <li><input type="checkbox" data-k="s5-authz"> Finding #8 &mdash; portal authz design. A board question. <b>Why unchecked:</b> a design decision, not an engineering task &mdash; needs a review board sitting to rule it, and none has sat on this question.</li>
             <li><input type="checkbox" data-k="s5-rls"> RLS applied-status attested in the live dashboard. <b>Why unchecked:</b> requires Todd's own eyes in the live Supabase dashboard, attesting every migration is applied &mdash; nothing an assistant session can attest to.</li>
             <li><input type="checkbox" data-k="s5-backup"> Backups on, and one restore actually performed. <b>Why unchecked:</b> requires Todd, in Supabase, to confirm backups are on and actually run one restore &mdash; a drill, not a config read.</li>
             <li><input type="checkbox" data-k="s5-rate"> Login rate limiting &mdash; check what Supabase defaults actually are. <b>Why unchecked:</b> the defaults have never been checked against Supabase's own auth settings; nobody has looked yet.</li>
             <li><input type="checkbox" data-k="s5-sentry"> Sentry DSN confirmed reporting in prod. <b>Why unchecked:</b> the DSN ships in the bundle (presence, confirmed; re-proven 2026-10-13 by grepping the served 5.66&nbsp;MB chunk for a real <code>*.ingest.us.sentry.io</code> host) but nobody has eyeballed the Sentry console after a deploy to confirm an error actually arrives (delivery, still not confirmed 2026-11-02).</li>
-            <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; closing a tracking gap only: the audited work above ran 21 August, the gate was never recorded via the API until now. No new security work performed in this recording.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Ruled passed-with-conditions</b> by Todd Willis, 3 September 2026 &mdash; closing a tracking gap only: the audited work above ran 21 August, the gate was never recorded via the API until now. No new security work performed in this recording.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track, web</span> <b>XSS</b> DONE (React escaping, no <code>dangerouslySetInnerHTML</code>); <b>CSRF</b> and <b>session cookie flags</b> NO-OP with reason (no cookie sessions); <b>logout</b> DONE (<code>signOut</code> invalidates the refresh token) &mdash; checklist :160&ndash;168.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>Dependency audit</b> (0 vulnerabilities in the shipped bundle), <b>secret scan</b>, <b>license check</b> &mdash; all DONE 2026-08-21.</li>
+            <li><input type="checkbox" data-k="s5-rls018"> <span class="tag">Found 2026-11-02</span> <b>Six <code>public</code> tables with RLS off</b> (<code>research_*</code>, <code>provider_run_logs</code>). <b>Why unchecked:</b> fixed in repo (<code>018</code>), not on the live project until PR #94 merges; the live exposure could not be probed from a cloud session.</li>
+            <li><input type="checkbox" data-k="s5-consent"> <span class="tag">Marketing track</span> <b>Consent and tracking-prompt copy</b> &mdash; marketing copy with a legal consequence. <b>Why unchecked:</b> not written. The privacy-policy draft (<code>docs/legal/</code>, 2026-11-02) is its input, not it.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Required skill</span> <code>route-sweep</code> (the sweep exists although the skill is still unbuilt) and <code>security-review</code> &mdash; both RUN, per the stage-6 record&rsquo;s <code>skillsUsed</code>.</li>
+            <li><input type="checkbox" data-k="s5-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 5 is not in the record.</b> See Corrections.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -408,14 +464,19 @@
         <div class="st">
           <h3>Deploy &mdash; recorded today</h3>
           <p>No default host. Pick the target and record why.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> <b>GitHub Pages</b>, built from source in CI on every push to main. Recorded as a substitution for <code>deploy-to-render</code>: the shipping profile is the open, localStorage-only demo and needs no server.</li>
-            <li><span class="mark ok">&check;</span> An automatic push can only ever publish the demo profile. Publishing <em>live</em> stays a manual dispatch, because it changes what the product is for every visitor.</li>
-            <li><span class="mark ok">&check;</span> Verified at the feature level, not the hash: the live bundle carries four markers shipped in the last two commits.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>GitHub Pages</b>, built from source in CI on every push to main. Recorded as a substitution for <code>deploy-to-render</code>: the shipping profile is the open, localStorage-only demo and needs no server.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> An automatic push can only ever publish the demo profile. Publishing <em>live</em> stays a manual dispatch, because it changes what the product is for every visitor.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Verified at the feature level, not the hash: the live bundle carries four markers shipped in the last two commits.</li>
             <li><span class="mark skip">&ndash;</span> Deviation recorded: the <code>at</code> precondition had already passed. This deployed continuously for 26 days before its gate was written.</li>
-            <li><span class="mark ok">&check;</span> <b>Re-measured 2026-11-02:</b> PR #93 merged <code>2ec704e</code> and the deploy verified live the same day (three icon links answered 200 on the origin; the favicon had 404ed since the gate). The one outage since this ruling &mdash; 104 hours, 2026-10-07 to 10-11, a build error jest cannot see &mdash; is recorded in the re-measurement panel above and in HANDOFF, not re-ruled here.</li>
-            <li><span class="mark ok">&check;</span> <b>The server half, corrected 2026-11-02:</b> the backend is on Render&rsquo;s paid 0.5&nbsp;CPU / 512&nbsp;MB tier (owner upgrade; idle probe 0.516s, no spin-down), and <code>render.yaml</code> now says so. It had said <code>free</code>, and a Blueprint re-sync would have pushed that declaration back onto the service.</li>
-            <li><span class="mark ok">&check;</span> <b>Ruled passed-with-conditions</b> by Todd Willis, 29 August 2026. Recorded as a standing <code>conditional</code> flag that persists past this stage, because the conditions gate a later one.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Re-measured 2026-11-02:</b> PR #93 merged <code>2ec704e</code> and the deploy verified live the same day (three icon links answered 200 on the origin; the favicon had 404ed since the gate). The one outage since this ruling &mdash; 104 hours, 2026-10-07 to 10-11, a build error jest cannot see &mdash; is recorded in the re-measurement panel above and in HANDOFF, not re-ruled here.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>The server half, corrected 2026-11-02:</b> the backend is on Render&rsquo;s paid 0.5&nbsp;CPU / 512&nbsp;MB tier (owner upgrade; idle probe 0.516s, no spin-down), and <code>render.yaml</code> now says so. It had said <code>free</code>, and a Blueprint re-sync would have pushed that declaration back onto the service.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Ruled passed-with-conditions</b> by Todd Willis, 29 August 2026. Recorded as a standing <code>conditional</code> flag that persists past this stage, because the conditions gate a later one.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine 9/7</span> <b>How the target deploys is recorded:</b> on every push to <code>main</code> (<code>pages-from-source.yml</code>), so the push authorization is the deploy authorization for the demo profile; publishing <em>live</em> stays a manual dispatch.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>Prod error responses carry no stack traces</b> &mdash; checklist DONE.</li>
+            <li><input type="checkbox" data-k="s6-backup"> <span class="tag">Security track</span> <b>Backup exists and restore is verified.</b> <b>Why unchecked:</b> the same item as condition <code>c-backup</code>; the drill is written as RUNBOOK check B.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Axis 1</span> <b>Platform deploy:</b> web only, on your schedule; no store review pipeline because store submission is not a target.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -426,29 +487,32 @@
         <div class="st">
           <h3>Handoff &mdash; open as of the stage 6 ruling</h3>
           <p>HANDOFF.md reflects measured reality. The traps section is the part that pays.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> All five required sections present, in order: measured state, what shipped, scores, next steps in order, and <b>active traps</b> &mdash; the part that pays, and the only place the next session learns what already went wrong.</li>
-            <li><span class="mark ok">&check;</span> Measured reality, not intentions: HEAD, suite counts, deploy target, feature flags. Artifact URL recorded.</li>
-            <li><span class="mark ok">&check;</span> Cross-linked as the <em>first</em> read from CLAUDE.md, ahead of the long-form architecture log &mdash; otherwise it is found second and too late.</li>
-            <li><span class="mark ok">&check;</span> <b>Gate (public), error tracking:</b> Sentry initialises in <code>main.jsx</code> and its DSN ships in the deployed bundle &mdash; verified by reading the live chunk, not the local build.</li>
-            <li><span class="mark ok">&check;</span> <b>Gate (public), analytics:</b> the activation funnel now fires from the app that <em>ships</em>. It did not before: <span class="num">55</span> events were defined, hostv2 fired <span class="num">7</span>, and every activation event fired only from the frozen CRA. Four are wired and gated &mdash; a host arriving, an invite shared, an invite opened, a reply sent &mdash; by <code>e2e/activationFunnel.spec.mjs</code>, red-proofed one hook at a time.</li>
-            <li><span class="mark ok">&check;</span> The tracker entry matches reality: the Command Center reads stage 6 as a conditional pass and carries the flag forward.</li>
-            <li><span class="mark ok">&check;</span> <b>Was open, now gated &mdash; closed 2026-11-02 in the same edit that adds this line.</b> <code>event_created</code> was wired at the creation site but had no spec because, on 2026-08-29, hostv2 had no create door reachable from a seeded boot. The door exists now, and <code>activationFunnel.spec.mjs</code> drives it: a clean device, Start my event, a typed seed, Put my plan together &rarr; exactly one <code>event_created</code>, <code>is_first:true</code>, a string <code>event_type</code>, and the town, setting and count the host typed nowhere in the payload. (The first cut flagged the playbook type &ldquo;Crab Feast&rdquo; as a leak of the typed words; a type label is not the host&rsquo;s words, and the assertion was corrected to name what would be.)</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> All five required sections present, in order: measured state, what shipped, scores, next steps in order, and <b>active traps</b> &mdash; the part that pays, and the only place the next session learns what already went wrong.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Measured reality, not intentions: HEAD, suite counts, deploy target, feature flags. Artifact URL recorded.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Cross-linked as the <em>first</em> read from CLAUDE.md, ahead of the long-form architecture log &mdash; otherwise it is found second and too late.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Gate (public), error tracking:</b> Sentry initialises in <code>main.jsx</code> and its DSN ships in the deployed bundle &mdash; verified by reading the live chunk, not the local build.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Gate (public), analytics:</b> the activation funnel now fires from the app that <em>ships</em>. It did not before: <span class="num">55</span> events were defined, hostv2 fired <span class="num">7</span>, and every activation event fired only from the frozen CRA. Four are wired and gated &mdash; a host arriving, an invite shared, an invite opened, a reply sent &mdash; by <code>e2e/activationFunnel.spec.mjs</code>, red-proofed one hook at a time.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> The tracker entry matches reality: the Command Center reads stage 6 as a conditional pass and carries the flag forward.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Was open, now gated &mdash; closed 2026-11-02 in the same edit that adds this line.</b> <code>event_created</code> was wired at the creation site but had no spec because, on 2026-08-29, hostv2 had no create door reachable from a seeded boot. The door exists now, and <code>activationFunnel.spec.mjs</code> drives it: a clean device, Start my event, a typed seed, Put my plan together &rarr; exactly one <code>event_created</code>, <code>is_first:true</code>, a string <code>event_type</code>, and the town, setting and count the host typed nowhere in the payload. (The first cut flagged the playbook type &ldquo;Crab Feast&rdquo; as a leak of the typed words; a type label is not the host&rsquo;s words, and the assertion was corrected to name what would be.)</li>
             <li><input type="checkbox" data-k="s7-delivery"> <b>Confirm events actually arrive.</b> Keys and DSN shipping is presence, not delivery &mdash; that needs the PostHog and Sentry dashboards, which only you can read.</li>
-            <li><span class="mark ok">&check;</span> <b><code>verify:all</code> now exists</b>, and it COLLECTS rather than chains: every suite runs, each records its own exit code. Two scripts cannot be chained &mdash; <code>gate:hostv2</code> exits 1 unconditionally (retired by CI on 1 Aug, npm script never removed) and would silently delete every step after it. First full run: <b>7 of 8 pass</b>.</li>
-            <li><span class="mark ok">&check;</span> <b>Backend pytest reachable locally for the first time</b> &mdash; <span class="num">353</span> tests that only CI ever ran, so the person about to push could not. (<span class="num">440</span> on 2026-11-02, inside <code>verify:fast</code>.)</li>
-            <li><span class="mark ok">&check;</span> <b><code>docs/ADMIN-CONSOLE.md</code> now exists.</b> Required since stage 3 and never written, because a console does ship and its presence read as coverage.</li>
-            <li><span class="mark ok">&check;</span> <b>Was open, now confirmed fixed &mdash; found stale 2026-09-03.</b> <code>src/admin/AdminConsole.jsx</code> read only <code>ngw-events</code> (the frozen CRA's key); it now reads BOTH keys additively at :1342, so "This Browser" panels see events written by either shell. Confirmed by reading the source, not by re-trusting the line below that already claimed this.</li>
-            <li><span class="mark ok">&check;</span> <b>Was open, now confirmed 3 of 4 fixed &mdash; found stale 2026-09-03.</b> <code>restoreBackup</code>, <code>importCustomEvents</code>, <code>listBackups</code> are now called from <code>HostShellV2.jsx</code>'s settings &rarr; Your data surface (line below). Confirmed by reading the source, not by re-trusting the claim that a surface exists.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b><code>verify:all</code> now exists</b>, and it COLLECTS rather than chains: every suite runs, each records its own exit code. Two scripts cannot be chained &mdash; <code>gate:hostv2</code> exits 1 unconditionally (retired by CI on 1 Aug, npm script never removed) and would silently delete every step after it. First full run: <b>7 of 8 pass</b>.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Backend pytest reachable locally for the first time</b> &mdash; <span class="num">353</span> tests that only CI ever ran, so the person about to push could not. (<span class="num">440</span> on 2026-11-02, inside <code>verify:fast</code>.)</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b><code>docs/ADMIN-CONSOLE.md</code> now exists.</b> Required since stage 3 and never written, because a console does ship and its presence read as coverage.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Was open, now confirmed fixed &mdash; found stale 2026-09-03.</b> <code>src/admin/AdminConsole.jsx</code> read only <code>ngw-events</code> (the frozen CRA's key); it now reads BOTH keys additively at :1342, so "This Browser" panels see events written by either shell. Confirmed by reading the source, not by re-trusting the line below that already claimed this.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Was open, now confirmed 3 of 4 fixed &mdash; found stale 2026-09-03.</b> <code>restoreBackup</code>, <code>importCustomEvents</code>, <code>listBackups</code> are now called from <code>HostShellV2.jsx</code>'s settings &rarr; Your data surface (line below). Confirmed by reading the source, not by re-trusting the claim that a surface exists.</li>
             <li><input type="checkbox" data-k="s7-recovery2"> <code>readWriteLog</code> alone still has zero callers &mdash; the one of the four genuinely unreached. Re-checked 2026-09-03.</li>
-            <li><span class="mark ok">&check;</span> <b>Durable storage is now requested</b> &mdash; the board's ONE THING, named independently by six of ten seats. Asked once on the first successful write, fire-and-forget so it can never delay or fail a save, with the answer recorded so a surface can report it. A refusal is kept as a real answer rather than re-prompted forever. <span class="num">13</span> tests; three faults red-proofed, and <b>one escaped</b> &mdash; see corrections.</li>
-            <li><span class="mark ok">&check;</span> <b>The recovery functions have a surface</b> &mdash; settings &rarr; Your data. Gated to the shape the board named: corrupt the store, restore through the UI, assert the plan returns. Two defects found by building it: every app-written backup row rendered "Invalid Date", and the newest copy after a corruption is a snapshot <em>of the damage</em>.</li>
-            <li><span class="mark ok">&check;</span> <b>The <span class="num">210</span> skips are censused.</b> <span class="num">4</span> tests never execute a single assertion on any project. <span class="num">9</span> guards were rotted &mdash; they skipped at widths where the surface exists &mdash; and are retargeted; the <span class="num">20</span> executions bought back all pass, so they were discarding coverage rather than hiding breakage.</li>
-            <li><span class="mark ok">&check;</span> <b><code>gate:cra</code> resolved:</b> a stale <code>node_modules/.cache</code>. Clearing it prints CI's exact line, and <code>verify:all</code> went 7 of 8 to <b>8 of 8</b> &mdash; the full set passes together for the first time.</li>
-            <li><span class="mark ok">&check;</span> <b>The admin console reads the shipping app's book</b>, additively rather than by swapping keys.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Durable storage is now requested</b> &mdash; the board's ONE THING, named independently by six of ten seats. Asked once on the first successful write, fire-and-forget so it can never delay or fail a save, with the answer recorded so a surface can report it. A refusal is kept as a real answer rather than re-prompted forever. <span class="num">13</span> tests; three faults red-proofed, and <b>one escaped</b> &mdash; see corrections.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>The recovery functions have a surface</b> &mdash; settings &rarr; Your data. Gated to the shape the board named: corrupt the store, restore through the UI, assert the plan returns. Two defects found by building it: every app-written backup row rendered "Invalid Date", and the newest copy after a corruption is a snapshot <em>of the damage</em>.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>The <span class="num">210</span> skips are censused.</b> <span class="num">4</span> tests never execute a single assertion on any project. <span class="num">9</span> guards were rotted &mdash; they skipped at widths where the surface exists &mdash; and are retargeted; the <span class="num">20</span> executions bought back all pass, so they were discarding coverage rather than hiding breakage.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b><code>gate:cra</code> resolved:</b> a stale <code>node_modules/.cache</code>. Clearing it prints CI's exact line, and <code>verify:all</code> went 7 of 8 to <b>8 of 8</b> &mdash; the full set passes together for the first time.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>The admin console reads the shipping app's book</b>, additively rather than by swapping keys.</li>
             <li><span class="mark skip">&ndash;</span> Three <code>_*Capture</code> specs are env-gated and have never run &mdash; and that is <b>correct</b>. Each declares "not a gate" in its first line, uses the <code>_</code> prefix convention, and writes to a gitignored directory. They are on-demand capture tools for board sittings, not dormant tests.</li>
-            <li><span class="mark ok">&check;</span> <b>Was open, now confirmed fixed &mdash; found stale 2026-09-03.</b> The day-of fixture was seeded with no venue, which made readiness rank "enter your venue" above everything else &mdash; a fixture artifact wearing a product defect's clothes, not a real dead end. Seeded with a venue, day-of renders a real decision ask. Confirmed both ways in <code>boardMatrix.spec.mjs</code>'s own comments, and re-run this session (53 passed) against the corrected fixture.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Was open, now confirmed fixed &mdash; found stale 2026-09-03.</b> The day-of fixture was seeded with no venue, which made readiness rank "enter your venue" above everything else &mdash; a fixture artifact wearing a product defect's clothes, not a real dead end. Seeded with a venue, day-of renders a real decision ask. Confirmed both ways in <code>boardMatrix.spec.mjs</code>'s own comments, and re-run this session (53 passed) against the corrected fixture.</li>
             <li><input type="checkbox" data-k="s7-attrib"> Per-asset attribution, not aggregate &mdash; the marketing track's stage-7 row. <b>Why unchecked:</b> not started, not blocked &mdash; there is no asset to attribute yet (marketing phase 2's asset, m2-asset, has not been built), so this row has nothing to wire against.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine 9/6</span> <b>&ldquo;Wired&rdquo; read from code, client half:</b> five funnel events emitted by the shipping app, each driven in a browser by <code>activationFunnel.spec.mjs</code> (5 of 5 since 2026-11-02). The server half is PostHog&rsquo;s counter, and its arrival is <code>s7-delivery</code>.</li>
+            <li><input type="checkbox" data-k="s7-remember"> <span class="tag">Required skill</span> <code>remember:doctor</code> at the end of every working session. <b>Why unchecked:</b> not available in the cloud sessions that did the recent work; HANDOFF&rsquo;s freshness gate (<code>handoff:check</code>) is what ran instead.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -459,16 +523,22 @@
         <div class="st">
           <h3>Maintain &mdash; recorded 3 September 2026</h3>
           <p>Debt ranked by what it blocks, never by age. Old and harmless outranks nothing.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> <b>Blocks stage 9:</b> the six stage-5 security opens (pentest, portal-authz design, RLS attestation, backup/restore drill, login rate limiting, Sentry DSN confirmation) &mdash; unchanged, carried from stages 5/6.</li>
-            <li><span class="mark ok">&check;</span> <b>Blocks stage 9:</b> the repast cultural copy needs three real community reviewers before reaching strangers &mdash; the insider panel's own sign-off is explicitly not community consent.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Blocks stage 9:</b> the six stage-5 security opens (pentest, portal-authz design, RLS attestation, backup/restore drill, login rate limiting, Sentry DSN confirmation) &mdash; unchanged, carried from stages 5/6.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Blocks stage 9:</b> the repast cultural copy needs three real community reviewers before reaching strangers &mdash; the insider panel's own sign-off is explicitly not community consent.</li>
             <li><input type="checkbox" data-k="s8-vite8"> <b>Blocks nothing, tracked:</b> Vite 8 adoption &mdash; trialled and reverted, clean on every gate run (build 482ms, vitest 14/14, e2e 208/0, deploy-parity grep). Needs <code>optimizeDeps.esbuildOptions</code> examined and <code>npm run release</code> run end to end before it lands. Still <code>vite@4.5.5</code> on 2026-11-02.</li>
-            <li><span class="mark ok">&check;</span> <b>Re-measured 2026-11-02 &mdash; debt that was retired:</b> LIVE_MODE_CENSUS &sect;5&rsquo;s silent last-write-wins (now refused and named, both shells); GOLD-09 / GOLD-10 / GOLD-06 (the acceptance matrix&rsquo;s three open browser rows, now driven); the <code>render.yaml</code> tier declaration; a missing <code>rel=icon</code>; a vitest import ceiling 5s under a measured 6.1s cost. <b>Debt that was not:</b> everything owner-only in this card, unchanged.</li>
-            <li><span class="mark ok">&check;</span> <b>Blocks nothing, self-resolving:</b> <code>xlsx@0.18.5</code> carries two unfixable advisories that leave with the CRA at its scheduled post-Sprint-2 deletion.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Re-measured 2026-11-02 &mdash; debt that was retired:</b> LIVE_MODE_CENSUS &sect;5&rsquo;s silent last-write-wins (now refused and named, both shells); GOLD-09 / GOLD-10 / GOLD-06 (the acceptance matrix&rsquo;s three open browser rows, now driven); the <code>render.yaml</code> tier declaration; a missing <code>rel=icon</code>; a vitest import ceiling 5s under a measured 6.1s cost. <b>Debt that was not:</b> everything owner-only in this card, unchanged.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Blocks nothing, self-resolving:</b> <code>xlsx@0.18.5</code> carries two unfixable advisories that leave with the CRA at its scheduled post-Sprint-2 deletion.</li>
             <li><input type="checkbox" data-k="s8-textgate"> <b>Blocks nothing, structural:</b> 36 jest suites assert on hostv2 as text (the ratchet's own live baseline, <code>textGateRatchet.test.js:35</code> &mdash; corrected 2026-09-03 from a stale 35) because <code>react-scripts</code> pins jest's roots to <code>src/</code>; the 50 <code>hostv2/e2e</code> specs are the real behavioral coverage. The board has not yet chosen between making jest execute hostv2 or keeping the 36 as tripwires. <b>Re-checked 2026-11-02:</b> the ratchet stands at <span class="num">57</span> (each step past 36 carries a written justification in the file) and the e2e tree at <span class="num">136</span> files; the choice is still unmade.</li>
-            <li><span class="mark ok">&check;</span> <b>Runbook:</b> <code>docs/RUNBOOK.md</code>. Corrected this session &mdash; the push step checked CI then pushed unconditionally on the next line, which cancelled an in-flight run carrying an allergen fix. Now gates the push in the condition, and no longer stamps HANDOFF as a self-cancelling second commit.</li>
-            <li><span class="mark ok">&check;</span> <b>Re-checked fresh this session, then found stale within the same session:</b> jest 441 suites / 6228 tests, vitest 14/14, hostv2 builds on node 16 and node 20 (the vitest-in-CI seam confirmed from the runner's own stdout, not the workflow file) all still hold. "CI green on HEAD, 0 unpushed" did not &mdash; an independent audit caught it: CI's latest run was against <code>ae7dc426</code>, four commits behind local HEAD, with 4 unpushed commits sitting on top. A commit that names "current HEAD" can never cite the SHA it produces, so this line is stated as of the audit, not as a live claim: as of that check, CI had one run in flight and a push was queued behind it rather than pushed over it.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Runbook:</b> <code>docs/RUNBOOK.md</code>. Corrected this session &mdash; the push step checked CI then pushed unconditionally on the next line, which cancelled an in-flight run carrying an allergen fix. Now gates the push in the condition, and no longer stamps HANDOFF as a self-cancelling second commit.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Re-checked fresh this session, then found stale within the same session:</b> jest 441 suites / 6228 tests, vitest 14/14, hostv2 builds on node 16 and node 20 (the vitest-in-CI seam confirmed from the runner's own stdout, not the workflow file) all still hold. "CI green on HEAD, 0 unpushed" did not &mdash; an independent audit caught it: CI's latest run was against <code>ae7dc426</code>, four commits behind local HEAD, with 4 unpushed commits sitting on top. A commit that names "current HEAD" can never cite the SHA it produces, so this line is stated as of the audit, not as a live claim: as of that check, CI had one run in flight and a push was queued behind it rather than pushed over it.</li>
             <li><input type="checkbox" data-k="s8-notchecked"> <b>Not re-checked this session, still owner-only:</b> the six stage-5 security opens, PostHog/Sentry arrival proof in prod, the repast community-review gate. <b>Still true 2026-11-02</b> &mdash; none of the three can be attested from a session.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Step 2e</span> <b>Standing obligation:</b> <code>docs/ADMIN-CONSOLE.md</code> exists.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Step 2e</span> <b>Standing obligation:</b> <code>verify:all</code> exists (and <code>verify:fast</code>).</li>
+            <li><input type="checkbox" data-k="s8-unmerged"> <span class="tag">Step 2e</span> <b>Standing obligation: <code>origin/main..HEAD</code> is 0.</b> <b>Why unchecked:</b> 14 commits on <code>main-2utz0n</code> await PR #94.</li>
+            <li><input type="checkbox" data-k="s8-deps"> <span class="tag">Spine</span> <b>Dependency review.</b> <b>Why unchecked:</b> the last recorded audit of the shipped bundle is 2026-08-21.</li>
+            <li><input type="checkbox" data-k="s8-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 8 is not in the record.</b> See Corrections.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -480,6 +550,7 @@
           <h3>Promotion</h3>
           <p>Internal &rarr; public. Retroactively runs every public-only gate the
              surface skipped while it was internal &mdash; all four, explicitly, as a checklist.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
             <li><span class="mark skip">&ndash;</span> <b>Already public in effect.</b> Reach is public, so these four apply now, not later.</li>
             <li><span class="mark skip">&ndash;</span> <b>Re-read 2026-11-02:</b> of the six entry preconditions, four are the owner&rsquo;s (domain and policies, a stranger through first run, three non-founder hosts asked for money, the board itself). The engineering precondition that remained &mdash; the pass entitlement &mdash; is built, webhook-verified and browser-driven; <code>REACT_APP_BILLING_LIVE</code> is still 0 and flips only on the owner&rsquo;s live-keys purchase.</li>
@@ -488,6 +559,8 @@
             <li><input type="checkbox" data-k="s9-g5"> <b>Why unchecked:</b> Stage 5 public gate &mdash; full security and data review. Directly blocked: the six stage-5 OPENs above (pentest, RLS attestation, backups, rate limiting, Sentry DSN, and finding #8) are unresolved, and this item re-runs that exact check.</li>
             <li><input type="checkbox" data-k="s9-g7"> <b>Why unchecked:</b> Stage 7 public gate &mdash; instrumentation and tracker sync. Blocked on the stage-9 board, same as g2/g4 &mdash; and on proving PostHog/Sentry arrival in prod, which is owner-only (s7-delivery, above).</li>
             <li><input type="checkbox" data-k="s9-spend"> <b>Why unchecked:</b> Marketing phase 3 spend gate honored, or no spend. Phase 3 (economics) has not run &mdash; no acquisition cost has ever been measured (m3-cost, below) &mdash; so there is nothing yet to honor or waive.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Required skill</span> <code>promote-surface</code> &mdash; RUN at stage 7, producing <code>PROMOTION-DEFERRED.md</code>.</li>
+            <li><input type="checkbox" data-k="s9-readiness"> <span class="tag">Required skill</span> <code>readiness</code> before any offer is described as ready. <b>Why unchecked:</b> the stage-7 record says &ldquo;NOT RUN as a named skill&rdquo;; a board answered its question instead.</li>
           </ul>
         </div>
         <span class="chip c-lock">Locked</span>
@@ -498,6 +571,7 @@
         <div class="st">
           <h3>Sunset</h3>
           <p>An explicit retirement note. Going quiet is not a sunset.</p>
+          <p class="ratio" data-ratio></p>
           <ul class="items">
             <li><input type="checkbox" disabled> The retirement note itself.</li>
             <li><input type="checkbox" disabled> Spend wound down on a named date; creative library valued for what transfers.</li>
@@ -532,11 +606,11 @@
              the single thing a stranger must understand from it, and what result would falsify
              it. A thesis nothing could disprove has not been written yet.</p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Competitive reads exist and are specific &mdash; the closest funded competitor counts inventory, not readiness; nobody in the set has a readiness rollup.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Competitive reads exist and are specific &mdash; the closest funded competitor counts inventory, not readiness; nobody in the set has a readiness rollup.</li>
             <li><input type="checkbox" data-k="m1-thesis"> <b>Corrected 2026-09-03 &mdash; a draft exists, not "unwritten."</b> <code>docs/ACQUISITION-THESIS.md</code> (2026-09-02) states one falsifiable sentence, grounded in <code>COMPETITIVE_AUTOMATION.md</code> and the Blink/Partiful reads. Left unchecked on purpose: the doc's own header says the board "recorded it as unwritten... this is a draft, not a decision. Overrule any line of it" &mdash; drafted, not yet ruled.</li>
             <li><input type="checkbox" data-k="m1-unit"> <b>Answered in the same draft:</b> "one screen: a real event's plan, mid-flight" &mdash; not a landing page or a video. Same ruled/not-ruled status as above.</li>
             <li><input type="checkbox" data-k="m1-falsify"> <b>Answered in the same draft:</b> four named falsification conditions, including one added by the board (comprehension that credits a person rather than the product does not count). Same ruled/not-ruled status as above.</li>
-            <li><span class="mark ok">&check;</span> <b>Hand the positioning constraints to design as requirements, checked 2026-09-03:</b> <code>ACQUISITION-THESIS.md</code>, "What this forbids the build from doing" &mdash; no mocked acquisition unit, no onboarding-gated legibility, no unmeasured time/stress/events-run claims. These are build constraints already in force, independent of whether the thesis above is ruled.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Hand the positioning constraints to design as requirements, checked 2026-09-03:</b> <code>ACQUISITION-THESIS.md</code>, "What this forbids the build from doing" &mdash; no mocked acquisition unit, no onboarding-gated legibility, no unmeasured time/stress/events-run claims. These are build constraints already in force, independent of whether the thesis above is ruled.</li>
           </ul>
         </div>
         <span class="chip c-open">Open</span>
@@ -574,7 +648,7 @@
              achievable revenue per paid host exceeds the required figure, sourced rather than
              assumed. A NO-GO here is a real result and stops the track.</p>
           <ul class="items">
-            <li><span class="mark ok">&check;</span> Price designed: the <span class="num">$39</span> One-Event Pass. Billing built and dormant behind five preconditions.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Price designed: the <span class="num">$39</span> One-Event Pass. Billing built and dormant behind five preconditions.</li>
             <li><input type="checkbox" data-k="m3-required"> <b>Why unchecked:</b> Compute the required revenue per paid host. Platform fee here is the payment processor, not an app store. Not started &mdash; phase 3 itself has not begun; nothing has run against the $39 One-Event Pass price to derive this.</li>
             <li><input type="checkbox" data-k="m3-cost"> <b>Why unchecked:</b> Source an acquisition cost from a real channel. None has been measured &mdash; no paid traffic has ever run, and marketing phase 3 spend is explicitly not authorized (standing condition, above) until this economics work clears.</li>
             <li><input type="checkbox" data-k="m3-geo"> <b>Why unchecked:</b> Name one geography that clears, with cost and revenue from the same population. Cannot be named without m3-required and m3-cost, both blocked above.</li>
@@ -765,6 +839,32 @@
       </p>
     </div>
 
+
+    <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">Stages 1&ndash;5 were ruled by Todd Willis on 3 September 2026.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        Read off the Command Center gate cache on 2026-11-02, the records for stages <b>1, 2, 3, 4, 5 and 8</b>
+        carry <b>no <code>ruledBy</code></b>. Only stage 6 (Todd Willis, 8/29) and stage 7 (the standing board
+        delegation, 9/2) name a ruler. The page said &ldquo;ruled by Todd Willis&rdquo; on five stages the record
+        does not attribute to anyone, and the spine is plain about what that is: a verdict with no ruler is a
+        recommendation that quietly promoted itself. The original lines stay where they were; each stage now
+        carries an open row asking for the ruling to be confirmed or made. The standing delegation of 9/2 covers
+        &ldquo;every gate ruling&rdquo; from that day, but it delegates to the board, and no board sat on these.
+      </p>
+    </div>
+
+    <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">This page carries every obligation the spine places on this project.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        It carried the spine of 8/29&ndash;9/3. Amendments since then &mdash; leaders before iterating, the builder
+        never scoring its own work, every env var a declared seam, how a target deploys, &ldquo;wired&rdquo; read
+        from code &mdash; were never added, and the cross-cutting tracks&rsquo; rows were missing from stages 2, 3,
+        5 and 6. Retrofitted 2026-11-02 under Step 6e (spine as of <code>ngw-os@a56412a</code>): every obligation is
+        a row, every task is a box, and recorded passes render as <b>checked and disabled</b> rather than as
+        text, so a first load with nothing stored can no longer read a passed stage as untouched. The
+        transform is <code>scripts/retrofit-gate-artifact.py</code>.
+      </p>
+    </div>
     <div class="corr">
       <p style="margin:0 0 4px"><span class="was">A gate can be recorded as passed once the work is verified.</span></p>
       <p style="margin:0; color:var(--ink-soft)">
@@ -842,7 +942,10 @@
     // is deliberately excluded: hiding it would bury exactly the finding the
     // artifact exists to surface. Locked items are unreached, not completed.
     function isDone(li) {
-      if (li.querySelector('.mark.ok')) return true;
+      // Four states (Step 6e): handled = checked AND disabled; owed = a live
+      // box; unreached = disabled and unchecked; a note = .mark.skip, never
+      // a box and never hidden. Completed is handled, or owed and ticked.
+      if (li.querySelector('input[type=checkbox]:disabled:checked')) return true;
       var b = li.querySelector('input[type=checkbox][data-k]');
       return !!(b && b.checked);
     }
@@ -869,6 +972,25 @@
         if (card) card.hidden = (shown === 0 && items.length > 0);
       });
 
+      // Per-stage ratio (Step 6e.4): what is handled, what is owed, what is
+      // unreached. Counted off the boxes themselves, so it cannot disagree
+      // with the page.
+      document.querySelectorAll('.stage').forEach(function (card) {
+        var r = card.querySelector('[data-ratio]');
+        if (!r) return;
+        var lis = card.querySelectorAll('.items li'), hd = 0, ow = 0, un = 0;
+        lis.forEach(function (li) {
+          var x = li.querySelector('input[type=checkbox]');
+          if (!x) return;
+          if (x.disabled && x.checked) hd++;
+          else if (x.disabled) un++;
+          else if (x.checked) hd++;
+          else ow++;
+        });
+        var tot = hd + ow + un;
+        r.innerHTML = tot ? ('<b>' + hd + ' of ' + tot + '</b> handled' + (ow ? ' &middot; ' + ow + ' owed' : '') + (un ? ' &middot; ' + un + ' unreached' : '')) : 'No task at this stage.';
+        if (!tot) card.hidden = false;
+      });
       count.textContent = on
         ? hidden + ' completed ' + (hidden === 1 ? 'item' : 'items') + ' hidden'
         : total + ' completed of ' + document.querySelectorAll('.items li').length;
@@ -892,6 +1014,7 @@
     apply();
   })();
 </script>
+
 
 
 

@@ -1,0 +1,62 @@
+{
+  "source": "Command Center gate cache, twillis45/skill-index cache/ptp-gates.json @ 4d2853b (2026-10-11), filtered to this project. Status and dates only; the answers live in the record.",
+  "copiedAt": "2026-11-02",
+  "records": [
+    {
+      "project": "ngw-event-planner",
+      "stage": 1,
+      "status": "passed",
+      "recordedAt": "2026-09-03T14:21:45.370Z",
+      "ruledBy": null
+    },
+    {
+      "project": "ngw-event-planner",
+      "stage": 2,
+      "status": "passed",
+      "recordedAt": "2026-09-03T14:40:41.134Z",
+      "ruledBy": null
+    },
+    {
+      "project": "ngw-event-planner",
+      "stage": 3,
+      "status": "passed-with-conditions",
+      "recordedAt": "2026-09-03T14:44:15.614Z",
+      "ruledBy": null
+    },
+    {
+      "project": "ngw-event-planner",
+      "stage": 4,
+      "status": "passed-with-conditions",
+      "recordedAt": "2026-09-03T14:42:35.672Z",
+      "ruledBy": null
+    },
+    {
+      "project": "ngw-event-planner",
+      "stage": 5,
+      "status": "passed-with-conditions",
+      "recordedAt": "2026-09-03T14:07:00.598Z",
+      "ruledBy": null
+    },
+    {
+      "project": "ngw-event-planner",
+      "stage": 6,
+      "status": "passed-with-conditions",
+      "recordedAt": "2026-08-29T15:24:26.982616-04:00",
+      "ruledBy": "Todd Willis (owner)"
+    },
+    {
+      "project": "ngw-event-planner",
+      "stage": 7,
+      "status": "passed-with-conditions",
+      "recordedAt": "2026-09-02T21:48:03.531229-04:00",
+      "ruledBy": "STANDING DELEGATION, recorded 2026-09-02 on the owner's instruction: 'decisions are to be handled by the review board"
+    },
+    {
+      "project": "ngw-event-planner",
+      "stage": 8,
+      "status": "passed-with-conditions",
+      "recordedAt": "2026-09-03T14:07:25.790Z",
+      "ruledBy": null
+    }
+  ]
+}
