@@ -26,12 +26,49 @@ export const isAnalyticsConfigured = () => Boolean(PH_KEY) && !IS_LOCAL;
 // Sprint 55N — keep internal/test/smoke sessions out of the activation funnel.
 // The prod smoke loads `…?noanalytics=1`; an operator can also persist
 // `ngw-analytics-optout=1`. When opted out, track()/trackOnce() no-op.
+export const ANALYTICS_OPTOUT_KEY = 'ngw-analytics-optout';
+const NOTICE_SEEN_KEY = 'ngw-analytics-notice-seen';
+
 function analyticsOptedOut() {
   try {
     if (typeof window !== 'undefined' && /[?&]noanalytics=1/.test(window.location.search)) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-analytics-optout') === '1') return true;
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(ANALYTICS_OPTOUT_KEY) === '1') return true;
   } catch { /* storage blocked → treat as opted-in */ }
   return false;
+}
+export const isAnalyticsOptedOut = () => analyticsOptedOut();
+
+/**
+ * The Settings toggle (owner ruling 2026-11-02, option A: notice plus a
+ * VISIBLE opt-out — until then the only opt-out was a URL flag). Writes the
+ * key this module already honors; if PostHog is loaded, it is paused or
+ * resumed too so nothing queued slips out after "off".
+ */
+export function setAnalyticsOptOut(off) {
+  try {
+    if (off) localStorage.setItem(ANALYTICS_OPTOUT_KEY, '1');
+    else localStorage.removeItem(ANALYTICS_OPTOUT_KEY);
+  } catch { /* storage blocked — nothing to persist */ }
+  try { if (_ph) { if (off) _ph.opt_out_capturing(); else _ph.opt_in_capturing(); } } catch { /* best-effort */ }
+}
+
+/** The one-time first-open line: only where analytics would actually run, and only once. */
+export function shouldShowAnalyticsNotice() {
+  if (!isAnalyticsConfigured() || analyticsOptedOut()) return false;
+  try { return localStorage.getItem(NOTICE_SEEN_KEY) !== '1'; } catch { return false; }
+}
+export function markAnalyticsNoticeSeen() {
+  try { localStorage.setItem(NOTICE_SEEN_KEY, '1'); } catch { /* best-effort */ }
+}
+
+/** First 16 hex chars of SHA-256, or null when the browser cannot hash. */
+async function oneWayLabel(text) {
+  try {
+    const subtle = globalThis.crypto && globalThis.crypto.subtle;
+    if (!subtle || typeof TextEncoder === 'undefined') return null;
+    const buf = await subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  } catch { return null; }
 }
 
 let _ph = null;
@@ -67,21 +104,22 @@ async function getPostHog() {
 }
 
 /**
- * Identify the planner (studio-level, not personal).
- * Only sends studio name + role — never email or personal name.
+ * Identify the planner's studio — by a ONE-WAY HASH, never the name (owner
+ * ruling 2026-11-02). Until then this sent `studio_<business name>` and the
+ * business name itself; a sole proprietor's business name is often their own.
+ * An opted-out host is never identified (the old version never checked), and a
+ * browser that cannot hash is not identified at all — it never falls back to
+ * the readable name. Pinned by analyticsPrivacy.test.js.
  */
 export async function identifyStudio(profile) {
+  if (analyticsOptedOut() || !profile) return;
+  const name = String(profile.businessName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!name) return;
+  const label = await oneWayLabel(name);
+  if (!label) return;
   const ph = await getPostHog();
-  if (!ph || !profile) return;
-  // Use a hashed studio identifier, not PII
-  const studioId = profile.businessName
-    ? `studio_${profile.businessName.toLowerCase().replace(/\s+/g, '_').slice(0, 20)}`
-    : 'studio_unknown';
-  ph.identify(studioId, {
-    studio_name: profile.businessName || 'Unknown Studio',
-    role: profile.role || 'Owner',
-    // No email, no personal name
-  });
+  if (!ph) return;
+  ph.identify(`studio_${label}`, { role: profile.role || 'Owner' });
 }
 
 /**
