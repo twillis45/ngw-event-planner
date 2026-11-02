@@ -128,10 +128,39 @@ function forgetStamp(id) {
   const all = readStamps();
   if (id in all) { delete all[id]; try { localStorage.setItem(STAMPS_KEY, JSON.stringify(all)); } catch {} }
 }
-/** The version this device should write against: its copy's stamp or the newest on record, whichever is later. */
+// A REFUSED SAVE HOLDS ITS VERSION until the host chooses (2026-11-02, N3).
+// Without this, a reload let loadEvents record the server's newest stamp as
+// "seen", the next edit's conditional write matched it, and the newer version
+// was overwritten without the host ever choosing — after she had been told it
+// was left alone. While held, every write is checked against the version she
+// LOADED, so it keeps being refused until resolveConflict() releases it.
+const HOLD_KEY = 'ngw-cache-conflict-hold';   // { [eventId]: the version she loaded }
+function readHolds() {
+  try { return JSON.parse(localStorage.getItem(HOLD_KEY) || '{}') || {}; } catch { return {}; }
+}
+function setHold(id, stamp) {
+  if (!id || !stamp) return;
+  const all = readHolds(); all[id] = stamp;
+  try { localStorage.setItem(HOLD_KEY, JSON.stringify(all)); } catch {}
+}
+function clearHold(id) {
+  const all = readHolds();
+  if (id in all) { delete all[id]; try { localStorage.setItem(HOLD_KEY, JSON.stringify(all)); } catch {} }
+}
+
+/** The version this device should write against: its copy's stamp or the newest on record, whichever is later — unless a refused save is holding the version she loaded. */
 export function knownVersion(event) {
-  const own = event && event.id ? readStamps()[event.id] : undefined;
+  const held = event && event.id ? readHolds()[event.id] : undefined;
   const carried = event && event._cloudUpdatedAt;
+  if (held) {
+    // The hold guards HER copy — the one she loaded at `held`. A copy carrying a
+    // NEWER version is the account's copy, taken on this device (the frozen CRA
+    // shell does that on reload): editing it is not overwriting anything she has
+    // not seen, so the hold is released rather than refusing her forever.
+    if (!newerStamp(carried, held)) return held;
+    clearHold(event.id);
+  }
+  const own = event && event.id ? readStamps()[event.id] : undefined;
   return newerStamp(own, carried) ? own : carried;
 }
 
@@ -161,6 +190,7 @@ async function writeGuardedNow(sid, event) {
     const { data: cur, error: e2 } = await supabase
       .from('events').select('updated_at').eq('id', event.id).eq('studio_id', sid).maybeSingle();
     if (e2) throw e2;
+    setHold(event.id, loadedAt);
     return { ok: false, queued: false, reason: 'conflict', loadedAt, serverUpdatedAt: cur ? cur.updated_at : null };
   }
   const { data: rows, error } = await supabase
@@ -171,6 +201,78 @@ async function writeGuardedNow(sid, event) {
   const updatedAt = rows && rows[0] ? rows[0].updated_at : undefined;
   noteStamp(event.id, updatedAt);
   return { ok: true, updatedAt };
+}
+
+// ─── Resolving a conflict (N3, ruled by the owner 2026-11-02) ─────────────────
+// Two choices, each undoable. Both read the account's CURRENT row first, so the
+// host chooses against what is really there now, not a stale memory of it.
+async function readCloudRow(sid, id) {
+  const { data: row, error } = await supabase
+    .from('events').select('id, data, updated_at').eq('id', id).eq('studio_id', sid).maybeSingle();
+  if (error) throw error;
+  return row || null;
+}
+function replaceLocal(ev) {
+  const local = readLocal();
+  writeLocal(local.some((e) => e.id === ev.id) ? local.map((e) => (e.id === ev.id ? ev : e)) : [...local, ev]);
+}
+
+/**
+ * choice 'theirs' — "Use the newer version": adopt the account's copy here. No
+ *   cloud write. Returns { ok, event: theirs, previous: her copy }.
+ * choice 'mine'   — "Keep mine": write her copy, CONDITIONALLY against the
+ *   version she has just been shown. If it moved again in between, that is a
+ *   new conflict and is refused like any other — a choice is never a blind
+ *   overwrite. Returns { ok, event: hers (new stamp), replaced: theirs }.
+ */
+export async function resolveConflict(localEvent, choice) {
+  if (!isSupabaseConfigured() || !supabase) return { ok: false, reason: 'not-configured' };
+  const sid = await currentStudioId();
+  if (!sid || !isCloudStudioId(sid)) return { ok: false, reason: 'no-studio' };
+  const id = localEvent && localEvent.id;
+  const row = await readCloudRow(sid, id);
+  if (!row) return { ok: false, reason: 'gone' };
+  const theirs = { ...row.data, id: row.id, _cloudUpdatedAt: row.updated_at };
+  if (choice === 'theirs') {
+    clearHold(id);
+    noteStamp(id, row.updated_at);
+    replaceLocal(theirs);
+    return { ok: true, event: theirs, previous: localEvent };
+  }
+  // Write against EXACTLY the version she was shown — not "the newest this
+  // device has on record", which could differ — by holding it for this write.
+  setHold(id, row.updated_at);
+  const res = await writeGuarded(sid, { ...localEvent, _cloudUpdatedAt: row.updated_at });
+  if (!res.ok) return res;                       // moved again: refused, and still held
+  clearHold(id);
+  const hers = { ...localEvent, _cloudUpdatedAt: res.updatedAt };
+  replaceLocal(hers);
+  return { ok: true, event: hers, replaced: theirs };
+}
+
+/**
+ * Undo "Keep mine": put the account's previous version back, and return to the
+ * state before the choice — her copy here, the conflict held, her next edit
+ * refused again. `stampAfterMine` is the version her "Keep mine" wrote.
+ */
+export async function undoKeepMine(replaced, stampAfterMine, mineLocal) {
+  if (!isSupabaseConfigured() || !supabase) return { ok: false, reason: 'not-configured' };
+  const sid = await currentStudioId();
+  if (!sid || !isCloudStudioId(sid)) return { ok: false, reason: 'no-studio' };
+  setHold(replaced.id, stampAfterMine);          // write against exactly what "Keep mine" left
+  const res = await writeGuarded(sid, { ...replaced, _cloudUpdatedAt: stampAfterMine });
+  if (!res.ok) return res;
+  setHold(mineLocal.id, mineLocal._cloudUpdatedAt || stampAfterMine);
+  replaceLocal(mineLocal);
+  return { ok: true, event: mineLocal };
+}
+
+/** Undo "Use the newer version": her copy back here and the conflict held again. Local only — the account was never touched. */
+export function undoUseTheirs(previous) {
+  if (!previous || !previous.id) return { ok: false };
+  setHold(previous.id, previous._cloudUpdatedAt);
+  replaceLocal(previous);
+  return { ok: true, event: previous };
 }
 
 // ─── Public API (signatures unchanged) ─────────────────────────────────────────
@@ -248,6 +350,7 @@ export async function saveEvent(event) {
 export async function deleteEvent(eventId) {
   writeLocal(readLocal().filter((e) => e.id !== eventId));
   forgetStamp(eventId);
+  clearHold(eventId);   // a deleted event has no conflict left to resolve
   if (!isSupabaseConfigured() || !supabase) return;
   const sid = await currentStudioId();
   if (!sid) { enqueueMutation({ type: 'delete', id: eventId }); return; }

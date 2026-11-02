@@ -76,12 +76,22 @@ const install = async (page, { mode }) => {
     if (url.includes('/rest/v1/events')) {
       if (req.method() === 'GET') {
         // The post-refusal probe: `.select('updated_at')…maybeSingle()`.
-        if (/select=updated_at(&|$)/.test(url)) return json(mode === 'conflict' ? { updated_at: T2 } : null);
+        if (/select=updated_at(&|$)/.test(url)) return json((mode === 'conflict' || mode === 'resolvable') ? { updated_at: T2 } : null);
+        // resolveConflict's read of the whole current row (N3): the account's
+        // newer version, at T2.
+        if (mode === 'resolvable' && /select=id%2Cdata%2Cupdated_at/.test(url) && /id=eq\./.test(url)) {
+          return json({ id: EVENT_ID, data: localCopy(), updated_at: T2 });
+        }
         // Hydrate: the same content this device holds, at version T1.
         return json([{ id: EVENT_ID, data: localCopy(), updated_at: T1 }]);
       }
       writes.push({ method: req.method(), url });
       if (mode === 'offline') return route.abort('internetdisconnected');
+      // 'resolvable': refused against the version this device loaded (T1),
+      // lands against the version the host has been shown (T2) — the guard.
+      if (req.method() === 'PATCH' && mode === 'resolvable') {
+        return json(/updated_at=lte\.2026-11-02T11/.test(decodeURIComponent(url)) ? [{ id: EVENT_ID, updated_at: T3 }] : []);
+      }
       if (req.method() === 'PATCH') return json(mode === 'conflict' ? [] : [{ id: EVENT_ID, updated_at: T3 }]);
       return json([{ updated_at: T3 }]);   // a blind upsert, which must not happen here
     }
@@ -257,6 +267,40 @@ test.describe('a refused save is not called saved — the shell half', () => {
     expect(saved.length, `premise: no save notice. Toasts seen: ${JSON.stringify(s.toasts)}`).toBeGreaterThanOrEqual(1);
     expect(saved.filter((t) => /connection/i.test(t)), 'a no-account wait was blamed on the connection').toHaveLength(0);
     expect(saved[saved.length - 1]).toMatch(/account/i);
+  });
+
+  // ── 6 · THE WAY OUT (N3, ruled by the owner 2026-11-02) ──────────────────
+  // "Keep mine" / "Use the newer version" on the settings conflict row, each
+  // with an Undo. Red-proofed against the shell without the two buttons.
+  const conflictRow = (page) => page.locator('.later-row').filter({ hasText: CONFLICT_ROW }).first();
+
+  test('"Keep mine" writes her version against the one she was shown, and clears the conflict', async ({ page }) => {
+    const writes = await install(page, { mode: 'resolvable' });
+    await boot(page);
+    await makeAnEdit(page);
+    await openSettings(page);
+    await conflictRow(page).getByRole('button', { name: 'Keep mine' }).click();
+    await expect(page.locator('div.toast')).toContainText(/Your version is now the one in your account/i, { timeout: 5000 });
+    const patches = writes.filter((w) => w.method === 'PATCH');
+    expect(decodeURIComponent(patches[patches.length - 1].url), 'the choice was not a conditional write against the version she saw')
+      .toMatch(/updated_at=lte\.2026-11-02T11/);
+    const s = await readState(page);
+    expect(s.guestMode, 'her edit did not survive her own choice').toBe(EDIT.guestMode);
+    await expect(conflictRow(page)).toHaveCount(0);
+  });
+
+  test('"Use the newer version" takes the account copy, and Undo brings hers back', async ({ page }) => {
+    await install(page, { mode: 'resolvable' });
+    await boot(page);
+    await makeAnEdit(page);
+    await openSettings(page);
+    await conflictRow(page).getByRole('button', { name: 'Use the newer version' }).click();
+    await expect(page.locator('div.toast')).toContainText(/newer version from your account/i, { timeout: 5000 });
+    expect((await readState(page)).guestMode, 'the account copy was not adopted').toBe(localCopy().guestMode);
+    await page.locator('div.toast').getByRole('button', { name: 'Undo' }).click();
+    await page.waitForTimeout(600);
+    expect((await readState(page)).guestMode, 'Undo did not bring her version back').toBe(EDIT.guestMode);
+    await expect(conflictRow(page), 'Undo did not restore the conflict').toBeVisible({ timeout: 5000 });
   });
 
   // ── 2 · THE CONTROL: A SAVE THAT LANDS SAYS NOTHING, AND ADOPTS ITS STAMP ─
