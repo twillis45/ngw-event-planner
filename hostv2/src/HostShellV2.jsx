@@ -1892,7 +1892,14 @@ export default function HostShellV2() {
         // queue entry and is uploaded by the flush immediately below.
         try {
           const dirty = new Set(getPendingEventIds());
-          markEventSynced(evs.map(e => e && e.id).filter(Boolean).filter(id => !dirty.has(id)));
+          // A REFUSED save is dirty too, and it is never queued (retrying would
+          // refuse again). Stamping it here erased its conflict record, the adopt
+          // loop below then read "synced", and the host's edit was replaced by the
+          // account copy on the next reload — after she had been told it was safe
+          // on this device. (Nielsen re-run N2, 2026-11-02; e2e test 3 in
+          // aRefusedSaveIsNotCalledSaved.) Leave it unstamped: local wins below.
+          const refused = (id) => { try { return getEventSyncStatus({ id }) === SYNC_STATUS.CONFLICT; } catch { return false; } };
+          markEventSynced(evs.map(e => e && e.id).filter(Boolean).filter(id => !dirty.has(id) && !refused(id)));
         } catch { /* stamping is best-effort, never blocks hydration */ }
         flushSync().then(res => {
           if (!dead && res && res.flushed > 0) {
