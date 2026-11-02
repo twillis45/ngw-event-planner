@@ -287,6 +287,7 @@
       <li><input type="checkbox" checked disabled aria-label="handled"> <b>Stage 8, Maintain &mdash; passed with conditions, 3&ndash;0</b> (Janca, Forsgren, Fowler).</li>
       <li><span class="mark skip">&ndash;</span> <b>Not ruled by the board, deliberately:</b> stages 1 and 2. Whether the owner ruled them on 2026-09-03 is a fact only he holds; their records are drafted for him to confirm or re-rule.</li>
       <li><span class="mark skip">&ndash;</span> <b>Where the records are:</b> drafted with a poster the owner runs locally &mdash; the Command Center is unreachable from a cloud session. Until he posts them, this page is ahead of the server record, and says so here.</li>
+      <li><span class="mark skip">&ndash;</span> <b>Since the ruling, same day:</b> conditions C4-2, C4-4, 6 and 7 are closed, each red-proofed &mdash; the sweep walks every mounted router, research/kas/kcr answer 401, kaw1 is under the RLS gate, a skip no longer reads as a pass. The two dissents above are recorded as the seats gave them; Bach/Bolton&rsquo;s device-emulation point and Janca&rsquo;s live-database point still stand.</li>
     </ul>
   </section>
 
@@ -451,7 +452,7 @@
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Correction</span> <b>Who ruled stage 4 is not in the record.</b> See Corrections. <b>Closed 2026-11-02:</b> ruled by the review board under the standing delegation &mdash; see the ruling panel above.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Board 2026-11-02, C4-2</span> <b>The route sweep must enumerate.</b> <code>test_protected_routes_sweep.py:39</code> hand-lists 8 of the 16 routers <code>main.py</code> mounts; a new router cannot turn it red. Walk the mounted routers, with exclusions argued in an allowlist. <b>Closed 2026-11-02:</b> <code>test_protected_routes_sweep.py</code> now walks the routes <code>app.main</code> actually serves &mdash; all 16 routers plus main.py&rsquo;s own &mdash; and a guard test goes red if the walk misses a mounted router. Red-proofed: stopping the walk turns it red.</li>
             <li><input type="checkbox" data-k="s4-nielsen"> <span class="tag">Board 2026-11-02, C4-3</span> <b>Re-run the behavior-only Nielsen pass</b> against current HEAD &mdash; the last ran 2026-08-21. The stranded conflict is a user-control/freedom finding: P2 by majority, P1 per Bach/Bolton.</li>
-            <li><input type="checkbox" data-k="s4-skip"> <span class="tag">Board 2026-11-02, C4-4</span> <b>A skip is reported as a pass.</b> <code>verify-all.mjs</code> counts a SKIP as not-failed and still prints &ldquo;all N passed&rdquo;; make a skip visible as a skip.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Board 2026-11-02, C4-4</span> <b>A skip is reported as a pass.</b> <code>verify-all.mjs</code> counts a SKIP as not-failed and still prints &ldquo;all N passed&rdquo;; make a skip visible as a skip. <b>Closed 2026-11-02:</b> the summary line moved to <code>scripts/verify-summary.js</code>; a step that did not run now reads &ldquo;&#9888; 2 of 3 passed &middot; 1 NOT RUN (&hellip;) &mdash; not a full pass,&rdquo; never &ldquo;all passed.&rdquo; Pinned by <code>aSkipIsNotAPass.test.js</code>; red-proofed by restoring the old branch.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -1054,6 +1055,7 @@
     apply();
   })();
 </script>
+
 
 
 
