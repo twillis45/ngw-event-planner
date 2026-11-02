@@ -36,6 +36,7 @@ const SELF_PINNED = [
   // env-guarded on THRESHOLD_DEMO. Six geometries would write six sets of
   // screenshots into one dated folder.
   '**/_thresholdDemo.spec.mjs',
+  '**/yourWordsStayWithTheirEvent.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,

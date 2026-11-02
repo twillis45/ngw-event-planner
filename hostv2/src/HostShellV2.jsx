@@ -5814,7 +5814,10 @@ export default function HostShellV2() {
   // the same draft restores them. Picking a voice is the one deliberate discard
   // (it always meant "regenerate"), so it clears the kept copy too.
   const draftEditsRef = useRef({});
-  const draftEditKey = (title) => String(title || 'draft');
+  // Keyed by EVENT and title. Title alone let words typed for one event's
+  // "Your shopping list" reappear in another event's, labeled as hers (Nielsen
+  // re-run N5, 2026-11-02; e2e yourWordsStayWithTheirEvent).
+  const draftEditKey = (title) => `${eventId || 'none'}::${String(title || 'draft')}`;
   const openDraft = (title, d, queue, opts) => {
     const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
     if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
