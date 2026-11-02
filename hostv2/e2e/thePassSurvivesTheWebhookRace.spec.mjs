@@ -204,6 +204,35 @@ test.describe('GOLD-09 — the pass entitlement reaches the shell', () => {
   // That is the cleared-browser / refunded / revoked case, and it must end
   // locked — otherwise `passPurchased` on the blob is still the authority and
   // the whole server record bought nothing.
+  // Nielsen re-run N8 (2026-11-02, P3, truthfulness): coming back from checkout
+  // with the pass not yet confirmed, the host was told "your payment went
+  // through" — a claim this code's own comment says the redirect is not
+  // evidence of. The notice may say what we know (we have not seen it land)
+  // and what to do, never that money moved. Red-proofed against the old copy.
+  test('an unconfirmed return says what we know, never that payment went through', async ({ page }) => {
+    await stubPass(page, [false, false, false]);
+    await page.addInitScript(([e, lastId]) => {
+      localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+      localStorage.setItem('ngw-hostv2-last-event', lastId);
+      localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+      localStorage.setItem('ngw-welcomed', '1');
+      localStorage.setItem('ngw-v2-welcomed', '1');
+      window.__toastsSeen = [];
+      setInterval(() => {
+        const n = document.querySelector('div.toast');
+        const t = n ? (n.innerText || '').replace(/\s+/g, ' ').trim() : '';
+        if (t && !window.__toastsSeen.includes(t)) window.__toastsSeen.push(t);
+      }, 80);
+    }, [eventFixture(), EVENT_ID]);
+    await page.goto(`${BASE}?pass_paid=1&event_id=${encodeURIComponent(EVENT_ID)}`, { waitUntil: 'load' });
+    await page.waitForTimeout(9000);
+    const toasts = await page.evaluate(() => window.__toastsSeen);
+    const notice = toasts.filter((t) => /haven.t seen|not seen|yet/i.test(t));
+    expect(notice.length, `premise: no not-yet notice. Toasts seen: ${JSON.stringify(toasts)}`).toBeGreaterThanOrEqual(1);
+    expect(toasts.filter((t) => /payment went through|you paid|payment (is|was) (complete|received)/i.test(t)),
+      'an unconfirmed return claimed the payment').toHaveLength(0);
+  });
+
   test('a claim the server never confirms ends revoked', async ({ page }) => {
     const asks = await stubPass(page, [false, false, false]);
     await boot(page, { event: eventFixture({ passPurchased: true }) });

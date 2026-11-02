@@ -3574,7 +3574,10 @@ export default function HostShellV2() {
       if (kind === 'pass') {
         await refreshEventPass(paidEventId, { claimed: true });
         if (serverPassHeld(paidEventId) === true) { unlocked(); return; }
-        toast('Thanks — your payment went through, but we haven’t seen it land on this event yet. It usually takes a few seconds; reopen the event and it’ll be here.');
+        // Says what we know — the pass has not reached this event — and never
+        // that money moved: the redirect is not evidence of a payment (Nielsen
+        // re-run N8, 2026-11-02; thePassSurvivesTheWebhookRace).
+        toast('We haven’t seen the pass reach this event yet. If you completed checkout it usually lands within a few seconds — reopen the event to check, and your Stripe receipt email has the details.');
         return;
       }
 
