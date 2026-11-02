@@ -86,7 +86,12 @@ const install = async (page, { mode }) => {
 
   await page.addInitScript(([sess, local, evId]) => {
     localStorage.setItem('sb-synctest-auth-token', JSON.stringify(sess));
-    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([local]));
+    // Seed ONCE. An init script re-runs on every navigation, and re-seeding on
+    // reload would put the original copy back and hide exactly what test 3
+    // measures: what the shell itself does to a refused edit across a reload.
+    if (!localStorage.getItem('ngw-hostv2-custom-events')) {
+      localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([local]));
+    }
     localStorage.setItem('ngw-hostv2-last-event', evId);
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
@@ -193,6 +198,31 @@ test.describe('a refused save is not called saved — the shell half', () => {
     await openSettings(page);
     const row = page.locator('.later-row').filter({ hasText: CONFLICT_ROW }).first();
     await expect(row, 'the settings sheet does not show the conflict state').toBeVisible({ timeout: 5000 });
+  });
+
+  // ── 3 · AND IT IS STILL HERE AFTER A RELOAD ──────────────────────────────
+  // Nielsen re-run N2 (2026-11-02, P1/P0): hydrate stamped every unqueued event
+  // SYNCED — a refused save is never queued — which also erased the conflict
+  // record; the adopt loop then saw "synced", found the account's copy
+  // different, and replaced the host's edit with it. The only message was
+  // "Updated with a newer version from your account." Test 1 never reloaded,
+  // so it could not see it. Red-proofed by removing the conflict exemption at
+  // the hydrate stamp.
+  test('a refused edit survives a reload: not overwritten, still flagged', async ({ page }) => {
+    await install(page, { mode: 'conflict' });
+    await boot(page);
+    await makeAnEdit(page);
+    expect((await readState(page)).guestMode, 'premise: the edit landed locally').toBe(EDIT.guestMode);
+
+    await page.reload();
+    await boot(page);
+    const s = await readState(page);
+    expect(s.guestMode, 'the refused edit was overwritten by the account copy on reload').toBe(EDIT.guestMode);
+    expect(s.toasts.filter((t) => /newer version from your account/i.test(t)),
+      'the host was told the account copy replaced theirs').toHaveLength(0);
+    await openSettings(page);
+    await expect(page.locator('.later-row').filter({ hasText: CONFLICT_ROW }).first(),
+      'the conflict state was erased by the reload').toBeVisible({ timeout: 5000 });
   });
 
   // ── 2 · THE CONTROL: A SAVE THAT LANDS SAYS NOTHING, AND ADOPTS ITS STAMP ─
