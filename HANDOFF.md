@@ -709,6 +709,38 @@ earlier in this same session and still written backwards. And the first
 control arm only counted writes when it was also throwing them, so it asserted
 "nothing happened" instead of "writes happened and the shell stayed quiet".
 
+### GOLD-06 closed, and it closed GOLD-10's last third with it
+
+Weather IS a producer, so "the weather surface tells the truth" and "a
+producer failure is handled honestly" turned out to be one contract read from
+two sides. GOLD-06 is the row the Sprint 0 verdict cites as the reason BOTH
+its verdicts were scoped, and it had no browser guard.
+
+The rule under test is the module's own: *"a configured app shows live weather
+or nothing — a fabricated fallback could contradict the real sky"*, and the
+catch that swallows a provider failure says *"stay quiet — no forecast beats a
+wrong one."* The failure that prevents is concrete: an app wired to a real
+forecast, provider down, quietly showing a SAMPLE the host reads as the real
+sky, who then plans a 30-person outdoor party against invented rain.
+
+**No new bundle.** `isWeatherConfigured()` is
+`Boolean(REACT_APP_OPENWEATHER_KEY || REACT_APP_API_BASE_URL)`, so 5233 is the
+unconfigured arm and GOLD-09's passgate bundle on 5266 is the configured one.
+Same event, same fixture, same boot; configuration is the only variable.
+
+| Arm | Provider called | Sample label |
+|---|---|---|
+| Unconfigured | **never** | **shown, and labeled** |
+| Configured + 500 | **yes** (`geocode`) | **absent** |
+
+⚠️ **The provider-call assertion is the load-bearing one, and the first run
+proved why.** The venue NAME is `ev.venue`, not `ev.venueName`
+(`venueFor.js:39`). With the wrong key `isLikelyOutdoor` is false, the whole
+effect returns early, and the spec read CLEAN ON BOTH ARMS — a false pass on
+both sides of a differential at once, which is the worst outcome a test like
+this can have. Counting the calls makes that impossible: no calls means the
+path never ran, and the silence proves nothing.
+
 ### Path to Production, re-read 2026-11-02
 
 Stage 9's six preconditions, from

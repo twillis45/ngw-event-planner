@@ -73,7 +73,8 @@ block above stands unchanged.
 | ID | Then | Now | Evidence |
 |---|---|---|---|
 | **GOLD-09** | *"pass entitlement (Postgres) not in any e2e"* | **CLOSED.** Seven tests on their own bundle walk the shell's half of the money path: the ask fires on event open, the `isUserCreatedEvent` guard holds for samples, `held:true` unlocks, `held:false` locks, and the webhook/redirect race does not revoke a host who paid seconds ago. | `thePassSurvivesTheWebhookRace.spec.mjs` · `.env.passgate` · port 5266 |
-| **GOLD-10** | *"no spec for invalid route, producer failure, or write failure"* | **TWO OF THREE CLOSED.** Write failure and invalid route now have guards. **Producer failure is still open** and is deliberately not claimed. | `aFailedSaveIsNotSilent.spec.mjs` |
+| **GOLD-10** | *"no spec for invalid route, producer failure, or write failure"* | **CLOSED, all three.** Write failure and invalid route in `aFailedSaveIsNotSilent`; producer failure in `noForecastBeatsAWrongOne`, which is the same assertion as the weather baseline read from the other side. | `aFailedSaveIsNotSilent.spec.mjs` · `noForecastBeatsAWrongOne.spec.mjs` |
+| **GOLD-06** | *"weather has no e2e"* — the row the Sprint 0 verdict cites as the reason both verdicts are scoped | **CLOSED.** The contract under test is the module's own: *"a configured app shows live weather or nothing — a fabricated fallback could contradict the real sky."* | `noForecastBeatsAWrongOne.spec.mjs` |
 
 ### Why GOLD-09 survived two green unit suites, measured
 
@@ -128,3 +129,32 @@ were tried here and both reported a clean run against a shell that was in fact
 warning correctly. An 80ms poll across the whole run is what sees it. A
 failure-path spec that cannot see the evidence reports the opposite of the
 truth.
+
+### GOLD-06 and the producer third of GOLD-10, which turned out to be one contract
+
+Weather IS a producer, so "does the weather surface tell the truth" and "what
+happens when a producer fails" are the same question. The failure it prevents
+is specific: an app wired to a real forecast, whose provider is down, quietly
+showing a SAMPLE the host reads as the real sky — and then planning a
+30-person outdoor party against invented rain.
+
+**No new bundle was needed.** `isWeatherConfigured()` is
+`Boolean(REACT_APP_OPENWEATHER_KEY || REACT_APP_API_BASE_URL)`, so the shared
+e2e bundle (5233) is the UNCONFIGURED arm and the GOLD-09 passgate bundle
+(5266) is the CONFIGURED one. Same event, same fixture, same boot —
+configuration is the only variable, which is what makes these a differential
+rather than two anecdotes.
+
+| Arm | Provider called | Sample label |
+|---|---|---|
+| Unconfigured (5233) | **never** | **shown** — and it must say "Sample forecast" |
+| Configured, provider 500 (5266) | **yes** (`geocode`) | **absent** — it stays quiet |
+
+The provider-call assertion in the configured arm is not decoration. Without
+it, "no sample appeared" could equally mean the fixture never triggered
+weather at all — and that is not hypothetical: the venue NAME comes from
+`ev.venue`, not `ev.venueName` (`venueFor.js:39`), and the first run of this
+spec used the wrong key, which made `isLikelyOutdoor` false, returned the
+effect early, and read CLEAN ON BOTH ARMS AT ONCE. A false pass on both sides
+of a differential is the worst possible outcome for a test like this, and the
+call count is what makes it impossible.

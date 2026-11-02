@@ -93,6 +93,12 @@ const VIEWPORT_INDEPENDENT = [
   // four tests sit through a 9s boot-and-settle window, so six more
   // viewports would buy six identical results for six times the wall clock.
   '**/aFailedSaveIsNotSilent.spec.mjs',
+  // ── WEATHER HONESTY (GOLD-06 + GOLD-10, 2026-11-02) ───────────────────
+  // Asserts which sentence appeared and whether a provider was called. No
+  // geometry. It also addresses 5233 AND 5266 directly — it is a
+  // differential across two bundles — so any project pointed at one preview
+  // would measure half of it.
+  '**/noForecastBeatsAWrongOne.spec.mjs',
   // ── THE PEOPLE ATTENDANCE ZONE (redesign step 3, 2026-10-20) ───────────
   // Six tests on text and stored state, including a paired fixture that
   // differs by ONE field (guestCountSource) and a negative control proving
