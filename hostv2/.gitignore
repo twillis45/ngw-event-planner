@@ -2,6 +2,7 @@ node_modules/
 dist/
 dist-synctest/
 dist-gold07/
+dist-passgate/
 
 # Playwright blob reports — written only by a PW_BLOB=1 (sharded) run, merged
 # in CI and never committed.
