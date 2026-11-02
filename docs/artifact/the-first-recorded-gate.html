@@ -569,7 +569,7 @@
             <li><input type="checkbox" data-k="s8-unmerged"> <span class="tag">Step 2e</span> <b>Standing obligation: <code>origin/main..HEAD</code> is 0.</b> <b>Why unchecked:</b> 14 commits on <code>main-2utz0n</code> await PR #94.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine</span> <b>Dependency review &mdash; re-run 2026-11-02, and it found something.</b> The shipped tree was no longer clean: <code>dompurify@3.4.14</code> (via <code>posthog-js</code>), one critical, five DOM-XSS advisories. Not in any built bundle and called by no app code, so exposure was low &mdash; and fixed anyway by pinning 3.4.17 through <code>overrides</code>: <b>0 vulnerabilities</b>. The 2026-08-21 &ldquo;0&rdquo; was true on its day; that is why this row recurs.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Correction</span> <b>Who ruled stage 8 is not in the record.</b> See Corrections. <b>Closed 2026-11-02:</b> ruled by the review board under the standing delegation &mdash; see the ruling panel above.</li>
-            <li><input type="checkbox" data-k="s8-cra"> <span class="tag">Board 2026-11-02</span> <b>Re-decide the frozen CRA&rsquo;s dependency disposition.</b> The NO-OP rests on a deletion &ldquo;scheduled post-Sprint-2&rdquo; that no ruling dates, and <code>xlsx</code> (high, no fix) parses user-uploaded files in code that ships (<code>src/App.js:210</code>).</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Board 2026-11-02</span> <b>Re-decide the frozen CRA&rsquo;s dependency disposition.</b> The NO-OP rests on a deletion &ldquo;scheduled post-Sprint-2&rdquo; that no ruling dates, and <code>xlsx</code> (high, no fix) parses user-uploaded files in code that ships (<code>src/App.js:210</code>). <b>Re-decided 2026-11-02 by the owner (option A):</b> <code>xlsx</code> moved to SheetJS 0.20.3 from the vendor&rsquo;s CDN, pinned by lockfile integrity hash; the audit no longer reports it, and the legacy production build carries 0.20.3. The other 105 findings are the react-scripts toolchain, reported weekly and retired with the CRA.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Board 2026-11-02</span> <b>Run the dependency audit on a written cadence, both trees.</b> The 2026-08-21 &ldquo;0 vulnerabilities&rdquo; was false by 2026-11-02 and nothing re-ran it in between. <b>Closed in source 2026-11-02:</b> <code>.github/workflows/dependency-audit.yml</code> runs weekly (Mondays), on every lockfile PR, and on demand. hostv2 fails on any high (0 today); the CRA tree (106 findings, 3 critical in the dev server) is report-only <i>by decision</i> until s8-cra is ruled, naming <code>xlsx</code> in every run&rsquo;s summary. Pinned and red-proofed. First scheduled run after the next merge to main.</li>
           </ul>
         </div>
@@ -1056,6 +1056,7 @@
     apply();
   })();
 </script>
+
 
 
 
