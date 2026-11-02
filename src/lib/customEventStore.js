@@ -280,6 +280,11 @@ export function exportCustomEvents(now = Date.now()) {
     exportedAt: new Date(now).toISOString(),
     count: events.length,
     events,
+    // The destructive-action log rides along (gate row s7-recovery2, owner
+    // ruling 2026-11-02): a host who sends support her export sends the record
+    // of every whole-store write and every refused one with it. Ids, counts,
+    // reasons and backup keys only — never event content. Import ignores it.
+    writeLog: readWriteLog(),
   };
 }
 
