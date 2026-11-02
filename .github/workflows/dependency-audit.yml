@@ -14,11 +14,13 @@
 #
 # The root tree carries react-scripts as a regular dependency, so `--omit=dev`
 # still audits the whole CRA build toolchain: 106 findings on 2026-11-02, most
-# of them build-time. One ships to users and has no fix: `xlsx` (parses
-# uploaded files, src/App.js:210). Failing the run every week on that would be
+# of them build-time. The one that shipped to users with no npm fix, `xlsx`
+# (parses uploaded files, src/App.js:210), was moved to SheetJS 0.20.3 from
+# the vendor's own CDN the same day by owner ruling (option A); 105 remain, all
+# in the react-scripts toolchain. Failing the run every week on those would be
 # a red nobody reads, which is worse than no gate. So the root job reports
-# counts and names xlsx in the run summary, and goes strict the day the CRA
-# disposition is ruled — change `continue-on-error` below, nothing else.
+# counts and names xlsx in the run summary (it should read "no advisory"), and
+# goes strict the day the CRA is retired — change `continue-on-error` below.
 #
 # --package-lock-only: audits the committed lockfile, which is what CI installs
 # and what ships; no install needed.

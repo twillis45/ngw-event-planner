@@ -127,7 +127,14 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   (`proxy-addr`, `shell-quote`, `websocket-driver`); `xlsx` high as before;
   `posthog-js@1.379.0` moderate via a transitive OpenTelemetry package.
   Same disposition: the frozen shell's toolchain, retired with it. DOMPurify
-  pinned here too, so it is no longer in the list.)* 51 findings (1
+  pinned here too, so it is no longer in the list.)* **Re-decided
+  2026-11-02 by owner ruling (option A, board condition s8-cra):** `xlsx`,
+  the one finding that shipped in a bundle and parsed user uploads
+  (`src/App.js:15372`), moved from 0.18.5 to SheetJS 0.20.3 from the
+  vendor's CDN (not on npm), pinned by lockfile integrity hash; the audit
+  no longer reports it (high 26 → 25). The remaining 105 are the react-scripts
+  toolchain, reported weekly by `dependency-audit.yml` and retired with the
+  CRA. 51 findings (1
   critical: `websocket-driver`, dev-server chain) — all in the FROZEN
   CRA's react-scripts build toolchain, none shipped in a bundle. Accepted
   because the CRA is donor-only with deletion scheduled post-Sprint-2;
