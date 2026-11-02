@@ -94,7 +94,11 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   router is unchanged). **Gate:** `src/lib/__tests__/everyPublicTableHasRls.test.js`
   reads both migration folders and fails by table name on any `create
   table` without a matching enable — red-proofed by removing 018 (7 of 10
-  red, all six named). **Live exposure could not be probed from here:**
+  red, all six named). **Widened 2026-11-02 (board condition 7):** the
+  gate also reads `src/lib/knowledge/kaw1-migration.sql` (seven
+  hand-applied tables, all RLS-enabled) and fails on any `.sql` file in
+  the repo outside a scanned source — red-proofed by dropping one kaw1
+  enable and by adding a stray file; 14 tests. **Live exposure could not be probed from here:**
   the public Pages bundle is the demo profile and carries no Supabase
   URL. Until 018 reaches `main` and the integration applies it, the live
   project is presumed exposed; check A's query is how the owner confirms

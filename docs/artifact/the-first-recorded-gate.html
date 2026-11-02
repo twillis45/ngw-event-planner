@@ -480,7 +480,7 @@
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Required skill</span> <code>route-sweep</code> (the sweep exists although the skill is still unbuilt) and <code>security-review</code> &mdash; both RUN, per the stage-6 record&rsquo;s <code>skillsUsed</code>.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Correction</span> <b>Who ruled stage 5 is not in the record.</b> See Corrections. <b>Closed 2026-11-02:</b> ruled by the review board under the standing delegation &mdash; see the ruling panel above.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Board 2026-11-02, cond. 6</span> <b>Research, kcr and kas assert 401; weather, food_prices, instacart, kroger and lodging go on the PUBLIC allowlist with written reasons</b> &mdash; including anonymous use of our third-party API quota, which nothing records today. <b>Closed 2026-11-02:</b> research, kas and kcr are hit bare and answer 401; the five proxies sit on the PUBLIC allowlist with written reasons, the quota cost named and accepted (no rate limit today). Red-proofed: stripping research&rsquo;s admin gate, or dropping an allowlist entry, turns it red.</li>
-            <li><input type="checkbox" data-k="s5-kaw1"> <span class="tag">Board 2026-11-02, cond. 7</span> <b><code>src/lib/knowledge/kaw1-migration.sql</code> is outside the RLS gate.</b> Seven hand-applied tables, all RLS-enabled today; the gate scans the two migration folders and not this file.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Board 2026-11-02, cond. 7</span> <b><code>src/lib/knowledge/kaw1-migration.sql</code> is outside the RLS gate.</b> Seven hand-applied tables, all RLS-enabled today; the gate scans the two migration folders and not this file. <b>Closed 2026-11-02:</b> <code>everyPublicTableHasRls</code> now reads kaw1 as its own source, and fails on any <code>.sql</code> file in the repo that no source covers. Red-proofed: dropping one kaw1 enable, or adding a stray file, turns it red.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -1054,6 +1054,7 @@
     apply();
   })();
 </script>
+
 
 
 
