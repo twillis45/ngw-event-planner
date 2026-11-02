@@ -580,6 +580,52 @@ anything else runs.**
 | `verify:fast` | **9 of 10.** The one failure was HANDOFF freshness, which this entry closes |
 | Matrix | **GREEN — 3,136 passed / 273 skipped / 0 failed / 1 flaky, 54.5m**, seven projects, run after this entry was first written. The flaky re-ran 20/20 clean in isolation. `PW_CHROMIUM=/opt/pw-browsers/chromium` was all the pin gap ever needed |
 
+### 🔴 PRODUCTION PROBE 2026-11-02 — the backend is on a tier that sleeps, and guests are the worst traffic for it
+
+Nobody had probed production today, so it was probed rather than assumed.
+
+| Probe | Result |
+|---|---|
+| Pages `https://twillis45.github.io/ngw-event-planner/` | **200**, serving `static/js/main.69037cdc.js` |
+| That bundle | **the same one the fifty-eighth entry recorded on 2026-10-13** — measured confirmation that nothing has shipped in 20 days, not an inference from the branch state |
+| Backend `/health`, first two calls | **timed out at 45s, no bytes received** |
+| Backend `/health`, third call | **200 `{"ok":true,"service":"ngw-events-api"}` in 14.3s** |
+| Backend `/health`, warm | **0.28s, 0.59s** |
+| `render.yaml:9` | `plan: free` |
+
+**The service spins down.** Cold-to-warm is a ~75x latency difference, and the
+first caller after an idle period eats a 30-60s wait with nothing on screen.
+I did not conclude "the backend is down" from the first two timeouts — the
+cold-start hypothesis was separated from an outage by simply waiting longer,
+which is the only reason this reads as a tier finding instead of an incident.
+
+**Why this matters more than a normal latency note: the sporadic caller is the
+GUEST.** `GET /api/public/invite/{code}` is served by this same instance, and
+guests arrive one at a time, days apart — the exact traffic shape that
+guarantees a cold instance. A host demoing the product hits a warm service
+because they just used it; the guest opening the invite does not.
+
+**The defect I went looking for does NOT exist, and that is worth recording.**
+The hypothesis was that a cold 5xx would render the existing "link not found"
+fallback — telling a guest their invite is dead because the server was asleep.
+`src/lib/api/rsvp.js:61` already carries `INVITE_FETCH_FAILED`, a sentinel that
+separates "the server says no such invite" (404 / ok-but-empty → null) from
+"the lookup failed" (5xx / network → retryable), with the reason written at the
+line: *"a transient blip is retryable and must not be shown as 'this link is
+dead.'"* So the guest waits; they are not lied to. Checked, not assumed.
+
+What remains is latency, and it is an owner-side spend decision rather than a
+code change. It is **not currently on any stage-9 list**, and it should be:
+precondition #4 is a live-keys purchase, and a checkout call into a sleeping
+instance is the first impression a paying host gets.
+
+Also verified while in there, both already correct: no client-side fetch
+timeout on the invite call (so the guest waits rather than erroring), and the
+public RSVP entropy floor is real — `MIN_CODE_LEN = 16` enforced before the
+query runs (`backend/app/routers/rsvp.py:230`), with new events minting 22-char
+tokens. Rate limiting on that route would be defence in depth, not a blocker,
+so none was invented for it.
+
 ### Path to Production, re-read 2026-11-02
 
 Stage 9's six preconditions, from
