@@ -131,6 +131,32 @@ describe('the host can take her events off this origin', () => {
     expect(out.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
+  // Gate row s7-recovery2 (owner ruling 2026-11-02): readWriteLog had zero
+  // callers. The export now carries it, so a host who sends support her export
+  // also sends the record of every whole-store write and every refused one —
+  // ids, counts, reasons and backup keys, never event content.
+  test('export carries the destructive-action log, content-free', () => {
+    seed([USER_EVENT]);
+    saveCustomEvents([], { reason: 'e2e-drive' });          // refused: would drop a user event
+    const out = exportCustomEvents(1754000000000);
+    expect(Array.isArray(out.writeLog)).toBe(true);
+    const refused = out.writeLog.find((l) => l.refused && l.reason === 'e2e-drive');
+    expect(refused).toBeTruthy();
+    expect(refused.dropped).toEqual([USER_EVENT.id]);
+    expect(JSON.stringify(out.writeLog)).not.toContain(USER_EVENT.name);   // ids, never content
+    expect(out.version).toBe(1);                                          // additive, same format
+  });
+
+  test('import ignores a carried write log — it is evidence, not state', () => {
+    seed([USER_EVENT]);
+    saveCustomEvents([], { reason: 'e2e-drive' });
+    const wire = JSON.parse(JSON.stringify(exportCustomEvents(1754000000000)));
+    localStorage.clear();
+    const res = importCustomEvents(wire);
+    expect(res.ok).toBe(true);
+    expect(readWriteLog().some((l) => l.reason === 'e2e-drive')).toBe(false);
+  });
+
   test('import MERGES onto an origin that already has work', () => {
     seed([{ id: 'cust-local', name: 'Work already here' }]);
     const res = importCustomEvents(exportOf([USER_EVENT]));

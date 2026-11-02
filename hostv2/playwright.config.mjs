@@ -46,6 +46,7 @@ const SELF_PINNED = [
 // self-pinned ones, because a test has to run SOMEWHERE.
 const VIEWPORT_INDEPENDENT = [
   '**/crossDeviceSync.spec.mjs',
+  '**/aHostCanTurnAnalyticsOff.spec.mjs',
   '**/a11yFloor.spec.mjs',
   // ── THE RSVP CASCADE (GOLD-07, 2026-10-18) ─────────────────────────────
   // Belongs here on both counts this list cares about. It asserts only TEXT

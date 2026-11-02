@@ -137,7 +137,7 @@ import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuest
 
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
-import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
+import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
 import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
@@ -3534,6 +3534,28 @@ export default function HostShellV2() {
     // read it AND decide; a plain notice keeps the original rhythm.
     toastTimer.current = setTimeout(() => { setToastMsg(null); setToastAction(null); setToastTone(null); }, action ? 6500 : 3400);
   };
+  // ── THE FIRST-OPEN ANALYTICS NOTICE (owner ruling 2026-11-02, option A) ──
+  // One quiet line, once, after the splash — never a modal, never a gate. Shown
+  // only where analytics would actually run and only to a host who has not
+  // already turned it off (shouldShowAnalyticsNotice). Its one action opens
+  // the Settings toggle. Copy: docs/legal/CONSENT_AND_TRACKING_COPY_DRAFT.md §4;
+  // the Privacy link joins it when the policy is published, not before.
+  useEffect(() => {
+    if (splash !== 'gone') return undefined;
+    let t;
+    try {
+      if (shouldShowAnalyticsNotice()) {
+        t = setTimeout(() => {
+          markAnalyticsNoticeSeen();
+          toast('We count which parts of the app get used so we can make them better. No ads, nothing sold, and your guests’ details never leave your plan.',
+            { label: 'Turn this off', fn: () => setSheet({ kind: 'settings' }) });
+        }, 1200);
+      }
+    } catch { /* a notice must never break boot */ }
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splash]);
+
 
   // ── Real lib functions, one per element ──
   const dstat = eventDateStatus(event.date);            // lib/dates — time intelligence
@@ -6656,6 +6678,8 @@ export default function HostShellV2() {
   // feature. Seeded from the same reader the boot path uses, so the row opens
   // showing what is actually on screen rather than a default.
   const [theme, setThemeState] = useState(() => { try { return currentTheme(); } catch { return 'dark'; } });
+  // The visible analytics opt-out (owner ruling 2026-11-02, option A).
+  const [analyticsOff, setAnalyticsOff] = useState(() => { try { return isAnalyticsOptedOut(); } catch { return false; } });
   useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);
   // Sound defaults ON, so most hosts never touch the toggle — priming only on
   // that click would leave the AudioContext unresumed for everyone else. Every
@@ -18204,6 +18228,24 @@ export default function HostShellV2() {
                       onClick={() => setThemeState(setStoredTheme(theme === 'light' ? 'dark' : 'light'))}>
                       {theme === 'light' ? 'On — tap for dark' : 'Off — tap for light'}
                     </button>
+                  </div>
+                  {/* ── HELP IMPROVE THE APP (owner ruling 2026-11-02, option A) ──
+                      The visible opt-out the privacy copy promises. Until today
+                      the only way out was ?noanalytics=1 in the address bar —
+                      a mechanism, not a choice. Same row shape as Sound and
+                      Light mode beside it; the line under it says plainly what
+                      is and is not sent. */}
+                  <div className="later-row" style={{ flexWrap: 'wrap' }}>
+                    <span className="t">Help improve the app</span>
+                    <button className="mini" aria-pressed={!analyticsOff}
+                      onClick={() => { const off = !analyticsOff; setAnalyticsOptOut(off); setAnalyticsOff(off); }}>
+                      {analyticsOff ? 'Off — tap to turn on' : 'On — tap to turn off'}
+                    </button>
+                    <span className="v-meta" style={{ flexBasis: '100%', margin: '4px 0 0' }} data-analytics-line>
+                      {analyticsOff
+                        ? 'Off. Nothing about how you use the app is sent.'
+                        : 'Shares which features you use — never your guests, your plans’ contents, or anything you type.'}
+                    </span>
                   </div>
                   {/* ── YOUR DATA (2026-09-02, review board) ─────────────────
                       The board's ONE THING, named by six of ten seats. Four
