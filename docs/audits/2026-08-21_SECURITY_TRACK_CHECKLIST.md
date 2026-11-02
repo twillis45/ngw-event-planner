@@ -60,7 +60,35 @@ recalled. Status legend: DONE / NO-OP (reason) / OPEN.
   **OPEN — applied-status attestation.** Whether every migration is
   applied to the LIVE Supabase project cannot be proven from the repo;
   one dashboard check (Database → Policies on `events`) closes it.
-  User-side, two minutes.
+  User-side, two minutes. **2026-11-02: the check is now written as a
+  query, not an eyeball — `docs/RUNBOOK.md` § Owner attestations, check A
+  — with what a pass and a fail look like, row by row.**
+- **FOUND 2026-11-02, FIXED IN REPO, NOT YET ON THE LIVE PROJECT — six
+  `public` tables with RLS OFF.** `supabase/migrations/012_research_execution.sql`
+  created `research_campaign_runs`, `research_queue_jobs`,
+  `research_findings`, `research_evidence`, `research_observations` and
+  `provider_run_logs` with no `enable row level security`, on the
+  comment "all reads/writes go through FastAPI with require_admin — no
+  RLS needed." That covers the app's door and not PostgREST: every
+  `public` table is served at `/rest/v1/<table>`, and Supabase's default
+  privileges grant `anon`/`authenticated` on it, so with RLS off the
+  publishable anon key — shipped in the live bundle by design — can read
+  and WRITE those six (enqueue research jobs → provider spend; rewrite
+  findings; read every campaign blueprint). The "DONE — RLS verified in
+  writing" line above listed only the tables it checked and never said
+  "every table"; nobody asked the other question until the attestation
+  query was being written. Surfaced by the query itself. **Fix:**
+  `018_research_tables_rls.sql` enables RLS on all six with no policies
+  (the shape `admin_error_log` and `kas_records` already run on; the
+  backend's owning role is not subject to non-forced RLS, so the research
+  router is unchanged). **Gate:** `src/lib/__tests__/everyPublicTableHasRls.test.js`
+  reads both migration folders and fails by table name on any `create
+  table` without a matching enable — red-proofed by removing 018 (7 of 10
+  red, all six named). **Live exposure could not be probed from here:**
+  the public Pages bundle is the demo profile and carries no Supabase
+  URL. Until 018 reaches `main` and the integration applies it, the live
+  project is presumed exposed; check A's query is how the owner confirms
+  it closed.
 - **DONE — dependency audit (shipped surface).** `npm audit --omit=dev`
   in `hostv2/`: **0 vulnerabilities** (2026-08-21).
 - **NO-OP with note — dependency audit (CRA root).** 51 findings (1
