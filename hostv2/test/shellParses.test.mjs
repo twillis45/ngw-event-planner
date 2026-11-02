@@ -72,9 +72,30 @@ describe('every hostv2 module parses and evaluates', () => {
     expect(names.length).toBeGreaterThan(8);
   });
 
+  // ── THE CEILING WAS UNDER THE MEASURED COST (2026-11-02) ─────────────────
+  // This ran on vitest's 5000ms default and failed roughly half the time on
+  // `../src/HostShellV2.jsx imports cleanly` — always a TIMEOUT, never an
+  // assertion. It was not a flake. Measured with the ceiling lifted
+  // (`--testTimeout=60000`), that one import costs **6101ms / 6088ms /
+  // 5691ms** across three runs: the test was systematically over budget and
+  // passed only when the machine happened to squeeze under 5s. Confirmed
+  // pre-existing by stashing the unrelated change in flight and reproducing
+  // 2-of-3 red on a clean tree.
+  //
+  // A gate that fails half the time is worse than no gate, because it teaches
+  // whoever hits it to re-run until green — which is the habit that lets a
+  // real failure through. Same reasoning, and the same remedy, as the e2e
+  // poll ceiling that went 8s -> 30s in the forty-third entry.
+  //
+  // 20s is ~3.3x the measured worst case. It is still a HANG detector: a
+  // module that genuinely fails to import throws in milliseconds, and nothing
+  // here legitimately takes twenty seconds. Raise it again only against a new
+  // measurement, never to make a red run go away.
+  const IMPORT_TIMEOUT_MS = 20000;
+
   it.each(names)('%s imports cleanly', async (name) => {
     await MODULES[name]();
-  });
+  }, IMPORT_TIMEOUT_MS);
 });
 
 describe('the hostv2 tree is executable, not merely readable', () => {
