@@ -1,6 +1,60 @@
 # Where We Are -- live status board
 
-## 2026-11-02 (last) — merged, deployed, four GOLD rows closed, and the design parked
+## 2026-11-02 (later, last) — the path-to-production list worked top to bottom; one security finding waits on a merge
+
+Branch `main-2utz0n` @ `057a282`, twelve commits past `2ec704e`, all pushed,
+none merged. What they are, in the order the deep dive ranked them:
+
+**Sync honesty (census §5, open since 2026-08-08) — closed on the disclosure
+half.** `saveEvent` is a conditional UPDATE on the version this device knows;
+a row another device changed is refused, kept locally and named, in both
+shells (`34d2931`). The first cut made a device refuse ITSELF on back-to-back
+keystrokes — caught by a test, fixed with a per-id write chain and a persisted
+newest-version record. 11 jest tests, each guard red-proofed. Then the shell
+half in a browser (`aRefusedSaveIsNotCalledSaved.spec.mjs`, `057a282`): the
+conditional filter read off the request URL, the toast, the settings row, the
+local copy; red-proofed by removing the shell's branch — without it the shell
+says *"it will reach your account when the connection is back"* for a refused
+write. Not a merge; never driven against two real sessions.
+
+**The gate artifact and the board refreshed** (`8dcf82d`): The First Recorded
+Gate Version 21→22 with a dated re-measurement panel, per-stage re-checks,
+three corrections (backend tier read off `render.yaml`; the `PW_CHROMIUM` pin
+gap; the board's "Sentry is live" was presence, not delivery), a 390px
+horizontal-scroll fix it had carried since first publish, and `s7-created`
+closed once `event_created` was gated. The board Version 3 with a second
+dated card. **No chip changed; no gate ruled since 2026-09-03.** The honest
+answer to "where are the rest": there is one per-repo path artifact (stages
+6–8), one portfolio board, and the 2026-08-21 audits; stages 1–5 never had an
+artifact — they are rows in the owner's local `skill-index` server.
+
+🔴 **Six `public` tables with RLS OFF** (`a690da5`), found by writing the
+owner's RLS attestation as a query: `012_research_execution.sql` created the
+research tables on "only FastAPI reaches them," which ignores PostgREST.
+Anyone with the publishable anon key could read and WRITE them. `018` enables
+RLS (no policies — the shape `admin_error_log` already runs on);
+`everyPublicTableHasRls.test.js` fails by table name on the next one. **It
+reaches the live project only when `018` lands on `main`; until then presume
+exposed. The PR needs the owner's ask.** Live exposure could not be probed
+from a cloud session — the Pages bundle is the demo profile.
+
+**Owner attestations written as a checklist** (`docs/RUNBOOK.md` § Owner
+attestations): RLS as a SQL query with expected rows and what a fail means;
+backups + a restore drill that never touches production; login rate limits
+read not tuned; Sentry/PostHog arrival. ~70 minutes closes three of six
+stage-5 opens.
+
+**Privacy and refund policy DRAFTS** (`docs/legal/`, `614f092`), written from
+the code with citations, five `[OWNER: …]` placeholders, the refund rule left
+as three options with one recommended. Not linked from the product until
+ruled.
+
+**What only the owner can move now, in order:** merge 018 → run check A;
+decide the refund rule and fill the five placeholders → attorney → domain;
+recruit one stranger for `COORDINATOR_TEST_SCRIPT.md`; the three dashboard
+attestations; convene the stage-9 board.
+
+## 2026-11-02 (earlier) — merged, deployed, four GOLD rows closed, and the design parked
 
 **`main` @ `2ec704e`** (PR #93 merged — 55 commits, 86 files, first deploy since
 2026-10-13). **Production verified by fetching it:** bundle moved from
