@@ -27,4 +27,9 @@ test('the CRA tree is audited too, and report-only is explicit', () => {
   expect(WF.jobs['root-cra']['continue-on-error']).toBe(true);
   expect(runs('root-cra')).toMatch(/npm audit --package-lock-only --omit=dev/);
   expect(runs('root-cra')).toMatch(/xlsx/);
+  // Report-only means the job is GREEN when the report ran: GitHub marks a job
+  // red even under continue-on-error, and a known-red check is one nobody
+  // reads (first PR run, 2026-11-02, went red exactly that way).
+  expect(runs('root-cra')).toMatch(/npm audit --package-lock-only --omit=dev \|\| true/);
+  expect(runs('root-cra')).not.toMatch(/--audit-level/);
 });
