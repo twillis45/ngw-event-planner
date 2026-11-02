@@ -22,9 +22,20 @@
 // then planning a 30-person outdoor party against invented rain.
 //
 // WHY THIS NEEDS NO NEW BUNDLE. `isWeatherConfigured()` is
-// `Boolean(REACT_APP_OPENWEATHER_KEY || REACT_APP_API_BASE_URL)`. The shared
-// e2e bundle (5233) has neither, so it is the UNCONFIGURED arm. The GOLD-09
+// `Boolean(REACT_APP_OPENWEATHER_KEY || REACT_APP_API_BASE_URL)`. The GOLD-09
 // passgate bundle (5266) carries an API base, so it is the CONFIGURED arm.
+//
+// 🔴 THE UNCONFIGURED ARM WAS WRONG ON THE FIRST PUSH, AND CI SAID SO. It
+// pointed at the shared bundle (5233) on the strength of a playwright.config
+// comment ("the ordinary e2e build bakes NO REACT_APP_API_BASE_URL"). That was
+// measured 2026-10-18 and stopped being true 2026-10-19, when `e2e:build`
+// began baking `https://e2e-mock.invalid`. It passed locally only because the
+// dist on disk then was not an e2e:build. In CI the "unconfigured" arm called
+// `geocode` and showed no sample — the producer-call assertion caught it on
+// the first run, which is what it is for. Re-measured from the BUILT bundles,
+// not the env files: only `dist-synctest` (5244) bakes no API base and no
+// weather key, so it is the UNCONFIGURED arm. Its fake Supabase project does
+// not touch weather, and with no session the shell boots signed out.
 // Same event, same fixture, same boot — configuration is the only variable,
 // which is what makes the two arms a differential rather than two anecdotes.
 //
@@ -39,7 +50,7 @@
 import { test, expect } from '@playwright/test';
 import { previewUrl } from '../deployBase.mjs';
 
-const UNCONFIGURED = previewUrl(5233);   // no API base  → sample path
+const UNCONFIGURED = previewUrl(5244);   // synctest: no API base, no weather key → sample path
 const CONFIGURED   = previewUrl(5266);   // has API base → live-or-nothing
 
 const inDays = (n) => {

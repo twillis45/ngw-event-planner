@@ -345,7 +345,12 @@ export default defineConfig({
     {
       // ── THE GOLD-07 RSVP CASCADE HARNESS ─────────────────────────────────
       // Its own bundle for the same reason the sync harness has one: it needs
-      // an env the shared bundle deliberately does not carry. The ordinary e2e
+      // an env the shared bundle deliberately does not carry. ⚠️ STALE SINCE
+      // 2026-10-19, kept for its reasoning: `e2e:build` now bakes
+      // REACT_APP_API_BASE_URL=https://e2e-mock.invalid, so the shared bundle
+      // IS api-configured (re-measured from dist/ 2026-11-02; trusting this
+      // sentence put a wrong arm in noForecastBeatsAWrongOne). Of the harness
+      // bundles only dist-synctest bakes no API base. As written on 10-18: the ordinary e2e
       // build bakes NO REACT_APP_API_BASE_URL (measured 2026-10-18 — the built
       // index chunk's whole env object is `{NODE_ENV:"production"}`), so
       // isRsvpApiConfigured() is false and the entire backend leg of the RSVP
