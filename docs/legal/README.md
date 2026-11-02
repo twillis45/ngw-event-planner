@@ -9,6 +9,7 @@ until the owner rules it.
 | File | What it is | Grounded in |
 |---|---|---|
 | `PRIVACY_POLICY_DRAFT.md` | Who we are, what we collect from hosts / guests / vendors, which processors see it, how long it stays, what a person can ask for | `src/lib/analytics.js`, `src/lib/sentry.js`, `supabase/migrations/009`, `013`, `017`, `backend/app/routers/*`, `src/lib/vendorBrief.js` |
+| `CONSENT_AND_TRACKING_COPY_DRAFT.md` | Gate row `s5-consent`: the first-open notice (or opt-in prompt), the Settings toggle, and two fixes that must land before the copy is true (business name reaching PostHog; no visible opt-out) | `src/lib/analytics.js`, `src/lib/sentry.js`, `src/App.js:46176` |
 | `REFUND_POLICY_DRAFT.md` | The $39 One-Event Pass: what it is, what it is not, and the refund rule (one recommended, two alternatives, owner picks) | `src/lib/passGate.js`, `backend/app/routers/stripe_payments.py`, `supabase/migrations/017_event_passes.sql`, the no-vendor-fees commitment |
 
 ## Placeholders the owner fills before anything ships
