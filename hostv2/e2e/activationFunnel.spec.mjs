@@ -160,11 +160,39 @@ test.describe('activation funnel — hostv2 emits it, not just the frozen CRA', 
     expect(JSON.stringify(hits[0])).not.toMatch(/E2E Guest/);
   });
 
-  // NOT GATED HERE, AND SAYING SO RATHER THAN LEAVING IT IMPLIED: event_created
-  // is wired at the creation site in HostShellV2 but has no spec, because
-  // hostv2 has no create door reachable from a seeded boot — creation starts in
-  // the intake flow, and driving that end to end is its own piece of work. A
-  // silent omission would read as coverage; this comment is the cap, declared.
+  // GATED 2026-11-02. This block used to read "NOT GATED HERE … hostv2 has no
+  // create door reachable from a seeded boot," which was true on 2026-08-29.
+  // The door exists now and two specs already walk it
+  // (theCreationScreenSaysWhatToType, fiveNightsSurviveCreation); the gate
+  // artifact's s7-created checkbox stayed open on the EVENT, not the door.
+  // Same discipline as the rest of this file: a real host path, the app's own
+  // emit, nothing stubbed — and the typed seed must not leak into the event.
+  test('creating an event reports event_created once, as a first, without the words typed', async ({ page }) => {
+    test.setTimeout(120000);
+    // A clean device: no seeded event, so `is_first` has something to mean.
+    await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private mode */ } });
+    await page.goto('./?elegant=1');
+    await page.getByText(/Start my event/i).first().click();
+    const SEED = 'crab feast aug 2027 40 people Annapolis backyard';
+    await page.getByPlaceholder(/crab feast/i).first().fill(SEED);
+    await page.getByText(/Put my plan together/i).first().click();
+    await settled(page);
+    await page.waitForTimeout(1500);
+
+    const hits = only(await fired(page), 'event_created');
+    expect(hits, 'event_created did not fire on a completed creation').toHaveLength(1);
+    expect(hits[0].is_first, 'the first event on a clean device must report is_first').toBe(true);
+    expect(typeof hits[0].event_type).toBe('string');
+    // What was typed is a host's own words about their own party; the funnel
+    // carries the playbook TYPE ("Crab Feast" is a type label, and the first
+    // cut of this assertion wrongly flagged it) — never the town, the setting,
+    // or the count.
+    expect(JSON.stringify(hits[0])).not.toMatch(/Annapolis|backyard|40 people/i);
+    // And the creation really happened — the emit is not a fiction over a
+    // form that went nowhere.
+    const customs = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('ngw-hostv2-custom-events')) || []; } catch { return []; } });
+    expect(customs.length, 'no event was created, so the emit above measured nothing').toBe(1);
+  });
 
   test('no funnel event ever carries PII', async ({ page }) => {
     // The module strips email/name/phone at capture, but a property named

@@ -433,7 +433,7 @@
             <li><span class="mark ok">&check;</span> <b>Gate (public), error tracking:</b> Sentry initialises in <code>main.jsx</code> and its DSN ships in the deployed bundle &mdash; verified by reading the live chunk, not the local build.</li>
             <li><span class="mark ok">&check;</span> <b>Gate (public), analytics:</b> the activation funnel now fires from the app that <em>ships</em>. It did not before: <span class="num">55</span> events were defined, hostv2 fired <span class="num">7</span>, and every activation event fired only from the frozen CRA. Four are wired and gated &mdash; a host arriving, an invite shared, an invite opened, a reply sent &mdash; by <code>e2e/activationFunnel.spec.mjs</code>, red-proofed one hook at a time.</li>
             <li><span class="mark ok">&check;</span> The tracker entry matches reality: the Command Center reads stage 6 as a conditional pass and carries the flag forward.</li>
-            <li><input type="checkbox" data-k="s7-created"> <code>event_created</code> is wired at the creation site but <b>not gated</b> &mdash; hostv2 has no create door reachable from a seeded boot, so driving it is its own piece of work. Named here rather than left implied. <b>Re-checked 2026-11-02:</b> the door now exists and is driven (<code>theCreationScreenSaysWhatToType</code>, <code>fiveNightsSurviveCreation</code>), but <code>activationFunnel.spec.mjs:163</code> still says in its own words that <code>event_created</code> is not gated there. Stays open on the event, not the door.</li>
+            <li><span class="mark ok">&check;</span> <b>Was open, now gated &mdash; closed 2026-11-02 in the same edit that adds this line.</b> <code>event_created</code> was wired at the creation site but had no spec because, on 2026-08-29, hostv2 had no create door reachable from a seeded boot. The door exists now, and <code>activationFunnel.spec.mjs</code> drives it: a clean device, Start my event, a typed seed, Put my plan together &rarr; exactly one <code>event_created</code>, <code>is_first:true</code>, a string <code>event_type</code>, and the town, setting and count the host typed nowhere in the payload. (The first cut flagged the playbook type &ldquo;Crab Feast&rdquo; as a leak of the typed words; a type label is not the host&rsquo;s words, and the assertion was corrected to name what would be.)</li>
             <li><input type="checkbox" data-k="s7-delivery"> <b>Confirm events actually arrive.</b> Keys and DSN shipping is presence, not delivery &mdash; that needs the PostHog and Sentry dashboards, which only you can read.</li>
             <li><span class="mark ok">&check;</span> <b><code>verify:all</code> now exists</b>, and it COLLECTS rather than chains: every suite runs, each records its own exit code. Two scripts cannot be chained &mdash; <code>gate:hostv2</code> exits 1 unconditionally (retired by CI on 1 Aug, npm script never removed) and would silently delete every step after it. First full run: <b>7 of 8 pass</b>.</li>
             <li><span class="mark ok">&check;</span> <b>Backend pytest reachable locally for the first time</b> &mdash; <span class="num">353</span> tests that only CI ever ran, so the person about to push could not. (<span class="num">440</span> on 2026-11-02, inside <code>verify:fast</code>.)</li>
@@ -791,7 +791,7 @@
           <tr><td>Seeded vendors with an email</td><td class="n">0 of 126</td><td>Transport board measurement</td><td class="n">On next send work</td></tr>
           <tr><td>Purchases marked synthesized</td><td class="n">16</td><td>clientDinner + fundraiserGala, authored 21 Aug</td><td class="n">Owed a verification pass</td></tr>
           <tr><td>Gates recorded before today</td><td class="n">0</td><td>Command Center, 30-record cache</td><td class="n">&mdash;</td></tr>
-          <tr><td>Funnel events fired by the shipping app</td><td class="n">4 of 5 wired, 4 gated</td><td>e2e/activationFunnel.spec.mjs, red-proofed 2026-08-29</td><td class="n">On any analytics change</td></tr>
+          <tr><td>Funnel events fired by the shipping app</td><td class="n">5 of 5 wired, 5 gated</td><td>e2e/activationFunnel.spec.mjs, red-proofed 2026-08-29; <code>event_created</code> gated 2026-11-02 (was 4 of 5 wired, 4 gated)</td><td class="n">On any analytics change</td></tr>
           <tr><td><code>verify:all</code> first full run</td><td class="n">7 of 8 pass</td><td>Collecting runner, 2026-09-02</td><td class="n">Every push</td></tr>
           <tr><td>Backend tests, now reachable locally</td><td class="n">440</td><td>Re-checked 2026-11-02 inside <code>verify:fast</code> (was 353 on 2026-09-02; previously CI-only, no local script invoked pytest)</td><td class="n">Every push</td></tr>
           <tr><td>Recovery functions with zero callers</td><td class="n">1 of 4</td><td>Was 4 (ADMIN-CONSOLE.md, 2026-09-02); re-checked 2026-09-03, 3 gained callers via the settings surface</td><td class="n">If <code>readWriteLog</code> gets one</td></tr>
@@ -892,6 +892,7 @@
     apply();
   })();
 </script>
+
 
 
 </body></html>

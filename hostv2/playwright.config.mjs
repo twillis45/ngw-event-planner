@@ -99,6 +99,12 @@ const VIEWPORT_INDEPENDENT = [
   // differential across two bundles — so any project pointed at one preview
   // would measure half of it.
   '**/noForecastBeatsAWrongOne.spec.mjs',
+  // ── A REFUSED SAVE IS NOT CALLED SAVED (2026-11-02) ────────────────────
+  // The shell half of the sync-conflict disclosure, on crossDeviceSync's
+  // 5244 harness. Asserts the wire (a conditional UPDATE), a toast, a
+  // settings-row label and localStorage — no geometry. Same reasoning as
+  // crossDeviceSync: six viewports would buy six identical results.
+  '**/aRefusedSaveIsNotCalledSaved.spec.mjs',
   // ── THE PEOPLE ATTENDANCE ZONE (redesign step 3, 2026-10-20) ───────────
   // Six tests on text and stored state, including a paired fixture that
   // differs by ONE field (guestCountSource) and a negative control proving
