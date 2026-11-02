@@ -64,6 +64,7 @@ import { playbookRisks, playbookDecisionBoard } from './playbooks';
 import { raisesToCommandBoard } from './riskSeverity';
 import { evidenceFromDecisionRow } from './decisionEvidence';
 import { daysUntil, isEventDay, isPastEvent, daysUntilEnd, rsvpDeadlineFor } from './dates';
+import { placeQuestionsFor } from './placeQuestions';
 import { rsvpHasResponded } from './rsvp';
 import { buildVendorPlan } from './vendorPlan';
 import { venueFor } from './venueFor';
@@ -516,6 +517,53 @@ export const SURFACES = [
       }];
     },
   },
+  // ── Questions only the outside world can answer about the PLACE ───────────
+  // Sprint 0 P1-5, renamed and narrowed by Sprint 0.5 Decision 3 after testing
+  // the abstraction against two further consequence cases. It carries TWO rules
+  // now, both triggered elsewhere (a person's need; a headcount) and both
+  // answered by somebody at or around the place — which is what makes them one
+  // module. The third case found, a booked vendor owing an arrival time, is
+  // answered by a VENDOR and already raises through `openArrivalAsks` above;
+  // it was deliberately not moved here.
+  //
+  // Still one surface, still no second ranker, still not a dependency graph.
+  //
+  // The attention condition is real and narrow: the host has named a venue AND
+  // somebody needs a step-free route AND nobody has said whether that building
+  // has one. All three. Drop any and this raises nothing: no venue, nothing to
+  // ask about; no access need, a question she never asked for; already
+  // answered, including answered "no", which is information and not an open
+  // question.
+  //
+  // THE APP CANNOT ANSWER THIS ONE. It holds no accessibility data for any
+  // venue, and `accessNeeds.js` records `place` as a domain it deliberately
+  // does NOT reach for exactly that reason. Naming the unknown is the honest
+  // move; guessing it would be the fabricated consequence this sprint exists
+  // to prevent. 'attention', never 'critical' — it is a thing to find out, not
+  // an emergency, the same line the risks surface above draws.
+  {
+    id: 'placequestions',
+    label: 'Where it happens',
+    domain: 'venue',
+    route: { tab: 'Event Details' },
+    bundleTitle: (n) => `${n} things to find out`,
+    raise(event) {
+      if (isPastEvent(event && event.date)) return [];
+      let qs = [];
+      try { qs = placeQuestionsFor(event) || []; } catch (_e) { return []; }
+      return qs.map((q) => ({
+        severity: 'attention',
+        title: q.question,
+        // The raise carries its own reason, because the board shows `why` and
+        // a question with no stated cause reads as a form field.
+        why: q.because,
+        ask: q.askWho ? `Ask ${q.askWho}.` : null,
+        route: q.route || { tab: 'Event Details' },
+        key: q.id,
+      }));
+    },
+  },
+
   {
     id: 'seating',
     label: 'Who sits where',

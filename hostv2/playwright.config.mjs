@@ -46,6 +46,46 @@ const SELF_PINNED = [
 const VIEWPORT_INDEPENDENT = [
   '**/crossDeviceSync.spec.mjs',
   '**/a11yFloor.spec.mjs',
+  // ── THE RSVP CASCADE (GOLD-07, 2026-10-18) ─────────────────────────────
+  // Belongs here on both counts this list cares about. It asserts only TEXT
+  // and payload fields — a headcount, a shopping-list length, a dollar total
+  // compared against its own baseline, which job the ranked plan is showing —
+  // and not one box. And it is the most expensive spec in the suite per run:
+  // three full browser contexts, a driven invite form, and two complete host
+  // boots so the before and after are measured on one bundle. Six more
+  // geometries would buy six identical results for six times that.
+  // It also addresses port 5255 directly, so it would measure the wrong
+  // bundle on any project pointed at the shared preview.
+  '**/gold07RsvpCascade.spec.mjs',
+  // ── THE SEATING / RAIN PARITY BASELINES (P1-1, 2026-10-18) ─────────────
+  // Characterisation of what both surfaces DO today, written so a redesign
+  // that changes any of it fails on purpose. Every assertion is on text,
+  // stored state, or which control exists — the tallies, the access
+  // sentence, what a tap writes, which caveat the forecast offer carries.
+  // Nothing measures a box, and nine tests across six more geometries would
+  // buy fifty-four identical results.
+  '**/seatingAndRainBaseline.spec.mjs',
+  // ── THE WALKER ACCEPTANCE CASE (P1-2, 2026-10-18) ──────────────────────
+  // Two tests, both on text: whether the house requirements carry a ticked
+  // step-free line and the reason under it. No geometry.
+  '**/theWalkerReachesThePlan.spec.mjs',
+  // ── THE CLAUSE RESOLUTION LOOP (P1-3, 2026-10-18) ──────────────────────
+  // Four tests on text and stored state: whether the list outlives creation,
+  // whether a clause the app reads is wrongly listed, whether "Noted" sticks
+  // across a reload. No geometry.
+  '**/theClauseGetsAnAnswer.spec.mjs',
+  // ── THE CONSEQUENCE PRIMITIVE (P1-5, 2026-10-18) ───────────────────────
+  // Four tests on text and stored state, two of them negative controls. The
+  // question, its stated reason, and whether an answer sticks. No geometry.
+  '**/weNowNeedToKnow.spec.mjs',
+  // ── THE PEOPLE ATTENDANCE ZONE (redesign step 3, 2026-10-20) ───────────
+  // Six tests on text and stored state, including a paired fixture that
+  // differs by ONE field (guestCountSource) and a negative control proving
+  // the legacy body is untouched without ?people=1. Every assertion is a
+  // sentence or a persisted value — the figure, whose number it is, whether
+  // anyone is said to have replied, what a confirm writes. No geometry here;
+  // the responsive composition gets its own captures in steps 9-11.
+  '**/thePeopleZoneTellsTheTruth.spec.mjs',
   // ── THE FOUR THAT TIMED SHARD 3 OUT (2026-10-06) ────────────────────────
   // These landed the same day and each drives the REAL creation flow — clear
   // storage, type the 179-character seed, wait for the parse, assemble, open
@@ -147,6 +187,15 @@ export default defineConfig({
   use: {
     // vite preview serves dist under the build base.
     baseURL: previewUrl(5233),
+    // ── A PRE-INSTALLED BROWSER, WHERE ONE IS PROVIDED ─────────────────────
+    // Sandboxed CI images ship Chromium at a fixed path and forbid
+    // `playwright install`, so when @playwright/test's pinned build number
+    // moves ahead of the image's, every spec fails at launch with "Executable
+    // doesn't exist" — a browser-provisioning fact reported as ten red tests.
+    // Opt-in and absent by default: unset, this is `undefined` and Playwright
+    // resolves its own download exactly as before, so a developer machine is
+    // untouched.  PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e
+    launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },
   // Two real geometries (Up-Next #3): portrait phone + the wide-but-short
   // landscape that the min-height guards exist for. Every probe runs in both.
@@ -204,9 +253,12 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // Serves the EXISTING dist — run `npm run build` first (the deploy dance
-      // already does; CI chains them). Keeping the build out of here makes the
-      // readiness probe deterministic.
+      // Serves the EXISTING dist — run `npm run e2e:build` first (CI chains
+      // them). Keeping the build out of here makes the readiness probe
+      // deterministic.
+      // e2e:build, NOT build: this suite needs REACT_APP_API_BASE_URL baked,
+      // and `npm run build` bakes no REACT_APP_* at all. fixtures.mjs's header
+      // has the whole story and what following this line used to cost.
       // --host 127.0.0.1: under Node ≥17 'localhost' resolves IPv6-first, so a
       // bare preview binds ::1 and the IPv4 readiness probe refuses forever.
       command: 'E2E_BASE=1 npx vite preview --port 5233 --strictPort --host 127.0.0.1',
@@ -235,6 +287,32 @@ export default defineConfig({
       // what happened on the first run.
       command: 'REACT_APP_AUTH_BYPASS=false npx vite build --mode synctest --outDir dist-synctest && E2E_BASE=1 npx vite preview --outDir dist-synctest --port 5244 --strictPort --host 127.0.0.1',
       url: previewUrl(5244),
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      // ── THE GOLD-07 RSVP CASCADE HARNESS ─────────────────────────────────
+      // Its own bundle for the same reason the sync harness has one: it needs
+      // an env the shared bundle deliberately does not carry. The ordinary e2e
+      // build bakes NO REACT_APP_API_BASE_URL (measured 2026-10-18 — the built
+      // index chunk's whole env object is `{NODE_ENV:"production"}`), so
+      // isRsvpApiConfigured() is false and the entire backend leg of the RSVP
+      // cascade is unreachable from the browser suite: submitRsvp throws before
+      // it fetches, the read-back effect returns on its first line, and the
+      // snake_case normalisation in HostShellV2 has never been executed by any
+      // test in either suite.
+      //
+      // NOT baked into the shared bundle, deliberately. fixtures.mjs records
+      // what happened the last time a truthy API base reached all 126 specs at
+      // once: every surface that gates on it fired a request at a host that
+      // cannot resolve, and two specs asserting "no console errors" went red
+      // for a reason that had nothing to do with them.
+      //
+      // BUILDS FIRST, like the sync harness and for the same reason:
+      // dist-gold07 is gitignored and no other command produces it, so without
+      // the build this serves a stale bundle or nothing.
+      command: 'npx vite build --mode gold07 --outDir dist-gold07 && E2E_BASE=1 npx vite preview --outDir dist-gold07 --port 5255 --strictPort --host 127.0.0.1',
+      url: previewUrl(5255),
       reuseExistingServer: false,
       timeout: 120_000,
     },

@@ -24,6 +24,7 @@ import { hostSpending } from './hostSpending';
 import { isVendorBooked } from './workstreams';
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan, UNIT_LABEL, SIZE_LABEL } from './crabPlan';
+import { guestCountIsConfirmed } from './guestCountFor';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -61,8 +62,23 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
   const over = committed - total;
 
   const counted = guestCountResolved(ev);
-  const hasRealCount = (num(ev.guestCount) > 0) || (num(ev.guestEstimate) > 0)
-    || (Array.isArray(ev.guests) && ev.guests.length > 0) || (counted && counted.resolved);
+  // ── "REAL" MEANS THE HOST SAID IT (2026-10-18, Sprint 0 P0-2) ─────────────
+  // This gate used to ask only whether a number EXISTED. The creation seam
+  // substitutes a playbook typical when the host gave no count and records it
+  // as `guestCountSource: 'playbook-typical'` — so the one host whose count
+  // the app made up was the one host never told the count was missing, in the
+  // module whose own rule is "say what's missing instead of inventing
+  // savings." `guestCountIsConfirmed` is the same twin-of-startTimeIsConfirmed
+  // gate hostSpending now uses, so the two money modules agree on the word.
+  //
+  // The `counted.resolved` branch is dropped for the same reason it was
+  // dropped from hostSpending: it answers "are RSVPs settled?", and
+  // playbooks/index.js:566 resolves an estimate-only event to true, which
+  // routed around the gate entirely.
+  //
+  // The right-sizing suggestion at :200 is unaffected — it additionally
+  // requires a live roster, and a roster is the host by construction.
+  const hasRealCount = guestCountIsConfirmed(ev);
 
   const suggestions = [];
   const protectedItems = [];

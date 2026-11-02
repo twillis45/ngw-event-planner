@@ -316,7 +316,72 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // the app from it), and that the single `passPurchased: true` write lives
 // inside the one helper both confirmed paths call. "How many of a thing exist,
 // and inside what" is the fact `oneLabelMapForTheAreas` was admitted for.
-const MAX_HOSTV2_TEXT_GATES = 54;
+//
+// ── 54 → 55 (2026-10-19, Sprint 0.5 Decision 1) ─────────────────────────────
+//
+// `theHeadcountHasOneCanonicalReader.test.js`. It makes no behaviour claim and
+// could not: it asserts WHICH FILES read the raw headcount field, which is a
+// fact about the source and nothing else. An e2e cannot observe a file's import
+// and read patterns, and the shell is one of the 24 classified readers, so the
+// sweep has to cross into hostv2/src to be complete.
+//
+// Admitted for the reason `oneLabelMapForTheAreas` was: "how many of a thing
+// exist, and inside what". The thing it guards is consumer #33 — Sprint 0
+// classified 29 raw readers in a DOCUMENT, and Sprint 0.5 then found one
+// (`vendorAccountability/conflicts.js`) that was offering to write an
+// app-invented headcount onto a contracted caterer. A classification that lives
+// in prose cannot stop the next one; this moves it into a gate that names the
+// canonical readers when it fails.
+//
+// ── 55 → 56 (2026-10-19, Sprint 0.5 Decision 2) ─────────────────────────────
+//
+// `theClauseReadersAreNotOptional.test.js`. Same class as the entry above and
+// the same reason: it asserts WHICH FILES call `unusedClauses` directly, which
+// is a fact about the source. No rendered assertion can observe that a module
+// does not import something, and the shell is where the migrated call site
+// lives, so the sweep has to read hostv2/src.
+//
+// It replaces a trap Sprint 0 documented and left open: correctness depended on
+// every caller remembering `opts.alsoDerives`, and forgetting it told the host
+// her sentence was not understood. The argument is gone; this keeps it gone.
+// ── 56 → 57 (2026-10-20, the People redesign's preservation requirement) ────
+//
+// `theBaselineOutlivesTheRedesign.test.js`, and NOTHING ELSE — verified before
+// the bump stood, by applying THIS FILE'S OWN predicate (comment-stripped
+// source containing both `readFileSync` and `hostv2`) to two git trees and
+// diffing the populations:
+//
+//     03d5cc4   56 gates    ← the commit this baseline was last green at
+//     HEAD      57 gates
+//     added:    src/lib/__tests__/theBaselineOutlivesTheRedesign.test.js
+//     removed:  (none)
+//
+// Reproducing 56 EXACTLY at the old commit is what makes the diff worth
+// anything: it proves the predicate was reimplemented faithfully rather than
+// approximated, so "one file in, none out" is a measurement and not a hope.
+// A baseline bump is the easiest place in this repo to smuggle an unrelated
+// gate through, and the owner asked for that specifically — this is the proof
+// that nothing else rode along.
+//
+// It asserts file CONTENT on purpose, and the owner requirement it serves is
+// why: the pre-redesign Host V2 People surface must stay runnable and
+// inspectable throughout the redesign, and git history alone does not count.
+//
+// What keeps it runnable is that `?people=1` is OPT-IN — absent the flag, the
+// default IS the baseline, on the same shell and the same event blob, with no
+// Host V3 and no duplicated application. That is a property ONE CHARACTER can
+// delete: `=== '1'` becomes `!== '0'` and the baseline stops existing silently,
+// with every test still green because they all pass the flag explicitly.
+//
+// A rendered assertion cannot see that. It can only observe what the flag it
+// was given produced — which is exactly the state the edit would preserve. The
+// BEHAVIOUR half (with no flag, the redesigned sentences are absent) is covered
+// where it belongs, by the negative control in
+// hostv2/e2e/thePeopleZoneTellsTheTruth.spec.mjs. This gate holds the
+// source-level invariants that make that control meaningful: the flag is
+// opt-in, and the legacy body's own markers are still present rather than
+// deleted out from under the comparison.
+const MAX_HOSTV2_TEXT_GATES = 57;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

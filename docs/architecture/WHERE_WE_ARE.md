@@ -1,6 +1,108 @@
 # Where We Are -- live status board
 
-## 2026-10-13 (last) — the money keys were the only secrets the blueprint never named
+## 2026-10-19 (last) — Redesign Readiness Sprint 0 + Sprint 0.5: READY for one domain
+
+**`main-2utz0n` @ `715cd50`** — seventeen commits across two sprints, nothing
+merged to `main`, no PR opened. Full record:
+`docs/architecture/current-state/` documents 11-14.
+
+**VERDICT: READY FOR PEOPLE/ATTENDANCE REDESIGN.** Narrower than "ready for the
+redesign" on purpose. Weather/Day-of and the failure paths are **excluded** —
+they have no browser baseline, and parity cannot be demonstrated for behaviour
+never captured.
+
+**Both sprints spent most of their value falsifying their own planning
+package**, which is the part worth reading:
+
+- Sprint 0 planned to **build** a canonical attendance reader. `attendanceBand`
+  already was one, returning the exact proposed shape; the shell has called it
+  "the canonical reader" since before the plan was written. **None was built.**
+  Its real defect was provenance blindness — byte-identical output for the
+  host's number and one the app invented — and that reaches the AI orchestrator
+  too, as `get_headcount`.
+- **Three of four "missing schema" claims were false**, all failing identically:
+  search for a module *named* after a capability, find none, conclude absence.
+  `accessibilityContext.js`, `event.ros`/`timeline` and
+  `vendorCategoriesByType.js` all existed with live consumers. That correction
+  turned two slices from "build a model" into "connect what is there", and is
+  now a written condition of the bounded-gap rule.
+- Sprint 0.5 found **one raw headcount reader that was genuinely unsafe**:
+  `vendorAccountability/conflicts.js` offered to patch an app-invented count
+  onto a **contracted** caterer and tell the host it now matched.
+- And it found the permit advice the app had been giving all along sitting
+  **inert** — a note in the frozen CRA shell, in a collapsed card, unraised,
+  unanswerable, absent from the shipping shell entirely. "No permit capability"
+  would have been filed as a bounded gap; it was a blocker.
+
+**What is now enforced rather than written down:** the destination invariant
+(moved into the engine) · outward and money gating on headcount provenance · a
+ratchet requiring every raw headcount reader to declare which semantic question
+it asks · a composition root so `unusedClauses` has no optional-correctness
+argument to forget · eleven bounded-gap conditions with a test. Six of the
+fourteen redesign invariants moved from prose to a named module with tests.
+**None was weakened.**
+
+**Two bounded gaps are declared, not hidden:** `"2 excursions"` has no truthful
+destination (`itinerary.js:155` drops a programme row with no thing named — now
+pinned by a test, so the excuse fails if the destination changes), and events
+created before the sentence was stored have no clause list and cannot be
+backfilled.
+
+jest **618 suites / 8,502 passed**, 1 skipped. `gate:cra` 241 of 241, by exit
+code. **No matrix** — this container's chromium is 1194 against the repo's
+pinned 1228.
+
+⚠️ **One self-inflicted failure, recorded:** I pushed a broken build because
+`gate:cra 2>&1 | tail -2 && git commit` takes its exit status from `tail`. Fixed
+in `b8ea88c`; every gate since is checked by exit code.
+
+⚠️ **The canonical browser command is `cd hostv2 && npm run e2e:build && npm run
+test:e2e`** — not `npm run build`, which bakes no `REACT_APP_*`. That
+requirement lived in three places that disagreed and cost 33 false failures; it
+is one script now, called by CI too.
+
+---
+
+## 2026-10-13 — merged, deployed, and the unattested question answered twice
+
+**`main` @ `5770787`** — PR #90 merged as a merge commit, 20 files, +2,504/−49,
+validated on CI run 907 at `c97b34e` (all 9 jobs green; e2e 3,094 passed / 0
+failed / 0 flaky; backend 440 on the pinned asyncpg, which is the authoritative
+confirmation of that number). Checks #909 and Deploy Pages #566 both green on
+the merge. Production fetched, not badge-read: HTTP 200, and the bundle moved
+`main.58f86605.js` → `main.69037cdc.js` — a change that had to happen here,
+since this merge edits `stripeApi.js`, `commApi.js` and `HostShellV2.jsx`.
+
+**The question the 2026-10-03 audit could not answer, and no file could, took
+one curl once the probe existed:**
+
+```
+{"configured":true,"webhook_verified":false,"can_honour_purchases":false}   # just after merge
+{"configured":true,"webhook_verified":true,"can_honour_purchases":true}    # after Render was set
+```
+
+The first reading is the evidence: `configured: true` with `webhook_verified:
+false`, alongside `_grant_pass` deployed since 07:41, means **the hole was live
+for about six hours** — a charge would have taken $39 and recorded nothing, and
+an unsigned POST would have minted a pass. Stripe's dashboard agreed
+independently: no webhook endpoint existed at all.
+
+⚠️ **Two cautions worth more than the green.** First, this entry was drafted
+with the heading "STRIPE_WEBHOOK_SECRET IS NOT SET IN PRODUCTION" and corrected
+before commit — the value flipped mid-writing because Render had not restarted
+the process yet. A `false` means "not set" *or* "set, not yet redeployed", and
+nothing distinguishes them: re-probe before concluding. Second, `true` means a
+secret **exists**, not that it **matches** the key creating sessions. The
+owner's Stripe context is a sandbox and Render held a different key; sandboxes
+are isolated, so a mismatched pair reads green and rejects every webhook. Only
+a real test-mode checkout proves it.
+
+Still open, none of it code: snapshot-not-thin payload style on the destination,
+`checkout.session.completed` subscribed, the `whsec_` sourced from the same
+context as the key, whether migration 017 ever applied to live Supabase, and one
+real test-mode purchase end to end.
+
+## 2026-10-13 (earlier) — the money keys were the only secrets the blueprint never named
 
 The missing half of the entry below. `render.yaml` is the Render Blueprint:
 deploying from it **prompts** for every `sync: false` variable, as its own

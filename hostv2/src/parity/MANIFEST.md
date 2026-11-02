@@ -85,3 +85,111 @@ Every Figma frame is grounded in the sheet's **real render code** — inventory 
 Editors/asks must compose the kit, never hand-style the atoms. If you find yourself typing
 `fontSize: 44` / `marginTop: 20` / a full-width tier `<button>` inline in a render, stop —
 use `BigValue` / `CtaRow` / `TierRow`. A raw hex/px in these families is the drift signal.
+
+## PEOPLE — the art-direction composition (2026-10-20, `?people=1`, REVIEW CHECKPOINT)
+
+Recorded here rather than in a new ledger, per the owner's decision that this
+file stays the single pattern/parity authority.
+
+**New surface module:** `hostv2/src/PeopleSurface.jsx` — `PeopleHero` ·
+`AttendanceDecision` · `StillUnknown` · `OneMove` · `GetResponses`. Display
+rules live in `src/lib/attendanceStatement.js`, not in the JSX, for the reason
+`sectionDirectory.js` already records: *"Layout and nav policy scattered through
+a 16k-line JSX file cannot be pinned by a test."*
+
+**Register, and why it is not a second kit.** askKit converges *display asks* —
+eyebrow / big value / guide / grounding / CTA — on the elegant ask loop.
+People's editorial opening is a different artifact: a photographic field with a
+serif domain statement over it, which the kit has no atom for and should not
+grow one for on the strength of one surface. What People DOES share it uses:
+`.mega` for the figure, `.grounding` for the reasoning, `.mini`/`.cta` for the
+controls, `.of` for eyebrows, `--serif-read` for the human voice.
+
+**The display register, settled.** `.mega` (clamp 52–68px, 800, tabular-nums)
+carries the attendance figure. An earlier cut used `BigValue` (44px) and the
+owner's read was exact — it made an editorial surface read as a utilitarian web
+app. The ask atom is right for an ask; a domain's headline number is not an ask.
+
+**Three places this surface steps outside the tokens, all structural:**
+1. Type over the photograph is light type in BOTH themes (`#FBF8F3`,
+   `rgba(255,255,255,.82)`, `rgba(255,255,255,.76)`). The band has its own
+   luminance regime — `--ink` is near-black in light mode and would be invisible
+   on the scrim. Measured against the veil's darkest stop, all three clear AA.
+2. The veil and the hand-off are two separate gradients. One ramp cannot both
+   make type legible over a photograph and dissolve that photograph into
+   `--bg`: in light mode the single ramp went from `rgba(0,0,0,.72)` to
+   near-white in 2% of the band, which is a seam, not a transition.
+3. `.people-roster .gav` overrides the per-name avatar tint with `!important`,
+   because `avaFor()` writes it inline on the baseline composition.
+
+**Roster register (`.people-roster`, `.people-rtoolbar`).** The reference
+grammar is `media + name + ONE status pill + ONE meta line + affordance`, and
+the note under it is the operative one: *rows are quiet, density comes from
+restraint*. The production row carried five emphasis signals at once (coloured
+avatar, 650 name, weighted "+1", tinted `.tag` capsules per dietary note, reply
+pill). Four are quieted; the reply pill stays, because it is the one signal the
+host is scanning for and the references keep it as a tinted pill in a closed
+colour vocabulary. **Nothing was removed** — every fact still renders, and
+search / lens / grouping / accordion / index-based writers are untouched.
+Anti-drift signal for this family: a capsule shape on something that is not a
+control.
+
+**Scoped, so the baseline survives.** Every rule above is behind
+`.people-roster` / `.people-rtoolbar` / `.people-hero`, and `?people=1` is
+opt-in, so the DEFAULT URL still renders the pre-redesign surface on the same
+build and the same event blob. Pinned by
+`src/lib/__tests__/theBaselineOutlivesTheRedesign.test.js`.
+
+## PEOPLE — execution pass 2 (2026-10-20, `?people=1`, REVIEW CHECKPOINT)
+
+**New atoms in `PeopleSurface.jsx`:** `OneMove` · `GetResponses` · `PeopleRail`,
+joining `PeopleHero` · `AttendanceDecision` · `StillUnknown`.
+
+### The four-concept row, and the anti-drift signal for it
+
+`identity (.pr-name) · party (.pr-party) · need (.pr-need) · reply (the pill)`.
+The defect this replaced was not missing data — it was four concepts sharing two
+slots and one separator, so `with Georgia` and `Vegetarian` read as one phrase.
+**Anti-drift signal: any change that merges two of these four lines to save
+vertical space.** That is how they were merged the first time.
+
+### Action tiers
+
+`dominant (one full-width .cta, chosen by STATE) · secondary (quiet .mini row) ·
+disclosure (a LABELLED fold, never an anonymous overflow)`. The tiers are passed
+INTO `GetResponses`; it decides emphasis and may not re-label, re-point or drop
+an action. **Anti-drift signal: a `.pill-grid` of peer `.mini` buttons returning
+to this surface** — that shape is an inventory, not a hierarchy.
+
+### Positional selectors are a coupling, and this is where it bit
+
+The data tier styles the roster row by POSITION —
+`.grow > button:first-of-type > span:first-child` gets the `--gt-name` track,
+`> span:nth-child(2)` gets `flex:1 1 auto` (styles.css:5165-5190). The moment
+People rendered `.pr-name` / `.pr-party` as the first two spans of that same
+button, the table grabbed them: a 350px-tall row with the name centred at the
+top and the avatar floating in the middle. Hiding `.ghead` had removed the LOOK
+of the table while the tracks underneath went on doing table work.
+
+**The rule that comes out of it:** a composition that changes a row's INNER
+SPANS must opt out of the positional tracks explicitly, not assume that hiding
+the header is enough. `.people-roster` does, scoped, so the baseline keeps every
+one of those measured tracks.
+
+### The prose measure, and the one legitimate way out of it
+
+`.stagewrap--responsive-data > .sheet > *{ max-width:820px }` is a host ruling
+("one measure across modes", 2026-08-21) and it is why the People composition
+computed `460px 340px` inside an 1150px sheet. `.people-grid` opts out via the
+rule's own stated exception — it is a two-column composition, not prose — and
+the ruling's PURPOSE survives untouched, because the resulting main column
+(~786px at 1440) is narrower than the 820 the ruling protects.
+
+### Desktop: one detail, two placements
+
+`guestDetail(g, i)` is hoisted and rendered inline in the row below the rail
+band, or into the sticky 340px rail at desktop — never both, so no guest ever
+has two live copies of their own inputs. State A (nothing selected) is
+`PeopleRail`: the event's own context, sticky, so identity survives a 75-row
+scroll. The rail is a COLUMN (hairline + inset), the detail is a PANEL
+(`--card` + a steel rule), because context is reading and detail is work.

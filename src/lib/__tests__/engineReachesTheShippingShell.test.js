@@ -303,8 +303,18 @@ const CRA_ONLY_BY_SURFACE = {
   // HOST modules hostv2 ALREADY USES — seatingPlan 33 references, doItForMe 8,
   // eventIdentity 8, decisionMemory 5, crabPlan 4. These are leftover exports the
   // CRA calls and the host app does not; not gaps, and not planner work.
+  // `guestCountFor` joined this bucket 2026-10-18 (Sprint 0 P0-2) and the route
+  // it took is worth recording, because it is the bucket's definition exactly.
+  // hostv2 does not import it DIRECTLY — it reaches it through `hostSpending`
+  // (HostShellV2:156), which now gates budget food money on
+  // `guestCountIsConfirmed`. Its CRA edge arrives via `webhookService`, which
+  // App.js fires at the host's external webhook. So: host capability, called
+  // from a CRA path, invisible to a direct-import census. Not planner
+  // inventory, and emphatically not a gap — it is the provenance gate that
+  // stops an app-invented headcount reaching a caterer.
   hostLive: ['decisionMemory', 'eventIdentity', 'seatingPlan', 'doItForMe', 'crabPlan',
-    'momentLibrary', 'playbooks/index', 'artworkMarks', 'hostIntel', 'eventGeoQuery'],
+    'momentLibrary', 'playbooks/index', 'artworkMarks', 'hostIntel', 'eventGeoQuery',
+    'guestCountFor'],
 
   // HOST capability hostv2 has NONE of. The only bucket that is a real product
   // question rather than a filing decision.

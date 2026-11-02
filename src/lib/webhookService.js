@@ -10,6 +10,7 @@
 // what to do with the payload.
 
 import { venueFor } from './venueFor';
+import { guestCountFor, guestCountIsConfirmed } from './guestCountFor';
 import { plannerAuthHeaders } from './commApi';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
@@ -114,7 +115,20 @@ export function buildEventCreatedPayload(event) {
     date:     event.date,
     venue:    venueFor(event).name || null,
     city:     event.city || null,
-    guests:   event.guestEstimate || null,
+    // ── A NUMBER WE INVENTED MAY NOT LEAVE THE APP (2026-10-18, Sprint 0 P0-2)
+    // This payload is fired at a host-configured external URL
+    // (App.js:46394), so whatever sits in `guests` is read by someone who is
+    // not us — and quoted against. The creation seam substitutes a playbook
+    // typical when the host gave no count and records that as
+    // `guestCountSource: 'playbook-typical'`; `draftVendorOutreach` shipped
+    // exactly such a number to a caterer before `doItForMe` was gated. This is
+    // the same gate, in the other outward path.
+    //
+    // It also fixes a narrower bug this line always had: reading the raw
+    // estimate meant a LOCKED `guestCount` and a hand-entered roster were both
+    // ignored, so the most reliable numbers in the event were the ones most
+    // likely to be sent as null. `guestCountFor` resolves all three.
+    guests:   guestCountIsConfirmed(event) ? guestCountFor(event).count : null,
     status:   event.status || 'active',
     clientId: event.clientId || null,
   };

@@ -1,9 +1,19 @@
 // ─── A GLOBAL SAFETY NET FOR THE FAKE API HOST (2026-08-06) ────────────────
 //
-// The e2e build bakes REACT_APP_API_BASE_URL=https://e2e-mock.invalid (a real,
-// never-resolving RFC 2606 host) so isUnfurlConfigured() reads true and the
-// lodgingCockpit specs that depend on it can exercise their real code path
-// (see lodgingCockpit.spec.mjs's own header for why).
+// THE CANONICAL BUILD FOR THIS SUITE IS `npm run e2e:build`, NOT `npm run
+// build` (named here 2026-10-19 — see below). It bakes
+// REACT_APP_API_BASE_URL=https://e2e-mock.invalid (a real, never-resolving RFC
+// 2606 host) so isUnfurlConfigured() reads true and the lodgingCockpit specs
+// that depend on it can exercise their real code path (see
+// lodgingCockpit.spec.mjs's own header for why).
+//
+// WHY THAT LINE IS NOW A SCRIPT. This header used to say "the e2e build bakes"
+// it, and nothing local did: `npm run build` bakes no REACT_APP_* at all, and
+// the only place the fake host was written down was checks.yml's `env:` block.
+// Following the webServer comment's "run npm run build first" therefore
+// produced a bundle this suite was never written against — 33 specs failed on
+// it in Sprint 0 and the failures were read as code defects for an hour. CI now
+// calls the same script, so there is one definition of the e2e bundle.
 //
 // That env var is baked into the WHOLE bundle, not scoped to the lodging
 // feature — found live: making it true broke decisionIdentity.spec.mjs and

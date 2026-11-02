@@ -9,6 +9,7 @@
 // ESM-only (per the prod-bundle lesson — no CJS module.exports in src/).
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
+import { guestCountFor } from '../guestCountFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
@@ -635,6 +636,10 @@ export function attendanceBand(event) {
       low, high, planning: high,
       confirmed, maybe, pending, declined, kids, invited: list.length,
       because,
+      // ── WHOSE NUMBER IS THIS (Sprint 0.5 Decision 1) ───────────────────
+      // A roster is the host entering people one at a time, so it is hers by
+      // construction — the same ruling guestCountFor makes for a locked count.
+      countSource: 'host', countFromHost: true,
     };
   }
   // Count / estimate — no RSVP signal yet, so the researched attendance-shift model
@@ -672,6 +677,29 @@ export function attendanceBand(event) {
   //
   // Real RSVPs still trump this entirely — the roster branch above returns long
   // before here, so a destination event with actual replies bands on those.
+  // ── WHOSE NUMBER IS THIS (Sprint 0.5 Decision 1) ───────────────────────────
+  // MEASURED 2026-10-19: for two events identical but for who supplied the 40,
+  // this function returned byte-identical output. `basis: 'estimate'` says the
+  // number came from a count FIELD; it never said whether the HOST put it
+  // there. The creation seam substitutes a playbook typical when she gives no
+  // number and records that as `guestCountSource: 'playbook-typical'`, so the
+  // fact was sitting one module away the whole time.
+  //
+  // That mattered because this is the canonical reader — HostShellV2:3887 calls
+  // it exactly that — and `orchestratorTools.js:36` hands its output to an AI
+  // orchestrator as `get_headcount`. A consumer doing the RIGHT thing could
+  // still not tell an invented number from a given one.
+  //
+  // COMPOSED, NOT RECOMPUTED. guestCountFor already owns this question and
+  // resolves the awkward cases (a locked count and a roster are the host's by
+  // construction; a legacy event that never recorded a source is not accused of
+  // invention). This reads its answer rather than re-deriving a second one.
+  const _prov = guestCountFor(event);
+  const _provFields = { countSource: _prov.source, countFromHost: _prov.fromHost };
+  // Said plainly, because `because` is rendered to the host. A band that knows
+  // the number was made up and still opens "Planned for 40" is the app talking
+  // in her voice.
+  const _substituted = _prov.fromHost ? '' : ' — not a number you gave, we filled that in from what this kind of event usually runs';
   const travelCommitted = event.isDestination === true;
   const locked = event.guestCountLocked === true || event.headcountLocked === true || travelCommitted;
   const exp = locked ? null : expectedFromPlanned(n, event.type, getPlaybook(event.type));
@@ -681,10 +709,11 @@ export function attendanceBand(event) {
       low: n, high: n, planning: n,
       confirmed: n, maybe: 0, pending: 0, declined: 0, kids: 0, invited: n,
       planned: n,
+      ..._provFields,
       // Say WHY the number is flat, or a host reads the missing band as a bug.
-      because: travelCommitted
+      because: (travelCommitted
         ? `Planned for ${n} · everyone travelling is counted${_highNote ? ' ' + _highNote : ''}`
-        : _highNote,
+        : _highNote) + _substituted || null,
       ...(travelCommitted ? { noShiftReason: 'destination' } : {}),
     };
   }
@@ -693,7 +722,8 @@ export function attendanceBand(event) {
     low: exp.low, high: exp.high, planning: exp.high,
     confirmed: 0, maybe: 0, pending: 0, declined: 0, kids: 0, invited: n,
     planned: n, shift: attendanceShift(event.type, getPlaybook(event.type)),
-    because: `Planned for ${n} · ${exp.low}–${exp.high} typically show${_highNote ? ' ' + _highNote : ''}`,
+    ..._provFields,
+    because: `Planned for ${n} · ${exp.low}–${exp.high} typically show${_highNote ? ' ' + _highNote : ''}${_substituted}`,
     note: exp.note,
   };
 }
