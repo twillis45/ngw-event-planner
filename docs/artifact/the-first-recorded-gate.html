@@ -567,7 +567,7 @@
             <li><input type="checkbox" data-k="s8-notchecked"> <b>Not re-checked this session, still owner-only:</b> the six stage-5 security opens, PostHog/Sentry arrival proof in prod, the repast community-review gate. <b>Still true 2026-11-02</b> &mdash; none of the three can be attested from a session.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Step 2e</span> <b>Standing obligation:</b> <code>docs/ADMIN-CONSOLE.md</code> exists.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Step 2e</span> <b>Standing obligation:</b> <code>verify:all</code> exists (and <code>verify:fast</code>).</li>
-            <li><input type="checkbox" data-k="s8-unmerged"> <span class="tag">Step 2e</span> <b>Standing obligation: <code>origin/main..HEAD</code> is 0.</b> <b>Why unchecked:</b> 14 commits on <code>main-2utz0n</code> await PR #94.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Step 2e</span> <b>Standing obligation: <code>origin/main..HEAD</code> is 0.</b> <b>Why unchecked:</b> 14 commits on <code>main-2utz0n</code> await PR #94. <b>Closed 2026-11-02:</b> PR #94 merged, then #95&ndash;#98; this line rides PR #99, whose merge leaves <code>origin/main..HEAD</code> at 0. A standing obligation: it re-opens with the next unmerged commit.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine</span> <b>Dependency review &mdash; re-run 2026-11-02, and it found something.</b> The shipped tree was no longer clean: <code>dompurify@3.4.14</code> (via <code>posthog-js</code>), one critical, five DOM-XSS advisories. Not in any built bundle and called by no app code, so exposure was low &mdash; and fixed anyway by pinning 3.4.17 through <code>overrides</code>: <b>0 vulnerabilities</b>. The 2026-08-21 &ldquo;0&rdquo; was true on its day; that is why this row recurs.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Correction</span> <b>Who ruled stage 8 is not in the record.</b> See Corrections. <b>Closed 2026-11-02:</b> ruled by the review board under the standing delegation &mdash; see the ruling panel above.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Board 2026-11-02</span> <b>Re-decide the frozen CRA&rsquo;s dependency disposition.</b> The NO-OP rests on a deletion &ldquo;scheduled post-Sprint-2&rdquo; that no ruling dates, and <code>xlsx</code> (high, no fix) parses user-uploaded files in code that ships (<code>src/App.js:210</code>). <b>Re-decided 2026-11-02 by the owner (option A):</b> <code>xlsx</code> moved to SheetJS 0.20.3 from the vendor&rsquo;s CDN, pinned by lockfile integrity hash; the audit no longer reports it, and the legacy production build carries 0.20.3. The other 105 findings are the react-scripts toolchain, reported weekly and retired with the CRA.</li>
@@ -1057,6 +1057,7 @@
     apply();
   })();
 </script>
+
 
 
 
