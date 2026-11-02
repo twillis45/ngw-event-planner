@@ -1,6 +1,105 @@
 # Where We Are -- live status board
 
-## 2026-10-19 (last) — Redesign Readiness Sprint 0 + Sprint 0.5: READY for one domain
+## 2026-11-02 (later, last) — the path-to-production list worked top to bottom; one security finding waits on a merge
+
+Branch `main-2utz0n` @ `057a282`, twelve commits past `2ec704e`, all pushed,
+none merged. What they are, in the order the deep dive ranked them:
+
+**Sync honesty (census §5, open since 2026-08-08) — closed on the disclosure
+half.** `saveEvent` is a conditional UPDATE on the version this device knows;
+a row another device changed is refused, kept locally and named, in both
+shells (`34d2931`). The first cut made a device refuse ITSELF on back-to-back
+keystrokes — caught by a test, fixed with a per-id write chain and a persisted
+newest-version record. 11 jest tests, each guard red-proofed. Then the shell
+half in a browser (`aRefusedSaveIsNotCalledSaved.spec.mjs`, `057a282`): the
+conditional filter read off the request URL, the toast, the settings row, the
+local copy; red-proofed by removing the shell's branch — without it the shell
+says *"it will reach your account when the connection is back"* for a refused
+write. Not a merge; never driven against two real sessions.
+
+**The gate artifact and the board refreshed** (`8dcf82d`): The First Recorded
+Gate Version 21→22 with a dated re-measurement panel, per-stage re-checks,
+three corrections (backend tier read off `render.yaml`; the `PW_CHROMIUM` pin
+gap; the board's "Sentry is live" was presence, not delivery), a 390px
+horizontal-scroll fix it had carried since first publish, and `s7-created`
+closed once `event_created` was gated. The board Version 3 with a second
+dated card. **No chip changed; no gate ruled since 2026-09-03.** The honest
+answer to "where are the rest": there is one per-repo path artifact (stages
+6–8), one portfolio board, and the 2026-08-21 audits; stages 1–5 never had an
+artifact — they are rows in the owner's local `skill-index` server.
+
+🔴 **Six `public` tables with RLS OFF** (`a690da5`), found by writing the
+owner's RLS attestation as a query: `012_research_execution.sql` created the
+research tables on "only FastAPI reaches them," which ignores PostgREST.
+Anyone with the publishable anon key could read and WRITE them. `018` enables
+RLS (no policies — the shape `admin_error_log` already runs on);
+`everyPublicTableHasRls.test.js` fails by table name on the next one. **It
+reaches the live project only when `018` lands on `main`; until then presume
+exposed. The PR needs the owner's ask.** Live exposure could not be probed
+from a cloud session — the Pages bundle is the demo profile.
+
+**Owner attestations written as a checklist** (`docs/RUNBOOK.md` § Owner
+attestations): RLS as a SQL query with expected rows and what a fail means;
+backups + a restore drill that never touches production; login rate limits
+read not tuned; Sentry/PostHog arrival. ~70 minutes closes three of six
+stage-5 opens.
+
+**Privacy and refund policy DRAFTS** (`docs/legal/`, `614f092`), written from
+the code with citations, five `[OWNER: …]` placeholders, the refund rule left
+as three options with one recommended. Not linked from the product until
+ruled.
+
+**What only the owner can move now, in order:** merge 018 → run check A;
+decide the refund rule and fill the five placeholders → attorney → domain;
+recruit one stranger for `COORDINATOR_TEST_SCRIPT.md`; the three dashboard
+attestations; convene the stage-9 board.
+
+## 2026-11-02 (earlier) — merged, deployed, four GOLD rows closed, and the design parked
+
+**`main` @ `2ec704e`** (PR #93 merged — 55 commits, 86 files, first deploy since
+2026-10-13). **Production verified by fetching it:** bundle moved from
+`main.69037cdc.js` to `main.cbde5e5e.js` at 04:27:38Z; post-merge Checks #919
+and Deploy Pages #567 both green on `main`. Follow-on work on `main-2utz0n`
+restarted from the merged `main`: `8dfd03f` (Blueprint plan), `858e639`
+(GOLD-09), `c1304a6` (GOLD-10), and the GOLD-06 commit.
+
+**The People/Attendance redesign is PARKED by owner ruling** ("get hostv2 ready
+for prod, pick up v3 later"). It merged inert — `peopleMode` defaults `false` at
+`hostv2/src/HostShellV2.jsx:1116`, reachable only by `?people=1`. The art
+direction sheets were found to be **generated images, not a design file** (the
+same caption renders `MOBILE` and `ΠABLLE` on one sheet; card copy is not
+English), so pixel parity was never a reachable target; the per-viewport
+register was measured and applied instead. `UX_01`/`UX_02` still contradict
+the ruled direction in three named lines — open on purpose, see HANDOFF's
+sixtieth entry.
+
+**GOLD acceptance matrix moved four rows** (`docs/architecture/current-state/
+GOLD_E2E_ACCEPTANCE_MATRIX.md`): **06 weather, 09 pass entitlement, 10 failure
+injection (all three) — CLOSED.** The matrix's 2026-10-19 scoping sentence —
+"Weather/Day-of and the failure paths have no browser baseline" — is no longer
+true. Open: 01, 02, 05, 08 (refinements, not critical-path gaps). 136 spec
+files. Full matrix green locally (3,136 / 273 / 0 / 1 flaky — contention,
+20/20 clean in isolation) and in CI (3,137 / 273 / 0 / 0).
+
+**Two defects fixed that no existing check could see:** a vitest gate whose
+5000ms ceiling sat under its own measured 5.7–6.1s cost (failed ~1 in 2, read
+as a flake); hostv2 had no `rel="icon"`, so Chromium fetched the user-site
+root favicon and 404'd on every load, invisible to every page response
+listener.
+
+**Backend:** owner upgraded `ngw-events-api` to Starter (0.5 CPU / 512 MB)
+this session. Verified by a 21-minute idle window: first call after idle
+0.516s against a 0.416s control — no spin-down. `render.yaml` corrected from
+`plan: free` (a Blueprint re-sync would have downgraded the paid instance).
+
+**Stage 9 still has no record.** Live Path to Production Board re-read
+2026-11-02: gates 1–8 recorded, 9 absent, snapshot 2026-09-30. Four of its six
+preconditions are owner-side. See the production-readiness deep dive in
+HANDOFF's sixtieth entry for what is actually missing.
+
+---
+
+## 2026-10-19 — Redesign Readiness Sprint 0 + Sprint 0.5: READY for one domain
 
 **`main-2utz0n` @ `715cd50`** — seventeen commits across two sprints, nothing
 merged to `main`, no PR opened. Full record:

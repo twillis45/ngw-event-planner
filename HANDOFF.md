@@ -453,16 +453,16 @@ this file is the short answer to "where is it, is it green, what's next."
 
 | Fact | Value |
 |---|---|
-| Branch / HEAD | `main-2utz0n` @ `83a6917c` — **2026-11-02 (sixtieth entry), 24 commits since the row below** (23 People/calibration + `eb4f9e0` the cover-image record). **45 commits ahead of `origin/main`; NOTHING MERGED; no PR opened — the owner has not asked for one.** Nothing has shipped to production since 2026-10-13. Still no matrix: this container ships chromium **1194** and `playwright-core` 1.61.1 wants **1228**, so the pin gap recorded below is unchanged — it IS runnable here by pointing at `/opt/pw-browsers/chromium`, which was not done this session. ─── **BEFORE THAT, 2026-10-19:** `715cd50c` — **2026-10-19 (fifty-ninth entry), five commits this session** (`e692518` D1, `b8ea88c` the CRA build fix, `03d5cc4` D2, `715cd50` D3, plus D4 + docs), on top of Sprint 0's eight slices. **NOTHING MERGED TO `main`; no PR opened.** No matrix: this container ships chromium 1194 against the repo's pinned 1228, so specs ran through a session-local shim — no repo file changed and `playwright install` was never run. ─── **BEFORE THAT, 2026-10-13:** **restarted from `main` @ `eaf43a5` after PRs #87, #88 and #89 all merged** (the SHA in this slot is HEAD, which `handoff:stamp` rewrites; the base it was restarted from is named in the prose, where the stamp cannot overwrite it). The branch carries no unmerged history from earlier today; everything the three entries below describe is on `main`. ─── **THE 2026-10-11 REBASE NOTE FOLLOWS, LEFT AS WRITTEN:** **THE OUTAGE BELOW IS OVER, AND NOT BY THIS BRANCH.** A different session (`session_01XJjsh…`, Opus 5.5) landed the identical `budgetCopy.js` import move as **`55855e1`** on 2026-10-11 13:35, carried into ITS own PR #86 rather than waiting on mine — its message says so: "Carried here so this PR can go green; it no-ops once main has it." Merge `be03383` at 14:01, **Checks 887 green, Deploy Pages 561 green, production shipped ~14:06.** My `e72f4c0` was therefore redundant and is **DROPPED** in this rebase; main's `budgetCopy.js` was diffed against mine first to confirm the fix is genuinely there. What is lost with it is a 3-line comment at the import site saying why the order is load-bearing — not re-added, to avoid a second diff on a file main just changed. ⚠️ **TWO NUMBERS IN THE ROW BELOW ARE WRONG AND ARE LEFT STANDING AS EVIDENCE.** It says "~25 hours" and the row after it "~30 hours"; the outage actually ran **2026-10-07 06:01Z → 2026-10-11 14:06Z (02:01 → 10:06 Eastern, EDT), about 104 hours.** Both figures were true when written and neither was ever revisited — the same not-revisited failure as the "cra-build GREEN" sentence they were correcting. ⚠️ It also says "**the fix is on `main-2utz0n`, NOT on `main`** — main is still red until this branch lands there." That is now false in both halves. **THE LESSON, which cost four days:** I opened a PR for a one-line fix and then waited on three safety-net check-ins for a merge only the owner could do, while a parallel session shipped the same line into work that was already moving. Porting the fix into whatever is already in flight beats holding it behind your own PR. What this branch still carries that main does not: the sales-page footer company fix, the demo-bar e2e spec, and these handoff entries. ─── **THE 2026-10-08 ENTRY FOLLOWS, LEFT AS WRITTEN:** 🔴 **`main` WAS RED FOR THREE COMMITS AND THE PAGES DEPLOY WITH IT — production had not shipped since 2026-10-07 06:01Z (02:01 Eastern), ~25 hours** (wrong: ~104, corrected above). One import line: `src/lib/budgetCopy.js` carried `import { isOwnEvidence }` below an `export`, tripping `import/first`, which CRA escalates to a BUILD error the 241-warning baseline cannot absorb. CI on main: 878 `36248c35` PASS / Deploy 557 PASS → 879 `147dd7e3` FAIL / 558 FAIL → 880 `4bbd99df` FAIL / 559 FAIL → 881 `96a707c` FAIL / 560 FAIL. The runner log is byte-identical to the local reproduction, so it was never an environment artifact. Fixed in `e72f4c0`; `gate:cra` green at 241 of 241, the figure already recorded — the baseline was never the problem. ⚠️ **The row below this one said the opposite** ("`cra-build` GREEN since 2026-10-03") and that is how it survived: this is the forty-third entry's lesson verbatim, which records cra-build red SIX DAYS on one orphaned import "that the gate named in full every single run", surviving because the line was labelled pre-existing and nobody opened it. Same rule, same file class, same reason. **The fix is on `main-2utz0n`, NOT on `main`** — main is still red until this branch lands there. Before that, `main-2utz0n` @ `1497537` — 2026-10-07 (forty-eighth entry), **two commits**, branched from `main` @ `96a707c`. jest **8,281 / 602** (+7, one existing suite) · e2e **3,332 tests in 124 files** (+8 in 1 file, desktop only). **NO MATRIX AND NO CI THIS SESSION** — one spec on one project, run against a session-local Playwright config because this container ships chromium 1194 and the resolved `@playwright/test` wants 1228. The matrix numbers in the rows below describe `bdc8826f`/`3b83ebf4` and were not re-measured. `handoff:check` could not run at all: it needs `bdc8826f`'s ancestry and this is a `--depth 1` clone. Before that, `main` @ `bdc8826f` — 2026-10-07, **eight commits pushed that session** (`17dccc54..bdc8826f`), all live. jest **8,267 / 601** - e2e **3,263 tests**. Two full matrices: on `2218a203` **2,978 passed / 4 failed (35.6m)** where all four failures were the first five tests of the run, inside the cold-start window right after `vite preview` booted, and re-ran **17/17 clean on the same dist**; on `3b83ebf4` **3,024 passed / 238 skipped / 1 failed / 0 flaky (36.5m)**, and that one failure was a spec asserting a label-lookup FALLBACK as though it were authored copy. Worth keeping: the first matrix was launched while I then ran full jest suites four times over the following eight minutes, which is the same mistake as driving a browser during a matrix. Before that, `main` @ `e1536281` — 2026-10-06, **nine commits this session, eight pushed and live**; `8cb6acf3` (e2e ceiling 30→40) committed and held while the run on `e1536281` was measured. jest **8,247 / 598** · e2e **3,163 tests / 116 files**. Matrix on `bb378869` GREEN, all three shards (26m54s / 26m04s / 26m48s). Shard 3 was CANCELLED on the clock twice earlier the same evening — 30m19s and 30m13s, no test failing either time, both caused by creation-driving specs of mine left out of `VIEWPORT_INDEPENDENT`. Before that, 2026-10-04, five commits —  backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known flaky. Before that, the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
+| Branch / HEAD | `main-2utz0n` @ `41df700e` — **2026-11-02 (sixtieth entry), 24 commits since the row below** (23 People/calibration + `eb4f9e0` the cover-image record). **PR #93 (55 commits) MERGED to `main` as `2ec704e` on 2026-11-02 at the owner's explicit ask ("open the PR" / "merge it"); deploy verified live; the branch was restarted from `main` per the merged-PR rule and the commits after it are the GOLD closures, the backend-tier fix, the sixtieth-entry docs and the sync-conflict disclosure.** (The first write of this row said "45 commits ahead; NOTHING MERGED; no PR opened" and "still no matrix" — both true that morning, both false by evening, left here as the row's own record of going stale inside one day.) The matrix DID run: `PW_CHROMIUM=/opt/pw-browsers/chromium` points `playwright.config.mjs:198` at the container's chromium 1194 against the 1228 pin — see the e2e row. ─── **BEFORE THAT, 2026-10-19:** `715cd50c` — **2026-10-19 (fifty-ninth entry), five commits this session** (`e692518` D1, `b8ea88c` the CRA build fix, `03d5cc4` D2, `715cd50` D3, plus D4 + docs), on top of Sprint 0's eight slices. **NOTHING MERGED TO `main`; no PR opened.** No matrix: this container ships chromium 1194 against the repo's pinned 1228, so specs ran through a session-local shim — no repo file changed and `playwright install` was never run. ─── **BEFORE THAT, 2026-10-13:** **restarted from `main` @ `eaf43a5` after PRs #87, #88 and #89 all merged** (the SHA in this slot is HEAD, which `handoff:stamp` rewrites; the base it was restarted from is named in the prose, where the stamp cannot overwrite it). The branch carries no unmerged history from earlier today; everything the three entries below describe is on `main`. ─── **THE 2026-10-11 REBASE NOTE FOLLOWS, LEFT AS WRITTEN:** **THE OUTAGE BELOW IS OVER, AND NOT BY THIS BRANCH.** A different session (`session_01XJjsh…`, Opus 5.5) landed the identical `budgetCopy.js` import move as **`55855e1`** on 2026-10-11 13:35, carried into ITS own PR #86 rather than waiting on mine — its message says so: "Carried here so this PR can go green; it no-ops once main has it." Merge `be03383` at 14:01, **Checks 887 green, Deploy Pages 561 green, production shipped ~14:06.** My `e72f4c0` was therefore redundant and is **DROPPED** in this rebase; main's `budgetCopy.js` was diffed against mine first to confirm the fix is genuinely there. What is lost with it is a 3-line comment at the import site saying why the order is load-bearing — not re-added, to avoid a second diff on a file main just changed. ⚠️ **TWO NUMBERS IN THE ROW BELOW ARE WRONG AND ARE LEFT STANDING AS EVIDENCE.** It says "~25 hours" and the row after it "~30 hours"; the outage actually ran **2026-10-07 06:01Z → 2026-10-11 14:06Z (02:01 → 10:06 Eastern, EDT), about 104 hours.** Both figures were true when written and neither was ever revisited — the same not-revisited failure as the "cra-build GREEN" sentence they were correcting. ⚠️ It also says "**the fix is on `main-2utz0n`, NOT on `main`** — main is still red until this branch lands there." That is now false in both halves. **THE LESSON, which cost four days:** I opened a PR for a one-line fix and then waited on three safety-net check-ins for a merge only the owner could do, while a parallel session shipped the same line into work that was already moving. Porting the fix into whatever is already in flight beats holding it behind your own PR. What this branch still carries that main does not: the sales-page footer company fix, the demo-bar e2e spec, and these handoff entries. ─── **THE 2026-10-08 ENTRY FOLLOWS, LEFT AS WRITTEN:** 🔴 **`main` WAS RED FOR THREE COMMITS AND THE PAGES DEPLOY WITH IT — production had not shipped since 2026-10-07 06:01Z (02:01 Eastern), ~25 hours** (wrong: ~104, corrected above). One import line: `src/lib/budgetCopy.js` carried `import { isOwnEvidence }` below an `export`, tripping `import/first`, which CRA escalates to a BUILD error the 241-warning baseline cannot absorb. CI on main: 878 `36248c35` PASS / Deploy 557 PASS → 879 `147dd7e3` FAIL / 558 FAIL → 880 `4bbd99df` FAIL / 559 FAIL → 881 `96a707c` FAIL / 560 FAIL. The runner log is byte-identical to the local reproduction, so it was never an environment artifact. Fixed in `e72f4c0`; `gate:cra` green at 241 of 241, the figure already recorded — the baseline was never the problem. ⚠️ **The row below this one said the opposite** ("`cra-build` GREEN since 2026-10-03") and that is how it survived: this is the forty-third entry's lesson verbatim, which records cra-build red SIX DAYS on one orphaned import "that the gate named in full every single run", surviving because the line was labelled pre-existing and nobody opened it. Same rule, same file class, same reason. **The fix is on `main-2utz0n`, NOT on `main`** — main is still red until this branch lands there. Before that, `main-2utz0n` @ `1497537` — 2026-10-07 (forty-eighth entry), **two commits**, branched from `main` @ `96a707c`. jest **8,281 / 602** (+7, one existing suite) · e2e **3,332 tests in 124 files** (+8 in 1 file, desktop only). **NO MATRIX AND NO CI THIS SESSION** — one spec on one project, run against a session-local Playwright config because this container ships chromium 1194 and the resolved `@playwright/test` wants 1228. The matrix numbers in the rows below describe `bdc8826f`/`3b83ebf4` and were not re-measured. `handoff:check` could not run at all: it needs `bdc8826f`'s ancestry and this is a `--depth 1` clone. Before that, `main` @ `bdc8826f` — 2026-10-07, **eight commits pushed that session** (`17dccc54..bdc8826f`), all live. jest **8,267 / 601** - e2e **3,263 tests**. Two full matrices: on `2218a203` **2,978 passed / 4 failed (35.6m)** where all four failures were the first five tests of the run, inside the cold-start window right after `vite preview` booted, and re-ran **17/17 clean on the same dist**; on `3b83ebf4` **3,024 passed / 238 skipped / 1 failed / 0 flaky (36.5m)**, and that one failure was a spec asserting a label-lookup FALLBACK as though it were authored copy. Worth keeping: the first matrix was launched while I then ran full jest suites four times over the following eight minutes, which is the same mistake as driving a browser during a matrix. Before that, `main` @ `e1536281` — 2026-10-06, **nine commits this session, eight pushed and live**; `8cb6acf3` (e2e ceiling 30→40) committed and held while the run on `e1536281` was measured. jest **8,247 / 598** · e2e **3,163 tests / 116 files**. Matrix on `bb378869` GREEN, all three shards (26m54s / 26m04s / 26m48s). Shard 3 was CANCELLED on the clock twice earlier the same evening — 30m19s and 30m13s, no test failing either time, both caused by creation-driving specs of mine left out of `VIEWPORT_INDEPENDENT`. Before that, 2026-10-04, five commits —  backend 415 · jest 8,210 / 593 · matrix59 2,894 / 238 / 0 failed / 1 known flaky. Before that, the forty-fourth entry's last commit — matrix57 clean (2,894 / 238 / 0 failed / 1 flaky, 36.4m). Before that, the forty-third entry's last commit — **`cra-build` GREEN since 2026-10-03, now 241 of 241** after tidying the baseline. **matrix53 2,876 / 229 / 0 failed / 35.5m — the full suite clean.** (matrix51 had 2 failures and matrix52 had 1; one was a true flake, one was an 8s poll ceiling that is now 30s — see the forty-third entry) |
 | Board calls | **none open.** All six closed: #2 by host ruling, #6 by measurement, #1/#3/#4/#5 decided 2026-09-23 under the standing delegation (`cd4e09d`, `944ffff`, `2845d38`, `4b23c07`) |
 | CRA retirement | **NOT post-Sprint-2. Owner ruling 2026-09-23:** the frozen shell stays until hostv2 is in production, being purchased, and accepted by the public. No deletion date is set, and none should be quoted. It stays FROZEN — the ruling extends its life, not its licence to be built in |
 | Vendor cockpit | **Slice 1 SHIPPED 2026-09-23.** Unblocked and scoped the same day. It was never blocked on work, only on the deletion date, and that date is now gone. Second ruling the same day: **port only what is important to a host** — measured against the engine, that is 5 of 9 readiness axes and 4 of 11 unread functions. See "Vendor cockpit port" below |
-| Jest | **8,524 passed**, 1 skipped, **0 failed**, **620 suites** (measured 2026-11-02 on `verify:fast`, sixtieth entry: **+22 tests / +2 suites** over the row below, all from the People slice). Before that **8,502 passed**, 1 skipped, **0 failed**, **618 suites** (measured 2026-10-19 after the fifty-ninth entry: **+159 tests / +11 suites** across Sprint 0 and Sprint 0.5 — `aGuessIsNotADestination` (15) · `anInventedCountDoesNotLeaveTheApp` (15) · `oneAccessNeedOneAnswer` (29) · `iHeardThisTooAndThenWhat` (17) · `theTownAndTheColors` (14) · `weNowNeedToKnow` (26) · `thePlanningCountKnowsWhoseItIs` (16) · `anInventedCountIsNotAVendorConflict` (7) · `theHeadcountHasOneCanonicalReader` (5) · `theClauseReadersAreNotOptional` (6) · `aBoundedGapStaysBounded` (8). Before that **8,343 passed**, 1 skipped, **0 failed**, **607 suites** (measured 2026-10-13 after the fifty-seventh entry: +7 and +1 suite, `theBlueprintNamesWhatTheServerNeeds.test.js`. Before that **8,336 / 606** after the fifty-sixth entry: +4, no new suite — the three-state can-honour flag. Before that **8,332 / 606** after the fifty-fifth entry: +8 and +1 suite, `theAuditIndexIsNotAStory.test.js` — the audit-index ratchet — plus three on the pass sheet's owned state. Before that **8,324 / 605** after the fifty-fourth entry: +12 and +1 suite, `thePriceIsNotTheBrowsersToSend.test.js` — the price-provenance guard, which also took the hostv2 text-gate ratchet 53 -> 54 with a written justification. Before that **8,312 / 604** after the fifty-third entry: +12 and no new suite, all in `passEntitlement.test.js` — the subscribe seam and the webhook/redirect race. Before that **8,300 / 604** after the fifty-second entry: +15 / +1 suite for `passEntitlement.test.js`, the server-record precedence. The 8,285 / 603 the two entries before it recorded was +4 / +1 for `theStampCannotEatTheRow` — the data-loss guard — and the two `BUILT_NOT_WIRED` entries were a list edit, not new tests.) Before that **8,281 passed**, 1 skipped, **0 failed**, **602 suites** (measured 2026-10-07 after the forty-eighth entry. The delta is split and both halves were measured rather than inferred: excluding `theNameOutsideTheApp` entirely the tree reads **8,260 / 601**, that suite now holds **21** tests and held **14** at `96a707c`, so **+7 is mine** and no new suite — the other +7 / +1 above the 8,267 / 601 below arrived with `96a707c`, which I did not measure separately). Before that **8,267 passed**, 1 skipped, **0 failed**, **601 suites** (measured 2026-10-07 after the forty-seventh entry: +20 / +3 suites. One of them, `oneLabelMapForTheAreas`, raised the hostv2 text-gate ratchet 52 -> 53, and the ratchet's convention was honoured rather than waved at: the reason is CHECKED, not assumed. `thePlanPartsReadAsEnglish` is the rendered gate for that surface and it was GREEN across a full matrix with the duplicate map present, because two maps that agree render identically). Before that **8,247 passed**, 1 skipped, **0 failed**, **598 suites** (measured 2026-10-06 after the forty-sixth entry: +56 / +7 suites for the exclusions hinge, the per-event exclusion sweep across 45 playbooks, the kid-risk corpus gate, the altitude routing, and the parser field. Three gates were written and then REWRITTEN after red-proofing showed they could not fail — one of them three times; the third version is what shipped). Before that **8,191 passed**, 1 skipped, **591 suites** (2026-10-03, forty-fourth entry: +23 and +1 suite for the bedroom derivation, the numeric requirements, the stated pairing and the Vrbo refusal copy). Before that **8,168 / 590** (same day, forty-third entry: +5 for `unfurlListing`'s cold-start retry and +3 for the probe-duration gate, no new suite — all eight joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
+| Jest | **8,535 passed**, 1 skipped, **0 failed**, **621 suites** — the last FULL `verify:fast` run (sixtieth entry, after the sync-conflict work; includes the 11 `aSaveNeverSilentlyOverwrites` tests). Added after that run and green ALONE, not inside a full run: +10 `everyPublicTableHasRls` (expected whole-tree figure **8,545 / 622**, stated as expected, not measured). Before that **8,524 passed**, 1 skipped, **0 failed**, **620 suites** (measured 2026-11-02 on `verify:fast`, sixtieth entry: **+22 tests / +2 suites** over the row below, all from the People slice). Before that **8,502 passed**, 1 skipped, **0 failed**, **618 suites** (measured 2026-10-19 after the fifty-ninth entry: **+159 tests / +11 suites** across Sprint 0 and Sprint 0.5 — `aGuessIsNotADestination` (15) · `anInventedCountDoesNotLeaveTheApp` (15) · `oneAccessNeedOneAnswer` (29) · `iHeardThisTooAndThenWhat` (17) · `theTownAndTheColors` (14) · `weNowNeedToKnow` (26) · `thePlanningCountKnowsWhoseItIs` (16) · `anInventedCountIsNotAVendorConflict` (7) · `theHeadcountHasOneCanonicalReader` (5) · `theClauseReadersAreNotOptional` (6) · `aBoundedGapStaysBounded` (8). Before that **8,343 passed**, 1 skipped, **0 failed**, **607 suites** (measured 2026-10-13 after the fifty-seventh entry: +7 and +1 suite, `theBlueprintNamesWhatTheServerNeeds.test.js`. Before that **8,336 / 606** after the fifty-sixth entry: +4, no new suite — the three-state can-honour flag. Before that **8,332 / 606** after the fifty-fifth entry: +8 and +1 suite, `theAuditIndexIsNotAStory.test.js` — the audit-index ratchet — plus three on the pass sheet's owned state. Before that **8,324 / 605** after the fifty-fourth entry: +12 and +1 suite, `thePriceIsNotTheBrowsersToSend.test.js` — the price-provenance guard, which also took the hostv2 text-gate ratchet 53 -> 54 with a written justification. Before that **8,312 / 604** after the fifty-third entry: +12 and no new suite, all in `passEntitlement.test.js` — the subscribe seam and the webhook/redirect race. Before that **8,300 / 604** after the fifty-second entry: +15 / +1 suite for `passEntitlement.test.js`, the server-record precedence. The 8,285 / 603 the two entries before it recorded was +4 / +1 for `theStampCannotEatTheRow` — the data-loss guard — and the two `BUILT_NOT_WIRED` entries were a list edit, not new tests.) Before that **8,281 passed**, 1 skipped, **0 failed**, **602 suites** (measured 2026-10-07 after the forty-eighth entry. The delta is split and both halves were measured rather than inferred: excluding `theNameOutsideTheApp` entirely the tree reads **8,260 / 601**, that suite now holds **21** tests and held **14** at `96a707c`, so **+7 is mine** and no new suite — the other +7 / +1 above the 8,267 / 601 below arrived with `96a707c`, which I did not measure separately). Before that **8,267 passed**, 1 skipped, **0 failed**, **601 suites** (measured 2026-10-07 after the forty-seventh entry: +20 / +3 suites. One of them, `oneLabelMapForTheAreas`, raised the hostv2 text-gate ratchet 52 -> 53, and the ratchet's convention was honoured rather than waved at: the reason is CHECKED, not assumed. `thePlanPartsReadAsEnglish` is the rendered gate for that surface and it was GREEN across a full matrix with the duplicate map present, because two maps that agree render identically). Before that **8,247 passed**, 1 skipped, **0 failed**, **598 suites** (measured 2026-10-06 after the forty-sixth entry: +56 / +7 suites for the exclusions hinge, the per-event exclusion sweep across 45 playbooks, the kid-risk corpus gate, the altitude routing, and the parser field. Three gates were written and then REWRITTEN after red-proofing showed they could not fail — one of them three times; the third version is what shipped). Before that **8,191 passed**, 1 skipped, **591 suites** (2026-10-03, forty-fourth entry: +23 and +1 suite for the bedroom derivation, the numeric requirements, the stated pairing and the Vrbo refusal copy). Before that **8,168 / 590** (same day, forty-third entry: +5 for `unfurlListing`'s cold-start retry and +3 for the probe-duration gate, no new suite — all eight joined `coldStartRetry.test.js`). Before that **8,160 / 590** (2026-10-02, forty-second entry). Before that **8,155 / 589** (same day, forty-first entry: +124 tests / +14 suites). Before that **8,031 / 575** (measured on `verify:push` 2026-09-29, fortieth entry — my first write of this row said 8,035 / 576 by adding my own +4 / +1 to a gate total that already contained them; the local session's 79 commits brought the tree to 8,027 / 574). Before that **7,926 / 561** (2026-09-27, after the thirty-seventh entry: +127 tests / +12 suites). Before that **7,799 / 549** (re-measured 2026-09-26 00:24 EDT after the thirty-sixth entry — and see the clock-bomb note in that entry: the SAME command at 23:37 EDT had five failures. Before that 7,794 / 548 after the thirty-fifth; before that 7,653 / 544 after the thirty-fourth; before that 7,635 / 542 after the thirty-third; before that 7,611 / 537 after the condition-dialect unification; before that 7,601 / 536 after the costFactors pipeline loop and the relevantWhen census; before that 7,585 / 534 after the impacts map; before that 7,570 / 533 after the decision blast radius; before that 7,560 / 532 after the blocks-vocabulary fix; before that 7,545 / 531 after the systematic parser sweep; before that 7,531 / 530 after the parser phrasing work; before that 7,514 / 529 same day after the misspelling audit; before that 7,508 / 528 same day after the 80th-birthday audit drive; before that 7,478 / 525 same day after cockpit-port slice 1; before that 7,470 / 524 same day after the thirty-second entry; before that 7,451 / 523 same day after the thirty-first; before that 7,439 / 522 same day after the thirtieth; before that 7,409 / 521 same day after the twenty-ninth; before that 7,407 same day after the twenty-eighth; before that 7,388 / 520 same day after the twenty-seventh; before that 7,386 same day after the twenty-sixth; before that 7,378 same day after the twenty-fifth; before that 7,359 / 519 same day after the twenty-fourth; before that 7,282 / 513 same day after the twenty-third; before that 7,269 / 512 same day after the twenty-second; before that 7,208 / 504 same day after the twenty-first entry; before that 7,165 / 499 on 2026-09-22 after the twentieth entry; before that 7,130 / 495 same day after the nineteenth entry; before that 7,088 / 490 on 2026-09-19, CI run **674** on `9960d42`, Deploy Pages run 351 green). Before that: 7,070 / 488 (same day, seventeenth entry). CI run **670** green through e2e on `0ff388c`. Before that: 7,026 / 483 (same day, fifteenth entry). Before that: 6,996 / 479 (2026-09-18, ninth entry). A latent time bomb was found and fixed this pass: `recordDedupStaysLive` pinned `AS_OF` while `eventPlan(ev)` (no as-of, reads the real clock) was not, so the two agreed only on the day it was written — green in CI 2026-09-14, red 2026-09-17 with no code change between, and failing every run thereafter. `AS_OF` now anchors to today |
 | vitest (hostv2 seam) | **51 passed / 4 files** — measured 2026-11-02 (sixtieth entry). ⚠️ **+2 over the 49 below and they are not mine**, same unrecorded-arrival shape the note below records; written as measured rather than reconciled. Before that **49 passed / 4 files** — measured 2026-10-13 (fifty-third entry). ⚠️ This row read **48** from 2026-09-29 until then; the extra test is not mine and arrived unrecorded somewhere in between, so it is written as measured rather than reconciled. Before that **48 passed / 4 files** (2026-09-29 — and see the fortieth entry: 9 of these fail on Node 22 until `Object.defineProperty` replaced `global.navigator = …`; CI pins Node 20, where all 48 always passed). Before that 43 / 4 (2026-09-27, +22 for the offline shell; 21 / 3 files before). The only runner that EXECUTES the host shell (new 2026-09-03) |
 | Backend pytest | **440 passed** — re-measured 2026-10-13 (fifty-sixth entry). ⚠️ **This row said 399 from 2026-10-02 until then, stale by 41.** Written as measured, not reconciled: the +41 is not all mine (slice 1 added 14, this entry 3). ⚠️ **The local run used asyncpg 0.32.0, not the pinned 0.29.0**, which has no wheel for this container's Python 3.13; `requirements.txt` is untouched and asyncpg is imported-but-unused in these tests (the pool is faked). Before that **399 passed** — re-measured 2026-10-02 (forty-second entry: +6 for the results-card price reader). Before that **393 passed** — re-measured 2026-09-24 (thirty-fourth entry: +11 price-observation, +4 pool-per-event-loop, +5 BLS quota backoff, +13 earlier the same day; 360 on 2026-09-23). Run it with `python3 -m pytest tests/ --strict-markers` from `backend/`, after `pip install -r requirements.txt -r requirements-dev.txt` |
 | verify-all | **11 steps**, seam included; `--fast` skips the matrix. Step 9 is now **`npm run release`** — what the deploy actually runs — replacing the bare hostv2 build it contains (2026-09-18) |
 | Pre-push routine | **`npm run verify:push`** = handoff + knowledge + jest + hostv2 seam + `npm run release`. The release step is ~40s and is the only local check that runs the deploy's toolchain |
-| e2e (Playwright) | **FULL MATRIX GREEN 2026-11-02 (sixtieth entry): 3,136 passed · 273 skipped · 0 failed · 1 flaky, 54.5m**, all seven projects on `f0ee8cc` against a fresh `e2e:build`. 3,410 tests collected, 4 workers. The flaky was `[tablet] instacartStepsTheList.spec.mjs:82` — a 30s timeout waiting for the Instacart button — and it was re-run **20/20 clean in isolation at 3.5s per run**, a 10x gap against the timeout, so it is worker contention and not a regression. Same shape as the `theShellOpensWithoutSignal` finding two entries below. ⚠️ **THE PIN GAP NEEDED NO SHIM.** Two sessions recorded the matrix as unrunnable here (chromium 1194 installed, 1228 wanted) and built session-local configs around it. `playwright.config.mjs:198` already carries `launchOptions: process.env.PW_CHROMIUM ? { executablePath: … } : {}`, so `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e` is the whole fix — no repo file changed, no `playwright install`. The escape hatch was inside the config being worked around. 🔴 **THE MATRIX DIRTIES TRACKED FILES.** `responsiveBaseline.spec.mjs:87` rewrites all six `hostv2/review-shots/baseline-*.png`, which are TRACKED. After this run they showed as modified with sizes down ~40% (725KB -> 428KB). They were restored, not committed — the standing rule names overwritten owner reference baselines specifically. A session that runs the matrix and commits without looking will land a silent visual diff. Slowest files: `boardMatrix.spec.mjs` at 5.2m (desktop) and 5.1m (mobile). Before that **129 spec files (counted 2026-10-19, fifty-ninth entry)** — +5 files are mine across both sprints: `gold07RsvpCascade` (2 tests / 9 asserted boundaries, on its own bundle), `seatingAndRainBaseline` (9), `theWalkerReachesThePlan` (2), `theClauseGetsAnAnswer` (4), `weNowNeedToKnow` (7) — all in `VIEWPORT_INDEPENDENT`, desktop only. **Test total not re-listed and NO MATRIX RAN**; the numbers below describe earlier trees. ⚠️ **Build them with `npm run e2e:build`, never `npm run build`** — the latter bakes no `REACT_APP_*` and cost 33 false failures this session. Before that **3,332 tests in 124 files (listed 2026-10-07, forty-eighth entry)** — +8 in 1 file is mine (`theDemoResetsToTheSamePlace`, desktop only; `--list` confirms 8 executions and not 56, so the `VIEWPORT_INDEPENDENT` entry is doing its job). The rest of the growth from 3,163 is not mine and was not attributed. **NO MATRIX RAN THIS SESSION** — everything below describes earlier trees. Before that **3,163 tests in 116 files (listed 2026-10-06)**, up from ~2,900 four days earlier — and that growth is the live operational problem. Shard 3 hit `timeout-minutes: 30` TWICE on 2026-10-06 (30m19s, then 30m13s) with no test failing; the clock ran out and the merge job turned it red. Both times the cause was mine: specs driving the real creation flow that were not in `VIEWPORT_INDEPENDENT`, so each ran on seven geometries instead of one. Six are listed now (verified by `--list`: 0 of them in the mobile project, 16 in desktop, once each). The ceiling is raised to **40** by owner ruling 2026-10-06 — recorded beside `checks.yml`'s own standing argument against raising it, because this timeout's stated job is to kill a HANG and a 30-minute ceiling against a 26-30 minute runtime cannot tell a hang from a slow runner. **40 moves the wall; it does not buy margin — a fourth shard would.** Last fully green matrix: `bb378869`, 26m54s / 26m04s / 26m48s. Before that **MEASURED 2026-10-02 on Checks run 37036935048 (`d285823a`): `e2e MERGED TOTAL — 2862 passed · 229 skipped · 0 failed · 0 flaky`.** Local full matrix the same day: 2,860 passed / 229 skipped / **1 failed / 1 flaky** in 35.1m — the failure was `theShellOpensWithoutSignal` (service-worker kill switch), which re-ran **15 times in isolation and passed 15 times**, and CI's three shards then ran it green. A load race under four local workers, not a regression; recorded because "one red in the matrix" is exactly the shape that gets waved through for the wrong reason. Before that **MEASURED 2026-09-24 on Checks run 769 (`6408910`): `e2e MERGED TOTAL — 1809 passed · 214 skipped · 0 failed · 0 flaky`.** The suite grew from 1,009 to 1,809 in six days, which is what spent the timeout margin: on run 767 two shards ran 26m18s and 29m against `timeout-minutes: 30`, and the second was KILLED BY THE CLOCK with no test having failed — the merge job turned that into a red run. **Now THREE shards**, measured wall time on the test step: shard 1 **18m04s**, shard 2 **16m59s**, shard 3 **20m37s**; worst job including setup ~21m47s, so ~8 min of margin (27%). My estimate before the change was 17-18 min and shard 3 came in above it — recorded. The denominator now derives from the matrix (`strategy.job-total`), and 1,809 > 1,000 is the proof that derivation did not silently drop a shard's worth of tests. Historic: full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008. **SHARDED 2026-09-18 (`dffc86e` + `f1871a9`)** — two runners, `--shard=k/2`, merged with `merge-reports`. **CONFIRMED on run 659 (`f1871a9`), which prints the combined total itself:** `e2e MERGED TOTAL — 1009 passed · 207 skipped · 0 failed · 0 flaky`. Shard 1 **12m33s**, shard 2 **14m50s**, merge 26s, whole workflow **16m37s** against 29m20s unsharded (run 658, the first sharded run, measured 12m22s / 14m26s / 16m20s). The e2e step went **27.0 -> ~14.5 min, a 46% cut**. `workers: 2` is UNCHANGED — each shard runs two workers on its own machine, so the 2026-08-06 flake fix is untouched |
+| e2e (Playwright) | **137 spec files** after the sixtieth entry's later commits (`+aRefusedSaveIsNotCalledSaved`, 2 tests desktop-only; `activationFunnel` +1) — those ran green alone on hand-started previews, NOT inside a full matrix; the matrix figure below is from before them. **FULL MATRIX GREEN 2026-11-02 (sixtieth entry): 3,136 passed · 273 skipped · 0 failed · 1 flaky, 54.5m**, all seven projects on `f0ee8cc` against a fresh `e2e:build`. 3,410 tests collected, 4 workers. The flaky was `[tablet] instacartStepsTheList.spec.mjs:82` — a 30s timeout waiting for the Instacart button — and it was re-run **20/20 clean in isolation at 3.5s per run**, a 10x gap against the timeout, so it is worker contention and not a regression. Same shape as the `theShellOpensWithoutSignal` finding two entries below. ⚠️ **THE PIN GAP NEEDED NO SHIM.** Two sessions recorded the matrix as unrunnable here (chromium 1194 installed, 1228 wanted) and built session-local configs around it. `playwright.config.mjs:198` already carries `launchOptions: process.env.PW_CHROMIUM ? { executablePath: … } : {}`, so `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e` is the whole fix — no repo file changed, no `playwright install`. The escape hatch was inside the config being worked around. 🔴 **THE MATRIX DIRTIES TRACKED FILES.** `responsiveBaseline.spec.mjs:87` rewrites all six `hostv2/review-shots/baseline-*.png`, which are TRACKED. After this run they showed as modified with sizes down ~40% (725KB -> 428KB). They were restored, not committed — the standing rule names overwritten owner reference baselines specifically. A session that runs the matrix and commits without looking will land a silent visual diff. Slowest files: `boardMatrix.spec.mjs` at 5.2m (desktop) and 5.1m (mobile). Before that **129 spec files (counted 2026-10-19, fifty-ninth entry)** — +5 files are mine across both sprints: `gold07RsvpCascade` (2 tests / 9 asserted boundaries, on its own bundle), `seatingAndRainBaseline` (9), `theWalkerReachesThePlan` (2), `theClauseGetsAnAnswer` (4), `weNowNeedToKnow` (7) — all in `VIEWPORT_INDEPENDENT`, desktop only. **Test total not re-listed and NO MATRIX RAN**; the numbers below describe earlier trees. ⚠️ **Build them with `npm run e2e:build`, never `npm run build`** — the latter bakes no `REACT_APP_*` and cost 33 false failures this session. Before that **3,332 tests in 124 files (listed 2026-10-07, forty-eighth entry)** — +8 in 1 file is mine (`theDemoResetsToTheSamePlace`, desktop only; `--list` confirms 8 executions and not 56, so the `VIEWPORT_INDEPENDENT` entry is doing its job). The rest of the growth from 3,163 is not mine and was not attributed. **NO MATRIX RAN THIS SESSION** — everything below describes earlier trees. Before that **3,163 tests in 116 files (listed 2026-10-06)**, up from ~2,900 four days earlier — and that growth is the live operational problem. Shard 3 hit `timeout-minutes: 30` TWICE on 2026-10-06 (30m19s, then 30m13s) with no test failing; the clock ran out and the merge job turned it red. Both times the cause was mine: specs driving the real creation flow that were not in `VIEWPORT_INDEPENDENT`, so each ran on seven geometries instead of one. Six are listed now (verified by `--list`: 0 of them in the mobile project, 16 in desktop, once each). The ceiling is raised to **40** by owner ruling 2026-10-06 — recorded beside `checks.yml`'s own standing argument against raising it, because this timeout's stated job is to kill a HANG and a 30-minute ceiling against a 26-30 minute runtime cannot tell a hang from a slow runner. **40 moves the wall; it does not buy margin — a fourth shard would.** Last fully green matrix: `bb378869`, 26m54s / 26m04s / 26m48s. Before that **MEASURED 2026-10-02 on Checks run 37036935048 (`d285823a`): `e2e MERGED TOTAL — 2862 passed · 229 skipped · 0 failed · 0 flaky`.** Local full matrix the same day: 2,860 passed / 229 skipped / **1 failed / 1 flaky** in 35.1m — the failure was `theShellOpensWithoutSignal` (service-worker kill switch), which re-ran **15 times in isolation and passed 15 times**, and CI's three shards then ran it green. A load race under four local workers, not a regression; recorded because "one red in the matrix" is exactly the shape that gets waved through for the wrong reason. Before that **MEASURED 2026-09-24 on Checks run 769 (`6408910`): `e2e MERGED TOTAL — 1809 passed · 214 skipped · 0 failed · 0 flaky`.** The suite grew from 1,009 to 1,809 in six days, which is what spent the timeout margin: on run 767 two shards ran 26m18s and 29m against `timeout-minutes: 30`, and the second was KILLED BY THE CLOCK with no test having failed — the merge job turned that into a red run. **Now THREE shards**, measured wall time on the test step: shard 1 **18m04s**, shard 2 **16m59s**, shard 3 **20m37s**; worst job including setup ~21m47s, so ~8 min of margin (27%). My estimate before the change was 17-18 min and shard 3 came in above it — recorded. The denominator now derives from the matrix (`strategy.job-total`), and 1,809 > 1,000 is the proof that derivation did not silently drop a shard's worth of tests. Historic: full matrix **983 passed / 207 skipped / 0 failed** (24.1m), confirmed on `checks.yml` run 34820036342 (commit `588e520`). Up from 909/190 — `watchPartyMajorEvent.spec.mjs` (6 tests × 7 projects = 42) is the delta. Real CI caught a failure this session's sandbox-only desktop check couldn't: 3 failures on `mobile`/`landscape`/`tablet` from a sheet not closing between two sheet-opens in the wiring-proof test — fixed (`c9c686b`), then reverified 983/207/0 clean. **CONFIRMED 2026-09-18 on `checks.yml` run 656 (commit `372886d`): 1009 passed / 207 skipped / 0 failed (27.0m)** — up from 983, via `dietaryHoldsTwo.spec.mjs` (5 tests, self-pinned to 390px so it runs once, not seven times) plus the 14 repast-ask failures that run 651 was red on. Run 654 on `4767f08` was the first green one at 1008. **SHARDED 2026-09-18 (`dffc86e` + `f1871a9`)** — two runners, `--shard=k/2`, merged with `merge-reports`. **CONFIRMED on run 659 (`f1871a9`), which prints the combined total itself:** `e2e MERGED TOTAL — 1009 passed · 207 skipped · 0 failed · 0 flaky`. Shard 1 **12m33s**, shard 2 **14m50s**, merge 26s, whole workflow **16m37s** against 29m20s unsharded (run 658, the first sharded run, measured 12m22s / 14m26s / 16m20s). The e2e step went **27.0 -> ~14.5 min, a 46% cut**. `workers: 2` is UNCHANGED — each shard runs two workers on its own machine, so the 2026-08-06 flake fix is untouched |
 | Activation funnel | `activationFunnel.spec.mjs` **49/49** across 7 viewports, 4 hooks each red-proofed |
 | Deploy | GitHub Pages from source; backend on Render |
 | Billing | **DORMANT** — `REACT_APP_BILLING_LIVE` unset (Model D built, gated) |
@@ -656,6 +656,91 @@ Also verified in the same probe and already correct: all **11 service-worker
 precache entries resolve 200** (the offline shell is intact), and hostv2 is
 live and serving at `/hostv2/`.
 
+### GOLD-09 and two thirds of GOLD-10 closed — the money path finally has a browser
+
+The owner's read was right: scenario coverage was incomplete. Measured against
+`docs/architecture/current-state/GOLD_E2E_ACCEPTANCE_MATRIX.md`, which scores
+ten end-to-end scenarios, and the worst open row was the one under the money.
+
+🔴 **GOLD-09: the pass entitlement had ZERO browser coverage.** A grep across
+all 133 specs for `passGate|event_passes|passPurchased|stripe` returned one
+hit, a negative control in the demo spec asserting a demo id is NOT a
+purchase. Stage-9 precondition #4 is a live-keys Stripe purchase: the money
+path was about to be switched on with no browser having walked it.
+
+**Why it survived two green unit suites, and this is the part worth keeping.**
+`passGate.js` answers "allowed" at every gate while `isBillingLive()` is false,
+and that needs BOTH a truthy API base and `REACT_APP_BILLING_LIVE === '1'`.
+The shared e2e bundle carries neither. Driven against it, the pass sheet reads
+**"fully unlocked right now"** — a spec written there passes having executed
+none of the entitlement path. The unit suites drive the MODULES; nothing drove
+the SHELL. So: its own bundle (`.env.passgate`, port 5266) and a premise test
+that goes red if that bundle ever loses the switch.
+
+Seven tests. The race is the reason it exists — Stripe redirects the browser
+and POSTs the webhook independently, so a host who just paid can land with the
+blob claiming a pass and the row not written. **Red-proofed rather than
+observed:** claim present with answers F,F,T gives 3 asks and ends unlocked;
+claim removed with the same answers gives 1 ask and ends locked. Remove the
+thing under test and it fails.
+
+**GOLD-10: two of three closed, and the third is NOT claimed.** Write failure
+and invalid route now have guards; producer failure does not and is written
+down as still open. The write is the one that matters: HostShellV2's own
+comment says quota-exceeded is realistic rather than theoretical because a
+patch carries photos, and "swallowed, the host keeps editing an event that is
+no longer being saved and finds out when they reopen it." Measured on a real
+boot with `setItem` throwing for `ngw-hostv2-patch-*` only: **2 failed
+attempts, exactly 1 notice**, naming cause and remedy. The dedupe is asserted
+separately because it is the regression-prone half.
+
+⚠️ **An instrument that lies is worse than no instrument.** The save-failure
+toast auto-dismisses AND arrives inside a re-rendered subtree. Sampling at the
+end found nothing; a MutationObserver on `addedNodes` also found nothing. Both
+were tried here and both reported a clean run against a shell that was warning
+correctly — i.e. both would have recorded the opposite of the truth. An 80ms
+poll across the run is what sees it.
+
+**Two bugs of mine on the way, both recorded at their lines.** The catch-all
+Playwright route was registered AFTER the specific stub, so it swallowed every
+`/api/stripe/pass` call and the suite reported zero asks — reading exactly like
+"the shell never asked". That is the fifty-ninth entry's own trap, quoted
+earlier in this same session and still written backwards. And the first
+control arm only counted writes when it was also throwing them, so it asserted
+"nothing happened" instead of "writes happened and the shell stayed quiet".
+
+### GOLD-06 closed, and it closed GOLD-10's last third with it
+
+Weather IS a producer, so "the weather surface tells the truth" and "a
+producer failure is handled honestly" turned out to be one contract read from
+two sides. GOLD-06 is the row the Sprint 0 verdict cites as the reason BOTH
+its verdicts were scoped, and it had no browser guard.
+
+The rule under test is the module's own: *"a configured app shows live weather
+or nothing — a fabricated fallback could contradict the real sky"*, and the
+catch that swallows a provider failure says *"stay quiet — no forecast beats a
+wrong one."* The failure that prevents is concrete: an app wired to a real
+forecast, provider down, quietly showing a SAMPLE the host reads as the real
+sky, who then plans a 30-person outdoor party against invented rain.
+
+**No new bundle.** `isWeatherConfigured()` is
+`Boolean(REACT_APP_OPENWEATHER_KEY || REACT_APP_API_BASE_URL)`, so 5233 is the
+unconfigured arm and GOLD-09's passgate bundle on 5266 is the configured one.
+Same event, same fixture, same boot; configuration is the only variable.
+
+| Arm | Provider called | Sample label |
+|---|---|---|
+| Unconfigured | **never** | **shown, and labeled** |
+| Configured + 500 | **yes** (`geocode`) | **absent** |
+
+⚠️ **The provider-call assertion is the load-bearing one, and the first run
+proved why.** The venue NAME is `ev.venue`, not `ev.venueName`
+(`venueFor.js:39`). With the wrong key `isLikelyOutdoor` is false, the whole
+effect returns early, and the spec read CLEAN ON BOTH ARMS — a false pass on
+both sides of a differential at once, which is the worst outcome a test like
+this can have. Counting the calls makes that impossible: no calls means the
+path never ran, and the silence proves nothing.
+
 ### Path to Production, re-read 2026-11-02
 
 Stage 9's six preconditions, from
@@ -672,10 +757,289 @@ between this product and a paying host.**
 | 5 | Three non-founder hosts asked for money | owner |
 | 6 | Stage-9 board sitting | never convened |
 
+### A save never silently overwrites — census §5's three-month-old NOT MET, closed on the disclosure half
+
+LIVE_MODE_CENSUS §5 (2026-08-08) scored "concurrent edits resolve without
+silently discarding one" as NOT MET: every cloud write was a blind
+`upsert(..., { onConflict: 'id' })`, last-write-wins on the whole blob, and
+"nothing surfaces that." It sat on no stage-9 list. The cloud→local half was
+already honest (hydrate adopts a newer copy and says so, never over a dirty
+local one); this is the local→cloud half.
+
+**Mechanism** (`src/lib/api/events.js`): `loadEvents` carries the row's
+`updated_at` as `_cloudUpdatedAt` (provenance, same convention as `_sample`;
+stripped from `data` on every write so the blob never carries a stale copy of
+its own column). `saveEvent` with a known version is a conditional UPDATE —
+`.lte('updated_at', version)` — and zero rows matched answers
+`{ ok:false, queued:false, reason:'conflict', loadedAt, serverUpdatedAt }`.
+Not thrown, not queued (retrying a refused overwrite refuses again), the
+edit already in the local store. `syncState` gained `SYNC_STATUS.CONFLICT`
+("Changed somewhere else — your edit is on this device only"), which outranks
+an older success stamp and is cleared by the next real success. A queued
+write meeting a newer row leaves the queue by name (`error:'conflict'`).
+
+**🔴 THE FIRST CUT MADE A DEVICE REFUSE ITSELF, and it was measured, not
+guessed.** hostv2's `patchEvent` saves on every keystroke with no debounce, so
+the second write started before the first write's new stamp was back, carried
+the loaded stamp, met a row its OWN first write had moved, and came back
+`conflict` — the host would have been told "changed somewhere else" by their
+own typing. Two fixes, both in the lib so both shells get them: writes to one
+id are CHAINED (second starts after the first settles), and the newest version
+this device produced or saw is kept per id in `ngw-cache-stamps` and used when
+newer than the event's own stamp — which is what makes the frozen CRA shell
+(ignores every save result; adopts no stamp) safe too, and survives a reload.
+Red-proofed one guard at a time: chain removed → the two-in-flight test red;
+`.lte` made always-true → the three refusal tests red; stamp record removed →
+the CRA-pattern test red. (The first `.lte` red-proof DELETED the clause and
+got a red that was the mock talking — it refuses any write without an `.lte`
+— so it was re-run as always-true, which is the proof that counts.)
+
+**CRA, deliberately touched.** `src/App.js` is frozen, but "security/data-loss
+fixes" are the carve-out and this is one: its debounced saver `Promise.all`ed
+`saveEvent` and reported "saved" on resolve — which, with a refusal that
+resolves instead of throwing, would have shown ● Saved over an edit the cloud
+had refused. It now reads the results: any `reason:'conflict'` → `sync_failed`
++ a one-line toast naming where the edit is. One `.then` body; nothing else in
+the file moved.
+
+**Where it reaches runtime UI.** hostv2: `noteSaveResult` adopts the returned
+stamp into the custom copy and toasts the refusal once per session; hydrate
+compares CONTENT (stamp stripped) so a device's own save is never announced as
+"updated from your account", and adopts a newer stamp silently when content
+matches. CRA: the banner + toast above.
+
+**What it is not.** Not a merge — the losing edit is kept and named, never
+folded in. Not browser-driven: no e2e drives two real sessions against one
+row; the 11 jest tests use a mock of the exact chains, and the version
+comparison they exercise is the real one. `migrateLocalToCloud` stays blind
+(a migration has nothing to compare). Census §5 and `LIVE_MODE_READINESS.md:56`
+both carry the re-measurement; the checkbox stays unchecked until a browser
+proves it.
+
+### The gate artifact and the board, refreshed — and the stage 1–5 artifacts that were never made
+
+Asked "where are the rest of the artifacts we created for the path to prod for
+this repo." The honest answer, from the artifact ledger below and the private
+workspace's pulled record: **there is exactly one per-repo path artifact**
+(The First Recorded Gate, covering stages 6–8 as recorded 2026-08-29 → 09-03),
+one portfolio board (37 repos, with a dated event-planner section), and the
+2026-08-21 audits in `docs/audits/`. **Stages 1–5 never had an artifact** —
+they were ruled 2026-09-03 as rows in the owner's local `skill-index` server,
+which a cloud session cannot reach, so the board snapshot is their only
+cloud-side trace. Stage 9 has no record of any status anywhere. Both pages had
+been stale since 2026-09-03 / 2026-10-13 respectively.
+
+**Refreshed 2026-11-02, nothing ruled.** The gate artifact (Version 21): a
+re-measurement panel dated 2026-11-02 under the three ruling blocks, per-stage
+re-checks closing nothing that only the owner can close, three new corrections
+(the backend tier read off `render.yaml`; the chromium pin gap that
+`PW_CHROMIUM` already answered; the board's "Sentry is live" sentence, which
+was presence and not delivery), the load-bearing table re-measured, and one
+CSS line — `code{overflow-wrap:anywhere}` — because the page had scrolled
+sideways at 390px (462px of content) since its first publish, measured on HEAD
+before the edit. `pathArtifact.spec.mjs` 6/6 on the edited file. The board
+(Version 3): a second dated event-planner card above the 10-13 one, the grid
+untouched. The workspace record carries a Version 3 addendum. `data-recorded`
+stays 2026-09-03: the last ruling, not the last look.
+
+### 🔴 Six public tables with RLS OFF — found by writing the owner's attestation query, fixed in repo, NOT yet on the live project
+
+Writing the three owner attestations into `docs/RUNBOOK.md` (§ Owner
+attestations: RLS applied, backups + restore drill, login rate limits, plus the
+two telemetry arrivals — each as a query or page, with what a pass and a fail
+look like and where to write the result) meant writing the RLS query first and
+predicting its output from the migrations. The prediction had six `false`
+rows: `supabase/migrations/012_research_execution.sql` creates
+`research_campaign_runs`, `research_queue_jobs`, `research_findings`,
+`research_evidence`, `research_observations` and `provider_run_logs` with no
+`enable row level security`, on the comment "all reads/writes go through
+FastAPI with require_admin — no RLS needed." That reasoning sees one door.
+PostgREST is the other: every `public` table is served at `/rest/v1/<table>`,
+and Supabase's default privileges grant `anon`/`authenticated` on it, so with
+RLS off the publishable anon key — in the live bundle by design — can read
+and WRITE those six. Enqueue research jobs (provider spend), rewrite findings,
+read every campaign blueprint.
+
+**Why nobody saw it:** the checklist's "DONE — RLS verified in writing" row
+named the tables it checked and never claimed "every table." Nobody asked the
+complement until a query that lists every table was being written. The
+attestation runbook earned its keep before the owner ran it.
+
+**Fix:** `018_research_tables_rls.sql` — RLS on, no policies, the exact shape
+`admin_error_log` and `kas_records` already run on with the backend inserting
+through its owning role (non-forced RLS does not apply to the owner), so the
+research router is untouched. Nothing client-side reads these tables (zero
+hits in `src/`, `hostv2/src/`). **Gate:**
+`src/lib/__tests__/everyPublicTableHasRls.test.js` reads both migration
+folders and fails by table name on any `create table` without a matching
+enable; red-proofed by removing 018 (7 of 10 red, all six named). The backend
+folder passes too — every legacy table already had RLS.
+
+**What is NOT done, and only a merge does it:** the Supabase GitHub
+integration applies `supabase/migrations` from `main`. Until 018 is merged the
+live project is presumed exposed. **Could not be probed from here:** the public
+Pages bundle is the demo profile and carries no Supabase URL or anon key
+(checked by fetching `main.cbde5e5e.js`, 5.67 MB, and grepping it), and the
+owner's project URL is not in this repo. Check A's query in the runbook is how
+the owner confirms it closed. Recorded in
+`docs/audits/2026-08-21_SECURITY_TRACK_CHECKLIST.md` as a new stage-5 row.
+
+### Precondition #1's other half, drafted: privacy and refund policies in `docs/legal/`
+
+Stage-9 precondition #1 is "domain + privacy/refund policies," and the domain
+is the owner's; the policies were not, so they are drafted. `docs/legal/`
+holds `PRIVACY_POLICY_DRAFT.md`, `REFUND_POLICY_DRAFT.md` and a README with
+the placeholders and the wiring points. **Both are DRAFT, unreviewed, and not
+linked from the product** — a policy that ships before it is ruled is a
+promise nobody decided to make.
+
+They are written from the code, with the citing file in margin notes to be
+stripped at publication, because an attorney reviewing a template that does
+not match the system reviews the wrong thing. The things they therefore say
+that a template would not: the AI routes send event context to Anthropic /
+OpenAI under server-owned prompts; the RSVP purge helper exists and **is not
+scheduled** (so the draft says "we intend to," with the 90-day window, not
+"we do"); there is no self-serve account deletion (so it is a request to the
+support address, naming the systems it touches); PostHog runs with
+autocapture and recording off and identifies a hashed studio label; Sentry
+runs `sendDefaultPii:false`; guests' dietary fields are sensitive by the
+migration's own comment and go only to the host, never into the vendor
+whitelist. Nothing is claimed that no code path makes true.
+
+The refund rule is the one thing the draft does not decide: three options,
+one recommended (14 days, unconditional if no brief has been shared past the
+first — matches how the pass is sold and costs less than one disputed
+chargeback), with the reasoning for each. Five `[OWNER: …]` placeholders,
+listed in the README; the support email is also D-2's own precondition #5.
+
+### The conflict path, driven in a browser — and the lie the red-proof exposed
+
+`hostv2/e2e/aRefusedSaveIsNotCalledSaved.spec.mjs` (2 tests, desktop-only,
+on crossDeviceSync's 5244 fake-cloud harness). A real tap — the Guest list
+sheet's "By list" toggle, one `patchEvent` — goes out as a conditional UPDATE
+with `updated_at=lte.<version>` on the wire (asserted off the request URL, not
+inferred), the stub answers zero rows and a newer `updated_at`, and the shell
+must: toast the refusal in words that name where the edit is, keep the edit
+locally, queue nothing, and show "Changed somewhere else — your edit is on
+this device only" in the settings row. The control runs the same tap with the
+row unmoved: silent, "Synced", and the new version adopted into the local
+copy. **Red-proofed by removing the shell's conflict branch and rebuilding the
+bundle:** test 1 went red with the toasts it saw —
+*"Saved on this device — it will reach your account when the connection is
+back."* That is the sentence the shell says for a refused write when the
+branch is absent, and it is false in both halves: the edit will not reach the
+account, and the connection was never the problem. The jest tests could not
+have seen it; only the shell says it.
+
+`activationFunnel.spec.mjs` gained the **`event_created` gate** the stage-7
+card has carried as open since 2026-08-29 ("no create door reachable from a
+seeded boot"). The door exists now; a clean device, Start my event, a typed
+seed, Put my plan together → exactly one `event_created`, `is_first: true`, a
+string `event_type`, and the town / setting / count typed never in the payload.
+The first cut asserted the words "crab feast" did not leak and went red on
+`event_type: "Crab Feast"` — the playbook TYPE is a label, not the host's
+words; the assertion now names what would actually be a leak.
+
+🔴 **Three harness traps, each paid for once this session.** (1) Tapping the
+Guests tile opens a SHEET over the plan card, so locators that match the
+card's chips resolve and then time out behind the dialog — scope to
+`.sheet[role=dialog]`. (2) A scratch Playwright config outside `hostv2/`
+cannot resolve `@playwright/test` (import it by absolute path) and needs the
+real `baseURL` including `/ngw-event-planner/hostv2/` — the wrong base made
+eight pre-existing funnel tests time out at once, which is how you tell a
+harness fault from a product one. (3) `pkill -f "vite preview --outDir
+dist-synctest"` inside a `bash -c` string **matches and kills its own shell**
+(exit 144) — and that run had already removed the conflict branch from
+`HostShellV2.jsx` for the red-proof, so the source sat modified until
+restored from the backup. Bracket one character (`dist-synctes[t]`) so the
+pattern cannot match itself; the red-proof was re-run as a script file and the
+restore diffed identical.
+
+### The gate artifact was built against a spine that had moved — retrofitted, and one of its claims had no record behind it
+
+The owner's read: "the current version of path to prod covers more of what is
+covered in first recorded gate." Measured, and right. The page was built
+8/29–9/3; the spine (`ngw-os/docs/path-to-production.md`, amended through
+10/17) and the command's Step 6e have since required: the cross-cutting
+tracks' rows folded into their stages (Security at 2/3/4/5/6/7, Marketing at
+every stage), the 9/6–9/7 amendments (leaders before iterating, the builder
+never scores its own work, env vars as declared seams, how the target
+deploys, "wired" read from code), Axis 1 surfaces with reach vs facing,
+required-skill rows from the Command Center's `REQUIRED_SKILLS`, four item
+states, and a per-stage ratio. **Retrofitted** by
+`scripts/retrofit-gate-artifact.py` (kept, refuses a second run): 153 boxes —
+**87 handled / 64 owed / 2 unreached** — where the page had 37 boxes and 62
+static marks. Ratios now say the honest thing per card: stage 5 is 6 of 15,
+stage 9 is 1 of 7.
+
+🔴 **The page said stages 1–5 were "Ruled passed … by Todd Willis, 3 September
+2026." The gate record does not.** Read off the Command Center cache
+(`skill-index` `cache/ptp-gates.json`), stages **1, 2, 3, 4, 5 and 8 carry no
+`ruledBy`**; only 6 (owner, 8/29) and 7 (standing board delegation, 9/2) name
+a ruler. Kept visible as a correction; each of those stages now carries an
+owed "confirm or re-rule" row. **Owner item.**
+
+Two rows a session could close, closed with evidence: stage 4's "no guard
+exists" is superseded by `verify:all` / `verify:fast` (10 of 10). New owed
+rows that are real findings, not paperwork: the matrix uses resized
+viewports, never device emulation (stage 4, Axis 1); the admin console is
+`facing: internal` but publicly reachable (the reach/facing mismatch the spine
+calls the finding); `clearance` was never run on the name (`brand.js` says so
+itself); no re-score board has looked at today's builds.
+
+**The stamp is now a script's to assert:**
+`scripts/check-artifact-stamp.mjs` (page `data-recorded` == newest record
+date in `docs/artifact/the-first-recorded-gate.gate-record.json`; a dated
+`| Watch |` row exists; four states intact), run in jest by
+`theGateArtifactStampIsChecked.test.js`, which also proves all three failure
+modes. `pathArtifact.spec.mjs` moved to the four-state model and gained a
+first-load test — red-proofed by unchecking stage 2's handled boxes ("stage 2
+says Passed with nothing handled"). The record copy is a snapshot from
+`skill-index@4d2853b` and is refreshed by hand when a gate is ruled — it does
+not read the live server.
+
+### The shipped dependency tree had a critical in it — `s8-deps` re-run, and it was not a formality
+
+Closing the retrofit's owed `s8-deps` row meant actually running the audit the
+stage-5 checklist last ran on 2026-08-21. `npm audit --omit=dev` in `hostv2/`:
+**1 critical — `dompurify@3.4.14`**, transitive via `posthog-js@1.425.1`,
+five advisories (DOM XSS through IN_PLACE / hook paths, all `<=3.4.16`).
+**Exposure measured, not assumed: low** — DOMPurify is in none of the built
+`hostv2/dist/assets/*.js` (tree-shaken) and no app code calls it. Fixed anyway,
+because "0 vulnerabilities in the shipped bundle" is a claim the checklist
+makes: `"overrides": { "dompurify": "3.4.17" }` in both `package.json` files,
+lockfiles regenerated by `npm install` → hostv2 **0 vulnerabilities**. The CRA
+root went from 51 to **106** findings (3 critical, all react-scripts dev
+server; `xlsx` as before; `posthog-js@1.379` moderate via OpenTelemetry) —
+recorded, same frozen-shell disposition. The lesson the row already encodes: a
+dependency tree is not a fact that stays true.
+
+### 🔴 GOLD-06's unconfigured arm stood on a stale comment — CI caught it on the first run
+
+PR #94's first full CI run went red on exactly two tests, both in
+`noForecastBeatsAWrongOne.spec.mjs`: the "unconfigured" weather arm called
+`geocode` and showed no sample. It pointed at the shared 5233 bundle because
+`playwright.config.mjs` says "the ordinary e2e build bakes NO
+REACT_APP_API_BASE_URL (measured 2026-10-18)." **That stopped being true on
+2026-10-19**, when `e2e:build` began baking `https://e2e-mock.invalid`. It
+passed locally only because the `dist/` on disk was not an `e2e:build`.
+Re-measured from the BUILT bundles: only `dist-synctest` (5244) bakes no API
+base, so it is now the unconfigured arm; 3/3 against the three bundles exactly
+as CI builds them. The stale config comment is annotated, not deleted. The
+producer-call assertion did its job: it is what made a wrong premise fail
+loudly instead of passing on both sides.
+
+**Trap, second time this session, new shape:** `pkill -f "vite previe[w]"` is
+self-safe only if NOTHING ELSE on the same command line reads `vite preview`.
+A loop that also starts `vite preview` matches its own shell and exits 144.
+Kill in one call, serve from a script file in the next.
+
 ### Open at the close
 
-- **45 commits unmerged, no PR.** Not opened because the owner has not asked;
-  the standing instruction is not to open one unprompted.
+- **Six stages have no ruler in the gate record** (1–5, 8). Confirm or re-rule.
+- **The policy drafts await the owner's rule** (refund option A/B/C, five placeholders, attorney review) before any link ships.
+- **018 is unmerged.** The live project is presumed exposed on six server-only tables until it lands on `main`. Opening the PR needs the owner's ask.
+- ~~**45 commits unmerged, no PR.**~~ **PR #93 merged `2ec704e`, deploy live** — see the Branch row.
 - `UX_01` / `UX_02` carry three lines that contradict the ruled direction.
 - ~~The matrix has not run in three sessions.~~ **RUN AND GREEN** — see the e2e row. What stays open is that it dirties six tracked baseline PNGs every time.
 - The design artifact is published at the owner's URL and is **parked**, not
@@ -9324,22 +9688,34 @@ source on 2026-10-13.
 | Feeding The Engine | https://claude.ai/artifact/4PC3GqwysQA9ARdEuwc7vb | `docs/artifact/feeding-the-engine.html` | in sync (+552) |
 | One Fact, Two Owners | https://claude.ai/artifact/2LgNwhCu1oFYtRs73uYcm4 | `docs/artifact/one-fact-two-owners.html` | in sync (+552). **Was in no repo doc** |
 | The Unfed Engine | https://claude.ai/artifact/U1uoJKKbTdtbpaoaYoduKZ | `docs/artifact/the-unfed-engine.html` | in sync (+552). **Was in no repo doc** |
-| The First Recorded Gate | https://claude.ai/artifact/GhAvQW5ogLhg1pyzcoGQZ8 | `docs/artifact/the-first-recorded-gate.html` | content in sync; see the note below before touching this one |
+| The First Recorded Gate | https://claude.ai/artifact/GhAvQW5ogLhg1pyzcoGQZ8 | `docs/artifact/the-first-recorded-gate.html` | content in sync; see the note below before touching this one. **Re-measured and republished 2026-11-02** (sixtieth entry): a dated re-measurement panel, per-stage re-checks, three corrections, the load-bearing table, and one CSS line (`code{overflow-wrap:anywhere}` — the page had scrolled sideways at 390px since its first publish, 462px of content, measured on HEAD before the edit). No chip changed; no gate was ruled. `pathArtifact.spec.mjs` 6/6 on the edited file, both viewports. **Version 22, same day:** `s7-created` closed (the `event_created` gate landed) and the funnel row reads 5 of 5 — the one checkbox a session could close, closed in the same edit that records it. **Version 23 → 24, same day: Step 6e retrofit to the current spine** (`ngw-os@a56412a`) — 153 boxes (87 handled checked+disabled, 64 owed, 2 unreached), a ratio on every stage card, a Surfaces panel, and the `ruledBy`-absent correction; stamp asserted by `scripts/check-artifact-stamp.mjs` |
 | Activation Ledger | https://claude.ai/artifact/WDShtmfa9eGAnzBP36MHp5 | `docs/artifact/activation-ledger.html` **(ported 2026-10-13)** | in sync (+552). Was artifact-only with no repo trace |
 | **Santa Fe 80th Spec** | https://claude.ai/artifact/GXhbdC76hZz8DZPrMrzikz | **none — artifact only**, but CITED at `HANDOFF.md` §"Still open on the Santa Fe 80th" | n/a. **Live, with open items**, one of them owed by Todd (§3 timeline needs a destination lead-time basis; §1 needs correcting; §4 ships while `kitchen` is null) |
 | **Backyard BBQ Planner** | https://claude.ai/artifact/2Yn3oTqguwrm58A5PsFc79 | `docs/artifact/backyard-bbq-planner.html` **(ported 2026-10-13)** | in sync (**+370**, the older wrapper — see the note below). ⚠️ Do not grep for it: "Backyard BBQ" appears all over the engine as an event TYPE (a playbook name), which is not a reference to this page |
-| Path to Production Board | https://claude.ai/artifact/MHtgHGn75cgKchSjtPDvKV | **none** in this repo; pulled record in the PRIVATE workspace repo at `docs/artifacts-pulled/2026-09-30_PATH_TO_PRODUCTION_GATE_RECORD.md` | Updated to Version 2 on 2026-10-13 with a dated event-planner addendum. Its gate grid was deliberately NOT touched — no gate has been ruled since 2026-09-30 |
+| Path to Production Board | https://claude.ai/artifact/MHtgHGn75cgKchSjtPDvKV | **none** in this repo; pulled record in the PRIVATE workspace repo at `docs/artifacts-pulled/2026-09-30_PATH_TO_PRODUCTION_GATE_RECORD.md` | **Version 3, 2026-11-02:** a second dated event-planner card above the 2026-10-13 one (merge + deploy, GOLD closures + matrix, sync-conflict disclosure, the six stage-9 preconditions with owners) and one correction to the 10-13 card's "Sentry is live" sentence (presence, not delivery). Grid still untouched — no gate has been ruled since 2026-09-30, stage 9 has no record. Before that: Version 2 on 2026-10-13 with the first dated addendum |
 
 ⚠️ **`the-first-recorded-gate.html` is NOT a clean source, and that is on
-purpose.** It carries ~13.8 KB before its own `<title>`: a
-`path-artifact stamp` div and the platform's published-page runtime
-(`window.__FRAME_PREAMBLE`, the `frame-runtime` script, a hashed asset
-manifest). It looks like pollution and it is load-bearing —
-`hostv2/e2e/pathArtifact.spec.mjs` loads this file from disk as a `file://`
-URL and drives its "hide completed" toggle, so the page has to behave exactly
-as published. **Do not strip the preamble to tidy it.** Its only content
-difference from the live page is one date string ("Recorded 2026-09-03" live vs
-"Recorded September 3, 2026" in the file).
+purpose.** It is the `path-artifact stamp` div (2 lines, `data-recorded`
+= the last RULING, 2026-09-03) followed by the **published page as fetched**,
+wrapper included — `hostv2/e2e/pathArtifact.spec.mjs` loads this file from
+disk as a `file://` URL and drives its "hide completed" toggle, so the page has
+to behave exactly as published. **Do not strip the wrapper to tidy it.**
+**Re-synced 2026-11-02 (Version 21):** the file is now stamp + the standard
+552-byte publish wrapper + content, identical to what was published except the
+one newline the wrapper adds before `</body>` (proved by diffing the stripped
+published copy against the fragment sent: that newline was the whole diff); the
+~13.8 KB `frame-runtime` preamble the earlier copy carried is gone because the
+platform no longer serves it on a read, and the spec passes 6/6 on the synced
+file. To republish: strip the first 2 lines and the wrapper, publish the
+fragment to the URL, fetch the result back, and rebuild the file the same way.
+
+**The gate artifact's watch, recorded because `scripts/check-artifact-stamp.mjs`
+refuses to let the claim be absent** (path-artifact, 9/22: confirm it, never
+assume it). It is NOT armed, and saying so is the record:
+
+| Artifact | The First Recorded Gate |
+|---|---|
+| Watch | not registered 2026-11-02T07:20Z — every publish this session reported `mint_failed`; a republish or to-Claude comment from elsewhere will NOT wake a session. Re-read the live page (`action: "read"`) before every edit until this row says confirmed. |
 
 ### How a source in `docs/artifact/` relates to its published page
 

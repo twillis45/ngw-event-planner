@@ -16,7 +16,15 @@ jest.mock('../../supabaseClient', () => ({
     from: () => ({
       upsert: (row) => {
         mockCloud.upserts.push(row);
-        return Promise.resolve(mockCloud.failUpsertIds.has(row.id) ? { error: { message: 'cloud down' } } : { error: null });
+        // saveEvent now chains .select('updated_at') on the plain upsert so a
+        // first save can carry the row's new stamp home. The promise is also
+        // its own .select() so both `await upsert()` and `await upsert().select()`
+        // resolve to the same honest shape.
+        const out = Promise.resolve(mockCloud.failUpsertIds.has(row.id)
+          ? { error: { message: 'cloud down' } }
+          : { data: [{ updated_at: '2026-11-02T00:00:00.000Z' }], error: null });
+        out.select = () => out;
+        return out;
       },
       delete: () => ({ eq: () => ({ eq: () => Promise.resolve(mockCloud.failDeletes ? { error: { message: 'cloud down' } } : { error: null }) }) }),
       select: () => ({ eq: () => ({ order: () => Promise.resolve({ data: [], error: null }) }) }),
@@ -53,7 +61,7 @@ beforeEach(() => {
 describe('saveEvent honest result', () => {
   test('cloud success → { ok: true }, nothing queued', async () => {
     const res = await saveEvent({ id: 'e1', name: 'Crab Feast' });
-    expect(res).toEqual({ ok: true });
+    expect(res).toMatchObject({ ok: true });
     expect(getPendingCount()).toBe(0);
     expect(hasPendingEventWrite('e1')).toBe(false);
   });

@@ -54,6 +54,13 @@ product is ready to hold real data. That is what this list is for.
 
 - [ ] Create, read, update, delete verified against the production project end to end.
 - [ ] Concurrent edits from two sessions resolve without silently discarding one.
+  (2026-11-02: the "silently" half is met — a write against a row another session
+  changed is refused, kept locally and named, in both shells. Not "resolved": the losing
+  edit is not merged. Census §5 has the measurement; unchecked until a browser drives it
+  against two real sessions. Same day, later: the SHELL half is browser-driven on the
+  fake-cloud harness — `hostv2/e2e/aRefusedSaveIsNotCalledSaved.spec.mjs`, conditional
+  UPDATE on the wire, refusal told and shown, control silent — and red-proofed. What is
+  still not driven is two real sessions on a real project.)
 - [ ] Deletion behaviour defined: soft or hard, and recoverable or not — decided, not discovered.
 
 ## 6. Cloud-save truthfulness

@@ -62,3 +62,99 @@ boundaries) · `seatingAndRainBaseline` (9) · `theWalkerReachesThePlan` (2) ·
 **Run them with** `cd hostv2 && npm run e2e:build && npm run test:e2e` — not
 `npm run build`, which bakes no `REACT_APP_*` and costs 33 false failures. See
 Sprint 0.5 ledger row D5.
+
+---
+
+## RE-MEASURED 2026-11-02 (production-readiness pass)
+
+`hostv2/e2e/` is now **135** spec files. Two more rows move. The 2026-10-19
+block above stands unchanged.
+
+| ID | Then | Now | Evidence |
+|---|---|---|---|
+| **GOLD-09** | *"pass entitlement (Postgres) not in any e2e"* | **CLOSED.** Seven tests on their own bundle walk the shell's half of the money path: the ask fires on event open, the `isUserCreatedEvent` guard holds for samples, `held:true` unlocks, `held:false` locks, and the webhook/redirect race does not revoke a host who paid seconds ago. | `thePassSurvivesTheWebhookRace.spec.mjs` · `.env.passgate` · port 5266 |
+| **GOLD-10** | *"no spec for invalid route, producer failure, or write failure"* | **CLOSED, all three.** Write failure and invalid route in `aFailedSaveIsNotSilent`; producer failure in `noForecastBeatsAWrongOne`, which is the same assertion as the weather baseline read from the other side. | `aFailedSaveIsNotSilent.spec.mjs` · `noForecastBeatsAWrongOne.spec.mjs` |
+| **GOLD-06** | *"weather has no e2e"* — the row the Sprint 0 verdict cites as the reason both verdicts are scoped | **CLOSED.** The contract under test is the module's own: *"a configured app shows live weather or nothing — a fabricated fallback could contradict the real sky."* | `noForecastBeatsAWrongOne.spec.mjs` |
+
+### Why GOLD-09 survived two green unit suites, measured
+
+`passGate.js` answers "allowed" at every gate while `isBillingLive()` is
+false, and that predicate needs BOTH a truthy `REACT_APP_API_BASE_URL` and an
+explicit `REACT_APP_BILLING_LIVE === '1'`. The shared e2e bundle carries
+neither. Driven against it on 5233, the pass sheet reads **"fully unlocked
+right now"** — so a spec written there passes having executed none of the
+entitlement path. `passGate.test.js` and `passEntitlement.test.js` drive the
+MODULES; nothing drove the SHELL. Hence a harness bundle, and hence a premise
+test that fails if that bundle ever loses the switch.
+
+### The race, red-proofed
+
+A green test that cannot fail is worse than no test, so the central claim was
+differentially measured rather than observed once:
+
+| Scenario | Asks | Ends |
+|---|---|---|
+| blob claims a pass, server answers F, F, T | **3** (ladder ran) | **unlocked** |
+| claim REMOVED, same answers | **1** | **locked** |
+
+Remove the claim and the retry ladder does not run and the test goes red, so
+it measures the claim-driven retry rather than the happy path.
+
+### GOLD-10: what is closed and what is not
+
+**Write failure — closed.** `Storage.prototype.setItem` is made to throw
+`QuotaExceededError` for `ngw-hostv2-patch-*` only, which is what a full disk
+does to the key that carries photos. Measured on a real boot: **2 failed write
+attempts, exactly 1 notice**, naming both the cause and the remedy. The
+"told once" dedupe is asserted separately because it is the regression-prone
+half — the obvious fix to a silent failure is a toast in the catch, which on a
+full disk fires on every patch change and buries the surface it warns about.
+The control arm counts writes too, so silence there proves the shell wrote and
+stayed quiet rather than never writing at all.
+
+**Invalid route — closed.** A pointer to an event id that does not exist (a
+stale `ngw-hostv2-last-event`, or a link to an id this device never had) must
+not white-screen: no page error, real text, something actionable.
+
+**Producer failure — STILL OPEN.** Not attempted here and not claimed.
+`theNoSignalBannerTellsTheTruth`, `aRateIsNotFree` and `sheKnowsItIsOld` cover
+parts of it; a provider returning 5xx mid-plan does not have a guard.
+
+### An instrumentation note worth keeping
+
+The save-failure toast auto-dismisses, and it arrives inside a re-rendered
+subtree rather than as a direct added node. **Sampling at the end finds
+nothing, and a MutationObserver on `addedNodes` also finds nothing** — both
+were tried here and both reported a clean run against a shell that was in fact
+warning correctly. An 80ms poll across the whole run is what sees it. A
+failure-path spec that cannot see the evidence reports the opposite of the
+truth.
+
+### GOLD-06 and the producer third of GOLD-10, which turned out to be one contract
+
+Weather IS a producer, so "does the weather surface tell the truth" and "what
+happens when a producer fails" are the same question. The failure it prevents
+is specific: an app wired to a real forecast, whose provider is down, quietly
+showing a SAMPLE the host reads as the real sky — and then planning a
+30-person outdoor party against invented rain.
+
+**No new bundle was needed.** `isWeatherConfigured()` is
+`Boolean(REACT_APP_OPENWEATHER_KEY || REACT_APP_API_BASE_URL)`, so the shared
+e2e bundle (5233) is the UNCONFIGURED arm and the GOLD-09 passgate bundle
+(5266) is the CONFIGURED one. Same event, same fixture, same boot —
+configuration is the only variable, which is what makes these a differential
+rather than two anecdotes.
+
+| Arm | Provider called | Sample label |
+|---|---|---|
+| Unconfigured (5233) | **never** | **shown** — and it must say "Sample forecast" |
+| Configured, provider 500 (5266) | **yes** (`geocode`) | **absent** — it stays quiet |
+
+The provider-call assertion in the configured arm is not decoration. Without
+it, "no sample appeared" could equally mean the fixture never triggered
+weather at all — and that is not hypothetical: the venue NAME comes from
+`ev.venue`, not `ev.venueName` (`venueFor.js:39`), and the first run of this
+spec used the wrong key, which made `isLikelyOutdoor` false, returned the
+effect early, and read CLEAN ON BOTH ARMS AT ONCE. A false pass on both sides
+of a differential is the worst possible outcome for a test like this, and the
+call count is what makes it impossible.

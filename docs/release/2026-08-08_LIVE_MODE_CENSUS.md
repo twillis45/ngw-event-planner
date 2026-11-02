@@ -111,6 +111,22 @@ Expiry-degrades-to-prompt is **NEEDS PROJECT**.
   is likewise a whole-array replace (`customEventStore.js:152`). So the checklist's actual
   words -- "resolve without silently discarding one" -- are **NOT** met, but the gap is a
   disclosure and merge-granularity problem, not a missing mechanism.
+  **RE-MEASURED 2026-11-02: the disclosure half is now MET; granularity is unchanged.**
+  `loadEvents` carries the row's `updated_at` as `_cloudUpdatedAt`; `saveEvent` writes a
+  conditional UPDATE (`updated_at <= version this device knows`) and answers
+  `{ ok:false, queued:false, reason:'conflict' }` when the row moved on -- not written, not
+  queued, the edit kept locally, surfaced as `SYNC_STATUS.CONFLICT` and a one-time cue in
+  both shells (hostv2 `noteSaveResult`; CRA's debounced saver now reads results instead of
+  reporting "saved"). A device's own back-to-back writes are chained per id and judged
+  against the newest version it produced (persisted in `ngw-cache-stamps`), so it never
+  refuses itself -- measured as a false conflict on the first cut. Still last-write-wins
+  at whole-blob granularity on the side that wins; a losing edit is now kept and named,
+  not merged. Spec: `src/lib/api/__tests__/aSaveNeverSilentlyOverwrites.test.js` (11),
+  each guard red-proofed. The shell half is driven in a browser on the fake-cloud
+  harness (`hostv2/e2e/aRefusedSaveIsNotCalledSaved.spec.mjs`, 2 tests, red-proofed by
+  removing the shell's conflict branch — without it the shell says "it will reach your
+  account when the connection is back" for a refused write). Never driven against two
+  real sessions on a real project.
 - Deletion behaviour (soft/hard, recoverable) decided: **ABSENT** -- undecided by definition,
   since there is no delete on the live surface.
 

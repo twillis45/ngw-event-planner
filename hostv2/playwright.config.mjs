@@ -78,6 +78,33 @@ const VIEWPORT_INDEPENDENT = [
   // Four tests on text and stored state, two of them negative controls. The
   // question, its stated reason, and whether an answer sticks. No geometry.
   '**/weNowNeedToKnow.spec.mjs',
+  // ── THE PASS ENTITLEMENT (GOLD-09, 2026-11-02) ────────────────────────
+  // Belongs here on both counts. It asserts only TEXT and request counts —
+  // which sentence the pass sheet shows, and how many times the shell asked
+  // the server — and not one box. And it is expensive: two of its seven
+  // tests wait out a 2s + 4s retry ladder, so six more geometries would buy
+  // six identical results for six times that. It also addresses port 5266
+  // directly, so any project pointed at the shared preview would measure a
+  // bundle with billing dormant and pass without executing the path.
+  '**/thePassSurvivesTheWebhookRace.spec.mjs',
+  // ── FAILURE INJECTION (GOLD-10, 2026-11-02) ───────────────────────────
+  // Asserts only which sentence appeared and how many times, plus that an
+  // unknown event id does not white-screen. No geometry, and three of its
+  // four tests sit through a 9s boot-and-settle window, so six more
+  // viewports would buy six identical results for six times the wall clock.
+  '**/aFailedSaveIsNotSilent.spec.mjs',
+  // ── WEATHER HONESTY (GOLD-06 + GOLD-10, 2026-11-02) ───────────────────
+  // Asserts which sentence appeared and whether a provider was called. No
+  // geometry. It also addresses 5233 AND 5266 directly — it is a
+  // differential across two bundles — so any project pointed at one preview
+  // would measure half of it.
+  '**/noForecastBeatsAWrongOne.spec.mjs',
+  // ── A REFUSED SAVE IS NOT CALLED SAVED (2026-11-02) ────────────────────
+  // The shell half of the sync-conflict disclosure, on crossDeviceSync's
+  // 5244 harness. Asserts the wire (a conditional UPDATE), a toast, a
+  // settings-row label and localStorage — no geometry. Same reasoning as
+  // crossDeviceSync: six viewports would buy six identical results.
+  '**/aRefusedSaveIsNotCalledSaved.spec.mjs',
   // ── THE PEOPLE ATTENDANCE ZONE (redesign step 3, 2026-10-20) ───────────
   // Six tests on text and stored state, including a paired fixture that
   // differs by ONE field (guestCountSource) and a negative control proving
@@ -291,9 +318,39 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
+      // ── THE GOLD-09 PASS ENTITLEMENT HARNESS ─────────────────────────────
+      // Its own bundle, and the requirement is stricter than GOLD-07's.
+      // passGate.js answers "allowed" at EVERY gate while isBillingLive() is
+      // false, and that needs BOTH a truthy REACT_APP_API_BASE_URL and an
+      // explicit REACT_APP_BILLING_LIVE === '1'. The shared e2e bundle carries
+      // neither, so against it the refresh effect returns on its first line and
+      // a spec would pass having executed none of the entitlement path. That is
+      // how GOLD-09 stayed open while passGate.test.js and
+      // passEntitlement.test.js were both green: the unit suites drive the
+      // modules, and nothing drove the shell.
+      //
+      // NOT baked into the shared bundle, and this one is not just noisy:
+      // REACT_APP_BILLING_LIVE=1 is the live-money switch. It belongs to a
+      // throwaway harness whose API host cannot resolve, or to production
+      // after D-2's five preconditions — never to the suite every spec runs on.
+      //
+      // BUILDS FIRST, like the two harnesses below: dist-passgate is gitignored
+      // and no other command produces it, so without the build this serves a
+      // stale bundle or nothing at all.
+      command: 'npx vite build --mode passgate --outDir dist-passgate && E2E_BASE=1 npx vite preview --outDir dist-passgate --port 5266 --strictPort --host 127.0.0.1',
+      url: previewUrl(5266),
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
       // ── THE GOLD-07 RSVP CASCADE HARNESS ─────────────────────────────────
       // Its own bundle for the same reason the sync harness has one: it needs
-      // an env the shared bundle deliberately does not carry. The ordinary e2e
+      // an env the shared bundle deliberately does not carry. ⚠️ STALE SINCE
+      // 2026-10-19, kept for its reasoning: `e2e:build` now bakes
+      // REACT_APP_API_BASE_URL=https://e2e-mock.invalid, so the shared bundle
+      // IS api-configured (re-measured from dist/ 2026-11-02; trusting this
+      // sentence put a wrong arm in noForecastBeatsAWrongOne). Of the harness
+      // bundles only dist-synctest bakes no API base. As written on 10-18: the ordinary e2e
       // build bakes NO REACT_APP_API_BASE_URL (measured 2026-10-18 — the built
       // index chunk's whole env object is `{NODE_ENV:"production"}`), so
       // isRsvpApiConfigured() is false and the entire backend leg of the RSVP

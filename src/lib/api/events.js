@@ -72,6 +72,107 @@ export function clearPendingEventWrite(eventId) {
   if (next.length !== q.length) setPending(next);
 }
 
+// ─── A SAVE NEVER SILENTLY OVERWRITES (2026-11-02) ───────────────────────────
+// LIVE_MODE_CENSUS §5 recorded this: every cloud write was a blind
+// `upsert(..., { onConflict: 'id' })` — last-write-wins on the whole blob —
+// which "silently discards the losing side's concurrent edits and nothing
+// surfaces that." UX_08: never silently overwrite. The cloud->local direction
+// was already honest (hydrate adopts a newer cloud copy and SAYS so, and never
+// over a dirty local one); this is the local->cloud half.
+//
+// Mechanism: when the event carries the version it was loaded at, the write
+// is a conditional UPDATE that lands only if the row is still at that version
+// (`updated_at <= loadedAt`; the trigger bumps updated_at on every UPDATE, so
+// any newer write moves it past). Zero rows matched means the row moved on —
+// a newer write, or a deletion — and the caller gets `reason: 'conflict'`
+// instead of a lie. The host's edit is already in the local store (saveEvent
+// writes it first, unconditionally), so nothing is lost on either side.
+//
+// Returned `updatedAt` is the row's NEW stamp, so the caller can refresh the
+// local copy's `_cloudUpdatedAt`.
+//
+// THE DEVICE'S OWN WRITES ARE NOT A CONFLICT. Two things would otherwise make
+// a device refuse ITSELF, and the first was measured on the first cut of this:
+//   1. Back-to-back edits. hostv2 saves on every patch with no debounce, so a
+//      second keystroke can start before the first write's new stamp is back;
+//      both carry the loaded stamp, the first lands and moves the row, and the
+//      second reads as "changed somewhere else". So writes to one id are
+//      CHAINED — the second starts after the first settles.
+//   2. A caller that never adopts the returned stamp (the frozen CRA shell
+//      ignores save results), or a reload before it could. So the newest
+//      version this device produced or saw is kept HERE, per id, persisted,
+//      and the comparison uses the newer of the event's stamp and that record.
+//      A write only has to beat what this device has NOT seen — which is the
+//      whole point.
+//
+// No version carried (created here, never loaded from the cloud, nothing on
+// record) → the plain upsert, because there is no version to compare and an
+// insert cannot conflict with anything this device knows about.
+const STAMPS_KEY = 'ngw-cache-stamps';   // { [eventId]: updated_at } newest this device produced or saw
+function readStamps() {
+  try { return JSON.parse(localStorage.getItem(STAMPS_KEY) || '{}') || {}; } catch { return {}; }
+}
+/** True when `a` is a later version stamp than `b` (ISO/Postgres timestamps). */
+function newerStamp(a, b) {
+  if (!a) return false;
+  if (!b) return true;
+  const ta = Date.parse(a), tb = Date.parse(b);
+  return Number.isFinite(ta) && Number.isFinite(tb) ? ta > tb : a > b;
+}
+function noteStamp(id, stamp) {
+  if (!id || !stamp) return;
+  const all = readStamps();
+  if (newerStamp(stamp, all[id])) { all[id] = stamp; try { localStorage.setItem(STAMPS_KEY, JSON.stringify(all)); } catch {} }
+}
+function forgetStamp(id) {
+  const all = readStamps();
+  if (id in all) { delete all[id]; try { localStorage.setItem(STAMPS_KEY, JSON.stringify(all)); } catch {} }
+}
+/** The version this device should write against: its copy's stamp or the newest on record, whichever is later. */
+export function knownVersion(event) {
+  const own = event && event.id ? readStamps()[event.id] : undefined;
+  const carried = event && event._cloudUpdatedAt;
+  return newerStamp(own, carried) ? own : carried;
+}
+
+const inFlight = new Map();   // eventId → the write currently running for it
+function writeGuarded(sid, event) {
+  const id = event && event.id;
+  const prev = inFlight.get(id) || Promise.resolve();
+  const run = prev.catch(() => {}).then(() => writeGuardedNow(sid, event));
+  inFlight.set(id, run);
+  run.then(() => { if (inFlight.get(id) === run) inFlight.delete(id); }, () => { if (inFlight.get(id) === run) inFlight.delete(id); });
+  return run;
+}
+
+async function writeGuardedNow(sid, event) {
+  const { _cloudUpdatedAt: _carried, ...data } = event;
+  const loadedAt = knownVersion(event);
+  if (loadedAt) {
+    const { data: rows, error } = await supabase
+      .from('events')
+      .update({ data })
+      .eq('id', event.id).eq('studio_id', sid)
+      .lte('updated_at', loadedAt)
+      .select('id, updated_at');
+    if (error) throw error;
+    if (rows && rows.length) { noteStamp(event.id, rows[0].updated_at); return { ok: true, updatedAt: rows[0].updated_at }; }
+    // Zero rows: newer write, or gone. One cheap read tells the host which.
+    const { data: cur, error: e2 } = await supabase
+      .from('events').select('updated_at').eq('id', event.id).eq('studio_id', sid).maybeSingle();
+    if (e2) throw e2;
+    return { ok: false, queued: false, reason: 'conflict', loadedAt, serverUpdatedAt: cur ? cur.updated_at : null };
+  }
+  const { data: rows, error } = await supabase
+    .from('events')
+    .upsert({ id: event.id, studio_id: sid, data }, { onConflict: 'id' })
+    .select('updated_at');
+  if (error) throw error;
+  const updatedAt = rows && rows[0] ? rows[0].updated_at : undefined;
+  noteStamp(event.id, updatedAt);
+  return { ok: true, updatedAt };
+}
+
 // ─── Public API (signatures unchanged) ─────────────────────────────────────────
 
 /** Load all events for the current studio. Falls back to local cache. */
@@ -88,7 +189,14 @@ export async function loadEvents() {
       .eq('studio_id', sid)
       .order('updated_at', { ascending: false });
     if (error) throw error;
-    const events = (data || []).map((row) => ({ ...row.data, id: row.id }));
+    // `_cloudUpdatedAt` is the row's `updated_at` COLUMN, never the blob — the
+    // version this device loaded, carried as provenance (same convention as
+    // `_sample`). saveEvent writes conditionally against it, so a newer write
+    // from another device is refused and disclosed instead of silently
+    // overwritten. Stripped from `data` on every write, so the blob never
+    // carries a stale copy of its own column.
+    const events = (data || []).map((row) => ({ ...row.data, id: row.id, _cloudUpdatedAt: row.updated_at }));
+    events.forEach((e) => noteStamp(e.id, e._cloudUpdatedAt));   // seen — see writeGuarded
     writeLocal(events);
     localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
     return events;
@@ -99,7 +207,10 @@ export async function loadEvents() {
 }
 
 /**
- * Persist a single event (upsert). Queues locally if cloud write fails.
+ * Persist a single event (guarded upsert). Queues locally if cloud write fails.
+ *   { ok: false, queued: false, reason: 'conflict', loadedAt, serverUpdatedAt }
+ *     — the row changed since this device loaded it; NOT written, NOT queued,
+ *       the local copy keeps the edit. See writeGuarded.
  *
  * SYNC-HONESTY-1: now returns an honest result object so callers (V2 shell via
  * lib/api/syncState) can distinguish a real cloud success from a swallowed
@@ -123,11 +234,9 @@ export async function saveEvent(event) {
   // to a uuid column (22P02 400). Real prod studios are uuids and proceed normally.
   if (!isCloudStudioId(sid)) return { ok: false, queued: false, reason: 'local-studio' };
   try {
-    const { error } = await supabase
-      .from('events')
-      .upsert({ id: event.id, studio_id: sid, data: event }, { onConflict: 'id' });
-    if (error) throw error;
-    return { ok: true };
+    // A conflict is an ANSWER, not an error: it is not queued (retrying a
+    // refused overwrite would just refuse again) and it is not thrown.
+    return await writeGuarded(sid, event);
   } catch (e) {
     captureError(e, { where: 'events.saveEvent', id: event.id, onLine: onLine(), pending: getPendingCount() });
     enqueueMutation({ type: 'upsert', id: event.id, data: event });
@@ -138,6 +247,7 @@ export async function saveEvent(event) {
 /** Delete an event by id (within the current studio). */
 export async function deleteEvent(eventId) {
   writeLocal(readLocal().filter((e) => e.id !== eventId));
+  forgetStamp(eventId);
   if (!isSupabaseConfigured() || !supabase) return;
   const sid = await currentStudioId();
   if (!sid) { enqueueMutation({ type: 'delete', id: eventId }); return; }
@@ -180,10 +290,14 @@ export async function flushPendingEvents() {
   for (const op of queue) {
     try {
       if (op.type === 'upsert') {
-        const { error } = await supabase
-          .from('events')
-          .upsert({ id: op.id, studio_id: sid, data: op.data }, { onConflict: 'id' });
-        if (error) throw error;
+        const r = await writeGuarded(sid, { ...op.data, id: op.id });
+        if (r && r.reason === 'conflict') {
+          // Not retried: the refusal is final until the host sees a newer
+          // version. Dropped from the queue, reported by name, and the local
+          // copy still holds the edit.
+          failedOps.push({ id: op.id, type: op.type, error: 'conflict' });
+          continue;
+        }
         flushedIds.push(op.id);
       } else if (op.type === 'delete') {
         const { error } = await supabase
@@ -210,7 +324,9 @@ export async function migrateLocalToCloud(localEvents) {
     try {
       const { error } = await supabase
         .from('events')
-        .upsert({ id: event.id, studio_id: sid, data: event }, { onConflict: 'id' });
+        // Blind on purpose: a first-time import of local events has no cloud
+        // version to compare. The stamp is stripped so the blob stays clean.
+        .upsert({ id: event.id, studio_id: sid, data: (({ _cloudUpdatedAt, ...d }) => d)(event) }, { onConflict: 'id' });
       if (error) throw error;
       migrated++;
     } catch (e) {

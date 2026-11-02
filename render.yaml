@@ -6,7 +6,15 @@ services:
     name: ngw-events-api
     runtime: python
     rootDir: backend
-    plan: free
+    # UPGRADED 2026-11-02 by the owner to 0.5 CPU / 512 MB (Starter).
+    # This line said `free` until then, and the gap mattered in both directions:
+    # a probe read it as live state and reported the service as free-tier when
+    # the Blueprint is only a DECLARATION — Render does not write dashboard
+    # changes back here. More importantly, a Blueprint re-sync pushes this file
+    # TO the service, so leaving `free` here would have silently downgraded a
+    # paid instance the next time anyone synced.
+    # Starter does not spin down; free idles out after ~15 minutes.
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health

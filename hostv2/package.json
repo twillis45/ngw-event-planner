@@ -15,6 +15,7 @@
     "synctest:serve": "E2E_BASE=1 vite preview --outDir dist-synctest --port 5244",
     "synctest": "playwright test e2e/crossDeviceSync.spec.mjs --project=desktop",
     "gold07:build": "vite build --mode gold07 --outDir dist-gold07",
+    "passgate:build": "vite build --mode passgate --outDir dist-passgate",
     "gold07:serve": "E2E_BASE=1 vite preview --outDir dist-gold07 --port 5255",
     "gold07": "playwright test e2e/gold07RsvpCascade.spec.mjs --project=desktop",
     "test:unit": "vitest run"
@@ -33,5 +34,8 @@
     "@vitejs/plugin-react": "^4.2.1",
     "vite": "^4.5.5",
     "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "dompurify": "3.4.17"
   }
 }
