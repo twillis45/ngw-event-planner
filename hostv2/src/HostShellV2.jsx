@@ -262,8 +262,8 @@ import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
-import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds } from '@app/lib/api/events';
-import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced } from '@app/lib/api/syncState';
+import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs } from '@app/lib/api/events';
+import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
@@ -6829,6 +6829,60 @@ export default function HostShellV2() {
   // ("N changes synced") already announces the recovery.
   const syncCueShown = useRef(false);
   const conflictCueShown = useRef(false);
+  // ── THE WAY OUT OF A CONFLICT (N3 / board C3-3, ruled by the owner
+  // 2026-11-02): "Keep mine" or "Use the newer version", each with an Undo.
+  // Until she chooses, every save of this event is refused (the lib holds the
+  // version she loaded), so nothing is overwritten behind her back either way.
+  const [resolvingConflict, setResolvingConflict] = useState(false);
+  const putCustom = (ev) => {
+    if (!ev || !ev.id) return;
+    const next = customs.map(c => (c && c.id === ev.id) ? ev : c);
+    const res = saveCustomEvents(next, { reason: 'hostshell:resolve-conflict' });
+    if (res && res.ok) setCustoms(next);
+  };
+  const resolveSyncConflict = async (choice) => {
+    if (resolvingConflict) return;
+    const hers = customs.find(c => c && c.id === eventId);
+    if (!hers) return;
+    setResolvingConflict(true);
+    let r = null;
+    try { r = await resolveConflict(hers, choice); } catch { r = null; }
+    setResolvingConflict(false);
+    if (!r || !r.ok) {
+      if (r && r.reason === 'conflict') {
+        try { markEventConflict(hers.id); } catch { /* status is best-effort */ }
+        toast('It changed again just now — nothing was overwritten. Choose again when you’re ready.');
+      } else {
+        toast('Couldn’t reach your account — nothing was changed. Try again in a moment.');
+      }
+      return;
+    }
+    putCustom(r.event);
+    try { markEventSynced(r.event.id); } catch { /* status is best-effort */ }
+    conflictCueShown.current = false;
+    if (choice === 'theirs') {
+      const previous = r.previous;
+      toast('Now showing the newer version from your account.', { label: 'Undo', fn: () => {
+        try { undoUseTheirs(previous); markEventConflict(previous.id); } catch { /* best-effort */ }
+        putCustom(previous);
+        conflictCueShown.current = true;
+      } });
+    } else {
+      const replaced = r.replaced; const stamp = r.event._cloudUpdatedAt;
+      toast('Your version is now the one in your account.', { label: 'Undo', fn: async () => {
+        let u = null;
+        try { u = await undoKeepMine(replaced, stamp, hers); } catch { u = null; }
+        if (u && u.ok) {
+          try { markEventConflict(hers.id); } catch { /* best-effort */ }
+          putCustom(u.event);
+          conflictCueShown.current = true;
+          toast('Put the newer version back in your account. Yours is still here.');
+        } else {
+          toast('Couldn’t undo that just now — your version is still the one in your account.');
+        }
+      } });
+    }
+  };
   const noteSaveResult = (ev, res) => {
     try { recordSaveResult(ev, res); } catch { /* stamping is best-effort */ }
     // ── A SAVE NEVER SILENTLY OVERWRITES (2026-11-02) ──────────────────────
@@ -18404,6 +18458,12 @@ export default function HostShellV2() {
                         <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>This event</div>
                         <div className="later-row" style={{ borderTop: 'none', padding: 'var(--sp-1) 2px 6px' }}>
                           <span className="t">{SYNC_STATUS_LABEL[status]}{lastSync ? ' · ' + fmtSyncTime(lastSync) : ''}</span>
+                          {status === SYNC_STATUS.CONFLICT && (
+                            <span style={{ display: 'inline-flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                              <button className="mini" disabled={resolvingConflict} onClick={() => resolveSyncConflict('mine')}>Keep mine</button>
+                              <button className="mini" disabled={resolvingConflict} onClick={() => resolveSyncConflict('theirs')}>Use the newer version</button>
+                            </span>
+                          )}
                           {showRetry && (
                             <button className="mini" onClick={() => {
                               flushSync().then(res => {
