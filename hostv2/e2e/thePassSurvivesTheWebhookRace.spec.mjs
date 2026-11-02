@@ -204,6 +204,33 @@ test.describe('GOLD-09 — the pass entitlement reaches the shell', () => {
   // That is the cleared-browser / refunded / revoked case, and it must end
   // locked — otherwise `passPurchased` on the blob is still the authority and
   // the whole server record bought nothing.
+  // Nielsen re-run N7 (2026-11-02, P3): "Get the pass" had no busy state while
+  // checkout opened, so on a slow network a second tap opened a second
+  // checkout session. Red-proofed by removing the in-flight guard.
+  test('a double tap on "Get the pass" opens ONE checkout, and says it is opening', async ({ page }) => {
+    await stubPass(page, [false]);
+    let sessions = 0;
+    await page.route(`${API}/api/stripe/create-pass-session**`, async (route) => {
+      sessions += 1;
+      await new Promise((r) => setTimeout(r, 2500));   // a slow network
+      await route.fulfill({ status: 500, json: { detail: 'stub' } });
+    });
+    await boot(page);
+    const sheet = await readPassSheet(page);
+    expect(sheet, 'premise: the pass is for sale here').toMatch(FOR_SALE);
+    // The SAME button, whatever it says after the first tap.
+    const buy = page.locator('.sheet').last().locator('button.cta', { hasText: /Get the pass|Opening checkout/i }).first();
+    await buy.click();
+    await page.waitForTimeout(150);
+    await buy.click({ force: true, timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(3500);
+    expect(sessions, 'a second tap opened a second checkout').toBe(1);
+    // And while it was opening, the button said so (checked on a fresh tap).
+    await buy.click();
+    await expect(buy, 'no busy state while checkout opens').toHaveText(/Opening checkout/i, { timeout: 1500 });
+    await expect(buy).toBeDisabled();
+  });
+
   // Nielsen re-run N8 (2026-11-02, P3, truthfulness): coming back from checkout
   // with the pass not yet confirmed, the host was told "your payment went
   // through" — a claim this code's own comment says the redirect is not

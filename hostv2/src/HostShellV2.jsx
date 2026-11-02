@@ -5816,6 +5816,9 @@ export default function HostShellV2() {
   const [draftTone, setDraftTone] = useState(() => { try { return localStorage.getItem('ngw-hostv2-voice') || 'as-written'; } catch { return 'as-written'; } });
   const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
   const [sendingEmail, setSendingEmail] = useState(false); // slice (b): one send at a time
+  // One checkout at a time: a second tap on a slow network opened a second
+  // Stripe session (Nielsen re-run N7, 2026-11-02).
+  const [openingCheckout, setOpeningCheckout] = useState(false);
   useEffect(() => { try { localStorage.setItem('ngw-hostv2-voice', draftTone); } catch {} }, [draftTone]);
   // Nielsen H3 (stage-4 gate, 2026-08-21): a host's typed words must survive
   // closing the sheet. Edits are kept per draft title for the session; reopening
@@ -17353,11 +17356,16 @@ export default function HostShellV2() {
               // money twice. Saying "try again" to that would be a lie, so it
               // gets its own line.
               const buyPass = async () => {
+                if (openingCheckout) return;
+                setOpeningCheckout(true);
                 try {
                   const out = await createPassSession({ eventId: event.id });
+                  // Leaving for Stripe: stay busy — the page is navigating away.
                   if (out && out.url) { window.location.assign(out.url); return; }
+                  setOpeningCheckout(false);
                   toast('Couldn’t open checkout just now — please try again.');
                 } catch (e) {
+                  setOpeningCheckout(false);
                   const why = String((e && e.message) || '');
                   if (/already has a pass/i.test(why)) {
                     toast('This event already has the pass — nothing more to buy. Reopen it and everything’s unlocked.');
@@ -17415,7 +17423,7 @@ export default function HostShellV2() {
                     </div>
                   ) : canCharge ? (
                     <>
-                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass}>Get the pass — $39</button>
+                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
                     </>
                   ) : (
