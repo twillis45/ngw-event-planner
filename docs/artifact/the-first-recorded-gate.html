@@ -1,5 +1,5 @@
 <!-- path-artifact stamp: machine-readable for the staleness check, human-readable below -->
-<div data-recorded="2026-09-03" hidden>Recorded September 3, 2026</div>
+<div data-recorded="2026-11-02" hidden>Recorded November 2, 2026</div>
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>The First Recorded Gate</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400;1,6..72,500&family=Public+Sans:wght@400;500;700&display=swap">
@@ -190,8 +190,8 @@
       owner ruled its first: stage 6, <b>passed with conditions</b>.
     </p>
     <div class="meta">
-      <div>Recorded <b>September 3, 2026</b> &middot; re-measured <b style="white-space:nowrap">2026-11-02</b></div>
-      <div>HEAD at last audit <b>34d2931</b> (was c9dd1d05)</div>
+      <div>Recorded <b>November 2, 2026</b> &middot; stages 3, 4, 5, 8 re-ruled by the board</div>
+      <div>HEAD at last audit <b>60e2284</b> (was c9dd1d05)</div>
       <div>Reach <b>public &mdash; anyone</b></div>
       <div>Host <b>GitHub Pages</b></div>
       <div>Stage <b>8 &mdash; Maintain, passed with conditions</b></div>
@@ -269,6 +269,27 @@
     </ul>
   </section>
 
+  <section class="state" style="border-left-color:var(--ok)" data-ruling="2026-11-02">
+    <p class="eyebrow" style="color:var(--ok)">Ruled 2026-11-02 &mdash; the board, under the owner&rsquo;s standing delegation</p>
+    <h2>Stages 3, 4, 5 and 8 re-ruled: all passed with conditions, two of them over a dissent.</h2>
+    <p>
+      Two panels of the roster&rsquo;s Engineering &amp; Delivery wing sat in parallel. Under the
+      9/6 rule that a builder never scores its own work, they re-scored this session&rsquo;s
+      claims on the code with their own instruments &mdash; Panel A broke the sync guard twice
+      and watched it go red (5 of 11, then 1 of 11), and ran the guard script itself (10 of 10);
+      Panel B re-counted RLS across both migration folders (27 of 27), re-ran the audits and the
+      route sweep, and grepped the built bundle for secrets.
+    </p>
+    <ul class="items" style="margin-top:4px">
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Stage 3, Build &mdash; passed with conditions, 3&ndash;0</b> (Feathers, Bach/Bolton, Farley). Condition C3-3 is a defect the board found in the builder&rsquo;s own work: a refused save has no way out.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Stage 4, Verify &mdash; passed with conditions, 2&ndash;1.</b> <b>Dissent, Bach/Bolton: not-yet</b> &mdash; device emulation is plainly unmet, &ldquo;a 430px desktop window checked as a phone is checking, not testing,&rdquo; and the security sweep cannot fail when a new router arrives.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Stage 5, Security &mdash; passed with conditions, 2&ndash;1.</b> <b>Dissent, Janca: not-yet</b> &mdash; protection is decided in one hand-written list while eight routers decide for themselves, and the repo cannot prove the live database safe until check A.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Stage 8, Maintain &mdash; passed with conditions, 3&ndash;0</b> (Janca, Forsgren, Fowler).</li>
+      <li><span class="mark skip">&ndash;</span> <b>Not ruled by the board, deliberately:</b> stages 1 and 2. Whether the owner ruled them on 2026-09-03 is a fact only he holds; their records are drafted for him to confirm or re-rule.</li>
+      <li><span class="mark skip">&ndash;</span> <b>Where the records are:</b> drafted with a poster the owner runs locally &mdash; the Command Center is unreachable from a cloud session. Until he posts them, this page is ahead of the server record, and says so here.</li>
+    </ul>
+  </section>
+
   <section class="toolbar">
     <button class="toggle" id="hideDone" type="button" aria-pressed="false"
             aria-describedby="hideCount">
@@ -301,12 +322,12 @@
     </p>
     <ul class="items" style="margin:0">
       <li><input type="checkbox" data-k="c-pentest"> <b>External pentest</b> &mdash; not run.</li>
-      <li><input type="checkbox" data-k="c-authz"> <b>Finding #8, portal authorization design</b> &mdash; unresolved, and a board question rather than an engineering one.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Finding #8, portal authorization design</b> &mdash; unresolved, and a board question rather than an engineering one. <b>Closed 2026-11-02:</b> finding #8 is RESOLVED in the checklist body (third pass, 2026-08-21) and enforced by the sweep&rsquo;s stale-entry test; the board ruled it closed. Five owner/external opens remain, not six.</li>
       <li><input type="checkbox" data-k="c-rls"> <b>RLS applied-status</b> &mdash; not attested in the live dashboard.</li>
       <li><input type="checkbox" data-k="c-backup"> <b>Backups and restore</b> &mdash; not confirmed on, and no restore has ever been performed.</li>
       <li><input type="checkbox" data-k="c-rate"> <b>Login rate limiting</b> &mdash; unverified; the platform defaults have not been checked.</li>
       <li><input type="checkbox" data-k="c-sentry"> <b>Sentry DSN</b> &mdash; not confirmed reporting in prod. <b>Half-closed 2026-10-13:</b> presence is proven (a real <code>*.ingest.us.sentry.io</code> host in the served chunk); delivery is not &mdash; no one has seen an error arrive in the Sentry console. Stays open on the half that matters.</li>
-      <li><input type="checkbox" data-k="c-mkt1"> <b>Marketing phase 1</b> &mdash; <b>corrected 2026-09-03:</b> not unwritten. A draft thesis exists (<code>docs/ACQUISITION-THESIS.md</code>, 2026-09-02) but is not yet ruled by the board -- drafted, not decided, which is why this condition still stands.</li>
+      <li><input type="checkbox" checked disabled aria-label="handled"> <b>Marketing phase 1</b> &mdash; <b>corrected 2026-09-03:</b> not unwritten. A draft thesis exists (<code>docs/ACQUISITION-THESIS.md</code>, 2026-09-02) but is not yet ruled by the board -- drafted, not decided, which is why this condition still stands. <b>Closed 2026-11-02:</b> <code>docs/ACQUISITION-THESIS.md</code> records its own ruling &mdash; <b>amend, 2026-09-02</b>, by a six-seat board under the standing delegation, later re-ruled with Decision 1 withdrawn. A leftover &ldquo;this is a draft, not a decision&rdquo; line on the file is what kept this page saying &ldquo;not ruled.&rdquo;</li>
       <li><input type="checkbox" data-k="c-mkt2"> <b>Marketing phase 2</b> &mdash; the stranger comprehension test has not run.</li>
       <li><input type="checkbox" data-k="c-mkt3"> <b>Marketing phase 3</b> &mdash; economics unproven, so <b>no paid spend is authorized</b>. No acquisition cost measured, no geography named.</li>
     </ul>
@@ -402,7 +423,8 @@
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>Authorization checked server-side on every route</b> &mdash; the per-route sweep, <code>backend/tests/test_protected_routes_sweep.py</code>.</li>
             <li><input type="checkbox" data-k="s3-scoped"> <span class="tag">Security track</span> <b>Every query scoped to its owner.</b> True for every tenant table (RLS all verbs). <b>Why unchecked:</b> six research tables from <code>012_research_execution.sql</code> were created with RLS off, so the anon key could read and write them through PostgREST. Fixed in repo by <code>018_research_tables_rls.sql</code> and gated by <code>everyPublicTableHasRls.test.js</code>; <b>not live until PR #94 merges</b>, then confirmed by RUNBOOK check A.</li>
             <li><input type="checkbox" data-k="s3-skills"> <span class="tag">Required skill, public</span> <code>web-design-guidelines</code> on UI code that ships. <b>Why unchecked:</b> not recorded against the gate.</li>
-            <li><input type="checkbox" data-k="s3-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 3 is not in the record.</b> See Corrections.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Correction</span> <b>Who ruled stage 3 is not in the record.</b> See Corrections. <b>Closed 2026-11-02:</b> ruled by the review board under the standing delegation &mdash; see the ruling panel above.</li>
+            <li><input type="checkbox" data-k="s3-conflict-exit"> <span class="tag">Board 2026-11-02, C3-3</span> <b>A refused save has no way out.</b> Once a save is refused as a conflict, hydrate keeps the dirty local copy (<code>HostShellV2.jsx:1958</code>) and every later save is refused again against the same stale version &mdash; the device drifts from the account until storage is cleared. <b>Why unchecked:</b> the exit (&ldquo;keep mine&rdquo; / &ldquo;take the newer version&rdquo;) is a design call the board routed for a ruling; then it ships with a red-proofed test.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -425,8 +447,11 @@
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine 9/6</span> <b>Every env var the server reads is a declared seam:</b> <code>theBlueprintNamesWhatTheServerNeeds.test.js</code> holds <code>render.yaml</code> against what the server reads.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine 9/7</span> <b>A sweep with an unevaluated row is not a result:</b> the collecting runner reports a per-gate verdict; the last run had none unevaluated.</li>
             <li><input type="checkbox" data-k="s4-device"> <span class="tag">Axis 1</span> <b>Real device emulation, not a resized viewport.</b> <b>Why unchecked:</b> every matrix project in <code>hostv2/playwright.config.mjs</code> sets a viewport size and nothing else &mdash; no <code>isMobile</code>, no <code>hasTouch</code>, no device descriptor. The meta-viewport bug this rule was written about cannot recur here, but the gate as written is not met.</li>
-            <li><input type="checkbox" data-k="s4-rescore"> <span class="tag">Spine 9/6</span> <b>The builder never scores its own work.</b> <b>Why unchecked:</b> the 2026-11-02 builds (the sync-conflict disclosure, the GOLD closures, the RLS migration) were verified by their own author&rsquo;s red-proofs and have not been re-scored on the code by a board.</li>
-            <li><input type="checkbox" data-k="s4-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 4 is not in the record.</b> See Corrections.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine 9/6</span> <b>The builder never scores its own work.</b> <b>Why unchecked:</b> the 2026-11-02 builds (the sync-conflict disclosure, the GOLD closures, the RLS migration) were verified by their own author&rsquo;s red-proofs and have not been re-scored on the code by a board. <b>Closed 2026-11-02:</b> Panel A re-scored the 2026-11-02 claims on the code and red-proofed the sync guard itself; four of five claims accepted with caveats, one in full.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Correction</span> <b>Who ruled stage 4 is not in the record.</b> See Corrections. <b>Closed 2026-11-02:</b> ruled by the review board under the standing delegation &mdash; see the ruling panel above.</li>
+            <li><input type="checkbox" data-k="s4-sweep"> <span class="tag">Board 2026-11-02, C4-2</span> <b>The route sweep must enumerate.</b> <code>test_protected_routes_sweep.py:39</code> hand-lists 8 of the 16 routers <code>main.py</code> mounts; a new router cannot turn it red. Walk the mounted routers, with exclusions argued in an allowlist.</li>
+            <li><input type="checkbox" data-k="s4-nielsen"> <span class="tag">Board 2026-11-02, C4-3</span> <b>Re-run the behavior-only Nielsen pass</b> against current HEAD &mdash; the last ran 2026-08-21. The stranded conflict is a user-control/freedom finding: P2 by majority, P1 per Bach/Bolton.</li>
+            <li><input type="checkbox" data-k="s4-skip"> <span class="tag">Board 2026-11-02, C4-4</span> <b>A skip is reported as a pass.</b> <code>verify-all.mjs</code> counts a SKIP as not-failed and still prints &ldquo;all N passed&rdquo;; make a skip visible as a skip.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -442,7 +467,7 @@
             <li><input type="checkbox" checked disabled aria-label="handled"> Load-bearing items done with citations: RLS all-verbs on tenant data, server-side auth on money routes, hosted-checkout isolation, zero-vuln bundle, no secrets in source.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> Per-route sweep exists as a standing gate over eight routers, and caught a live unauthenticated route on its first run.</li>
             <li><input type="checkbox" data-k="s5-pentest"> External pentest. <b>Why unchecked:</b> owed to an outside firm &mdash; not run, no engagement report exists.</li>
-            <li><input type="checkbox" data-k="s5-authz"> Finding #8 &mdash; portal authz design. A board question. <b>Why unchecked:</b> a design decision, not an engineering task &mdash; needs a review board sitting to rule it, and none has sat on this question.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> Finding #8 &mdash; portal authz design. A board question. <b>Why unchecked:</b> a design decision, not an engineering task &mdash; needs a review board sitting to rule it, and none has sat on this question. <b>Closed 2026-11-02:</b> same finding, closed by the board &mdash; see condition c-authz.</li>
             <li><input type="checkbox" data-k="s5-rls"> RLS applied-status attested in the live dashboard. <b>Why unchecked:</b> requires Todd's own eyes in the live Supabase dashboard, attesting every migration is applied &mdash; nothing an assistant session can attest to.</li>
             <li><input type="checkbox" data-k="s5-backup"> Backups on, and one restore actually performed. <b>Why unchecked:</b> requires Todd, in Supabase, to confirm backups are on and actually run one restore &mdash; a drill, not a config read.</li>
             <li><input type="checkbox" data-k="s5-rate"> Login rate limiting &mdash; check what Supabase defaults actually are. <b>Why unchecked:</b> the defaults have never been checked against Supabase's own auth settings; nobody has looked yet.</li>
@@ -453,7 +478,9 @@
             <li><input type="checkbox" data-k="s5-rls018"> <span class="tag">Found 2026-11-02</span> <b>Six <code>public</code> tables with RLS off</b> (<code>research_*</code>, <code>provider_run_logs</code>). <b>Why unchecked:</b> fixed in repo (<code>018</code>), not on the live project until PR #94 merges; the live exposure could not be probed from a cloud session.</li>
             <li><input type="checkbox" data-k="s5-consent"> <span class="tag">Marketing track</span> <b>Consent and tracking-prompt copy</b> &mdash; marketing copy with a legal consequence. <b>Why unchecked:</b> not written. The privacy-policy draft (<code>docs/legal/</code>, 2026-11-02) is its input, not it.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Required skill</span> <code>route-sweep</code> (the sweep exists although the skill is still unbuilt) and <code>security-review</code> &mdash; both RUN, per the stage-6 record&rsquo;s <code>skillsUsed</code>.</li>
-            <li><input type="checkbox" data-k="s5-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 5 is not in the record.</b> See Corrections.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Correction</span> <b>Who ruled stage 5 is not in the record.</b> See Corrections. <b>Closed 2026-11-02:</b> ruled by the review board under the standing delegation &mdash; see the ruling panel above.</li>
+            <li><input type="checkbox" data-k="s5-sweep"> <span class="tag">Board 2026-11-02, cond. 6</span> <b>Research, kcr and kas assert 401; weather, food_prices, instacart, kroger and lodging go on the PUBLIC allowlist with written reasons</b> &mdash; including anonymous use of our third-party API quota, which nothing records today.</li>
+            <li><input type="checkbox" data-k="s5-kaw1"> <span class="tag">Board 2026-11-02, cond. 7</span> <b><code>src/lib/knowledge/kaw1-migration.sql</code> is outside the RLS gate.</b> Seven hand-applied tables, all RLS-enabled today; the gate scans the two migration folders and not this file.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -477,6 +504,7 @@
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Security track</span> <b>Prod error responses carry no stack traces</b> &mdash; checklist DONE.</li>
             <li><input type="checkbox" data-k="s6-backup"> <span class="tag">Security track</span> <b>Backup exists and restore is verified.</b> <b>Why unchecked:</b> the same item as condition <code>c-backup</code>; the drill is written as RUNBOOK check B.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Axis 1</span> <b>Platform deploy:</b> web only, on your schedule; no store review pipeline because store submission is not a target.</li>
+            <li><input type="checkbox" data-k="s6-e2e"> <span class="tag">Board 2026-11-02, Farley</span> <b>The browser specs guarding the money path do not gate deployment.</b> They run in <code>checks.yml</code>; <code>pages-from-source.yml</code> runs unit tests, pytest and the release build only, so a red GOLD-09 cannot stop a release. Fix before stage 6 is re-ruled.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -538,7 +566,9 @@
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Step 2e</span> <b>Standing obligation:</b> <code>verify:all</code> exists (and <code>verify:fast</code>).</li>
             <li><input type="checkbox" data-k="s8-unmerged"> <span class="tag">Step 2e</span> <b>Standing obligation: <code>origin/main..HEAD</code> is 0.</b> <b>Why unchecked:</b> 14 commits on <code>main-2utz0n</code> await PR #94.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Spine</span> <b>Dependency review &mdash; re-run 2026-11-02, and it found something.</b> The shipped tree was no longer clean: <code>dompurify@3.4.14</code> (via <code>posthog-js</code>), one critical, five DOM-XSS advisories. Not in any built bundle and called by no app code, so exposure was low &mdash; and fixed anyway by pinning 3.4.17 through <code>overrides</code>: <b>0 vulnerabilities</b>. The 2026-08-21 &ldquo;0&rdquo; was true on its day; that is why this row recurs.</li>
-            <li><input type="checkbox" data-k="s8-ruler"> <span class="tag">Correction</span> <b>Who ruled stage 8 is not in the record.</b> See Corrections.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <span class="tag">Correction</span> <b>Who ruled stage 8 is not in the record.</b> See Corrections. <b>Closed 2026-11-02:</b> ruled by the review board under the standing delegation &mdash; see the ruling panel above.</li>
+            <li><input type="checkbox" data-k="s8-cra"> <span class="tag">Board 2026-11-02</span> <b>Re-decide the frozen CRA&rsquo;s dependency disposition.</b> The NO-OP rests on a deletion &ldquo;scheduled post-Sprint-2&rdquo; that no ruling dates, and <code>xlsx</code> (high, no fix) parses user-uploaded files in code that ships (<code>src/App.js:210</code>).</li>
+            <li><input type="checkbox" data-k="s8-cadence"> <span class="tag">Board 2026-11-02</span> <b>Run the dependency audit on a written cadence, both trees.</b> The 2026-08-21 &ldquo;0 vulnerabilities&rdquo; was false by 2026-11-02 and nothing re-ran it in between.</li>
           </ul>
         </div>
         <span class="chip c-ok">Passed +cond</span>
@@ -607,9 +637,9 @@
              it. A thesis nothing could disprove has not been written yet.</p>
           <ul class="items">
             <li><input type="checkbox" checked disabled aria-label="handled"> Competitive reads exist and are specific &mdash; the closest funded competitor counts inventory, not readiness; nobody in the set has a readiness rollup.</li>
-            <li><input type="checkbox" data-k="m1-thesis"> <b>Corrected 2026-09-03 &mdash; a draft exists, not "unwritten."</b> <code>docs/ACQUISITION-THESIS.md</code> (2026-09-02) states one falsifiable sentence, grounded in <code>COMPETITIVE_AUTOMATION.md</code> and the Blink/Partiful reads. Left unchecked on purpose: the doc's own header says the board "recorded it as unwritten... this is a draft, not a decision. Overrule any line of it" &mdash; drafted, not yet ruled.</li>
-            <li><input type="checkbox" data-k="m1-unit"> <b>Answered in the same draft:</b> "one screen: a real event's plan, mid-flight" &mdash; not a landing page or a video. Same ruled/not-ruled status as above.</li>
-            <li><input type="checkbox" data-k="m1-falsify"> <b>Answered in the same draft:</b> four named falsification conditions, including one added by the board (comprehension that credits a person rather than the product does not count). Same ruled/not-ruled status as above.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Corrected 2026-09-03 &mdash; a draft exists, not "unwritten."</b> <code>docs/ACQUISITION-THESIS.md</code> (2026-09-02) states one falsifiable sentence, grounded in <code>COMPETITIVE_AUTOMATION.md</code> and the Blink/Partiful reads. Left unchecked on purpose: the doc's own header says the board "recorded it as unwritten... this is a draft, not a decision. Overrule any line of it" &mdash; drafted, not yet ruled. <b>Closed 2026-11-02:</b> ruled amend 2026-09-02 &mdash; see condition c-mkt1.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Answered in the same draft:</b> "one screen: a real event's plan, mid-flight" &mdash; not a landing page or a video. Same ruled/not-ruled status as above. <b>Closed 2026-11-02:</b> ruled with the thesis, 2026-09-02.</li>
+            <li><input type="checkbox" checked disabled aria-label="handled"> <b>Answered in the same draft:</b> four named falsification conditions, including one added by the board (comprehension that credits a person rather than the product does not count). Same ruled/not-ruled status as above. <b>Closed 2026-11-02:</b> ruled with the thesis, 2026-09-02.</li>
             <li><input type="checkbox" checked disabled aria-label="handled"> <b>Hand the positioning constraints to design as requirements, checked 2026-09-03:</b> <code>ACQUISITION-THESIS.md</code>, "What this forbids the build from doing" &mdash; no mocked acquisition unit, no onboarding-gated legibility, no unmeasured time/stress/events-run claims. These are build constraints already in force, independent of whether the thesis above is ruled.</li>
           </ul>
         </div>
@@ -627,8 +657,8 @@
              seeing results is not a test.</p>
           <ul class="items">
             <li><span class="mark skip">&ndash;</span> <b>The phase the spine calls most often skipped</b>, because the asset existing feels like the work. It is not.</li>
-            <li><input type="checkbox" data-k="m2-threshold"> <b>Why unchecked:</b> Pre-register the comprehension rate. Blocked upstream: this phase runs against the thesis in m1-thesis, which is drafted but not yet ruled by the board &mdash; there is nothing to test a rate against until that ruling lands.</li>
-            <li><input type="checkbox" data-k="m2-asset"> <b>Why unchecked:</b> Build the acquisition asset from the real hostv2 surface, never mocked up separately. Same blocker &mdash; the asset is the acquisition unit named in the unruled draft (m1-unit).</li>
+            <li><input type="checkbox" data-k="m2-threshold"> <b>Why unchecked:</b> Pre-register the comprehension rate. <b>Unblocked 2026-11-02:</b> the thesis was ruled on 2026-09-02, so the rate can be pre-registered now. Owed.</li>
+            <li><input type="checkbox" data-k="m2-asset"> <b>Why unchecked:</b> Build the acquisition asset from the real hostv2 surface, never mocked up separately. <b>Unblocked 2026-11-02:</b> the unit is ruled (&ldquo;one screen: a real event&rsquo;s plan, mid-flight&rdquo;), shot from an event that passes the horizon guard. Owed.</li>
             <li><input type="checkbox" data-k="m2-strangers"> <b>Why unchecked:</b> Run the stranger-proof onboarding test. <b>This is that test</b> &mdash; the same item the handoff lists as yours alone, counted once, in the phase that owns it. Owner-only per HANDOFF's standing delegation scope: no board can run this, and it has not been run.</li>
             <li><input type="checkbox" data-k="m2-script"> <b>Why unchecked:</b> Verify by script the asset properties that can be measured, rather than judged in the room. No asset exists yet to script against (m2-asset, above).</li>
           </ul>
@@ -865,6 +895,16 @@
         transform is <code>scripts/retrofit-gate-artifact.py</code>.
       </p>
     </div>
+
+    <div class="corr">
+      <p style="margin:0 0 4px"><span class="was">Marketing phase 1 is drafted, not ruled.</span></p>
+      <p style="margin:0; color:var(--ink-soft)">
+        Said here from 2026-09-03 to 2026-11-02. The thesis file had recorded its own ruling &mdash;
+        <b>amend, 2026-09-02</b>, by a six-seat board &mdash; above a leftover sentence calling it a
+        draft, and this page read the leftover. Closed with the condition it carried; phase 2 is now
+        unblocked and owed.
+      </p>
+    </div>
     <div class="corr">
       <p style="margin:0 0 4px"><span class="was">A gate can be recorded as passed once the work is verified.</span></p>
       <p style="margin:0; color:var(--ink-soft)">
@@ -1014,6 +1054,7 @@
     apply();
   })();
 </script>
+
 
 
 

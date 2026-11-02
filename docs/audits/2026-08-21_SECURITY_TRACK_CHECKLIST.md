@@ -194,8 +194,11 @@ no secrets in source) are DONE with citations. The second pass closed
 five more: the per-route sweep now exists AND caught a live gap
 (verify-session gated), the license check is clean, Sprint C+D turned
 out to be shipped under the Release Integrity name, and the
-token-in-query residual is closed. Remaining OPENs: the pentest, finding
-#8 (portal authz design — board question), and four user-side
+token-in-query residual is closed. Remaining OPENs: the pentest, ~~finding
+#8 (portal authz design — board question)~~ *(stale in this verdict: the
+body above records #8 RESOLVED, third pass, 2026-08-21, and the sweep's
+stale-entry test enforces it; ruled closed by the board 2026-11-02 — five
+opens, not six)*, and four user-side
 attestations (RLS applied in the live dashboard, backups on + one
 restore drill, login rate-limit check on Supabase defaults). **The
 Sentry-DSN item that used to sit in this list is CLOSED — probed in the
