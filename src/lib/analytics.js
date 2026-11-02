@@ -64,7 +64,8 @@ export function markAnalyticsNoticeSeen() {
 /** First 16 hex chars of SHA-256, or null when the browser cannot hash. */
 async function oneWayLabel(text) {
   try {
-    const subtle = globalThis.crypto && globalThis.crypto.subtle;
+    // `crypto`, not globalThis: the CRA build's ESLint has no globalThis and fails the build on it.
+    const subtle = typeof crypto !== 'undefined' && crypto && crypto.subtle;
     if (!subtle || typeof TextEncoder === 'undefined') return null;
     const buf = await subtle.digest('SHA-256', new TextEncoder().encode(text));
     return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
