@@ -72,3 +72,17 @@ test("a host's typed words stay with the event she typed them for", async ({ pag
   await expect(other, "another event's draft carries words she typed for the first event")
     .not.toHaveValue(new RegExp(MARK));
 });
+
+// N6 (P2, user control): picking a Voice rewrote the draft and threw her typed
+// words away with no confirmation and no undo. The rewrite stays — that is what
+// picking a voice means — and an Undo now brings her words back.
+// Red-proofed by removing the Undo toast from the voice picker.
+test('picking a voice after typing can be undone, and her words come back', async ({ page }) => {
+  await boot(page);
+  const box = await openShoppingDraft(page);
+  await box.fill(MARK);
+  await page.locator('.sheet').last().getByRole('radio', { name: 'Warmer' }).click();
+  await expect(box, 'premise: picking a voice rewrites the draft').not.toHaveValue(MARK);
+  await page.locator('.toast').getByRole('button', { name: 'Undo' }).click({ timeout: 5000 });
+  await expect(box, 'her typed words did not come back').toHaveValue(MARK);
+});

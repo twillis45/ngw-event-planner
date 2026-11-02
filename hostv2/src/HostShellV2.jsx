@@ -18714,7 +18714,21 @@ export default function HostShellV2() {
                   <OptionList ariaLabel="Voice"
                     options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => ({ label, value: k }))}
                     value={draftBody == null ? draftTone : ''}
-                    onPick={(k) => { setDraftTone(k); setDraftBody(null); try { delete draftEditsRef.current[draftEditKey(sheet.title)]; } catch { /* kept copy is best-effort */ } }} />
+                    onPick={(k) => {
+                      // Picking a voice still means "rewrite it" — but her typed words
+                      // are no longer thrown away with no way back (Nielsen re-run N6,
+                      // 2026-11-02; e2e yourWordsStayWithTheirEvent).
+                      const key = draftEditKey(sheet.title);
+                      const hers = draftBody; const prevTone = draftTone;
+                      setDraftTone(k); setDraftBody(null);
+                      try { delete draftEditsRef.current[key]; } catch { /* kept copy is best-effort */ }
+                      if (hers != null) {
+                        toast('Rewritten in a new voice.', { label: 'Undo', fn: () => {
+                          setDraftTone(prevTone); setDraftBody(hers);
+                          try { draftEditsRef.current[key] = hers; } catch { /* best-effort */ }
+                        } });
+                      }
+                    }} />
                   {draftBody != null && <div className="of" style={{ marginTop: 6, color: 'var(--steel-soft)' }}>Your words — showing your edits</div>}
                 </div>
                 <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"
