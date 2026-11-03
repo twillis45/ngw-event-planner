@@ -234,7 +234,7 @@ C1 17 + C2 5 + C3 8 + C4 18 + C5 12 + C6 6 + C7 14 + C8 5 = **85 h**, down from 
 | Shell scaffold | — | Capacitor iOS and Android projects on a **separate branch**, wrapping the hostv2 build. A smoke run in a simulator is a CAPABILITY GAP in this container, so Todd or CI runs it | Lane N |
 | Platform declaration | `STAGE2-2` (P1) | Declare iOS and Android surfaces (`facing: public`, `platform: ios` / `android`) in the workspace surfaces table at stage 2, with HIG/Material review criteria | Lane N |
 | Privacy labels / Data safety | `NAT-8` (P1) | Draft both declarations. Guest dietary and allergy data counts as health data. Processors: PostHog, Sentry, Stripe, Supabase | Lane N drafts; Todd submits |
-| Accounts, signing, assets | `NAT-9` | Apple Developer (organization enrollment needs a D-U-N-S number, which can take days, so start now) and Google Play Console (organization verification) | Todd |
+| Accounts, signing, assets | `NAT-9` | Apple Developer organization enrollment (D-U-N-S number already in hand, 11/3; enroll now, since Apple's verification still takes days) and Google Play Console (organization verification) | Todd |
 
 **Native exit for the week:**
 - All four policy questions are with counsel.
