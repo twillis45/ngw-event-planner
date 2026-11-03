@@ -34,7 +34,8 @@ This plan does not pre-decide that. It is the board's call, and recording it is 
 | **D2** | Stage 1: rule the proposal and pre-register the kill gate (`STAGE1-1`) | Money must not be taken before the kill threshold exists (spine stage 1) | Rule `docs/gate-records/2026-11-02/STAGE_1_PROPOSAL.md` as drafted, or amend it |
 | **D3** | Domain cutover timing (`NAT-6`) | Moving origin moves `localStorage`, so signed-out preview hosts would "lose" plans on the new domain | Configure DNS this week. **Cut the web app over after the release candidate**, with a moving notice. Use the domain now only for legal pages and the native association files |
 | **D4** | The cut line, if engineering is behind at Thu 11/5, 6 PM | See §5 | Approve the cut order in §5 in advance |
-| **D5** | Name clearance (`STAGE2-1`) | Brand fronting a revenue line | Clear, or rule a launch under the current name with a recorded risk |
+| **D5** | Name clearance (`STAGE2-1`) | Brand fronting a revenue line | Clear, or rule a launch under the current name with a recorded risk. The store app records (§4) give the store collision check first |
+| **D6** | iOS bundle ID and Android application ID, plus the store display name | Permanent once a build is published, and needed before signing and app records | Reverse-domain on the company domain, for example `com.noguessworksystems.<app>`. Todd picks; Claude records it |
 
 ## 2. Fix clusters (P0/P1 engineering, collapsed by root cause)
 
@@ -213,9 +214,9 @@ C1 17 + C2 5 + C3 8 + C4 18 + C5 12 + C6 6 + C7 14 + C8 5 = **85 h**, down from 
 
 | Day | Lanes A/B/C | Todd |
 |---|---|---|
-| **Tue 11/3** (tonight) | Plan committed. Lane C opens the WebKit PR | Rulings D1–D5 started. Attorney packet sent. Developer-account enrollment started. Pentest firms contacted |
+| **Tue 11/3** (tonight) | Plan committed. Lane C opens the WebKit PR | Rulings D1–D6 started. Attorney packet sent. **Apple and Google organization enrollment submitted** (D-U-N-S in hand). Pentest firms contacted |
 | **Wed 11/4** | C1, C4 and C2 in flight. C6 starts | RUNBOOK §A (RLS), §C (rate limits), §D (telemetry). Testers recruited. **D1 ruled by noon** |
-| **Thu 11/5** | C1 merged → C5. C4 merged → C3. C6 and C8 land. **6 PM: cut-line check (§5)** | RUNBOOK §B (restore drill). DNS configured. Pentest booked |
+| **Thu 11/5** | C1 merged → C5. C4 merged → C3. C6 and C8 land. **6 PM: cut-line check (§5)** | RUNBOOK §B (restore drill). DNS configured. Pentest booked. If accounts have cleared: app records, IDs (D6) and signing set up |
 | **Fri 11/6** | C3 and C5 merge. **Feature freeze 3 PM.** C7 proof runs on the release candidate SHA. Release candidate tagged and deployed on `live`. Re-score board (§7) | Legal pages published if the attorney has returned |
 | **Sat 11/7** | Fix only release-blocking regressions | **Live-key Stripe lifecycle** on the release candidate. **UAT Tester A + B** |
 | **Sun 11/8** | UAT P0/P1 → fix or block. §7 gate records, artifact, HANDOFF | UAT synthesis review. Board materials read |
@@ -234,13 +235,19 @@ C1 17 + C2 5 + C3 8 + C4 18 + C5 12 + C6 6 + C7 14 + C8 5 = **85 h**, down from 
 | Shell scaffold | — | Capacitor iOS and Android projects on a **separate branch**, wrapping the hostv2 build. A smoke run in a simulator is a CAPABILITY GAP in this container, so Todd or CI runs it | Lane N |
 | Platform declaration | `STAGE2-2` (P1) | Declare iOS and Android surfaces (`facing: public`, `platform: ios` / `android`) in the workspace surfaces table at stage 2, with HIG/Material review criteria | Lane N |
 | Privacy labels / Data safety | `NAT-8` (P1) | Draft both declarations. Guest dietary and allergy data counts as health data. Processors: PostHog, Sentry, Stripe, Supabase | Lane N drafts; Todd submits |
-| Accounts, signing, assets | `NAT-9` | Apple Developer organization enrollment (D-U-N-S number already in hand, 11/3; enroll now, since Apple's verification still takes days) and Google Play Console (organization verification) | Todd |
+| Developer accounts | `NAT-9` | **D-U-N-S number in hand (11/3), so the slowest prerequisite is gone.** Todd enrolls in Apple Developer (organization) and Google Play Console (organization) on Tue. Remaining lead time is Apple's verification call and Google's organization verification, typically days. An organization Play account also avoids the closed-testing period Google requires of new personal accounts | Todd |
+| Store records and identifiers | `NAT-9`, `STAGE2-1` | Once enrolled:<br>- Create the app record in App Store Connect and in Play Console. This reserves the store name, and the store collision check is the first step of name clearance (Command Step 3b), so it feeds D5.<br>- Fix the bundle ID and application ID (D6). They are permanent once published | Todd; Claude drafts the record fields |
+| Signing | `NAT-9` | Apple distribution certificate and provisioning profile. Android upload key, with Play App Signing enrolled. **Keys and certificates never enter this public repo**; they go in the CI secret store or on Todd's machine | Todd |
+| Internal test builds | — | **New this week if both accounts clear by Thu 11/5:** upload the scaffold build to TestFlight **internal** testing (no beta review for internal testers) and the Play **internal testing** track. These are packaging proof only:<br>- The purchase path is hidden in native builds (interim `NAT-1` ruling).<br>- They are not a store submission.<br>- They are not on the web release candidate's path.<br>If the accounts haven't cleared, this moves to the week after with nothing else blocked | Lane N builds; Todd uploads |
+| Simulator and device smoke | — | A CAPABILITY GAP in this container. It runs on a macOS GitHub Actions runner for iOS and an Android emulator job, or on Todd's Mac with Xcode | Lane N (CI); Todd (fallback) |
 
 **Native exit for the week:**
 - All four policy questions are with counsel.
 - `NAT-3` is merged, and `NAT-2` and `NAT-7` are in review.
-- The scaffold branch builds.
-- Both developer accounts are enrolling.
+- The scaffold branch builds and passes a simulator smoke run.
+- Both developer accounts are enrolled, or verification is pending with no action left on our side.
+- App records exist in both stores, and the bundle ID and application ID are fixed (D6).
+- **Stretch, if the accounts clear by Thu:** an internal build on TestFlight and on the Play internal track, with purchase hidden.
 
 Native work is **not** on the web release candidate's critical path.
 
