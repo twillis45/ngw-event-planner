@@ -150,7 +150,7 @@ import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from 
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
-import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
+import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { effectiveDone } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
@@ -5951,55 +5951,47 @@ export default function HostShellV2() {
     catch { toast('Couldn’t copy on this browser — long-press to select it.'); }
   };
 
-  // The self-RSVP invite link — the SAME ?rsvp=CODE mechanic as the original
-  // app (every event carries rsvpCode). Guests who open it reply themselves;
-  // replies land in the outbox and merge into this roster automatically.
+  // Preview stays local. Outward links require the public event a guest sees,
+  // not just a configured proxy or a historical cloud-save stamp.
   const inviteLinkUrl = () => window.location.origin + window.location.pathname + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
-  // Scan-to-RSVP: the SAME invite link as a QR — for the printed invite, the
-  // door sign, the fridge. Dark-on-white regardless of theme (scanners first).
+  const rsvpUnavailable = (result) => result.reason === 'unavailable'
+    ? 'Couldn’t verify this RSVP link. Nothing was shared. Check your connection and try again.'
+    : 'Online RSVPs are not available for this event. Copy a plain invitation and collect replies yourself.';
+  const verifiedRsvpUrl = async () => {
+    const result = await checkRsvpCapability(event);
+    if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
+    return inviteLinkUrl();
+  };
+  const openInviteDraft = async (title, build) => {
+    const url = await verifiedRsvpUrl();
+    openDraft(title, build(event, profile, { rsvpUrl: url }));
+  };
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const showQr = async () => {
+    const url = await verifiedRsvpUrl();
+    if (!url) return;
     try {
-      const data = await QRCode.toDataURL(inviteLinkUrl(), { width: 520, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
+      const data = await QRCode.toDataURL(url, { width: 520, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
       setQrDataUrl(data);
       setSheet({ kind: 'qr' });
-    } catch { toast('Couldn’t draw the QR — share the link instead.'); }
+    } catch { toast('Couldn’t draw the QR — check and share the link instead.'); }
   };
   const shareInviteLink = async () => {
-    const url = inviteLinkUrl();
+    const url = await verifiedRsvpUrl();
+    if (!url) return;
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
         await navigator.share({ title: 'You’re invited — ' + (event.name || 'our event'), text: 'You’re invited to ' + (event.name || 'our event') + '. RSVP here: ' + url, url });
-        try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'native_share', event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
+        try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'native_share', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
         return;
-      } catch { /* declined — fall through to copy */ }
+      } catch (error) { if (error && error.name === 'AbortError') return; }
     }
-    // ── DO NOT PROMISE A LINK THAT ONLY WORKS HERE (2026-08-06, board) ──────
-    // "anyone who opens it can RSVP themselves, no app needed" is true only when
-    // the RSVP API is configured. On the deployed demo profile it is forced
-    // empty, so InviteV2 resolves {event: null} for anyone whose browser does
-    // not already hold the event — every guest gets a dead link.
-    //
-    // The production seat named this the single thing most likely to hurt a real
-    // host, and the reasoning is right: it is on the happy path, it fires a
-    // confident and specific confirmation, and the damage is social and
-    // irreversible. She sends it to forty people and finds out by phone.
-    //
-    // UX_07: a CTA may not claim a capability the build does not have. The link
-    // still copies — what changes is that the sentence stops overselling it.
-    const rsvpLive = (() => { try { return isRsvpApiConfigured(); } catch { return false; } })();
     try {
       await navigator.clipboard.writeText(url);
-      // rsvp_live rides along because a copied link on the demo profile reaches
-      // a guest who cannot reply — a share that cannot convert, and the funnel
-      // must not read it as one that could.
-      try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'clipboard', rsvp_live: rsvpLive, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
-      toast(rsvpLive
-        ? 'Invite link copied — anyone who opens it can RSVP themselves, no app needed.'
-        : 'Invite link copied — it opens on this device. Replies are not collected yet.');
+      try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'clipboard', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
+      toast('Invite link copied — the public invite is available for guests to RSVP.');
       feedback('act');
-    }
-    catch { toast('Couldn’t copy on this browser — the link ends in ?rsvp=' + (event.rsvpCode || event.id)); }
+    } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
   };
 
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
@@ -9889,7 +9881,7 @@ export default function HostShellV2() {
                           <p className={'grounding pre rv-sground' + (resolved ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
                           <div className={'actions-row pre' + (resolved ? ' in' : '')} style={{ marginTop: 'var(--sp-2)' }}>
                             <button ref={revealCtaRef} className={'cta big' + (resolved ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
-                            <button className="cta ghost" onClick={shareInviteLink}>Share the invite</button>
+                            <button className="cta ghost" onClick={shareInviteLink}>Check and share invite</button>
                             <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
                           </div>
                         </div>
@@ -23779,17 +23771,15 @@ export default function HostShellV2() {
               // field that does not exist yet and never writes one. The fixture
               // override is review-only, never persisted, and labelled on screen.
               const countInviteTools = (<>
-                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
-                    <button className="mini" onClick={showQr}>Show the QR</button>
-                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
-                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
-                        they'll see before sharing. Read-only: viewing the page files nothing. */}
-                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
+                    <button className="mini" onClick={shareInviteLink}>Check and share link</button>
+                    <button className="mini" onClick={showQr}>Check and show QR</button>
+                    {/* A local preview does not attest public availability. Sharing
+                        and QR generation perform the separate public lookup above. */}
+                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview on this device</button>
               </>);
               // ── §24 · THE SEVEN ACTIONS, TIERED BY STATE ────────────────
-              // Every handler and every label below is the production one,
-              // moved but not touched: each is classified under UX_07 and says
-              // exactly what the tap does. What changes is EMPHASIS.
+              // These existing actions retain their state-based placement.
+              // Outward RSVP links use the public-capability guard above.
               //
               // The dominant action is chosen by the host's actual situation,
               // not by taste:
@@ -23798,17 +23788,17 @@ export default function HostShellV2() {
               // Anything else would make the loudest button on the screen the
               // wrong one for the state the host is actually in.
               const _inviteActs = {
-                share:   { label: 'Share the RSVP link', onClick: shareInviteLink },
-                qr:      { label: 'Show the QR', onClick: showQr },
-                preview: { label: 'Preview the RSVP', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
-                copy:    { label: 'Copy the invite', onClick: () => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() })) },
-                brief:   { label: 'Draft the guest brief', onClick: () => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn\u2019t draft it.'); } } },
+                share:   { label: 'Check and share link', onClick: shareInviteLink },
+                qr:      { label: 'Check and show QR', onClick: showQr },
+                preview: { label: 'Preview on this device', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
+                copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite) },
+                brief:   { label: 'Draft the guest brief', onClick: () => openInviteDraft('The guest brief', draftGuestBrief) },
                 update:  { label: 'Update everyone', onClick: () => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn\u2019t draft it.'); } } },
                 // WAS "Nudge the quiet ones", which promised the app would go
                 // and nudge them. It cannot: this bulk draft has no recipient
                 // list. The label was the only thing lying; the sheet never
                 // faked a "sent" state. Offered only where reply tracking is on.
-                nudge:   showsReplyTracking(event) ? { label: 'Write a nudge to send', onClick: () => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() })) } : null,
+                nudge:   showsReplyTracking(event) ? { label: 'Write a nudge to send', onClick: () => openInviteDraft('The RSVP nudge', draftRsvpChase) } : null,
               };
               const _outstanding = (event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length;
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
@@ -23825,9 +23815,9 @@ export default function HostShellV2() {
               // the two are still comparable on one build.
               const inviteTools = (<>
                   <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
-                    <button className="mini" onClick={_inviteActs.share.onClick}>Share the RSVP link</button>
-                    <button className="mini" onClick={_inviteActs.qr.onClick}>Show the QR</button>
-                    <button className="mini" onClick={_inviteActs.preview.onClick}>Preview the RSVP</button>
+                    <button className="mini" onClick={_inviteActs.share.onClick}>Check and share link</button>
+                    <button className="mini" onClick={_inviteActs.qr.onClick}>Check and show QR</button>
+                    <button className="mini" onClick={_inviteActs.preview.onClick}>Preview on this device</button>
                     <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
                     <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
                     <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
@@ -24054,18 +24044,27 @@ export default function HostShellV2() {
                               ))}
                             </div>
                             {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
-                              // PER-GUEST chase — the engine's nudge (with the real
-                              // RSVP link) straight to THIS person's phone or inbox.
+                              // Per-guest handoffs ask for a direct reply. No public link is
+                              // embedded without checking its availability first.
                               // Links only (UX_07): the OS's own composer opens with
                               // the draft in it; nothing here claims to have sent.
-                              const d = draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() });
+                              const d = draftRsvpChase(event, profile);
                               const body = [d.subject, d.body].filter(Boolean).join('\n\n');
+                              const handoffNudge = async (click, channel) => {
+                                click.preventDefault();
+                                const url = await verifiedRsvpUrl();
+                                const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
+                                const text = [checked.subject, checked.body].filter(Boolean).join('\n\n');
+                                window.location.href = channel === 'sms'
+                                  ? 'sms:' + digits + '?&body=' + encodeURIComponent(text)
+                                  : 'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(checked.subject || 'Can you make it?') + '&body=' + encodeURIComponent(checked.body || text);
+                              };
                               const first = String(g.name || 'them').split(/\s+/)[0];
                               const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
                               return (
                                 <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
-                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
+                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'sms')} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
+                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'email')} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
                                   {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
                                   {/* The record, beside the composers rather than
                                       after them: the app cannot know whether the

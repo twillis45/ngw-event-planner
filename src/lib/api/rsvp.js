@@ -60,10 +60,10 @@ async function hasPlannerAuth() {
 // as "this link is dead." Compared by reference against the same import.
 export const INVITE_FETCH_FAILED = { fetchFailed: true };
 
-export async function fetchPublicInvite(code) {
+export async function fetchPublicInvite(code, options) {
   if (!BASE || !code) return null;
   try {
-    const res = await fetch(`${BASE}/api/public/invite/${encodeURIComponent(code)}`);
+    const res = await fetch(`${BASE}/api/public/invite/${encodeURIComponent(code)}`, options);
     if (res.status === 404) return null;          // genuinely not found
     if (!res.ok) return INVITE_FETCH_FAILED;      // 5xx / transient — retryable
     const data = await res.json();
@@ -71,6 +71,24 @@ export async function fetchPublicInvite(code) {
   } catch {
     return INVITE_FETCH_FAILED;                   // network / offline — retryable
   }
+}
+
+// A configured proxy is not a published event. Check the same public lookup
+// a guest's empty browser uses, including identity, before offering its link.
+export async function checkRsvpCapability(event) {
+  if (!isRsvpApiConfigured()) return { ready: false, reason: 'not-configured' };
+  const code = String(event && event.rsvpCode || '').trim();
+  if (!event || !event.id || code.length < 16) return { ready: false, reason: 'unpublished' };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  let remote;
+  try { remote = await fetchPublicInvite(code, { signal: controller.signal }); }
+  finally { clearTimeout(timeout); }
+  if (remote === INVITE_FETCH_FAILED) return { ready: false, reason: 'unavailable' };
+  if (!remote || String(remote.id) !== String(event.id) || remote.rsvpCode !== code) {
+    return { ready: false, reason: 'unpublished' };
+  }
+  return { ready: true, code };
 }
 
 // ── Public: submit a guest RSVP (idempotent) ──────────────────────────────────
@@ -90,7 +108,9 @@ export async function submitRsvp(code, payload) {
     e.status = res.status;
     throw e;
   }
-  return res.json(); // { ok, submitted_at }
+  const result = await res.json();
+  if (!result || result.ok !== true) throw new Error('RSVP was not accepted');
+  return result; // { ok, submitted_at }
 }
 
 // ── Planner: host read-back ───────────────────────────────────────────────────
