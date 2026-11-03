@@ -40,17 +40,24 @@ Boundaries kept: Legacy CRA (`src/App.js`) was not modified, HostV2 was not rede
 
 | Stage | Ruling (current) | Basis | Earlier record (historical) |
 |---|---|---|---|
-| 0 Surface declaration | **N/A — satisfied** | Surfaces table in workspace `CLAUDE.md` declares `facing` and `platform` for hostv2, admin, demo bar and CRA. *iOS/Android are undeclared* (see stage 2) | Passed |
-| 1 Problem/wedge | **OWNER ACTION** (`STAGE1-1`) | `docs/gate-records/2026-11-02/STAGE_1_PROPOSAL.md` drafted (wedge basis; GO at ≥2 of 3 at $39, no discount; $0 spend cap). The kill threshold is not pre-registered and no ruler is recorded | Passed |
-| 2 Scope/platform | **CONDITION** (`STAGE2-1`, `STAGE2-2`) | Web scope declared. Name not cleared. No iOS/Android scope, HIG/Material review, or criteria | Passed |
-| 3 Build to spec | **CONDITION** (`RSVP-LIVE-1`) | Engine and shell build green. The live RSVP path is promised but cannot work on the shipped profile | Passed |
-| 4 Usability (guard + measurement + Nielsen) | **FAIL** | P0 `ATTN-6`. P1s: `TRUST-1/2`, `COMP-1/2/3`, `ATTN-2/3`, `FRIC-2/3/4/5`, `GOLD-F-1/4/5`. Historical Nielsen #2–#5 re-verified closed; #1 partly open (`NIELSEN-1`) | Passed |
-| 5 Enumerating (security/legal/consent) | **CONDITION** | RLS gate 14/14 in the repo, route sweep 4/4, hostv2 `npm audit` 0, consent toggle and notice live. Owner attestations are open (`SEC-1/2/3/4`) | Passed |
-| 6 Reach | **FAIL** | The spine requires public P0/P1 resolved before reach. Public P0/P1 rows are open (§4) | Passed with conditions |
-| 7 Instrumentation | **CONDITION** (`OBS-1`, `OBS-2`) | Sentry initializes and reports from the error boundary, chunk load and cloud libs. Production arrival is unproven, and local save failures are not reported | Passed with conditions |
-| 8 Pre-launch hardening | **CONDITION** | Error/recovery specs 36/36. No WebKit (`VERIFY-1`), no restore drill (`SEC-2`), no security headers (`SEC-5`, accepted debt) | Passed with conditions |
-| 9 Promotion (four retro gates) | **FAIL** | No human UAT (`UAT-1`), no live-key payment run (`PAY-1`), no published legal (`LEGAL-1`), no pentest (`SEC-4`), and §4 open. The board has never convened | Entry refused |
-| 10 Operate | **N/A** | Not reachable before 9 | — |
+| 0 Adoption (inbound only) | **N/A — satisfied** | Surfaces table in workspace `CLAUDE.md` declares `facing` and `platform` for hostv2, admin, demo bar and CRA. *iOS/Android are undeclared* (see stage 2) | Passed |
+| 1 Problem statement | **OWNER ACTION** (`STAGE1-1`) | `docs/gate-records/2026-11-02/STAGE_1_PROPOSAL.md` drafted (wedge basis; GO at ≥2 of 3 at $39, no discount; $0 spend cap). The kill threshold is not pre-registered and no ruler is recorded | Passed |
+| 2 Scope & design | **CONDITION** (`STAGE2-1`, `STAGE2-2`) | Web scope declared. Name not cleared. No iOS/Android scope, HIG/Material review, or criteria | Passed |
+| 3 Build | **CONDITION** (`RSVP-LIVE-1`) | Engine and shell build green. The live RSVP path is promised but cannot work on the shipped profile | Passed |
+| 4 Verify (guard + measurement + Nielsen + red-proof) | **FAIL** | P0 `ATTN-6`. P1s: `TRUST-1/2`, `COMP-1/2/3`, `ATTN-2/3`, `FRIC-2/3/4/5`, `GOLD-F-1/4/5`. Historical Nielsen #2–#5 re-verified closed; #1 partly open (`NIELSEN-1`) | Passed |
+| 5 Security & data review (enumerating) | **CONDITION** | RLS gate 14/14 in the repo, route sweep 4/4, hostv2 `npm audit` 0, consent toggle and notice live. Owner attestations are open (`SEC-1/2/3/4`) | Passed |
+| 6 Deploy (reach: public) | **FAIL** | The spine requires public P0/P1 resolved before reach. Public P0/P1 rows are open (§4) | Passed with conditions |
+| 7 Observe & handoff | **CONDITION** (`OBS-1`, `OBS-2`) | Sentry initializes and reports from the error boundary, chunk load and cloud libs. Production arrival is unproven, and local save failures are not reported | Passed with conditions |
+| 8 Maintain | **CONDITION** | Error/recovery specs 36/36. No WebKit (`VERIFY-1`), no restore drill (`SEC-2`), no security headers (`SEC-5`, accepted debt) | Passed with conditions |
+| 9 Promotion (four retro public gates) | **FAIL** | No human UAT (`UAT-1`), no live-key payment run (`PAY-1`), no published legal (`LEGAL-1`), no pentest (`SEC-4`), and §4 open. The board has never convened | Entry refused |
+| 10 Sunset | **N/A** | Not reachable before 9 | — |
+
+**Erratum, 11/3/2026 (same day).** The first commit of this section labeled stages 0, 4, 6, 7, 8 and 10 with names that are not the spine's (`ngw-os/docs/path-to-production.md`, "Axis 2"). The labels are corrected above, and the rulings are unchanged. Re-reading the spine and `commands/path-to-production.md` against this audit also showed what it did **not** do:
+- **Stage 4:** the measurement pass (`measure-dont-look`) was not run. The Nielsen work re-verified historical findings #1–#5 instead of running a fresh 10-heuristic pass.
+- **Command steps:** no gate record was written (Steps 5/5p), the gate artifact was not republished (Step 6), and HANDOFF was not updated (Step 7).
+- **Stage 9:** it was not framed as the spine's four retro public gates (stage 2 activation/UX doctrine, stage 4 critique, stage 5 full review, stage 7 instrumentation plus tracker sync). The board is the only body that can pass it, with `boardSeats` and `boardVerdict`.
+
+All of these are scheduled in `docs/audits/2026-11-03_ONE_WEEK_PAID_WEB_RC_PLAN.md` (workstream P). The stage 4 ruling stays FAIL, and these omissions can only lower a ruling, never raise it.
 
 ## 4. `FIX BEFORE PROD` matrix
 
