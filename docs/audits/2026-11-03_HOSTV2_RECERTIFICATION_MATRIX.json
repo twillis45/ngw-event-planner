@@ -1386,6 +1386,507 @@
    "estimated_engineering_hours": 8,
    "external_dependency": false,
    "confidence": "medium"
+  },
+  {
+   "id": "S9-1",
+   "title": "RSVP purge function callable by the anon key deletes every RSVP",
+   "stage": 5,
+   "severity": "P0",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "supabase/migrations/009_rsvp_submissions.sql:111 SECURITY DEFINER, no revoke from public/anon (contrast 010:52, 011:65)",
+    "PostgREST exposes public-schema functions as RPC; the anon key ships in the live-profile bundle"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Once the live profile ships, anyone can wipe every studio's guest replies, including dietary and allergy data.",
+   "reproduction": "On a non-production project: POST /rest/v1/rpc/purge_old_rsvp_submissions {older_than_days:-1} with the anon key. Live check (read-only): select has_function_privilege('anon','public.purge_old_rsvp_submissions(int)','execute').",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-2",
+   "title": "Anyone with an invite link can forge RSVP rows directly",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "supabase/migrations/009_rsvp_submissions.sql:86-90 rsvp_anon_insert with check (true)",
+    "backend/app/routers/rsvp.py:246 returns the event id in the public invite; backend per-IP/per-code limits (rsvp.py:289) bypassed"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Forged replies appear in the host read-back; headcount and food quantities follow them.",
+   "reproduction": "Anon PostgREST insert into the owner's own test event using the event id from GET /api/public/invite/{code}.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-3",
+   "title": "Any signed-in user can create Stripe Checkout pages for any amount on the NGW account",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "backend/app/auth.py:80-90 require_planner is authentication only",
+    "backend/app/routers/stripe_payments.py create-checkout-session takes amount_cents from the caller; no hostv2 caller"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Card testing, chargebacks and branded phishing on the business's Stripe account once sign-in is open.",
+   "reproduction": "Sign up on live, POST /api/stripe/create-checkout-session with any amount → a real NGW-branded Checkout URL.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-4",
+   "title": "Refunded or disputed passes are never revoked; duplicate charge logged as granted",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "backend/app/routers/stripe_payments.py:522 handles only checkout.session.completed",
+    "no code deletes event_passes; grant path never checks rowcount (:609-620)",
+    "docs/legal/REFUND_POLICY_DRAFT.md:82 promises revocation"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A refunded host keeps the pass; the published refund policy would be false; a double charge is kept without a grant.",
+   "reproduction": "Test mode: buy the pass, refund it in the dashboard, GET /api/stripe/pass still returns the entitlement.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-5",
+   "title": "Pass entitlement enforced only in the client",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "hostv2 passGate (client); backend/app/routers/vendor_brief.py:180-196 mints links without reading event_passes"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Anyone can use paid features without paying; revenue integrity rests on an honor system.",
+   "reproduction": "Call the vendor-brief mint endpoint as a signed-in user with no pass.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-6",
+   "title": "PROMOTION-DEFERRED.md describes the demo profile, not services or live",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "PROMOTION-DEFERRED.md (9/2) states localStorage-only, no accounts"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The written deferrals no longer match what ships, so deferred risks are effectively dropped at promotion.",
+   "reproduction": "Read the file against the services and live profile definitions in .github/workflows/pages-from-source.yml.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "RP-1",
+   "title": "Protected-routes sweep cannot see an ungated route whose docstring names the gate, or one that needs a body",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "backend/tests/test_protected_routes_sweep.py matches the string \"require_planner\" in inspect.getsource (docstrings count)",
+    "live probe sends json={} and accepts 422 before auth runs",
+    "red-proof 11/3: POST /api/ai/orchestrate with its gate removed stayed green (escape)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The security gate stage 5 relies on can pass a public, ungated AI route.",
+   "reproduction": "Replace the gate call in /api/ai/orchestrate with principal = {} and run the sweep: 4 passed.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-1",
+   "title": "A price typed with cents is stored 100x too large",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:22625 strips every non-digit, so 4800.00 becomes 480000",
+    "reproduced 11/3 at 390px: toast \"$480,000 agreed\""
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "One routine price entry corrupts the money truth.",
+   "reproduction": "Vendor card → \"agreed to pay $\" → type 4800.00 → blur.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-2",
+   "title": "An \"agreed\" vendor price is excluded from spoken-for while the toast says it is tracked",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/vendorMoney.js:35-37,60 counts booked status only",
+    "src/lib/hostSpending.js:267",
+    "HostShellV2.jsx:3798 toast \"Payment tracking reads it now\""
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The host sees thousands more headroom than she has.",
+   "reproduction": "Add Catering, agree $4,800 without marking booked → money sheet unchanged.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-3",
+   "title": "Restore from a file says \"Your events are back\" when nothing was restored",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:18306-18311 toast ignores added/updated/skipped",
+    "src/lib/customEventStore.js:316-317 skips existing ids unless overwriteExisting"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The emergency exit lies; the host stops looking for her data.",
+   "reproduction": "Settings → restore a backup over the same event → toast success, data unchanged.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-4",
+   "title": "A vendor cannot be removed once added",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:3875 addVendorCategory, :3662 writeVendor; no remove control on the vendor card (~:22600-22940)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A mis-tap vendor stays forever and keeps generating nags.",
+   "reproduction": "Tap a suggested role's Add, let the 6.5s toast lapse; no remove path exists.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-7",
+   "title": "No analytics event for the pass funnel; the activation-funnel events fire only from the frozen CRA",
+   "stage": 7,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/analytics.js:148-280 has no pass/checkout/purchase key",
+    "signed_up, intake_committed, first_value… have 0 calls in hostv2"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Paid conversion cannot be diagnosed from the shipping app.",
+   "reproduction": "grep hostv2/src for capture calls.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "NEW-1",
+   "title": "Env-var seam guard reads only config.py; 23 server-read variables are undeclared",
+   "stage": 5,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "theBlueprintNamesWhatTheServerNeeds.test.js reads config.py only; routers read ANTHROPIC_API_KEY, OPENAI_API_KEY, DOCUSIGN_*, …"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Production configuration for AI, DocuSign and Instacart cannot be attested.",
+   "reproduction": "Diff os.getenv calls under backend/ against render.yaml.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-5",
+   "title": "Phone Back during creation leaves the app and loses the sentence",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:5000-5010, :9099"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Typed draft lost.",
+   "reproduction": "Create → type → Back.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-6",
+   "title": "A guest's name cannot be edited",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:24440, :24029"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Fixing a typo loses the reply and needs.",
+   "reproduction": "Open a guest; no name field.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-7",
+   "title": "Restore copies are bare timestamps; only 10 kept",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:18322-18348; src/lib/customEventStore.js:40,240"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The copy from before a mistake is evicted after ~10 edits.",
+   "reproduction": "Make 11 edits; the earliest copy is gone.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-8",
+   "title": "80th birthday gets kid-party vendor suggestions",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "src/lib/playbooks/data/birthday.js:143-144"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "App reads as not understanding the event.",
+   "reproduction": "80th-birthday sentence → vendors.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-9",
+   "title": "No help, support or contact route anywhere in the host app",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "grep hostv2/src: no mailto/support/contact for the host"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A paying host has nowhere to go.",
+   "reproduction": "Look for help in the menu and the error boundary.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "NEW-3",
+   "title": "HANDOFF SHA stale and the two freshness scripts disagree",
+   "stage": 7,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "scripts/handoff-freshness.mjs exit 1; ngw-os copy exit 2"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Measured state unreliable.",
+   "reproduction": "npm run handoff:check",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-10",
+   "title": "A negative price is silently stored as positive",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:22625"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Minor money error.",
+   "reproduction": "Type -500.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-11",
+   "title": "Vendor due dates render year-first",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:22737"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Cosmetic.",
+   "reproduction": "Vendor card.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-12",
+   "title": "Insurance ask shown twice on every vendor card",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:22798, :22934"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Clutter.",
+   "reproduction": "Vendor card.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
   }
- ]
+ ],
+ "addendum_2026_11_03": {
+  "note": "Findings appended by the Path-to-Production command run. No recertification finding was removed, merged away or relabeled; each keeps its original stage number, which already used the spine numbering even where the recertification table mislabeled the stage name.",
+  "added": [
+   "S9-1",
+   "S9-2",
+   "S9-3",
+   "S9-4",
+   "S9-5",
+   "S9-6",
+   "RP-1",
+   "N4-1",
+   "N4-2",
+   "N4-3",
+   "N4-4",
+   "S9-7",
+   "NEW-1",
+   "N4-5",
+   "N4-6",
+   "N4-7",
+   "N4-8",
+   "N4-9",
+   "NEW-3",
+   "N4-10",
+   "N4-11",
+   "N4-12"
+  ]
+ }
 }
