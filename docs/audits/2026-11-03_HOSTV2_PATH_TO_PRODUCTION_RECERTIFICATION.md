@@ -388,7 +388,7 @@ Run it **after** the §4 P0/P1 fixes. Running it before only re-finds `ATTN-6`, 
 
 ## 18. Payments, legal and promotion findings
 
-- **`PAY-1` (P1) — OWNER ACTION, live-key Stripe lifecycle.** Billing stays off until §4 closes. Then, on a staging profile with live keys:
+- **`PAY-1` (P1) — OWNER ACTION, live-key Stripe lifecycle.** Procedure base: `docs/ONE_EVENT_PASS_PURCHASE_RUNBOOK.md`. Billing stays off until §4 closes. Then, on a staging profile with live keys:
   1. Buy the $39 pass with a real card.
   2. Confirm the webhook marks the entitlement.
   3. Refund it from the Stripe dashboard and confirm the entitlement is revoked.
