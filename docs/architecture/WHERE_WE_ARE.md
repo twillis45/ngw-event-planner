@@ -1,5 +1,26 @@
 # Where We Are -- live status board
 
+## 2026-11-03 — recertification, a one-week plan, and the command itself
+
+Branch `main-2utz0n`, docs only, pushed and **not on `main`** (no Checks run
+until merged). The live site is unchanged at `d22a9683` (profile `services`).
+
+**Three documents, in order:**
+1. A handoff-driven recertification ruled **NO-GO** with 66 findings.
+2. A one-week plan aims at a paid web release candidate and a stage 9 sitting on 11/9.
+3. A run of the Path-to-Production command itself, which the recertification was not (`docs/audits/2026-11-03_PTP_COMMAND_RUN.md`).
+
+**What the command run changed:**
+- **Instruments.** Stage 4's three instruments actually ran: measurement with device emulation, a fresh ten-heuristic pass, and red-proof of eight cited gates.
+- **One gate escaped.** The protected-routes sweep, the stage 5 enumerating artifact, misses a route whose docstring names the gate (`RP-1`).
+- **New P0 (`S9-1`, from `promote-surface`).** The anon key can call the RSVP purge function, which becomes live risk the moment sign-in ships.
+- **Stage 4 correction.** The recertification ruled stage 4 on the wrong definition: the critique's P0/P1s block stage 6. Stage 4 stays not-yet for its own reasons: the guard didn't pass, WebKit is untested, and a gate escaped.
+- **Stage 9 has a packet, not a verdict.** Its four public gates measure 0 of 4.
+
+**Plan.** The plan grew to 109 h with a new cluster, C9 (paid-path security), which must merge before the `live` profile ships.
+
+**Where the records are.** Gate records are drafted in the workspace repo for the owner to post. The owner's checklist is `docs/audits/2026-11-03_OWNER_CHECKLIST_WEEK_OF_11-09.md`.
+
 ## 2026-11-02 (later, last) — the path-to-production list worked top to bottom; one security finding waits on a merge
 
 Branch `main-2utz0n` @ `057a282`, twelve commits past `2ec704e`, all pushed,

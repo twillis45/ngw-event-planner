@@ -8,6 +8,12 @@
 
 All times are EST.
 
+> **Amended 11/3/2026 by the Path-to-Production command run** (`docs/audits/2026-11-03_PTP_COMMAND_RUN.md`). Changes:
+> - **Clusters grown:** C1 gains `N4-1` and `N4-2`; C5 gains `N4-4`; C6 gains `N4-3` and `S9-7`; C8 gains `S9-6` and `N4-9`.
+> - **New cluster C9** (paid-path security and integrity: `S9-1` P0, `S9-2`, `S9-3`, `S9-4`, `RP-1`). It **must merge before the `live` profile ships**.
+> - **Workstream P** is largely done by that run; what remains is in §7.
+> - **Total:** 85 h → 109 h. C9 goes to lane N first; native work follows it.
+
 ---
 
 ## 0. What "done by 11/9" means, and what it cannot mean
@@ -44,7 +50,7 @@ This plan does not pre-decide that. It is the board's call, and recording it is 
 
 ### C1 — Money truth (priority 1)
 
-- **Closes:** `ATTN-6` (P0), `COMP-3`, `ATTN-2`, `FRIC-5` (P1, minimal form). Pulls in `TRUST-4` (P2): it is the same money claim, and leaving it makes the `FRIC-5` fix a contradiction.
+- **Closes:** `ATTN-6` (P0), `COMP-3`, `ATTN-2`, `FRIC-5` (P1, minimal form). **Added 11/3:** `N4-1` (a price typed with cents is stored ×100: `HostShellV2.jsx:22625` strips every non-digit) and `N4-2` (an "agreed" vendor price is not counted as spoken for: `src/lib/vendorMoney.js:35-37,60`). Both are the same one-source-per-category ledger fault. Pulls in `TRUST-4` (P2): it is the same money claim, and leaving it makes the `FRIC-5` fix a contradiction.
 - **Root cause:** one function, `hostSpending()`, sums every money source into `committed` without a per-category owner. The double counts:
   - A vendor's unpaid balance (`vendorOwed`, `src/lib/hostSpending.js:267`) is added on top of a budget line that already holds the same contract (`:290`). The header at `:20-26` claims this cannot happen.
   - NGW's own food and supply estimate counts as "spoken for" (`:290`).
@@ -67,7 +73,7 @@ This plan does not pre-decide that. It is the board's call, and recording it is 
   - jest: the estimate is reported apart from spoken-for.
   - Playwright 390px: money sheet on the sample event shows one spoken-for total, with no false overrun ranked by the One Move; log a payment and see spent move.
 - **Depends on:** nothing. It goes first because C5's One Move rows read these numbers.
-- **Hours:** 17 (ATTN-6, COMP-3 and ATTN-2 collapse to 12, FRIC-5 minimal 5, TRUST-4 inside). **Parallel:** yes, lane A.
+- **Hours:** 20 (was 17; +1 `N4-1` parse with a test for `4800.00` and `-500`, +2 `N4-2` agreed-price precedence). **Parallel:** yes, lane A.
 
 ### C2 — RSVP capability truth (priority 2)
 
@@ -132,7 +138,7 @@ This plan does not pre-decide that. It is the board's call, and recording it is 
 
 ### C5 — Core-journey workflow P1s (priority 5)
 
-- **Closes:** `ATTN-3`, `FRIC-3`, `FRIC-4`, `COMP-2` (P1).
+- **Closes:** `ATTN-3`, `FRIC-3`, `FRIC-4`, `COMP-2` (P1). **Added 11/3:** `N4-4`, a vendor cannot be removed once added (`HostShellV2.jsx:3875`, `:3662`). Add a remove control on the existing vendor card, through `patchEvent` with the existing Undo.
 - **Root cause:** controls and lines that are not wired to state:
   - "Then, in order" rows call `onCta` without settling (`HostShellV2.jsx:11395`; its own comment at `:11323` names them as previously dead).
   - The attendance toast uses `confirmedCovers`, which returns the planned number in headcount mode (`:6668-6670`, `src/lib/confirmedCovers.js:60`), so "40 confirmed" appears after one Yes.
@@ -148,11 +154,13 @@ This plan does not pre-decide that. It is the board's call, and recording it is 
   - Playwright 390px, one per finding: every "then" row lands on a control; one Yes reads "1 confirmed"; venue is changeable from the plan list; a destination event with lodging due soon never says "the rest can wait" past that date.
   - jest for the `confirmedCovers` and `phaseProgress` changes.
 - **Depends on:** C1, because ATTN-2's next One Move reads fixed money.
-- **Hours:** 12. **Parallel:** yes, lane A after C1.
+- **Hours:** 15 (was 12; +3 `N4-4`). **Parallel:** yes, lane A after C1.
 
 ### C6 — Diagnose a paid-user failure (priority 6)
 
-- **Closes:** `OBS-2` (P2, pulled in by priority 6). Pulls in `FRIC-7` (P2): it is the same save-failure seam, and a paid host's failed save must not be celebrated.
+- **Closes:** `OBS-2` (P2, pulled in by priority 6). **Added 11/3:**
+  - `N4-3` (P1): restore from a file says "Your events are back." when every event was skipped (`HostShellV2.jsx:18306-18311`; `src/lib/customEventStore.js:316`). The toast must report added/updated/skipped, and restoring over an existing event must offer overwrite.
+  - `S9-7` (P2): pass-funnel events (sheet viewed, checkout started; the grant counted server-side). Pulls in `FRIC-7` (P2): it is the same save-failure seam, and a paid host's failed save must not be celebrated.
 - **Root cause:** `customEventStore` has 0 `captureError` calls. Local save, provider and route failures never reach Sentry, and the One Move claims success after a refused save.
 - **Fix:**
   - `captureError` on save refusal or failure, provider failure, route failure, pass-checkout failure and pass-verify failure, each with tags for release SHA, profile and event-id hash. No PII, consistent with `sendDefaultPii: false`.
@@ -161,7 +169,7 @@ This plan does not pre-decide that. It is the board's call, and recording it is 
 - **Code ownership:** `hostv2/src/` (`customEventStore`, the save path in `HostShellV2.jsx`), `src/lib/sentry.js` and `src/lib/analytics.js` (call sites only).
 - **Tests:** vitest per failure class: a capture is called, with a mocked Sentry, and red-proofed. Extend the existing failed-save Playwright spec so the One Move does not claim success.
 - **Depends on:** none. **`OBS-1` (owner) proves arrival in production.**
-- **Hours:** 6. **Parallel:** yes, lane C.
+- **Hours:** 10 (was 6; +2 `N4-3`, +2 `S9-7`). **Parallel:** yes, lane C.
 
 ### C7 — Regression and GOLD proof (priority 7)
 
@@ -177,7 +185,9 @@ This plan does not pre-decide that. It is the board's call, and recording it is 
 
 ### C8 — Release-candidate integration
 
-- **Closes:** the engineering side of `LEGAL-1` and `PAY-1`, plus `NAT-3` (shared with web).
+- **Closes:** the engineering side of `LEGAL-1` and `PAY-1`, plus `NAT-3` (shared with web). **Added 11/3:**
+  - `N4-9`: a support/contact route in the menu and the error boundary. It is the Support URL Todd publishes.
+  - `S9-6`: rewrite `PROMOTION-DEFERRED.md` for the `live` profile, with backend, DB and webhook rollback, not Pages only.
 - **Work:**
   - Privacy, Terms, Refunds and Support links in Settings and on the pass sheet, pointing at the URLs Todd publishes. The first-open notice gains its Privacy link (consent draft §6).
   - **A single public-origin seam** (`NAT-3`). Public links, Stripe return URLs and the magic-link redirect take a configured public origin, falling back to `window.location.origin`. This is a prerequisite for both the domain move and the native shell. Sites: `HostShellV2.jsx:3850, 5955`; `src/lib/stripeApi.js:53, 135`; `src/lib/supabaseClient.js:73`.
@@ -187,27 +197,50 @@ This plan does not pre-decide that. It is the board's call, and recording it is 
   - jest: legal links render.
   - The release stamp test (`theStampSaysWhatShipped`) covers the `live` profile.
 - **Depends on:** Todd's legal URLs for the link targets. The links can land with the URLs as configuration.
-- **Hours:** 5 (`NAT-3` counted here, not in native). **Parallel:** yes, lane C.
+- **Hours:** 7 (was 5; +1 `N4-9`, +1 `S9-6`). `NAT-3` is counted here, not in native. **Parallel:** yes, lane C.
+
+### C9 — Paid-path security and integrity (NEW 11/3; must merge before `live` ships)
+
+- **Closes:**
+  - `S9-1` (**P0**): `purge_old_rsvp_submissions` is SECURITY DEFINER with no revoke, so the anon key can delete every RSVP (`supabase/migrations/009_rsvp_submissions.sql:111`).
+  - `S9-2` (P1): anon insert `with check (true)` (`:86-90`).
+  - `S9-3` (P1): any signed-in user can mint Stripe Checkout for any amount (`backend/app/routers/stripe_payments.py`, `create-checkout-session`; `require_planner` is authentication only, `backend/app/auth.py:80-90`).
+  - `S9-4` (P1): only `checkout.session.completed` is handled. No revoke on refund or dispute, and the grant never checks its rowcount.
+  - `RP-1` (P1): the protected-routes sweep escape.
+- **Root cause:** the paid path's trust boundary was drawn for the `demo` and `services` profiles, where no anon key ships and no stranger can sign in. `live` moves the boundary, and these five places still assume the old one.
+- **Fix:**
+  - **Migration 019:** `revoke all on function public.purge_old_rsvp_submissions(int) from public, anon, authenticated`, plus `set search_path`. Drop the anon/authenticated insert policy (the backend writes with the service role).
+  - **`create-checkout-session`:** disabled on `live`, or role-gated to a real planner role (no hostv2 caller).
+  - **Webhook:** handle `charge.refunded` and `charge.dispute.created`, revoking the `event_passes` row. Check the grant's rowcount and log a duplicate charge as such.
+  - **Sweep:** match the gate call in code with comments and docstrings stripped (parse, don't grep). Probe gated routes with a valid body and require 401.
+- **Code ownership:** `supabase/migrations/019_*.sql` (new), `backend/app/routers/stripe_payments.py`, `backend/tests/test_protected_routes_sweep.py`.
+- **Tests (red-proofed):**
+  - A migration test: no SECURITY DEFINER function in `public` without a revoke from anon. This enumerates functions the way `everyPublicTableHasRls` enumerates tables, and is red on 009 today.
+  - Backend: a refund event revokes the pass; a duplicate grant logs as duplicate; `create-checkout-session` returns 403/404 for a signed-in non-planner on `live`.
+  - The sweep goes red with `/api/ai/orchestrate` ungated: the exact 11/3 escape.
+- **Depends on:** nothing. The owner's live check (`has_function_privilege`) tells whether 009's function is already exposed in production.
+- **Hours:** 12. **Parallel:** yes, **lane N first**, ahead of native work.
+- **Board question, not engineering:** `S9-5` (pass entitlement enforced only in the client). The board rules accept or require server enforcement (board packet §6).
 
 ### Totals
 
-C1 17 + C2 5 + C3 8 + C4 18 + C5 12 + C6 6 + C7 14 + C8 5 = **85 h**, down from 111 h, across three engineering lanes.
+C1 20 + C2 5 + C3 8 + C4 18 + C5 15 + C6 10 + C7 14 + C8 7 + C9 12 = **109 h** (was 85 h on 11/3 morning; +24 h from the command run's findings), across four lanes.
 
 ## 3. Parallel workstreams
 
 | Lane | Owner | Work, in order | Hours | Touches |
 |---|---|---|---|---|
-| **A** | Claude (this session) | C1 → C5 | 29 | `hostSpending`, money sheet, One Move rows |
+| **A** | Claude (this session) | C1 → C5 | 35 | `hostSpending`, money sheet, One Move rows |
 | **B** | Codex, or a second Claude | C4 → C3 | 26 | parser, identity, militaryRetirement, reveal engines, creation write |
-| **C** | Claude #2 | C7 WebKit (day 1) → C2 → C6 → C8 → C7 proof (Fri) | 30 | rsvp, observability, origin seam, CI |
-| **N** | Claude #3 (native) | §4 below | about 30 | native branch, CORS, policy packet |
-| **P** | Claude (lane A, Sat–Sun) | §7 command obligations | about 6 | gate records, artifact, HANDOFF |
+| **C** | Claude #2 | C7 WebKit (day 1) → C2 → C6 → C8 → C7 proof (Fri) | 36 | rsvp, observability, origin seam, CI |
+| **N** | Claude #3 | **C9 first (12 h, paid release blocker)**, then §4 native | about 42 | native branch, CORS, policy packet |
+| **P** | Claude (lane A, Sat–Sun) | §7: what the 11/3 command run left (re-score, matrix on the release candidate, record posting, artifact, HANDOFF) | about 4 | gate records, artifact, HANDOFF |
 | **T** | Todd | Owner checklist | — | dashboards, counsel, testers, board |
 
 **Collision rules for `HostShellV2.jsx`.** Lanes A, B and C all touch it, in different line ranges.
 - One PR per cluster, small.
 - Merge to main only after Checks pass; rebase on main before each merge.
-- Merge order when PRs are ready together: C1 → C2 → C4 → C3 → C5 → C6 → C8.
+- Merge order when PRs are ready together: C9 → C1 → C2 → C4 → C3 → C5 → C6 → C8.
 - No lane reformats or moves code outside its listed lines.
 
 **Calendar**
@@ -259,7 +292,7 @@ If engineering is behind at **Thu 11/5, 6 PM**, cut in this order. Each cut beco
 2. `FRIC-2` (the honoree-correction phantom milestone) is disclosed to the board as open.
 3. `COMP-2` is disclosed to the board as open.
 
-**Never cut:** C1's `ATTN-6`, `COMP-3` and `ATTN-2`; C2; `TRUST-1` and `TRUST-2`; `GOLD-F-1` and `GOLD-F-5`; C6; WebKit on the critical journeys.
+**Never cut:** all of C9; C1's `ATTN-6`, `COMP-3`, `ATTN-2`, `N4-1` and `N4-2`; C6's `N4-3`; C2; `TRUST-1` and `TRUST-2`; `GOLD-F-1` and `GOLD-F-5`; C6; WebKit on the critical journeys.
 
 ## 6. Deferred until after the one-week release candidate
 
@@ -280,6 +313,10 @@ These are cosmetic, out of scope for the release, or already accepted. None bloc
 | Root CRA dependency audit (105) | stage 8 | Legacy, frozen. CRA deletion is scheduled post-Sprint-2 |
 
 ## 7. Workstream P: Path-to-Production command obligations for a valid stage 9
+
+> **Status 11/3 (command run):**
+> - **Done:** items 1 (all three instruments run on `b056e170`; re-run on the release candidate SHA still owed), 3, 4 (drafted; the owner posts from their machine), 5, 6, and 7 (the board packet).
+> - **Remaining:** item 2 (the re-score); the instruments and full matrix on the release candidate SHA; posting the records; the stage 9 sitting.
 
 The recertification's erratum lists what it did not do. These close it, and none is optional for a stage 9 pass.
 

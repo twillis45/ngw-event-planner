@@ -54,6 +54,7 @@ Note also: the repo-root `docs/` tree (including `docs/audits/`) is **outside th
 
 | Date | Doc | Headline |
 |---|---|---|
+| 2026-11-03 | [Path-to-Production Command Run](2026-11-03_PTP_COMMAND_RUN.md) | The command run, distinct from the recertification. All three stage 4 instruments ran (measurement at 390/1440/1920, a fresh 10-heuristic pass, red-proof of 8 cited gates with **one escape**). 26 findings added, **1 new P0** (`S9-1`). It corrects the recertification's stage 4 definition. Gate records are drafted for the owner to post |
 | 2026-11-03 | [Stage 9 Board Packet](2026-11-03_STAGE_9_BOARD_PACKET.md) | **No verdict; the board has not sat.** The spine's four public gates measured 0 of 4 passing. 11 seats, 2 new seats awaiting the owner's confirmation. `promote-surface` found a P0: the RSVP purge function is callable with the anon key (`S9-1`) |
 | 2026-11-03 | [Owner Checklist, Week of 11/9](2026-11-03_OWNER_CHECKLIST_WEEK_OF_11-09.md) | Only Todd's parallel actions toward the paid web release candidate: RUNBOOK §A–D, legal, domain, live Stripe, UAT, pentest booking, stage 9 board, app-store accounts |
 | 2026-11-03 | [One-Week Paid Web RC Plan](2026-11-03_ONE_WEEK_PAID_WEB_RC_PLAN.md) | The recertification's P0/P1 engineering findings collapsed into root-cause clusters across parallel lanes, with a pre-approved cut line and a deferral list, aimed at a stage 9 sitting on 11/9 |

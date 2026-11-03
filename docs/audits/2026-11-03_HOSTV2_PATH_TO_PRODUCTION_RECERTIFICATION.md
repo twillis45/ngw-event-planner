@@ -59,6 +59,10 @@ Boundaries kept: Legacy CRA (`src/App.js`) was not modified, HostV2 was not rede
 
 All of these are scheduled in `docs/audits/2026-11-03_ONE_WEEK_PAID_WEB_RC_PLAN.md` (workstream P). The stage 4 ruling stays FAIL, and these omissions can only lower a ruling, never raise it.
 
+**Second erratum, 11/3/2026 (after the command run, `docs/audits/2026-11-03_PTP_COMMAND_RUN.md`):**
+- **Stage 4 was ruled on the wrong definition.** This audit ruled stage 4 FAIL on its P0/P1s, but the spine's stage 4 gate is the guard script, the measurement pass and the Nielsen critique. The critique's P0/P1s **block stage 6**. Stage 4 is still not passable, for its own reasons: the guard did not pass, WebKit is uncovered, and the red-proof escape `RP-1`. Stage 6 is now not-yet for the P0/P1s.
+- **Findings added.** The command run added 26 findings to the JSON matrix, including 1 P0 (`S9-1`) and 10 P1s. None of this audit's 66 findings was removed.
+
 ## 4. `FIX BEFORE PROD` matrix
 
 Engineering only, total **111 h** (about three focused weeks). Each closes with a red-proofed test, per the coding rules.

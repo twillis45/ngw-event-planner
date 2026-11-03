@@ -1083,7 +1083,8 @@
    "status": "condition",
    "disposition": "accepted_hostv2_debt",
    "evidence": [
-    "agentA a_3_mid.png: Skip clipped at 390px during reveal"
+    "agentA a_3_mid.png: Skip clipped at 390px during reveal",
+    "measure-dont-look 11/3: a tap at the center of Skip lands on .reveal-stage; only 147/315 points reach the button at 390 (usable band ~22px), 105/231 at 1440 (styles.css:1965, HostShellV2.jsx:9828)"
    ],
    "evidence_currency": "current",
    "customer_consequence": "Skip partly hidden.",
@@ -1860,6 +1861,92 @@
    "external_dependency": false,
    "confidence": "high",
    "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "M4-1",
+   "title": "Guests sheet tap targets under 44px at 390 (chips 32px, name-only rows 22px)",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "styles.css:5625 min-height:32px",
+    "HostShellV2.jsx:24583 roster button 22px tall",
+    "mobileTapFloor fixture has no guests, so the roster never renders"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Mis-taps on the guest list on a phone.",
+   "reproduction": "Sample event → Guests tile → measure \"Thomas Whitfield\" at iPhone 13.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md) — measure-dont-look"
+  },
+  {
+   "id": "M4-2",
+   "title": "Money sheet has two right edges for amounts at desktop widths",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "styles.css:4624 820px reading cap applies to priced rows not on its exemption list"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Amounts misalign by 310px.",
+   "reproduction": "Money sheet at 1440.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md) — measure-dont-look"
+  },
+  {
+   "id": "M4-3",
+   "title": "Frame width changes between surfaces at 1920 (1580 → 1500px)",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "styles.css:5083-5086 legacy-surface width rule"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The frame jumps 40px when opening the QR sheet or reveal.",
+   "reproduction": "Guests → Show the QR at 1920.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md) — measure-dont-look"
+  },
+  {
+   "id": "M4-4",
+   "title": "Truncated \"other steps wait on this\" reason with no way to read it at 390",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "styles.css:900 .ef-why max-width:42%"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Reason text cut off.",
+   "reproduction": "Cold-created event HostHome at 390.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md) — measure-dont-look"
   }
  ],
  "addendum_2026_11_03": {
@@ -1886,7 +1973,14 @@
    "NEW-3",
    "N4-10",
    "N4-11",
-   "N4-12"
+   "N4-12",
+   "M4-1",
+   "M4-2",
+   "M4-3",
+   "M4-4"
+  ],
+  "evidence_added_to": [
+   "COMP-10"
   ]
  }
 }
