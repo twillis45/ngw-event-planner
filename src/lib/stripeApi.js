@@ -9,6 +9,7 @@
 
 import { plannerAuthHeaders } from './commApi';
 import { publicAppUrl } from './publicAppUrl';
+import { isNativeApp } from './platformRuntime';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
@@ -87,6 +88,7 @@ export const createCheckoutSession = async ({ amountCents, label, feeId, eventId
  * Returns { url, session_id }.
  */
 export const createSubscriptionSession = async ({ plan, email, studioId }) => {
+  if (isNativeApp()) throw new Error('Purchases are not available in this app.');
   if (!BASE) throw new Error('billing-not-configured');
   const appUrl = publicAppUrl();
   const res = await fetch(`${BASE}/api/stripe/create-subscription-session`, {
@@ -129,6 +131,7 @@ export const createSubscriptionSession = async ({ plan, email, studioId }) => {
  * request arrives with a signature and nothing else, no principal.
  */
 export const createPassSession = async ({ eventId }) => {
+  if (isNativeApp()) throw new Error('Purchases are not available in this app.');
   if (!BASE) throw new Error('No API backend configured (REACT_APP_API_BASE_URL).');
 
   const appUrl = publicAppUrl();

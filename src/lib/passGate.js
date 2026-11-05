@@ -46,6 +46,11 @@
 // either, copy first.
 import { spanIntel } from './eventSpan';
 import { serverPassHeld } from './passEntitlement';
+import { isNativeApp } from './platformRuntime';
+
+// Android is consumption-only. iOS remains in none mode pending an approved
+// store billing decision; a web claim cannot silently unlock paid native tools.
+const nativePassHeld = ev => window.Capacitor?.getPlatform?.() === 'android' && serverPassHeld(ev?.id) === true;
 
 // Reads env at CALL time, not import time — stripeApi captures its BASE const
 // on import, which is fine for the app but untestable and one restart stale.
@@ -126,6 +131,12 @@ export function passHeld(ev) {
  *   else → the free first-brief loop
  */
 export function briefAllowed(ev, vendorId) {
+  if (isNativeApp()) {
+    if (nativePassHeld(ev)) return { allowed: true, reason: 'pass' };
+    if (ev?.passRequired === true) return { allowed: false, reason: 'not-included' };
+    const shared = Array.isArray(ev?.briefSharedVendorIds) ? ev.briefSharedVendorIds.filter(Boolean) : [];
+    return { allowed: !shared.length || shared.includes(vendorId), reason: shared.length ? 'not-included' : 'first-brief-free' };
+  }
   if (!isBillingLive()) return { allowed: true, reason: 'billing-dormant' };
   if (!ev) return { allowed: true, reason: 'no-event' };
   const pass = passHeld(ev);
@@ -145,6 +156,7 @@ export function briefAllowed(ev, vendorId) {
  * visibility rule), never hidden.
  */
 export function destinationLocked(ev) {
+  if (isNativeApp()) return !nativePassHeld(ev) && ev?.passRequired === true && (Array.isArray(ev.passReasons) ? ev.passReasons : []).some(r => r === 'destination' || r === 'multi-day');
   if (!isBillingLive()) return false;
   if (!ev) return false;
   if (passHeld(ev).held) return false;
@@ -159,6 +171,7 @@ export function destinationLocked(ev) {
  * exists yet, and claiming one would be invented urgency.
  */
 export function creationDisclosure(verdict) {
+  if (isNativeApp()) return null;
   if (!isBillingLive()) return null;
   if (!verdict || !verdict.passRequired) {
     return 'This event is free to plan, including sharing one vendor brief. Sharing with more vendors, destination planning, or your next event takes the $39 One-Event Pass.';

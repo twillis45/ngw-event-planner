@@ -1,0 +1,13 @@
+{
+  "appId": "com.example.ngwhostrc",
+  "appName": "NGW Host RC",
+  "webDir": "www",
+  "ios": {
+    "scheme": "App",
+    "contentInset": "never"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "loggingBehavior": "none"
+}

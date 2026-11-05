@@ -1,0 +1,10 @@
+node_modules/
+www/
+artifacts/
+ios/App/App/public/
+ios/App/DerivedData/
+ios/App/build/
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/

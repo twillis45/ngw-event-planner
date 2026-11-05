@@ -5,6 +5,7 @@ import { applyPaletteAB } from './paletteAB.js';
 import { legacyVendorBriefUrl } from '@app/lib/vendorBriefPublicUrl';
 import { initSentry, captureError } from '@app/lib/sentry';
 import './styles.css';
+import { isNativeApp } from '@app/lib/platformRuntime';
 
 // ?vendor=TOKEN is a PUBLIC vendor brief — VB2 short code or legacy base64
 // snapshot, both served by the ONE existing brief page in the original app,
@@ -103,7 +104,7 @@ if (!briefUrl) {
 
 // After mount, and never awaited: a failed or slow registration must not be
 // able to delay or break the app the host already has.
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !isNativeApp()) {
   window.addEventListener('load', () => {
     registerOfflineShell(
       new URL('sw.js', document.baseURI).href,

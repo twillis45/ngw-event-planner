@@ -1,3 +1,4 @@
+import { isNativeApp } from '@app/lib/platformRuntime';
 // ─── ENGINE KEYS ARE NOT HOST COPY ──────────────────────────────────────────
 // `areaLabel` lived inside one render block, and the plan-parts list 300 lines
 // below it printed `{c.id}` raw — so a host read "location  handled" and
@@ -3860,13 +3861,14 @@ export default function HostShellV2() {
     try {
       const gate = briefAllowed(event, v.id);
       if (!gate.allowed) {
+        if (isNativeApp()) { toast('Not included for this event.'); return; }
         toast(gate.reason === 'second-vendor'
           ? 'Your free brief went to your first vendor — the pass unlocks sharing with every vendor on this event.'
           : 'Sharing vendor briefs on this event takes the One-Event Pass.');
         setSheet({ kind: 'pass' });
         return;
       }
-    } catch { /* gate engine absent — never block sharing on an internal error */ }
+    } catch { if (isNativeApp()) { toast('Couldn’t check access for this event. Nothing was shared.'); return; } }
     let appUrl;
     try { appUrl = publicAppUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return; }
@@ -5076,6 +5078,17 @@ export default function HostShellV2() {
       return null;
     });
   };
+  useEffect(() => {
+    const onNativeBack = (e) => {
+      if (!sheet && !paletteOpen) return;
+      e.preventDefault();
+      // Consume the same overlay history entry as web Back, preserving parents.
+      if (overlayPushedRef.current) window.history.back();
+      else { setPaletteOpen(false); closeSheet(); }
+    };
+    window.addEventListener('ngw-native-back', onNativeBack);
+    return () => window.removeEventListener('ngw-native-back', onNativeBack);
+  }, [sheet, paletteOpen]);
   // Sheet modal a11y (per-screen audit, cross-cutting fix — all 22 sheets share
   // this one container). Adds what every sheet was missing: Escape-to-close,
   // initial focus into the dialog, and focus restore to whatever opened it.
@@ -9057,15 +9070,16 @@ export default function HostShellV2() {
                     ? 'Your last change wasn’t saved — another tab may have this event open.'
                     : 'Your last change wasn’t saved — this device is out of storage.'}
               </span>
-              <button className="cta soft" onClick={() => {
+              <button className="cta soft" onClick={async () => {
                 try {
                   const data = JSON.stringify(exportCustomEvents(), null, 1);
+                  if (isNativeApp()) { await window.__ngwNativeExport(data); toast('Backup handed to the device share sheet. Choose where to save it.'); return; }
                   const a = document.createElement('a');
                   a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
                   a.download = 'my-events.json';
                   a.click();
                   URL.revokeObjectURL(a.href);
-                } catch { /* nothing more we can offer */ }
+                } catch { toast('The backup was not exported. Try again.'); }
               }}>Download a copy</button>
             </div>
           )}
@@ -15057,6 +15071,7 @@ export default function HostShellV2() {
               // fake-functional. Reads only the creation-stamped verdict
               // (destinationLocked), so grandfathered events sail through.
               if (destinationLocked(event)) {
+                if (isNativeApp()) return <p className="grounding" role="status">Not included for this event.</p>;
                 return (
                   <div style={{ padding: '2px 0' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Where everyone stays lives here — the stay, who needs a room, and the lodging plan for a multi-day event. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
@@ -16423,6 +16438,7 @@ export default function HostShellV2() {
             {sheet.kind === 'ground' && (() => {
               // MODEL D visibility rule — see the lodging sheet's note.
               if (destinationLocked(event)) {
+                if (isNativeApp()) return <p className="grounding" role="status">Not included for this event.</p>;
                 return (
                   <div style={{ padding: '2px 0' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Getting around lives here — the shuttle call, who’s driving, and the ride board for the day. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
@@ -16606,6 +16622,7 @@ export default function HostShellV2() {
               // are never invented.
               // MODEL D visibility rule — see the lodging sheet's note.
               if (destinationLocked(event)) {
+                if (isNativeApp()) return <p className="grounding" role="status">Not included for this event.</p>;
                 return (
                   <div style={{ padding: '2px 0' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Getting here lives here — the airports worth flying into, land-by guidance off your real start time, and the arrivals board. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
@@ -17454,7 +17471,7 @@ export default function HostShellV2() {
                 </>
               );
             })()}
-            {sheet.kind === 'pass' && (() => {
+            {sheet.kind === 'pass' && !isNativeApp() && (() => {
               // #2 COMMERCE — the One-Event Pass surface (wedge: DIY host, one
               // event, one price — NO subscription). CTA TRUTHFULNESS: only offer
               // a real charge when a payment backend is actually wired
@@ -18360,16 +18377,17 @@ export default function HostShellV2() {
     opacity. A screenshot caught what four green tests did not. */}
                         <p className="grounding" style={{ margin: '0 0 8px' }}>{line}</p>
                         <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
-                          <button className="mini" onClick={() => {
+                          <button className="mini" onClick={async () => {
                             try {
                               const data = JSON.stringify(exportCustomEvents(), null, 1);
+                              if (isNativeApp()) { await window.__ngwNativeExport(data); toast('Backup handed to the device share sheet. Choose where to save it.'); return; }
                               const a = document.createElement('a');
                               a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
                               a.download = 'my-events.json';
                               a.click();
                               URL.revokeObjectURL(a.href);
                               toast('Copy downloaded.');
-                            } catch { toast('Couldn’t download on this browser.'); }
+                            } catch { toast(isNativeApp() ? 'The backup was not exported. Try again.' : 'Couldn’t download on this browser.'); }
                           }}>Download a copy</button>
                           <button className="mini" onClick={() => dataFileRef.current && dataFileRef.current.click()}>Restore from a file</button>
                           <input ref={dataFileRef} type="file" accept="application/json,.json" style={{ display: 'none' }}
@@ -18463,12 +18481,14 @@ export default function HostShellV2() {
                     }} />
                   <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Used for local food prices and as the weather fallback when an event has no town of its own.</p>
 
+                  {!isNativeApp() && <>
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Your plan</div>
                   <button className="later-row" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', borderTop: 'none' }} onClick={() => setSheet({ kind: 'pass' })}>
                     <span className="t" style={{ fontWeight: 550 }}>The One-Event Pass<span className="of" style={{ marginLeft: 6 }}>$39 · one event, no subscription</span></span>
                     <span className="chev" aria-hidden="true">›</span>
                   </button>
 
+                  </>}
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>What {BRAND.short} remembers</div>
                   {mem.present && mem.groups.length ? (
                     <>

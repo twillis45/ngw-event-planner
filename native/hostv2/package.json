@@ -1,0 +1,29 @@
+{
+  "name": "ngw-hostv2-native",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "sync": "cap sync",
+    "ios:open": "cap open ios",
+    "android:open": "cap open android",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/ios": "8.6.0",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0"
+  }
+}
