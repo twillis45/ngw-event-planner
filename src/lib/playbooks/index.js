@@ -1103,15 +1103,14 @@ export function foodApproach(event) {
   for (const dec of candidates) {
     if (picks[dec.id] != null) return result(dec.id, picks[dec.id]);
   }
+  // The generic panel also records a real host answer. It outranks unanswered
+  // authored defaults, while a specific authored answer above still wins.
+  const generic = String(picks.sourcing || '').trim();
+  if (generic) return result(null, generic);
   for (const dec of candidates) {
     const pick = choicePickFor(event, dec.id);
     if (pick != null) return result(dec.id, pick);
   }
-  // No authored lever — honor the shell's generic food answer (foodChoices.sourcing:
-  // 'host cooks' | 'caterer' | 'potluck') so the host's food-source choice is never
-  // inert on any type (wire-proof contract 2).
-  const generic = String(picks.sourcing || '').trim();
-  if (generic) return result(null, generic);
   return nulls;
 }
 // Host has explicitly chosen NOT to use a caterer (cooks/DIY). True only when we can tell.

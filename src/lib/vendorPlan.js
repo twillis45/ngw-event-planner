@@ -16,7 +16,7 @@
 //   - every multiplier applied is named in `factorsApplied` so the UI can
 //     always answer "why is this more/less expensive than the base range"
 
-import { getPlaybook, resolveAnsweredCopy, DESTINATION_VENDOR_CATEGORIES } from './playbooks';
+import { getPlaybook, resolveAnsweredCopy, DESTINATION_VENDOR_CATEGORIES, foodApproach } from './playbooks';
 import { normalizeCategory } from './vendorAccountability/playbooks';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -60,6 +60,10 @@ export function buildVendorPlan(event, opts = {}) {
   const metroLabel = opts.metroLabel || null;
   const rush = opts.rush || { multiplier: 1, label: null, explanation: null };
   const rushFactor = num(rush.multiplier) > 0 ? num(rush.multiplier) : 1;
+  const approach = foodApproach(ev);
+  const picks = ev.foodChoices || {};
+  const catererChosen = approach.usesCaterer === true
+    && !!(approach.decisionId ? picks[approach.decisionId] : picks.sourcing);
 
   const rows = categories.map((cat) => {
     // RE-AUDIT (fresh-eyes, 2026-07-14): this was case-insensitive EQUALITY, which only ever
@@ -120,7 +124,9 @@ export function buildVendorPlan(event, opts = {}) {
 
     return {
       category: cat.category,
-      required: !!cat.required,
+      // A caterer stops being optional once the host chooses to hand off the meal.
+      // The existing attention raiser still owns its authored booking window.
+      required: !!cat.required || (catererChosen && normalizeCategory(cat.category) === 'catering'),
       when: cat.when || null,
       altToDIY: resolveAnsweredCopy(cat.altToDIY, cat.copyByAnswer, ev) || null,
       costUnit: perGuest ? 'per guest' : 'flat',
