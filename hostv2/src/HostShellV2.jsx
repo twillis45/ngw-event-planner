@@ -23302,7 +23302,7 @@ export default function HostShellV2() {
                       } catch (err) { setPaymentEntry({ ...payment, error: err.message }); }
                     }}>
                       <p className="grounding">Record an amount you paid. Choose a budget entry or add a category. This is your record, not a bank connection. Contracted vendor payments are tracked under the vendor.</p>
-                      <label>Budget entry<select className="field" style={{ minHeight: 'var(--tap-min)' }} aria-label="Budget entry" value={payment.rowId} onChange={e => setPaymentEntry({ ...payment, rowId: e.target.value, error: '' })}>
+                      <label>Budget entry<select className="field" style={{ minHeight: 'var(--tap-min)', height: 'var(--tap-min)' }} aria-label="Budget entry" value={payment.rowId} onChange={e => setPaymentEntry({ ...payment, rowId: e.target.value, error: '' })}>
                         {manualRows.map(r => <option key={r.id} value={r.id}>{r.category}</option>)}
                         <option value="new">New budget entry</option>
                       </select></label>
