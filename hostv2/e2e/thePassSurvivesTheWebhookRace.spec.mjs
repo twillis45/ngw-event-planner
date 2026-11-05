@@ -144,7 +144,10 @@ test.describe('GOLD-09 — the pass entitlement reaches the shell', () => {
   test('the shell asks the server for the pass when an event opens', async ({ page }) => {
     const asks = await stubPass(page, [false]);
     await boot(page);
-    expect(asks.length, 'no GET /api/stripe/pass — the refresh effect never fired').toBeGreaterThan(0);
+    // Wait FOR the request, not a fixed 1.2s: the refresh is an effect that runs
+    // after boot, and on the WebKit phone runner it once landed after the sleep
+    // (CI on #101, 11/5/2026). The claim is unchanged — the request must happen.
+    await expect.poll(() => asks.length, { timeout: 10_000, message: 'no GET /api/stripe/pass — the refresh effect never fired' }).toBeGreaterThan(0);
   });
 
   // ── 3 · THE GUARD HOLDS ──────────────────────────────────────────────────
