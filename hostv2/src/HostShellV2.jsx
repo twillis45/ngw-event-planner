@@ -1275,7 +1275,6 @@ export default function HostShellV2() {
   // older render (a save result lands after the edit's own Undo toast). Lets a
   // follow-up notice keep that Undo instead of wiping it (Nielsen re-run N4).
   const toastActionRef = useRef(null);
-  useEffect(() => { toastActionRef.current = toastAction; }, [toastAction]);
   // Confirmation semantics (CONFIRM-GREEN, 2026-07-16): one tone drives the toast's
   // color so "you did it" reads green everywhere from ONE place, instead of per-call
   // styling. 'ok' ⇒ green success; null/undefined ⇒ the neutral pill (errors keep it).
@@ -3523,6 +3522,7 @@ export default function HostShellV2() {
 
   const dismissToast = () => {
     clearTimeout(toastTimer.current);
+    toastActionRef.current = null;
     setToastMsg(null); setToastAction(null); setToastTone(null);
   };
   /**
@@ -3541,13 +3541,16 @@ export default function HostShellV2() {
    */
   const toast = (msg, action, tone, opts) => {
     setToastMsg(msg);
-    setToastAction(action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null));
+    const nextAction = action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null);
+    // An immediate save response can arrive before React commits an effect.
+    toastActionRef.current = nextAction;
+    setToastAction(nextAction);
     setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
     clearTimeout(toastTimer.current);
     if (opts && opts.sticky) return;
     // An actionable toast lingers a little longer — the host needs a beat to
     // read it AND decide; a plain notice keeps the original rhythm.
-    toastTimer.current = setTimeout(() => { setToastMsg(null); setToastAction(null); setToastTone(null); }, action ? 6500 : 3400);
+    toastTimer.current = setTimeout(() => { toastActionRef.current = null; setToastMsg(null); setToastAction(null); setToastTone(null); }, action ? 6500 : 3400);
   };
   // ── THE FIRST-OPEN ANALYTICS NOTICE (owner ruling 2026-11-02, option A) ──
   // One quiet line, once, after the splash — never a modal, never a gate. Shown
