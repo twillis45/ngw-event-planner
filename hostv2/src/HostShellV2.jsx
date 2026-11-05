@@ -7087,7 +7087,14 @@ export default function HostShellV2() {
     setSaveFailed(null);
     saveFailedRef.current = false;
     // A rejected local edit must never start a cloud write or show a receipt.
-    if (session && savedEv) cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
+    // `opts.cloud` (issue #100, D-7): a write whose INPUT came from the account —
+    // replies the backend returned to an authenticated read-back — must reach the
+    // account even when this render's `session` has not caught up yet. Skipping it
+    // left the event stamped in-sync with a local-only change, and the cloud pull
+    // that follows sign-in then adopted the older cloud copy over the replies.
+    // cloudSaveEvent queues when it cannot write yet, and a queued event is the one
+    // the pull leaves alone.
+    if ((session || (opts && opts.cloud)) && savedEv) cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
     feedback('act');
     if (msg) {
       // CONFIRM-GREEN: patchEvent is the ONE write path every successful edit funnels
@@ -7125,7 +7132,7 @@ export default function HostShellV2() {
     const kidsCount = kidsTotal(gs);
     patchEvent({ guests: gs, kidsCount },
       n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.',
-      { noUndo: true }); // real replies arriving isn't a host edit to undo
+      { noUndo: true, cloud: true }); // real replies arriving isn't a host edit to undo; they came from the account, so they go back to it
   };
   // NEVER A BLANK START TIME (host directive 2026-07-15, frictionless). The create flow already
   // grounds a new event's start time; this does the same, ONCE, for an event that ARRIVED
