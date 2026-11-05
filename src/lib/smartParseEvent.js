@@ -68,7 +68,14 @@ export function parseSmartEventText(text, opts = {}) {
     let out = null;
     try { const c = resolveCanonicalType(text); if (c && HOST_TYPES.includes(c)) out = c; } catch { out = null; }
     if (!out) {
-      const hit = HOST_TYPES.find(ht => text.toLowerCase().includes(ht.toLowerCase().replace(' party', '')));
+      // WHOLE WORDS ONLY (clean-host run, 11/5/2026): a bare substring test made
+      // "Day Party" → "day" match inside "Sunday", so "Book club … this Sunday"
+      // was planned, and named, as a Day Party ("My Day"). A trailing "s" still
+      // counts ("showers", "reunions").
+      const hit = HOST_TYPES.find(ht => {
+        const word = ht.toLowerCase().replace(' party', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`(^|[^a-z])${word}s?($|[^a-z])`, 'i').test(text);
+      });
       if (hit && hit.length > 3) out = hit;
     }
     return out;

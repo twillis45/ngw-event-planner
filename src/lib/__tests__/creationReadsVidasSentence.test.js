@@ -71,3 +71,16 @@ describe('D-3: a date the plan applied is never reported as dropped', () => {
     expect(dropped).toContain('team-oriented games');
   });
 });
+
+describe('a weekday is not an event type (clean-host run, 11/5/2026)', () => {
+  test.each([
+    'Book club at my place this Sunday, November 8, for 3 friends.',
+    'book club on Monday',
+    'knitting circle this Wednesday',
+  ])('%s → not Day Party', (s) => {
+    expect(parseSmartEventText(s).type).not.toBe('Day Party');
+  });
+  test('a day party is still a day party', () => {
+    expect(parseSmartEventText('a day party Saturday').type).toBe('Day Party');
+  });
+});
