@@ -54,6 +54,7 @@ Note also: the repo-root `docs/` tree (including `docs/audits/`) is **outside th
 
 | Date | Doc | Headline |
 |---|---|---|
+| 2026-11-05 | [Three-Platform Execution Plan](2026-11-05_THREE_PLATFORM_EXECUTION_PLAN.md) | The target became paid web, iOS and Android by 11/9. **No native project exists** (one SwiftUI design study). Capacitor 8.6 thin shell with bundled assets and real native modules. Track A is C1–C9; Track B is 8 native items, about 62 h. Store approval by 11/9 is not controllable; submission is possible if a 7-point gate is green |
 | 2026-11-03 | [Path-to-Production Command Run](2026-11-03_PTP_COMMAND_RUN.md) | The command run, distinct from the recertification. All three stage 4 instruments ran (measurement at 390/1440/1920, a fresh 10-heuristic pass, red-proof of 8 cited gates with **one escape**). 26 findings added, **1 new P0** (`S9-1`). It corrects the recertification's stage 4 definition. Gate records are drafted for the owner to post |
 | 2026-11-03 | [Stage 9 Board Packet](2026-11-03_STAGE_9_BOARD_PACKET.md) | **No verdict; the board has not sat.** The spine's four public gates measured 0 of 4 passing. 11 seats, 2 new seats awaiting the owner's confirmation. `promote-surface` found a P0: the RSVP purge function is callable with the anon key (`S9-1`) |
 | 2026-11-03 | [Owner Checklist, Week of 11/9](2026-11-03_OWNER_CHECKLIST_WEEK_OF_11-09.md) | Only Todd's parallel actions toward the paid web release candidate: RUNBOOK §A–D, legal, domain, live Stripe, UAT, pentest booking, stage 9 board, app-store accounts |

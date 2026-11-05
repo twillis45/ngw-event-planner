@@ -37,6 +37,14 @@ Companion to `docs/audits/2026-11-03_ONE_WEEK_PAID_WEB_RC_PLAN.md`. These are th
 | 15 | **Rollback-to-private rehearsal** | Never run since 9/2. Rehearse taking the live site private, or back to the `services` profile, and back again. Time it (promote-surface: under a minute). `S9-6` will rewrite the procedure for `live`; rehearse that version on Sat | Sat 11/7 |
 | 16 | **Bring `S9-5` to the board** | Paid features are enforced only in the browser. The board decides whether that is acceptable for the release candidate (packet §6) | Mon 11/9 |
 
+## Added 11/5/2026: the target is now web, iOS and Android
+
+See `docs/audits/2026-11-05_THREE_PLATFORM_EXECUTION_PLAN.md`:
+- **Rulings, today (§6):** D-N1 (native billing model per store), D-N2 (iPhone only), D-N3 (US only), and D6 (the IDs). D1 is needed now, not Wednesday.
+- **Access to grant Codex, today (§7):** an App Store Connect API key; your Apple enrollment approval status; Google Play Console organization account submitted and verified; a Play service account; an Android upload keystore; GitHub secrets access; the Supabase redirect URL for the app's sign-in link.
+- **Status Claude cannot see:** please report RUNBOOK §A–D, legal, domain, UAT testers, pentest booking and Google enrollment.
+- **Weekend:** install the TestFlight and Android internal builds on your own phones, and press **Submit** only when the plan's §8 gate is green. Send a screenshot of each store's confirmation; nothing is "submitted" without it.
+
 ## What you do *not* need to do this week
 
 - Approve any engineering PR. Checks gate the merges.
