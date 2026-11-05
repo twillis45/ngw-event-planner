@@ -80,7 +80,15 @@ export function parseSmartEventText(text, opts = {}) {
     }
     return out;
   };
-  const type = _resolveType(t);
+  // "<Name>'s Nth" WITH NO OTHER OCCASION IS A MILESTONE BIRTHDAY (gold run,
+  // GOLD-04, 11/5/2026). "Mom's 80th in Santa Fe…" resolved no occasion — and
+  // the Creation box's own example is that sentence. Only a possessive name
+  // directly before the ordinal, never an ordinal followed by a word that makes
+  // it something else (anniversary, grade, street, …), and only when nothing
+  // else named the occasion: a stated type always wins.
+  const _POSS_ORDINAL = /\b[\w]+['’]s\s+(\d{1,3}(?:st|nd|rd|th))\b(?!\s+(?:anniversary|wedding|reunion|retirement|year|years|grade|street|st\b|avenue|ave\b|floor|place|annual|jubilee|birthday))/i;
+  const _possMilestone = t.match(_POSS_ORDINAL);
+  const type = _resolveType(t) || (_possMilestone ? 'Birthday' : null);
 
   // ── WAS THAT TYPE A GUESS? ───────────────────────────────────────────────
   //
@@ -743,7 +751,8 @@ export function parseSmartEventText(text, opts = {}) {
     return n + ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th');
   };
   const milestone = msm ? msm[1].toLowerCase()
-    : (turnM ? _ord(parseInt(turnM[1], 10)) : null);
+    : (turnM ? _ord(parseInt(turnM[1], 10))
+      : (_possMilestone && type === 'Birthday' ? _possMilestone[1].toLowerCase() : null));
 
   // ── City + state ("in Santa Fe, New Mexico") ─────────────────────────────
   // Routed through the SAME parseVenueLocation the manual "Which town?" field
@@ -1231,6 +1240,18 @@ export function parseSmartEventText(text, opts = {}) {
     : (resolveLoose(spokenPlace) || resolveLoose(awayPlace)
       || (inLowerM ? resolveLoose(inLowerM[1]) : null)
       || (awayLowerM ? resolveLoose(awayLowerM[1]) : null));
+
+  // A STATE SHE NAMED ON ITS OWN (gold run, 11/5/2026): "cookout in Maryland
+  // for 30" dropped the state silently. Only when nothing else located the
+  // event, only a full state name the state table knows, and never a region —
+  // "Maryland/DC" or "the … area" spans states, so it is disclosed (see
+  // unusedClauses), not guessed. The town is still asked.
+  const stateOnly = (loc || area || landmark || spokenCity) ? null : (() => {
+    const names = Object.keys(US_STATE_NAME_TO_ABBR).sort((a, b) => b.length - a.length)
+      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const m = t.match(new RegExp(`\\bin\\s+(${names})\\b(?!\\s*[/&-]|\\s+(?:area|region)\\b)`, 'i'));
+    return m ? US_STATE_NAME_TO_ABBR[m[1].toLowerCase()] || null : null;
+  })();
 
   const normCity = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
   const homeCity = normCity(opts.homeCity);
@@ -1756,7 +1777,7 @@ export function parseSmartEventText(text, opts = {}) {
     venueCity: loc ? (loc.zip || loc.city)
       : (area ? area.hubTown : (landmark ? landmark.city : (spokenCity ? spokenCity.city : null))),
     venueState: loc ? (loc.state || null)
-      : (area ? area.state : (landmark ? landmark.state : (spokenCity ? (spokenCity.state || null) : null))),
+      : (area ? area.state : (landmark ? landmark.state : (spokenCity ? (spokenCity.state || null) : stateOnly))),
     vacationArea: area ? area.id : null,
     // "No kids." / "adults only" → the invite policy InviteV2 + doItForMe already
     // consume; never invented — only when the host said it.
@@ -1833,7 +1854,24 @@ const _FILLER = new Set([
  * back into phrases so the host reads "2 excursions", not "2" and "excursions".
  * Short strings only, so N re-parses is cheap.
  */
+// A REGION SHE NAMED IS NEVER SWALLOWED (gold run, GOLD-01, 11/5/2026). "…about
+// 75 guests in the Maryland/DC area…" was absorbed: its clause also carried the
+// guest count, so the clause test saw it as used, while the plan held no place.
+// A region spans states and is not guessed into one; when the plan ended up with
+// no town and no state, the phrase itself is reported as not applied.
 export function unusedClauses(text, opts = {}) {
+  const out = _unusedClausesCore(text, opts);
+  const m = String(text || '').match(/\bin\s+(the\s+[A-Z][\w.]*(?:\s*[/&]\s*[A-Z][\w.]*)*\s+area)\b/);
+  if (!m) return out;
+  let p = null;
+  try { p = parseSmartEventText(text, opts); } catch { return out; }
+  if (!p || p.venueCity || p.venueState) return out;
+  const phrase = m[1].replace(/^the\s+/, 'the ');
+  if (out.some((c) => String(c).toLowerCase().includes(phrase.replace(/^the\s+/, '').toLowerCase()))) return out;
+  return [...out, phrase];
+}
+
+function _unusedClausesCore(text, opts = {}) {
   const t = String(text || '').trim();
   if (t.length < 12) return [];
 
