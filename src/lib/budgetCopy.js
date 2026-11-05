@@ -21,7 +21,8 @@ const fmt = (n) => formatCurrency(Math.abs(Number(n) || 0));
 // Named vendors that still have no price — the "this can change" caveat.
 export function unpricedVendorCount(event) {
   return ((event && event.vendors) || []).filter(v =>
-    v && String(v.name || '').trim() && !(Number(v.cost) > 0)).length;
+    v && String(v.name || '').trim() && !(Number(v.cost) > 0)
+      && !(v.cost === 0 && v.costAgreed === true)).length;
 }
 
 // Returns { state, title, line, caveat|null, numbers } — plain strings.

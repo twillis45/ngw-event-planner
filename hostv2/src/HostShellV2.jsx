@@ -164,7 +164,7 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { formatCurrency } from '@app/lib/currency';
-import { budgetPaymentPatch } from '@app/lib/vendorMoney';
+import { budgetPaymentPatch, parseVendorCost } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
@@ -3794,29 +3794,37 @@ export default function HostShellV2() {
   };
   const vendorStatusIsCurrent = (v, s) => (v.status === s) || ((v.status === 'Booked' || v.status === 'Paid') && s === 'Confirmed');
   // WAVE-B write path (c): money. Draft buffer for the "what you agreed to
-  // pay" field (commits on blur/Enter, Escape abandons); both money writes use
-  // the budget editor's MONEY-MOVE UNDO pattern — snapshot just the field the
-  // write changes, one inline restore on the toast. Single-level, in-memory.
+  // pay" field (commits on blur/Enter, Escape abandons). The cost edit uses
+  // patchEvent's guarded receipt and Undo, so amount and agreement evidence
+  // change together.
   const [vendorCostDraft, setVendorCostDraft] = useState(null); // string | null — only while the field is being edited
+  const [vendorCostError, setVendorCostError] = useState(null);
+  const vendorCostEdited = useRef(false);
+  const vendorCostOwner = useRef(null);
+  const ownsVendorCostDraft = v => vendorCostOwner.current?.eventId === event.id && vendorCostOwner.current?.vendorId === v.id;
   // A DATE change moves every countdown, deadline, and shopping window — so it's drafted and
   // must be CONFIRMED before it cascades (host report 2026-07-16), instead of committing on
   // the picker's onChange. null = not editing; a string = a picked-but-unconfirmed date.
   const [dateDraft, setDateDraft] = useState(null);
   const commitVendorCost = (v) => {
-    if (vendorCostDraft === null) return;
+    if (vendorCostDraft === null || !ownsVendorCostDraft(v)) return;
     const raw = String(vendorCostDraft).trim();
-    setVendorCostDraft(null);
-    const n = raw === '' ? '' : Math.max(0, Math.round(Number(raw) || 0));
-    if (String(n) === String(v.cost ?? '')) return; // nothing changed — no write, no toast
-    const prev = v.cost;
+    let n;
+    try { n = parseVendorCost(raw); } catch (err) {
+      setVendorCostError({ eventId: event.id, vendorId: v.id, message: err.message });
+      return;
+    }
+    setVendorCostError(null);
+    const costAgreed = n !== '';
+    if (String(n) === String(v.cost ?? '') && (v.costAgreed === costAgreed || !vendorCostEdited.current)) {
+      setVendorCostDraft(null);
+      return;
+    }
     const name = v.name || v.category || 'This vendor';
-    const result = writeVendor(v.id, { cost: n });
-    if (!result || !result.ok) { setVendorCostDraft(raw); return; }
-    toast(n ? name + ' — ' + fmt(n) + ' agreed. Payment tracking reads it now.' : name + ' — agreed price cleared.', {
-      label: 'Undo',
-      fn: () => writeVendor(v.id, { cost: prev === undefined ? '' : prev },
-        Number(prev) > 0 ? name + ' back to ' + fmt(Number(prev)) + '.' : name + ' — no agreed price on file.'),
-    });
+    const result = writeVendor(v.id, { cost: n, costAgreed }, n !== ''
+      ? name + ' — ' + n.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) + ' agreed.'
+      : name + ' — agreed price cleared.');
+    if (result && result.ok) setVendorCostDraft(null);
   };
   const toggleVendorPaid = (v) => {
     const prev = !!v.balancePaid;
@@ -22702,17 +22710,17 @@ export default function HostShellV2() {
                             })()}
                             {!v.isInformal && (<>
                               <label className="of" htmlFor={'v-cost-' + v.id}>agreed to pay $</label>
-                              <input id={'v-cost-' + v.id} className="field" type="number" inputMode="numeric" min="0" placeholder="0"
+                              <input id={'v-cost-' + v.id} className="field" type="text" inputMode="decimal" placeholder="0"
                                 style={{ maxWidth: 104, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                                value={vendorCostDraft !== null && isOpen ? vendorCostDraft : (v.cost ?? '')}
-                                onFocus={() => setVendorCostDraft(String(v.cost ?? ''))}
-                                // A payment amount is digits only — strip anything else at the source so
-                                // pasted/typed text (a whole sentence, letters, symbols) can never land a
-                                // garbled number in the field. commitVendorCost still rounds to an integer.
-                                onChange={e => setVendorCostDraft(e.target.value.replace(/[^\d]/g, ''))}
+                                value={vendorCostDraft !== null && ownsVendorCostDraft(v) && isOpen ? vendorCostDraft : (v.cost ?? '')}
+                                onFocus={() => { if (vendorCostDraft === null || !ownsVendorCostDraft(v)) setVendorCostDraft(String(v.cost ?? '')); vendorCostOwner.current = { eventId: event.id, vendorId: v.id }; setVendorCostError(null); vendorCostEdited.current = false; }}
+                                onChange={e => { setVendorCostDraft(e.target.value); setVendorCostError(null); vendorCostEdited.current = true; }}
                                 onBlur={() => commitVendorCost(v)}
-                                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setVendorCostDraft(null); }}
+                                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') { setVendorCostDraft(null); setVendorCostError(null); } }}
+                                aria-invalid={(vendorCostError?.eventId === event.id && vendorCostError?.vendorId === v.id) || undefined}
+                                aria-describedby={vendorCostError?.eventId === event.id && vendorCostError?.vendorId === v.id ? 'v-cost-error-' + v.id : undefined}
                                 aria-label="What you agreed to pay" />
+                              {vendorCostError?.eventId === event.id && vendorCostError?.vendorId === v.id && <p id={'v-cost-error-' + v.id} role="alert" className="grounding">{vendorCostError.message}</p>}
                               {/* THE ESTIMATE THE APP ALREADY MADE, AND THEN THREW AWAY.
                                   buildVendorPlan computes a real range for every category —
                                   the playbook's authored costRange × guests × the metro factor

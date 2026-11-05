@@ -21,7 +21,7 @@
 // playbookCapacity + guestCountResolved — not a new engine.
 
 import { hostSpending } from './hostSpending';
-import { isVendorBooked } from './workstreams';
+import { vendorIsCommitted } from './vendorMoney';
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan, UNIT_LABEL, SIZE_LABEL } from './crabPlan';
 import { guestCountIsConfirmed } from './guestCountFor';
@@ -34,14 +34,14 @@ const mid = (lo, hi) => {
 };
 const money = (n) => `$${Math.round(n).toLocaleString()}`;
 
-// Committed = the ONE canonical booked-status reader (isVendorBooked — the SAME predicate
+// Committed = the ONE canonical money reader (vendorIsCommitted — the SAME predicate
 // hostSpending's committed-DOLLAR math counts through vendorMoney), WIDENED by any paid /
 // signed flag so a vendor whose money is already out can never land in the "cut this"
 // bucket ("we never assume paid money comes back"). The old private regex omitted the
 // 'Paid' and 'Deposit Paid' statuses isVendorBooked counts, so a vendor inside the
 // over-budget dollar figure could still be suggested for cutting — the two disagreed
 // about the same vendor (audit 2026-07-22, kills the drift workstreams.js warns of).
-const COMMITTED_VENDOR = (v) => isVendorBooked(v)
+const COMMITTED_VENDOR = (v) => vendorIsCommitted(v)
   || v.contractSigned === true || v.contract_signed === true
   || v.depositPaid === true || v.balancePaid === true;
 
@@ -258,6 +258,7 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
       label: v.name,
       why: v.depositPaid || v.balancePaid
         ? 'Money is already paid here — this is already committed. Protect this; we never assume paid money comes back.'
+        : v.costAgreed === true ? 'You recorded an agreed amount here. Ask before changing anything — this is a commitment, not an unaccepted quote.'
         : 'This booking is already committed (signed or confirmed). Ask before changing anything — it’s a conversation, not a line item.',
     });
   });

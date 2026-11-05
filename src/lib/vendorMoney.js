@@ -29,13 +29,25 @@ import { normalizeCategory } from './vendorAccountability/playbooks.js';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
+/** Parse dollars without stripping the sign or decimal point. Empty clears the field. */
+export function parseVendorCost(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const cents = Math.round(Number(raw) * 100);
+  if (!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(raw) || !Number.isSafeInteger(cents)) {
+    throw new Error('Enter a nonnegative amount with up to two decimal places.');
+  }
+  return cents / 100;
+}
+
 /**
  * Is this vendor's money real yet? Committed = the host is on the hook for it.
  * Booked (Contracted / Deposit Paid / Confirmed / Booked / Paid) means the cost
- * is owed. 'Considering' and 'Quoted' are not money yet — they are shopping.
+ * is owed. A price explicitly agreed through the host's amount field is also
+ * committed. A raw 'Considering'/'Quoted' price alone is still shopping.
  */
 export function vendorIsCommitted(vendor) {
-  return isVendorBooked(vendor);
+  return isVendorBooked(vendor) || !!(vendor && vendor.costAgreed === true);
 }
 
 /** What the host has actually paid this vendor so far. */
