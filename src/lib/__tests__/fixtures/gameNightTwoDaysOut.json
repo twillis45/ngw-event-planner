@@ -1,0 +1,169 @@
+{
+ "id": "fixture-game-night-2-days",
+ "date": "SET_BY_TEST",
+ "name": "My Game Night",
+ "type": "Game Night",
+ "venue": "Home",
+ "budget": [],
+ "guests": [],
+ "honoree": "",
+ "vendors": [],
+ "timeline": [
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_invite",
+   "done": false,
+   "task": "Send the invite with date, time, and a one-line \"what we are playing\"; ask for a rough RSVP to size food/seats",
+   "week": "Week of",
+   "owner": "",
+   "phase": "guest",
+   "category": "planning",
+   "leadDays": -7,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_invite"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_pick_games",
+   "done": false,
+   "task": "Pick 3-4 games spanning quick fillers to one longer headliner; add a 5-10 min filler for lulls",
+   "week": "Week of",
+   "owner": "",
+   "phase": "plan",
+   "category": "planning",
+   "leadDays": -3,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_pick_games"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_check_games",
+   "done": false,
+   "task": "Open every game box to confirm all pieces/cards/dice; READ or queue the rules of any NEW game so you can teach it in 5 min",
+   "week": "Week of",
+   "owner": "",
+   "phase": "plan",
+   "category": "planning",
+   "leadDays": -3,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_check_games"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_menu",
+   "done": false,
+   "task": "Lock low-mess, one-hand finger foods that will not grease up the cards; coordinate categories if potluck",
+   "week": "Week of",
+   "owner": "",
+   "phase": "food",
+   "category": "planning",
+   "leadDays": -3,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_menu"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_shop",
+   "done": false,
+   "task": "Main shop: snacks, drinks, ice, napkins/hand wipes, cups/plates, trash bags",
+   "week": "Day before",
+   "owner": "",
+   "phase": "shopping",
+   "category": "planning",
+   "leadDays": -1,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_shop"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_prep",
+   "done": false,
+   "task": "Pre-portion dips, assemble the snack/charcuterie board, start chilling all drinks",
+   "week": "Day before",
+   "owner": "",
+   "phase": "food",
+   "category": "planning",
+   "leadDays": -1,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_prep"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_space",
+   "done": false,
+   "task": "Clear + wipe the main table; a seat per guest; bright over-table lighting; queue a low playlist",
+   "week": "Day of",
+   "owner": "",
+   "phase": "setup",
+   "category": "event-day",
+   "leadDays": 0,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_space"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_station",
+   "done": false,
+   "task": "Set the snack + drink station (and a food tray) AWAY from the game table; ice out; napkins/hand wipes + scorepad + pen on the table; trash + recycling spot visible",
+   "week": "Day of",
+   "owner": "",
+   "phase": "setup",
+   "category": "event-day",
+   "leadDays": 0,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_station"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_refresh",
+   "done": false,
+   "task": "Mid-night refresh: top up bowls, restock drinks + ice, swap a full trash bag",
+   "week": "Day of",
+   "owner": "",
+   "phase": "food",
+   "category": "event-day",
+   "leadDays": 0,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_refresh"
+   }
+  },
+  {
+   "id": "pbt-cust-mw3zm8tl-d5dlfl-t_reset",
+   "done": false,
+   "task": "Clear cups/plates, bag trash + recycling, consolidate leftovers; reshelve every game (pieces back in the box)",
+   "week": "Day of",
+   "owner": "",
+   "phase": "cleanup",
+   "category": "event-day",
+   "leadDays": 0,
+   "provenance": {
+    "source": "Game Night playbook",
+    "taskId": "t_reset"
+   }
+  }
+ ],
+ "createdAt": "SET_BY_TEST",
+ "guestMode": "count",
+ "startTime": "19:00",
+ "timeOfDay": "night",
+ "venueCity": "",
+ "venueKind": "home",
+ "passReasons": [],
+ "totalBudget": "",
+ "passRequired": false,
+ "startTimeWhy": "You said night \u2014 this is the middle of it, not a guess at your plan. A game night runs about 3 hours. Change it to whatever is true.",
+ "guestEstimate": 10,
+ "startTimeBasis": "bucket",
+ "createdFromText": "Game night at my place this Saturday, November 7, for 10 friends.",
+ "startTimeSource": "derived",
+ "guestCountSource": "host",
+ "briefSharedVendorIds": []
+}

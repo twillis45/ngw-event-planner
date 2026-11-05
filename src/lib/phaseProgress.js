@@ -30,6 +30,7 @@ import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd, getToday, localISO } from './dates';
 import { venueFor } from './venueFor';
+import { taskLeadDays } from './taskLead';
 import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
 import { lodgingIsHeld } from './lodgingIntel';
@@ -256,8 +257,21 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
     const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
     const unboughtItems = plan.list.filter(i => i && !i.skipped && !got[i.id]);
     const unbought = unboughtItems.length;
+    // THE SHOP IS A CLOSING WINDOW (issue #100, D-11). This row reached the
+    // ranker with no clock and no consequence, so two days out "Set your
+    // budget." led a main shop due tomorrow. The playbook's own shop task
+    // carries the lead; and the window does not reopen — you cannot shop for the
+    // event after it — which is exactly what the 2026-09-23 closing-window
+    // ruling says a raise must DECLARE rather than leave to inference. Only
+    // while a shop task is still open; no task, no clock, no claim.
+    const shopTask = (Array.isArray(ev.timeline) ? ev.timeline : [])
+      .filter((t) => t && !t.done && /\bshop(ping)?\b/i.test(String(t.task || '')))
+      .map((t) => ({ t, lead: taskLeadDays(t) }))
+      .filter((x) => x.lead != null)
+      .sort((a, b) => a.lead - b.lead)[0] || null;
     add('shopping', true, unbought === 0, `Buy the remaining items · ${unbought} left`,
-      unbought ? { tab: 'Planning', foodFocus: unboughtItems[0].id } : { tab: 'Planning', focusField: 'food-plan' }, 6);
+      unbought ? { tab: 'Planning', foodFocus: unboughtItems[0].id } : { tab: 'Planning', focusField: 'food-plan' }, 6,
+      unbought && shopTask ? { leadDays: shopTask.lead, closingWindow: true } : null);
   }
 
   // ── LODGING — destination events only ───────────────────────────────────────

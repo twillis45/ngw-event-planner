@@ -2350,7 +2350,11 @@ export function eventPlan(event, ctx = null) {
         // snooze is then honest, and inventing a lead here would be fabrication.
         leadDays: (i.route && i.route.taskId)
           ? taskLeadDays((event.timeline || []).find(t => t && t.id === i.route.taskId))
-          : null,
+          : (Number.isFinite(i.leadDays) ? i.leadDays : null),
+        // A phase item that knows its window does not reopen says so (shopping,
+        // issue #100 D-11); actionConsequence applies the ruled boost only while
+        // that window is genuinely closing.
+        ...(i.closingWindow === true ? { closingWindow: true } : {}),
       });
       // WAVE-6: derive the clock from the lead where one exists (null stays null).
       const _justPushed = nextActions[nextActions.length - 1];
