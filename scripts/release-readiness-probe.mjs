@@ -39,11 +39,13 @@ const stripe = read('backend/app/routers/stripe_payments.py');
 const sweep = read('backend/tests/test_protected_routes_sweep.py');
 const backendPy = walk('backend/app', ['.py']);
 const hostSrc = walk('hostv2/src', ['.js', '.jsx', '.ts', '.tsx']);
-const capConfig = ['capacitor.config.ts', 'capacitor.config.json', 'capacitor.config.js',
-  'hostv2/capacitor.config.ts', 'hostv2/capacitor.config.json', 'hostv2/capacitor.config.js']
+// native/hostv2/ added 11/5: Codex's native branch puts the shell there, and the
+// first version of this probe looked only at the root and hostv2/ — a FAIL that
+// was the probe's blindness, not missing work.
+const capConfig = ['', 'hostv2/', 'native/hostv2/'].flatMap((d) => ['ts', 'json', 'js'].map((x) => `${d}capacitor.config.${x}`))
   .find((p) => existsSync(join(ROOT, p)));
 const capText = capConfig ? read(capConfig) : '';
-const capDir = capConfig && capConfig.startsWith('hostv2/') ? 'hostv2' : '.';
+const capDir = capConfig ? (capConfig.split('/capacitor.config')[0].includes('capacitor.config') ? '.' : capConfig.replace(/\/?capacitor\.config\.\w+$/, '') || '.') : '.';
 const gradleFiles = walk(join(capDir, 'android'), ['.gradle', '.gradle.kts', '.toml']);
 const manifests = walk(join(capDir, 'android'), ['AndroidManifest.xml']);
 
@@ -57,12 +59,13 @@ const checks = [
       return /drop policy[\s\S]{0,40}rsvp_anon_insert/i.test(later)
         && !/create policy rsvp_anon_insert[\s\S]{0,200}with check \(true\)/i.test(later); })()],
   ['C9 S9-3', 'create-checkout-session is removed or gated by more than sign-in',
-    !/create-checkout-session/.test(stripe) || /create-checkout-session[\s\S]{0,1500}(require_admin|require_role|PLANNER_ROLE|RELEASE_PROFILE|404|403)/.test(stripe)],
+    !/create-checkout-session/.test(stripe) || /create-checkout-session[\s\S]{0,1500}(require_admin|require_role|require_fee_planner|PLANNER_ROLE|RELEASE_PROFILE|404|403)/.test(stripe)],
   ['C9 S9-4', 'the webhook handles refunds and disputes (charge.refunded / charge.dispute.created)',
     /charge\.refunded/.test(stripe) && /charge\.dispute/.test(stripe)],
   ['C9 S9-4', 'the pass grant checks its rowcount (duplicate charge not logged as granted)',
     // 'already' appears in an existing comment, so only an actual rowcount read counts.
-    /\browcount\b|\brow_count\b/.test(stripe)],
+    // asyncpg reports the INSERT status string; asserting on it is a rowcount check.
+    /\browcount\b|\brow_count\b|INSERT 0 [01]/.test(stripe)],
   ['C9 RP-1', 'the route sweep no longer matches gate names in raw source text (docstrings count today)',
     // Today: `src = inspect.getsource(...)` then `any(g in src for g in GATES)` — a
     // docstring naming the gate passes. Fixed means the source is PARSED (ast /
