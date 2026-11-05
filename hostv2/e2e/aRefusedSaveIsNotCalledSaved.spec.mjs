@@ -28,8 +28,9 @@
 // Alone: npx playwright test e2e/aRefusedSaveIsNotCalledSaved.spec.mjs --project=desktop
 import { test, expect } from '@playwright/test';
 import { previewUrl } from '../deployBase.mjs';
+import { openSectionByName } from './fixtures.mjs';
 
-const BASE = previewUrl(5244);
+const BASE = previewUrl(Number(process.env.PW_SYNCTEST_PORT || 5244));
 const PROJECT = 'https://synctest.supabase.co';
 const STUDIO = '11111111-2222-3333-4444-555555555555';
 const EVENT_ID = 'ev-conflict-probe';
@@ -144,14 +145,9 @@ const boot = async (page) => {
  */
 const EDIT = { guestMode: 'list' };
 const makeAnEdit = async (page) => {
-  const reached = await page.evaluate(() => {
-    const el = [...document.querySelectorAll('button,[role="button"],a,.frow,.tab,.tile')]
-      .find((x) => /guest/i.test((x.innerText || '').trim()));
-    if (!el) return false;
-    el.click();
-    return true;
-  });
-  expect(reached, 'a guest surface is reachable from the plan').toBe(true);
+  const before = (await readState(page)).guestMode;
+  await openSectionByName(page, 'Guests');
+  expect((await readState(page)).guestMode, 'opening the roster must not make the edit under test').toBe(before);
   const sheet = page.locator('.sheet[role="dialog"]').last();
   await sheet.waitFor({ state: 'visible', timeout: 10_000 });
   await page.waitForTimeout(600);
@@ -245,10 +241,19 @@ test.describe('a refused save is not called saved — the shell half', () => {
   // connection" notice, which had no action — so the first offline edit lost
   // its Undo. Red-proofed by dropping the carried action from the notice.
   test('offline: the save notice keeps the edit\'s Undo', async ({ page }) => {
-    await install(page, { mode: 'offline' });
+    // Keep hydration online: its unrelated background save has no edit to undo.
+    // Fail the real host edit, so a deduplicated startup notice cannot confound it.
+    await install(page, { mode: 'ok' });
     await boot(page);
+    await page.route(`${PROJECT}/rest/v1/events**`, route => {
+      const req = route.request();
+      const body = req.method() === 'GET' ? null : req.postDataJSON();
+      return body && body.data && body.data.guestMode === EDIT.guestMode
+        ? route.abort('internetdisconnected') : route.fallback();
+    });
     await makeAnEdit(page);
     const s = await readState(page);
+    expect(s.guestMode, 'the offline edit did not persist on this device').toBe(EDIT.guestMode);
     const notice = s.toasts.filter((t) => /connection is back/i.test(t));
     expect(notice.length, `premise: no offline notice. Toasts seen: ${JSON.stringify(s.toasts)}`).toBeGreaterThanOrEqual(1);
     expect(notice[notice.length - 1], `the offline notice dropped the edit's Undo. Toasts seen: ${JSON.stringify(s.toasts)}`).toMatch(/Undo/);

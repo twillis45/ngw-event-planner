@@ -18,7 +18,8 @@
     "passgate:build": "vite build --mode passgate --outDir dist-passgate",
     "gold07:serve": "E2E_BASE=1 vite preview --outDir dist-gold07 --port 5255",
     "gold07": "playwright test e2e/gold07RsvpCascade.spec.mjs --project=desktop",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:webkit": "PW_SYNCTEST_PORT=5294 PW_PASSGATE_PORT=5296 playwright test --config=playwright.webkit.config.mjs"
   },
   "dependencies": {
     "@sentry/react": "^8.55.2",

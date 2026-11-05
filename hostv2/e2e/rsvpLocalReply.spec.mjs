@@ -4,7 +4,7 @@ import { test, expect } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
 
 const boot = async page => {
-  await page.goto(previewUrl(5244) + '?rsvp=test-two-days');
+  await page.goto(previewUrl(Number(process.env.PW_SYNCTEST_PORT || 5244)) + '?rsvp=test-two-days');
   await expect(page.getByLabel(/Your name/i).first()).toBeVisible();
   await page.getByRole('radio', { name: /Yes, I.m in/i }).first().click();
   await page.getByLabel(/Your name/i).first().fill('E2E local guest');
