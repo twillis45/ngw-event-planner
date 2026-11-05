@@ -152,6 +152,7 @@ import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
+import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
 import { effectiveDone } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
@@ -1844,6 +1845,8 @@ export default function HostShellV2() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
+  // In-app account deletion (issue #100, D-12; Apple 5.1.1(v), Google Play).
+  const [acctDelete, setAcctDelete] = useState(null);   // null | { text, busy, error }
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
     let dead = false;
@@ -18570,6 +18573,36 @@ export default function HostShellV2() {
                       <div className="actions-row">
                         <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — everything here stays on this device.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
                       </div>
+                      {isAccountDeletionAvailable() && !acctDelete && (
+                        <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                          <button className="mini" onClick={() => setAcctDelete({ text: '', busy: false, error: '' })}>Delete my account…</button>
+                        </div>
+                      )}
+                      {acctDelete && (
+                        <form style={{ marginTop: 'var(--sp-3)' }} onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (acctDelete.text !== 'DELETE' || acctDelete.busy) return;
+                          setAcctDelete({ ...acctDelete, busy: true, error: '' });
+                          const res = await deleteAccount(acctDelete.text);
+                          if (!res.ok) { setAcctDelete({ ...acctDelete, busy: false, error: res.message }); return; }
+                          try { await supabase.auth.signOut(); } catch { /* the account is already gone */ }
+                          setAcctDelete(null);
+                          toast('Your account is deleted. Plans saved only on this device are still here — remove them from this device any time.');
+                        }}>
+                          <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
+                            This permanently deletes your account and everything saved to it: your events, guest lists and guests’ replies. Payment receipts are kept because the law requires it. It can’t be undone. Copies saved only on this device stay here until you remove them.
+                          </p>
+                          <label className="grounding" style={{ display: 'block', margin: '0 0 6px' }}>Type DELETE to confirm
+                            <input className="field" style={{ maxWidth: 'none', marginTop: 6 }} aria-label="Type DELETE to confirm account deletion" autoComplete="off" autoCapitalize="characters"
+                              value={acctDelete.text} onChange={(ev) => setAcctDelete({ ...acctDelete, text: ev.target.value, error: '' })} />
+                          </label>
+                          {acctDelete.error && <p role="alert" className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>{acctDelete.error}</p>}
+                          <div className="actions-row">
+                            <button className="mini" type="submit" disabled={acctDelete.text !== 'DELETE' || acctDelete.busy}>{acctDelete.busy ? 'Deleting…' : 'Delete my account'}</button>
+                            <button className="mini" type="button" onClick={() => setAcctDelete(null)}>Keep my account</button>
+                          </div>
+                        </form>
+                      )}
                     </>
                   ) : authSent ? (
                     <>
