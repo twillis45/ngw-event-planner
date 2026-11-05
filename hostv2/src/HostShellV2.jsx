@@ -172,7 +172,7 @@ import { marketFor } from '@app/lib/marketFor';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
-import { expectedFromPlanned } from '@app/lib/attendanceModel';
+import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
 import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
@@ -9925,7 +9925,7 @@ export default function HostShellV2() {
                           </button>
                           <p className="grounding" style={{ marginTop: 10 }}>
                             {effGuests ? `Planning around ${effGuests}${fGuests == null && parsed.guests == null ? ' (the ' + effType.replace(' Party', '').toLowerCase() + ' typical)' : ''}` : ''}
-                            {expectC ? ` — likely ${expectC.low}–${expectC.high} make it.` : ''}
+                            {expectC ? ` — likely ${likelyAttendancePhrase(expectC)} make it.` : ''}
                             {!effDate ? ' No date yet is fine — the plan will ask.' : ''}
                           </p>
                           {/* MODEL D creation-time disclosure (Grandmother's rider: this
