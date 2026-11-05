@@ -23877,7 +23877,10 @@ export default function HostShellV2() {
                 if (roster) {
                   const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
                   const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
-                  n = heads;
+                  // A headcount host's big number is the names ON THE LIST — the
+                  // sub says so. It read the yes-count under that label (gold run,
+                  // 11/5/2026), so five names showed "—" until someone replied.
+                  n = chase ? heads : (event.guests || []).length;
                   const tail = bandLbl ? ' — likely ' + bandLbl + ' on the day' : '';
                   sub = !chase
                     ? 'on the list — counted, never chased'
