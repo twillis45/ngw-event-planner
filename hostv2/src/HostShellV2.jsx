@@ -4276,7 +4276,7 @@ export default function HostShellV2() {
     } catch { /* never break a settle */ }
   }, [analyticsCtx]);
   useEffect(() => { setSatisfiedIds([]); }, [eventId]);
-  const queue = elegantMode
+  const queueRanked = elegantMode
     ? [
         ...actions.filter(a => a && !satisfiedIds.includes(a.id) && !(isVendorConfirmAction(a) && !confirmGating)),
         // Foundational pick-decisions (Ceremony Timing, …) join the queue AFTER the ranked
@@ -4285,6 +4285,18 @@ export default function HostShellV2() {
         ...blockerDecisions.filter(bd => !satisfiedIds.includes(bd.id)),
       ]
     : actions;
+  // THE HONEST FLOOR HAS ONE ACTION (Figma 922:121; gold run GOLD-01, 11/5/2026).
+  // With no date the headline is always "Add the day." — but the card under it
+  // rendered queue[0], which was the venue blocker: "Add the day." over a venue
+  // editor. The ruling names one action for this frame, setting the date, so the
+  // plan's own date step leads the hero here. Nothing is invented and nothing is
+  // dropped: the rest keep the plan's order beneath it.
+  const queue = (() => {
+    if (!elegantMode || days !== null) return queueRanked;
+    const ix = queueRanked.findIndex((a) => a && (a.domain === 'date' || a.category === 'date')
+      && !/start time|the hour/i.test(String(a.title || '')));
+    return ix > 0 ? [queueRanked[ix], ...queueRanked.slice(0, ix), ...queueRanked.slice(ix + 1)] : queueRanked;
+  })();
 
   // ── WHERE ARE WE? (Phase 5G-C1 Parts 8-9) ─────────────────────────────────
   // DERIVED, never a second source of truth: lifecycle label, plain-language summary
@@ -10584,6 +10596,11 @@ export default function HostShellV2() {
                   (firstCard.title && reasoning.toLowerCase().includes(String(firstCard.title).toLowerCase().replace(/\.$/, '')))
                 );
                 if (redundant) return null;
+                // The reasoning is the plan's TOP action's "why". When the undated floor
+                // leads the hero with the date instead, it speaks about a different item
+                // than the card it sits on ("Add the day." over "Everything depends on
+                // venue…", gold run GOLD-01) — so it stands down for that frame only.
+                if (firstCard && queueRanked[0] && firstCard !== queueRanked[0]) return null;
                 // When the lead is a decision, its decopt options + "our pick" why carry the
                 // reasoning — the generic planningState.reasoning (often vendor-status copy like
                 // "Currently quoted…") would bleed onto it. Suppress it for decision heroes.
