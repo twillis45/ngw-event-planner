@@ -7213,6 +7213,16 @@ export default function HostShellV2() {
           let thinksSignedIn = false;
           try { thinksSignedIn = Object.keys(localStorage).some(k => /^sb-.*-auth-token$/.test(k) && localStorage.getItem(k)); } catch { /* unknown */ }
           if (read.reason === 'signed-out' && thinksSignedIn) toast('You’ve been signed out — sign in again to see your guests’ replies.', { label: 'Sign in', fn: () => setSheet({ kind: 'settings' }) });
+          // THE SERVICE BEING DOWN IS NOT AN EMPTY LIST EITHER (gold run GOLD-10,
+          // 11/5/2026): with the backend down every guest read "No reply" and
+          // nothing said the replies simply could not be fetched. Said once per
+          // event per session, so a flaky connection does not nag on every render.
+          else if (read.reason === 'unavailable') {
+            const k = 'ngw-replies-unavailable-told-' + event.id;
+            let told = false;
+            try { told = sessionStorage.getItem(k) === '1'; sessionStorage.setItem(k, '1'); } catch { /* private mode — tell anyway */ }
+            if (!told) toast('Couldn’t load your guests’ replies right now — anyone shown as “No reply” may have answered. They’ll load the next time you open the plan.');
+          }
           return;
         }
         const rows = read.rows;

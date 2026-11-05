@@ -66,6 +66,9 @@ const VIEWPORT_INDEPENDENT = [
   // ── A REPLY SURVIVES THE SIGN-IN PULL (issue #100, D-7, 2026-11-05) ──
   // Stored state and toast text only, on its own 5277 bundle.
   '**/aReplySurvivesTheSignInPull.spec.mjs',
+  // ── REPLIES THAT CANNOT LOAD SAY SO (gold run GOLD-10, 2026-11-05) ────
+  // Toast text only, on the gold07 bundle (5255) for its API base.
+  '**/repliesThatCannotLoadSaySo.spec.mjs',
   // ── THE SEATING / RAIN PARITY BASELINES (P1-1, 2026-10-18) ─────────────
   // Characterisation of what both surfaces DO today, written so a redesign
   // that changes any of it fails on purpose. Every assertion is on text,
