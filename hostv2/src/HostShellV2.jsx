@@ -23314,12 +23314,13 @@ export default function HostShellV2() {
                       <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setSheet({ kind: 'vendors' })}>Review vendor payments</button>
                     </div>
                   )}
-                  {!payment && <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setPaymentEntry({ eventId: event.id, rowId: manualRows[0] ? manualRows[0].id : 'new', category: '', amount: '', error: '' })}>Log a payment</button>}
+                  {!payment && <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => { const planCat = hostRows.find(c => c.source === 'estimate' && !['Lodging', 'Crab order'].includes(c.label)); setPaymentEntry({ eventId: event.id, rowId: manualRows[0] ? manualRows[0].id : planCat ? 'est:' + planCat.label : 'new', category: '', amount: '', error: '' }); }}>Log a payment</button>}
                   {payment && (
                     <form onSubmit={e => {
                       e.preventDefault();
                       try {
-                        const edit = budgetPaymentPatch(event, payment.rowId === 'new' ? 'budget-' + Date.now().toString(36) : payment.rowId, payment.amount, payment.rowId === 'new' ? payment.category : null);
+                        const fromPlan = String(payment.rowId).startsWith('est:');
+                        const edit = budgetPaymentPatch(event, payment.rowId === 'new' || fromPlan ? 'budget-' + Date.now().toString(36) : payment.rowId, payment.amount, payment.rowId === 'new' ? payment.category : fromPlan ? String(payment.rowId).slice(4) : null);
                         const result = patchEvent(edit, 'Payment recorded on your budget entry.');
                         if (result && result.ok === false) { setPaymentEntry({ ...payment, error: 'This payment did not save. Try again before leaving.' }); return; }
                         setPaymentEntry(null);
@@ -23328,6 +23329,9 @@ export default function HostShellV2() {
                       <p className="grounding">Record an amount you paid. Choose a budget entry or add a category. This is your record, not a bank connection. Contracted vendor payments are tracked under the vendor.</p>
                       <label>Budget entry<select className="field" style={{ minHeight: 'var(--tap-min)', height: 'var(--tap-min)' }} aria-label="Budget entry" value={payment.rowId} onChange={e => setPaymentEntry({ ...payment, rowId: e.target.value, error: '' })}>
                         {manualRows.map(r => <option key={r.id} value={r.id}>{r.category}</option>)}
+                        {/* The plan's own categories, so a grocery payment can be spent against the
+                            food estimate instead of becoming a second food line (issue #100, D-9). */}
+                        {hostRows.filter(c => c.source === 'estimate' && !['Lodging', 'Crab order'].includes(c.label)).map(c => <option key={'est:' + c.label} value={'est:' + c.label}>{c.label} (from your plan)</option>)}
                         <option value="new">New budget entry</option>
                       </select></label>
                       {payment.rowId === 'new' && <label>Category<input className="field" style={{ minHeight: 'var(--tap-min)' }} aria-label="Payment category" required value={payment.category} onChange={e => setPaymentEntry({ ...payment, category: e.target.value, error: '' })} /></label>}

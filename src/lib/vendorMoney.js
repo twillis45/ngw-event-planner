@@ -126,7 +126,11 @@ export function moneyCategories(event, estimates = []) {
     // bookings cannot replace known payments with an invented zero.
     const spent = Math.max(0, source === 'vendor' && contract > 0 ? paid : actual, bought, paid);
     const committed = Math.max(contract, spent);
-    const expected = Math.max(committed, contract > 0 ? contract : g.rows.length ? allocated : estimate);
+    // A row that only RECORDS PAYMENTS (nothing budgeted) does not replace the
+    // plan's estimate (owner acceptance run 11/5/2026, issue #100 D-9): filing a
+    // $62.48 grocery payment under Food set expected to $62.48 and the rest of
+    // the food estimate vanished. Allocation owns expected only when one was set.
+    const expected = Math.max(committed, contract > 0 ? contract : allocated > 0 ? allocated : g.rows.length && !g.estimates.length ? allocated : estimate);
     return { label: g.label, source, expected: roundCurrency(expected), committed: roundCurrency(committed), spent: roundCurrency(spent),
       spentEstimated: bought > Math.max(contract > 0 ? paid : actual, paid)
         ? Math.min(spent, Math.max(0, g.estimates.reduce((s, e) => s + num(e.spentEstimated), 0))) : 0,
