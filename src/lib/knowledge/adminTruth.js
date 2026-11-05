@@ -17,7 +17,7 @@ import { getPlaybook, playbookFoodPlan, purchaseProvenance } from '../playbooks'
 import { classifyClaim } from './claimBasis';
 import { isGroundedItemQty } from './quantityProvenance';
 import { iceRecommendation, familyFor, ICE_FAMILY, ICE_RECOVERED_LOGIC } from './claimFamilies';
-import { resolveRoute } from '../routeResolver';
+import { resolveRoute, routeHasControl } from '../routeResolver';
 
 const show = (v) => {
   if (v === null) return 'null';
@@ -59,9 +59,9 @@ export function eventStateFacts(event, queue = [], now = undefined) {
       continue;
     }
     const r = resolveRoute(s.route);
-    const actionable = !!(r && (r.anchor || r.focus));
+    const actionable = routeHasControl(r);
     rows.push([`route: ${s.id}`, `resolveRoute(${JSON.stringify(s.route)})`,
-      `${show(r)} → ${actionable ? 'ACTIONABLE' : 'NOT ACTIONABLE (no anchor/focus)'}`,
+      `${show(r)} → ${actionable ? 'ACTIONABLE' : 'NOT ACTIONABLE (no control landing)'}`,
       actionable ? 'derived' : 'suppressed']);
   }
   return { rows, orientation: o, cues };
@@ -121,14 +121,14 @@ export function recommendationFacts(assetId, purchaseId, event) {
     rows.push(['next action', 'iceRecommendation().nextAction', 'null — state is Recommended', 'suppressed']);
   } else if (!na.route) {
     rows.push(['intended route', 'nextAction.route', 'null — answered on this surface', 'suppressed']);
-    rows.push(['route actionability', 'label rendered iff route && (anchor||focus)',
+    rows.push(['route actionability', 'routeHasControl(resolveRoute(route))',
       `SUPPRESSED — instruction: "${na.why}"`, 'suppressed']);
   } else {
     const r = resolveRoute(na.route);
-    const actionable = !!(r && (r.anchor || r.focus));
+    const actionable = routeHasControl(r);
     rows.push(['intended route', 'nextAction.route', show(na.route), 'derived']);
     rows.push(['resolved route', 'resolveRoute(route)', show(r), 'derived']);
-    rows.push(['route actionability', 'label rendered iff route && (anchor||focus)',
+    rows.push(['route actionability', 'routeHasControl(resolveRoute(route))',
       actionable ? `ACTIONABLE — "${na.label}"` : 'NOT ACTIONABLE — must suppress the CTA',
       actionable ? 'host' : 'suppressed']);
   }

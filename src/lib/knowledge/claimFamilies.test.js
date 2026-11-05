@@ -288,7 +288,7 @@ describe('next-action routes are REAL, resolvable landings (Part 11)', () => {
     // A CTA that routes nowhere is worse than no CTA. Run the real resolver, not a
     // string comparison -- resolveRoute fall-throughs silently mis-land bare routes.
     // eslint-disable-next-line global-require
-    const { resolveRoute } = require('../routeResolver');
+    const { resolveRoute, routeHasControl } = require('../routeResolver');
     const seen = new Set();
     for (const m of ICE_MEMBERS) {
       const r = iceRecommendation(m.assetId, 'p_ice', { guestCount: 10 });
@@ -301,7 +301,8 @@ describe('next-action routes are REAL, resolvable landings (Part 11)', () => {
       // already on and focused nothing. The earlier version of this test asserted the
       // DESCRIPTOR I wrote rather than what the resolver returns, so it passed while
       // the button did nothing on screen. Assert the resolver's output.
-      expect(resolved.anchor || resolved.focus).toBeTruthy();
+      expect(routeHasControl(resolved)).toBe(true);
+      expect(routeHasControl({ kind: 'food', focus: null })).toBe(false);
       seen.add(JSON.stringify(r.nextAction.route));
     }
     expect(seen.size).toBeGreaterThanOrEqual(1);

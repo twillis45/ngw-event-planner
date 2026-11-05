@@ -162,3 +162,9 @@ export const ROUTESHEET_TABS = Object.freeze([
   'Event Details', 'Planning Tasks', 'Timeline', 'Risks', 'Decisions',
   'Event Day Schedule',
 ]);
+
+// Date and venue sheets are dedicated editors; unlike a general food sheet,
+// opening either is already a control landing and needs no row anchor.
+export function routeHasControl(resolved) {
+  return !!(resolved && (resolved.anchor || resolved.focus || ['date', 'venue'].includes(resolved.kind)));
+}

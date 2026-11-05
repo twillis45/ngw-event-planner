@@ -8,7 +8,7 @@ import { orientation, segmentsText } from '../eventOrientation';
 import { classifyClaim } from './claimBasis';
 import { iceRecommendation } from './claimFamilies';
 import { getPlaybook, purchaseProvenance, playbookFoodPlan } from '../playbooks';
-import { resolveRoute } from '../routeResolver';
+import { resolveRoute, routeHasControl } from '../routeResolver';
 import { eventStateFacts, recommendationFacts, adminHostParity } from './adminTruth';
 
 const NOW = new Date('2026-08-02T12:00:00Z');
@@ -78,7 +78,7 @@ describe('route truth is shown as descriptor AND resolver output', () => {
       const line = val(rows, `route: ${s.id}`);
       expect(line).toBeTruthy();
       const r = resolveRoute(s.route);
-      const actionable = !!(r && (r.anchor || r.focus));
+      const actionable = routeHasControl(r);
       expect(line).toContain(actionable ? 'ACTIONABLE' : 'NOT ACTIONABLE');
       checked += 1;
     }
@@ -97,7 +97,7 @@ describe('route truth is shown as descriptor AND resolver output', () => {
     const ev = EV('Juneteenth Cookout');
     const { rows } = recommendationFacts('Juneteenth Cookout', 'p_ice', ev);
     expect(val(rows, 'intended route')).toContain('event-venue');
-    expect(val(rows, 'resolved route')).toContain('anchor');
+    expect(JSON.parse(val(rows, 'resolved route'))).toEqual({ kind: 'venue', focus: null });
     expect(val(rows, 'route actionability')).toMatch(/^ACTIONABLE/);
   });
 });
