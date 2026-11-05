@@ -175,6 +175,9 @@ function deriveDecisionBlockers(event, eventIdentity) {
     blockers.push({
       type: 'venue-selection',
       urgency: venueUrgency,
+      // A home with no town: the PLACE is settled, the town is what is missing
+      // (gold run GOLD-05, 11/5/2026). Carried so the stage asks that question.
+      homeNeedsTown: !!(vf.isHome && vf.needsCityForWeather),
       // Carried so a consumer can say WHY it escalated rather than re-deriving
       // the ladder and drifting from it.
       daysToEvent: _dte,
@@ -268,6 +271,18 @@ function buildBlockerStage(blocker) {
     }
   };
 
+  // GOLD-05: "Backyard cookout at my house, I'm handling the venue myself" was
+  // asked "Where is the event? … Choose or confirm the venue." The venue is the
+  // one thing she settled; the blocker exists because the town is missing.
+  if (blocker.type === 'venue-selection' && blocker.homeNeedsTown) {
+    blockerCopy['venue-selection'] = {
+      ...blockerCopy['venue-selection'],
+      title: 'Your town',
+      what: 'Which town is your place in?',
+      why: 'The place is set. Weather, the rain note and shopping read the town.',
+      nextDecision: 'Add the town.',
+    };
+  }
   const copy = blockerCopy[blocker.type] || {
     title: 'Decision Needed',
     what: blocker.type,
