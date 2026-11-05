@@ -1442,7 +1442,16 @@ export function parseSmartEventText(text, opts = {}) {
   //   'said-with-bucket' — "afternoon at 1": the host's own bucket disambiguates.
   //   'said-hour-only'   — "at 1" alone: the NUMBER is hers, the half of the day
   //                        is a reading of it, so it is marked as the weakest.
+  const tFull = t;
   const startTimeParsed = (() => {
+    // A HOUSE NUMBER IS NOT A TIME (owner's Vida run, 11/5/2026). "at 12 Sample
+    // Rd" read as 12:00 PM, said-with-bucket, and reached every guest's invite.
+    // Street addresses are blanked out of the text this search reads: a house
+    // number, one to three Capitalized words, then a street suffix. Names are
+    // matched case-SENSITIVELY on purpose — that is what tells "at 7 Oak Lane"
+    // (an address) from "at 7 at the lake" (a time); the time patterns below
+    // stay case-insensitive. Only the time search sees the blanked copy.
+    const t = tFull.replace(/\b\d{1,5}\s+(?:[NSEW]\.?\s+)?(?:[A-Z][\w'’-]*\s+){1,3}(?:Rd|Road|St|Street|Ave|Avenue|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place|Pkwy|Parkway|Ter|Terrace|Cir|Circle|Hwy|Highway|Trl|Trail|Loop|Row|Sq|Square|rd|road|st|street|ave|avenue|blvd|dr|drive|ln|lane|ct|court|way|pl|place)\b\.?/g, ' ');
     // "at 1", "at 1:30", "at 1pm", "1:30pm", "kickoff at 1", "doors at 6:30".
     // Anchored on a preposition/cue or an explicit meridiem so it cannot eat a
     // guest count ("for 20"), a budget ("$3,000") or a date ("Aug 2").
