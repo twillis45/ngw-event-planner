@@ -272,7 +272,7 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
-import { mergeGuestReplies } from '@app/lib/guestMerge';
+import { mergeGuestReplies, repeatedGuestNames } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
@@ -6731,8 +6731,11 @@ export default function HostShellV2() {
     const add = entries.map((e2, i) => ({ id: 'g-' + Date.now() + '-' + i, name: e2.name, rsvp: '', ...(e2.coupleId ? { coupleId: e2.coupleId } : {}) }));
     const splitNote = splitCouples && rosterCouples.length
       ? ' (' + rosterCouples.length + (rosterCouples.length === 1 ? ' couple' : ' couples') + ' split so everyone gets counted)' : '';
+    const twice = repeatedGuestNames(existing, names);
+    const twiceNote = twice.length
+      ? ' ' + twice.join(', ') + (twice.length === 1 ? ' is' : ' are') + ' on the list twice — remove one if it’s the same person.' : '';
     patchEvent({ guests: [...existing, ...add] },
-      names.length + ' name' + (names.length === 1 ? '' : 's') + ' on the list — ' + (existing.length + add.length) + ' total. RSVPs start blank.' + splitNote);
+      names.length + ' name' + (names.length === 1 ? '' : 's') + ' on the list — ' + (existing.length + add.length) + ' total. RSVPs start blank.' + splitNote + twiceNote);
     setRosterText('');
   };
 

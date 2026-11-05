@@ -202,3 +202,13 @@ test('never mutates inputs — arrays, guest objects, or submissions', () => {
   expect(guests.find(g => g.id === 'g2')).toBe(base[1]);
   expect(guests.find(g => g.id === 'g1')).not.toBe(base[0]);
 });
+
+describe('repeatedGuestNames — a name added twice is named, never refused', () => {
+  const { repeatedGuestNames } = require('../guestMerge');
+  test('a name already on the list, or pasted twice, is reported once', () => {
+    expect(repeatedGuestNames([{ name: 'Ana Rivera' }], ['Bea Chen', 'ana  rivera', 'Jo Lane', 'Jo Lane', 'Jo Lane'])).toEqual(['ana rivera', 'Jo Lane']);
+  });
+  test('distinct names report nothing', () => {
+    expect(repeatedGuestNames([{ name: 'Ana Rivera' }], ['Ana Rivers', 'Bea Chen'])).toEqual([]);
+  });
+});

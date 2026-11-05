@@ -74,6 +74,25 @@ export function matchGuestIndexByName(guests, fullName) {
   });
 }
 
+/**
+ * The names in `added` already on the list, or repeated within `added`
+ * (gold run, 11/5/2026: "Ana Rivera" pasted twice went in silently, and the
+ * first Ana got the reply). Flagged, never refused — two guests can share a
+ * name. Compared ignoring case and spacing; each name reported once.
+ */
+export function repeatedGuestNames(existingGuests, added) {
+  const key = (n) => String(n || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const seen = new Set((existingGuests || []).map((g) => key(g && g.name)).filter(Boolean));
+  const out = [];
+  for (const n of added || []) {
+    const k = key(n);
+    if (!k) continue;
+    if (seen.has(k) && !out.some((o) => key(o) === k)) out.push(String(n).trim().replace(/\s+/g, ' '));
+    seen.add(k);
+  }
+  return out;
+}
+
 export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
   const guests = [...(existingGuests || [])];
   let added = 0;
