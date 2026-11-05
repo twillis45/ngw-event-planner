@@ -71,8 +71,9 @@ def unauthenticated_routes():
                         path = d.args[0].value
             if not meth:
                 continue
-            blob = ast.dump(ast.Module(body=n.body, type_ignores=[])) + ast.dump(n.args)
-            if "require_planner" in blob or "require_admin" in blob:
+            calls = {ast.unparse(call.func) for call in ast.walk(n)
+                     if isinstance(call, ast.Call)}
+            if calls & {"require_planner", "require_admin", "require_fee_planner"}:
                 continue
             found.append((meth, path, p.name, n.lineno))
     return found

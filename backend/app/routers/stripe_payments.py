@@ -43,7 +43,7 @@ from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel, Field
 from typing import Optional
 from ..config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
-from ..auth import require_planner
+from ..auth import require_planner, require_fee_planner
 from ..app_origins import is_app_redirect
 from ..db import get_pool
 
@@ -200,7 +200,7 @@ async def create_checkout_session(
     #
     # AUTH BEFORE CONFIGURATION, deliberately: below the _configured() check an
     # anonymous caller learns whether this deployment has Stripe wired.
-    await require_planner(authorization, x_planner_token)
+    await require_fee_planner(authorization, x_planner_token)
 
     if not _configured():
         raise HTTPException(

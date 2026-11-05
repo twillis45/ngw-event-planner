@@ -52,7 +52,7 @@ def configured(monkeypatch):
 def signed_in(monkeypatch):
     async def ok(auth, tok):
         return {"id": "user-1", "via": "supabase"}
-    monkeypatch.setattr(SP, "require_planner", ok)
+    monkeypatch.setattr(SP, "require_fee_planner", ok)
 
 
 def test_unauthenticated_never_reaches_stripe(configured, never_charges):

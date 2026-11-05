@@ -2,8 +2,8 @@
 
 NAMING (read this before trusting `require_planner`): it authenticates — it does
 NOT authorize a role. ANY signed-in Supabase user passes it, host and planner
-alike; there is no planner role and nothing checks for one. `require_admin` below
-is the only real role gate (app_metadata.role).
+alike. The separate `require_admin` and fee-only `require_fee_planner` gates
+authorize server-controlled app_metadata roles.
 
 That split is deliberate, and the two halves are separate concerns:
   * AUTHENTICATION — "is this a real signed-in user?" → require_planner.
@@ -143,3 +143,19 @@ async def require_admin(
         return {"id": "dev-token", "email": None, "role": "admin", "via": "dev_token"}
 
     raise HTTPException(status_code=401, detail="Authentication required")
+
+
+async def require_fee_planner(authorization=None, x_planner_token=None) -> dict:
+    """Fee invoicing only: a server-assigned planner/admin role, never a host.
+
+    Keep require_planner's historical signed-in semantics for host routes.
+    User-editable metadata and the shared local token cannot grant this role.
+    """
+    token = _bearer(authorization)
+    user = await verify_supabase_token(token) if token else None
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    role = (user.get("app_metadata") or {}).get("role")
+    if role not in ("planner", "admin"):
+        raise HTTPException(status_code=403, detail="Planner role required")
+    return {"id": user.get("id"), "role": role, "via": "supabase"}
