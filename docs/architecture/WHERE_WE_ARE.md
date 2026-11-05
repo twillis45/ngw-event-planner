@@ -1,5 +1,12 @@
 # Where We Are -- live status board
 
+## November 5, 2026 — November 9 three-platform integration checkpoint
+
+Integration branch: `codex/paid-web-rc-2026-11-03`, measured implementation HEAD `ea8699e7`, based on production `d22a9683`. No merge or deployment claimed. Native lane: `codex/native-rc-2026-11-05`; generated projects and debug build evidence remain separate until reviewed. C1/C2/C3/C4/C5/C6/ATTN-2 and C9 source fixes integrated. C9 migrations019–021 require disposable/production Supabase execution; account-deletion Settings UI remains unfinished. Partial refunds keep access (Todd ruling), regression in `backend/tests/test_stripe_payment_blocks.py`. Backend lane reports479 passed and5 SQL integration skips; combined release checks are still pending. First combined Jest run635 suites passed/4 failed; four failures subsequently resolved with67 focused assertions. Public link boundary33 focused tests and18 browser cases each configured/unconfigured passed. WebKit money8 passed; canonical C7 pending. Speculative Undo candidate reverted after corrected navigation test passed without it.
+
+Original dirty checkout preserved. Local-only harness configs/node_modules symlink are excluded from commits. Account deletion client helper/tests are uncommitted (3 focused tests pass); runtime UI is not yet complete. Production auth, database privileges/restore, legal/support publication, live Stripe lifecycle, human UAT, developer accounts/signing, store metadata and actual submissions remain gates. Audit branch is evidence only, never blindly merged.
+
+
 ## November 5, 2026 — paid-web RC: C1 initial implementation checkpoint
 
 Isolated worktree `wt-paid-web-rc`, production base `d22a9683`; original dirty checkout preserved. Category ownership separates expected/committed/spent and removes the Margaret sample's false overrun. Committed stays $10,210 when its caterer is paid; spent moves $4,660 → $7,810. Conflicting payment records are disclosed, not silently reconciled. Existing budget model now supports first/manual payment, reload, and Undo. Evidence and limits: `docs/implementation/2026-11-05-C1.md`. Jest 630 suites / 8,594 passed / 1 standing skip; seam 53; money browser 24 across six geometries. Deliberate red-proof mutant restored before resumed builds. C1 follow-ups N4-1/N4-2, C6 failed-save integration, and merge/deployed proof remain open. No auth, billing, profile, Legacy, or production changes. RSVP/Creation/ATTN-2 commits await integration; no release readiness claimed.
