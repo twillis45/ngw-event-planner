@@ -80,7 +80,8 @@ function buildIdentityStage(event, eventIdentity, persona) {
     ? ` Guests span ${participants.join(' and ')}.`
     : '';
 
-  const confidenceWord = confidence >= 0.85 ? 'High confidence' : 'Fairly confident';
+  const confidenceWord = !String((event && event.honoree) || '').trim()
+    ? 'Honoree not named' : (confidence >= 0.85 ? 'High confidence' : 'Fairly confident');
 
   return {
     key: 'identity',
@@ -329,7 +330,7 @@ function assemblePlanningDomains(event, profile, foodPP) {
     if (guestCount > 0) {
       domains.push({
         type: 'guests',
-        data: { guestCount, rsvpCount: (event.guests || []).filter(g => g && g.rsvp === 'Yes').length || 0 }
+        data: { guestCount, rosterCount: (event.guests || []).filter(g => g && String(g.name || '').trim()).length, rsvpCount: (event.guests || []).filter(g => g && g.rsvp === 'Yes').length || 0 }
       });
     }
   } catch {}
@@ -441,7 +442,7 @@ function assemblePlanningDomains(event, profile, foodPP) {
 
   // === VENDORS (if any named) ===
   try {
-    const namedVendors = (event.vendors || []).filter(v => v && v.name && String(v.name).trim());
+    const namedVendors = (event.vendors || []).filter(v => v && (String(v.name || '').trim() || String(v.category || '').trim()));
     if (namedVendors.length > 0) {
       domains.push({
         type: 'vendors',
@@ -506,8 +507,8 @@ function buildDomainStage(domain) {
       // silently multiplied — nobody has researched the multi-day meal model.
       buildWhy: (data) => {
         const base = data.planFor > data.guestCount
-          ? `Menu is built. Quantities are an estimate — sized for about ${data.planFor} so you don't run short if more show up. Choose sourcing next.`
-          : 'Menu is built. Quantities are an estimate — they scale with your head count. Choose sourcing next.';
+          ? `Draft menu to review. Quantities are an estimate — sized for about ${data.planFor} so you don't run short if more show up. Choose sourcing next.`
+          : 'Draft menu to review. Quantities are an estimate — they scale with your head count. Choose sourcing next.';
         return data.spanNote ? `${base} ${data.spanNote}` : base;
       },
       status: 'Ready to fill'
@@ -532,7 +533,9 @@ function buildDomainStage(domain) {
       icon: 'people',
       title: 'Guest Planning',
       buildWhat: (data) => `${data.guestCount} guest${data.guestCount === 1 ? '' : 's'}${data.rsvpCount > 0 ? `, ${data.rsvpCount} confirmed` : ''}.`,
-      buildWhy: (data) => 'Guest list built. RSVP tracking live.',
+      buildWhy: (data) => data.rosterCount > 0
+        ? `${data.rosterCount} guest name${data.rosterCount === 1 ? '' : 's'} recorded. Add names and record replies in your guest list.`
+        : 'Headcount recorded; no guest names added yet. Add names and record replies in your guest list.',
       status: 'In progress'
     },
     budget: {
@@ -557,14 +560,14 @@ function buildDomainStage(domain) {
       // never gave us. Say what is true of each shape.
       buildWhy: (data) => (data.budgetBasis === 'rows'
         ? 'Your categories add up — set an overall number whenever you want a ceiling to track against.'
-        : 'Budget is set and live. Track spending in real time.'),
+        : 'Budget recorded. Log payments as you make them.'),
       status: 'Ready'
     },
     vendors: {
       icon: 'briefcase',
       title: 'Vendors',
-      buildWhat: (data) => `${data.vendorCount} vendor${data.vendorCount === 1 ? '' : 's'} assigned.`,
-      buildWhy: (data) => 'Vendor list built. Confirm each one, then track deliverables.',
+      buildWhat: (data) => `${data.vendorCount} vendor role${data.vendorCount === 1 ? '' : 's'} recorded.`,
+      buildWhy: (data) => 'Review each role and its booking status. Considering does not mean booked.',
       status: 'Ready to confirm'
     }
   };

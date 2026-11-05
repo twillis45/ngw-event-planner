@@ -132,7 +132,7 @@ import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
-import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch } from '@app/lib/heardClauses';
+import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
 import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuestions';
 
 import { foodSpanNote } from '@app/lib/foodSpan';
@@ -8455,7 +8455,7 @@ export default function HostShellV2() {
       // backfill. The LIST is deliberately not stored; see heardClauses.js.
       createdFromText: smartText,
       budget: [],
-      guests: [], vendors: [], timeline: [],
+      guests: [], vendors: heardVendorIntents(smartText).map((v, i) => ({ ...v, id: 'v-' + newId + '-' + i })), timeline: [],
     };
     // AN EVENT ARRIVES WITH A GROUNDED START TIME (host directive, 2026-07-14).
     // Not the old invention — that was a bare 15:00, written as fact and indistinguishable
@@ -9719,6 +9719,14 @@ export default function HostShellV2() {
                         </p>
                       )}
                       {(() => {
+                        const roles = heardVendorIntents(smartText);
+                        if (!roles.length) return null;
+                        return <p className="grounding" style={{ margin: '12px 0 0' }}>
+                          Vendor roles to consider: {roles.map((v) => v.name || v.category).join(' · ')}.
+                          {' '}These start as Considering, not booked.
+                        </p>;
+                      })()}
+                      {(() => {
                         let dropped = [];
                         // THE SEAM CONSUMERS ARE PASSED IN (2026-10-18, Sprint 0 P1-3).
                         // Creation reads this same sentence with three readers the
@@ -9742,7 +9750,7 @@ export default function HostShellV2() {
                               ))}
                             </p>
                             <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--faint)' }}>
-                              Worth keeping in mind yourself — the plan won’t know about {dropped.length === 1 ? 'it' : 'them'}.
+                              Kept in your description, but the plan won’t act on {dropped.length === 1 ? 'it' : 'them'} yet. Review or handle {dropped.length === 1 ? 'it' : 'them'} yourself.
                             </p>
                           </div>
                         );
@@ -9845,7 +9853,7 @@ export default function HostShellV2() {
                       const resolved = revealPhase === 'rest';
                       return (
                         <div className={'rv-spinewrap' + (resolved ? ' resolved' : '')}>
-                          <div className="rv-seyebrow" aria-live="polite">YOUR EVENT, UNDERSTOOD</div>
+                          <div className="rv-seyebrow" aria-live="polite">YOUR EVENT, STARTED</div>
                           <h1 className="rv-sname">{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
                           <p className="rv-ssub">{identityStatement(activeCustom)}</p>
                           <div className="rv-spine-col">
@@ -9878,7 +9886,12 @@ export default function HostShellV2() {
                               );
                             })}
                           </div>
-                          <p className={'grounding pre rv-sground' + (resolved ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
+                          <p className={'grounding pre rv-sground' + (resolved ? ' in' : '')}>Your details are saved. Draft suggestions come from the event playbook — review them before deciding.</p>
+                          {activeCustom?.createdFromText && <details className="grounding" style={{ marginTop: 'var(--sp-2)' }}>
+                            <summary>Your original description</summary>
+                            <p>Kept as context. Only the details shown in your plan have been applied.</p>
+                            <p>{activeCustom.createdFromText}</p>
+                          </details>}
                           <div className={'actions-row pre' + (resolved ? ' in' : '')} style={{ marginTop: 'var(--sp-2)' }}>
                             <button ref={revealCtaRef} className={'cta big' + (resolved ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
                             <button className="cta ghost" onClick={shareInviteLink}>Check and share invite</button>
