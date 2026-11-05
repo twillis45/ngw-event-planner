@@ -111,3 +111,20 @@ Real-person credentials below are as the project roster records them. Per `conve
 5. **`boardVerdict` and `boardSeats`,** recorded with dissent preserved per seat. Then `path-artifact` republishes.
 
 **The board may not be replaced by this packet, by the recertification, or by an assistant's summary.**
+
+
+## 7. Evidence ledger, as of 11/5/2026, 1 PM EST (updated as evidence lands)
+
+| Evidence the board needs | In the repository? |
+|---|---|
+| C9 merged (`S9-1` to `S9-4`, `RP-1`) | **No.** Probe 0 of 6 C9 criteria |
+| C1–C8 merged | **No.** `main` unchanged since 11/3 |
+| Native builds (iOS, Android) | **No.** No native project pushed |
+| RUNBOOK §A–D attestations | **Not reported** |
+| Legal pages published | **Not reported** |
+| Live-key Stripe lifecycle | **Not run** |
+| UAT A and B | **Not run** |
+| Pentest | **Not booked, as far as reported** |
+| Store confirmations | **None.** Nothing may be called submitted without one |
+
+Every row reads "No" or "Not run" until evidence exists. None is assumed from a report that work is underway.

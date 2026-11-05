@@ -141,3 +141,19 @@ A store submission goes ahead only when **all** of these are true. Each is a che
 - A paid web release candidate, and a stage 9 ruling on it.
 - Both apps built, on real phones, and **submitted** if the §8 gate is green.
 - Approval and publication on either store cannot be promised by anyone this week.
+
+
+## 10. Coordination through the repository (added 11/5, afternoon)
+
+**Measured 11/5 after `git fetch --prune` and GitHub's PR list:**
+- **No Codex branch, PR or repository exists on GitHub newer than 10/18.**
+- Codex reports native projects and fixes underway. That work is therefore local or in an unpushed worktree, and **it cannot be verified, merged, built in CI or counted as evidence until it is pushed.** This is not a conclusion that the work doesn't exist.
+
+**The rule:**
+- **Branch names.** Codex pushes every cluster as `codex/<cluster>` (for example `codex/c9-paid-path-security`, `codex/b1-capacitor-scaffold`).
+- **Draft PRs.** Each branch opens as a draft PR against `main` within the hour it starts, not when it is finished.
+- **What Claude runs on each pushed branch:**
+  - `node scripts/release-readiness-probe.mjs <worktree>`, the static acceptance criteria for C9 and B1–B10;
+  - the branch's own tests, red-proofed by reintroducing each fault;
+  - findings on the PR.
+- **What the probe reads today:** **0 of 18** static criteria met on `main` and `main-2utz0n`. Three of its checks first passed on code known to be unfixed; they were rewritten and proven in both directions on fixtures before this commit.
