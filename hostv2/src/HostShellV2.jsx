@@ -267,7 +267,7 @@ import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
-import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs } from '@app/lib/api/events';
+import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent } from '@app/lib/api/events';
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
@@ -1973,12 +1973,15 @@ export default function HostShellV2() {
           const byId = new Map(localList.map(e => [e && e.id, e]));
           const adopted = [];
           const stampOnly = [];
-          const stripStamp = ({ _cloudUpdatedAt, ...rest }) => rest;
           for (const cloudEv of evs) {
             if (!cloudEv || !cloudEv.id || tombstoned.has(cloudEv.id)) continue;
             const localEv = byId.get(cloudEv.id);
             if (!localEv) continue;                       // new here — `fresh` has it
-            if (getEventSyncStatus(localEv) !== SYNC_STATUS.SYNCED) continue;  // dirty/unstamped → local wins
+            if (getEventSyncStatus(localEv) !== SYNC_STATUS.SYNCED) continue;  // dirty/unstamped/sending → local wins
+            // A read that started before this device's own write landed is OLDER
+            // than what this device just wrote — not someone else's later edit
+            // (issue #100, D-7: a guest's reply merged, then vanished 30ms later).
+            if (cloudCopyIsStale(cloudEv)) continue;
             // Compare CONTENT. `_cloudUpdatedAt` is the row's version stamp, not
             // the event — two copies that differ only there are the same event,
             // and treating the stamp as a change would announce "updated from
@@ -1986,7 +1989,7 @@ export default function HostShellV2() {
             // but the stamp is newer, adopt the stamp alone, silently: it is
             // what makes this device's next save conditional on the RIGHT
             // version instead of being refused against its own history.
-            const sameContent = JSON.stringify(stripStamp(localEv)) === JSON.stringify(stripStamp(cloudEv));
+            const sameContent = sameEventContent(localEv, cloudEv);   // jsonb reorders keys — not a change
             if (sameContent) {
               if (cloudEv._cloudUpdatedAt && cloudEv._cloudUpdatedAt !== localEv._cloudUpdatedAt) {
                 stampOnly.push(cloudEv.id);
