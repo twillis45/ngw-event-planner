@@ -51,6 +51,7 @@
 import { unusedClauses } from './smartParseEvent';
 import { heardAccessNeeds } from './accessNeeds';
 import { heardMustHaves, heardStayStyle } from './lodgingIntel';
+import { heardFoods } from './heardFoods';
 
 // ── THIS FILE IS THE COMPOSITION ROOT (Sprint 0.5 Decision 2) ──────────────
 //
@@ -106,7 +107,11 @@ export function heardVendorIntents(text) {
   return rows;
 }
 
-const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents];
+// heardFoods (gold run GOLD-05, 11/5/2026): the creation seam now writes the
+// foods she named, so they are read here too — otherwise they are reported as
+// dropped while being on the menu. Mapped to names: its rows carry a regex.
+const heardFoodNames = (text) => heardFoods(text).map((f) => f.name);
+const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents, heardFoodNames];
 
 /**
  * clausesNotUsed(text) → the clauses NOTHING in creation read.

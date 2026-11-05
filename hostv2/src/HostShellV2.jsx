@@ -134,6 +134,7 @@ import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
+import { heardFoods, uncoveredFoods } from '@app/lib/heardFoods';
 import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuestions';
 
 import { foodSpanNote } from '@app/lib/foodSpan';
@@ -8618,6 +8619,12 @@ export default function HostShellV2() {
     // Canonical checklist over the real event object (date-relative offsets,
     // choice/caterer gates). No date yet → honestly empty; drafts later.
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
+    // A FOOD SHE NAMED IS ON THE MENU (GOLD-05, 11/5/2026). One the playbook
+    // already carries stays as it is; any other becomes a host-named line.
+    try {
+      const extra = uncoveredFoods(heardFoods(smartText), (playbookFoodPlan(ev) || {}).list);
+      if (extra.length) ev.foodAdd = extra.map((f, i) => ({ id: 'add-heard-' + newId + '-' + i, name: f.name, owner: '', cost: 0, group: 'Food', cat: 'other' }));
+    } catch (_e) { /* no food plan — the menu asks later */ }
     // MODEL D — THE ONE STAMPING MOMENT (grandfather rule, board 2026-08-18):
     // the pass verdict is computed here, against the events that existed
     // before this one, and stored on the event forever. lib/passGate.js is
