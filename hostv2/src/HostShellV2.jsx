@@ -8365,8 +8365,13 @@ export default function HostShellV2() {
     const ev = {
       id: newId, rsvpCode: newId,
       createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
-      name: effName ? effName + '’s ' + milestoneName : 'My ' + milestoneName,
+      // A HOST WHO NAMED HERSELF GETS HER NAME ON IT (owner acceptance run,
+      // 11/5/2026): "Vida is hosting a girls' game night" saved as "My Game
+      // Night". The honoree still wins when there is one; the host is kept on
+      // `hostName`, never promoted to honoree — nobody is being celebrated.
+      name: effName ? effName + '’s ' + milestoneName : (parsed.hostName ? parsed.hostName + '’s ' + milestoneName : 'My ' + milestoneName),
       honoree: effName || '',
+      ...(parsed.hostName ? { hostName: parsed.hostName } : {}),
       type: effType, date: effDate || '', ...(effEndDate ? { endDate: effEndDate } : {}), venue: parsed.venue || '', venueKind: parsed.venueKind || '',
       // THE MONTH THE HOST NAMED, when they did not name a day ("in June of 2028",
       // "next month", "this fall"). It was heard at intake — the chip said

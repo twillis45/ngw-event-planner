@@ -119,6 +119,9 @@ export function parseSmartEventText(text, opts = {}) {
     'coworkers', 'colleagues', 'classmates', 'teammates', 'neighbors', 'neighbours',
     'students', 'staff', 'employees', 'players', 'members',
     'guys', 'girls', 'gals', 'ladies', 'dudes', 'bridesmaids', 'groomsmen',
+    // "Ten girlfriends" (owner acceptance run, 11/5/2026): `\bfriends\b` and
+    // `\bgirls\b` both refuse the compound, so the count fell to the playbook.
+    'girlfriends', 'boyfriends', 'besties', 'buddies', 'pals', 'friends and family',
   ].join('|');
   // ── "for 4 nights" IS NOT FOUR GUESTS (2026-09-28) ──────────────────────
   // This alternative is a bare `for N`, and it runs FIRST, so it swallowed
@@ -198,6 +201,21 @@ export function parseSmartEventText(text, opts = {}) {
       const mult = { half: 0.5, a: 1, one: 1, two: 2, couple: 2, few: 3, three: 3 }[word];
       if (mult) guests = Math.round(12 * mult);
     }
+  }
+
+  // ── A COUNT WRITTEN IN WORDS IS A COUNT (owner acceptance run, 11/5/2026) ─
+  // "Ten girlfriends are coming" planned for 8, the playbook typical, because
+  // every pattern above reads digits only — and nothing told the host her
+  // number was set aside. Same nouns and the same "N of us" shape as the digit
+  // forms, so "one longer headliner" or "two nights" can never become a count;
+  // and only when no digit form matched, so digits always win.
+  if (guests === null) {
+    const NUM_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+      eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
+      nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100 };
+    const W = Object.keys(NUM_WORDS).join('|');
+    const wm = t.match(new RegExp(`\\b(${W})(?:[\\s-]+(one|two|three|four|five|six|seven|eight|nine))?\\s+(?:(?:${COUNT_NOUNS})\\b|of\\s+(?:us|them)\\b)`, 'i'));
+    if (wm) guests = NUM_WORDS[wm[1].toLowerCase()] + (wm[2] ? NUM_WORDS[wm[2].toLowerCase()] : 0);
   }
 
   // ── Budget — "$3,000", "$3k budget", "budget of $5000", "2500 budget" ────
@@ -1271,11 +1289,17 @@ export function parseSmartEventText(text, opts = {}) {
   const saidDrive = /\bdriv(?:e|es|ing)\b|\broad\s+trip\b|\bcaravan\b|\bcarpool\b/i.test(t);
   const travelMode = (saidFly && saidDrive) ? 'mixed' : saidFly ? 'fly' : saidDrive ? 'drive' : null;
 
+  // "NIGHT" IS AN OVERNIGHT ONLY AS A DURATION (owner acceptance run, 11/5/2026).
+  // A bare `\bnights?\b` matched the event's own name, so every game night, trivia
+  // night and date night was planned as people sleeping over, and the chip said
+  // "Staying overnight · heard" about something the host never said. A number or
+  // quantifier before it ("two nights", "for the night"), or a sleepover word, is.
+  //
   // Overnight. A multi-day span is the strongest honest signal there is — if the
   // plan runs across days, people are sleeping somewhere. Lodging words say it
   // outright. A staycation is local AND overnight, which is exactly the case the
   // single boolean could not express.
-  const saidOvernight = /\bovernight\b|\bnights?\b|\bstaycation\b|\bstay(?:ing|cation)?\s+over\b|\bhotels?\b|\bairbnb\b|\bvrbo\b|\brentals?\b|\blodging\b|\broom\s+block\b|\bcabins?\b/i.test(t);
+  const saidOvernight = /\bovernight\b|\b(?:\d+|one|two|three|four|five|six|seven|a\s+couple(?:\s+of)?|a\s+few|several|for\s+the)\s+nights?\b|\bsleep\s*overs?\b|\bslumber\s+part(?:y|ies)\b|\bstaycation\b|\bstay(?:ing|cation)?\s+over\b|\bhotels?\b|\bairbnb\b|\bvrbo\b|\brentals?\b|\blodging\b|\broom\s+block\b|\bcabins?\b/i.test(t);
   const overnight = (endDate || saidOvernight) ? true : null;
   // SAID beats DERIVED when both are true (2026-08-06). This read `endDate ?
   // 'multi-day-span' : 'said-so'`, so a host who wrote the word "overnight" AND
@@ -1674,7 +1698,19 @@ export function parseSmartEventText(text, opts = {}) {
     return null;
   })();
 
+  // ── "<Name> is hosting" NAMES THE HOST (owner acceptance run, 11/5/2026) ──
+  // "Vida is hosting a girls' game night…" saved as "My Game Night" with no host
+  // anywhere and nothing disclosed. A host is not an honoree — nobody is being
+  // celebrated — so this is its own field, and only a capitalized name at the
+  // very start of the sentence counts, never a pronoun or "This".
+  const hostName = (() => {
+    const m = t.match(/^\s*([A-Z][a-z'’\-]{1,20})\s+(?:is|will\s+be)\s+(?:hosting|throwing|having)\b/);
+    if (!m) return null;
+    return /^(?:this|that|it|he|she|we|they|there|who|everyone|someone|my|our)$/i.test(m[1]) ? null : m[1];
+  })();
+
   return {
+    hostName,
     type, typeBasis, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     healthNoted,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
@@ -1863,6 +1899,13 @@ export function unusedClauses(text, opts = {}) {
   // a false alarm costs them the belief that the list means anything.
   const carried = JSON.stringify(full || {}).toLowerCase();
   const alreadyInThePlan = (clause) => {
+    // A DATE THE PLAN APPLIED WAS NOT DROPPED (owner acceptance run, 11/5/2026):
+    // "this Saturday, November 7" saved 2026-11-07 and still listed "November 7"
+    // under "didn't make it", because the token check reads "november" against a
+    // plan that stores the date as digits. Ask the parser what the clause means.
+    if (full && full.date) {
+      try { const p = parseSmartEventText(clause, opts); if (p && p.date === full.date) return true; } catch { /* fall through */ }
+    }
     const toks = String(clause).toLowerCase().match(/[a-z0-9]+/g) || [];
     if (!toks.length) return false;
     // Connective words carry no fact, so they cannot keep a clause alive; every

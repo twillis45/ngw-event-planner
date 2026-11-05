@@ -79,6 +79,8 @@ export const PARSER_FIELDS = [
   // dropped. The basis is kept because reading a colour pair as a decision is a
   // weaker claim than the host naming it, and flattening the two would lose
   // that.
+  // `hostName` added 2026-11-05: "<Name> is hosting …" names the host (issue #100, D-2).
+  'hostName',
   'type', 'typeBasis', 'secondaryType', 'theme', 'themeBasis', 'guests', 'guestPairs', 'budget', 'date', 'endDate', 'monthYear', 'healthNoted',
   // `nights` and `lodgingKind` added 2026-09-25, from a host-reported parse:
   // "50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb
