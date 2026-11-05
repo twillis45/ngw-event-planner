@@ -32,7 +32,7 @@
 //
 // THE RED-PROOF THAT MAKES THIS REAL, run before writing the test: inflating
 // Reunion's decor line `p_games` from $30-90 to $3,000-9,000 — a hundredfold —
-// moved `hostSpending.committed` by exactly ZERO. The same perturbation on the
+// moved `hostSpending.expected` by exactly ZERO. The same perturbation on the
 // food line `p_protein` moved it by an order of magnitude. The harness can see
 // money; it cannot see decor.
 //
@@ -91,7 +91,7 @@ describe('what the money screen can and cannot see', () => {
     // harness is broken rather than because the money is uncounted — which is
     // exactly the mistake the red-proof in the header exists to rule out.
     const a = hostSpending(evFor('Reunion'));
-    expect(a.committed).toBeGreaterThan(0);
+    expect(a.expected).toBeGreaterThan(0);
     expect(a.total).toBeGreaterThan(0);
   });
 
@@ -127,7 +127,7 @@ describe('what the money screen can and cannot see', () => {
     // away from the fixture it describes — which is exactly what happened to
     // this file's first draft. No absolute figures asserted: the CONTRACT is
     // that one is unmoved and the other is not, at whatever the fixture costs.
-    const base = hostSpending(evFor('Reunion')).committed;
+    const base = hostSpending(evFor('Reunion')).expected;
     const pb = ALL_PLAYBOOKS.find((p) => p.type === 'Reunion');
     const bump = (cat, mult) => {
       const touched = [];
@@ -136,7 +136,7 @@ describe('what the money screen can and cannot see', () => {
         touched.push([p, p.unitCostRange]);
         p.unitCostRange = [p.unitCostRange[0] * mult, p.unitCostRange[1] * mult];
       }
-      const after = hostSpending(evFor('Reunion')).committed;
+      const after = hostSpending(evFor('Reunion')).expected;
       for (const [p, orig] of touched) p.unitCostRange = orig;   // always restore
       return { n: touched.length, after };
     };
@@ -161,7 +161,7 @@ describe('what the money screen can and cannot see', () => {
     const fp = playbookFoodPlan(evFor('Reunion'));
     const inListIds = new Set((fp.list || []).map((l) => l.id));
     for (const d of decor) expect(inListIds.has(d.id)).toBe(false);
-    expect(sp.committed).toBeGreaterThan(0);
+    expect(sp.expected).toBeGreaterThan(0);
   });
 
   test('AND THE OPTIONAL MONEY NOW HAS A NUMBER — reported, never committed', () => {
@@ -178,8 +178,8 @@ describe('what the money screen can and cannot see', () => {
     expect(sp.optionalHigh).toBeGreaterThan(sp.optionalLow);
     expect(sp.optionalEstimate).toBeGreaterThan(0);
     // …and it is NOT inside any headline figure.
-    expect(sp.committed).toBeGreaterThan(sp.optionalEstimate);
-    expect(sp.committed - sp.spent).not.toBe(sp.optionalEstimate);
+    expect(sp.expected).toBeGreaterThan(sp.optionalEstimate);
+    expect(sp.expected - sp.spent).not.toBe(sp.optionalEstimate);
   });
 
   test('THE RED-PROOF: optional money moves the new term and NOTHING else', () => {
@@ -206,10 +206,10 @@ describe('what the money screen can and cannot see', () => {
     }
     expect(after.optionalHigh).toBeGreaterThan(before.optionalHigh * 5);
     expect({
-      committed: after.committed, spent: after.spent,
+      expected: after.expected, committed: after.committed, spent: after.spent,
       committedEstimated: after.committedEstimated, uncommitted: after.uncommitted,
     }).toEqual({
-      committed: before.committed, spent: before.spent,
+      expected: before.expected, committed: before.committed, spent: before.spent,
       committedEstimated: before.committedEstimated, uncommitted: before.uncommitted,
     });
   });

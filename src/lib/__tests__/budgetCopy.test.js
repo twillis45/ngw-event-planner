@@ -25,7 +25,7 @@ describe('budgetHeroCopy states', () => {
   test('2. budget set, nothing priced → waiting copy', () => {
     const c = budgetHeroCopy(ev({ totalBudget: 2000 }), 1);
     expect(c.state).toBe('waiting');
-    expect(c.title).toBe("Your budget's set — prices still need to come in.");
+    expect(c.title).toBe("Your budget's set — nothing committed yet.");
   });
 
   test('3. under budget → "about $X left" leads; basis is support copy', () => {

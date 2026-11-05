@@ -25,6 +25,7 @@ from .routers import kroger
 from .routers import rsvp
 from .routers import vendor_brief
 from .routers import research
+from .routers import account
 from .emailer import is_email_configured
 from .config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_WEBHOOK_SECRET
 
@@ -237,3 +238,5 @@ app.include_router(rsvp.router)
 app.include_router(vendor_brief.router)
 app.include_router(research.router)
 app.include_router(lodging.router)
+
+app.include_router(account.router)

@@ -1,3 +1,5 @@
+// November 3 C1: unbought estimates now belong to expected, not committed.
+// Historical measurements below describe the former mixed total.
 // ─── ONE HEADLINE NUMBER, TWO PRICE BASES ────────────────────────────────────
 //
 // MEASURED 2026-09-18 on a 150-guest Cookout, sweeping the regional food factor:
@@ -44,7 +46,7 @@ describe('the mixing is real — the premise, measured', () => {
 
   test('and it is a material share of the headline number', () => {
     const s = hostSpending(COOKOUT(), 1.00);
-    expect(s.capacityEstimate / s.committed).toBeGreaterThan(0.10);
+    expect(s.capacityEstimate / s.expected).toBeGreaterThan(0.10);
   });
 });
 
@@ -94,6 +96,7 @@ describe('no dollar moved', () => {
     expect(s.foodEstimate).toBe(5648);
     expect(s.suppliesEstimate).toBe(898);
     expect(s.capacityEstimate).toBe(1453);
-    expect(s.committed).toBe(7999);
+    expect(s.expected).toBe(7999);
+    expect(s.committed).toBe(0);
   });
 });

@@ -15,6 +15,8 @@
 // is null, isSupabaseConfigured() returns false, nothing else breaks.
 
 import { createClient } from '@supabase/supabase-js';
+import { publicAppUrl } from './publicAppUrl';
+import { getPlatformAuthStorage } from './platformAuthStorage';
 
 const url     = process.env.REACT_APP_SUPABASE_URL;
 const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
@@ -38,7 +40,7 @@ export const supabase = isSupabaseConfigured()
         persistSession:     true,
         autoRefreshToken:   true,
         detectSessionInUrl: true,
-        storage:            window.localStorage,
+        storage:            getPlatformAuthStorage(),
         // Use implicit flow so magic links work when opened in any browser/tab.
         // PKCE (the default) requires the code verifier to be in the same
         // browser session that initiated the sign-in — this breaks on GitHub
@@ -62,7 +64,7 @@ export const supabase = isSupabaseConfigured()
 //   - lib/api/studio.js inviteStudioMember (invitee magic link)
 // Resolution order:
 //   1. REACT_APP_AUTH_REDIRECT env var (explicit override — stable when set)
-//   2. window.location.origin + window.location.pathname (auto-correct in
+//   2. the configured public web URL or current web location (auto-correct in
 //      the absence of an override; whatever URL the browser opened)
 // Every consumer of this helper produces the SAME URL — eliminates the
 // previous inconsistency where AuthGate honored the env var but invites
@@ -70,5 +72,5 @@ export const supabase = isSupabaseConfigured()
 export function authRedirectUrl() {
   const override = process.env.REACT_APP_AUTH_REDIRECT;
   if (override) return override;
-  return window.location.origin + window.location.pathname;
+  return publicAppUrl();
 }

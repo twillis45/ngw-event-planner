@@ -1,4 +1,5 @@
 import { vendorIsCommitted, vendorOutstanding } from './vendorMoney';
+import { isVendorBooked } from './workstreams';
 import { venueFor } from './venueFor';
 import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
@@ -155,13 +156,13 @@ export function taskSatisfied(event, task) {
   if (/cater/.test(s) && cateringSelfProvided(event)) return true;
 
   // Booking-verb vendor proof — ROLE-AWARE and STATUS-AWARE. "Book the DJ" is
-  // proven by a DJ the host actually booked (isVendorBooked via vendorIsCommitted),
+  // proven by a DJ the host actually booked (isVendorBooked),
   // never by a florist, and never by a name typed while still considering.
   const vendors = Array.isArray(event.vendors) ? event.vendors : [];
-  const committedMatch = (re) => vendors.some((v) => v && vendorIsCommitted(v)
+  const bookedMatch = (re) => vendors.some((v) => v && isVendorBooked(v)
     && re.test(((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase()));
   if (/\b(book(ed)?|hire[ds]?|lock(ed)? in|secure[d]?)\b/.test(s) || /vendor/.test(s)) {
-    if (/cater/.test(s)) return committedMatch(/cater|food/);
+    if (/cater/.test(s)) return bookedMatch(/cater|food/);
     const roles = [
       [/photograph|videograph/, /photo|video/],
       [/\bdj\b|\bbanda?\b|entertain|\bmusic\b/, /\bdj\b|music|banda?\b|entertain/],
@@ -170,8 +171,8 @@ export function taskSatisfied(event, task) {
       [/officiant/, /offici/],
     ];
     const named = roles.filter(([taskRe]) => taskRe.test(s));
-    if (named.length) return named.every(([, vendRe]) => committedMatch(vendRe));
-    if (/vendor|\bhire[ds]?\b|book a /.test(s)) return vendors.some((v) => v && vendorIsCommitted(v));
+    if (named.length) return named.every(([, vendRe]) => bookedMatch(vendRe));
+    if (/vendor|\bhire[ds]?\b|book a /.test(s)) return vendors.some((v) => v && isVendorBooked(v));
   }
 
   // Headcount/guest-count tasks: a typed count DOES prove "set the guest count" —

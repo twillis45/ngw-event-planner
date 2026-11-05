@@ -148,7 +148,7 @@ export function placeQuestionsFor(event) {
       // The app has no accessibility data for any venue and will not invent
       // any. This is the one thing only the host (or the venue) can settle.
       askWho: 'the venue',
-      route: { tab: 'Event Details', focusField: 'event-venue' },
+      route: { tab: 'Event Details', focusField: 'place-question-venue-step-free' },
     });
   }
 
@@ -192,7 +192,7 @@ export function placeQuestionsFor(event) {
       // none of them. Saying "check with your city" is the whole honest answer,
       // and it is what placeIntelligence already said.
       askWho: 'your city or parks office',
-      route: { tab: 'Event Details', focusField: 'event-venue' },
+      route: { tab: 'Event Details', focusField: 'place-question-outdoor-permit' },
     });
   }
 

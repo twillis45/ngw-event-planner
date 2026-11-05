@@ -118,8 +118,8 @@ const FOCUSFIELD_INTENT = [
   { test: (f) => f === 'crab-plan', kind: 'crabs' },
   { test: (f) => /^space/.test(f) || /^caprow-/.test(f), kind: 'space' },
   { test: (f) => /^ros-/.test(f), kind: 'stage:day' },
-  { test: (f) => f === 'event-date' || f === 'event-start', kind: 'stage:plan' },
-  { test: (f) => f === 'event-venue', kind: 'stage:plan' },
+  { test: (f) => f === 'event-date' || f === 'event-start', kind: 'date' },
+  { test: (f) => f === 'event-venue', kind: 'venue' },
 ];
 
 // The full check for ONE emitted route. Returns a problem string, or null.
@@ -253,7 +253,7 @@ describe('place-note focusFields land on the space sheet row', () => {
     });
   });
   test('a bare Event Details route still lands on the Venue anchor', () => {
-    expect(resolveRoute({ tab: 'Event Details' })).toEqual({ kind: 'stage:plan', focus: null, anchor: 'Venue' });
+    expect(resolveRoute({ tab: 'Event Details' })).toEqual({ kind: 'venue', focus: null });
   });
 });
 

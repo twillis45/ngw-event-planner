@@ -20,6 +20,26 @@ until merged). The live site is unchanged at `d22a9683` (profile `services`).
 **Plan.** The plan grew to 109 h with a new cluster, C9 (paid-path security), which must merge before the `live` profile ships.
 
 **Where the records are.** Gate records are drafted in the workspace repo for the owner to post. The owner's checklist is `docs/audits/2026-11-03_OWNER_CHECKLIST_WEEK_OF_11-09.md`.
+## November 5, 2026 — Vida private executable preview and C7
+
+C7 integrated at `f6cc02e2` (lane37071605): actual WebKit81/81 and affected Chromium20/20 passed; no physical Safari or production gate claim. Previous integrated pre-push run passed all six checks, Jest642 suites/8,687 tests, one standing skip. C7 integration is being checked separately before push.
+
+Vida preview serves the actual HostV2 build at `f6cc02e21bbdc992a710aad672493d7fe7e16bef`, behind Basic authentication on all routes. Credentials and residential fixture remain outside the repository under private temporary runtime files. It is LOCAL DEVICE PERSISTENCE ONLY: API/Supabase/billing disabled, analytics opted out and external connections blocked by CSP. No actual invitations, emails, or payments sent. Seeded starter event is not proof of Creation. Rendered HTTPS preview verified at320/390/1440 without document overflow. Actual UI added ten synthetic guests and retained them after reload at all three widths. Private screenshots/logs are in `/tmp/ngw-vida-preview/`; no residential screenshots committed.
+
+Real signup/cloud RSVP acceptance remains blocked on owner-designated backend/test-login access. Independent lane reproduced three canonical RSVP merge defects and is fixing them. Creation lane reproduced failure to recognize private residence as a home venue, defaulted event name, and missing host/team-game interpretation; fixes and checkpoint1 walkthrough remain pending. Do not treat this preview as completed end-to-end or provide a fake guest RSVP URL.
+
+
+## November 5, 2026 — November 9 three-platform integration checkpoint
+
+Integration branch: `codex/paid-web-rc-2026-11-03`, measured implementation HEAD `ea8699e7`, based on production `d22a9683`. No merge or deployment claimed. Native lane: `codex/native-rc-2026-11-05`; generated projects and debug build evidence remain separate until reviewed. C1/C2/C3/C4/C5/C6/ATTN-2 and C9 source fixes integrated. C9 migrations019–021 require disposable/production Supabase execution; account-deletion Settings UI remains unfinished. Partial refunds keep access (Todd ruling), regression in `backend/tests/test_stripe_payment_blocks.py`. Backend lane reports479 passed and5 SQL integration skips; combined release checks are still pending. First combined Jest run635 suites passed/4 failed; four failures subsequently resolved with67 focused assertions. Public link boundary33 focused tests and18 browser cases each configured/unconfigured passed. WebKit money8 passed; canonical C7 pending. Speculative Undo candidate reverted after corrected navigation test passed without it.
+
+Original dirty checkout preserved. Local-only harness configs/node_modules symlink are excluded from commits. Account deletion client helper/tests are uncommitted (3 focused tests pass); runtime UI is not yet complete. Production auth, database privileges/restore, legal/support publication, live Stripe lifecycle, human UAT, developer accounts/signing, store metadata and actual submissions remain gates. Audit branch is evidence only, never blindly merged.
+
+
+## November 5, 2026 — paid-web RC: C1 initial implementation checkpoint
+
+Isolated worktree `wt-paid-web-rc`, production base `d22a9683`; original dirty checkout preserved. Category ownership separates expected/committed/spent and removes the Margaret sample's false overrun. Committed stays $10,210 when its caterer is paid; spent moves $4,660 → $7,810. Conflicting payment records are disclosed, not silently reconciled. Existing budget model now supports first/manual payment, reload, and Undo. Evidence and limits: `docs/implementation/2026-11-05-C1.md`. Jest 630 suites / 8,594 passed / 1 standing skip; seam 53; money browser 24 across six geometries. Deliberate red-proof mutant restored before resumed builds. C1 follow-ups N4-1/N4-2, C6 failed-save integration, and merge/deployed proof remain open. No auth, billing, profile, Legacy, or production changes. RSVP/Creation/ATTN-2 commits await integration; no release readiness claimed.
+
 
 ## 2026-11-02 (later, last) — the path-to-production list worked top to bottom; one security finding waits on a merge
 

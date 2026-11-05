@@ -15,7 +15,7 @@ import PhotoStrip from './PhotoStrip.jsx';
 import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
 import { guestSafeText } from '@app/lib/guestFacing';
 import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytics';
-import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
+import { isRsvpApiConfigured, checkRsvpCapability, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
@@ -349,6 +349,7 @@ export default function InviteV2({ code }) {
   const [submitted, setSubmitted] = useState(false);
   const [queued, setQueued] = useState(false);
   const [shareState, setShareState] = useState('');
+  const [shareError, setShareError] = useState('');
   const shareTimer = useRef(null);
   useEffect(() => {
     const ev = resolved && resolved.event;
@@ -640,14 +641,16 @@ export default function InviteV2({ code }) {
     };
     const idk = rsvpIdempotencyKey(event.id + ':' + code);
     const key = 'ngw-rsvp-queue-' + event.id;
+    let savedLocally = false;
     try {
       const q = JSON.parse(localStorage.getItem(key) || '[]');
       const next = [...(Array.isArray(q) ? q : []).filter(e => e.idempotencyKey !== idk),
         { ...payload, idempotencyKey: idk, submittedAt: Date.now() }];
       localStorage.setItem(key, JSON.stringify(next));
+      savedLocally = true;
     } catch { /* storage blocked — the server path below may still deliver */ }
 
-    let delivered = true;
+    let delivered = false;
     if (isRsvpApiConfigured()) {
       setSending(true);
       try {
@@ -668,6 +671,7 @@ export default function InviteV2({ code }) {
           ...(payload.phone ? { phone: payload.phone } : {}),
           ...(payload.email ? { email: payload.email } : {}),
         });
+        delivered = true;
         try {
           const q = JSON.parse(localStorage.getItem(key) || '[]');
           const rest = q.filter(e => e.idempotencyKey !== idk);
@@ -676,6 +680,10 @@ export default function InviteV2({ code }) {
         } catch { /* delivered anyway */ }
       } catch { delivered = false; }
       setSending(false);
+    }
+    if (!delivered && !savedLocally) {
+      setErr('Your reply was not sent or saved. Try again, or contact your host directly.');
+      return;
     }
     setQueued(!delivered);
     setSubmitted(true);
@@ -689,6 +697,12 @@ export default function InviteV2({ code }) {
 
   // "I'm in" forward — the guest recruits the next guest with the SAME link.
   const shareForward = async (own) => {
+    setShareError('');
+    const capability = await checkRsvpCapability(event);
+    if (!capability.ready) {
+      setShareError('This invite is not verified for sharing. Nothing was shared — contact the host for an invitation.');
+      return;
+    }
     const url = window.location.href;
     const evName = event.name || 'the celebration';
     // Past events can't be RSVP'd to — "Share the memory" recruits nobody, it
@@ -1280,7 +1294,9 @@ export default function InviteV2({ code }) {
                       {queued ? 'Saved' : rsvp === 'Yes' ? 'You’re in' : rsvp === 'Maybe' ? 'Noted' : 'We’ll miss you'}
                     </div>
                     <h3 className="lp-display" style={{ margin: '10px 0 0', fontSize: 21, fontFamily: 'var(--serif)' }}>
-                      {queued ? 'Saved, ' + (first || 'friend') + ' — we’ll send it as soon as you’re back online.'
+                      {queued ? (isRsvpApiConfigured()
+                        ? 'Saved on this device — not delivered. We’ll retry when the connection returns.'
+                        : 'Saved on this device only — online replies are not enabled. Tell your host directly.')
                         : rsvp === 'Yes' ? 'See you there, ' + (first || 'friend') + '.'
                         : rsvp === 'Maybe' ? 'Come back to this link when you know, ' + (first || 'friend') + '.'
                         : 'Thanks for letting us know, ' + (first || 'friend') + '.'}
@@ -1337,6 +1353,7 @@ export default function InviteV2({ code }) {
               to pass the invite on). Hidden only when the Yes-only recruit CTA
               above already covers forwarding — and on a past-event recap, which
               carries its own "Share the memory" action (no duplicate forward). */}
+          {shareError && <p className="grounding" role="alert">{shareError}</p>}
           {!somber && !isPast && !(submitted && rsvp === 'Yes' && !queued) && (
             <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
               <button className="mini" onClick={() => shareForward(false)}>
@@ -1344,7 +1361,7 @@ export default function InviteV2({ code }) {
               </button>
             </div>
           )}
-          {!isPast && <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.</p>}
+          {!isPast && <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>{localEvent ? 'Preview on this device. Online reply delivery has not been verified.' : 'Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.'}</p>}
           {/* ── RECRUIT — IN THE FOOTER (host ruling 2026-07-29: "footer") ────────
               Growth loop half (b). Half (a) — the host sharing the link — has been
               live and measured for a while; this is the other end: a guest who

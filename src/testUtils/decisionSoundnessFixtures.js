@@ -116,13 +116,12 @@ export const fixtureD = {
     guestCount: 80, guestEstimate: 80, totalBudget: 6000,
     venue: 'The Hall', venueCity: 'Annapolis', venueState: 'MD',
     vendors: [
-      { id: 'v1', name: 'Hall Catering', category: 'Catering', status: 'booked', cost: 4200, deposit: 2000, depositPaid: true, balanceDue: 2200, balanceDueDate: daysFromNow(3) },
-      { id: 'v2', name: 'Bloom Florals', category: 'Florist', status: 'booked', cost: 1400, deposit: 700, depositPaid: false },
+      { id: 'v1', name: 'Hall Catering', category: 'Catering', status: 'Booked', cost: 4200, depositAmt: 2000, depositPaid: true, balanceDue: 2200, balanceDueDate: daysFromNow(3) },
+      { id: 'v2', name: 'Bloom Florals', category: 'Florist', status: 'Booked', cost: 1400, depositAmt: 700, depositPaid: false },
     ],
-    expenses: [
-      { id: 'e1', label: 'Catering deposit', amount: 2000, paid: true },
-      { id: 'e2', label: 'Rentals', amount: 1900, paid: true },
-    ],
+    // Canonical money fields: vendor payments above, manual actuals below.
+    // The former expenses[] shape was unread; an NGW estimate masked that.
+    budget: [{ id: 'rentals', category: 'Rentals', budgeted: 1900, actual: 1900 }],
   }),
   judgement: {
     eligible: 'the money decision (balance/deposit)',

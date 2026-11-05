@@ -28,6 +28,7 @@ try { _isPlausibleCity = require('./cityText').isPlausibleCityText; } catch { /*
 export function eventLocationStatus(event) {
   // ONE venue reader (venueFor): address/name/city all pre-gated there.
   const v = venueFor(event || {});
+  if (v.isHome && v.needsCityForWeather && !v.address) return 'missing';
   if (v.address) return 'full_address';
   if (v.name) return 'venue_only';
   if (v.city) return 'city_only';

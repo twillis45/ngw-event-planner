@@ -50,6 +50,8 @@ ALLOWED_ORIGIN_REGEX = os.environ.get(
 # (The anon key is safe server-side; it's only used as the GoTrue `apikey` header.)
 SUPABASE_URL      = os.environ.get("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
+# Server only: required for account deletion; never expose in capabilities.
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
 # Legacy shared dev token. Honored ONLY in explicit local development (when
 # ALLOW_DEV_TOKEN=true). Deployed environments (preview/staging/production) must

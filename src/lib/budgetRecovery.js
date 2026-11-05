@@ -21,7 +21,7 @@
 // playbookCapacity + guestCountResolved — not a new engine.
 
 import { hostSpending } from './hostSpending';
-import { isVendorBooked } from './workstreams';
+import { vendorIsCommitted } from './vendorMoney';
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan, UNIT_LABEL, SIZE_LABEL } from './crabPlan';
 import { guestCountIsConfirmed } from './guestCountFor';
@@ -34,14 +34,14 @@ const mid = (lo, hi) => {
 };
 const money = (n) => `$${Math.round(n).toLocaleString()}`;
 
-// Committed = the ONE canonical booked-status reader (isVendorBooked — the SAME predicate
+// Committed = the ONE canonical money reader (vendorIsCommitted — the SAME predicate
 // hostSpending's committed-DOLLAR math counts through vendorMoney), WIDENED by any paid /
 // signed flag so a vendor whose money is already out can never land in the "cut this"
 // bucket ("we never assume paid money comes back"). The old private regex omitted the
 // 'Paid' and 'Deposit Paid' statuses isVendorBooked counts, so a vendor inside the
 // over-budget dollar figure could still be suggested for cutting — the two disagreed
 // about the same vendor (audit 2026-07-22, kills the drift workstreams.js warns of).
-const COMMITTED_VENDOR = (v) => isVendorBooked(v)
+const COMMITTED_VENDOR = (v) => vendorIsCommitted(v)
   || v.contractSigned === true || v.contract_signed === true
   || v.depositPaid === true || v.balancePaid === true;
 
@@ -49,17 +49,17 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
   const ev = event || {};
   const sp = hostSpending(ev, priceFactor);
   const total = num(sp && sp.total);
-  const committed = num(sp && sp.committed);
+  const expected = num(sp && sp.expected);
 
   if (total <= 0) {
     return { status: 'needs_more_data', overBudgetAmount: 0, headline: null, summary: null,
       suggestions: [], protectedItems: [], missingData: ['A budget target — set one so overspend can be measured.'] };
   }
-  if (committed <= total) {
+  if (expected <= total) {
     return { status: 'not_over_budget', overBudgetAmount: 0, headline: null, summary: null,
       suggestions: [], protectedItems: [], missingData: [] };
   }
-  const over = committed - total;
+  const over = expected - total;
 
   const counted = guestCountResolved(ev);
   // ── "REAL" MEANS THE HOST SAID IT (2026-10-18, Sprint 0 P0-2) ─────────────
@@ -258,6 +258,7 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
       label: v.name,
       why: v.depositPaid || v.balancePaid
         ? 'Money is already paid here — this is already committed. Protect this; we never assume paid money comes back.'
+        : v.costAgreed === true ? 'You recorded an agreed amount here. Ask before changing anything — this is a commitment, not an unaccepted quote.'
         : 'This booking is already committed (signed or confirmed). Ask before changing anything — it’s a conversation, not a line item.',
     });
   });
@@ -270,7 +271,7 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
   }
 
   const safeCount = suggestions.filter(s => s.class === 'safe_cut' || s.class === 'tradeoff').length;
-  const headline = `You’re ${money(over)} over your current plan.`;
+  const headline = `Expected costs are ${money(over)} over your current plan — this includes allocations and estimates.`;
   const summary = safeCount > 0
     ? 'Here’s how to get back on plan: start with what’s still flexible — unbought items you can adjust without touching anything already committed.'
     : 'The remaining costs look committed or protected. Don’t assume savings without checking with the people involved.';

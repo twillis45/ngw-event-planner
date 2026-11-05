@@ -562,7 +562,7 @@ export function parseSmartEventText(text, opts = {}) {
   // match lower case and the whole distinction collapse. Written this way the
   // one guard serves both branches. (Measured: with a bare lower-case `day`,
   // "Mother's Day brunch" still returned the honoree "Mother".)
-  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool)\\b)';
+  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool|[Bb][Bb][Qq]|[Cc]atering|[Cc]aterer|[Dd][Jj]|[Pp]hotography|[Bb]akery|[Ff]lorist)\\b)';
   // ── A COUPLE IS TWO PEOPLE, AND WE WERE NAMING ONE ────────────────────
   //
   // "Mom and Dad's 50th anniversary" returned the honoree "Dad". Not a
@@ -583,8 +583,12 @@ export function parseSmartEventText(text, opts = {}) {
   // case-insensitively; names match case-sensitively. Exactly as the
   // singular branches below already do it.
   const COUPLE_JOIN = '\\s*(?:and|&)\\s*';
+  // A vendor role before a possessive is evidence of a supplier, not an honoree.
+  const matchPerson = (pattern) => [...t.matchAll(new RegExp(pattern.source, pattern.flags + 'g'))]
+    .find((m) => !/\b(?:caterer|vendor|photographer|DJ)\s*$/i.test(t.slice(0, m.index))
+      && !/^(?:caterer|vendor|photographer|DJ)\s/i.test(m[1])) || null;
   const hm = (() => {
-    const rel = t.match(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + COUPLE_JOIN
+    const rel = matchPerson(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + COUPLE_JOIN
       + REL_WORDS + ')[\u2019\']s\\b' + NOT_WHO, 'i'));
     if (rel) {
       const pair = rel[1].replace(/\s*&\s*/, ' and ').replace(/\s+/g, ' ').toLowerCase();
@@ -593,11 +597,11 @@ export function parseSmartEventText(text, opts = {}) {
         .join(' ');
       return [rel[0], titled];
     }
-    const nm = t.match(new RegExp('\\b([A-Z][a-zA-Z]+' + COUPLE_JOIN + '[A-Z][a-zA-Z]+)[\u2019\']s\\b' + NOT_WHO));
+    const nm = matchPerson(new RegExp('\\b([A-Z][a-zA-Z]+' + COUPLE_JOIN + '[A-Z][a-zA-Z]+)[\u2019\']s\\b' + NOT_WHO));
     if (nm) return [nm[0], nm[1].replace(/\s*&\s*/, ' and ').replace(/\s+/g, ' ')];
     return null;
   })()
-    || t.match(new RegExp('([A-Z][a-zA-Z]+(?:\\s+[A-Z][a-zA-Z]+)?)[\u2019\']s\\b' + NOT_WHO))
+    || matchPerson(new RegExp('([A-Z][a-zA-Z]+(?:\\s+[A-Z][a-zA-Z]+)?)[\u2019\']s\\b' + NOT_WHO))
     // "for Vida", "honoring Marcus" — the honoree named without a possessive
     // (host report 2026-07-27: "Birthday celebration for Vida" dropped the name).
     // Months/weekdays/pronouns/articles are excluded so "for November" or
@@ -619,7 +623,7 @@ export function parseSmartEventText(text, opts = {}) {
     // possessive "my" is dropped so the label reads "for Mom" rather than
     // "for my mom".
     || (() => {
-      const m = t.match(new RegExp('\\b(?:for|honoring|celebrating)\\s+(?:my\\s+|our\\s+)?(' + REL_WORDS + ')\\b', 'i'));
+      const m = matchPerson(new RegExp('\\b(?:for|honoring|celebrating)\\s+(?:my\\s+|our\\s+)?(' + REL_WORDS + ')\\b', 'i'));
       if (!m) return null;
       const word = m[1].replace(/\s+/g, ' ').toLowerCase();
       return [m[0], word.charAt(0).toUpperCase() + word.slice(1)];
@@ -631,7 +635,7 @@ export function parseSmartEventText(text, opts = {}) {
     // first names, and guessing one would invent a person. "my mom's" and
     // "our grandma's" drop the pronoun the way the "for" branch does.
     || (() => {
-      const m = t.match(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + ')[\u2019\']s\\b' + NOT_WHO, 'i'));
+      const m = matchPerson(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + ')[\u2019\']s\\b' + NOT_WHO, 'i'));
       if (!m) return null;
       const word = m[1].replace(/\s+/g, ' ').toLowerCase();
       return [m[0], word.charAt(0).toUpperCase() + word.slice(1)];
@@ -1873,13 +1877,13 @@ export function unusedClauses(text, opts = {}) {
     // unused, and "for" at three letters was one character too long to be
     // excused. Naming a fact we honoured is the same lie as staying quiet about
     // one we dropped, pointed the other way.
-    return toks.every((tk) => ((_FILLER.has(tk) || (tk.length <= 2 && !/^\d+$/.test(tk)))
-      ? true : carried.includes(tk)));
+    return toks.every((tk) => (_FILLER.has(tk)
+      ? true : (tk.length <= 2 ? new RegExp('\\b' + tk + '\\b').test(carried) : carried.includes(tk))));
   };
 
   // Punctuated input keeps the original clause reading — a host who wrote
   // commas told us where the boundaries are, and that beats guessing them.
-  const clauses = t.split(_CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length > 2);
+  const clauses = t.split(_CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c && !_FILLER.has(c.toLowerCase()));
   if (clauses.length >= 2) {
     const out = [];
     for (const c of clauses) {
@@ -1921,7 +1925,7 @@ export function unusedClauses(text, opts = {}) {
     if (!run.length) { runStart = -1; return; }
     const meaty = run.some((w) => {
       const bare = w.replace(/[^a-z0-9]/gi, '').toLowerCase();
-      return bare.length > 2 && !_FILLER.has(bare);
+      return bare.length > 0 && !_FILLER.has(bare);
     });
     const leftUsed = runStart > 0 && used[runStart - 1];
     const rightUsed = endExclusive < words.length && used[endExclusive];

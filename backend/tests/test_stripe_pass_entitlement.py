@@ -61,6 +61,12 @@ class FakeConn:
         self.queried.append(sql)
         return self._answer(self.rows, sql)
 
+    def transaction(self):
+        class Tx:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): return False
+        return Tx()
+
     async def execute(self, sql, *args):
         self.queried.append(sql)
         self.executed.append((sql, args))
@@ -104,6 +110,7 @@ def _completed(metadata, *, payment_status="paid", session_id="cs_pass_1",
             "amount_total": amount_total,
             "currency": currency,
             "payment_status": payment_status,
+            "payment_intent": "pi_pass_1",
             "metadata": metadata,
         }},
     }
@@ -167,7 +174,7 @@ def test_a_paid_pass_session_writes_the_entitlement(dev_webhook, monkeypatch):
     _webhook(_completed(PASS_META))
 
     assert len(_inserts(conn)) == 1, "a paid pass session must write exactly one row"
-    sql, args = conn.executed[0]
+    sql, args = next((sql, args) for sql, args in conn.executed if "insert into public.event_passes" in sql)
     # The tenant key and the event travel through Stripe metadata because the
     # webhook has no principal — assert both land in the row.
     assert "cust-123" in args

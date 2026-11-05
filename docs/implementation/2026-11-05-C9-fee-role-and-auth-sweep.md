@@ -1,0 +1,9 @@
+# C9 S9-3 / RP-1 — November 5, 2026
+
+The caller-priced fee checkout authenticated every signed-in host as a planner. It now uses a separate fee-only gate: verified Supabase app_metadata.role must be planner or admin. Host routes retain their existing sign-in contract. User metadata and local shared tokens cannot assign this financial role. Missing identity returns 401, a signed-in non-planner returns 403, both before Stripe configuration or a charge request. Operator-assigned planner roles are required for the legacy fee flow.
+
+The mounted protected-route sweep now parses actual call expressions; comments/docstrings/strings cannot impersonate authentication. The older router source scanner uses the same actual-call principle. Bare probes synthesize valid schema bodies and required queries, use a valid INTERNAL_TEAM path where needed, and demand 401. Validation failure no longer counts as proof of authentication.
+
+Verification: initial new fee tests reproduced three host cases returning 503 instead of 403. Final entire backend suite: **449 passed** (existing framework deprecation warnings). Deliberately restoring auth-only fee gating fails the role tests; removing orchestrate's real call while retaining its AUTH docstring fails the mounted sweep. Mutated files restored byte for byte. Separate tests cover trusted planner/admin success, host authentication preservation, self-assigned user metadata rejection, and refusal to infer planner authority from the dev token.
+
+No dependencies, UI, migration, deployment, or global require_planner behavior changed. S9-4 refund/dispute revocation remains a separate implementation: retain receipts and permanent payment-intent tombstones, serialize grant/revoke, and resolve historic session mappings through verified Stripe reads. Partial-refund entitlement policy awaits the owner; this commit does not decide it. Root owns shared HANDOFF and WHERE_WE_ARE integration updates.

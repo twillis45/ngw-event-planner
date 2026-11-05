@@ -174,6 +174,7 @@ const readHost = async (browser, readbackRows) => {
 
 const dollars = (s) => Number(String(s || '').replace(/[^0-9.]/g, '')) || 0;
 const spokenFor = (money) => dollars((money.match(/\$([\d,]+) spoken for/) || [])[1]);
+const expectedCost = (money) => dollars((money.match(/\$([\d,]+) expected in total/) || [])[1]);
 
 test.describe('GOLD-07 — a guest replies and the whole plan moves', () => {
   test('(premise) with the roster silent, every downstream surface says so', async ({ browser }) => {
@@ -324,13 +325,15 @@ test.describe('GOLD-07 — a guest replies and the whole plan moves', () => {
       .toMatch(/Denise Harrell Std · \+2 kids/);
 
     // BOUNDARY 8 — Money. Food is priced across seven now, and the total
-    // committed rises. Compared against the same run's own baseline rather
+    // expected cost rises without inventing a commitment. Compared against the same run's baseline rather
     // than a literal, so a price-data refresh cannot fail this for free.
     expect(before.money).toMatch(/sized for 0–6 guests/i);
     expect(after.money).toMatch(/across 7 guests/i);
-    expect(spokenFor(after.money), 'more mouths, more money')
-      .toBeGreaterThan(spokenFor(before.money));
-    expect(spokenFor(before.money), 'premise: there was real money to move').toBeGreaterThan(0);
+    expect(expectedCost(after.money), 'more mouths increase the forecast')
+      .toBeGreaterThan(expectedCost(before.money));
+    expect(expectedCost(before.money), 'premise: there was a priced forecast to move').toBeGreaterThan(0);
+    expect(spokenFor(before.money), 'an unanswered roster does not commit money').toBe(0);
+    expect(spokenFor(after.money), 'RSVP replies do not create a financial commitment').toBe(0);
 
     // BOUNDARY 9 — the ranked plan reranks. This is the one that proves the
     // cascade reaches the host's attention and not just her sheets: the job

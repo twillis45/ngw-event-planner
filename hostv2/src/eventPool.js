@@ -11,6 +11,7 @@
 // One truth: the host shell imports these SAME symbols from here, so the invite
 // and the host resolve every event against the exact same pool + patch layers.
 
+import { reportFailure } from '@app/lib/failureTelemetry';
 import { ALL_PLAYBOOKS, playbookTypicalGuests, playbookChecklist } from '@app/lib/playbooks';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { isRealHostEvent } from '@app/lib/welcomeGate';
@@ -338,6 +339,7 @@ export const BOOT_EVENT_ID = (() => {
   try {
     const id = localStorage.getItem(LS_LAST_EVENT);
     if (id && ALL_SAMPLES.some(e => e && e.id === id)) return id;
+    if (id) reportFailure('route', { where: 'eventPool.boot', reason: 'event-not-found', eventId: id });
   } catch { /* private mode */ }
   return FALLBACK ? FALLBACK.id : null;
 })();

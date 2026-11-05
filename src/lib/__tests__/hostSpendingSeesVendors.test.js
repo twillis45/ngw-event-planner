@@ -40,12 +40,12 @@ test('money owed to vendors is committed — it is not headroom', () => {
 
   expect(m.vendorOwed).toBe(15800);                 // 7,700 + 5,500 + 2,600
 
-  // committed = the $300 row actual + everything still owed. NOT $300.
-  expect(m.committed).toBe(300 + 15800);
+  // Committed includes the full contracts (paid plus owed), plus unrelated spending.
+  expect(m.committed).toBe(300 + 19800);
 
   // the headroom the hero prints
   const left = m.total - m.committed;
-  expect(left).toBe(40000 - 16100);                 // ≈ $23,900, not $39,700
+  expect(left).toBe(40000 - 20100);                 // $19,900 remains against commitments
   expect(left).toBeLessThan(39700);                 // the number it used to print
 });
 
@@ -59,13 +59,14 @@ test('a vendor still being SHOPPED is not money owed — quoted/considering are 
   expect(m.committed).toBe(300);
 });
 
-test('a fully paid vendor owes nothing — the budget stops charging for it', () => {
+test('a fully paid vendor owes nothing and remains spent and committed', () => {
   const ev = wedding([
     { id: 'v1', name: 'Caterer', status: 'Confirmed', cost: 11200, depositAmt: 3500, depositPaid: true, balancePaid: true },
   ]);
   const m = hostSpending(ev);
   expect(m.vendorOwed).toBe(0);
-  expect(m.committed).toBe(300);
+  expect(m.committed).toBe(11500);
+  expect(m.spent).toBe(11500);
 });
 
 test('an UNPAID deposit means the FULL cost is still owed — a promise is not a payment', () => {
@@ -87,16 +88,15 @@ test("'Booked' and 'Paid' vendors are counted — App.js's STAGES list omitted b
 });
 
 test('vendor money already PAID is not double-charged as spent', () => {
-  // A host who logs the deposit as a budget row actual AND has depositPaid on the
-  // vendor must not be charged for it twice. Only OUTSTANDING money is folded in;
-  // paid money cannot already be outstanding, so this term can never double-count.
+  // An unrelated venue payment and a catering deposit are distinct expenses.
+  // The same-category overlap case is asserted in moneyHasOneOwner.
   const ev = wedding([
     { id: 'v1', name: 'Caterer', status: 'Contracted', cost: 10000, depositAmt: 2000, depositPaid: true, balancePaid: false },
   ]);
   const m = hostSpending(ev);
-  expect(m.spent).toBe(300);            // the row actual only — the $2,000 deposit is not re-added
+  expect(m.spent).toBe(2300); // $300 unrelated venue spending plus the $2,000 deposit
   expect(m.vendorOwed).toBe(8000);      // what is genuinely still owed
-  expect(m.committed).toBe(8300);
+  expect(m.committed).toBe(10300);
 });
 
 test('no vendors → byte-identical to the old behavior', () => {

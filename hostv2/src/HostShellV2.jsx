@@ -29,6 +29,7 @@ const areaLabelFor = (id) => AREA_LABELS[id]
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
+import { reportFailure, recordPassFunnel } from '@app/lib/failureTelemetry';
 import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, useSyncExternalStore, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
@@ -132,7 +133,7 @@ import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
-import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch } from '@app/lib/heardClauses';
+import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
 import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuestions';
 
 import { foodSpanNote } from '@app/lib/foodSpan';
@@ -150,18 +151,21 @@ import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from 
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
-import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
+import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { effectiveDone } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
 import { GUEST_IMPORT_BATCHES_KEY, newImportBatchId, computeImportAuditMeta, makeImportBatch, undoLastImportBatch, loadImportBatches, persistImportBatches, MAX_PERSISTED_BATCHES, PLATFORM_LABELS, fmtBatchTs } from '@app/lib/importHistory';
 import { downloadCSV } from '@app/lib/download';
-import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
+import { deriveEventPhaseProgress, nextPlanAttentionDate } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
+import { formatCurrency } from '@app/lib/currency';
+import { publicAppUrl } from '@app/lib/publicAppUrl';
+import { budgetPaymentPatch, parseVendorCost } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
@@ -177,7 +181,7 @@ import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
-import { confirmedCovers } from '@app/lib/confirmedCovers';
+import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
@@ -344,7 +348,7 @@ const readDeletedIds = () => {
 import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile, AVA_TINTS } from './eventPool.js';
 
 
-const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
+const fmt = formatCurrency;
 
 const REDUCE_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -2876,7 +2880,7 @@ export default function HostShellV2() {
     if (!isFoodPricesConfigured() || (!state && !blsRegion)) { setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); return undefined; }
     (async () => {
       try {
-        const d = await getFoodPriceFactor(state ? { state } : { region: blsRegion });
+        const d = await getFoodPriceFactor(state ? { state, eventId: event.id } : { region: blsRegion, eventId: event.id });
         // itemFactors: the backend's PER-ITEM regional factors. geoItemMap decides
         // which priced lines may claim one; every other line keeps the basket mean.
         // Exactly one multiplier lands on any band — see playbooks/index.js factorFor.
@@ -2904,6 +2908,7 @@ export default function HostShellV2() {
     // would have fixed a first render and gone stale the moment a host typed
     // the state in, which is the exact moment this is for.
   }, [event.id, vf.city, vf.state, blsRegion]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [paymentEntry, setPaymentEntry] = useState(null);
   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   // "What's in the estimate" — the meta block's disclosure (owner picked board
@@ -3192,24 +3197,26 @@ export default function HostShellV2() {
   // sacred for custom events. This is the same principle applied to patches.
   // Told ONCE per session: a toast on every keystroke of a full disk would
   // bury the surface it is warning about.
-  useEffect(() => {
-    if (isCustomEventId(eventId)) return;
-    // Nor while the welcome gate is up, for the same reason: this wrote
-    // `ngw-hostv2-patch-ev-x-retirement-party` on a wiped device before the
-    // host had touched the screen. An empty patch is still a record that the
-    // host was working on that event, and they were not.
-    if (welcome) return;
+  const saveLocalPatch = (nextPatch) => {
     try {
-      localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch));
+      const serialized = JSON.stringify(nextPatch);
+      if (localStorage.getItem(LS_PATCH(eventId)) !== serialized) {
+        localStorage.setItem(LS_PATCH(eventId), serialized);
+      }
       saveFailedRef.current = false;
+      return { ok: true };
     } catch {
+      reportFailure('save', { where: 'hostv2.patch', reason: 'write-failed', eventId });
       if (!saveFailedRef.current) {
         saveFailedRef.current = true;
-        // Neutral, not green — this is not a confirmation. And it names what
-        // the host can actually do about it rather than reporting an error code.
-        toast('That change didn’t save on this device — storage is full. Free some space, then edit anything to retry.');
+        toast('That change didn’t save on this device — storage is full. Free some space, then try the change again.');
       }
+      return { ok: false, reason: 'write-failed' };
     }
+  };
+  useEffect(() => {
+    if (isCustomEventId(eventId) || welcome) return;
+    saveLocalPatch(patch);
   }, [patch, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── THE HOST'S ONLY COPY GOES THROUGH THE GUARD (2026-08-06) ─────────────
   // This was a bare setItem of the whole array. On 2026-08-06 that same shape,
@@ -3245,12 +3252,20 @@ export default function HostShellV2() {
   // wrong instrument — it disappears and she is still typing. The banner stays
   // until a write succeeds.
   const [saveFailed, setSaveFailed] = useState(null);
+  const committedCustomSnapshot = useRef(null);
   // Which event row is asking "are you sure" — an id, never a boolean, so two
   // rows can never both be armed. Deleting a plan is the one act in this shell
   // that cannot be undone, and it is the only one that asks twice.
   const [confirmDelete, setConfirmDelete] = useState(null);
   useEffect(() => {
-    const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
+    // Skip only the snapshot patchEvent just committed. Boot and other
+    // producers still take their existing recovery snapshot.
+    if (committedCustomSnapshot.current === JSON.stringify(customs)) {
+      committedCustomSnapshot.current = null;
+      return;
+    }
+    committedCustomSnapshot.current = null;
+    const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state', eventId });
     if (res && res.ok === false) setSaveFailed(res.reason || 'unknown');
     else setSaveFailed(null);
   }, [customs]);
@@ -3607,6 +3622,7 @@ export default function HostShellV2() {
       // Kept working for links already in people's inboxes. Verify-first, as
       // before: the redirect params only say WHAT to check.
       if (!sessionId) {
+        reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'missing-session', eventId: paidEventId });
         toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.');
         return;
       }
@@ -3614,6 +3630,7 @@ export default function HostShellV2() {
       try { v = await verifySession(sessionId); } catch { v = null; }
       const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === feeId);
       if (!paid) {
+        reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'unconfirmed', eventId: paidEventId });
         toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.');
         return;
       }
@@ -3661,7 +3678,7 @@ export default function HostShellV2() {
   const reconfirmedN = reconfirmables.filter(v => v.reconfirmed72 === true).length;
   const writeVendor = (id, patch, msg) => {
     const vs = (event.vendors || []).map(v => (v && v.id === id) ? { ...v, ...patch } : v);
-    patchEvent({ vendors: vs }, msg);
+    return patchEvent({ vendors: vs }, msg);
   };
   // ── THE WRITER FOR A FIELD AN ENGINE HAS BEEN READING ALL ALONG ──────────
   // vendorAccountability/derive.js:187 scores vendor staleness off
@@ -3778,33 +3795,43 @@ export default function HostShellV2() {
   };
   const vendorStatusIsCurrent = (v, s) => (v.status === s) || ((v.status === 'Booked' || v.status === 'Paid') && s === 'Confirmed');
   // WAVE-B write path (c): money. Draft buffer for the "what you agreed to
-  // pay" field (commits on blur/Enter, Escape abandons); both money writes use
-  // the budget editor's MONEY-MOVE UNDO pattern — snapshot just the field the
-  // write changes, one inline restore on the toast. Single-level, in-memory.
+  // pay" field (commits on blur/Enter, Escape abandons). The cost edit uses
+  // patchEvent's guarded receipt and Undo, so amount and agreement evidence
+  // change together.
   const [vendorCostDraft, setVendorCostDraft] = useState(null); // string | null — only while the field is being edited
+  const [vendorCostError, setVendorCostError] = useState(null);
+  const vendorCostEdited = useRef(false);
+  const vendorCostOwner = useRef(null);
+  const ownsVendorCostDraft = v => vendorCostOwner.current?.eventId === event.id && vendorCostOwner.current?.vendorId === v.id;
   // A DATE change moves every countdown, deadline, and shopping window — so it's drafted and
   // must be CONFIRMED before it cascades (host report 2026-07-16), instead of committing on
   // the picker's onChange. null = not editing; a string = a picked-but-unconfirmed date.
   const [dateDraft, setDateDraft] = useState(null);
   const commitVendorCost = (v) => {
-    if (vendorCostDraft === null) return;
+    if (vendorCostDraft === null || !ownsVendorCostDraft(v)) return;
     const raw = String(vendorCostDraft).trim();
-    setVendorCostDraft(null);
-    const n = raw === '' ? '' : Math.max(0, Math.round(Number(raw) || 0));
-    if (String(n) === String(v.cost ?? '')) return; // nothing changed — no write, no toast
-    const prev = v.cost;
+    let n;
+    try { n = parseVendorCost(raw); } catch (err) {
+      setVendorCostError({ eventId: event.id, vendorId: v.id, message: err.message });
+      return;
+    }
+    setVendorCostError(null);
+    const costAgreed = n !== '';
+    if (String(n) === String(v.cost ?? '') && (v.costAgreed === costAgreed || !vendorCostEdited.current)) {
+      setVendorCostDraft(null);
+      return;
+    }
     const name = v.name || v.category || 'This vendor';
-    writeVendor(v.id, { cost: n });
-    toast(n ? name + ' — ' + fmt(n) + ' agreed. Payment tracking reads it now.' : name + ' — agreed price cleared.', {
-      label: 'Undo',
-      fn: () => writeVendor(v.id, { cost: prev === undefined ? '' : prev },
-        Number(prev) > 0 ? name + ' back to ' + fmt(Number(prev)) + '.' : name + ' — no agreed price on file.'),
-    });
+    const result = writeVendor(v.id, { cost: n, costAgreed }, n !== ''
+      ? name + ' — ' + n.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) + ' agreed.'
+      : name + ' — agreed price cleared.');
+    if (result && result.ok) setVendorCostDraft(null);
   };
   const toggleVendorPaid = (v) => {
     const prev = !!v.balancePaid;
     const name = v.name || v.category || 'This vendor';
-    writeVendor(v.id, { balancePaid: !prev });
+    const result = writeVendor(v.id, { balancePaid: !prev });
+    if (!result || !result.ok) return;
     toast(!prev ? name + ' marked paid in full — payment reminders stop.' : name + ' marked not fully paid yet — the payment note is back.', {
       label: 'Undo',
       fn: () => writeVendor(v.id, { balancePaid: prev },
@@ -3840,6 +3867,9 @@ export default function HostShellV2() {
         return;
       }
     } catch { /* gate engine absent — never block sharing on an internal error */ }
+    let appUrl;
+    try { appUrl = publicAppUrl(); }
+    catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return; }
     setVendorBrief({ vendorId: v.id, url: null, qrDataUrl: null, minting: true, copied: false });
     let code = null;
     try {
@@ -3847,7 +3877,7 @@ export default function HostShellV2() {
     } catch { code = null; }
     const brief = buildVendorBriefPayload(v, event, ros, profile);
     const token = code || b64encode(JSON.stringify(brief));
-    const url = window.location.origin + window.location.pathname + '?vendor=' + token;
+    const url = appUrl + '?vendor=' + token;
     let qr = null;
     try { qr = await QRCode.toDataURL(url, { width: 480, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } }); } catch { qr = null; }
     setVendorBrief(b => (b && b.vendorId === v.id) ? { vendorId: v.id, url, qrDataUrl: qr, minting: false, copied: false } : b);
@@ -3904,7 +3934,7 @@ export default function HostShellV2() {
     // resolved async after mount, this stale figure and the recovery panel's
     // fresh one could show two different "how far over" dollar amounts on
     // the same sheet (found in the per-screen audit).
-  const money = { planned: spend.total, committed: spend.committed, committedEstimated: spend.committedEstimated || 0, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
+  const money = { planned: spend.total, expected: spend.expected || 0, committed: spend.committed, committedEstimated: spend.committedEstimated || 0, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
   // ── A BLANK SLOT BESIDE A NUMBER THE APP ALREADY HAS ─────────────────────
   // The WHERE YOU STAND strip rendered the budget as an em-dash under the line
   // "you haven't set one yet — tap to lock a number in", on the same scroll
@@ -3945,12 +3975,12 @@ export default function HostShellV2() {
   // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
   // the Budget sheet and After. NEVER planner category rows (Rule 4): the host
   // model is one number plus where the plan says it's going.
-  const hostSpendRows = () => [
-    { label: 'Food & drinks', est: spend.foodEstimate || 0, got: spend.foodBought || 0, kind: 'food' },
-    { label: 'Supplies', est: spend.suppliesEstimate || 0, got: spend.suppliesBought || 0, kind: 'supplies' },
-    ...(spend.hasCapacity ? [{ label: 'Seats, tables & space', est: spend.capacityEstimate || 0, got: spend.capacityBought || 0, kind: 'space' }] : []),
-    ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0, kind: 'crabs' }] : []),
-  ].filter(r => r.est > 0 || r.got > 0);
+  const hostSpendRows = () => (spend.categories || []).map(c => ({
+    ...c, label: c.source === 'estimate' && c.label === 'Catering' ? 'Food' : c.label, est: c.expected, got: c.spent,
+    kind: c.source === 'vendor' ? 'vendors' : c.source === 'budget' ? 'budget'
+      : c.label === 'Supplies' ? 'supplies' : c.label === 'Rentals' ? 'space'
+      : c.label === 'Crab order' ? 'crabs' : c.label === 'Lodging' ? 'lodging' : c.label === 'Bar / Beverage' ? 'drinks' : 'food',
+  }));
   const guests = guestNumber(event);
 
   // ── A ROSTER ROW IS NOT A PERSON ─────────────────────────────────────────
@@ -4323,6 +4353,8 @@ export default function HostShellV2() {
   // The date this ledger's denominator next moves (phaseProgress). A completion
   // claim made without it is a claim with a fuse — see the field's own comment.
   const ledgerExpiry = (phaseCues && phaseCues.nextLedgerChange) || null;
+  const planHorizon = nextPlanAttentionDate(plan, ledgerExpiry);
+  const planHorizonShort = planHorizon ? new Date(planHorizon.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
   const ledgerExpiryShort = ledgerExpiry ? (() => {
     try { return new Date(ledgerExpiry.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; }
   })() : null;
@@ -4614,6 +4646,9 @@ export default function HostShellV2() {
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  useEffect(() => {
+    if (sheet && sheet.kind === 'pass') recordPassFunnel('sheet_viewed', eventId);
+  }, [sheet && sheet.kind, eventId]);
   // MOMENTUM (2026-08-18): log ONE session snapshot per calendar day per event, so
   // computeMomentum (src/lib/playbooks/index.js) can read progress across sessions —
   // the longitudinal Adaptivity axis named in the 08-17 rescore and, until now,
@@ -5801,15 +5836,22 @@ export default function HostShellV2() {
   // the caller falls to onCta's truthful "Not wired here yet" toast.
   const routeSheet = (route) => {
     const r = resolveRoute(route);
-    if (!r) return false;
-    // Stage landings: the target is a full-screen stage, not a sheet. The plan
-    // editor (event-date / event-venue) scrolls to and focuses the exact input
-    // per the Row-Level CTA rule; the day-of run of show lives on the Day stage.
+    if (!r) {
+      if (route) reportFailure('route', { where: 'hostv2.route', reason: 'unresolved', eventId });
+      return false;
+    }
+    // Stage landings focus an existing answer row on the plan. Date and venue
+    // inputs use their existing sheets, so they never depend on an unmounted hero editor.
     if (r.kind === 'stage:plan') {
       setStage('plan'); setSheet(null); setEditor(null);
-      if (r.anchor) setTimeout(() => {
+      if (r.anchor && r.anchor.startsWith('place-question-')) setHandledOpen(true);
+      if (r.anchor) setTimeout(async () => {
         try {
-          const inp = document.querySelector('[aria-label="' + r.anchor + '"]');
+          const row = document.getElementById(r.anchor);
+          const inp = row ? row.querySelector('button, input') : document.querySelector('[aria-label="' + r.anchor + '"]');
+          const panel = row && row.closest('.slidepanel');
+          if (panel) await Promise.allSettled(panel.getAnimations().map(a => a.finished));
+          if (inp && !inp.isConnected) return;
           if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
         } catch { /* DOM not ready — plan stage is still the right landing */ }
       }, 80);
@@ -5949,55 +5991,48 @@ export default function HostShellV2() {
     catch { toast('Couldn’t copy on this browser — long-press to select it.'); }
   };
 
-  // The self-RSVP invite link — the SAME ?rsvp=CODE mechanic as the original
-  // app (every event carries rsvpCode). Guests who open it reply themselves;
-  // replies land in the outbox and merge into this roster automatically.
-  const inviteLinkUrl = () => window.location.origin + window.location.pathname + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
-  // Scan-to-RSVP: the SAME invite link as a QR — for the printed invite, the
-  // door sign, the fridge. Dark-on-white regardless of theme (scanners first).
+  // Preview stays local. Outward links require the public event a guest sees,
+  // not just a configured proxy or a historical cloud-save stamp.
+  const inviteLinkUrl = () => publicAppUrl() + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
+  const rsvpUnavailable = (result) => result.reason === 'unavailable'
+    ? 'Couldn’t verify this RSVP link. Nothing was shared. Check your connection and try again.'
+    : 'Online RSVPs are not available for this event. Copy a plain invitation and collect replies yourself.';
+  const verifiedRsvpUrl = async () => {
+    const result = await checkRsvpCapability(event);
+    if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
+    try { return inviteLinkUrl(); }
+    catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return ''; }
+  };
+  const openInviteDraft = async (title, build) => {
+    const url = await verifiedRsvpUrl();
+    openDraft(title, build(event, profile, { rsvpUrl: url }));
+  };
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const showQr = async () => {
+    const url = await verifiedRsvpUrl();
+    if (!url) return;
     try {
-      const data = await QRCode.toDataURL(inviteLinkUrl(), { width: 520, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
+      const data = await QRCode.toDataURL(url, { width: 520, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
       setQrDataUrl(data);
       setSheet({ kind: 'qr' });
-    } catch { toast('Couldn’t draw the QR — share the link instead.'); }
+    } catch { toast('Couldn’t draw the QR — check and share the link instead.'); }
   };
   const shareInviteLink = async () => {
-    const url = inviteLinkUrl();
+    const url = await verifiedRsvpUrl();
+    if (!url) return;
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
         await navigator.share({ title: 'You’re invited — ' + (event.name || 'our event'), text: 'You’re invited to ' + (event.name || 'our event') + '. RSVP here: ' + url, url });
-        try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'native_share', event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
+        try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'native_share', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
         return;
-      } catch { /* declined — fall through to copy */ }
+      } catch (error) { if (error && error.name === 'AbortError') return; }
     }
-    // ── DO NOT PROMISE A LINK THAT ONLY WORKS HERE (2026-08-06, board) ──────
-    // "anyone who opens it can RSVP themselves, no app needed" is true only when
-    // the RSVP API is configured. On the deployed demo profile it is forced
-    // empty, so InviteV2 resolves {event: null} for anyone whose browser does
-    // not already hold the event — every guest gets a dead link.
-    //
-    // The production seat named this the single thing most likely to hurt a real
-    // host, and the reasoning is right: it is on the happy path, it fires a
-    // confident and specific confirmation, and the damage is social and
-    // irreversible. She sends it to forty people and finds out by phone.
-    //
-    // UX_07: a CTA may not claim a capability the build does not have. The link
-    // still copies — what changes is that the sentence stops overselling it.
-    const rsvpLive = (() => { try { return isRsvpApiConfigured(); } catch { return false; } })();
     try {
       await navigator.clipboard.writeText(url);
-      // rsvp_live rides along because a copied link on the demo profile reaches
-      // a guest who cannot reply — a share that cannot convert, and the funnel
-      // must not read it as one that could.
-      try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'clipboard', rsvp_live: rsvpLive, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
-      toast(rsvpLive
-        ? 'Invite link copied — anyone who opens it can RSVP themselves, no app needed.'
-        : 'Invite link copied — it opens on this device. Replies are not collected yet.');
+      try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'clipboard', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
+      toast('Invite link copied — the public invite is available for guests to RSVP.');
       feedback('act');
-    }
-    catch { toast('Couldn’t copy on this browser — the link ends in ?rsvp=' + (event.rsvpCode || event.id)); }
+    } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
   };
 
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
@@ -6394,11 +6429,18 @@ export default function HostShellV2() {
   const supplGroupName = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
   const GO_SPEND = {
     food: () => setSheet({ kind: 'food' }),
+    drinks: () => setSheet({ kind: 'food' }),
     supplies: () => { if (supplGroupName) setFoodGroupsOpen(m => ({ ...m, [supplGroupName]: true })); setSheet({ kind: 'food' }); },
     space: () => setSheet({ kind: 'space' }),
     crabs: () => setSheet({ kind: 'crabs' }),
+    vendors: () => setSheet({ kind: 'vendors' }),
+    budget: () => setSheet({ kind: 'budget' }),
+    lodging: () => goToLodgingCockpit(),
   };
-  const hostRowsGo = () => hostSpendRows().map(r => ({ ...r, go: GO_SPEND[r.kind] }));
+  const hostRowsGo = () => hostSpendRows().map(r => ({ ...r, go: r.kind === 'budget' ? () => {
+    setPaymentEntry({ eventId: event.id, rowId: r.budgetRowIds[0], category: '', amount: '', error: '' });
+    setSheet({ kind: 'budget' });
+  } : r.kind === 'vendors' ? () => setSheet({ kind: 'vendors', focus: r.vendorIds.length === 1 ? r.vendorIds[0] : null }) : GO_SPEND[r.kind] }));
 
   // The 5 readiness signals — Basics (foundations) + the four pillars the
   // production readiness engine computes: decisions, people, checklist, paperwork.
@@ -6666,7 +6708,7 @@ export default function HostShellV2() {
     // stale `event` — this receipt fires on the same tap that changes it.
     // It said "5 confirmed" on a roster whose confirmed rows bring two kids,
     // which is the same defect as the caterer's, in a toast.
-    const yes = confirmedCovers({ ...event, guests: gs }) || 0;
+    const yes = confirmedRsvpCovers({ ...event, guests: gs });
     patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + (value || 'no reply') + ' — ' + yes + ' confirmed.' + (value === 'Maybe' ? ' Maybes stay pending until they land.' : ''));
   };
 
@@ -7005,28 +7047,47 @@ export default function HostShellV2() {
     const undoable = !!msg && !(opts && opts.noUndo);
     let undoPrev = null;
     if (undoable) { undoPrev = {}; for (const k of Object.keys(obj || {})) undoPrev[k] = event[k]; }
-    if (activeCustom) setCustoms(list => list.map(c => {
-      if (!c || c.id !== eventId) return c;
-      const next = { ...c, ...obj };
-      // Created events sync exactly like real ones (same session gate, same
-      // full-event shape, same silent-offline behavior as the branch below).
-      // SYNC-HONESTY-1: the old catch{} swallowed the result — no way to tell
-      // a real cloud success from a queued/failed write. recordSaveResult
-      // stamps or records honestly so the settings sheet can tell the truth.
-      if (session) { cloudSaveEvent(next).then(res => noteSaveResult(next, res)).catch(() => {}); }
-      return next;
-    }));
-    else setPatch(p => {
-      const nextPatch = { ...p, ...obj };
-      // Real-event edits persist to the cloud (superset merge, never drops a
-      // base field). Session-gated; sample/demo events stay local-only.
-      const realBase = REAL_EVENTS.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId);
-      if (session && realBase) {
-        const savedEv = { ...realBase, ...nextPatch };
-        cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
+    let result;
+    let savedEv = null;
+    if (activeCustom) {
+      // Read the committed list so back-to-back edits build on the preceding
+      // successful write, even before React has rendered it.
+      const stored = readCustomEvents();
+      const list = stored.some(c => c && c.id === eventId) ? stored : customs;
+      const next = list.map(c => {
+        if (!c || c.id !== eventId) return c;
+        savedEv = { ...c, ...obj };
+        return savedEv;
+      });
+      result = saveCustomEvents(next, { reason: 'hostshell:patch-event', eventId });
+      if (result.ok) {
+        committedCustomSnapshot.current = JSON.stringify(next);
+        setCustoms(next);
       }
-      return nextPatch;
-    });
+    } else {
+      let current = patch;
+      try { current = JSON.parse(localStorage.getItem(LS_PATCH(eventId))) || patch; } catch { /* the write below reports refusal */ }
+      const nextPatch = { ...current, ...obj };
+      result = saveLocalPatch(nextPatch);
+      if (result.ok) {
+        setPatch(nextPatch);
+        const realBase = REAL_EVENTS.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId);
+        if (realBase) savedEv = { ...realBase, ...nextPatch };
+      }
+    }
+    if (!result || !result.ok) {
+      setSaveFailed((result && result.reason) || 'write-failed');
+      setHeroReceipt(null);
+      if (!saveFailedRef.current) {
+        saveFailedRef.current = true;
+        toast('That change didn’t save on this device. Your previous saved version is still here — free some space and try again.');
+      }
+      return { ok: false, reason: result && result.reason, error: 'That change was not saved. Try again after checking device storage.' };
+    }
+    setSaveFailed(null);
+    saveFailedRef.current = false;
+    // A rejected local edit must never start a cloud write or show a receipt.
+    if (session && savedEv) cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
     feedback('act');
     if (msg) {
       // CONFIRM-GREEN: patchEvent is the ONE write path every successful edit funnels
@@ -7048,6 +7109,7 @@ export default function HostShellV2() {
       }
       else toast(msg, null, 'ok');
     }
+    return { ok: true };
   };
 
   // ── Guest replies land here. TWO sources, ONE merge (the ORIGINAL's
@@ -8454,7 +8516,7 @@ export default function HostShellV2() {
       // backfill. The LIST is deliberately not stored; see heardClauses.js.
       createdFromText: smartText,
       budget: [],
-      guests: [], vendors: [], timeline: [],
+      guests: [], vendors: heardVendorIntents(smartText).map((v, i) => ({ ...v, id: 'v-' + newId + '-' + i })), timeline: [],
     };
     // AN EVENT ARRIVES WITH A GROUNDED START TIME (host directive, 2026-07-14).
     // Not the old invention — that was a bare 15:00, written as fact and indistinguishable
@@ -8673,7 +8735,7 @@ export default function HostShellV2() {
     // states — !askMode, and the day-before collapse — where the effect could run
     // over a block that was never on screen.
     const blockRendered = elegantMode && askMode && !(nearDayPlan && !queueOpen);
-    const rows = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
+    const rows = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route));
     const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
 
     if (blockRendered) {
@@ -9718,6 +9780,14 @@ export default function HostShellV2() {
                         </p>
                       )}
                       {(() => {
+                        const roles = heardVendorIntents(smartText);
+                        if (!roles.length) return null;
+                        return <p className="grounding" style={{ margin: '12px 0 0' }}>
+                          Vendor roles to consider: {roles.map((v) => v.name || v.category).join(' · ')}.
+                          {' '}These start as Considering, not booked.
+                        </p>;
+                      })()}
+                      {(() => {
                         let dropped = [];
                         // THE SEAM CONSUMERS ARE PASSED IN (2026-10-18, Sprint 0 P1-3).
                         // Creation reads this same sentence with three readers the
@@ -9741,7 +9811,7 @@ export default function HostShellV2() {
                               ))}
                             </p>
                             <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--faint)' }}>
-                              Worth keeping in mind yourself — the plan won’t know about {dropped.length === 1 ? 'it' : 'them'}.
+                              Kept in your description, but the plan won’t act on {dropped.length === 1 ? 'it' : 'them'} yet. Review or handle {dropped.length === 1 ? 'it' : 'them'} yourself.
                             </p>
                           </div>
                         );
@@ -9844,7 +9914,7 @@ export default function HostShellV2() {
                       const resolved = revealPhase === 'rest';
                       return (
                         <div className={'rv-spinewrap' + (resolved ? ' resolved' : '')}>
-                          <div className="rv-seyebrow" aria-live="polite">YOUR EVENT, UNDERSTOOD</div>
+                          <div className="rv-seyebrow" aria-live="polite">YOUR EVENT, STARTED</div>
                           <h1 className="rv-sname">{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
                           <p className="rv-ssub">{identityStatement(activeCustom)}</p>
                           <div className="rv-spine-col">
@@ -9877,10 +9947,15 @@ export default function HostShellV2() {
                               );
                             })}
                           </div>
-                          <p className={'grounding pre rv-sground' + (resolved ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
+                          <p className={'grounding pre rv-sground' + (resolved ? ' in' : '')}>Your details are saved. Draft suggestions come from the event playbook — review them before deciding.</p>
+                          {activeCustom?.createdFromText && <details className="grounding" style={{ marginTop: 'var(--sp-2)' }}>
+                            <summary>Your original description</summary>
+                            <p>Kept as context. Only the details shown in your plan have been applied.</p>
+                            <p>{activeCustom.createdFromText}</p>
+                          </details>}
                           <div className={'actions-row pre' + (resolved ? ' in' : '')} style={{ marginTop: 'var(--sp-2)' }}>
                             <button ref={revealCtaRef} className={'cta big' + (resolved ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
-                            <button className="cta ghost" onClick={shareInviteLink}>Share the invite</button>
+                            <button className="cta ghost" onClick={shareInviteLink}>Check and share invite</button>
                             <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
                           </div>
                         </div>
@@ -10226,8 +10301,8 @@ export default function HostShellV2() {
                         claim is a claim with a fuse. The honest loud line is the date the
                         quiet ends. Falls back to a today-scoped claim when the ledger has
                         no pending change — never a standing one. */}
-                    <h2 className="cp-head">{ledgerExpiryShort
-                      ? `Nothing needs you until ${ledgerExpiryShort}.`
+                    <h2 className="cp-head">{planHorizonShort
+                      ? `Next dated work: ${planHorizonShort}.`
                       : 'Nothing needs you today.'}</h2>
                     {/* statusNode is the SOLE author of this line. The `||` fallback that
                         used to sit here was unreachable — statusNode's guard is identical
@@ -11270,7 +11345,7 @@ export default function HostShellV2() {
                       <span>{hoverSeg
                         ? (hoverSeg.handled ? 'handled' : 'still open')
                         : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first'
-                          : (ledgerExpiryShort ? `the rest can wait till ${ledgerExpiryShort}` : 'the rest can wait')))}</span>
+                          : (planHorizonShort ? (planHorizon.days <= 0 ? 'dated work needs you now' : `next dated work: ${planHorizonShort}`) : 'more in your plan')))}</span>
                     </div>
                   </div>
                 );
@@ -11310,7 +11385,7 @@ export default function HostShellV2() {
                 // Include a SECOND bundle here (host 2026-07-18): "Resolve 9 decisions" behind
                 // the conflict hero drops below the fold as a path-row, so the first screen isn't
                 // two stacked bundles. A bundle routes to its own sheet on tap.
-                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
+                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route));
                 if (!thenItems.length) return null;
                 // Dated money obligations, read ONCE for the whole list — the reason
                 // service matches a row to an action by key/vendorId. Never an estimate.
@@ -11981,7 +12056,7 @@ export default function HostShellV2() {
                           vocabulary as `spent` right beside it: "(est.)" when the
                           whole figure is a guess, "· $N est." when only part is.
                           Never a second vocabulary (UX_08). */}
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</>
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}{spend.moneyDiscrepancies && spend.moneyDiscrepancies.length > 0 ? ' · payment records differ' : ''}</>
                         : (suggestedTotal
                           /* NO POPULATION. This read "mid-range for an event
                              this size", and the comment here claimed it shared
@@ -12295,7 +12370,7 @@ export default function HostShellV2() {
                         borderTop: '1px solid var(--line)' }}>
                         <div className="shelf-label" style={{ marginBottom: 4 }}>Worth finding out</div>
                         {qs.map((q) => (
-                          <div key={q.id} style={{ padding: '8px 0' }}>
+                          <div key={q.id} id={'place-question-' + q.id} style={{ padding: '8px 0' }}>
                             <div className="f-name" style={{ fontSize: 'var(--t-body)' }}>{q.question}</div>
                             <p className="grounding" style={{ margin: '2px 0 6px' }}>{q.because}{q.askWho ? ` Ask ${q.askWho}.` : ''}</p>
                             <div className="line" style={{ gap: 'var(--sp-1)', padding: 0 }}>
@@ -13735,14 +13810,14 @@ export default function HostShellV2() {
                       </p>
                     ) : null}
                     <div className="line total">
-                      <span>{isPast ? 'Spent, all in' : 'Spoken for so far'}</span>
+                      <span>{isPast ? 'Recorded spent' : 'Expected total'}</span>
                       <span className={'amt' + (money.planned && money.committed <= money.planned ? ' under' : '')}>
                         {/* The rows above each wear "~" (est.); this total is the
                             sum of them, so it wears the marker too (app-wide
                             estimate pass 2026-07-29) — a total is not firmer than
                             its parts. Suppressed once the event is past, where
                             "Spent, all in" is real money, not a projection. */}
-                        {!isPast && money.committedEstimated > 0 ? '~' : ''}{fmt(money.committed)}{money.planned ? ' · ' + (money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over') : ''}
+                        {fmt(isPast ? money.spent : money.expected)}{money.planned ? ' · against ' + fmt(money.planned) : ''}
                       </span>
                     </div>
                   </div></div>
@@ -17446,11 +17521,13 @@ export default function HostShellV2() {
               const buyPass = async () => {
                 if (openingCheckout) return;
                 setOpeningCheckout(true);
+                recordPassFunnel('checkout_started', event.id);
                 try {
                   const out = await createPassSession({ eventId: event.id });
                   // Leaving for Stripe: stay busy — the page is navigating away.
                   if (out && out.url) { window.location.assign(out.url); return; }
                   setOpeningCheckout(false);
+                  reportFailure('pass_checkout', { where: 'hostv2.checkout', reason: 'missing-url', eventId: event.id });
                   toast('Couldn’t open checkout just now — please try again.');
                 } catch (e) {
                   setOpeningCheckout(false);
@@ -17463,6 +17540,7 @@ export default function HostShellV2() {
                     toast('This event hasn’t finished syncing to your account yet — give it a moment and try again.');
                     return;
                   }
+                  reportFailure('pass_checkout', { where: 'hostv2.checkout', reason: 'request-failed', eventId: event.id });
                   toast('Checkout isn’t available right now.');
                 }
               };
@@ -18302,13 +18380,29 @@ export default function HostShellV2() {
                               if (!f) return;
                               const r = new FileReader();
                               r.onload = () => {
-                                let res = null;
-                                try { res = importCustomEvents(JSON.parse(String(r.result)), { reason: 'settings:import' }); }
+                                let payload;
+                                try { payload = JSON.parse(String(r.result)); }
                                 catch { toast('That file isn’t a copy of your events.'); return; }
-                                if (!res || res.ok === false) { toast('Nothing was changed — that file didn’t bring any events.'); return; }
-                                setCustoms(readCustomEventsSafe());
-                                setDataTick(t => t + 1);
-                                toast('Your events are back.');
+                                const applyImport = (overwriteExisting = false) => {
+                                  let res;
+                                  try { res = importCustomEvents(payload, { reason: 'settings:import', overwriteExisting }); }
+                                  catch {
+                                    reportFailure('save', { where: 'hostv2.import', reason: 'unexpected-failure' });
+                                    toast('Nothing was restored — the file could not be applied on this device. Check the file and available storage, then try again.');
+                                    return;
+                                  }
+                                  if (!res || !res.ok) {
+                                    toast('Nothing was restored — the file could not be applied on this device. Check the file and available storage, then try again.');
+                                    return;
+                                  }
+                                  setCustoms(readCustomEventsSafe());
+                                  setDataTick(t => t + 1);
+                                  toast(`${res.added} added · ${res.updated} updated · ${res.skipped} kept`,
+                                    !overwriteExisting && res.skipped > 0
+                                      ? { label: 'Replace matching events', fn: () => applyImport(true) }
+                                      : null);
+                                };
+                                applyImport();
                               };
                               r.onerror = () => toast('Couldn’t read that file.');
                               r.readAsText(f);
@@ -22554,6 +22648,12 @@ export default function HostShellV2() {
                             <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
                               value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-label="Vendor email" aria-invalid={isMalformedEmail(v.email)} />
                           </div>
+                          <button className="mini" aria-label={'Remove vendor ' + (v.name || v.category || 'Unnamed')}
+                            onClick={e => {
+                              e.stopPropagation();
+                              patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
+                              setSheet(s => ({ ...s, focus: null }));
+                            }}>Remove from this event</button>
                           {isMalformedEmail(v.email) && <p className="grounding" role="alert" style={{ margin: '-4px 0 var(--sp-2)', color: 'var(--warn)' }}>That doesn’t look like an email address.</p>}
                           {/* Vendor Brief authoring (VB2, ported): contactName and
                               briefNote are both in buildVendorBriefPayload's audited
@@ -22615,17 +22715,17 @@ export default function HostShellV2() {
                             })()}
                             {!v.isInformal && (<>
                               <label className="of" htmlFor={'v-cost-' + v.id}>agreed to pay $</label>
-                              <input id={'v-cost-' + v.id} className="field" type="number" inputMode="numeric" min="0" placeholder="0"
+                              <input id={'v-cost-' + v.id} className="field" type="text" inputMode="decimal" placeholder="0"
                                 style={{ maxWidth: 104, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                                value={vendorCostDraft !== null && isOpen ? vendorCostDraft : (v.cost ?? '')}
-                                onFocus={() => setVendorCostDraft(String(v.cost ?? ''))}
-                                // A payment amount is digits only — strip anything else at the source so
-                                // pasted/typed text (a whole sentence, letters, symbols) can never land a
-                                // garbled number in the field. commitVendorCost still rounds to an integer.
-                                onChange={e => setVendorCostDraft(e.target.value.replace(/[^\d]/g, ''))}
+                                value={vendorCostDraft !== null && ownsVendorCostDraft(v) && isOpen ? vendorCostDraft : (v.cost ?? '')}
+                                onFocus={() => { if (vendorCostDraft === null || !ownsVendorCostDraft(v)) setVendorCostDraft(String(v.cost ?? '')); vendorCostOwner.current = { eventId: event.id, vendorId: v.id }; setVendorCostError(null); vendorCostEdited.current = false; }}
+                                onChange={e => { setVendorCostDraft(e.target.value); setVendorCostError(null); vendorCostEdited.current = true; }}
                                 onBlur={() => commitVendorCost(v)}
-                                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setVendorCostDraft(null); }}
+                                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') { setVendorCostDraft(null); setVendorCostError(null); } }}
+                                aria-invalid={(vendorCostError?.eventId === event.id && vendorCostError?.vendorId === v.id) || undefined}
+                                aria-describedby={vendorCostError?.eventId === event.id && vendorCostError?.vendorId === v.id ? 'v-cost-error-' + v.id : undefined}
                                 aria-label="What you agreed to pay" />
+                              {vendorCostError?.eventId === event.id && vendorCostError?.vendorId === v.id && <p id={'v-cost-error-' + v.id} role="alert" className="grounding">{vendorCostError.message}</p>}
                               {/* THE ESTIMATE THE APP ALREADY MADE, AND THEN THREW AWAY.
                                   buildVendorPlan computes a real range for every category —
                                   the playbook's authored costRange × guests × the metro factor
@@ -23048,38 +23148,9 @@ export default function HostShellV2() {
               );
             })()}
             {sheet.kind === 'budget' && (() => {
-              // HOST MODEL: one number, and "where it's going" priced by the plan
-              // itself (hostSpending's food/supplies/capacity terms) — never
-              // planner category rows the host didn't write.
-              // ROW-LEVEL CTA RULE: hostRowsGo() (component-level, shared with
-              // the After tab's identical summary) routes every allocation row
-              // to the surface that prices it — the spread (food/supplies),
-              // the space list, the crab order.
-              // ── "WHERE IT'S GOING" HAD TO ACCOUNT FOR THE MONEY (click-through
-              // audit 2026-07-28). hostSpendRows() prices what the PLAN prices —
-              // food, supplies, capacity, crab. But `committed` is that PLUS
-              // vendorOwed PLUS lodgingCommitted (see lib/hostSpending ~188), and
-              // neither had a row. Live on the wedding that read: "Over by $32,639"
-              // above a breakdown listing ~$2,469 of $87,639 — the section that
-              // promises where it's going was silent about 97% of it, and about the
-              // whole reason the host is over.
-              // These are NOT invented category rows: both are components the money
-              // engine already returns, and each routes to the surface that owns it.
-              const hostRows = (() => {
-                const rows = hostRowsGo();
-                // READ `spend`, NOT `money` (self-inflicted, caught by driving it
-                // 2026-07-29). `money` is a NARROWED object built at ~2250 —
-                // { planned, committed, spent, spentEstimated, lines } — and never
-                // carried these two. Reading money.vendorOwed gave undefined → 0 →
-                // the rows silently never rendered, on the very event with $87,639
-                // spoken for. I shipped it and called it done without opening the
-                // sheet. `spend` is the full hostSpending result these live on.
-                const owed = Math.round(spend.vendorOwed || 0);
-                const stays = Math.round(spend.lodgingCommitted || 0);
-                if (owed > 0) rows.push({ label: 'People you’re hiring', kind: 'vendors', est: owed, got: 0, go: () => setSheet({ kind: 'vendors', focus: null }) });
-                if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => goToLodgingCockpit() });
-                return rows;
-              })();
+              const hostRows = hostRowsGo();
+              const manualRows = (event.budget || []).filter(r => hostRows.some(c => c.source === 'budget' && c.budgetRowIds.includes(r.id)));
+              const payment = paymentEntry && paymentEntry.eventId === event.id ? paymentEntry : null;
               let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }
               // Queue item 7 — the recovery engine: source-backed ways OUT of
               // an overage (safe cuts / tradeoffs / protected), never invented $.
@@ -23211,6 +23282,37 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
+                  <p className="grounding"><b>{fmt(spend.expected || 0)}</b> expected in total. Allocations and unbought estimates are not spoken for. The amount left above is against commitments, not the final bill.</p>
+                  {(spend.moneyDiscrepancies || []).length > 0 && (
+                    <div className="card" role="note">
+                      <p className="grounding">Payment records overlap or differ. Each category is counted once; review the records before relying on spent.</p>
+                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: budget entry {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
+                      <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setSheet({ kind: 'vendors' })}>Review vendor payments</button>
+                    </div>
+                  )}
+                  {!payment && <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setPaymentEntry({ eventId: event.id, rowId: manualRows[0] ? manualRows[0].id : 'new', category: '', amount: '', error: '' })}>Log a payment</button>}
+                  {payment && (
+                    <form onSubmit={e => {
+                      e.preventDefault();
+                      try {
+                        const edit = budgetPaymentPatch(event, payment.rowId === 'new' ? 'budget-' + Date.now().toString(36) : payment.rowId, payment.amount, payment.rowId === 'new' ? payment.category : null);
+                        const result = patchEvent(edit, 'Payment recorded on your budget entry.');
+                        if (result && result.ok === false) { setPaymentEntry({ ...payment, error: 'This payment did not save. Try again before leaving.' }); return; }
+                        setPaymentEntry(null);
+                      } catch (err) { setPaymentEntry({ ...payment, error: err.message }); }
+                    }}>
+                      <p className="grounding">Record an amount you paid. Choose a budget entry or add a category. This is your record, not a bank connection. Contracted vendor payments are tracked under the vendor.</p>
+                      <label>Budget entry<select className="field" style={{ minHeight: 'var(--tap-min)', height: 'var(--tap-min)' }} aria-label="Budget entry" value={payment.rowId} onChange={e => setPaymentEntry({ ...payment, rowId: e.target.value, error: '' })}>
+                        {manualRows.map(r => <option key={r.id} value={r.id}>{r.category}</option>)}
+                        <option value="new">New budget entry</option>
+                      </select></label>
+                      {payment.rowId === 'new' && <label>Category<input className="field" style={{ minHeight: 'var(--tap-min)' }} aria-label="Payment category" required value={payment.category} onChange={e => setPaymentEntry({ ...payment, category: e.target.value, error: '' })} /></label>}
+                      <label>Payment amount<input className="field" style={{ minHeight: 'var(--tap-min)' }} aria-label="Payment amount" type="number" min="0.01" step="0.01" required value={payment.amount} onChange={e => setPaymentEntry({ ...payment, amount: e.target.value, error: '' })} /></label>
+                      {payment.error && <p role="alert" className="grounding">{payment.error}</p>}
+                      <button className="mini" style={{ minHeight: 'var(--tap-min)' }} type="submit">Record payment</button>{' '}
+                      <button className="mini" style={{ minHeight: 'var(--tap-min)' }} type="button" onClick={() => setPaymentEntry(null)}>Cancel</button>
+                    </form>
+                  )}
                   {hostRows.length > 0 && (
                     <>
                       {/* BUDGET-CONTRADICTION FIX: "priced by your plan" reads as a
@@ -23218,11 +23320,10 @@ export default function HostShellV2() {
                           budget" ask right above when no ceiling exists yet. This
                           row total is real (the plan's own cost estimate), just not
                           a budget, so the label says so instead of implying one. */}
-                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{money.planned ? 'Where it’s going — priced by your plan' : 'What your plan adds up to so far'}</div>
+                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — includes allocations and estimates'}</div>
                       {hostRows.map((r, i) => {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
-                        const allBought = r.est > 0 && r.got >= r.est;
                         return (
                           <div key={r.label}>
                             <button className="brow"
@@ -23230,13 +23331,7 @@ export default function HostShellV2() {
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                                {/* "$0 bought" ×3 before any buying is noise — the
-                                    bought figure earns its place once buying starts */}
-                                {allBought
-                                  ? <span className="amt" style={{ color: 'var(--ok)' }}>{fmt(r.got)} <span className="of" style={{ color: 'var(--ok)' }}>bought</span></span>
-                                  : r.got > 0
-                                    ? <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
-                                    : <span className="amt">~{fmt(r.est)}</span>}
+                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'vendor record' : r.source === 'budget' ? 'budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'your price' : 'estimated'}</span></span>
                               </div>
                               {/* The 4% floor keeps a small-but-real category findable. It must
                                   not apply to a category costing nothing: while the fill was
@@ -23268,7 +23363,7 @@ export default function HostShellV2() {
                                     midpoint of anything. A rate across a headcount is true
                                     in every one of those states; a multiplication is not. */}
                                 {foodPlan.guests > 0 && foodPlan.foodHigh > 0 && (
-                                  <>≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
+                                  <>Full food and drink plan: ≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
                                 )}
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
@@ -23324,27 +23419,6 @@ export default function HostShellV2() {
                           </div>
                         );
                       })}
-                      {/* THE REST OF THE MONEY (same click-through, 2026-07-29).
-                          Even with vendors and lodging added, the rows only price
-                          what the PLAN prices. `committed` also contains rowsActual
-                          — money the host logged as spent straight onto their own
-                          budget lines (lib/hostSpending ~181). On the wedding that
-                          left four rows summing to ~$33,209 sitting under an
-                          "$87,639 spoken for" headline with no account of the other
-                          $54,430. Stating it is the whole point of this section.
-                          No CTA and no glyph: nothing in hostv2 lists those raw
-                          budget lines, so there is nowhere honest to send them. */}
-                      {(() => {
-                        const shown = hostRows.reduce((s, r) => s + (Number(r.est) || 0), 0);
-                        const rest = Math.round((money.committed || 0) - shown);
-                        if (rest < 50) return null;
-                        return (
-                          <p className="grounding" style={{ margin: '8px 0 0', borderTop: '1px solid var(--line-soft)', paddingTop: 8 }}>
-                            The rows above are what your plan prices. The other {fmt(rest)} is money you logged
-                            straight onto your own budget lines, so it has no row here.
-                          </p>
-                        );
-                      })()}
                       {/* ── THE FOOD ROW THAT IS MISSING ON PURPOSE ──────────────
                           With no kitchen, hostSpending withdraws the grocery food
                           and supplies estimates (they priced a shop the app has
@@ -23796,17 +23870,15 @@ export default function HostShellV2() {
               // field that does not exist yet and never writes one. The fixture
               // override is review-only, never persisted, and labelled on screen.
               const countInviteTools = (<>
-                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
-                    <button className="mini" onClick={showQr}>Show the QR</button>
-                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
-                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
-                        they'll see before sharing. Read-only: viewing the page files nothing. */}
-                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
+                    <button className="mini" onClick={shareInviteLink}>Check and share link</button>
+                    <button className="mini" onClick={showQr}>Check and show QR</button>
+                    {/* A local preview does not attest public availability. Sharing
+                        and QR generation perform the separate public lookup above. */}
+                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview on this device</button>
               </>);
               // ── §24 · THE SEVEN ACTIONS, TIERED BY STATE ────────────────
-              // Every handler and every label below is the production one,
-              // moved but not touched: each is classified under UX_07 and says
-              // exactly what the tap does. What changes is EMPHASIS.
+              // These existing actions retain their state-based placement.
+              // Outward RSVP links use the public-capability guard above.
               //
               // The dominant action is chosen by the host's actual situation,
               // not by taste:
@@ -23815,17 +23887,17 @@ export default function HostShellV2() {
               // Anything else would make the loudest button on the screen the
               // wrong one for the state the host is actually in.
               const _inviteActs = {
-                share:   { label: 'Share the RSVP link', onClick: shareInviteLink },
-                qr:      { label: 'Show the QR', onClick: showQr },
-                preview: { label: 'Preview the RSVP', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
-                copy:    { label: 'Copy the invite', onClick: () => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() })) },
-                brief:   { label: 'Draft the guest brief', onClick: () => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn\u2019t draft it.'); } } },
+                share:   { label: 'Check and share link', onClick: shareInviteLink },
+                qr:      { label: 'Check and show QR', onClick: showQr },
+                preview: { label: 'Preview on this device', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
+                copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite) },
+                brief:   { label: 'Draft the guest brief', onClick: () => openInviteDraft('The guest brief', draftGuestBrief) },
                 update:  { label: 'Update everyone', onClick: () => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn\u2019t draft it.'); } } },
                 // WAS "Nudge the quiet ones", which promised the app would go
                 // and nudge them. It cannot: this bulk draft has no recipient
                 // list. The label was the only thing lying; the sheet never
                 // faked a "sent" state. Offered only where reply tracking is on.
-                nudge:   showsReplyTracking(event) ? { label: 'Write a nudge to send', onClick: () => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() })) } : null,
+                nudge:   showsReplyTracking(event) ? { label: 'Write a nudge to send', onClick: () => openInviteDraft('The RSVP nudge', draftRsvpChase) } : null,
               };
               const _outstanding = (event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length;
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
@@ -23842,9 +23914,9 @@ export default function HostShellV2() {
               // the two are still comparable on one build.
               const inviteTools = (<>
                   <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
-                    <button className="mini" onClick={_inviteActs.share.onClick}>Share the RSVP link</button>
-                    <button className="mini" onClick={_inviteActs.qr.onClick}>Show the QR</button>
-                    <button className="mini" onClick={_inviteActs.preview.onClick}>Preview the RSVP</button>
+                    <button className="mini" onClick={_inviteActs.share.onClick}>Check and share link</button>
+                    <button className="mini" onClick={_inviteActs.qr.onClick}>Check and show QR</button>
+                    <button className="mini" onClick={_inviteActs.preview.onClick}>Preview on this device</button>
                     <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
                     <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
                     <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
@@ -24071,18 +24143,27 @@ export default function HostShellV2() {
                               ))}
                             </div>
                             {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
-                              // PER-GUEST chase — the engine's nudge (with the real
-                              // RSVP link) straight to THIS person's phone or inbox.
+                              // Per-guest handoffs ask for a direct reply. No public link is
+                              // embedded without checking its availability first.
                               // Links only (UX_07): the OS's own composer opens with
                               // the draft in it; nothing here claims to have sent.
-                              const d = draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() });
+                              const d = draftRsvpChase(event, profile);
                               const body = [d.subject, d.body].filter(Boolean).join('\n\n');
+                              const handoffNudge = async (click, channel) => {
+                                click.preventDefault();
+                                const url = await verifiedRsvpUrl();
+                                const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
+                                const text = [checked.subject, checked.body].filter(Boolean).join('\n\n');
+                                window.location.href = channel === 'sms'
+                                  ? 'sms:' + digits + '?&body=' + encodeURIComponent(text)
+                                  : 'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(checked.subject || 'Can you make it?') + '&body=' + encodeURIComponent(checked.body || text);
+                              };
                               const first = String(g.name || 'them').split(/\s+/)[0];
                               const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
                               return (
                                 <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
-                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
+                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'sms')} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
+                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'email')} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
                                   {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
                                   {/* The record, beside the composers rather than
                                       after them: the app cannot know whether the

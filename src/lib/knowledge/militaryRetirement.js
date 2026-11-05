@@ -182,7 +182,7 @@ const BRANCH_MATCHERS = [
 
 export function detectMilitaryBranch(event) {
   if (!event) return null;
-  const hay = [event.type, event.secondaryType, event.story, event.name, event.meaning, event.honoreeStory]
+  const hay = [event.type, event.secondaryType, event.story, event.name, event.meaning, event.honoreeStory, event.createdFromText]
     .filter(Boolean).join(' ').toLowerCase();
   for (const [re, slug] of BRANCH_MATCHERS) if (re.test(hay)) return slug;
   if (/\bmilitary\b|\bveteran\b|\bretiring from the\b|\bin the unit\b|\bvfw\b/i.test(hay)) return 'unknown';

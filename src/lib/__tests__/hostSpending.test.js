@@ -1,3 +1,5 @@
+// November 3 C1: unbought estimates now belong to expected, not committed.
+// Historical measurements below describe the former mixed total.
 // hostSpending(event, priceFactor) — THE single spending source for a host event.
 // These tests pin the bug the user reported: the Budget hero showed "$0 of $1,200"
 // even with a real food plan, because the food never flowed into spent/committed.
@@ -41,7 +43,8 @@ describe('no food budget without a real count (engine rule)', () => {
   test('a real count (entered number) re-enables the food line', () => {
     const s = hostSpending(HOST({ guestCount: 12 }), 1);
     expect(s.hasFood).toBe(true);
-    expect(s.committed).toBeGreaterThan(0);
+    expect(s.expected).toBeGreaterThan(0);
+    expect(s.committed).toBe(0);
   });
 });
 
@@ -64,17 +67,18 @@ describe('food flows into the spending source (the bug)', () => {
     expect(sp.foodEstimate).toBeGreaterThan(0);
   });
 
-  test('committed includes the planned (un-bought) food even before anything is bought', () => {
+  test('expected includes planned food while unbought estimates are not committed', () => {
     const sp = hostSpending(HOST());
-    // Nothing bought, no manual actuals → spent is 0 but committed reflects the plan.
+    // Nothing bought: expected reflects the plan, spent and committed remain zero.
     expect(sp.spent).toBe(0);
     // 2026-07-07 supplies wiring: committed now includes planned supplies +
     // seating/rentals too — the full plan, not just food.
-    expect(sp.committed).toBe(sp.foodEstimate + sp.suppliesEstimate + sp.capacityEstimate);
-    expect(sp.committed).toBeGreaterThan(0); // NOT $0 — the reported bug is gone
+    expect(sp.expected).toBe(sp.foodEstimate + sp.suppliesEstimate + sp.capacityEstimate);
+    expect(sp.committed).toBe(0);
+    expect(sp.expected).toBeGreaterThan(0);
   });
 
-  test('marking a food item GOT moves it from committed-only into spent', () => {
+  test('marking a food item GOT moves it from expected-only into spent and committed', () => {
     const plan = playbookFoodPlan(HOST(), { priceFactor: 1 });
     const foodItem = plan.list.find((i) => i.group !== 'Supplies' && !i.skipped && (i.low > 0 || i.high > 0));
     expect(foodItem).toBeTruthy();
@@ -85,10 +89,10 @@ describe('food flows into the spending source (the bug)', () => {
 
     expect(before.foodBought).toBe(0);
     expect(after.foodBought).toBe(itemCost);
-    // Spent goes UP by the bought item; committed total is unchanged (it already
-    // counted that food as planned — it just moved from "remaining" into "bought").
+    // A purchase becomes spent and committed; its forecast already counted it.
     expect(after.spent).toBe(before.spent + itemCost);
-    expect(after.committed).toBe(before.committed);
+    expect(after.committed).toBe(before.committed + itemCost);
+    expect(after.expected).toBe(before.expected);
   });
 
   test('a locked $ on a got item is used instead of the range midpoint', () => {
@@ -149,7 +153,8 @@ describe('CRAB-BUDGET-1: a real priced crab order is never counted twice', () =>
     // crab line no longer contributes — total committed money reflects the
     // real order once, not the real order PLUS a phantom market guess.
     expect(withCrab.foodEstimate).toBeLessThan(noCrab.foodEstimate);
-    expect(withCrab.committed).toBe(noCrab.committed - noCrab.foodEstimate + withCrab.foodEstimate + withCrab.crabEstimate);
+    expect(withCrab.expected).toBe(noCrab.expected - noCrab.foodEstimate + withCrab.foodEstimate + withCrab.crabEstimate);
+    expect(withCrab.committed).toBe(withCrab.crabEstimate);
   });
 
   test('checking off the delegated crab line in the generic list does not ALSO add to foodBought', () => {
@@ -217,12 +222,12 @@ describe('uncommitted — headroom is derived once, in the engine', () => {
     expect(s.uncommitted).not.toBe(s.total - s.committed - s.foodEstimate);
   });
 
-  test('committed CONTAINS the component estimates — they are not additions to it', () => {
+  test('expected CONTAINS component estimates; commitments exclude unbought estimates', () => {
     const s = hostSpending(HOST());
     // Every component sits inside committed, so none may be subtracted again.
     const components = s.foodEstimate + s.suppliesEstimate + s.capacityEstimate + s.crabEstimate + s.vendorOwed;
-    expect(s.committed).toBeLessThanOrEqual(Math.max(s.spent, components) + s.spent);
-    expect(s.committed).toBeGreaterThanOrEqual(s.foodEstimate);
+    expect(s.expected).toBe(components);
+    expect(s.committed).toBe(0);
   });
 
   test('no budget set → uncommitted is null, never 0 ("no budget" ≠ "no room left")', () => {
@@ -232,7 +237,7 @@ describe('uncommitted — headroom is derived once, in the engine', () => {
   });
 
   test('committed past the budget → uncommitted goes negative; the overage is the truth', () => {
-    const s = hostSpending(HOST({ totalBudget: 50 }));
+    const s = hostSpending(HOST({ totalBudget: 50, budget: [{ id: 'paid', category: 'Flowers', actual: 75 }] }));
     expect(s.committed).toBeGreaterThan(50);
     expect(s.uncommitted).toBe(50 - s.committed);
     expect(s.uncommitted).toBeLessThan(0);

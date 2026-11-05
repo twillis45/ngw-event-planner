@@ -92,7 +92,10 @@ export default defineConfig(({ command, mode }) => {
       // Only 4 reads exist in the hostv2 closure and all four want the real
       // value; `mode` is 'production' for `vite build` and 'development' for
       // the dev server, which is exactly the CRA semantics ../src expects.
-      'process.env': JSON.stringify({ ...appEnv, NODE_ENV: mode }),
+      'process.env': JSON.stringify({ ...appEnv, NODE_ENV: mode,
+        REACT_APP_RELEASE_SHA: process.env.RELEASE_SHA || appEnv.REACT_APP_RELEASE_SHA || 'unreported',
+        REACT_APP_RELEASE_PROFILE: process.env.RELEASE_PROFILE || appEnv.REACT_APP_RELEASE_PROFILE || 'unreported',
+      }),
     },
     // ── HTTPS=1 FOR PHONE TESTING, OPT-IN ────────────────────────────────
     // `navigator.clipboard.readText()` requires a SECURE CONTEXT. `localhost`

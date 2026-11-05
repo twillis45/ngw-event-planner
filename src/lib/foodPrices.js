@@ -1,3 +1,5 @@
+import { reportFailure } from './failureTelemetry';
+
 // Sprint 60D · Option B — current regional food-price factor client.
 // Fetches a real, current regional price factor (BLS Average Price, via the backend
 // proxy) so the food plan can scale its synthesized national estimates to the
@@ -45,7 +47,7 @@ const NEUTRAL = Object.freeze({
 // nothing. Translated at the boundary so both spellings work.
 const REGION_WIRE = Object.freeze({ northeast: 'ne', midwest: 'mw', south: 'south', west: 'west' });
 
-export async function getFoodPriceFactor({ region, state } = {}) {
+export async function getFoodPriceFactor({ region, state, eventId } = {}) {
   if (!BASE) return NEUTRAL;
   const qs = new URLSearchParams();
   if (region) {
@@ -55,7 +57,10 @@ export async function getFoodPriceFactor({ region, state } = {}) {
   if (state) qs.set('state', String(state));
   try {
     const res = await fetch(`${BASE}/api/food-prices?${qs.toString()}`);
-    if (!res.ok) return NEUTRAL;
+    if (!res.ok) {
+      reportFailure('provider', { where: 'foodPrices.get', reason: 'http-' + res.status, eventId });
+      return NEUTRAL;
+    }
     const d = await res.json();
     const factor = Number(d.factor) > 0 ? Number(d.factor) : 1;
     return {
@@ -86,6 +91,7 @@ export async function getFoodPriceFactor({ region, state } = {}) {
       })(),
     };
   } catch {
+    reportFailure('provider', { where: 'foodPrices.get', reason: 'request-failed', eventId });
     return NEUTRAL;
   }
 }

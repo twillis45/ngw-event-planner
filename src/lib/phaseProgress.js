@@ -28,7 +28,7 @@ import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
 import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
-import { daysUntil, spanEnd } from './dates';
+import { daysUntil, spanEnd, getToday, localISO } from './dates';
 import { venueFor } from './venueFor';
 import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
@@ -612,4 +612,28 @@ function postProgress(ev) {
     nextCue: pickCue(items),
     items,
   };
+}
+
+
+/** Earliest dated work already declared by eventPlan; never re-ranks its actions. */
+export function nextPlanAttentionDate(plan, ledgerChange, now) {
+  let earliest = ledgerChange && daysUntil(ledgerChange.date, now) != null
+    ? { ...ledgerChange, days: daysUntil(ledgerChange.date, now) } : null;
+  const rows = [...((plan && plan.nextActions) || []), ...((plan && plan.worries) || []), ...((plan && plan.setAside) || [])];
+  for (const action of rows) {
+    if (!action || action.done) continue;
+    const dates = [];
+    if (Number.isFinite(action.dueInDays)) {
+      const date = getToday(now);
+      date.setDate(date.getDate() + action.dueInDays);
+      dates.push(localISO(date));
+    }
+    if (action.snoozedUntil) dates.push(action.snoozedUntil);
+    for (const date of dates) {
+      const days = daysUntil(date, now);
+      if (days == null || (earliest && days >= earliest.days)) continue;
+      earliest = { date, days, id: action.id || null, what: action.title || null };
+    }
+  }
+  return earliest;
 }

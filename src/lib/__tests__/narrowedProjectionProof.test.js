@@ -56,11 +56,12 @@ describe('narrowed projections carry the keys their readers ask for', () => {
     expect(missing).toEqual([]);
   });
 
-  it('the two keys that caused the live bug are read from spend, not money', () => {
+  it('the breakdown reads owned categories without adding vendor balances a second time', () => {
     // Belt and braces: these specific reads are the ones that shipped broken.
     expect(src).not.toMatch(/money\.vendorOwed/);
     expect(src).not.toMatch(/money\.lodgingCommitted/);
-    expect(src).toMatch(/spend\.vendorOwed/);
-    expect(src).toMatch(/spend\.lodgingCommitted/);
+    expect(src).toMatch(/spend\.categories/);
+    expect(src).toMatch(/est: c\.expected, got: c\.spent/);
+    expect(src).not.toMatch(/rows\.push\(\{ label: .People you/);
   });
 });
