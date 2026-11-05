@@ -43,7 +43,7 @@
 //   guests   — the next roster (new array; untouched rows are the same refs)
 //   merged   — existing rows that actually changed
 //   added    — new rows appended
-//   yesCount — guests this merge touched whose final rsvp === 'Yes' (once each)
+//   yesCount — guests this merge changed or added whose final rsvp === 'Yes' (once each)
 // Extracted so any caller resolving a free-text name against the guest list
 // (RSVP merge here, helper/owner-assignment resolution in
 // helperResponsibility.js) shares the exact same match rules — see the
@@ -88,8 +88,7 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
   // Counted per GUEST, not per row: a guest who changed her answer is one
   // reply, and "K yes" is the number of those guests whose final answer is Yes
   // — the same figure the list shows.
-  const changed = new Set();
-  const touched = new Set();
+  const changed = new Set();   // existing guests this batch changed, plus guests it added
   for (const sub of ordered) {
     const full = String(sub.name || '').trim();
     if (!full) continue;
@@ -128,8 +127,7 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
       };
       // Server rows re-arrive on every visit — only count real changes.
-      touched.add(ix);
-      if (JSON.stringify(next) !== JSON.stringify(g)) { guests[ix] = next; changed.add(ix); }
+      if (JSON.stringify(next) !== JSON.stringify(g)) guests[ix] = next;
     } else {
       guests.push({
         id: opts.makeId ? opts.makeId(sub) : 'g-rsvp-' + (sub.idempotencyKey || Math.random().toString(36).slice(2, 10)),
@@ -157,9 +155,16 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
       });
       added += 1;
-      touched.add(guests.length - 1);
     }
   }
-  const yesCount = [...touched].filter((ix) => guests[ix] && guests[ix].rsvp === 'Yes').length;
-  return { guests, merged: changed.size, added, yesCount };
+  // Changed = different at the END from where it STARTED. Applied in time
+  // order, a guest's older rows re-arriving flip her answer and flip it back
+  // (Yes → Maybe → Yes); that is not a reply. Added guests are always news.
+  const start = existingGuests || [];
+  start.forEach((g, ix) => { if (JSON.stringify(guests[ix]) !== JSON.stringify(g)) changed.add(ix); });
+  for (let ix = start.length; ix < guests.length; ix++) changed.add(ix);
+  // Only the guests THIS batch changed or added, so "N replies came in — K yes"
+  // describes the same N. Rows re-arriving unchanged on every visit are not news.
+  const yesCount = [...changed].filter((ix) => guests[ix] && guests[ix].rsvp === 'Yes').length;
+  return { guests, merged: changed.size - added, added, yesCount };
 }

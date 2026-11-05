@@ -106,7 +106,8 @@ test('an unchanged re-arriving submission counts merged 0 (server rows re-arrive
 
 // CHANGED 11/5/2026 (theLatestReplyWins): yesCount counted every Yes ROW, so a
 // guest whose reply re-arrived was two yeses and the toast ("6 yes") disagreed
-// with the list ("Coming 5"). It now counts GUESTS whose final answer is Yes.
+// with the list ("Coming 5"). It now counts GUESTS this batch changed or added
+// whose final answer is Yes — unchanged re-arrivals are not news.
 test('yesCount counts guests whose answer is Yes — updates, adds, and unchanged re-merges, once each', () => {
   const { merged, added, yesCount } = mergeGuestReplies(roster(), [
     { name: 'Ada Byron', rsvp: 'Yes' },       // update, Yes

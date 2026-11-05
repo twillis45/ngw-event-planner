@@ -38,3 +38,25 @@ test('without timestamps the given order stands (same-browser outbox)', () => {
   ]);
   expect(guests.find((g) => g.name === 'Dee Patel').rsvp).toBe('Yes');
 });
+
+test('rows that re-arrive unchanged are not news: "1 reply came in — 1 yes", not "6 yes"', () => {
+  const base = [{ id: 'g1', name: 'Dee Patel', rsvp: 'Maybe' }, { id: 'g2', name: 'Bea Chen', rsvp: 'Yes' }];
+  const { merged, added, yesCount } = mergeGuestReplies(base, [
+    { name: 'Bea Chen', rsvp: 'Yes', at: T(5) },     // already Yes — re-arrival
+    { name: 'Dee Patel', rsvp: 'Maybe', at: T(6) },
+    { name: 'Dee Patel', rsvp: 'Yes', at: T(7) },    // the only change
+  ]);
+  expect(merged + added).toBe(1);
+  expect(yesCount).toBe(1);
+});
+
+test('a guest whose older rows re-arrive is not news when her answer did not change', () => {
+  const base = [{ id: 'g1', name: 'Dee Patel', rsvp: 'Yes' }];
+  const { merged, added, yesCount, guests } = mergeGuestReplies(base, [
+    { name: 'Dee Patel', rsvp: 'Yes', at: T(7) },
+    { name: 'Dee Patel', rsvp: 'Maybe', at: T(6) },
+  ]);
+  expect(guests[0].rsvp).toBe('Yes');
+  expect(merged + added).toBe(0);
+  expect(yesCount).toBe(0);
+});
