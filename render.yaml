@@ -75,6 +75,9 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY       # Supabase → Settings → API → anon / publishable key
         sync: false
+      # Account deletion only — server secret, never a browser build variable.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
       # ── Non-secret config ──
       - key: PYTHON_VERSION          # pin a stable Python (3.14 has no pydantic-core wheels yet)
         value: 3.12.7
