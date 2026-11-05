@@ -17,7 +17,7 @@
 // WHY A LINE COUNT AND NOT A CHARACTER COUNT: the complaint was about wrapping,
 // and a character budget would pass a long name that happens to break well and
 // fail a short one that does not. This measures the thing the host saw.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const boot = async (page, ev) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -33,7 +33,9 @@ const boot = async (page, ev) => {
 };
 
 const base = {
-  date: '2026-11-06', venueCity: 'Annapolis', venueState: 'MD',
+  // Relative, not '2026-11-06': the fixed date read "1 DAY" on 11/5, will read
+  // day-of on 11/6 and past after it, and the premise asserts a plural countdown.
+  date: dateIn(30), venueCity: 'Annapolis', venueState: 'MD',
   guestMode: 'count', guestCount: 9, totalBudget: 1200,
   budget: [], vendors: [], guests: [],
 };
@@ -65,7 +67,9 @@ test('A LONG NAME FITS IN TWO LINES — it was four', async ({ page }) => {
   expect(m.lines).toBeLessThanOrEqual(2);
   // The identity and the calendar entry both survive the cut.
   expect(m.text).toMatch(/MARGARET ADEYEMI/);
-  expect(m.text).toMatch(/NOV 6/);
+  const [y, mo, d] = base.date.split('-').map(Number);
+  const onCalendar = new Date(y, mo - 1, d).toLocaleString('en-US', { month: 'short' }).toUpperCase() + ' ' + d;
+  expect(m.text).toContain(onCalendar);
   // The restatement does not: the name already says "Retirement".
   expect(m.text).not.toMatch(/RETIREMENT PARTY/);
 });

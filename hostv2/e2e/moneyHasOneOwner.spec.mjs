@@ -104,6 +104,10 @@ test('a fresh event can record its first expense', async ({ page }, testInfo) =>
   await openSectionByName(page, 'Your money');
   const sheet = page.locator('.sheet').last();
   await sheet.getByRole('button', { name: 'Log a payment' }).click();
+  // Flowers is not one of the plan's categories, so the host picks "New budget
+  // entry". The form defaults to the plan's own category (issue #100, D-9: a
+  // grocery payment used to become a second food line beside the estimate).
+  await sheet.getByLabel('Budget entry').selectOption('new');
   await sheet.getByLabel('Payment category').fill('Flowers');
   await sheet.getByLabel('Payment amount').fill('12.50');
   await page.screenshot({ path: testInfo.outputPath('first-payment-form.png'), fullPage: true });
