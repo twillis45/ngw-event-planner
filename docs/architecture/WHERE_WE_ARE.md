@@ -1,5 +1,14 @@
 # Where We Are -- live status board
 
+## November 5, 2026 — Vida private executable preview and C7
+
+C7 integrated at `f6cc02e2` (lane37071605): actual WebKit81/81 and affected Chromium20/20 passed; no physical Safari or production gate claim. Previous integrated pre-push run passed all six checks, Jest642 suites/8,687 tests, one standing skip. C7 integration is being checked separately before push.
+
+Vida preview serves the actual HostV2 build at `f6cc02e21bbdc992a710aad672493d7fe7e16bef`, behind Basic authentication on all routes. Credentials and residential fixture remain outside the repository under private temporary runtime files. It is LOCAL DEVICE PERSISTENCE ONLY: API/Supabase/billing disabled, analytics opted out and external connections blocked by CSP. No actual invitations, emails, or payments sent. Seeded starter event is not proof of Creation. Rendered HTTPS preview verified at320/390/1440 without document overflow. Actual UI added ten synthetic guests and retained them after reload at all three widths. Private screenshots/logs are in `/tmp/ngw-vida-preview/`; no residential screenshots committed.
+
+Real signup/cloud RSVP acceptance remains blocked on owner-designated backend/test-login access. Independent lane reproduced three canonical RSVP merge defects and is fixing them. Creation lane reproduced failure to recognize private residence as a home venue, defaulted event name, and missing host/team-game interpretation; fixes and checkpoint1 walkthrough remain pending. Do not treat this preview as completed end-to-end or provide a fake guest RSVP URL.
+
+
 ## November 5, 2026 — November 9 three-platform integration checkpoint
 
 Integration branch: `codex/paid-web-rc-2026-11-03`, measured implementation HEAD `ea8699e7`, based on production `d22a9683`. No merge or deployment claimed. Native lane: `codex/native-rc-2026-11-05`; generated projects and debug build evidence remain separate until reviewed. C1/C2/C3/C4/C5/C6/ATTN-2 and C9 source fixes integrated. C9 migrations019–021 require disposable/production Supabase execution; account-deletion Settings UI remains unfinished. Partial refunds keep access (Todd ruling), regression in `backend/tests/test_stripe_payment_blocks.py`. Backend lane reports479 passed and5 SQL integration skips; combined release checks are still pending. First combined Jest run635 suites passed/4 failed; four failures subsequently resolved with67 focused assertions. Public link boundary33 focused tests and18 browser cases each configured/unconfigured passed. WebKit money8 passed; canonical C7 pending. Speculative Undo candidate reverted after corrected navigation test passed without it.
