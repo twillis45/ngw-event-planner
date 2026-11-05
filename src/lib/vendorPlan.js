@@ -28,6 +28,10 @@ export function buildVendorPlan(event, opts = {}) {
   const ev = event || {};
   const playbook = getPlaybook(ev.type);
   const base = (playbook && Array.isArray(playbook.vendors)) ? playbook.vendors.filter(Boolean) : [];
+  const approach = foodApproach(ev);
+  const picks = ev.foodChoices || {};
+  const catererChosen = approach.usesCaterer === true
+    && !!(approach.decisionId ? picks[approach.decisionId] : picks.sourcing);
   // DESTINATION-1: additive on top of whatever base playbook is active — never
   // gated on type, only on the host-set isDestination modifier (same
   // architecture as the decisions/tasks injection in playbooks/index.js).
@@ -46,9 +50,14 @@ export function buildVendorPlan(event, opts = {}) {
   const destStoodDown = (c) =>
     (c.category === 'Transport' && destPicks.dest_transport === 'No, guests self-manage')
     || (c.category === 'Lodging / Concierge' && destPicks.dest_lodging === 'Guests book on their own');
-  const categories = ev.isDestination
+  let categories = ev.isDestination
     ? [...base, ...DESTINATION_VENDOR_CATEGORIES.filter((c) => !baseHasKeyword(DEST_KEYWORDS[c.category]) && !destStoodDown(c))]
     : base;
+  // This is a role the host selected, not a vendor, a quote, or an invented
+  // booking window. Some playbooks have no authored catering suggestion.
+  if (catererChosen && !categories.some(c => normalizeCategory(c.category) === 'catering')) {
+    categories = [...categories, { category: 'Catering', required: true }];
+  }
   if (!categories.length) return { relevant: false, categories: [] };
 
   const guests = num(ev.guestCount) || num(ev.guestEstimate)
@@ -60,10 +69,6 @@ export function buildVendorPlan(event, opts = {}) {
   const metroLabel = opts.metroLabel || null;
   const rush = opts.rush || { multiplier: 1, label: null, explanation: null };
   const rushFactor = num(rush.multiplier) > 0 ? num(rush.multiplier) : 1;
-  const approach = foodApproach(ev);
-  const picks = ev.foodChoices || {};
-  const catererChosen = approach.usesCaterer === true
-    && !!(approach.decisionId ? picks[approach.decisionId] : picks.sourcing);
 
   const rows = categories.map((cat) => {
     // RE-AUDIT (fresh-eyes, 2026-07-14): this was case-insensitive EQUALITY, which only ever
@@ -127,6 +132,7 @@ export function buildVendorPlan(event, opts = {}) {
       // A caterer stops being optional once the host chooses to hand off the meal.
       // The existing attention raiser still owns its authored booking window.
       required: !!cat.required || (catererChosen && normalizeCategory(cat.category) === 'catering'),
+      requiredByChoice: catererChosen && normalizeCategory(cat.category) === 'catering' ? approach.pick : null,
       when: cat.when || null,
       altToDIY: resolveAnsweredCopy(cat.altToDIY, cat.copyByAnswer, ev) || null,
       costUnit: perGuest ? 'per guest' : 'flat',
@@ -162,7 +168,7 @@ export function buildVendorPlan(event, opts = {}) {
       // state.
       costProvenance: (cat.costProvenance || cat.provenance) || null,
       provenanceKeys: [
-        ...((cat.costProvenance || cat.provenance) ? [] : ['vendor.playbookCostRange']),
+        ...((cat.costProvenance || cat.provenance || !Array.isArray(cat.costRange)) ? [] : ['vendor.playbookCostRange']),
         ...factorsApplied.map((f) => (f.key === 'metro' ? 'vendor.metroMarkets' : 'vendor.rushFactor')),
       ],
     };
