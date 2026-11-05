@@ -137,6 +137,25 @@ export function estimateShortfallNote(est) {
   return `This range is a planning band for an event of this kind. Your own plan already calls for vendors that start around ${fmt(floor)} — more than the ${fmt(high)} top of it. Worth setting your number from the vendors, not the range.`;
 }
 
+// ─── THE PLAN ALREADY COSTS MORE THAN THE SUGGESTION ─────────────────────────
+//
+// Issue #100 (11/5/2026): ten at a game night, "Use $200" one tap away, while
+// the same sheet's money section said "$293 expected in total" from the plan's
+// own estimates. The band and the plan answer different questions (what an
+// event of this kind runs vs what THIS plan's lines add up to), so neither
+// replaces the other — same ruling as estimateShortfallNote. The host is told
+// both, and offered a figure that covers the plan, rounded up to the hundred
+// the way the tiers are. `expected` is hostSpending's expected total.
+export function planCostsAboveNote(expected, suggested) {
+  const e = Math.round(Number(expected));
+  const s = Math.round(Number(suggested));
+  if (!(e > 0) || !(s > 0) || e <= s) return null;
+  return {
+    text: `Your plan’s own lines already add up to about ${fmt(e)} — more than this ${fmt(s)}. Set the number from the plan, or trim the plan to fit.`,
+    cover: Math.ceil(e / 100) * 100,
+  };
+}
+
 // ─── THE ROOMS ARE ON TOP OF THIS, AND THE HOST HAS THE NUMBER ──────────────
 //
 // `belowLodgingFloor` has been on the estimate result since 2026-09-22 with

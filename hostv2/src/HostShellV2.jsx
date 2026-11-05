@@ -237,7 +237,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
@@ -8236,6 +8236,17 @@ export default function HostShellV2() {
               why this does not cry "contradiction" and why it mints no new
               band. */}
           {roomsNote}
+          {/* The plan's own lines can already cost more than the band's middle
+              (issue #100: "Use $200" over "$293 expected"). Both numbers, said
+              plainly — see lib/budgetCopy.js#planCostsAboveNote. */}
+          {(() => {
+            const over = (() => { try { return planCostsAboveNote(spend && spend.expected, typical); } catch (_e) { return null; } })();
+            return over ? (
+              <Grounding gap={8}>
+                {over.text} <button style={linkBtn} onClick={() => setB(over.cover)}>Use {fmt(over.cover)}</button>
+              </Grounding>
+            ) : null;
+          })()}
           {/* THE HOST'S OWN ROWS, SAID OUT LOUD (2026-09-18). A host who filled in
               budget categories but never named an overall figure used to reach an
               ask written as though nothing were known — on a sheet whose money bar
