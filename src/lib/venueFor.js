@@ -173,7 +173,13 @@ export function venueFor(event) {
   // '' when there is no ZIP. Never inferred from a city, never geocoded.
   const zip = /^\d{5}$/.test(String(ev.venueZip || '').trim()) ? String(ev.venueZip).trim()
     : (/^\d{5}$/.test(String(ev.venueCity || '').trim()) ? String(ev.venueCity).trim() : '');
-  return { name, kind, isHome, city, state, zip, address, isSet, addressSettled, needsCityForWeather, displayLine, mapsQuery };
+  // `display`: what to SHOW for the place (owner acceptance run 11/5/2026,
+  // issue #100 D-4). A street address from Creation with no venue name made
+  // `isSet` true while the Venue sheet rendered "Currently:" only for a name.
+  // `confirmed`: the host said so, as opposed to the plan having been told.
+  const display = name || address;
+  const confirmed = !!ev.venueConfirmed;
+  return { name, kind, isHome, city, state, zip, address, isSet, addressSettled, needsCityForWeather, displayLine, mapsQuery, display, confirmed };
 }
 
 // ─── setVenue — THE one venue WRITE path ─────────────────────────────────────
@@ -194,8 +200,20 @@ export function setVenue(current, { name, locationText } = {}) {
   return {
     venue: v,
     venueKind: /backyard|house|home|yard|place|garden/i.test(v) ? 'home' : String((current || {}).venueKind || ''),
+    // A new place is a new question: the old answer to "is this a private home?"
+    // was about a different address.
+    venueConfirmed: false,
     ...(parsed
       ? (parsed.zip ? { venueCity: parsed.zip } : { venueCity: parsed.city, venueState: parsed.state })
       : {}),
   };
+}
+
+// The host confirms what the place IS (her home, or a venue) with no business
+// search. setVenue only guesses venueKind from the name; this is the host's own
+// answer, so it also records `confirmed`. Nothing here can mark a place booked:
+// a residence is a location, not a vendor.
+export function confirmVenue(current, { kind } = {}) {
+  if (kind !== 'home' && kind !== 'venue') throw new Error('confirmVenue: kind must be "home" or "venue"');
+  return { venueKind: kind, venueConfirmed: true };
 }

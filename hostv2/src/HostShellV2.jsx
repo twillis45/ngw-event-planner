@@ -272,7 +272,7 @@ import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
-import { venueFor, setVenue } from '@app/lib/venueFor';
+import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
@@ -7357,7 +7357,7 @@ export default function HostShellV2() {
       // own prior answer (existing venue, or the town they named at create) —
       // grounded data only, never an invented guess.
       if (kind === 'venue' && !String(venueDraft || '').trim()) {
-        try { const seed = vf.name || vf.city; if (seed) setVenueDraft(seed); } catch { /* blank is fine */ }
+        try { const seed = vf.display || vf.city; if (seed) setVenueDraft(seed); } catch { /* blank is fine */ }
       }
       setEditor(key); spotlight(key); return;
     }
@@ -10077,7 +10077,7 @@ export default function HostShellV2() {
                   {eventTypeLabel(event) || event.type} <span aria-hidden="true">▾</span>
                 </button>
                 <div className="ev-title">{event.name}</div>
-                {(vf.name || event.theme) ? <div className="ev-venue">{[vf.name, event.theme].filter(Boolean).join(' · ')}</div> : null}
+                {(vf.display || event.theme) ? <div className="ev-venue">{[vf.display, event.theme].filter(Boolean).join(' · ')}</div> : null}
               </div>
               )}
               {/* ecenter — DOCTRINE (host "make sure hero doctrine keeps in middle"): the
@@ -14039,8 +14039,20 @@ export default function HostShellV2() {
             {sheet.kind === 'venue' && (
               <div style={{ padding: 'var(--sp-2) 0' }}>
                 <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Where the event happens — invites, maps, weather, and the rain note all read from it.</p>
-                {vf.name && (
-                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{vf.name}</b>{vf.city ? ` · ${vf.city}` : ''}. Enter a new place to change it.</p>
+                {/* THE PLACE SHE GAVE IS SHOWN, AND SHE CAN SAY WHAT IT IS (owner acceptance run
+                    11/5/2026, issue #100 D-4): an address from Creation rendered as an empty box
+                    here while HostHome called it handled. No business search is ever required. */}
+                {vf.display && (
+                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{vf.display}</b>{vf.city ? ` · ${vf.city}${vf.state ? ', ' + vf.state : ''}` : ''}{vf.confirmed ? (vf.isHome ? ' · your home, confirmed' : ' · confirmed') : ''}. Enter a new place to change it.</p>
+                )}
+                {vf.display && !vf.confirmed && (
+                  <div style={{ margin: '0 0 var(--sp-3)' }}>
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Is this a private home, or a venue?</p>
+                    <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                      <button className="mini" onClick={() => patchEvent(confirmVenue(event, { kind: 'home' }), 'Confirmed — the party is at a private home.')}>It’s a private home</button>
+                      <button className="mini" onClick={() => patchEvent(confirmVenue(event, { kind: 'venue' }), 'Confirmed — the party is at a venue.')}>It’s a venue</button>
+                    </div>
+                  </div>
                 )}
                 {renderVenueCapture({ wrapStyle: { display: 'flex', gap: 'var(--sp-2)' } })}
                 {vf.name && needsCity() && (
