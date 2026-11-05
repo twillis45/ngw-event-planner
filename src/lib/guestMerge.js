@@ -43,7 +43,7 @@
 //   guests   — the next roster (new array; untouched rows are the same refs)
 //   merged   — existing rows that actually changed
 //   added    — new rows appended
-//   yesCount — submissions processed whose rsvp === 'Yes'
+//   yesCount — guests this merge touched whose final rsvp === 'Yes' (once each)
 // Extracted so any caller resolving a free-text name against the guest list
 // (RSVP merge here, helper/owner-assignment resolution in
 // helperResponsibility.js) shares the exact same match rules — see the
@@ -76,13 +76,24 @@ export function matchGuestIndexByName(guests, fullName) {
 
 export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
   const guests = [...(existingGuests || [])];
-  let merged = 0, added = 0, yesCount = 0;
-  for (const sub of (submissions || [])) {
-    if (!sub) continue;
+  let added = 0;
+  // THE LATEST ANSWER WINS (owner's Vida run, 11/5/2026). The server returns
+  // replies newest first, and applying them in that order let a guest's OLDER
+  // answer overwrite her change ("Maybe" over "Yes"). When every reply carries
+  // its time (`at`), apply them oldest → newest; otherwise the given order is
+  // already chronological (the same-browser outbox appends).
+  const list = (submissions || []).filter(Boolean);
+  const stamped = list.length > 0 && list.every((x) => Number.isFinite(Date.parse(x.at)));
+  const ordered = stamped ? [...list].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : list;
+  // Counted per GUEST, not per row: a guest who changed her answer is one
+  // reply, and "K yes" is the number of those guests whose final answer is Yes
+  // — the same figure the list shows.
+  const changed = new Set();
+  const touched = new Set();
+  for (const sub of ordered) {
     const full = String(sub.name || '').trim();
     if (!full) continue;
     const ix = matchGuestIndexByName(guests, full);
-    if (sub.rsvp === 'Yes') yesCount += 1;
     if (ix >= 0) {
       const g = guests[ix];
       const next = {
@@ -117,7 +128,8 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
       };
       // Server rows re-arrive on every visit — only count real changes.
-      if (JSON.stringify(next) !== JSON.stringify(g)) { guests[ix] = next; merged += 1; }
+      touched.add(ix);
+      if (JSON.stringify(next) !== JSON.stringify(g)) { guests[ix] = next; changed.add(ix); }
     } else {
       guests.push({
         id: opts.makeId ? opts.makeId(sub) : 'g-rsvp-' + (sub.idempotencyKey || Math.random().toString(36).slice(2, 10)),
@@ -145,7 +157,9 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
       });
       added += 1;
+      touched.add(guests.length - 1);
     }
   }
-  return { guests, merged, added, yesCount };
+  const yesCount = [...touched].filter((ix) => guests[ix] && guests[ix].rsvp === 'Yes').length;
+  return { guests, merged: changed.size, added, yesCount };
 }

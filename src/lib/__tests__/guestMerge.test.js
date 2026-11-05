@@ -104,14 +104,17 @@ test('an unchanged re-arriving submission counts merged 0 (server rows re-arrive
   expect(second.guests).toEqual(first.guests);
 });
 
-test('yesCount counts every Yes submission processed — updates, adds, and unchanged re-merges', () => {
+// CHANGED 11/5/2026 (theLatestReplyWins): yesCount counted every Yes ROW, so a
+// guest whose reply re-arrived was two yeses and the toast ("6 yes") disagreed
+// with the list ("Coming 5"). It now counts GUESTS whose final answer is Yes.
+test('yesCount counts guests whose answer is Yes — updates, adds, and unchanged re-merges, once each', () => {
   const { merged, added, yesCount } = mergeGuestReplies(roster(), [
     { name: 'Ada Byron', rsvp: 'Yes' },       // update, Yes
     { name: 'Samuel Hill', rsvp: 'No' },      // update, not Yes
     { name: 'Zora Neale', rsvp: 'Yes' },      // add, Yes
     { name: 'Ada Byron', rsvp: 'Yes' },       // re-arrival, unchanged, still Yes
   ]);
-  expect(yesCount).toBe(3);
+  expect(yesCount).toBe(2);                   // Ada and Zora — Ada once
   expect(merged).toBe(2); // Ada once (second is unchanged) + Samuel
   expect(added).toBe(1);
 });

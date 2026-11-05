@@ -7218,6 +7218,8 @@ export default function HostShellV2() {
           // the host's shortlist, never a booking.
           lodgingPick: r.lodging_pick || undefined,
           phone: r.phone, email: r.email, mailingAddress: r.mailing_address,
+          // Each reply's own time, so the merge applies a changed answer last.
+          at: r.updated_at || r.submitted_at,
         }));
         const { guests: gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], subs);
         if (!dead) announceReplies(gs, merged + added, yesCount);
