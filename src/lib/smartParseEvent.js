@@ -114,6 +114,9 @@ export function parseSmartEventText(text, opts = {}) {
     let specific = null;
     try { specific = _resolveType(t.replace(_GENERIC_PARTY_WORDS, ' ')); } catch { specific = null; }
     typeBasis = specific === type ? 'named' : 'generic';
+    // Inferred from "<Name>'s Nth" alone: still a guess, but not a "party" one,
+    // so it is declared for what it is (the reveal names the milestone word).
+    if (typeBasis === 'generic' && !_resolveType(t) && _possMilestone) typeBasis = 'milestone';
   }
 
   // ── Guests ──────────────────────────────────────────────────────────────

@@ -34,3 +34,10 @@ describe('an ordinal that is not a birthday stays what it is (controls)', () => 
     expect(p.milestone).not.toBe(s.match(/\d+(?:st|nd|rd|th)/)[0]);
   });
 });
+
+test('the guess is declared for what it is — a milestone, not "you said party"', () => {
+  const p = parseSmartEventText("Mom's 80th in Santa Fe, 30 people, June 14");
+  expect(p.typeBasis).toBe('milestone');
+  // A stated "birthday" is named, not inferred.
+  expect(parseSmartEventText("Mom's 80th birthday in Santa Fe").typeBasis).toBe('named');
+});

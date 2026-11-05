@@ -9859,6 +9859,13 @@ export default function HostShellV2() {
                           reasonable for a host who genuinely just says "a party".
                           It is not a reasonable silent answer to a typo. The rule
                           stays; the guess is declared and one tap from correction. */}
+                      {parsed && parsed.typeBasis === 'milestone' && effType && parsed.milestone && (
+                        <p className="grounding" style={{ margin: '12px 0 0', color: 'var(--warn)' }}>
+                          Reading this as a <strong>{String(effType).toLowerCase()}</strong> from “{parsed.milestone}” —
+                          nothing else named the occasion. If that’s not it, change it above: the checklist,
+                          the risks and the food all follow from it.
+                        </p>
+                      )}
                       {parsed && parsed.typeBasis === 'generic' && effType && (
                         <p className="grounding" style={{ margin: '12px 0 0', color: 'var(--warn)' }}>
                           Reading this as a <strong>{String(effType).toLowerCase()}</strong> because you said
