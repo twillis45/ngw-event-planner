@@ -77,7 +77,7 @@ export async function fetchPublicInvite(code, options) {
 // a guest's empty browser uses, including identity, before offering its link.
 export async function checkRsvpCapability(event) {
   if (!isRsvpApiConfigured()) return { ready: false, reason: 'not-configured' };
-  const code = String(event && event.rsvpCode || '').trim();
+  const code = String((event && event.rsvpCode) || '').trim();
   if (!event || !event.id || code.length < 16) return { ready: false, reason: 'unpublished' };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
