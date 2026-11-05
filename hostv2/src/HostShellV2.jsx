@@ -275,6 +275,7 @@ import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
+import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
@@ -11765,23 +11766,10 @@ export default function HostShellV2() {
               {worries.length > 0 && (() => {
                 const rows = worries.flatMap(w => (w && w.kind === 'bundle' && Array.isArray(w.items)) ? w.items : [w]);
                 // Same real worry titles (risk engine) — just the label shaping. Nothing invented.
-                const wlabel = (w) => {
-                  const full = String((w && w.title) || '').replace(/^have a plan for:\s*/i, '').replace(/\bby T-(\d+)d\b/i, 'by $1 days out');
-                  const parts = full.split(/\s*\/\s*|,\s+(?:or\s+)?/);
-                  // PHONE DISCLOSURE AT A DESK (board anti-pattern 8, 2026-08-07).
-                  // Keeping only the first clause is right on a 390px phone, where
-                  // the row is the whole width and a three-clause risk would push
-                  // the list off the fold. On a canvas with a rail it was hiding
-                  // the risk engine's own sentence NEXT TO EMPTY CANVAS: the board
-                  // read "Speeches run long — and more…" and "Too few chairs — and
-                  // more…" beside ~400px of nothing and called it what it is —
-                  // a host learns nothing from it and feels managed.
-                  // .watch-row already sets align-items:flex-start precisely
-                  // because these rows wrap (styles.css:3875), so the full title
-                  // costs layout nothing it was not already prepared for.
-                  if (railUp) return full;
-                  return parts.length > 1 ? parts[0] + ' — and more…' : full;
-                };
+                // lib/worryLabel: the raiser's prefix off, a playbook trigger read as
+                // a condition ("If …"), and the phone's first-clause rule (board
+                // anti-pattern 8, 2026-08-07) — moved there so it is tested.
+                const wlabel = (w) => worryLabel(w && w.title, { wide: railUp });
                 // Does the destination actually vary across this lane? If every
                 // row resolves to the same place, the destination is a property of
                 // the LANE and repeating it per row is noise.
