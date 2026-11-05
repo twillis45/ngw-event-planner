@@ -59,6 +59,10 @@ const VIEWPORT_INDEPENDENT = [
   // It also addresses port 5255 directly, so it would measure the wrong
   // bundle on any project pointed at the shared preview.
   '**/gold07RsvpCascade.spec.mjs',
+  // ── THE INVITE CREDIT (issue #100, D-10, 2026-11-05) ─────────────────
+  // Text and stored state only, and it addresses port 5255 (the gold07 bundle,
+  // the one build with an RSVP API configured) for the same reason gold07 does.
+  '**/sharingTheInviteCreditsIt.spec.mjs',
   // ── THE SEATING / RAIN PARITY BASELINES (P1-1, 2026-10-18) ─────────────
   // Characterisation of what both surfaces DO today, written so a redesign
   // that changes any of it fails on purpose. Every assertion is on text,

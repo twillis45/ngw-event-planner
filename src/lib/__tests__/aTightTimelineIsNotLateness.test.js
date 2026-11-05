@@ -6,8 +6,6 @@
 //
 // And sharing the invite never credited "Send the invite": taskEngine accepts
 // `invitesSentAt` as proof, but nothing in the shipping shell ever wrote it.
-import fs from 'fs';
-import path from 'path';
 import { taskDueLabel, taskIsOverdue, taskWindowClosed } from '../taskLead';
 import { effectiveDone } from '../taskEngine';
 
@@ -43,9 +41,6 @@ describe('sharing the invite credits the invite task', () => {
   test('the task engine accepts invitesSentAt as proof', () => {
     expect(effectiveDone({ guests: [], invitesSentAt: now.toISOString() }, invite)).toBe(true);
   });
-  test('the shipping shell writes invitesSentAt when the invite is shared', () => {
-    const shell = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
-    const share = shell.slice(shell.indexOf('const shareInviteLink = async'), shell.indexOf('const toggleTask ='));
-    expect(share).toMatch(/invitesSentAt/);
-  });
+  // That the shipping shell WRITES it is a behavior claim, so it lives where it
+  // runs: hostv2/e2e/sharingTheInviteCreditsIt.spec.mjs (textGateRatchet).
 });
