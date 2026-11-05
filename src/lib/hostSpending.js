@@ -19,6 +19,7 @@
 // disclosed in `moneyDiscrepancies`, never silently added or reconciled.
 
 import { budgetTotal } from './budgetFor';
+import { roundCurrency } from './currency';
 import { guestCountIsConfirmed } from './guestCountFor';
 import { playbookFoodPlan, playbookCapacity } from './playbooks';
 import { buildCrabPlan } from './crabPlan';
@@ -60,7 +61,7 @@ function foodBoughtFrom(event, plan) {
     total += c;
     if (it.added || (it.locked != null && real[it.id])) firm += c;
   }
-  return { total: Math.max(0, Math.round(total)), firm: Math.max(0, Math.round(firm)) };
+  return { total: Math.max(0, roundCurrency(total)), firm: Math.max(0, roundCurrency(firm)) };
 }
 
 // `itemFactors` (added 2026-08-16) carries the backend's PER-ITEM regional
@@ -218,7 +219,7 @@ export function hostSpending(event, priceFactor, itemFactors) {
   } catch (_e) { /* honest zero */ }
 
   // Outstanding vendor balances are disclosed, not added over category totals.
-  const vendorOwed = (() => { try { return Math.max(0, Math.round(vendorOutstanding(ev))); } catch (_e) { return 0; } })();
+  const vendorOwed = (() => { try { return Math.max(0, roundCurrency(vendorOutstanding(ev))); } catch (_e) { return 0; } })();
 
   // ── THE RENTAL HOUSE (review board 2026-07-28) ─────────────────────────────
   // The board's grep: `lodgingOptions` was read by NOTHING. A host could pick a
@@ -249,16 +250,16 @@ export function hostSpending(event, priceFactor, itemFactors) {
   ]).filter(c => c.expected > 0 || c.spent > 0);
   // A chosen, priced stay is a commitment, unlike a generated shopping estimate.
   categories.forEach(c => { if (['Lodging', 'Crab order'].includes(c.label) && c.source === 'estimate') c.committed = c.expected; });
-  const sum = key => Math.round(categories.reduce((s, c) => s + num(c[key]), 0));
+  const sum = key => roundCurrency(categories.reduce((s, c) => s + num(c[key]), 0));
   const spent = sum('spent');
   const committed = sum('committed');
   const expected = sum('expected');
   const spentEstimated = sum('spentEstimated');
-  const spentFirm = Math.max(0, spent - spentEstimated);
+  const spentFirm = Math.max(0, roundCurrency(spent - spentEstimated));
   const committedEstimated = spentEstimated;
   const moneyDiscrepancies = categories.filter(c => c.discrepancy);
   // Headroom against actual commitments, not a forecast of the final bill.
-  const uncommitted = total > 0 ? Math.round(total - committed) : null;
+  const uncommitted = total > 0 ? roundCurrency(total - committed) : null;
 
   // ── ONE HEADLINE NUMBER, TWO PRICE BASES (measured 2026-09-18) ────────────
   // `committed` sums components priced on DIFFERENT bases and said nothing
@@ -309,7 +310,7 @@ export function hostSpending(event, priceFactor, itemFactors) {
   const foodUnpriced = listWithheld && hasRealCount
     && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
 
-  return { expected, categories, moneyDiscrepancies, optionalLow, optionalHigh, optionalEstimate, optionalLines, priceBasis, total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  return { expected, categories, moneyDiscrepancies, optionalLow, optionalHigh, optionalEstimate, optionalLines, priceBasis, total: roundCurrency(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;

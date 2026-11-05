@@ -113,7 +113,7 @@ test('an event without budget rows can record its first payment using the existi
   const ev = event();
   const patch = budgetPaymentPatch(ev, 'first-payment', '12.50', 'Flowers');
   expect(patch.budget).toEqual([{ id: 'first-payment', category: 'Flowers', budgeted: 0, actual: 12.5 }]);
-  expect(hostSpending({ ...ev, ...patch }).spent).toBe(13);
+  expect(hostSpending({ ...ev, ...patch }).spent).toBe(12.5);
   expect(() => budgetPaymentPatch(ev, 'empty', 12, '  ')).toThrow();
   expect(() => budgetPaymentPatch(event({ vendors: [caterer] }), 'duplicate', 20, 'Food')).toThrow('Record this payment on the vendor.');
 });

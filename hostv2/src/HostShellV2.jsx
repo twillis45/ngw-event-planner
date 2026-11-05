@@ -162,6 +162,7 @@ import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
+import { formatCurrency } from '@app/lib/currency';
 import { budgetPaymentPatch } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
@@ -345,7 +346,7 @@ const readDeletedIds = () => {
 import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile, AVA_TINTS } from './eventPool.js';
 
 
-const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
+const fmt = formatCurrency;
 
 const REDUCE_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 

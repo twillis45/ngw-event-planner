@@ -11,11 +11,12 @@
 //   expected   = category-owned forecast, including allocations and estimates.
 //   Unbought quotes and estimates are NEVER "paid" or "spent".
 import { hostSpending } from './hostSpending';
+import { formatCurrency, roundCurrency } from './currency';
 import { isOwnEvidence } from './knowledge/lodgingBasisLadder';
 
 export const NEAR_BUDGET_HEADROOM = 0.15; // <15% left = "getting close"
 
-const fmt = (n) => '$' + Math.round(Math.abs(Number(n) || 0)).toLocaleString();
+const fmt = (n) => formatCurrency(Math.abs(Number(n) || 0));
 
 // Named vendors that still have no price — the "this can change" caveat.
 export function unpricedVendorCount(event) {
@@ -54,7 +55,7 @@ export function budgetHeroCopy(event, priceFactor) {
     };
   }
 
-  const delta = committed - total;
+  const delta = roundCurrency(committed - total);
 
   // 5. Over — direct, not alarming; the action is in the line.
   if (delta > 0) {

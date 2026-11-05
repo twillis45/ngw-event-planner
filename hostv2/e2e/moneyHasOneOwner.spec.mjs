@@ -58,7 +58,7 @@ test('a manual payment changes spent, persists, and has Undo', async ({ page }) 
   await page.reload();
   await settled(page);
   await openSectionByName(page, 'Your money');
-  await expect(sheet).toContainText('$626 actually spent');
+  await expect(sheet).toContainText('$625.50 actually spent');
 });
 
 
@@ -109,5 +109,5 @@ test('a fresh event can record its first expense', async ({ page }, testInfo) =>
   await page.screenshot({ path: testInfo.outputPath('first-payment-form.png'), fullPage: true });
   await sheet.getByRole('button', { name: 'Record payment' }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].budget[0].actual)).toBe(12.5);
-  await expect(sheet).toContainText('$13 actually spent');
+  await expect(sheet).toContainText('$12.50 actually spent');
 });

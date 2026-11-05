@@ -24,6 +24,7 @@
 // an unpaid deposit means you still owe the FULL cost.
 
 import { isVendorBooked } from './workstreams';
+import { roundCurrency } from './currency';
 import { normalizeCategory } from './vendorAccountability/playbooks.js';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -114,7 +115,7 @@ export function moneyCategories(event, estimates = []) {
     const spent = Math.max(0, source === 'vendor' && contract > 0 ? paid : actual, bought, paid);
     const committed = Math.max(contract, spent);
     const expected = Math.max(committed, contract > 0 ? contract : g.rows.length ? allocated : estimate);
-    return { label: g.label, source, expected: Math.round(expected), committed: Math.round(committed), spent: Math.round(spent),
+    return { label: g.label, source, expected: roundCurrency(expected), committed: roundCurrency(committed), spent: roundCurrency(spent),
       spentEstimated: bought > Math.max(contract > 0 ? paid : actual, paid)
         ? Math.min(spent, Math.max(0, g.estimates.reduce((s, e) => s + num(e.spentEstimated), 0))) : 0,
       budgetRowIds: g.rows.map(r => r.id), vendorIds: g.vendors.map(v => v.id),
@@ -134,5 +135,5 @@ export function budgetPaymentPatch(event, rowId, amount, newCategory) {
   const category = moneyCategories({ ...event, budget: rows }).find(c => c.budgetRowIds.includes(rowId));
   if (category && category.source === 'vendor') throw new Error('Record this payment on the vendor.');
   return { budget: rows.map(r => r.id === rowId
-    ? { ...r, actual: Math.round((num(r.actual) + n) * 100) / 100 } : r) };
+    ? { ...r, actual: roundCurrency(num(r.actual) + n) } : r) };
 }
