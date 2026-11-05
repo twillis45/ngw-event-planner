@@ -138,3 +138,18 @@ def test_blocked_receipt_cannot_be_returned_as_active(ledger, monkeypatch):
     monkeypatch.setattr(SP, '_studio_for_event', studio)
     monkeypatch.setattr(ledger, 'fetchrow', receipt)
     assert asyncio.run(SP.get_pass('cust-123', 'Bearer user', None))['held'] is False
+
+
+def test_partial_refund_keeps_access_per_owner_policy(dev_webhook, ledger):
+    asyncio.run(grant())
+    receipt = ledger.receipt
+    _webhook({'id':'evt_partial','type':'charge.refunded','data':{'object':{
+        'payment_intent':'pi_pass_1','amount':3900,'amount_refunded':1000,'refunded':False,
+    }}})
+    assert ledger.receipt == receipt
+    assert ledger.blocks == {}
+    # A later full refund still revokes, including after this partial event.
+    _webhook({'id':'evt_full','type':'charge.refunded','data':{'object':{
+        'payment_intent':'pi_pass_1','amount':3900,'amount_refunded':3900,'refunded':True,
+    }}})
+    assert ledger.blocks == {'pi_pass_1':'refunded'}

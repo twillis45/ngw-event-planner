@@ -549,6 +549,8 @@ async def stripe_webhook(
             log.error("stripe: REFUSING unverified payment block")
         elif event_type == "charge.dispute.created":
             await _block_pass_payment(session_data, "disputed", event.get("id"))
+        # Owner ruling, November 5: partial refunds KEEP access. Stripe's
+        # refunded flag becomes true only after the charge is fully refunded.
         elif session_data.get("refunded") is True:
             await _block_pass_payment(session_data, "refunded", event.get("id"))
 
