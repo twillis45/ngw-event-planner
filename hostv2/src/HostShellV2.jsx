@@ -1000,7 +1000,11 @@ export default function HostShellV2() {
   }, []);
 
   const dismissWelcome = (dest) => {
-    try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode — shows again next load, never blocks */ }
+    // "Start my event" is not "I've seen enough" (issue #100, D-5): marking the
+    // welcome seen here meant a reload before the event existed landed a brand-new
+    // host on the SAMPLE as if it were hers. 'create' marks it once an event is
+    // actually created (the creation commit below); only "Explore a sample" marks it now.
+    if (dest !== 'create') { try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode — shows again next load, never blocks */ } }
     setWelcome(false);
     if (dest === 'create') setStage('create');
   };
@@ -3498,6 +3502,19 @@ export default function HostShellV2() {
       || hydratedEvents.some(e => e && e.id === id) || REAL_EVENTS.some(e => e && e.id === id);
     if (known) { didResume.current = true; switchEvent(id); }
   }, [resumePointer, customs, hydratedEvents, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A SECOND DEVICE OPENS THE HOST'S OWN EVENT, NOT A SAMPLE (issue #100, D-5):
+  // with no account resume pointer (a new account has none), a fresh device sat on
+  // the boot sample — "Margaret Adeyemi's Retirement… Pay your caterer" — while the
+  // host's real event had already arrived from the cloud. Only while the device is
+  // still on the boot sample and nothing has been chosen; at most once.
+  useEffect(() => {
+    if (didResume.current || resumePointer) return;
+    if (eventId !== BOOT_EVENT_ID || !ALL_SAMPLES.some(e => e && e.id === BOOT_EVENT_ID)) return;
+    if (!hydratedEvents.length) return;
+    const newest = [...hydratedEvents].sort((a, b) => String(b._cloudUpdatedAt || b.createdAt || '').localeCompare(String(a._cloudUpdatedAt || a.createdAt || '')))[0];
+    if (newest && newest.id) { didResume.current = true; switchEvent(newest.id); }
+  }, [hydratedEvents, resumePointer, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Feature-detected ONCE, not per render: whether this browser has a system
   // share sheet at all. Desktop Safari and most desktop browsers do not, so the
@@ -8572,6 +8589,7 @@ export default function HostShellV2() {
     // it after the state update would count this event and never report a first.
     try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
     setEventId(newId); setRevealed(true);
+    try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode — the welcome may show once more; never blocks */ }
     // THE TOWN THEY TYPED DID NOT MAKE IT (2026-09-18). The parser resolves a bare
     // town against a curated whitelist, so it pre-fills the create field — but the
     // commit gate needs a state or ZIP, so a state-less town is refused and stored
