@@ -3198,6 +3198,13 @@ export default function HostShellV2() {
   // Told ONCE per session: a toast on every keystroke of a full disk would
   // bury the surface it is warning about.
   const saveLocalPatch = (nextPatch) => {
+    // Not while the welcome gate is up (aNewDeviceOwesNothing). Writes now go
+    // through here synchronously, so the effect's own `welcome` guard below no
+    // longer covered them: a wiped device recorded the sample's drafted
+    // checklist and default start time before the host had touched the screen.
+    // Nothing the host does reaches this while the gate is up — the state still
+    // updates in memory; only the record of "working on the sample" is withheld.
+    if (welcome) return { ok: true };
     try {
       const serialized = JSON.stringify(nextPatch);
       if (localStorage.getItem(LS_PATCH(eventId)) !== serialized) {
