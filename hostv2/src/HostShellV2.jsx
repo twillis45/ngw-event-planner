@@ -167,7 +167,7 @@ import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { formatCurrency } from '@app/lib/currency';
 import { publicAppUrl } from '@app/lib/publicAppUrl';
-import { budgetPaymentPatch, parseVendorCost } from '@app/lib/vendorMoney';
+import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
@@ -23434,6 +23434,13 @@ export default function HostShellV2() {
                   {payment && (
                     <form onSubmit={e => {
                       e.preventDefault();
+                      // ASKED ONCE, NEVER REFUSED: a payment larger than the whole
+                      // plan is confirmed before it is recorded (gold run, 11/5/2026).
+                      const high = paymentAboveWholePlan(payment.amount, money);
+                      if (high && payment.confirmed !== payment.amount) {
+                        setPaymentEntry({ ...payment, confirmed: payment.amount, error: fmt(Number(payment.amount)) + ' is more than ' + (high.basis === 'plan' ? 'your whole plan (' + fmt(high.ref) + ')' : fmt(high.ref)) + '. Check the amount, or tap Record payment again to keep it.' });
+                        return;
+                      }
                       try {
                         const fromPlan = String(payment.rowId).startsWith('est:');
                         const edit = budgetPaymentPatch(event, payment.rowId === 'new' || fromPlan ? 'budget-' + Date.now().toString(36) : payment.rowId, payment.amount, payment.rowId === 'new' ? payment.category : fromPlan ? String(payment.rowId).slice(4) : null);

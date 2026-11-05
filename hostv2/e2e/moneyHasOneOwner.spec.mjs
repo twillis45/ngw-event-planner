@@ -115,3 +115,19 @@ test('a fresh event can record its first expense', async ({ page }, testInfo) =>
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].budget[0].actual)).toBe(12.5);
   await expect(sheet).toContainText('$12.50 actually spent');
 });
+
+// Gold run (11/5/2026): $9,999,999 was recorded silently. A payment larger than
+// the whole plan is asked about once, and recorded only when she taps again.
+test('a payment larger than the whole plan is asked about once, then kept', async ({ page }) => {
+  await boot(page);
+  const sheet = page.locator('.sheet').last();
+  const flowers = () => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].budget.find(r => r.id === 'flowers').actual);
+  await sheet.getByRole('button', { name: 'Log a payment' }).click();
+  await sheet.getByLabel('Budget entry').selectOption('flowers');
+  await sheet.getByLabel('Payment amount').fill('9999999');
+  await sheet.getByRole('button', { name: 'Record payment' }).click();
+  await expect(sheet.getByRole('alert')).toContainText(/\$9,999,999.* is more than your whole plan/);
+  expect(await flowers()).toBe(100);
+  await sheet.getByRole('button', { name: 'Record payment' }).click();
+  await expect.poll(flowers).toBe(10000099);
+});

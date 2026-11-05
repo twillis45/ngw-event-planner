@@ -140,6 +140,22 @@ export function moneyCategories(event, estimates = []) {
   });
 }
 
+/**
+ * The figure a payment is larger than, when it is larger than the whole plan —
+ * so the form can ask once before recording it (gold run, 11/5/2026: $9,999,999
+ * was recorded silently). Never a refusal: the host's record is hers. With no
+ * budget and no estimate there is nothing to compare against, so a sanity
+ * ceiling stands in for one.
+ */
+export const NO_PLAN_PAYMENT_CEILING = 50000;
+export function paymentAboveWholePlan(amount, money) {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const whole = Math.max(num(money && money.planned), num(money && money.expected));
+  const ref = whole > 0 ? whole : NO_PLAN_PAYMENT_CEILING;
+  return n > ref ? { ref, basis: whole > 0 ? 'plan' : 'ceiling' } : null;
+}
+
 /** Build a payment edit for patchEvent; contracted payments belong to vendor records. */
 export function budgetPaymentPatch(event, rowId, amount, newCategory) {
   const n = Number(amount);
