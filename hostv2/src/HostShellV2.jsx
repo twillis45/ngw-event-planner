@@ -350,7 +350,7 @@ const readDeletedIds = () => {
 // Event data pool + artwork resolver moved to ./eventPool.js so main.jsx can
 // lazy-load this host shell while the public invite (InviteV2) pulls only the
 // pool, not the whole shell. Re-imported here; the invite imports from eventPool.
-import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile, AVA_TINTS } from './eventPool.js';
+import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, mintRsvpToken, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile, AVA_TINTS } from './eventPool.js';
 
 
 const fmt = formatCurrency;
@@ -3478,6 +3478,9 @@ export default function HostShellV2() {
     let copy = null;
     try { copy = duplicateEvent(src, { id: newId, now: new Date().toISOString() }); }
     catch { toast('Couldn’t copy that event.'); return; }
+    // Its own invite code: the copy carried the source's, and the server
+    // resolves a code to ONE event — two events behind one link.
+    copy.rsvpCode = mintRsvpToken();
     // MODEL D stamp — a run-it-again copy is a NEW event and gets its own
     // creation-time verdict (it does not inherit the source's grandfather).
     // A fresh brief ledger too: the copy has shared nothing with anyone yet.
@@ -8449,8 +8452,10 @@ export default function HostShellV2() {
     // exception: "Change an answer" corrections keep the id they're fixing.
     const redoId = redoEventId.current; redoEventId.current = null;
     const newId = redoId || mintEventId();
+    // A correction keeps the invite code it already has — links already sent stay live.
+    const priorCode = redoId ? ((customs || []).find((c) => c && c.id === redoId) || {}).rsvpCode : null;
     const ev = {
-      id: newId, rsvpCode: newId,
+      id: newId, rsvpCode: priorCode || mintRsvpToken(),
       createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
       // A HOST WHO NAMED HERSELF GETS HER NAME ON IT (owner acceptance run,
       // 11/5/2026): "Vida is hosting a girls' game night" saved as "My Game
