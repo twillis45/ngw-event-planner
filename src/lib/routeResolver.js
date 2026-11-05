@@ -117,9 +117,9 @@ export function resolveRoute(route) {
   // catch-all below, else the #1 onboarding foundation scrolls to Venue instead
   // of the date (host-reported wrong-field routing).
   if (ff === 'event-date' || ff === 'event-start') {
-    // event-start (day + hour) shares the date editor with event-date — the
-    // date editor holds the start time too (parity with wiredHostv2's wiredKind).
-    return { kind: 'stage:plan', focus: null, anchor: 'Event date' };
+    // Both routes open the existing Date & time sheet. An off-hero row cannot
+    // rely on the hero having mounted its inline input.
+    return { kind: 'date', focus: null };
   }
   // Place-note fields (parking / load-in / venue contact / house rules) live on
   // the SPACE sheet's place rows, each with its own inline note editor — not the
@@ -129,8 +129,11 @@ export function resolveRoute(route) {
   // same PLACE_TARGETS vocabulary as lib/placeIntelligence.js).
   const PLACE_NOTE_FOCUS = { 'parking-notes': 'parking', 'loadin-notes': 'loadIn', 'venue-contact': 'contact', 'house-rules': 'rules' };
   if (PLACE_NOTE_FOCUS[ff]) return { kind: 'space', focus: PLACE_NOTE_FOCUS[ff] };
+  if (/^place-question-/.test(ff)) {
+    return { kind: 'stage:plan', focus: ff.slice('place-question-'.length), anchor: ff };
+  }
   if (ff === 'event-venue' || route.tab === 'Event Details') {
-    return { kind: 'stage:plan', focus: null, anchor: 'Venue' };
+    return { kind: 'venue', focus: null };
   }
   // "Open what to settle" (planHeroCopy) means the decisions surface, not the
   // checklist. Without this, host-decisions rides tab:'Planning' into the tasks

@@ -69,7 +69,7 @@ const P = {
 /** icon(kind) -> an <svg> for a section door. Never returns null: a collapsed,
  *  icons-only rail with a missing mark would be an unlabelled dead target. */
 export function sectionIcon(kind) {
-  const d = P[kind];
+  const d = P[kind === 'venue' ? 'lodging' : kind];
   return (
     <svg className="srail-i" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" {...S}>
       {d || <circle cx="8" cy="8" r="2.2" />}
@@ -78,4 +78,4 @@ export function sectionIcon(kind) {
 }
 
 /** Exported for the test that proves every door has a real mark, not the dot. */
-export const ICON_KINDS = Object.freeze(Object.keys(P));
+export const ICON_KINDS = Object.freeze([...Object.keys(P), 'venue']);

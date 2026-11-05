@@ -157,7 +157,7 @@ import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
 import { GUEST_IMPORT_BATCHES_KEY, newImportBatchId, computeImportAuditMeta, makeImportBatch, undoLastImportBatch, loadImportBatches, persistImportBatches, MAX_PERSISTED_BATCHES, PLATFORM_LABELS, fmtBatchTs } from '@app/lib/importHistory';
 import { downloadCSV } from '@app/lib/download';
-import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
+import { deriveEventPhaseProgress, nextPlanAttentionDate } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
@@ -179,7 +179,7 @@ import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
-import { confirmedCovers } from '@app/lib/confirmedCovers';
+import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
@@ -4337,6 +4337,8 @@ export default function HostShellV2() {
   // The date this ledger's denominator next moves (phaseProgress). A completion
   // claim made without it is a claim with a fuse — see the field's own comment.
   const ledgerExpiry = (phaseCues && phaseCues.nextLedgerChange) || null;
+  const planHorizon = nextPlanAttentionDate(plan, ledgerExpiry);
+  const planHorizonShort = planHorizon ? new Date(planHorizon.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
   const ledgerExpiryShort = ledgerExpiry ? (() => {
     try { return new Date(ledgerExpiry.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; }
   })() : null;
@@ -5816,14 +5818,18 @@ export default function HostShellV2() {
   const routeSheet = (route) => {
     const r = resolveRoute(route);
     if (!r) return false;
-    // Stage landings: the target is a full-screen stage, not a sheet. The plan
-    // editor (event-date / event-venue) scrolls to and focuses the exact input
-    // per the Row-Level CTA rule; the day-of run of show lives on the Day stage.
+    // Stage landings focus an existing answer row on the plan. Date and venue
+    // inputs use their existing sheets, so they never depend on an unmounted hero editor.
     if (r.kind === 'stage:plan') {
       setStage('plan'); setSheet(null); setEditor(null);
-      if (r.anchor) setTimeout(() => {
+      if (r.anchor && r.anchor.startsWith('place-question-')) setHandledOpen(true);
+      if (r.anchor) setTimeout(async () => {
         try {
-          const inp = document.querySelector('[aria-label="' + r.anchor + '"]');
+          const row = document.getElementById(r.anchor);
+          const inp = row ? row.querySelector('button, input') : document.querySelector('[aria-label="' + r.anchor + '"]');
+          const panel = row && row.closest('.slidepanel');
+          if (panel) await Promise.allSettled(panel.getAnimations().map(a => a.finished));
+          if (inp && !inp.isConnected) return;
           if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
         } catch { /* DOM not ready — plan stage is still the right landing */ }
       }, 80);
@@ -6679,7 +6685,7 @@ export default function HostShellV2() {
     // stale `event` — this receipt fires on the same tap that changes it.
     // It said "5 confirmed" on a roster whose confirmed rows bring two kids,
     // which is the same defect as the caterer's, in a toast.
-    const yes = confirmedCovers({ ...event, guests: gs }) || 0;
+    const yes = confirmedRsvpCovers({ ...event, guests: gs });
     patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + (value || 'no reply') + ' — ' + yes + ' confirmed.' + (value === 'Maybe' ? ' Maybes stay pending until they land.' : ''));
   };
 
@@ -8706,7 +8712,7 @@ export default function HostShellV2() {
     // states — !askMode, and the day-before collapse — where the effect could run
     // over a block that was never on screen.
     const blockRendered = elegantMode && askMode && !(nearDayPlan && !queueOpen);
-    const rows = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
+    const rows = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route));
     const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
 
     if (blockRendered) {
@@ -10272,8 +10278,8 @@ export default function HostShellV2() {
                         claim is a claim with a fuse. The honest loud line is the date the
                         quiet ends. Falls back to a today-scoped claim when the ledger has
                         no pending change — never a standing one. */}
-                    <h2 className="cp-head">{ledgerExpiryShort
-                      ? `Nothing needs you until ${ledgerExpiryShort}.`
+                    <h2 className="cp-head">{planHorizonShort
+                      ? `Next dated work: ${planHorizonShort}.`
                       : 'Nothing needs you today.'}</h2>
                     {/* statusNode is the SOLE author of this line. The `||` fallback that
                         used to sit here was unreachable — statusNode's guard is identical
@@ -11316,7 +11322,7 @@ export default function HostShellV2() {
                       <span>{hoverSeg
                         ? (hoverSeg.handled ? 'handled' : 'still open')
                         : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first'
-                          : (ledgerExpiryShort ? `the rest can wait till ${ledgerExpiryShort}` : 'the rest can wait')))}</span>
+                          : (planHorizonShort ? (planHorizon.days <= 0 ? 'dated work needs you now' : `next dated work: ${planHorizonShort}`) : 'more in your plan')))}</span>
                     </div>
                   </div>
                 );
@@ -11356,7 +11362,7 @@ export default function HostShellV2() {
                 // Include a SECOND bundle here (host 2026-07-18): "Resolve 9 decisions" behind
                 // the conflict hero drops below the fold as a path-row, so the first screen isn't
                 // two stacked bundles. A bundle routes to its own sheet on tap.
-                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
+                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route));
                 if (!thenItems.length) return null;
                 // Dated money obligations, read ONCE for the whole list — the reason
                 // service matches a row to an action by key/vendorId. Never an estimate.
@@ -12341,7 +12347,7 @@ export default function HostShellV2() {
                         borderTop: '1px solid var(--line)' }}>
                         <div className="shelf-label" style={{ marginBottom: 4 }}>Worth finding out</div>
                         {qs.map((q) => (
-                          <div key={q.id} style={{ padding: '8px 0' }}>
+                          <div key={q.id} id={'place-question-' + q.id} style={{ padding: '8px 0' }}>
                             <div className="f-name" style={{ fontSize: 'var(--t-body)' }}>{q.question}</div>
                             <p className="grounding" style={{ margin: '2px 0 6px' }}>{q.because}{q.askWho ? ` Ask ${q.askWho}.` : ''}</p>
                             <div className="line" style={{ gap: 'var(--sp-1)', padding: 0 }}>
