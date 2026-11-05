@@ -60,6 +60,11 @@ export function isBillingLive() {
   try { return Boolean(process.env.REACT_APP_API_BASE_URL) && process.env.REACT_APP_BILLING_LIVE === '1'; } catch { return false; }
 }
 
+export function shouldRefreshPassEntitlement() {
+  if (!isNativeApp()) return isBillingLive();
+  return window.Capacitor?.getPlatform?.() === 'android' && Boolean(process.env.REACT_APP_API_BASE_URL);
+}
+
 // User-created events only. Samples (`ev-x-*`, `demo-*`, pool ids) are
 // exploration, not the host's free first event — they neither consume the
 // free tier nor get gated.

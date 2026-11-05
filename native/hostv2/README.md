@@ -10,7 +10,7 @@ Use Capacitor 8 with bundled HostV2 assets and native adapters. Preserve the fou
 
 Native work covers secure authentication persistence, cold/warm auth callbacks, Android Back behavior, native sharing/export, keyboard/safe-area behavior, and local packaged launch. Those capabilities require device verification; generated projects alone do not establish minimum functionality or submission readiness.
 
-Dependencies are pinned: Capacitor core/platform packages provide the native runtime; App provides URL/lifecycle/Back events; Share and Filesystem provide real OS export/share handoffs; Browser provides external browser handoffs; Keyboard provides native keyboard integration. They are not alternate event stores or business engines.
+Dependencies are pinned: Capacitor core/platform packages provide the native runtime; App provides URL/lifecycle/Back events; Share and Filesystem provide real OS export/share handoffs; Keyboard provides native keyboard integration. They are not alternate event stores or business engines.
 
 ## Measured environment
 

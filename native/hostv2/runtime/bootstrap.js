@@ -37,6 +37,9 @@ async function boot() {
     } catch { showAuthError(); }
   };
   await App.addListener('appUrlOpen', handleUrl);
+  await App.addListener('appStateChange', ({ isActive }) => {
+    if (isActive) window.dispatchEvent(new Event('ngw-native-resume'));
+  });
   const launch = await App.getLaunchUrl();
   if (launch?.url) await handleUrl(launch);
   await App.addListener('backButton', ({ canGoBack }) => {

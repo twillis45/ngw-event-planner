@@ -250,7 +250,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 // still uses it for that) and wrong for a fixed-price product. hostv2 sells one
 // thing, and `createPassSession` is the route that prices it server-side.
 import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases } from '@app/lib/stripeApi';
-import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld } from '@app/lib/passGate';
+import { isBillingLive, shouldRefreshPassEntitlement, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
@@ -3308,7 +3308,9 @@ export default function HostShellV2() {
   // named that in the board's own words. `public.event_passes` is the durable
   // record; this is the one place that asks for it.
   //
-  // THE GUARDS ARE BOTH LOAD-BEARING:
+  // Android consumption-only refreshes independently of web purchasing;
+  // native refresh additionally requires a real signed-in session.
+  // THE WEB GUARDS ARE BOTH LOAD-BEARING:
   //  · `isBillingLive()` — billing is dormant, so in production today this
   //    fires for nobody. Asking anyway would be a request per event open for an
   //    answer no gate consults.
@@ -3325,10 +3327,14 @@ export default function HostShellV2() {
   usePassEntitlement(eventId);
   const passClaimed = event && event.passPurchased === true;
   useEffect(() => {
-    if (!isBillingLive()) return;
+    if (!shouldRefreshPassEntitlement()) return;
+    if (isNativeApp() && !session?.user?.id) return;
     if (!eventId || !isUserCreatedEvent({ id: eventId })) return;
-    refreshEventPass(eventId, { claimed: passClaimed });
-  }, [eventId, passClaimed]);
+    const refresh = () => refreshEventPass(eventId, { claimed: passClaimed });
+    refresh();
+    window.addEventListener('ngw-native-resume', refresh);
+    return () => window.removeEventListener('ngw-native-resume', refresh);
+  }, [eventId, passClaimed, session?.user?.id]);
 
 
   const switchEvent = (id) => {
