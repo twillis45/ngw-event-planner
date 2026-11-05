@@ -164,6 +164,7 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { formatCurrency } from '@app/lib/currency';
+import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
@@ -3866,6 +3867,9 @@ export default function HostShellV2() {
         return;
       }
     } catch { /* gate engine absent — never block sharing on an internal error */ }
+    let appUrl;
+    try { appUrl = publicAppUrl(); }
+    catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return; }
     setVendorBrief({ vendorId: v.id, url: null, qrDataUrl: null, minting: true, copied: false });
     let code = null;
     try {
@@ -3873,7 +3877,7 @@ export default function HostShellV2() {
     } catch { code = null; }
     const brief = buildVendorBriefPayload(v, event, ros, profile);
     const token = code || b64encode(JSON.stringify(brief));
-    const url = window.location.origin + window.location.pathname + '?vendor=' + token;
+    const url = appUrl + '?vendor=' + token;
     let qr = null;
     try { qr = await QRCode.toDataURL(url, { width: 480, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } }); } catch { qr = null; }
     setVendorBrief(b => (b && b.vendorId === v.id) ? { vendorId: v.id, url, qrDataUrl: qr, minting: false, copied: false } : b);
@@ -5989,14 +5993,15 @@ export default function HostShellV2() {
 
   // Preview stays local. Outward links require the public event a guest sees,
   // not just a configured proxy or a historical cloud-save stamp.
-  const inviteLinkUrl = () => window.location.origin + window.location.pathname + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
+  const inviteLinkUrl = () => publicAppUrl() + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
   const rsvpUnavailable = (result) => result.reason === 'unavailable'
     ? 'Couldn’t verify this RSVP link. Nothing was shared. Check your connection and try again.'
     : 'Online RSVPs are not available for this event. Copy a plain invitation and collect replies yourself.';
   const verifiedRsvpUrl = async () => {
     const result = await checkRsvpCapability(event);
     if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
-    return inviteLinkUrl();
+    try { return inviteLinkUrl(); }
+    catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return ''; }
   };
   const openInviteDraft = async (title, build) => {
     const url = await verifiedRsvpUrl();

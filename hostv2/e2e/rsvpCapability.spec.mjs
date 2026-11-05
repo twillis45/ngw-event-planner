@@ -62,7 +62,9 @@ test('a matching public event may be shared without changing local onboarding', 
   await boot(page, 200);
   await shareButton(page).click();
   await expect.poll(() => page.evaluate(() => window.__rsvpShares.length)).toBe(1);
-  expect(await page.evaluate(() => window.__rsvpShares[0].url)).toContain('?rsvp=' + EVENT.rsvpCode);
+  const current = new URL(page.url());
+  const appUrl = process.env.REACT_APP_PUBLIC_APP_URL || current.origin + current.pathname;
+  expect(await page.evaluate(() => window.__rsvpShares[0].url)).toBe(appUrl + '?rsvp=' + EVENT.rsvpCode);
   await page.screenshot({ path: `test-results/rsvp-verified-${testInfo.project.name || '390'}.png`, fullPage: true });
 });
 
@@ -99,4 +101,18 @@ test('an unacknowledged API reply stays queued and never celebrates delivery', a
   await expect(page.locator('.inv2-ask')).not.toContainText('You’re in');
   const hit = await page.evaluate(() => (window.__NGW_TRACK__ || []).find(row => row.event === 'invite_rsvp_submitted'));
   expect(hit).toMatchObject({ delivered: false });
+});
+
+
+test('native sharing requires a configured public web destination', async ({ page }) => {
+  await boot(page, 200);
+  await page.evaluate(() => { window.Capacitor = { isNativePlatform: () => true }; });
+  await shareButton(page).click();
+  if (process.env.REACT_APP_PUBLIC_APP_URL) {
+    await expect.poll(() => page.evaluate(() => window.__rsvpShares.length)).toBe(1);
+    expect(await page.evaluate(() => window.__rsvpShares[0].url)).toBe(process.env.REACT_APP_PUBLIC_APP_URL + '?rsvp=' + EVENT.rsvpCode);
+  } else {
+    await expect(page.locator('.toast')).toContainText('public link address is missing');
+    expect(await page.evaluate(() => [window.__rsvpShares.length, window.__rsvpCopies.length])).toEqual([0, 0]);
+  }
 });
