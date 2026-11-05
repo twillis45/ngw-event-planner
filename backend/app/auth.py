@@ -38,6 +38,12 @@ _cache: dict[str, tuple[float, dict]] = {}
 _CACHE_TTL = 300  # seconds
 
 
+def invalidate_user_cache(user_id: str) -> None:
+    for token, (_, user) in list(_cache.items()):
+        if user.get("id") == user_id:
+            _cache.pop(token, None)
+
+
 def _bearer(authorization: Optional[str]) -> Optional[str]:
     if authorization and authorization.lower().startswith("bearer "):
         return authorization[7:].strip() or None
@@ -55,7 +61,19 @@ async def verify_supabase_token(token: str) -> Optional[dict]:
     now = time.time()
     cached = _cache.get(token)
     if cached and cached[0] > now:
-        return cached[1]
+        # Another worker may have deleted this user after we cached it. Check
+        # shared identity existence instead of honoring a five-minute ghost.
+        from .db import get_pool
+        try:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                exists = await conn.fetchval("select 1 from auth.users where id=$1::uuid", cached[1]["id"])
+            if exists:
+                return cached[1]
+        except Exception:
+            # Fall back to GoTrue verification, never to stale cached identity.
+            pass
+        _cache.pop(token, None)
     url = SUPABASE_URL.rstrip("/") + "/auth/v1/user"
     try:
         async with httpx.AsyncClient(timeout=8) as client:
