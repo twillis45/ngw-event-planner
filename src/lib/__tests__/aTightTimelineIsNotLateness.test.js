@@ -11,7 +11,9 @@ import { effectiveDone } from '../taskEngine';
 
 const DAY = 86400000;
 const now = new Date('2026-11-05T12:00:00');
-const iso = (d) => d.toISOString().slice(0, 10);
+// LOCAL calendar day, like the app's own dates — toISOString is UTC and moved
+// the event a day under CI's UTC+14 run (checks.yml runs jest in two edge zones).
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const eventIn = (days, createdDaysAgo) => ({
   date: iso(new Date(now.getTime() + days * DAY)),
   createdAt: new Date(now.getTime() - createdDaysAgo * DAY).toISOString(),
