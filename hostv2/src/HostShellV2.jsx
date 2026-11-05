@@ -3249,14 +3249,19 @@ export default function HostShellV2() {
   // wrong instrument — it disappears and she is still typing. The banner stays
   // until a write succeeds.
   const [saveFailed, setSaveFailed] = useState(null);
+  const committedCustomSnapshot = useRef(null);
   // Which event row is asking "are you sure" — an id, never a boolean, so two
   // rows can never both be armed. Deleting a plan is the one act in this shell
   // that cannot be undone, and it is the only one that asks twice.
   const [confirmDelete, setConfirmDelete] = useState(null);
   useEffect(() => {
-    // patchEvent already committed this snapshot before publishing success.
-    // Other state producers still persist through this one guarded writer.
-    if (JSON.stringify(readCustomEvents()) === JSON.stringify(customs)) return;
+    // Skip only the snapshot patchEvent just committed. Boot and other
+    // producers still take their existing recovery snapshot.
+    if (committedCustomSnapshot.current === JSON.stringify(customs)) {
+      committedCustomSnapshot.current = null;
+      return;
+    }
+    committedCustomSnapshot.current = null;
     const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
     if (res && res.ok === false) setSaveFailed(res.reason || 'unknown');
     else setSaveFailed(null);
@@ -7026,7 +7031,10 @@ export default function HostShellV2() {
         return savedEv;
       });
       result = saveCustomEvents(next, { reason: 'hostshell:patch-event' });
-      if (result.ok) setCustoms(next);
+      if (result.ok) {
+        committedCustomSnapshot.current = JSON.stringify(next);
+        setCustoms(next);
+      }
     } else {
       let current = patch;
       try { current = JSON.parse(localStorage.getItem(LS_PATCH(eventId))) || patch; } catch { /* the write below reports refusal */ }

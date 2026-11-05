@@ -19,12 +19,14 @@ const boot = async (page, fail) => {
   // Inject after boot: a failed edit, rather than a failed initial seed.
   await page.evaluate(fail => {
     window.__saveProofFailures = 0;
+    window.__saveProofWrites = 0;
     const original = Storage.prototype.setItem;
     Storage.prototype.setItem = function(key, value) {
       if (fail && key === 'ngw-hostv2-custom-events') {
         window.__saveProofFailures++;
         throw new DOMException('Full', 'QuotaExceededError');
       }
+      if (key === 'ngw-hostv2-custom-events') window.__saveProofWrites++;
       return original.call(this, key, value);
     };
   }, fail);
@@ -48,6 +50,7 @@ test('a durable local edit settles the same question and survives a reload', asy
   await expect(page.getByRole('button', { name: 'Plan for 40', exact: true })).toHaveCount(0);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0]);
   expect(saved.guestCountSource).toBe('host');
+  expect(await page.evaluate(() => window.__saveProofWrites)).toBe(1);
   await page.reload();
   await settled(page);
   await openSectionByName(page, 'Guests');

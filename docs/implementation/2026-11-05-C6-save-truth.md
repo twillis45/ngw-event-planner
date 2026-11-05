@@ -28,3 +28,9 @@ Existing effects skip snapshots that are already committed, preventing the synch
 This closes the observed FRIC-7 false-success paths through `patchEvent`, including the inline payment receipt. It does not attest cloud durability, production telemetry arrival, creation's other direct state producers, or the paid release candidate. C1 and this commit must be tested together for the new payment form. C6's `OBS-2`, `N4-3`, and `S9-7` remain open until their separate implementations and checks land.
 
 No legacy runtime, auth/release-profile switch, money/parser engine, test gate, or prioritization rule changed. Temporary local configs, dependency symlinks, raw test outputs, and build outputs are excluded from this commit.
+
+## Follow-up — preserve the boot recovery snapshot
+
+Broader recovery QA reproduced a regression in the initial effect skip: the existing “CORRUPT THE STORE” test offered only one backup instead of more than one, because equality with storage skipped the original boot snapshot. Replaced broad equality with a one-use marker only for snapshots synchronously committed by `patchEvent`. Boot and other producers retain their prior backup behavior; accepted edits still avoid a duplicate write.
+
+The unchanged recovery test failed **1 row versus >1** before this fix. Afterward, that test and the durable-edit/reload test passed **2/2**. The latter now also asserts **exactly one actual custom-store write** for the edit. No backup assertion was relaxed.
