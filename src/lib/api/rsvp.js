@@ -116,6 +116,29 @@ export async function submitRsvp(code, payload) {
 // ── Planner: host read-back ───────────────────────────────────────────────────
 // Returns the array of submissions, or [] when not configured / errored. NEVER
 // throws — the host UI keeps the existing local-queue merge for same-browser dev.
+// THE SAME READ, WITH ITS REASON (issue #100, D-8). fetchEventRsvps maps every
+// failure to [] — so a host whose session had died saw "No reply" for every
+// guest, presented as the truth. This keeps that contract for its callers and
+// says, for the host screen, whether the list is empty or the read was refused.
+//   { ok: true, rows }                       — the server answered
+//   { ok: false, reason: 'signed-out' }      — no session, or the server said 401
+//   { ok: false, reason: 'forbidden' }       — 403: signed in, not this event's
+//   { ok: false, reason: 'unavailable' }     — offline, 5xx, unconfigured
+export async function readEventRsvps(eventId) {
+  if (!BASE || !eventId) return { ok: false, reason: 'unavailable' };
+  if (!(await hasPlannerAuth())) return { ok: false, reason: 'signed-out' };
+  try {
+    const res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/rsvps`, { headers: await authHeaders() });
+    if (res.status === 401) return { ok: false, reason: 'signed-out' };
+    if (res.status === 403) return { ok: false, reason: 'forbidden' };
+    if (!res.ok) return { ok: false, reason: 'unavailable' };
+    const data = await res.json();
+    return { ok: true, rows: Array.isArray(data) ? data : [] };
+  } catch {
+    return { ok: false, reason: 'unavailable' };
+  }
+}
+
 export async function fetchEventRsvps(eventId) {
   if (!BASE || !eventId) return [];
   if (!(await hasPlannerAuth())) return [];

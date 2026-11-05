@@ -151,7 +151,7 @@ import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from 
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
-import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
+import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
 import { effectiveDone } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
@@ -7167,8 +7167,21 @@ export default function HostShellV2() {
     let dead = false;
     (async () => {
       try {
-        const rows = await fetchEventRsvps(event.id);
-        if (dead || !rows.length) return;
+        const read = await readEventRsvps(event.id);
+        if (dead) return;
+        // A DEAD SESSION IS NOT AN EMPTY LIST (issue #100, D-8): a host whose
+        // session had been revoked saw every guest as "No reply", with nothing
+        // saying the replies simply could not be read. Say it once, plainly —
+        // only when this device thinks it is signed in, so a host who never
+        // made an account is not nagged.
+        if (!read.ok) {
+          let thinksSignedIn = false;
+          try { thinksSignedIn = Object.keys(localStorage).some(k => /^sb-.*-auth-token$/.test(k) && localStorage.getItem(k)); } catch { /* unknown */ }
+          if (read.reason === 'signed-out' && thinksSignedIn) toast('You’ve been signed out — sign in again to see your guests’ replies.', { label: 'Sign in', fn: () => setSheet({ kind: 'settings' }) });
+          return;
+        }
+        const rows = read.rows;
+        if (!rows.length) return;
         // Server snake_case → the merge's field names (production's normalize).
         const subs = rows.map(r => ({
           name: r.guest_name, rsvp: r.rsvp, meal: r.meal, needs: r.needs,
