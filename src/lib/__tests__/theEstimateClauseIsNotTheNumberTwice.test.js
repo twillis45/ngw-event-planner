@@ -1,3 +1,5 @@
+// November 3 C1: unbought estimates now belong to expected, not committed.
+// Historical measurements below describe the former mixed total.
 // ─── "$1,240 SPOKEN FOR ($1,240 OF THAT STILL AN ESTIMATE)" ─────────────────
 //
 // The money sheet's grounding line printed the same figure twice in one
@@ -32,39 +34,24 @@ const evFor = (type) => ({
   foodChoices: {}, totalBudget: 1500,
 });
 
-describe('the estimate clause has a case to cover', () => {
-  test('(premise) these events commit money at all', () => {
-    // Without this the equality below is satisfied by 0 === 0 on every event,
-    // which would pass while proving nothing.
-    const withMoney = ALL_PLAYBOOKS
-      .map((pb) => { try { return hostSpending(evFor(pb.type)); } catch (_e) { return null; } })
-      .filter((s) => s && s.committed > 0);
-    expect(withMoney.length).toBeGreaterThan(40);
-  });
-
-  test('AT REST, every committed dollar is an estimate — so the figure must not repeat', () => {
-    const partial = [];
-    for (const pb of ALL_PLAYBOOKS) {
-      let s;
-      try { s = hostSpending(evFor(pb.type)); } catch (_e) { continue; }
-      if (!s.committed) continue;
-      if (s.committedEstimated !== s.committed) {
-        partial.push(`${pb.type}: ${s.committedEstimated} of ${s.committed}`);
-      }
+describe('estimates and commitments have different truth states', () => {
+  test('every priced playbook reports expected costs without inventing commitments', () => {
+    const priced = ALL_PLAYBOOKS.map(pb => hostSpending(evFor(pb.type))).filter(s => s.expected > 0);
+    expect(priced.length).toBeGreaterThan(40);
+    for (const s of priced) {
+      expect(s.committed).toBe(0);
+      expect(s.committedEstimated).toBe(0);
+      expect(s.spent).toBe(0);
     }
-    // Named, so a failure says WHICH playbook gained a firm commitment at rest
-    // — that is a real change in the money model, not a copy question.
-    expect(partial).toEqual([]);
   });
 
-  test('and recording an actual spend DOES produce the partial case', () => {
-    // The other half. The parenthetical is not dead code — it is the correct
-    // rendering once a host records real money, and this proves that state is
-    // reachable rather than theoretical.
-    const ev = { ...evFor('Reunion'), budget: [{ category: 'Venue', budgeted: 400, actual: 400 }] };
+  test('a bought estimated item and a manual receipt produce the partial estimate case', () => {
+    const ev = { ...evFor('Reunion'), foodGot: { p_protein: true }, budget: [{ category: 'Venue', budgeted: 400, actual: 400 }] };
     const s = hostSpending(ev);
-    expect(s.spent).toBeGreaterThan(0);
-    expect(s.committed).toBeGreaterThan(s.spent);
+    expect(s.spent).toBeGreaterThan(400);
+    expect(s.committed).toBe(s.spent);
+    expect(s.committedEstimated).toBeGreaterThan(0);
     expect(s.committedEstimated).toBeLessThan(s.committed);
+    expect(s.expected).toBeGreaterThan(s.committed);
   });
 });

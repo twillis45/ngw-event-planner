@@ -49,17 +49,17 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
   const ev = event || {};
   const sp = hostSpending(ev, priceFactor);
   const total = num(sp && sp.total);
-  const committed = num(sp && sp.committed);
+  const expected = num(sp && sp.expected);
 
   if (total <= 0) {
     return { status: 'needs_more_data', overBudgetAmount: 0, headline: null, summary: null,
       suggestions: [], protectedItems: [], missingData: ['A budget target — set one so overspend can be measured.'] };
   }
-  if (committed <= total) {
+  if (expected <= total) {
     return { status: 'not_over_budget', overBudgetAmount: 0, headline: null, summary: null,
       suggestions: [], protectedItems: [], missingData: [] };
   }
-  const over = committed - total;
+  const over = expected - total;
 
   const counted = guestCountResolved(ev);
   // ── "REAL" MEANS THE HOST SAID IT (2026-10-18, Sprint 0 P0-2) ─────────────
@@ -270,7 +270,7 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
   }
 
   const safeCount = suggestions.filter(s => s.class === 'safe_cut' || s.class === 'tradeoff').length;
-  const headline = `You’re ${money(over)} over your current plan.`;
+  const headline = `Expected costs are ${money(over)} over your current plan — this includes allocations and estimates.`;
   const summary = safeCount > 0
     ? 'Here’s how to get back on plan: start with what’s still flexible — unbought items you can adjust without touching anything already committed.'
     : 'The remaining costs look committed or protected. Don’t assume savings without checking with the people involved.';

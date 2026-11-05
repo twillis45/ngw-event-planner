@@ -162,6 +162,7 @@ import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
+import { budgetPaymentPatch } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
@@ -2904,6 +2905,7 @@ export default function HostShellV2() {
     // would have fixed a first render and gone stale the moment a host typed
     // the state in, which is the exact moment this is for.
   }, [event.id, vf.city, vf.state, blsRegion]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [paymentEntry, setPaymentEntry] = useState(null);
   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   // "What's in the estimate" — the meta block's disclosure (owner picked board
@@ -3904,7 +3906,7 @@ export default function HostShellV2() {
     // resolved async after mount, this stale figure and the recovery panel's
     // fresh one could show two different "how far over" dollar amounts on
     // the same sheet (found in the per-screen audit).
-  const money = { planned: spend.total, committed: spend.committed, committedEstimated: spend.committedEstimated || 0, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
+  const money = { planned: spend.total, expected: spend.expected || 0, committed: spend.committed, committedEstimated: spend.committedEstimated || 0, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
   // ── A BLANK SLOT BESIDE A NUMBER THE APP ALREADY HAS ─────────────────────
   // The WHERE YOU STAND strip rendered the budget as an em-dash under the line
   // "you haven't set one yet — tap to lock a number in", on the same scroll
@@ -3945,12 +3947,12 @@ export default function HostShellV2() {
   // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
   // the Budget sheet and After. NEVER planner category rows (Rule 4): the host
   // model is one number plus where the plan says it's going.
-  const hostSpendRows = () => [
-    { label: 'Food & drinks', est: spend.foodEstimate || 0, got: spend.foodBought || 0, kind: 'food' },
-    { label: 'Supplies', est: spend.suppliesEstimate || 0, got: spend.suppliesBought || 0, kind: 'supplies' },
-    ...(spend.hasCapacity ? [{ label: 'Seats, tables & space', est: spend.capacityEstimate || 0, got: spend.capacityBought || 0, kind: 'space' }] : []),
-    ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0, kind: 'crabs' }] : []),
-  ].filter(r => r.est > 0 || r.got > 0);
+  const hostSpendRows = () => (spend.categories || []).map(c => ({
+    ...c, label: c.source === 'estimate' && c.label === 'Catering' ? 'Food' : c.label, est: c.expected, got: c.spent,
+    kind: c.source === 'vendor' ? 'vendors' : c.source === 'budget' ? 'budget'
+      : c.label === 'Supplies' ? 'supplies' : c.label === 'Rentals' ? 'space'
+      : c.label === 'Crab order' ? 'crabs' : c.label === 'Lodging' ? 'lodging' : c.label === 'Bar / Beverage' ? 'drinks' : 'food',
+  }));
   const guests = guestNumber(event);
 
   // ── A ROSTER ROW IS NOT A PERSON ─────────────────────────────────────────
@@ -6394,11 +6396,18 @@ export default function HostShellV2() {
   const supplGroupName = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
   const GO_SPEND = {
     food: () => setSheet({ kind: 'food' }),
+    drinks: () => setSheet({ kind: 'food' }),
     supplies: () => { if (supplGroupName) setFoodGroupsOpen(m => ({ ...m, [supplGroupName]: true })); setSheet({ kind: 'food' }); },
     space: () => setSheet({ kind: 'space' }),
     crabs: () => setSheet({ kind: 'crabs' }),
+    vendors: () => setSheet({ kind: 'vendors' }),
+    budget: () => setSheet({ kind: 'budget' }),
+    lodging: () => goToLodgingCockpit(),
   };
-  const hostRowsGo = () => hostSpendRows().map(r => ({ ...r, go: GO_SPEND[r.kind] }));
+  const hostRowsGo = () => hostSpendRows().map(r => ({ ...r, go: r.kind === 'budget' ? () => {
+    setPaymentEntry({ eventId: event.id, rowId: r.budgetRowIds[0], category: '', amount: '', error: '' });
+    setSheet({ kind: 'budget' });
+  } : r.kind === 'vendors' ? () => setSheet({ kind: 'vendors', focus: r.vendorIds.length === 1 ? r.vendorIds[0] : null }) : GO_SPEND[r.kind] }));
 
   // The 5 readiness signals — Basics (foundations) + the four pillars the
   // production readiness engine computes: decisions, people, checklist, paperwork.
@@ -11981,7 +11990,7 @@ export default function HostShellV2() {
                           vocabulary as `spent` right beside it: "(est.)" when the
                           whole figure is a guess, "· $N est." when only part is.
                           Never a second vocabulary (UX_08). */}
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</>
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}{spend.moneyDiscrepancies && spend.moneyDiscrepancies.length > 0 ? ' · payment records differ' : ''}</>
                         : (suggestedTotal
                           /* NO POPULATION. This read "mid-range for an event
                              this size", and the comment here claimed it shared
@@ -13735,14 +13744,14 @@ export default function HostShellV2() {
                       </p>
                     ) : null}
                     <div className="line total">
-                      <span>{isPast ? 'Spent, all in' : 'Spoken for so far'}</span>
+                      <span>{isPast ? 'Recorded spent' : 'Expected total'}</span>
                       <span className={'amt' + (money.planned && money.committed <= money.planned ? ' under' : '')}>
                         {/* The rows above each wear "~" (est.); this total is the
                             sum of them, so it wears the marker too (app-wide
                             estimate pass 2026-07-29) — a total is not firmer than
                             its parts. Suppressed once the event is past, where
                             "Spent, all in" is real money, not a projection. */}
-                        {!isPast && money.committedEstimated > 0 ? '~' : ''}{fmt(money.committed)}{money.planned ? ' · ' + (money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over') : ''}
+                        {fmt(isPast ? money.spent : money.expected)}{money.planned ? ' · against ' + fmt(money.planned) : ''}
                       </span>
                     </div>
                   </div></div>
@@ -23048,38 +23057,9 @@ export default function HostShellV2() {
               );
             })()}
             {sheet.kind === 'budget' && (() => {
-              // HOST MODEL: one number, and "where it's going" priced by the plan
-              // itself (hostSpending's food/supplies/capacity terms) — never
-              // planner category rows the host didn't write.
-              // ROW-LEVEL CTA RULE: hostRowsGo() (component-level, shared with
-              // the After tab's identical summary) routes every allocation row
-              // to the surface that prices it — the spread (food/supplies),
-              // the space list, the crab order.
-              // ── "WHERE IT'S GOING" HAD TO ACCOUNT FOR THE MONEY (click-through
-              // audit 2026-07-28). hostSpendRows() prices what the PLAN prices —
-              // food, supplies, capacity, crab. But `committed` is that PLUS
-              // vendorOwed PLUS lodgingCommitted (see lib/hostSpending ~188), and
-              // neither had a row. Live on the wedding that read: "Over by $32,639"
-              // above a breakdown listing ~$2,469 of $87,639 — the section that
-              // promises where it's going was silent about 97% of it, and about the
-              // whole reason the host is over.
-              // These are NOT invented category rows: both are components the money
-              // engine already returns, and each routes to the surface that owns it.
-              const hostRows = (() => {
-                const rows = hostRowsGo();
-                // READ `spend`, NOT `money` (self-inflicted, caught by driving it
-                // 2026-07-29). `money` is a NARROWED object built at ~2250 —
-                // { planned, committed, spent, spentEstimated, lines } — and never
-                // carried these two. Reading money.vendorOwed gave undefined → 0 →
-                // the rows silently never rendered, on the very event with $87,639
-                // spoken for. I shipped it and called it done without opening the
-                // sheet. `spend` is the full hostSpending result these live on.
-                const owed = Math.round(spend.vendorOwed || 0);
-                const stays = Math.round(spend.lodgingCommitted || 0);
-                if (owed > 0) rows.push({ label: 'People you’re hiring', kind: 'vendors', est: owed, got: 0, go: () => setSheet({ kind: 'vendors', focus: null }) });
-                if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => goToLodgingCockpit() });
-                return rows;
-              })();
+              const hostRows = hostRowsGo();
+              const manualRows = (event.budget || []).filter(r => hostRows.some(c => c.source === 'budget' && c.budgetRowIds.includes(r.id)));
+              const payment = paymentEntry && paymentEntry.eventId === event.id ? paymentEntry : null;
               let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }
               // Queue item 7 — the recovery engine: source-backed ways OUT of
               // an overage (safe cuts / tradeoffs / protected), never invented $.
@@ -23211,6 +23191,37 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
+                  <p className="grounding"><b>{fmt(spend.expected || 0)}</b> expected in total. Allocations and unbought estimates are not spoken for. The amount left above is against commitments, not the final bill.</p>
+                  {(spend.moneyDiscrepancies || []).length > 0 && (
+                    <div className="card" role="note">
+                      <p className="grounding">Payment records overlap or differ. Each category is counted once; review the records before relying on spent.</p>
+                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: budget entry {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
+                      <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setSheet({ kind: 'vendors' })}>Review vendor payments</button>
+                    </div>
+                  )}
+                  {!payment && <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setPaymentEntry({ eventId: event.id, rowId: manualRows[0] ? manualRows[0].id : 'new', category: '', amount: '', error: '' })}>Log a payment</button>}
+                  {payment && (
+                    <form onSubmit={e => {
+                      e.preventDefault();
+                      try {
+                        const edit = budgetPaymentPatch(event, payment.rowId === 'new' ? 'budget-' + Date.now().toString(36) : payment.rowId, payment.amount, payment.rowId === 'new' ? payment.category : null);
+                        const result = patchEvent(edit, 'Payment recorded on your budget entry.');
+                        if (result && result.ok === false) { setPaymentEntry({ ...payment, error: 'This payment did not save. Try again before leaving.' }); return; }
+                        setPaymentEntry(null);
+                      } catch (err) { setPaymentEntry({ ...payment, error: err.message }); }
+                    }}>
+                      <p className="grounding">Record an amount you paid. Choose a budget entry or add a category. This is your record, not a bank connection. Contracted vendor payments are tracked under the vendor.</p>
+                      <label>Budget entry<select className="field" style={{ minHeight: 'var(--tap-min)' }} aria-label="Budget entry" value={payment.rowId} onChange={e => setPaymentEntry({ ...payment, rowId: e.target.value, error: '' })}>
+                        {manualRows.map(r => <option key={r.id} value={r.id}>{r.category}</option>)}
+                        <option value="new">New budget entry</option>
+                      </select></label>
+                      {payment.rowId === 'new' && <label>Category<input className="field" style={{ minHeight: 'var(--tap-min)' }} aria-label="Payment category" required value={payment.category} onChange={e => setPaymentEntry({ ...payment, category: e.target.value, error: '' })} /></label>}
+                      <label>Payment amount<input className="field" style={{ minHeight: 'var(--tap-min)' }} aria-label="Payment amount" type="number" min="0.01" step="0.01" required value={payment.amount} onChange={e => setPaymentEntry({ ...payment, amount: e.target.value, error: '' })} /></label>
+                      {payment.error && <p role="alert" className="grounding">{payment.error}</p>}
+                      <button className="mini" style={{ minHeight: 'var(--tap-min)' }} type="submit">Record payment</button>{' '}
+                      <button className="mini" style={{ minHeight: 'var(--tap-min)' }} type="button" onClick={() => setPaymentEntry(null)}>Cancel</button>
+                    </form>
+                  )}
                   {hostRows.length > 0 && (
                     <>
                       {/* BUDGET-CONTRADICTION FIX: "priced by your plan" reads as a
@@ -23218,11 +23229,10 @@ export default function HostShellV2() {
                           budget" ask right above when no ceiling exists yet. This
                           row total is real (the plan's own cost estimate), just not
                           a budget, so the label says so instead of implying one. */}
-                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{money.planned ? 'Where it’s going — priced by your plan' : 'What your plan adds up to so far'}</div>
+                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — includes allocations and estimates'}</div>
                       {hostRows.map((r, i) => {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
-                        const allBought = r.est > 0 && r.got >= r.est;
                         return (
                           <div key={r.label}>
                             <button className="brow"
@@ -23230,13 +23240,7 @@ export default function HostShellV2() {
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                                {/* "$0 bought" ×3 before any buying is noise — the
-                                    bought figure earns its place once buying starts */}
-                                {allBought
-                                  ? <span className="amt" style={{ color: 'var(--ok)' }}>{fmt(r.got)} <span className="of" style={{ color: 'var(--ok)' }}>bought</span></span>
-                                  : r.got > 0
-                                    ? <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
-                                    : <span className="amt">~{fmt(r.est)}</span>}
+                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'vendor record' : r.source === 'budget' ? 'budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'your price' : 'estimated'}</span></span>
                               </div>
                               {/* The 4% floor keeps a small-but-real category findable. It must
                                   not apply to a category costing nothing: while the fill was
@@ -23268,7 +23272,7 @@ export default function HostShellV2() {
                                     midpoint of anything. A rate across a headcount is true
                                     in every one of those states; a multiplication is not. */}
                                 {foodPlan.guests > 0 && foodPlan.foodHigh > 0 && (
-                                  <>≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
+                                  <>Full food and drink plan: ≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
                                 )}
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
@@ -23324,27 +23328,6 @@ export default function HostShellV2() {
                           </div>
                         );
                       })}
-                      {/* THE REST OF THE MONEY (same click-through, 2026-07-29).
-                          Even with vendors and lodging added, the rows only price
-                          what the PLAN prices. `committed` also contains rowsActual
-                          — money the host logged as spent straight onto their own
-                          budget lines (lib/hostSpending ~181). On the wedding that
-                          left four rows summing to ~$33,209 sitting under an
-                          "$87,639 spoken for" headline with no account of the other
-                          $54,430. Stating it is the whole point of this section.
-                          No CTA and no glyph: nothing in hostv2 lists those raw
-                          budget lines, so there is nowhere honest to send them. */}
-                      {(() => {
-                        const shown = hostRows.reduce((s, r) => s + (Number(r.est) || 0), 0);
-                        const rest = Math.round((money.committed || 0) - shown);
-                        if (rest < 50) return null;
-                        return (
-                          <p className="grounding" style={{ margin: '8px 0 0', borderTop: '1px solid var(--line-soft)', paddingTop: 8 }}>
-                            The rows above are what your plan prices. The other {fmt(rest)} is money you logged
-                            straight onto your own budget lines, so it has no row here.
-                          </p>
-                        );
-                      })()}
                       {/* ── THE FOOD ROW THAT IS MISSING ON PURPOSE ──────────────
                           With no kitchen, hostSpending withdraws the grocery food
                           and supplies estimates (they priced a shop the app has

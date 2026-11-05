@@ -1,5 +1,10 @@
 # Where We Are -- live status board
 
+## November 5, 2026 — paid-web RC: C1 initial implementation checkpoint
+
+Isolated worktree `wt-paid-web-rc`, production base `d22a9683`; original dirty checkout preserved. Category ownership separates expected/committed/spent and removes the Margaret sample's false overrun. Committed stays $10,210 when its caterer is paid; spent moves $4,660 → $7,810. Conflicting payment records are disclosed, not silently reconciled. Existing budget model now supports first/manual payment, reload, and Undo. Evidence and limits: `docs/implementation/2026-11-05-C1.md`. Jest 630 suites / 8,594 passed / 1 standing skip; seam 53; money browser 24 across six geometries. Deliberate red-proof mutant restored before resumed builds. C1 follow-ups N4-1/N4-2, C6 failed-save integration, and merge/deployed proof remain open. No auth, billing, profile, Legacy, or production changes. RSVP/Creation/ATTN-2 commits await integration; no release readiness claimed.
+
+
 ## 2026-11-02 (later, last) — the path-to-production list worked top to bottom; one security finding waits on a merge
 
 Branch `main-2utz0n` @ `057a282`, twelve commits past `2ec704e`, all pushed,

@@ -6,6 +6,7 @@
 import { getVendorPlaybook } from './playbooks.js';
 import { parseStartMinutes } from '../eventWhen.js';
 import { guestCountFor } from '../guestCountFor.js';
+import { moneyCategories } from '../vendorMoney.js';
 
 // Times in the seed + host input are 12-hour strings ("1:00 PM", "10:00 AM"),
 // but the old local parser split on ":" and dropped the meridiem — so "1:00 PM"
@@ -265,43 +266,35 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
   }
 
   // ── 8. Payment vs Budget conflict ───────────────────────────────────
-  // If a vendor is marked balance-paid but the matching budget line shows
-  // an outstanding balance, surface the conflict so the planner can reconcile.
-  vendors.forEach(v => {
-    const bLine = (event.budget || []).find(b => (b.category || '').toLowerCase() === (v.category || '').toLowerCase());
-    if (!bLine) return;
-    const actual = Number(bLine.actual || 0);
-    const committed = Number(bLine.budgeted || 0);
-    if (v.balancePaid && actual < committed) {
-      conflicts.push({
-        id: nextId(),
-        severity: 'attention',
-        kind: 'payment_vs_budget',
-        title: `${v.name} marked paid but budget shows outstanding`,
-        explanation: `Vendor says balance paid; budget shows ${actual} of ${committed} spent.`,
-        recommendedAction: 'Reconcile vendor payment with budget line — one is stale.',
-        sourceRefs: [{ type: 'vendor', id: v.id }, { type: 'budget', id: bLine.id }],
-        affectedVendorId: v.id,
-        affectedEventId: event.id,
-        // Resolve IN PLACE (no "Take me to" route-away): a structured proposedFix
-        // the mapper (deriveResolution) turns into two one-tap options. A genuine
-        // either/or — trust the vendor and make the budget reflect the payment (a
-        // budget `event` write), or trust the budget and reopen the balance (a
-        // vendor `patch`). Resolving either clears the conflict.
-        proposedFix: {
-          confirm: {
-            label: `Paid in full — show $${committed.toLocaleString()} spent`,
-            event: { budget: (event.budget || []).map(b => (b === bLine ? { ...b, actual: committed } : b)) },
-            receipt: `Budget updated — $${committed.toLocaleString()} now reads paid. The budget reads true.`,
-          },
-          set: {
-            label: `Not yet — $${(committed - actual).toLocaleString()} still owed`,
-            patch: { balancePaid: false },
-            receipt: `${v.name} — balance reopened; $${(committed - actual).toLocaleString()} still to pay.`,
-          },
+  // A budget allocation is not a debt. Compare recorded payments through the
+  // same category owner as the money sheet, including explicit budget links.
+  moneyCategories(event).filter(c => c.source === 'vendor' && c.discrepancy).forEach(c => {
+    const categoryVendors = vendors.filter(v => c.vendorIds.includes(v.id));
+    if (!categoryVendors.every(v => v.balancePaid)) return;
+    const matchingRows = (event.budget || []).filter(b => c.budgetRowIds.includes(b.id));
+    const actual = c.discrepancy.budgetActual;
+    const paid = c.discrepancy.vendorPaid;
+    const vendor = categoryVendors[0];
+    conflicts.push({
+      id: nextId(), severity: 'attention', kind: 'payment_vs_budget',
+      title: `${c.label} payment records differ`,
+      explanation: `Vendors record ${paid} paid; budget entries record ${actual} spent.`,
+      recommendedAction: 'Review the payment records — one may be stale.',
+      sourceRefs: [...categoryVendors.map(v => ({ type: 'vendor', id: v.id })), ...matchingRows.map(b => ({ type: 'budget', id: b.id }))],
+      affectedVendorId: vendor && vendor.id, affectedEventId: event.id,
+      // Never distribute a payment across several budget entries by guessing.
+      ...(matchingRows.length === 1 && categoryVendors.length === 1 ? { proposedFix: {
+        confirm: {
+          label: `Paid in full — show $${paid.toLocaleString()} spent`,
+          event: { budget: (event.budget || []).map(b => b.id === matchingRows[0].id ? { ...b, actual: paid } : b) },
+          receipt: `Budget payment updated to $${paid.toLocaleString()}.`,
         },
-      });
-    }
+        set: {
+          label: 'Reopen the vendor balance', patch: { balancePaid: false },
+          receipt: `${vendor.name} — balance reopened. Review payments before relying on spent.`,
+        },
+      } } : {}),
+    });
   });
 
   // ── 9. Contract status conflict with documents ──────────────────────
