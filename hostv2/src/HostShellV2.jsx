@@ -274,6 +274,7 @@ import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmatio
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
+import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
@@ -8225,7 +8226,7 @@ export default function HostShellV2() {
             </>
           )}>{fmt(typical)}</BigValue>
           <Grounding>
-            {`For ${guests} at a ${String(event.type).toLowerCase()}, the middle of the range is ${fmt(typical)}. `}
+            {`For ${guests} at ${aOccasion(event.type)}, the middle of the range is ${fmt(typical)}. `}
             {estDisclosure && estDisclosure.mustMark
               ? 'That is the midpoint of a planning band, not an average of real events and not a quote. '
               : ''}The plan sizes food, vendors and shopping from here — change it anytime.
@@ -8396,7 +8397,7 @@ export default function HostShellV2() {
             onClick={() => setB(customN)}>Use it</button>
         </CtaRow>
         <Grounding gap={ASK_COMPACT.ctaToFoot}>
-          {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)}.${est.nightsAdjusted ? ` That covers your ${spanNights(event) + 1} days — food and drinks for the extra days are in the range.` : spanNights(event) > 0 && !est.destinationAdjusted ? ` That prices the main day — your ${spanNights(event) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those.` : ''}` : ''}
+          {est ? `For ${guests} at ${aOccasion(event.type)}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)}.${est.nightsAdjusted ? ` That covers your ${spanNights(event) + 1} days — food and drinks for the extra days are in the range.` : spanNights(event) > 0 && !est.destinationAdjusted ? ` That prices the main day — your ${spanNights(event) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those.` : ''}` : ''}
           {/* "run wider BECAUSE guests are traveling in" invites exactly the
               reading the proposal branch has a comment about having fixed — a
               host takes it to mean the travel is in the number. It is not: the
@@ -8427,12 +8428,12 @@ export default function HostShellV2() {
     // detection, universal playbook tasks drafted immediately, guestMode
     // 'count' (a headcount event until a roster starts), budget left to the
     // engine's own domino.
-    const short = effType.replace(' Party', '');
+    const short = occasionShortName(effType);   // "Cookout", "Watch Party" — not "The Cookout", "Watch"
     // A recognized milestone ("50th birthday") rides into the name — but it modifies the
     // OCCASION it belongs to (birthday/anniversary), NOT blindly the primary type (host
     // report: "50th ... retirement" was naming a "50th Retirement"). A DUAL event names
     // BOTH occasions ("Retirement & 50th Birthday") instead of dropping half.
-    const secShort = parsed.secondaryType ? parsed.secondaryType.replace(' Party', '') : null;
+    const secShort = parsed.secondaryType ? occasionShortName(parsed.secondaryType) : null;
     const occasions = [short, secShort].filter(Boolean);
     const cap = parsed.milestone ? parsed.milestone[0].toUpperCase() + parsed.milestone.slice(1) : null;
     const milestoneName = (cap
@@ -17100,7 +17101,7 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '2px 0 0' }}>
                           {/* "1 tables" (host report 2026-07-28) — the plural was hard-coded. */}
                           {basis === 'playbook'
-                            ? `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — what a ${String(event.type || 'event').toLowerCase()} this size usually needs. Use the ± to change it.`
+                            ? `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — what ${aOccasion(event.type || 'event')} this size usually needs. Use the ± to change it.`
                             : `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — a starting point, not a read of your room. Use the ± to change it.`}
                         </p>
                       );

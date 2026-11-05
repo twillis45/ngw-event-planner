@@ -45,6 +45,7 @@
 // the clock. The tiers above still trace to the forecast, the playbook's duration, or the
 // host's own words; tier 3 traces to "most events of this kind" and says so.
 
+import { aOccasion } from './occasionWords';
 import { getPlaybook } from './playbooks';
 import { ANCHOR_HOUR } from './eventWhen';
 
@@ -212,7 +213,7 @@ export function proposeStartTime(event, weather) {
   // ── 2. The host's own word, made precise ─────────────────────────────────────
   if (bucketMin != null) {
     drivers.push(`you said ${tod}`);
-    const dur = durH ? ` A ${String(ev.type || 'event').toLowerCase()} runs about ${durH} hours.` : '';
+    const dur = durH ? ` ${aOccasion(ev.type || 'event').replace(/^a/, 'A')} runs about ${durH} hours.` : '';
     return {
       hhmm: hhmm(bucketMin), minutes: bucketMin, label: pretty(bucketMin),
       basis: 'bucket', grounded: true, drivers,

@@ -3,6 +3,7 @@
 // Consumes: Event Identity, existing playbook engines, risk, vendor intelligence
 // Outputs: Array of cards matching the unified contract
 
+import { occasionNoun } from './occasionWords';
 import { playbookFoodPlan, effectiveRos } from './playbooks';
 // Was: Math.floor((eventMidnight - new Date()) / 86400000) — a floor over a diff whose
 // right side still carried the wall clock, so for most of every day it reported one day
@@ -64,9 +65,12 @@ function buildIdentityStage(event, eventIdentity, persona) {
   // hardcoded, so every vowel-initial type (anniversary, engagement, open house,
   // induction) read wrong on the first screen of the app.
   const article = (word) => (/^[aeiou]/i.test(String(word || '').trim()) ? 'An' : 'A');
+  // …and "A the cookout." (gold run, 11/5/2026): a type that carries its own
+  // "The" kept it. occasionNoun drops it; the article is chosen on what remains.
+  const _primaryNoun = occasionNoun(primaryEventType);
   const eventDesc = isCompound
-    ? `${article(primaryEventType)} ${primaryEventType.toLowerCase()} + ${secondaryEventTypes.map(t => t.toLowerCase()).join(' + ')}.`
-    : `${article(primaryEventType)} ${primaryEventType.toLowerCase()}.`;
+    ? `${article(_primaryNoun)} ${_primaryNoun} + ${secondaryEventTypes.map(t => occasionNoun(t)).join(' + ')}.`
+    : `${article(_primaryNoun)} ${_primaryNoun}.`;
 
   const compoundExplanation = isCompound
     ? ' Two milestones, one event. I\'ll plan both.'
