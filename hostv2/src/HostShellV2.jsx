@@ -22606,6 +22606,12 @@ export default function HostShellV2() {
                             <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
                               value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-label="Vendor email" aria-invalid={isMalformedEmail(v.email)} />
                           </div>
+                          <button className="mini" aria-label={'Remove vendor ' + (v.name || v.category || 'Unnamed')}
+                            onClick={e => {
+                              e.stopPropagation();
+                              patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
+                              setSheet(s => ({ ...s, focus: null }));
+                            }}>Remove from this event</button>
                           {isMalformedEmail(v.email) && <p className="grounding" role="alert" style={{ margin: '-4px 0 var(--sp-2)', color: 'var(--warn)' }}>That doesn’t look like an email address.</p>}
                           {/* Vendor Brief authoring (VB2, ported): contactName and
                               briefNote are both in buildVendorBriefPayload's audited
