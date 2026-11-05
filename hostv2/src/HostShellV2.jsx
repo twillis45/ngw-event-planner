@@ -3194,24 +3194,25 @@ export default function HostShellV2() {
   // sacred for custom events. This is the same principle applied to patches.
   // Told ONCE per session: a toast on every keystroke of a full disk would
   // bury the surface it is warning about.
-  useEffect(() => {
-    if (isCustomEventId(eventId)) return;
-    // Nor while the welcome gate is up, for the same reason: this wrote
-    // `ngw-hostv2-patch-ev-x-retirement-party` on a wiped device before the
-    // host had touched the screen. An empty patch is still a record that the
-    // host was working on that event, and they were not.
-    if (welcome) return;
+  const saveLocalPatch = (nextPatch) => {
     try {
-      localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch));
+      const serialized = JSON.stringify(nextPatch);
+      if (localStorage.getItem(LS_PATCH(eventId)) !== serialized) {
+        localStorage.setItem(LS_PATCH(eventId), serialized);
+      }
       saveFailedRef.current = false;
+      return { ok: true };
     } catch {
       if (!saveFailedRef.current) {
         saveFailedRef.current = true;
-        // Neutral, not green — this is not a confirmation. And it names what
-        // the host can actually do about it rather than reporting an error code.
-        toast('That change didn’t save on this device — storage is full. Free some space, then edit anything to retry.');
+        toast('That change didn’t save on this device — storage is full. Free some space, then try the change again.');
       }
+      return { ok: false, reason: 'write-failed' };
     }
+  };
+  useEffect(() => {
+    if (isCustomEventId(eventId) || welcome) return;
+    saveLocalPatch(patch);
   }, [patch, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── THE HOST'S ONLY COPY GOES THROUGH THE GUARD (2026-08-06) ─────────────
   // This was a bare setItem of the whole array. On 2026-08-06 that same shape,
@@ -3252,6 +3253,9 @@ export default function HostShellV2() {
   // that cannot be undone, and it is the only one that asks twice.
   const [confirmDelete, setConfirmDelete] = useState(null);
   useEffect(() => {
+    // patchEvent already committed this snapshot before publishing success.
+    // Other state producers still persist through this one guarded writer.
+    if (JSON.stringify(readCustomEvents()) === JSON.stringify(customs)) return;
     const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
     if (res && res.ok === false) setSaveFailed(res.reason || 'unknown');
     else setSaveFailed(null);
@@ -3663,7 +3667,7 @@ export default function HostShellV2() {
   const reconfirmedN = reconfirmables.filter(v => v.reconfirmed72 === true).length;
   const writeVendor = (id, patch, msg) => {
     const vs = (event.vendors || []).map(v => (v && v.id === id) ? { ...v, ...patch } : v);
-    patchEvent({ vendors: vs }, msg);
+    return patchEvent({ vendors: vs }, msg);
   };
   // ── THE WRITER FOR A FIELD AN ENGINE HAS BEEN READING ALL ALONG ──────────
   // vendorAccountability/derive.js:187 scores vendor staleness off
@@ -3796,7 +3800,8 @@ export default function HostShellV2() {
     if (String(n) === String(v.cost ?? '')) return; // nothing changed — no write, no toast
     const prev = v.cost;
     const name = v.name || v.category || 'This vendor';
-    writeVendor(v.id, { cost: n });
+    const result = writeVendor(v.id, { cost: n });
+    if (!result || !result.ok) { setVendorCostDraft(raw); return; }
     toast(n ? name + ' — ' + fmt(n) + ' agreed. Payment tracking reads it now.' : name + ' — agreed price cleared.', {
       label: 'Undo',
       fn: () => writeVendor(v.id, { cost: prev === undefined ? '' : prev },
@@ -3806,7 +3811,8 @@ export default function HostShellV2() {
   const toggleVendorPaid = (v) => {
     const prev = !!v.balancePaid;
     const name = v.name || v.category || 'This vendor';
-    writeVendor(v.id, { balancePaid: !prev });
+    const result = writeVendor(v.id, { balancePaid: !prev });
+    if (!result || !result.ok) return;
     toast(!prev ? name + ' marked paid in full — payment reminders stop.' : name + ' marked not fully paid yet — the payment note is back.', {
       label: 'Undo',
       fn: () => writeVendor(v.id, { balancePaid: prev },
@@ -7006,28 +7012,44 @@ export default function HostShellV2() {
     const undoable = !!msg && !(opts && opts.noUndo);
     let undoPrev = null;
     if (undoable) { undoPrev = {}; for (const k of Object.keys(obj || {})) undoPrev[k] = event[k]; }
-    if (activeCustom) setCustoms(list => list.map(c => {
-      if (!c || c.id !== eventId) return c;
-      const next = { ...c, ...obj };
-      // Created events sync exactly like real ones (same session gate, same
-      // full-event shape, same silent-offline behavior as the branch below).
-      // SYNC-HONESTY-1: the old catch{} swallowed the result — no way to tell
-      // a real cloud success from a queued/failed write. recordSaveResult
-      // stamps or records honestly so the settings sheet can tell the truth.
-      if (session) { cloudSaveEvent(next).then(res => noteSaveResult(next, res)).catch(() => {}); }
-      return next;
-    }));
-    else setPatch(p => {
-      const nextPatch = { ...p, ...obj };
-      // Real-event edits persist to the cloud (superset merge, never drops a
-      // base field). Session-gated; sample/demo events stay local-only.
-      const realBase = REAL_EVENTS.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId);
-      if (session && realBase) {
-        const savedEv = { ...realBase, ...nextPatch };
-        cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
+    let result;
+    let savedEv = null;
+    if (activeCustom) {
+      // Read the committed list so back-to-back edits build on the preceding
+      // successful write, even before React has rendered it.
+      const stored = readCustomEvents();
+      const list = stored.some(c => c && c.id === eventId) ? stored : customs;
+      const next = list.map(c => {
+        if (!c || c.id !== eventId) return c;
+        savedEv = { ...c, ...obj };
+        return savedEv;
+      });
+      result = saveCustomEvents(next, { reason: 'hostshell:patch-event' });
+      if (result.ok) setCustoms(next);
+    } else {
+      let current = patch;
+      try { current = JSON.parse(localStorage.getItem(LS_PATCH(eventId))) || patch; } catch { /* the write below reports refusal */ }
+      const nextPatch = { ...current, ...obj };
+      result = saveLocalPatch(nextPatch);
+      if (result.ok) {
+        setPatch(nextPatch);
+        const realBase = REAL_EVENTS.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId);
+        if (realBase) savedEv = { ...realBase, ...nextPatch };
       }
-      return nextPatch;
-    });
+    }
+    if (!result || !result.ok) {
+      setSaveFailed((result && result.reason) || 'write-failed');
+      setHeroReceipt(null);
+      if (!saveFailedRef.current) {
+        saveFailedRef.current = true;
+        toast('That change didn’t save on this device. Your previous saved version is still here — free some space and try again.');
+      }
+      return { ok: false, reason: result && result.reason, error: 'That change was not saved. Try again after checking device storage.' };
+    }
+    setSaveFailed(null);
+    saveFailedRef.current = false;
+    // A rejected local edit must never start a cloud write or show a receipt.
+    if (session && savedEv) cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
     feedback('act');
     if (msg) {
       // CONFIRM-GREEN: patchEvent is the ONE write path every successful edit funnels
@@ -7049,6 +7071,7 @@ export default function HostShellV2() {
       }
       else toast(msg, null, 'ok');
     }
+    return { ok: true };
   };
 
   // ── Guest replies land here. TWO sources, ONE merge (the ORIGINAL's
