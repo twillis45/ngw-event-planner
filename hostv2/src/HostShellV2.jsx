@@ -273,6 +273,7 @@ import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
+import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
@@ -717,7 +718,7 @@ function LodgeDeck({ options, guests, isRec, write }) {
 // REACT_APP_GOOGLE_MAPS_KEY), else OSM Nominatim. Extracted from the venue
 // field's original fetchAddrSugs so the venue and every other address field
 // share the exact same provider + result shape.
-export async function fetchAddressSuggestions(query) {
+export async function fetchAddressSuggestions(query, { state } = {}) {
   const q = String(query || '').trim();
   if (q.length < 3) return [];
   try {
@@ -731,12 +732,15 @@ export async function fetchAddressSuggestions(query) {
     }
     const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=us&q=' + encodeURIComponent(q));
     const j = await r.json();
-    return (Array.isArray(j) ? j : []).map(x => {
+    // The host's state first (lib/addressSuggest): "Pasadena" otherwise offers
+    // California to a host planning in Maryland.
+    return preferState((Array.isArray(j) ? j : []).map(x => {
       const a = x.address || {};
       const city = a.city || a.town || a.village || a.hamlet || '';
       const short = String(x.display_name || '').split(',').slice(0, 3).join(',');
-      return { label: short, city: city + (a.state ? ', ' + a.state : '') };
-    });
+      const iso = String(a['ISO3166-2-lvl4'] || '');
+      return { label: short, city: city + (a.state ? ', ' + a.state : ''), stateCode: /^US-[A-Z]{2}$/.test(iso) ? iso.slice(3) : '' };
+    }), state);
   } catch { return []; }
 }
 
@@ -1380,24 +1384,10 @@ export default function HostShellV2() {
     clearTimeout(addrTimer.current);
     const query = String(q || '').trim();
     if (query.length < 3) { setAddrSugs([]); return; }
+    // ONE fetcher (it was a second hand copy of fetchAddressSuggestions), and
+    // it now knows the state this event is in.
     addrTimer.current = setTimeout(async () => {
-      try {
-        if (window.google && window.google.maps && window.google.maps.places) {
-          const svc = new window.google.maps.places.AutocompleteService();
-          svc.getPlacePredictions({ input: query, componentRestrictions: { country: 'us' } }, (preds) => {
-            setAddrSugs((preds || []).slice(0, 5).map(p => ({ label: p.description, city: '' })));
-          });
-          return;
-        }
-        const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=us&q=' + encodeURIComponent(query));
-        const j = await r.json();
-        setAddrSugs((Array.isArray(j) ? j : []).map(x => {
-          const a = x.address || {};
-          const city = a.city || a.town || a.village || a.hamlet || '';
-          const short = String(x.display_name || '').split(',').slice(0, 3).join(',');
-          return { label: short, city: city + (a.state ? ', ' + a.state : '') };
-        }));
-      } catch { setAddrSugs([]); }
+      setAddrSugs(await fetchAddressSuggestions(query, { state: knownStateCode(event) }));
     }, 380);
   };
   const pickAddr = (sug) => {
