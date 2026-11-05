@@ -220,6 +220,11 @@ export function taskDueLabel(task, event, now) {
   const due = taskDueInDays(task, event, now);
   if (due == null) return '';
   if (due < 0) {
+    // A TIGHT TIMELINE IS NOT LATENESS (issue #100, D-10): a window that closed
+    // before the plan existed was never the host's to miss. taskIsOverdue
+    // already forgives it; the label beside it has to agree, or the list blames
+    // the host the policy cleared. Still urgent: taskWindowClosed stays true.
+    if (!taskWasReachable(task, event)) return 'due now';
     const late = Math.abs(due);
     // ── FALSE PRECISION READS AS A BUG (2026-08-21) ──────────────────────────
     // Caught in a marketing frame: a wedding 85 days out showed "280 days past

@@ -6047,13 +6047,19 @@ export default function HostShellV2() {
       try {
         await navigator.share({ title: 'You’re invited — ' + (event.name || 'our event'), text: 'You’re invited to ' + (event.name || 'our event') + '. RSVP here: ' + url, url });
         try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'native_share', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
+        // The share sheet completed: the invite went out (issue #100, D-10). This
+        // is the proof taskEngine reads for "Send the invite"; nothing wrote it.
+        if (!event.invitesSentAt) patchEvent({ invitesSentAt: new Date().toISOString() });
         return;
       } catch (error) { if (error && error.name === 'AbortError') return; }
     }
     try {
       await navigator.clipboard.writeText(url);
       try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'clipboard', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
-      toast('Invite link copied — the public invite is available for guests to RSVP.');
+      // A copy is not a send, so the host says when it went out — one tap, and
+      // only then is "Send the invite" credited (issue #100, D-10).
+      toast('Invite link copied — the public invite is available for guests to RSVP.',
+        event.invitesSentAt ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
       feedback('act');
     } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
   };
