@@ -18626,8 +18626,8 @@ export default function HostShellV2() {
                           <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
                             This permanently deletes your account and everything saved to it: your events, guest lists and guests’ replies. Payment receipts are kept because the law requires it. It can’t be undone. Copies saved only on this device stay here until you remove them.
                           </p>
-                          <label className="grounding" style={{ display: 'block', margin: '0 0 6px' }}>Type DELETE to confirm
-                            <input className="field" style={{ maxWidth: 'none', marginTop: 6 }} aria-label="Type DELETE to confirm account deletion" autoComplete="off" autoCapitalize="characters"
+                          <label className="grounding" style={{ display: 'block', margin: '0 0 var(--sp-2)' }}>Type DELETE to confirm
+                            <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} aria-label="Type DELETE to confirm account deletion" autoComplete="off" autoCapitalize="characters"
                               value={acctDelete.text} onChange={(ev) => setAcctDelete({ ...acctDelete, text: ev.target.value, error: '' })} />
                           </label>
                           {acctDelete.error && <p role="alert" className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>{acctDelete.error}</p>}
