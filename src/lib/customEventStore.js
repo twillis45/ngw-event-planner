@@ -27,6 +27,8 @@
 // this file was written the same day a syntax error in hostv2/src sailed through
 // a fully green 5,451-test run.
 
+import { reportFailure } from './failureTelemetry';
+
 export const LS_CUSTOMS = 'ngw-hostv2-custom-events';
 export const LS_BACKUP_INDEX = 'ngw-hostv2-store-backups';
 export const BACKUP_PREFIX = 'ngw-hostv2-backup-';
@@ -214,7 +216,10 @@ const logWrite = (entry) => {
 export function saveCustomEvents(next, opts = {}) {
   const ls = store();
   const list = Array.isArray(next) ? next.filter((e) => e && e.id) : [];
-  if (!ls) return { ok: false, wrote: false, backupKey: null, dropped: [], reason: 'no-storage' };
+  if (!ls) {
+    reportFailure('save', { where: 'customEventStore.save', reason: 'no-storage', eventId: opts.eventId });
+    return { ok: false, wrote: false, backupKey: null, dropped: [], reason: 'no-storage' };
+  }
 
   const before = readCustomEvents();
   const keptIds = new Set(list.map((e) => String(e.id)));
@@ -228,6 +233,7 @@ export function saveCustomEvents(next, opts = {}) {
     // REFUSE. This is the exact shape of the 2026-08-06 loss: a caller
     // replacing the whole array with its own single event.
     logWrite({ at: opts.now || Date.now(), reason: String(opts.reason || 'unknown'), refused: true, dropped });
+    reportFailure('save', { where: 'customEventStore.save', reason: 'would-drop-user-events', eventId: opts.eventId });
     return {
       ok: false,
       wrote: false,
@@ -241,6 +247,7 @@ export function saveCustomEvents(next, opts = {}) {
   try {
     ls.setItem(LS_CUSTOMS, JSON.stringify(list));
   } catch (e) {
+    reportFailure('save', { where: 'customEventStore.save', reason: 'write-failed', eventId: opts.eventId });
     return { ok: false, wrote: false, backupKey, dropped, reason: 'write-failed' };
   }
   logWrite({

@@ -31,7 +31,10 @@ export function initSentry() {
 // queue depth). No-op (console only) when no DSN. Telemetry must never throw.
 export function captureError(err, context = {}) {
   try {
-    if (SEND) Sentry.captureException(err instanceof Error ? err : new Error(String(err)), { extra: context });
+    if (SEND) {
+      const { tags, ...extra } = context;
+      Sentry.captureException(err instanceof Error ? err : new Error(String(err)), { extra, ...(tags ? { tags } : {}) });
+    }
     if (process.env.NODE_ENV !== 'production') console.warn('[captureError]', context.where || '', err, context);
   } catch (e) { /* never throw from telemetry */ }
 }

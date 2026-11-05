@@ -29,6 +29,7 @@ const areaLabelFor = (id) => AREA_LABELS[id]
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
+import { reportFailure, recordPassFunnel } from '@app/lib/failureTelemetry';
 import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, useSyncExternalStore, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
@@ -2878,7 +2879,7 @@ export default function HostShellV2() {
     if (!isFoodPricesConfigured() || (!state && !blsRegion)) { setFoodPP({ priceFactor: 1, priceContext: null, itemFactors: {} }); return undefined; }
     (async () => {
       try {
-        const d = await getFoodPriceFactor(state ? { state } : { region: blsRegion });
+        const d = await getFoodPriceFactor(state ? { state, eventId: event.id } : { region: blsRegion, eventId: event.id });
         // itemFactors: the backend's PER-ITEM regional factors. geoItemMap decides
         // which priced lines may claim one; every other line keeps the basket mean.
         // Exactly one multiplier lands on any band — see playbooks/index.js factorFor.
@@ -3204,6 +3205,7 @@ export default function HostShellV2() {
       saveFailedRef.current = false;
       return { ok: true };
     } catch {
+      reportFailure('save', { where: 'hostv2.patch', reason: 'write-failed', eventId });
       if (!saveFailedRef.current) {
         saveFailedRef.current = true;
         toast('That change didn’t save on this device — storage is full. Free some space, then try the change again.');
@@ -3262,7 +3264,7 @@ export default function HostShellV2() {
       return;
     }
     committedCustomSnapshot.current = null;
-    const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
+    const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state', eventId });
     if (res && res.ok === false) setSaveFailed(res.reason || 'unknown');
     else setSaveFailed(null);
   }, [customs]);
@@ -3619,6 +3621,7 @@ export default function HostShellV2() {
       // Kept working for links already in people's inboxes. Verify-first, as
       // before: the redirect params only say WHAT to check.
       if (!sessionId) {
+        reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'missing-session', eventId: paidEventId });
         toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.');
         return;
       }
@@ -3626,6 +3629,7 @@ export default function HostShellV2() {
       try { v = await verifySession(sessionId); } catch { v = null; }
       const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === feeId);
       if (!paid) {
+        reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'unconfirmed', eventId: paidEventId });
         toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.');
         return;
       }
@@ -4630,6 +4634,9 @@ export default function HostShellV2() {
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  useEffect(() => {
+    if (sheet && sheet.kind === 'pass') recordPassFunnel('sheet_viewed', eventId);
+  }, [sheet && sheet.kind, eventId]);
   // MOMENTUM (2026-08-18): log ONE session snapshot per calendar day per event, so
   // computeMomentum (src/lib/playbooks/index.js) can read progress across sessions —
   // the longitudinal Adaptivity axis named in the 08-17 rescore and, until now,
@@ -5817,7 +5824,10 @@ export default function HostShellV2() {
   // the caller falls to onCta's truthful "Not wired here yet" toast.
   const routeSheet = (route) => {
     const r = resolveRoute(route);
-    if (!r) return false;
+    if (!r) {
+      if (route) reportFailure('route', { where: 'hostv2.route', reason: 'unresolved', eventId });
+      return false;
+    }
     // Stage landings focus an existing answer row on the plan. Date and venue
     // inputs use their existing sheets, so they never depend on an unmounted hero editor.
     if (r.kind === 'stage:plan') {
@@ -7036,7 +7046,7 @@ export default function HostShellV2() {
         savedEv = { ...c, ...obj };
         return savedEv;
       });
-      result = saveCustomEvents(next, { reason: 'hostshell:patch-event' });
+      result = saveCustomEvents(next, { reason: 'hostshell:patch-event', eventId });
       if (result.ok) {
         committedCustomSnapshot.current = JSON.stringify(next);
         setCustoms(next);
@@ -17498,11 +17508,13 @@ export default function HostShellV2() {
               const buyPass = async () => {
                 if (openingCheckout) return;
                 setOpeningCheckout(true);
+                recordPassFunnel('checkout_started', event.id);
                 try {
                   const out = await createPassSession({ eventId: event.id });
                   // Leaving for Stripe: stay busy — the page is navigating away.
                   if (out && out.url) { window.location.assign(out.url); return; }
                   setOpeningCheckout(false);
+                  reportFailure('pass_checkout', { where: 'hostv2.checkout', reason: 'missing-url', eventId: event.id });
                   toast('Couldn’t open checkout just now — please try again.');
                 } catch (e) {
                   setOpeningCheckout(false);
@@ -17515,6 +17527,7 @@ export default function HostShellV2() {
                     toast('This event hasn’t finished syncing to your account yet — give it a moment and try again.');
                     return;
                   }
+                  reportFailure('pass_checkout', { where: 'hostv2.checkout', reason: 'request-failed', eventId: event.id });
                   toast('Checkout isn’t available right now.');
                 }
               };
@@ -18354,13 +18367,29 @@ export default function HostShellV2() {
                               if (!f) return;
                               const r = new FileReader();
                               r.onload = () => {
-                                let res = null;
-                                try { res = importCustomEvents(JSON.parse(String(r.result)), { reason: 'settings:import' }); }
+                                let payload;
+                                try { payload = JSON.parse(String(r.result)); }
                                 catch { toast('That file isn’t a copy of your events.'); return; }
-                                if (!res || res.ok === false) { toast('Nothing was changed — that file didn’t bring any events.'); return; }
-                                setCustoms(readCustomEventsSafe());
-                                setDataTick(t => t + 1);
-                                toast('Your events are back.');
+                                const applyImport = (overwriteExisting = false) => {
+                                  let res;
+                                  try { res = importCustomEvents(payload, { reason: 'settings:import', overwriteExisting }); }
+                                  catch {
+                                    reportFailure('save', { where: 'hostv2.import', reason: 'unexpected-failure' });
+                                    toast('Nothing was restored — the file could not be applied on this device. Check the file and available storage, then try again.');
+                                    return;
+                                  }
+                                  if (!res || !res.ok) {
+                                    toast('Nothing was restored — the file could not be applied on this device. Check the file and available storage, then try again.');
+                                    return;
+                                  }
+                                  setCustoms(readCustomEventsSafe());
+                                  setDataTick(t => t + 1);
+                                  toast(`${res.added} added · ${res.updated} updated · ${res.skipped} kept`,
+                                    !overwriteExisting && res.skipped > 0
+                                      ? { label: 'Replace matching events', fn: () => applyImport(true) }
+                                      : null);
+                                };
+                                applyImport();
                               };
                               r.onerror = () => toast('Couldn’t read that file.');
                               r.readAsText(f);

@@ -49,6 +49,7 @@
 // wearing a different name. The cost is one fetch per event per session, which
 // is the right trade.
 import { fetchEventPass } from './stripeApi';
+import { reportFailure } from './failureTelemetry';
 
 // eventId -> true | false. Absent means NEVER ASKED, which is not the same as
 // false and must never be collapsed into it.
@@ -174,9 +175,13 @@ export async function refreshEventPass(
         try {
           out = await fetchEventPass(key);
         } catch {
+          reportFailure('pass_verify', { where: 'passEntitlement.refresh', reason: 'request-failed', eventId: key });
           return null;                     // see A FAILURE RECORDS NOTHING
         }
-        if (!out || typeof out.held !== 'boolean') return null;   // unknown shape
+        if (!out || typeof out.held !== 'boolean') {
+          reportFailure('pass_verify', { where: 'passEntitlement.refresh', reason: 'invalid-response', eventId: key });
+          return null;
+        }   // unknown shape
 
         // `rec.claimed`, not the parameter — an upgrade that arrived while this
         // request was in flight must count.

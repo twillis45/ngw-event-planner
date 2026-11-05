@@ -146,6 +146,15 @@ export async function track(event, properties = {}) {
 // ── Pre-defined events (keeps tracking consistent) ─────────────────────────
 
 export const EVENTS = {
+  // Failure classes and paid-path intent (no event contents or raw IDs).
+  SAVE_FAILED:            'save_failed',
+  PROVIDER_FAILED:        'provider_failed',
+  ROUTE_FAILED:           'route_failed',
+  PASS_CHECKOUT_FAILED:   'pass_checkout_failed',
+  PASS_VERIFY_FAILED:     'pass_verify_failed',
+  PASS_SHEET_VIEWED:      'pass_sheet_viewed',
+  PASS_CHECKOUT_STARTED:  'pass_checkout_started',
+
   // Navigation
   PAGE_VIEW:              'page_view',
   TAB_CHANGED:            'tab_changed',
