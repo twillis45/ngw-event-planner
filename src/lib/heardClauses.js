@@ -52,6 +52,7 @@ import { unusedClauses } from './smartParseEvent';
 import { heardAccessNeeds } from './accessNeeds';
 import { heardMustHaves, heardStayStyle } from './lodgingIntel';
 import { heardFoods } from './heardFoods';
+import { heardGameStyle } from './heardGameStyle';
 
 // ── THIS FILE IS THE COMPOSITION ROOT (Sprint 0.5 Decision 2) ──────────────
 //
@@ -111,7 +112,8 @@ export function heardVendorIntents(text) {
 // foods she named, so they are read here too — otherwise they are reported as
 // dropped while being on the menu. Mapped to names: its rows carry a regex.
 const heardFoodNames = (text) => heardFoods(text).map((f) => f.name);
-const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents, heardFoodNames];
+// heardGameStyle (run 2, R2-15): creation records "Team games" as her pick.
+const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents, heardFoodNames, heardGameStyle];
 
 /**
  * clausesNotUsed(text) → the clauses NOTHING in creation read.

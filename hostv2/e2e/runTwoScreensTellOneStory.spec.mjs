@@ -70,3 +70,40 @@ test('R2-20: "$650" is a price; $1,000,000 is asked about once, then kept', asyn
   await pay.press('Enter');
   await expect.poll(cost).toBe(1000000);
 });
+
+// R2-15 (owner-approved): "team-oriented games" becomes her pick, with the
+// team-split task on the checklist and labeled suggestions on the decision.
+test('R2-15: Vida\'s "team-oriented games" is recorded as her pick', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private */ } });
+  await page.goto('./?elegant=1');
+  await page.getByRole('button', { name: 'Start my event' }).first().click();
+  await page.getByPlaceholder(/crab feast/i).first().fill('Vida is hosting a girls’ game night on Saturday, March 13, 2027 at 12 Sample Rd in Pasadena, Maryland. Ten girlfriends are coming. We want fun, team-oriented games, food, drinks, and a relaxed atmosphere.');
+  const creation = await page.evaluate(() => document.body.innerText || '');
+  expect(creation).not.toMatch(/didn.t make it into the plan[\s\S]{0,200}team-oriented/i);
+  await page.getByRole('button', { name: /^Put my plan together$/ }).click();
+  await expect.poll(() => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]').length; } catch { return 0; } }), { timeout: 15000 }).toBeGreaterThan(0);
+  const ev = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0]);
+  expect(ev.foodChoices && ev.foodChoices.game_type).toBe('Team games');
+  expect(ev.choiceSource && ev.choiceSource.game_type).toBe('host');
+  expect((ev.timeline || []).some((t) => /Plan the teams/.test(t.task))).toBe(true);
+});
+
+// Owner request (11/6/2026): the host adds the games she has; each counts
+// toward the game library's need, and she can take one back off.
+test('her own games: added, counted toward the library, removable', async ({ page }, testInfo) => {
+  test.skip(!RAIL.test(testInfo.project.name), 'rail viewports');
+  await open(page, 'Space, seats');
+  await page.getByRole('button', { name: /game library/i }).first().click();
+  const box = page.getByLabel('Add a game you have');
+  const ev = () => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0]);
+  await box.fill('Codenames'); await box.press('Enter');
+  await box.fill('Catan'); await box.press('Enter');
+  await box.fill('codenames'); await box.press('Enter');
+  await expect.poll(async () => ((await ev()).gameLineup || []).map((g) => g.name).join('|')).toBe('Codenames|Catan');
+  const key = Object.keys((await ev()).capacityHave || {}).find((k) => /game/i.test(k));
+  expect(key, 'the library item has a have-count').toBeTruthy();
+  expect((await ev()).capacityHave[key]).toBe(2);
+  await page.getByRole('button', { name: 'Remove Catan' }).click();
+  await expect.poll(async () => (await ev()).capacityHave[key]).toBe(1);
+  expect(((await ev()).gameLineup || []).map((g) => g.name)).toEqual(['Codenames']);
+});

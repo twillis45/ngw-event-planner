@@ -135,6 +135,8 @@ import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenCons
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
 import { heardFoods, uncoveredFoods } from '@app/lib/heardFoods';
+import { heardGameStyle } from '@app/lib/heardGameStyle';
+import { addGame, removeGame, isGameLibrary, GAME_NAME_MAX } from '@app/lib/gameLineup';
 import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuestions';
 
 import { foodSpanNote } from '@app/lib/foodSpan';
@@ -8645,6 +8647,15 @@ export default function HostShellV2() {
     try { Object.assign(ev, defaultStartTime(ev, null) || {}); } catch (_e) { /* no grounding — the list asks */ }
     // Canonical checklist over the real event object (date-relative offsets,
     // choice/caterer gates). No date yet → honestly empty; drafts later.
+    // THE GAMES SHE ASKED FOR ARE HER PICK (run 2, R2-15): "team-oriented games"
+    // had no option. When the playbook offers the style she named, it is recorded
+    // as answered BY HER (choiceSource 'host') — before the checklist is drawn, so
+    // the team-split task is on it from the start.
+    try {
+      const style = heardGameStyle(smartText);
+      const d = style && ((getPlaybook(ev.type) || {}).decisions || []).find((x) => x && x.id === 'game_type' && (x.options || []).includes(style));
+      if (d) { ev.foodChoices = { ...(ev.foodChoices || {}), game_type: style }; ev.choiceSource = { ...(ev.choiceSource || {}), game_type: 'host' }; }
+    } catch (_e) { /* the decision asks later */ }
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
     // A FOOD SHE NAMED IS ON THE MENU (GOLD-05, 11/5/2026). One the playbook
     // already carries stays as it is; any other becomes a host-named line.
@@ -15039,6 +15050,47 @@ export default function HostShellV2() {
                             {remaining > 0 && <span className="of">still need {remaining}{helperName ? ' — ask ' + helperName : ''}</span>}
                             {remaining === 0 && helperName && <span className="of" style={{ color: 'var(--ok)' }}>{helperName} has it covered</span>}
                           </div>
+                          {/* HER OWN GAMES (owner request, 11/6/2026): the games she
+                              names are the library — each counts toward "need N".
+                              Her words as typed; nothing suggested or ranked here. */}
+                          {isGameLibrary(it) && (() => {
+                            const lineup = Array.isArray(event.gameLineup) ? event.gameLineup : [];
+                            const write = (list, msg) => {
+                              const h = Math.min(baseNeed, list.length);
+                              patchEvent({
+                                gameLineup: list,
+                                capacityHave: { ...(event.capacityHave || {}), [it.key]: h },
+                                capacityQty: { ...(event.capacityQty || {}), [it.key]: Math.max(0, baseNeed - h) },
+                                capacityOwned: { ...(event.capacityOwned || {}), [it.key]: h >= baseNeed },
+                              }, msg);
+                            };
+                            return (
+                              <>
+                                {lineup.length > 0 && (
+                                  <div className="actions-row" aria-label="Your games">
+                                    {lineup.map((g) => (
+                                      <Fragment key={g.id}>
+                                        <span className="chip" aria-pressed="true">{g.name}</span>
+                                        <button className="mini" aria-label={'Remove ' + g.name}
+                                          onClick={() => write(removeGame(lineup, g.id), g.name + ' off your games.')}>×</button>
+                                      </Fragment>
+                                    ))}
+                                  </div>
+                                )}
+                                <input className="field" type="text" maxLength={GAME_NAME_MAX}
+                                  placeholder="Add a game you have — e.g. Codenames" aria-label="Add a game you have"
+                                  onKeyDown={(e) => {
+                                    if (e.key !== 'Enter') return;
+                                    const r = addGame(lineup, e.currentTarget.value);
+                                    if (r.added) {
+                                      const left = Math.max(0, baseNeed - r.list.length);
+                                      write(r.list, r.list[r.list.length - 1].name + ' is on your games' + (left ? ' — ' + left + ' more to go.' : ' — the library is covered.'));
+                                      e.currentTarget.value = '';
+                                    } else if (r.reason === 'duplicate') toast('That one’s already on your games.');
+                                  }} />
+                              </>
+                            );
+                          })()}
                           {links && remaining > 0 && (
                             <div className="actions-row" style={{ marginTop: 'var(--sp-1)' }}>
                               {links.kind === 'rent' && links.rentUrl && (
