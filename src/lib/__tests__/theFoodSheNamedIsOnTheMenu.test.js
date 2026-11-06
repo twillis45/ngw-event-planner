@@ -44,3 +44,16 @@ test('"drinks" is heard, is covered by any drink line, and is no longer reported
   expect(uncoveredFoods(heardFoods(vida), list).map((f) => f.name)).not.toContain('Drinks');
   expect(clausesNotUsed(vida).join(' | ')).not.toMatch(/\bdrinks\b/i);
 });
+
+describe('similarPlanLine (run 2, R2-21): an added item the list already has', () => {
+  const { similarPlanLine } = require('../heardFoods');
+  const list = [{ item: 'Ice (coolers + drinks + red drink)' }, { item: 'Chips, crackers, pretzels & popcorn' }];
+  test('"Ice" matches the ice line; "chips" matches the chips line', () => {
+    expect(similarPlanLine('Ice', list)).toMatch(/^Ice/);
+    expect(similarPlanLine('chips', list)).toMatch(/^Chips/);
+  });
+  test('a new thing matches nothing; a fragment of a word is not a match', () => {
+    expect(similarPlanLine('Aunt Carol’s potato salad', list)).toBeNull();
+    expect(similarPlanLine('rice', list)).toBeNull();
+  });
+});

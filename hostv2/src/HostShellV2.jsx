@@ -134,7 +134,7 @@ import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
-import { heardFoods, uncoveredFoods } from '@app/lib/heardFoods';
+import { heardFoods, uncoveredFoods, similarPlanLine } from '@app/lib/heardFoods';
 import { heardGameStyle } from '@app/lib/heardGameStyle';
 import { addGame, removeGame, isGameLibrary, GAME_NAME_MAX } from '@app/lib/gameLineup';
 import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuestions';
@@ -6562,9 +6562,14 @@ export default function HostShellV2() {
   // event.foodAdd, which playbookFoodPlan already merges into foodPlan.list —
   // no engine change required. Cost is optional; blank/unparsed stays 0, the
   // honest "no cost yet / they're bringing it" framing (never a fake number).
+  const FOOD_ADD_MAX = 120;
   const commitFoodAdd = () => {
     const name = foodAddName.trim();
     if (!name) return;
+    // A LINE IS A LINE, NOT A PARAGRAPH (run 2: a 900-character item was saved).
+    if (name.length > FOOD_ADD_MAX) { toast('Keep it under ' + FOOD_ADD_MAX + ' characters — a short name reads best on the list.'); return; }
+    // ALREADY ON THE LIST IS SAID, NOT REFUSED (run 2, R2-21).
+    const twin = similarPlanLine(name, (foodPlan && foodPlan.list) || []);
     const id = 'add-' + Date.now().toString(36);
     const guess = guessFoodCategory(name);
     patchEvent({
@@ -6573,7 +6578,7 @@ export default function HostShellV2() {
         cost: Math.max(0, Math.round(Number(foodAddCost) || 0)),
         group: foodAddGroup || guess.group, cat: guess.cat,
       }],
-    }, name + ' added to the plan.');
+    }, name + ' added to the plan.' + (twin ? ' Your list already has “' + twin + '” — remove one if they’re the same.' : ''));
     setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); setFoodAddOpen(false);
   };
 
@@ -7227,8 +7232,14 @@ export default function HostShellV2() {
       announceReplies(gs, merged + added, yesCount);
     } catch { /* queue unreadable — leave it for the original app */ }
   }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // OWNER-ONLY READS ARE FOR HER OWN EVENTS (run 2, R2-25): a signed-in host on
+  // a sample event fired /rsvps and /vendor-confirmations reads the server must
+  // refuse (403). Her own = created here, or delivered by her account. The
+  // account's events arrive async, so the reads re-run once that is known.
+  const ownsEvent = !!activeCustom || [...REAL_EVENTS, ...(hydratedEvents || [])].some((e) => e && e.id === event.id);
   useEffect(() => {
     if (!isRsvpApiConfigured()) return undefined;
+    if (!ownsEvent) return undefined;
     let dead = false;
     (async () => {
       try {
@@ -7278,7 +7289,7 @@ export default function HostShellV2() {
       } catch { /* offline or unauthorized — the local queue path still works */ }
     })();
     return () => { dead = true; };
-  }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event.id, ownsEvent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Vendor confirm-back read-back (build-map #10, Phase 2): a vendor who opened
   // the brief link and confirmed (or flagged an issue) lands here, so the host's
@@ -7287,14 +7298,14 @@ export default function HostShellV2() {
   // Degrades to [] when the API isn't configured (the demo) — no dead UI.
   const [vendorConfirmations, setVendorConfirmations] = useState([]);
   useEffect(() => {
-    if (!isVendorBriefApiConfigured()) { setVendorConfirmations([]); return undefined; }
+    if (!isVendorBriefApiConfigured() || !ownsEvent) { setVendorConfirmations([]); return undefined; }
     let dead = false;
     (async () => {
       try { const rows = await fetchVendorConfirmations(event.id); if (!dead) setVendorConfirmations(Array.isArray(rows) ? rows : []); }
       catch { if (!dead) setVendorConfirmations([]); }
     })();
     return () => { dead = true; };
-  }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event.id, ownsEvent]); // eslint-disable-line react-hooks/exhaustive-deps
   // Latest confirmation per vendor id (server returns newest-first, so first wins).
   const confirmationByVendor = useMemo(() => {
     const m = {};
@@ -9927,7 +9938,7 @@ export default function HostShellV2() {
                       {parsed && parsed.typeBasis === 'generic' && effType && (
                         <p className="grounding" style={{ margin: '12px 0 0', color: 'var(--warn)' }}>
                           Reading this as a <strong>{String(effType).toLowerCase()}</strong> because you said
-                          “party” — nothing named the kind of event. If that’s not it, change it above:
+                          “{String(parsed.typeHeard || 'party').toLowerCase()}” — nothing named the kind of event. If that’s not it, change it above:
                           the checklist, the risks and the food all follow from it.
                         </p>
                       )}
@@ -11654,7 +11665,7 @@ export default function HostShellV2() {
                       host reads on the most important day of the event. The
                       module is the last run-through either way; only its name
                       was wrong at T-0. */}
-                  <div className="eyebrow">{dayBefore.daysOut === 0 ? 'Today · your final run-through' : dayBefore.daysOut === 1 ? 'Tomorrow · your day-before plan' : 'Two days out · your day-before plan'}</div>
+                  <div className="eyebrow">{dayBefore.daysOut === 0 ? 'Today · your final run-through' : dayBefore.daysOut === 1 ? 'Event tomorrow · your day-before plan' : 'Two days out · your day-before plan'}</div>
                   <h3>{(() => {
                     // RECON MODEL (2026-07-11): the engine's "7 things still
                     // matter" summed unlike units. Composed HERE (V2-side; the

@@ -1009,7 +1009,7 @@ export default function InviteV2({ code }) {
                     {rsvp === 'Yes' ? 'Wonderful — just a few taps' : rsvp === 'Maybe' ? 'Noted — leave a name at least' : 'Thanks for telling us straight'}
                   </div>
                   <input className="field" ref={nameRef} style={{ maxWidth: 'none', ...(nameInvalid ? { borderColor: 'var(--danger)' } : {}) }}
-                    autoComplete="name" placeholder="Your name — first and last" aria-invalid={nameInvalid || undefined}
+                    autoComplete="name" maxLength={120} placeholder="Your name — first and last" aria-invalid={nameInvalid || undefined}
                     aria-describedby={nameInvalid ? 'rsvp-name-error' : undefined}
                     value={guestName} onChange={e => { setGuestName(e.target.value); if (nameInvalid && e.target.value.trim()) { setNameInvalid(false); setErr(attendInvalid ? 'Let us know if you can make it.' : ''); } }} aria-label="Your name" />
                   {nameInvalid && <p id="rsvp-name-error" className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Add your name to send.</p>}

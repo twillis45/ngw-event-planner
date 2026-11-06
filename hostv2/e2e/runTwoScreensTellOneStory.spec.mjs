@@ -107,3 +107,25 @@ test('her own games: added, counted toward the library, removable', async ({ pag
   await expect.poll(async () => (await ev()).capacityHave[key]).toBe(1);
   expect(((await ev()).gameLineup || []).map((g) => g.name)).toEqual(['Codenames']);
 });
+
+// Run 2 P3s that reach a screen.
+test('R2-21: an item the list already has is added, and the list says so', async ({ page }, testInfo) => {
+  test.skip(!RAIL.test(testInfo.project.name), 'rail viewports');
+  await page.addInitScript(() => { window.__t = []; new MutationObserver(() => document.querySelectorAll('[role=status]').forEach((n) => { const x = (n.innerText || '').trim(); if (x && window.__t[window.__t.length - 1] !== x) window.__t.push(x); })).observe(document, { subtree: true, childList: true, characterData: true }); });
+  await open(page, 'The spread');
+  await page.getByRole('button', { name: /Add an item you/ }).first().click();
+  const box = page.getByPlaceholder(/Aunt Carol/).first();
+  await box.fill('Ice'); await box.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.__t.join(' | '))).toMatch(/Ice added to the plan\. Your list already has “Ice/);
+});
+
+test('R2-8 / R2-9: a typo still names the occasion; a guess quotes her own word', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private */ } });
+  await page.goto('./?elegant=1');
+  await page.getByRole('button', { name: 'Start my event' }).first().click();
+  const box = page.getByPlaceholder(/crab feast/i).first();
+  await box.fill('graduaton party for 40 on June 5 2027');
+  await expect(page.getByRole('button', { name: 'Graduation', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await box.fill('Fiesta de cumpleaños para mi mamá, 30 personas');
+  await expect(page.getByText(/because you said “fiesta”/)).toBeVisible();
+});

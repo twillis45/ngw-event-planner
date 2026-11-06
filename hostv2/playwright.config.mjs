@@ -10,6 +10,8 @@ import { previewUrl } from './deployBase.mjs';
 // See the note above `projects` for why this is per-test, not per-file.
 const SELF_PINNED = [
   '**/heroVoid.spec.mjs',
+  // Pins 320x640 in its one test (run 2, R2-12).
+  '**/theCountFitsAt320.spec.mjs',
   // Drives its own four geometries below 1280; the >=1280 command layout composes
   // a different fold and this rule does not govern it.
   '**/foldAtTheFoot.spec.mjs',

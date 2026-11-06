@@ -54,3 +54,20 @@ export function uncoveredFoods(heard, planItems) {
   const names = (planItems || []).map((it) => String((it && (it.item || it.name || it.label)) || ''));
   return (heard || []).filter((f) => !names.some((n) => f.onPlan.test(n)));
 }
+
+/**
+ * The plan line a host-added item already looks like (run 2, R2-21: "Ice" was
+ * added beside "Ice (coolers + drinks)" with no word). Every word of what she
+ * typed must appear as a whole word in the line; null when nothing matches.
+ * Flagged, never refused — a second bag of ice can be on purpose.
+ */
+export function similarPlanLine(name, planItems) {
+  const words = String(name || '').toLowerCase().match(/[a-z0-9]+/g) || [];
+  if (!words.length || words.join('').length < 3) return null;
+  for (const it of planItems || []) {
+    const label = String((it && (it.item || it.name || it.label)) || '');
+    const low = label.toLowerCase();
+    if (words.every((w) => new RegExp('\\b' + w + 's?\\b').test(low))) return label;
+  }
+  return null;
+}
