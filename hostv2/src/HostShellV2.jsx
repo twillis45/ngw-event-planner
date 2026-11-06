@@ -963,8 +963,21 @@ function usePassEntitlement(eventId) {
   );
 }
 
+// A SENTENCE SHE WAS TYPING SURVIVES A RELOAD (run 3, R3-4): iOS reloads a
+// backgrounded tab, and the creation box came back empty on the Welcome
+// screen. The draft is kept for a day and reopens Create; creating the event
+// (or clearing the box) removes it.
+const LS_CREATE_DRAFT = 'ngw-hostv2-create-draft';
+function readCreateDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(LS_CREATE_DRAFT) || 'null');
+    return d && typeof d.text === 'string' && d.text.trim() && Date.now() - Number(d.at || 0) < 86400000 ? d.text : '';
+  } catch { return ''; }
+}
+
 export default function HostShellV2() {
-  const [stage, setStage] = useState('plan');
+  const [bootDraft] = useState(readCreateDraft);
+  const [stage, setStage] = useState(() => (bootDraft ? 'create' : 'plan'));
   const [eventId, setEventId] = useState(BOOT_EVENT_ID);
   // EVERY event created here (array — creating a second never overwrites the
   // first). Each stores itself whole; edits land directly on the array entry.
@@ -982,6 +995,7 @@ export default function HostShellV2() {
     // or the welcomed flag, the gate is otherwise correctly suppressed, so
     // this is the only way to watch splash → welcome end-to-end there).
     try { if (new URLSearchParams(window.location.search).has('welcome')) return true; } catch { /* ancient browser — fall through */ }
+    if (bootDraft) return false; // she was mid-sentence — straight back to it
     let seen = false; try { seen = localStorage.getItem(LS_WELCOMED) === '1'; } catch { seen = false; }
     return shouldShowWelcome({ appEvents: APP_EVENTS, customEvent: CUSTOM_EVENTS_AT_LOAD[0] || null, welcomed: seen });
   });
@@ -1332,7 +1346,7 @@ export default function HostShellV2() {
 
   // Create — ONE smart input; the real resolvers parse it. Form fields exist
   // only as corrections layered over the parse (host-shell logic, not a form).
-  const [smartText, setSmartText] = useState('');
+  const [smartText, setSmartText] = useState(bootDraft);
   // SMALL INTAKE (host ruling 2026-07-23, Figma 626:61 link + 626:78 screen): a
   // guided alternative to the free-text field. The three taps COMPOSE the same
   // sentence the host would have typed, into the SAME smartText -> parser path —
@@ -1625,6 +1639,13 @@ export default function HostShellV2() {
     setListening(false);
   };
   const [revealed, setRevealed] = useState(false);
+  // Keep (or clear) the creation draft — see readCreateDraft.
+  useEffect(() => {
+    try {
+      if (smartText.trim() && !revealed) localStorage.setItem(LS_CREATE_DRAFT, JSON.stringify({ text: smartText, at: Date.now() }));
+      else localStorage.removeItem(LS_CREATE_DRAFT);
+    } catch { /* private mode — the draft simply is not kept */ }
+  }, [smartText, revealed]);
   // REVEAL — THE MONOLITH (host concept pick 2026-07-27, "partial to B", plus
   // "the fallback list should be the baseline / let the host READ"): keynote
   // choreography — intro (eyebrow tracks in) → zoom (the name arrives from
@@ -3281,6 +3302,25 @@ export default function HostShellV2() {
     if (res && res.ok === false) setSaveFailed(res.reason || 'unknown');
     else setSaveFailed(null);
   }, [customs]);
+  // ANOTHER TAB'S WRITE IS ADOPTED, NOT OVERWRITTEN (run 3, R3-5): with two tabs
+  // open, a guest added in one was wiped when the other — holding the older
+  // list — made its next edit. The browser tells every other tab when storage
+  // changes; this tab now takes that copy as its own, so its next write builds
+  // on it. Marked committed so the save effect above does not write it back.
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.storageArea && e.storageArea !== window.localStorage) return;
+      if (e.key === LS_CUSTOMS) {
+        const next = readCustomEvents();
+        committedCustomSnapshot.current = JSON.stringify(next);
+        setCustoms(next);
+      } else if (e.key === LS_PATCH(eventId)) {
+        try { setPatch(JSON.parse(e.newValue || '{}') || {}); } catch (_e) { /* unreadable — keep ours */ }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [eventId]);
   // Reload lands back where the host was — creation and switching both flow
   // through eventId, so ONE writer covers them.
   //
@@ -7236,7 +7276,14 @@ export default function HostShellV2() {
   // a sample event fired /rsvps and /vendor-confirmations reads the server must
   // refuse (403). Her own = created here, or delivered by her account. The
   // account's events arrive async, so the reads re-run once that is known.
-  const ownsEvent = !!activeCustom || [...REAL_EVENTS, ...(hydratedEvents || [])].some((e) => e && e.id === event.id);
+  // A BRAND-NEW EVENT WAITS FOR ITS FIRST SAVE (run 3, R3-8): created while
+  // signed in, its owner reads fired before the account had the event and were
+  // refused (403). Until the first save stamps _cloudUpdatedAt the reads wait;
+  // the stamp re-runs them. Only a just-created event waits — anything older
+  // reads as before.
+  const freshUnsaved = !!(session && activeCustom && !activeCustom._cloudUpdatedAt
+    && activeCustom.createdAt && Date.now() - Date.parse(activeCustom.createdAt) < 120000);
+  const ownsEvent = !freshUnsaved && (!!activeCustom || [...REAL_EVENTS, ...(hydratedEvents || [])].some((e) => e && e.id === event.id));
   useEffect(() => {
     if (!isRsvpApiConfigured()) return undefined;
     if (!ownsEvent) return undefined;
@@ -14824,7 +14871,9 @@ export default function HostShellV2() {
                   aria-label="Last day of the event"
                   onChange={e => {
                     const v = e.target.value;
-                    if (v && event.date && v <= String(event.date).slice(0, 10)) return; // span only extends forward
+                    // span only extends forward — and says so (run 3, R3-3: a last day
+                    // before the first was refused without a word)
+                    if (v && event.date && v <= String(event.date).slice(0, 10)) { toast('The last day has to come after the first day (' + usShortDate(String(event.date).slice(0, 10)) + ').'); return; }
                     patchEvent({ endDate: v || null },
                       v ? 'Multi-day set — the plan now runs through your last day.' : 'Back to a single day.');
                   }} />
