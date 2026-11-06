@@ -9583,9 +9583,20 @@ export default function HostShellV2() {
                           if (vname && vname.includes(a.toLowerCase())) return null;
                           return <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{a}</span>;
                         })()}
-                        <button className="chip" aria-pressed={!!effCityText} onClick={() => setCreateEdit(createEdit === 'city' ? null : 'city')}>
-                          {effCityText || 'Which town?'}
-                        </button>
+                        {/* A TOWN THAT CANNOT BE SAVED SAYS SO HERE (run 2, R2-4):
+                            "in Chicago" showed a settled "Chicago" chip, then the
+                            creation gate (parseVenueLocation needs a state or ZIP)
+                            wrote venueCity '' and said nothing — the reveal asked
+                            "Where is the event?". The chip now asks for the state
+                            before she commits, and is not shown as settled. */}
+                        {(() => {
+                          const savable = !effCityText.trim() || !!parseVenueLocation(effCityText.trim());
+                          return (
+                            <button className="chip" aria-pressed={!!effCityText && savable} onClick={() => setCreateEdit(createEdit === 'city' ? null : 'city')}>
+                              {!effCityText ? 'Which town?' : savable ? effCityText : effCityText + ' — which state?'}
+                            </button>
+                          );
+                        })()}
                         <button className="chip" aria-pressed={!!effBudget} onClick={() => setCreateEdit(createEdit === 'budget' ? null : 'budget')}>
                           {effBudget ? '$' + effBudget.toLocaleString() + (fBudget == null && parsed.budget != null ? ' · heard' : '') : 'Budget?'}
                         </button>
@@ -9975,10 +9986,14 @@ export default function HostShellV2() {
                             style={effDate && dstatC.blocking ? { opacity: .45, cursor: 'not-allowed' } : undefined}>
                             Put my plan together
                           </button>
+                          {/* A DISABLED BUTTON SAYS WHY (run 2, R2-3): a past date
+                              disabled this with the reason only inside the date
+                              editor — the host saw "Jun 3" and a dead button. */}
+                          {effDate && dstatC.blocking && <p className="grounding" role="alert">{dstatC.reason}</p>}
                           <p className="grounding" style={{ marginTop: 10 }}>
                             {effGuests ? `Planning around ${effGuests}${fGuests == null && parsed.guests == null ? ' (the ' + effType.replace(' Party', '').toLowerCase() + ' typical)' : ''}` : ''}
                             {expectC ? ` — likely ${likelyAttendancePhrase(expectC)} make it.` : ''}
-                            {!effDate ? ' No date yet is fine — the plan will ask.' : ''}
+                            {!effDate && parsed.impossibleDate ? ` “${parsed.impossibleDate.trim()}” isn’t a day on the calendar, so there’s no date yet — the plan will ask.` : !effDate ? ' No date yet is fine — the plan will ask.' : ''}
                           </p>
                           {/* MODEL D creation-time disclosure (Grandmother's rider: this
                               line INFORMS — blunt boundary, before any work is invested;

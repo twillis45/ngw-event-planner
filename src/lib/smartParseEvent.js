@@ -158,8 +158,12 @@ export function parseSmartEventText(text, opts = {}) {
   // 12 guests" still matches here, and anything this now declines falls
   // through to the COUNT_NOUNS and "N of us" patterns below, which is where
   // a headcount belongs.
-  const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b(?!\s*(?:nights?|nites?|days?|weeks?|wks?|months?|mos?|years?|yrs?|hours?|hrs?|minutes?|mins?|am|pm))/i)
-    || t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
+  const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b(?!,\d)(?!\s*(?:nights?|nites?|days?|weeks?|wks?|months?|mos?|years?|yrs?|hours?|hrs?|minutes?|mins?|am|pm))/i)
+    // A BIG COUNT IS STILL HER COUNT (run 2, R2-5): "for 10000 people" matched
+    // nothing (three digits max) and the plan sized itself to the 35 typical
+    // without a word. Four- and five-digit counts and "1,000" are read only
+    // when a people-noun follows, so a year ("for 2027") never becomes guests.
+    || t.match(new RegExp(`\\b(\\d{1,3}(?:,\\d{3})?|\\d{4,5})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
     // "12 of us", "20 of them" — the count with no noun at all.
     || t.match(/\b(\d{1,3})\s+of\s+(?:us|them)\b/i)
     // HOW PEOPLE ACTUALLY HEDGE A NUMBER (measured 2026-09-23 against a corpus
@@ -170,7 +174,7 @@ export function parseSmartEventText(text, opts = {}) {
     // estimate, and the app already shows a likely-attendance band around it.
     || t.match(/\b(\d{1,3})\s*(?:ish|-ish)\b/i)
     || t.match(/\b(\d{1,3})\s+or\s+so\b/i);
-  if (gm) guests = parseInt(gm[1], 10);
+  if (gm) guests = parseInt(String(gm[1]).replace(/,/g, ''), 10);
 
   // ── A COUPLE IS TWO PEOPLE (2026-09-25) ───────────────────────────
   //
@@ -388,6 +392,11 @@ export function parseSmartEventText(text, opts = {}) {
   // Requires the ordinal or the word "of" — a bare "14 June" is admitted, but
   // "20 people June 14" must never read the 20 as a day, so the day half is
   // capped at 31 and an intervening word is not allowed.
+  // A DAY THAT DOES NOT EXIST IS NOT ROLLED OVER (run 2, R2-2): JavaScript's
+  // Date turns "February 30" into March 2 without a word, and that was saved as
+  // the day. Each month-day reading below checks the day survived; one that did
+  // not is kept as `impossibleDate` and no date is set — the plan asks.
+  let impossibleDate = null;
   const dmOf = date ? null : t.match(
     /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s*(\d{4}))?\b/i);
   if (dmOf && Number(dmOf[1]) >= 1 && Number(dmOf[1]) <= 31) {
@@ -395,7 +404,7 @@ export function parseSmartEventText(text, opts = {}) {
     const cand = new Date(saidY || now.getFullYear(),
       MONTHS.indexOf(dmOf[2].slice(0, 3).toLowerCase()), parseInt(dmOf[1], 10), 12);
     if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-    date = localISO(cand);
+    if (cand.getDate() === parseInt(dmOf[1], 10)) date = localISO(cand); else impossibleDate = dmOf[0];
   }
 
   const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
@@ -403,14 +412,15 @@ export function parseSmartEventText(text, opts = {}) {
     const saidY = dm[3] ? parseInt(dm[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
     if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-    date = localISO(cand);
+    if (cand.getDate() === parseInt(dm[2], 10)) date = localISO(cand); else impossibleDate = dm[0];
   } else if (!date) {
     const sm2 = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
     if (sm2) {
       const y = sm2[3] ? (sm2[3].length === 2 ? 2000 + Number(sm2[3]) : Number(sm2[3])) : now.getFullYear();
       const cand = new Date(y, Number(sm2[1]) - 1, Number(sm2[2]), 12);
       if (!sm2[3] && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-      if (!isNaN(cand)) date = localISO(cand);
+      if (!isNaN(cand) && cand.getMonth() === Number(sm2[1]) - 1 && cand.getDate() === Number(sm2[2])) date = localISO(cand);
+      else impossibleDate = sm2[0];
     }
   }
   // "The weekend of June 12" — extremely common for a trip, and it was parsing
@@ -1508,7 +1518,20 @@ export function parseSmartEventText(text, opts = {}) {
     const halfPast = t.match(
       /\b(?:at\s+)?half\s+past\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*([ap])?\.?m?\.?\b/i);
     let forced = null;
-    if (halfPast) {
+    // A TIME RANGE STARTS AT ITS FIRST TIME (run 2, R2-1): "from 2-6pm" saved
+    // 6:00 PM — the end — as the start, and it reached the invite. Read only when
+    // the range ENDS in am/pm, so a count or an age span is never a time. The
+    // start takes its own meridiem, else the end's — unless that would put it
+    // after the end ("11-2pm" is 11 AM).
+    const range = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?m?\.?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?\b/i);
+    if (range) {
+      const sh = parseInt(range[1], 10); const eh = parseInt(range[4], 10);
+      const endMer = range[6].toLowerCase();
+      let sMer = (range[3] || '').toLowerCase();
+      if (!sMer) sMer = (endMer === 'p' && sh !== 12 && eh !== 12 && sh > eh) ? 'a' : endMer;
+      if (sh >= 1 && sh <= 12) forced = { h: sh, min: range[2] ? parseInt(range[2], 10) : 0, mer: sMer };
+    }
+    if (halfPast && !forced) {
       const raw = halfPast[1].toLowerCase();
       const hh = /^\d+$/.test(raw) ? parseInt(raw, 10) : _HOURWORD[raw];
       if (hh) forced = { h: hh, min: 30, mer: (halfPast[2] || '').toLowerCase() };
@@ -1751,7 +1774,7 @@ export function parseSmartEventText(text, opts = {}) {
 
   return {
     hostName,
-    type, typeBasis, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    type, typeBasis, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     healthNoted,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
