@@ -262,6 +262,32 @@ async def _resolve_event(conn, rsvp_code: str):
     return row["id"], public
 
 
+async def _going_count(conn, event_id, roster_count):
+    """Yes count for the invite's social line (run 2, R2-24).
+
+    The roster count alone lags: a reply reaches the saved guest list only when
+    the host next opens the app, so guests replying in between were told "Be the
+    first to say yes" while others had. Replies already received count too —
+    each guest name's LATEST answer once — and the larger of the two is shown,
+    so neither source can lower the other. A number, never a name; a failed
+    read falls back to the roster count rather than failing the invite.
+    """
+    try:
+        n = await conn.fetchval(
+            """select count(*) from (
+                 select distinct on (lower(trim(guest_name))) rsvp
+                   from public.rsvp_submissions
+                  where event_id = $1 and coalesce(trim(guest_name), '') <> ''
+                  order by lower(trim(guest_name)), coalesce(updated_at, submitted_at) desc
+               ) latest
+              where lower(coalesce(rsvp, '')) like 'y%'""",
+            event_id,
+        )
+    except Exception:
+        return roster_count
+    return max(int(n or 0), int(roster_count or 0))
+
+
 # ── 1. GET /api/public/invite/{rsvp_code} — PUBLIC invite resolver ─────────────
 @router.get("/api/public/invite/{rsvp_code}")
 async def public_invite(rsvp_code: str, request: Request):
@@ -275,6 +301,8 @@ async def public_invite(rsvp_code: str, request: Request):
     pool = await get_pool()
     async with pool.acquire() as conn:
         resolved = await _resolve_event(conn, rsvp_code)
+        if resolved and "goingCount" in resolved[1]:
+            resolved[1]["goingCount"] = await _going_count(conn, resolved[0], resolved[1]["goingCount"])
     if not resolved:
         raise HTTPException(404, "invite not found")
     _event_id, public = resolved

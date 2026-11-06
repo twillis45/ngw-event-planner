@@ -282,3 +282,37 @@ def test_a_start_time_the_host_set_still_reaches_a_guest():
     assert _resolved_public({"name": "n", "startTime": "19:00", "startTimeSource": "host"})["startTime"] == "19:00"
     # Events from before provenance existed carry no source: the host's own.
     assert _resolved_public({"name": "n", "startTime": "19:00"})["startTime"] == "19:00"
+
+
+# ── "Be the first to say yes" while five are going (run 2, R2-24) ───────────
+# goingCount counted only the host's SAVED roster, which learns a reply only
+# when the host next opens the app — so every guest replying in between was
+# told no one had said yes. Replies already received count too: the larger of
+# the two, each person's latest answer once, never a name.
+class _CountConn:
+    def __init__(self, n):
+        self.n = n
+        self.calls = []
+
+    async def fetchval(self, sql, *args):
+        self.calls.append((sql, args))
+        return self.n
+
+
+def test_going_count_includes_replies_the_host_has_not_opened_yet():
+    conn = _CountConn(5)
+    assert asyncio.run(R._going_count(conn, "ev-1", 0)) == 5
+    sql, args = conn.calls[0]
+    assert args == ("ev-1",)
+    assert "rsvp_submissions" in sql and "distinct on" in sql.lower()
+
+
+def test_going_count_never_lowers_the_saved_roster_count():
+    assert asyncio.run(R._going_count(_CountConn(2), "ev-1", 6)) == 6
+
+
+def test_going_count_survives_a_failed_read():
+    class Boom:
+        async def fetchval(self, *a):
+            raise RuntimeError("db down")
+    assert asyncio.run(R._going_count(Boom(), "ev-1", 3)) == 3
