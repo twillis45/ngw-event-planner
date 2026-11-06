@@ -110,7 +110,7 @@ import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/l
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
-import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth, localISO } from '@app/lib/dates';
+import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
@@ -3828,6 +3828,7 @@ export default function HostShellV2() {
   const [vendorCostError, setVendorCostError] = useState(null);
   const vendorCostEdited = useRef(false);
   const vendorCostOwner = useRef(null);
+  const vendorCostConfirmed = useRef(null); // "vendorId:amount" the host was already asked about
   const ownsVendorCostDraft = v => vendorCostOwner.current?.eventId === event.id && vendorCostOwner.current?.vendorId === v.id;
   // A DATE change moves every countdown, deadline, and shopping window — so it's drafted and
   // must be CONFIRMED before it cascades (host report 2026-07-16), instead of committing on
@@ -3841,6 +3842,17 @@ export default function HostShellV2() {
       setVendorCostError({ eventId: event.id, vendorId: v.id, message: err.message });
       return;
     }
+    // ASKED ONCE, NEVER REFUSED (run 2, R2-20): $1,000,000 was agreed for a
+    // caterer on a $285 game night without a word. The same rule as a budget
+    // payment above the whole plan: say what it exceeds; a second commit of
+    // the same amount keeps it.
+    const high = n !== '' ? paymentAboveWholePlan(n, money) : null;
+    if (high && vendorCostConfirmed.current !== v.id + ':' + raw) {
+      vendorCostConfirmed.current = v.id + ':' + raw;
+      setVendorCostError({ eventId: event.id, vendorId: v.id, message: fmt(n) + ' is more than ' + (high.basis === 'plan' ? 'your whole plan (' + fmt(high.ref) + ')' : fmt(high.ref)) + '. Check the amount, or press Enter again to keep it.' });
+      return;
+    }
+    vendorCostConfirmed.current = null;
     setVendorCostError(null);
     const costAgreed = n !== '';
     if (String(n) === String(v.cost ?? '') && (v.costAgreed === costAgreed || !vendorCostEdited.current)) {
@@ -14730,9 +14742,15 @@ export default function HostShellV2() {
               // people list and the venue name; nothing sized or claimed beyond them.
               const n = helperPeople.length;
               const venue = vf.name;
+              // AN ADDRESS IS A PLACE (run 2, R2-10): with only a street given,
+              // this said "No venue named yet" directly above "Venue / location —
+              // Set: 12 Sample Rd". The street she typed is the place.
+              const street = String(vf.address || '').trim();
               const venuePhrase = venue
                 ? `${/^(the|a|an)\s/i.test(venue) ? '' : 'The '}${venue} is set — arrival, parking, and the rain plan live here.`
-                : 'No venue named yet — name it and arrival, parking, and the rain plan live here.';
+                : street
+                  ? `${street} is set — arrival, parking, and the rain plan live here.`
+                  : 'No venue named yet — name it and arrival, parking, and the rain plan live here.';
               // ONE SUBJECT PER LINE (host report 2026-07-28): the sub used to be
               // the VENUE sentence under a HELPERS star — two different subjects
               // glued together, so "No helpers yet / No venue named yet…" read as
@@ -23001,7 +23019,7 @@ export default function HostShellV2() {
                             // rides the first rendered promise row.
                             return [...shown.map((p, pi) => (
                               <div key={p.promiseKey} id={pi === 0 ? 'v-promises-' + v.id : undefined} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', scrollMarginTop: 12 }}>
-                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + p.dueDate : ''}</span>
+                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + usShortDate(p.dueDate) : ''}</span>
                                 {/* Item-scoped label (was a generic "Mark confirmed"
                                     that read as confirming the VENDOR — a host tapped
                                     it and got a "parking … marked confirmed" toast for

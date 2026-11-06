@@ -7,11 +7,13 @@ import { unpricedVendorCount } from '../budgetCopy';
 test.each([
   ['4800.00', 4800], ['4800.50', 4800.5], ['0.01', 0.01],
   ['.50', 0.5], ['0', 0], ['', ''], [' 25.75 ', 25.75],
+  // Run 2 (R2-20): how people type money.
+  ['$650', 650], ['$ 650', 650], ['1,000', 1000], ['$1,250.50', 1250.5], ['1,000,000', 1000000],
 ])('vendor cost %s keeps its dollar value and cents', (raw, expected) => {
   expect(parseVendorCost(raw)).toBe(expected);
 });
 
-test.each(['-500', 'not a price', '12.345', 'NaN', 'Infinity', '1e3', '0x10', '2.5.0'])('%s is rejected instead of changed into a different amount', raw => {
+test.each(['-500', 'not a price', '12.345', 'NaN', 'Infinity', '1e3', '0x10', '2.5.0', '-$500', '$-500', '1,00', '10,00,000', '$$5', '1,000.555'])('%s is rejected instead of changed into a different amount', raw => {
   expect(() => parseVendorCost(raw)).toThrow();
 });
 

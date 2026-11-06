@@ -31,8 +31,16 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 /** Parse dollars without stripping the sign or decimal point. Empty clears the field. */
 export function parseVendorCost(value) {
-  const raw = String(value ?? '').trim();
-  if (!raw) return '';
+  const typed = String(value ?? '').trim();
+  if (!typed) return '';
+  // HOW PEOPLE TYPE MONEY (run 2, R2-20): "$650" and "1,000" were refused while
+  // "650" passed. One leading "$" and correctly grouped thousands commas are
+  // read; anything else (a sign, "1,00", "12.345", words) is still refused.
+  const noSign = typed.replace(/^\$\s*/, '');
+  if (noSign.includes(',') && !/^\d{1,3}(?:,\d{3})+(?:\.\d{0,2})?$/.test(noSign)) {
+    throw new Error('Enter a nonnegative amount with up to two decimal places.');
+  }
+  const raw = noSign.replace(/,/g, '');
   const cents = Math.round(Number(raw) * 100);
   if (!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(raw) || !Number.isSafeInteger(cents)) {
     throw new Error('Enter a nonnegative amount with up to two decimal places.');
