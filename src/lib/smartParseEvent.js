@@ -671,6 +671,17 @@ export function parseSmartEventText(text, opts = {}) {
     || (() => {
       const m = matchPerson(new RegExp('\\b(?:for|honoring|celebrating)\\s+(?:my\\s+|our\\s+)?(' + REL_WORDS + ')\\b', 'i'));
       if (!m) return null;
+      // THE NAME AFTER THE RELATION IS THE HONOREE (run 2, R2-6): "for my son
+      // jaxon turning 7" saved "Son's 7th Birthday". A relation followed at once
+      // by a single word that is not a sentence word — "turning", "who", a day,
+      // a month — is how a host names the person. She said it, so it is used,
+      // capitalized; nothing is guessed when no such word follows.
+      const after = t.slice(m.index + m[0].length).match(/^\s+([A-Za-z][a-z'’-]{1,20}|[A-Z][a-zA-Z'’-]{1,20})\b/);
+      const STOP = /^(?:turning|turns|turned|who|whose|and|or|is|was|will|for|at|in|on|to|with|from|this|that|next|last|the|a|an|his|her|their|our|my|birthday|bday|party|dinner|celebration|retirement|graduation|anniversary|shower|surprise|just|finally|today|tonight|tomorrow|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\d.*)$/i;
+      if (after && !STOP.test(after[1])) {
+        const nm = after[1];
+        return [m[0] + after[0], nm.charAt(0).toUpperCase() + nm.slice(1)];
+      }
       const word = m[1].replace(/\s+/g, ' ').toLowerCase();
       return [m[0], word.charAt(0).toUpperCase() + word.slice(1)];
     })()
@@ -1887,14 +1898,24 @@ const _FILLER = new Set([
 // no town and no state, the phrase itself is reported as not applied.
 export function unusedClauses(text, opts = {}) {
   const out = _unusedClausesCore(text, opts);
-  const m = String(text || '').match(/\bin\s+(the\s+[A-Z][\w.]*(?:\s*[/&]\s*[A-Z][\w.]*)*\s+area)\b/);
-  if (!m) return out;
   let p = null;
   try { p = parseSmartEventText(text, opts); } catch { return out; }
-  if (!p || p.venueCity || p.venueState) return out;
-  const phrase = m[1].replace(/^the\s+/, 'the ');
-  if (out.some((c) => String(c).toLowerCase().includes(phrase.replace(/^the\s+/, '').toLowerCase()))) return out;
-  return [...out, phrase];
+  if (!p) return out;
+  const said = (phrase) => out.some((c) => String(c).toLowerCase().includes(phrase.replace(/^(?:the|at)\s+/, '').toLowerCase()));
+  const m = String(text || '').match(/\bin\s+(the\s+[A-Z][\w.]*(?:\s*[/&]\s*[A-Z][\w.]*)*\s+area)\b/);
+  if (m && !p.venueCity && !p.venueState) {
+    const phrase = m[1].replace(/^the\s+/, 'the ');
+    if (!said(phrase)) out.push(phrase);
+  }
+  // A PLACE SHE NAMED IS NEVER SWALLOWED EITHER (run 2, R2-6): "…next friday
+  // at chuck e cheese, like 20 kids" kept no place, and its clause counted as
+  // used because the date beside it was read — so nothing said so, and the plan
+  // asked "Where is the event?". Venue NAMES stay strict (capitalized or a
+  // City, ST); when the plan ended up with no place at all, an "at …" phrase
+  // she wrote is reported as not applied. Times, home and relatives are not places.
+  const at = String(text || '').match(/\bat\s+((?!(?:home|my|our|his|her|their|the house|night|noon|midnight|dusk|sunset|sunrise|least|most|once|all|first|last|about|around|\d))[a-z][a-z'’&.-]*(?:\s+[a-z][a-z'’&.-]*){0,4}?)(?=\s*(?:[,.;!]|$|\s(?:on|for|with|this|next|from|at|in|by|and|around|about)\b))/i);
+  if (at && !p.venue && !p.venueAddress && !p.venueKind && !p.venueCity && !said('at ' + at[1])) out.push('at ' + at[1]);
+  return out;
 }
 
 function _unusedClausesCore(text, opts = {}) {

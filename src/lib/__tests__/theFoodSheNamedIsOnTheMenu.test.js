@@ -33,3 +33,14 @@ test('on the real cookout plan, burgers and hot dogs add no duplicate line; bris
   const heard = heardFoods('Backyard cookout for 25, burgers and hot dogs, and brisket');
   expect(uncoveredFoods(heard, list).map((f) => f.name)).toEqual(['Brisket']);
 });
+
+// Run 2 (11/6/2026, R2-14): "drinks" was reported as dropped on a game night
+// whose plan carried soda, water, beer and wine.
+test('"drinks" is heard, is covered by any drink line, and is no longer reported dropped', () => {
+  const { playbookFoodPlan } = require('../playbooks');
+  const vida = 'Vida is hosting a girls’ game night this Saturday, November 7, at 12 Sample Rd in Pasadena, Maryland. Ten girlfriends are coming. We want fun, team-oriented games, food, drinks, and a relaxed atmosphere.';
+  expect(heardFoods(vida).map((f) => f.name)).toContain('Drinks');
+  const list = (playbookFoodPlan({ id: 'g', type: 'Game Night', date: '2026-11-07', guestEstimate: 10 }) || {}).list;
+  expect(uncoveredFoods(heardFoods(vida), list).map((f) => f.name)).not.toContain('Drinks');
+  expect(clausesNotUsed(vida).join(' | ')).not.toMatch(/\bdrinks\b/i);
+});

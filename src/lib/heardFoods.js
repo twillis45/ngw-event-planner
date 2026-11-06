@@ -24,6 +24,10 @@ const FOODS = [
   ['Cupcakes', /\bcupcakes\b/i, /cupcake/i],
   ['Cookies', /\bcookies\b/i, /cookie/i],
   ['Lasagna', /\blasagna\b/i, /lasagna/i],
+  // "drinks" (run 2, R2-14): Vida's game night listed it under "didn't make it
+  // into the plan" while the plan carried soda, water, beer and wine. Any drink
+  // line covers it; a plan with none gets a host-named "Drinks" line.
+  ['Drinks', /\b(?:drinks|beverages|refreshments)\b/i, /drink|beverage|soda|water|juice|punch|lemonade|tea\b|coffee|beer|wine|cocktail|mocktail|bar\b/i],
 ];
 const NEGATED = /\b(?:no|without|skip|not|instead of)\b/i;
 

@@ -58,3 +58,37 @@ describe('R2-5 — big counts, and the years that must not become one', () => {
     expect(g == null || g <= 999).toBe(true);
   });
 });
+
+describe('R2-6 — "my son jaxon" names Jaxon, not "Son"', () => {
+  test.each([
+    ['bday party for my son jaxon turning 7 next friday, like 20 kids, $500', 'Jaxon'],
+    ['Birthday party for my mom Linda, 30 people', 'Linda'],
+    ['surprise party for our daughter Maya who is turning 16', 'Maya'],
+  ])('%s → %s', (s, who) => {
+    expect(parseSmartEventText(s).honoree).toBe(who);
+  });
+  test.each([
+    ['Birthday party for my mom Saturday at 3', 'Mom'],
+    ['Birthday party for my son turning 7', 'Son'],
+    ['Birthday dinner for my dad and 12 friends', 'Dad'],
+    ['party for my sister who just graduated', 'Sister'],
+  ])('CONTROL — no name follows: %s → %s', (s, who) => {
+    expect(parseSmartEventText(s).honoree).toBe(who);
+  });
+});
+
+describe('R2-6 — a place she named is reported when nothing kept it', () => {
+  const { unusedClauses } = require('../smartParseEvent');
+  test('"at chuck e cheese" is listed', () => {
+    expect(unusedClauses('bday party for my son jaxon turning 7 next friday at chuck e cheese, like 20 kids, $500')).toContain('at chuck e cheese');
+  });
+  test.each([
+    'Anniversary dinner for 2 at home tonight at 7pm',
+    'Housewarming at 4512 Elm Street, Apt 3B, Silver Spring MD 20910 on 12/5, 25 friends',
+    'Cookout at my house this Saturday for 25 people',
+    'Birthday at The Grand Hall, Baltimore, MD on June 3 2027 for 80',
+    'game night at 7 for 10 friends',
+  ])('CONTROL — nothing invented: %s', (s) => {
+    expect(unusedClauses(s).join(' | ')).not.toMatch(/^at |\| at /);
+  });
+});
