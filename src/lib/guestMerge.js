@@ -64,6 +64,9 @@ export function matchGuestIndexByName(guests, fullName) {
     const gn = String((g && g.name) || '').trim().toLowerCase();
     if (!gn) return false;
     if (gn === full.toLowerCase()) return true;
+    // A name the host confirmed IS this guest ("eve" → Eve Brooks), so the
+    // reply that re-arrives on every visit lands on her, not on a new row.
+    if (Array.isArray(g.aka) && g.aka.includes(full.toLowerCase())) return true;
     if (coupleShaped) return false;
     const gp = gn.split(/\s+/).filter(Boolean);
     const gFirst = gp[0] || '';
@@ -91,6 +94,47 @@ export function repeatedGuestNames(existingGuests, added) {
     seen.add(k);
   }
   return out;
+}
+
+// ── A SHORT FIRST NAME IS ASKED ABOUT, NEVER ASSUMED (owner ruling, 11/5/2026) ──
+// "eve" on a reply is not matched to Eve Brooks — the ladder above refuses a
+// first name under four letters alone, so a stranger's reply on an open link
+// can never land on the wrong guest. But when exactly one guest has that first
+// name, the new row carries `maybeSameAs` and the host is asked.
+export function likelySameGuest(guests, fullName) {
+  const full = String(fullName || '').trim().toLowerCase();
+  if (!full || /\s/.test(full) || full.length >= 4) return null;
+  const hits = (guests || []).filter((g) => g && g.id && String(g.name || '').trim().toLowerCase().split(/\s+/)[0] === full
+    && String(g.name || '').trim().toLowerCase() !== full);
+  return hits.length === 1 ? hits[0] : null;
+}
+
+const REPLY_FIELDS = ['meal', 'needs', 'plusOne', 'plusOneMeal', 'plusOneNeeds', 'kids', 'address', 'partyNotes', 'phone', 'email', 'lodgingPick'];
+const BLANK = (v) => v == null || v === '' || v === '—' || v === 0 || (Array.isArray(v) && !v.length);
+
+/** The host said yes: the short-name row's reply moves onto the guest, its name
+ *  becomes her alias, and the row goes. */
+export function confirmSameGuest(guests, rowId) {
+  const list = guests || [];
+  const row = list.find((g) => g && g.id === rowId);
+  const target = row && list.find((g) => g && g.id === row.maybeSameAs);
+  if (!row || !target) return list;
+  const next = { ...target, rsvp: row.rsvp || target.rsvp };
+  for (const f of REPLY_FIELDS) if (!BLANK(row[f])) next[f] = row[f];
+  for (const f of ['allergens', 'diets', 'access']) if (!BLANK(row[f])) next[f] = row[f];
+  if (typeof row.picksCrabs === 'boolean') next.picksCrabs = row.picksCrabs;
+  const alias = String(row.name || '').trim().toLowerCase();
+  next.aka = [...new Set([...(Array.isArray(target.aka) ? target.aka : []), alias].filter(Boolean))];
+  return list.filter((g) => g !== row).map((g) => (g === target ? next : g));
+}
+
+/** The host said no: two people. The question is not asked again. */
+export function keepSeparateGuest(guests, rowId) {
+  return (guests || []).map((g) => {
+    if (!g || g.id !== rowId || !('maybeSameAs' in g)) return g;
+    const { maybeSameAs, ...rest } = g;
+    return rest;
+  });
 }
 
 export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
@@ -148,7 +192,9 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
       // Server rows re-arrive on every visit — only count real changes.
       if (JSON.stringify(next) !== JSON.stringify(g)) guests[ix] = next;
     } else {
+      const maybe = likelySameGuest(guests, full);
       guests.push({
+        ...(maybe ? { maybeSameAs: maybe.id } : {}),
         id: opts.makeId ? opts.makeId(sub) : 'g-rsvp-' + (sub.idempotencyKey || Math.random().toString(36).slice(2, 10)),
         name: full,
         group: 'Friends',

@@ -272,7 +272,7 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
-import { mergeGuestReplies, repeatedGuestNames } from '@app/lib/guestMerge';
+import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
@@ -24632,6 +24632,20 @@ export default function HostShellV2() {
                   {peopleMode ? null : peoplePlate}
                   {peopleZone}
                   {guestHero}
+                  {/* A SHORT NAME IS ASKED ABOUT, NEVER ASSUMED (owner ruling,
+                      11/5/2026): a reply signed "eve" came in as its own row; when
+                      exactly one guest could be her, the host decides. */}
+                  {(event.guests || []).filter((g) => g && g.maybeSameAs).map((row) => {
+                    const who = (event.guests || []).find((g) => g && g.id === row.maybeSameAs);
+                    if (!who) return null;
+                    return (
+                      <div className="card" role="group" aria-label={'Is ' + row.name + ' ' + who.name + '?'} key={'same-' + row.id}>
+                        <p className="grounding">A reply came in signed “{row.name}”. Is that {who.name}?</p>
+                        <button className="mini" onClick={() => { const gs = confirmSameGuest(event.guests, row.id); patchEvent({ guests: gs, kidsCount: kidsTotal(gs) }, 'The reply is on ' + who.name + '’s row now.'); }}>Same person</button>{' '}
+                        <button className="mini" onClick={() => patchEvent({ guests: keepSeparateGuest(event.guests, row.id) }, row.name + ' stays on the list as a separate guest.')}>Different people</button>
+                      </div>
+                    );
+                  })}
                   {!peopleMode && (plusOnes > 0 || kidsHere > 0) && (
                     <div className="v-meta" style={{ padding: '0 2px 6px' }}>
                       {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsHere ? kidsHere + ' kid' + (kidsHere === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
