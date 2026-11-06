@@ -82,7 +82,7 @@ services:
       - key: PYTHON_VERSION          # pin a stable Python (3.14 has no pydantic-core wheels yet)
         value: 3.12.7
       - key: ALLOWED_ORIGINS        # comma-separated production origins; add your
-        value: https://twillis45.github.io,http://localhost:3000  # custom domain here, or set to * to allow any
+        value: https://twillis45.github.io,http://localhost:3000,capacitor://localhost  # custom domain here, or set to * to allow any. capacitor://localhost is the iOS app's origin (Android https://localhost passes ALLOWED_ORIGIN_REGEX)
       # Optional: override the default localhost/LAN-IP allow regex.
       # - key: ALLOWED_ORIGIN_REGEX
       #   value: https?://(localhost|192\.168(?:\.\d{1,3}){2})(?::\d+)?
