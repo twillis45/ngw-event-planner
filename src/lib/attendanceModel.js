@@ -99,3 +99,12 @@ export function expectedFromPlanned(n, type, playbook) {
   // break itself, or the two clauses run together.
   note: highNote ? `${sh.note}. ${highNote}` : sh.note, class: sh.class };
 }
+
+// likelyAttendancePhrase(band) → the "likely ___ make it" figure. A band whose
+// ends meet is one number, not "3–3" (Creation, 11/5/2026); when that number is
+// everyone planned, it says so.
+export function likelyAttendancePhrase(band) {
+  if (!band) return '';
+  if (band.low === band.high) return band.low === band.planned ? `all ${band.low}` : `${band.low}`;
+  return `${band.low}–${band.high}`;
+}

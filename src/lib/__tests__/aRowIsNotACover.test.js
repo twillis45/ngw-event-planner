@@ -91,7 +91,7 @@ describe('the caterer is told covers, not rows', () => {
     // holding is that this shell does not re-derive the count at all; which
     // module owns it is free to change.
     expect(code).toMatch(/const confirmedHeads\s*=\s*confirmedCovers\(event\)/);
-    expect(code).toMatch(/import \{ confirmedCovers \} from '@app\/lib\/confirmedCovers'/);
+    expect(code).toMatch(/import \{[^}]*\bconfirmedCovers\b[^}]*\} from '@app\/lib\/confirmedCovers'/);
     // …and it does NOT hand-roll the band read any more. Bounded to the
     // STATEMENT, not a character window — a 200-char window ran past this
     // one-liner into the next attendanceBand call below it, which is the

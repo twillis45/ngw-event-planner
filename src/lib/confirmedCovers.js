@@ -70,3 +70,10 @@ export function confirmedCoversOrZero(event) {
   const n = confirmedCovers(event);
   return n == null ? 0 : n;
 }
+
+
+/** Actual confirmed reply covers, independent of the host's planning mode. */
+export function confirmedRsvpCovers(event) {
+  const band = attendanceBand({ ...(event || {}), guestMode: 'roster' });
+  return band && band.basis === 'rsvp' ? band.low : 0;
+}

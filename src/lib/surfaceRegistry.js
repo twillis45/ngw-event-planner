@@ -394,10 +394,10 @@ export const SURFACES = [
         }
         // The authored window, e.g. 'T-300d' -> 300 days before the event.
         const m = /^T-(\d+)d$/.exec(String(row.when || ''));
-        if (!m) continue;                                  // no declared lead, no claim to be late
-        const lead = Number(m[1]);
-        const dueInDays = dte - lead;                      // negative once the window has passed
-        if (dueInDays >= 0) continue;                      // still inside the window
+        if (!m && !row.requiredByChoice) continue;          // no lead and no explicit obligation
+        const lead = m ? Number(m[1]) : null;
+        const dueInDays = lead == null ? null : dte - lead;
+        if (!row.requiredByChoice && dueInDays >= 0) continue;
         const matched = row.vendorId ? vendors.find((v) => v && v.id === row.vendorId) : null;
         let booked = false;
         try { booked = !!(matched && isVendorBooked(matched)); } catch (_e) { booked = false; }
@@ -407,12 +407,14 @@ export const SURFACES = [
           title: matched
             ? `${row.category} is not booked yet \u2014 ${matched.name || 'your pick'} is still just a shortlist`
             : `No ${String(row.category).toLowerCase()} booked yet`,
-          why: `Most ${String(row.category).toLowerCase()}s are booked by ${row.when.replace('T-', '')} out; you are ${Math.abs(dueInDays)} days past that.`,
+          why: row.requiredByChoice && (dueInDays == null || dueInDays >= 0)
+            ? `You chose “${row.requiredByChoice}” for the food; a caterer is not booked yet.`
+            : `Most ${String(row.category).toLowerCase()}s are booked by ${row.when.replace('T-', '')} out; you are ${Math.abs(dueInDays)} days past that.`,
           ask: `Book your ${String(row.category).toLowerCase()}.`,
           route: matched ? { tab: 'Vendors', vendorId: matched.id } : { tab: 'Vendors' },
           key: `vendor-unbooked:${row.category}`,
           dueInDays,
-          leadDays: -lead,
+          leadDays: lead == null ? null : -lead,
           // ── THE PLAN CANNOT PROCEED AS WRITTEN (board, 2026-08-17) ────────
           // docs/audits/2026-08-17_VENDOR_CONSEQUENCE_RULING.md
           //
@@ -432,10 +434,10 @@ export const SURFACES = [
           // this morning's `blocks:['catering']` phantom.
           //
           // So we assert exactly what is evidenced and nothing more: the
-          // playbook said this category is REQUIRED, said when it should be
-          // booked by, and that window has passed unmet. Bounded by the guards
-          // above — `required: true`, past `when`, genuinely unmatched — so an
-          // optional videographer never qualifies.
+          // playbook said this category is REQUIRED and its window has passed,
+          // or the host explicitly chose the role. An explicit choice with no
+          // authored window is actionable, never described as late. Optional
+          // roles the host did not choose never qualify.
           gateHolder: true,
           unlocks: 0,
         });

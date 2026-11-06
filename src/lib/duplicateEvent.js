@@ -28,7 +28,7 @@
 
 /** Fields that record what HAPPENED on the occurrence being copied. */
 const GUEST_STATE = ['rsvp', 'rsvpAt', 'checkedIn', 'seat', 'seatId', 'tableId', 'plusOneRsvp'];
-const VENDOR_STATE = ['depositPaid', 'balancePaid', 'contractSigned', 'coiStatus', 'coiVerified',
+const VENDOR_STATE = ['depositPaid', 'balancePaid', 'contractSigned', 'costAgreed', 'coiStatus', 'coiVerified',
   'arrivalTime', 'paidAt', 'confirmedAt', 'reconfirmedAt', 'replyText', 'lastReplyAt'];
 const EVENT_STATE = ['id', 'createdAt', 'updatedAt', 'date', 'endDate',
   'rosDone', 'rosEdited', 'photos', 'thanks', 'thanksSent',

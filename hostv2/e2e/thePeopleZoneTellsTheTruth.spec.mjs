@@ -344,7 +344,7 @@ test('AND WHEN SHE HAS SET ONE, IT IS SPOKEN AS THE OUTCOME IT BUYS', async ({ p
 // So the rule these pin is: EVERY action is reachable in at most ONE disclosure
 // from the state the host is already in.
 const ACTIONS = [
-  'Share the RSVP link', 'Show the QR', 'Preview the RSVP', 'Copy the invite',
+  'Check and share link', 'Check and show QR', 'Preview on this device', 'Copy the invite',
   'Draft the guest brief', 'Update everyone', 'Write a nudge to send',
 ];
 
@@ -367,7 +367,7 @@ test('ALL SEVEN INVITE ACTIONS SURVIVE — one fold away at most', async ({ page
     const b = document.querySelector('#guests-invites-anchor button.cta');
     return b ? (b.innerText || '').trim() : null;
   });
-  expect(primary, 'with replies outstanding the dominant action is the share link').toBe('Share the RSVP link');
+  expect(primary, 'with replies outstanding the dominant action is the share link').toBe('Check and share link');
 
   // The rest are reachable after exactly one tap on a LABELLED fold — not an
   // anonymous overflow, because a labelled fold says what is inside it.

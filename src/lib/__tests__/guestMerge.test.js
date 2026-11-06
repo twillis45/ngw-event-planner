@@ -104,14 +104,18 @@ test('an unchanged re-arriving submission counts merged 0 (server rows re-arrive
   expect(second.guests).toEqual(first.guests);
 });
 
-test('yesCount counts every Yes submission processed — updates, adds, and unchanged re-merges', () => {
+// CHANGED 11/5/2026 (theLatestReplyWins): yesCount counted every Yes ROW, so a
+// guest whose reply re-arrived was two yeses and the toast ("6 yes") disagreed
+// with the list ("Coming 5"). It now counts GUESTS this batch changed or added
+// whose final answer is Yes — unchanged re-arrivals are not news.
+test('yesCount counts guests whose answer is Yes — updates, adds, and unchanged re-merges, once each', () => {
   const { merged, added, yesCount } = mergeGuestReplies(roster(), [
     { name: 'Ada Byron', rsvp: 'Yes' },       // update, Yes
     { name: 'Samuel Hill', rsvp: 'No' },      // update, not Yes
     { name: 'Zora Neale', rsvp: 'Yes' },      // add, Yes
     { name: 'Ada Byron', rsvp: 'Yes' },       // re-arrival, unchanged, still Yes
   ]);
-  expect(yesCount).toBe(3);
+  expect(yesCount).toBe(2);                   // Ada and Zora — Ada once
   expect(merged).toBe(2); // Ada once (second is unchanged) + Samuel
   expect(added).toBe(1);
 });
@@ -197,4 +201,14 @@ test('never mutates inputs — arrays, guest objects, or submissions', () => {
   // Untouched rows keep their original refs; the updated row is a NEW object.
   expect(guests.find(g => g.id === 'g2')).toBe(base[1]);
   expect(guests.find(g => g.id === 'g1')).not.toBe(base[0]);
+});
+
+describe('repeatedGuestNames — a name added twice is named, never refused', () => {
+  const { repeatedGuestNames } = require('../guestMerge');
+  test('a name already on the list, or pasted twice, is reported once', () => {
+    expect(repeatedGuestNames([{ name: 'Ana Rivera' }], ['Bea Chen', 'ana  rivera', 'Jo Lane', 'Jo Lane', 'Jo Lane'])).toEqual(['ana rivera', 'Jo Lane']);
+  });
+  test('distinct names report nothing', () => {
+    expect(repeatedGuestNames([{ name: 'Ana Rivera' }], ['Ana Rivers', 'Bea Chen'])).toEqual([]);
+  });
 });

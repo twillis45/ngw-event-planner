@@ -18,7 +18,7 @@ test('1 · no plan when not over budget', () => {
   expect(p.suggestions).toEqual([]);
 });
 
-test('2 · over-budget amount comes from hostSpending committed vs total', () => {
+test('2 · over-budget amount comes from hostSpending expected vs total', () => {
   const p = buildBudgetRecoveryPlan(baseEvent({ totalBudget: 100 }));
   expect(p.status).toBe('recovery_available');
   expect(p.overBudgetAmount).toBeGreaterThan(0);

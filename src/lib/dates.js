@@ -55,6 +55,18 @@ export const localISO = (d) =>
 // Days between two DATES is a calendar question, not a duration question. Anything
 // asking it imports this. A private copy of this arithmetic is a bug, not an
 // optimization — that is the whole finding.
+// "Oct 31" — a YYYY-MM-DD as a host reads it (run 2, R2-11: vendor deadlines
+// showed "2026-10-31"). Read as LOCAL noon so no time zone moves the day; the
+// year is added only when it is not this year. Anything unreadable is returned
+// as given rather than guessed at.
+export const usShortDate = (iso, now) => {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return String(iso || '');
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12);
+  const y = (now ? new Date(now) : new Date()).getFullYear();
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(d.getFullYear() !== y ? { year: 'numeric' } : {}) });
+};
+
 export const daysUntil = (d, now) => {
   if (!d) return null;
   const target = d instanceof Date ? getToday(d) : new Date(String(d).slice(0, 10) + 'T00:00:00');

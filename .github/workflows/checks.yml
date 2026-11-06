@@ -533,3 +533,40 @@ jobs:
       # is the real gate: it fails on any className with no matching selector.
       - run: npm run build
         working-directory: hostv2
+
+  webkit-critical:
+    name: WebKit critical journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            hostv2/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: hostv2
+      # The same two guards the e2e shards carry (see the chromium install
+      # above): drop the image's stale Google Chrome apt repo before
+      # --with-deps runs apt-get update, and retry a transient mirror failure.
+      # Without them this step hung to the 25-minute job limit twice on
+      # 2026-11-06 with zero code changes between attempts. One line on
+      # purpose — see the seamRunsInCi note above.
+      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*
+        working-directory: hostv2
+      - run: s=1; for i in 1 2 3 4; do timeout 600 npx playwright install --with-deps webkit && s=0 && break; s=1; echo "playwright install failed (attempt $i/4)"; sleep $((i * 30)); done; exit $s
+        working-directory: hostv2
+      - run: npm run e2e:build
+        working-directory: hostv2
+      - run: npm run test:webkit
+        working-directory: hostv2
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: webkit-critical-failures
+          path: hostv2/test-results/
+          retention-days: 7

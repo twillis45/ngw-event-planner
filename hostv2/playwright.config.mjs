@@ -10,6 +10,8 @@ import { previewUrl } from './deployBase.mjs';
 // See the note above `projects` for why this is per-test, not per-file.
 const SELF_PINNED = [
   '**/heroVoid.spec.mjs',
+  // Pins 320x640 in its one test (run 2, R2-12).
+  '**/theCountFitsAt320.spec.mjs',
   // Drives its own four geometries below 1280; the >=1280 command layout composes
   // a different fold and this rule does not govern it.
   '**/foldAtTheFoot.spec.mjs',
@@ -59,6 +61,16 @@ const VIEWPORT_INDEPENDENT = [
   // It also addresses port 5255 directly, so it would measure the wrong
   // bundle on any project pointed at the shared preview.
   '**/gold07RsvpCascade.spec.mjs',
+  // ── THE INVITE CREDIT (issue #100, D-10, 2026-11-05) ─────────────────
+  // Text and stored state only, and it addresses port 5255 (the gold07 bundle,
+  // the one build with an RSVP API configured) for the same reason gold07 does.
+  '**/sharingTheInviteCreditsIt.spec.mjs',
+  // ── A REPLY SURVIVES THE SIGN-IN PULL (issue #100, D-7, 2026-11-05) ──
+  // Stored state and toast text only, on its own 5277 bundle.
+  '**/aReplySurvivesTheSignInPull.spec.mjs',
+  // ── REPLIES THAT CANNOT LOAD SAY SO (gold run GOLD-10, 2026-11-05) ────
+  // Toast text only, on the gold07 bundle (5255) for its API base.
+  '**/repliesThatCannotLoadSaySo.spec.mjs',
   // ── THE SEATING / RAIN PARITY BASELINES (P1-1, 2026-10-18) ─────────────
   // Characterisation of what both surfaces DO today, written so a redesign
   // that changes any of it fails on purpose. Every assertion is on text,
@@ -382,6 +394,19 @@ export default defineConfig({
       // the build this serves a stale bundle or nothing.
       command: 'npx vite build --mode gold07 --outDir dist-gold07 && E2E_BASE=1 npx vite preview --outDir dist-gold07 --port 5255 --strictPort --host 127.0.0.1',
       url: previewUrl(5255),
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      // ── THE SIGNED-IN REPLY HARNESS (issue #100, D-7) ────────────────────
+      // A guest's reply merged on the host's device and the sign-in pull then
+      // overwrote it. That needs a signed-in Supabase session AND an RSVP API
+      // base at once; synctest has one, gold07 the other, and neither may be
+      // widened (see .env.gold07). Same shape as both: fake hosts, every
+      // request intercepted, built first because dist-rsvpsync has no other
+      // author. AUTH_BYPASS inline for the reason the sync harness gives.
+      command: 'REACT_APP_AUTH_BYPASS=false npx vite build --mode rsvpsync --outDir dist-rsvpsync && E2E_BASE=1 npx vite preview --outDir dist-rsvpsync --port 5277 --strictPort --host 127.0.0.1',
+      url: previewUrl(5277),
       reuseExistingServer: false,
       timeout: 120_000,
     },

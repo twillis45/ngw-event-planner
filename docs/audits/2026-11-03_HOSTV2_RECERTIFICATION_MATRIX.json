@@ -1,0 +1,1986 @@
+{
+ "schema": "hostv2-recertification/1",
+ "date": "2026-11-03",
+ "repo": "twillis45/ngw-event-planner",
+ "commit_examined": "5f97a1a (main d22a968 + one docs commit); runtime 9ccbaaf live",
+ "final_recommendation": "NO-GO",
+ "web_free_preview": "may continue as-is; do not take money or recruit strangers until FIX BEFORE PROD + owner actions close",
+ "native_packaging_ready": false,
+ "native_architecture": "THIN SHELL WITH SPECIFIC NATIVE MODULES",
+ "stages": {
+  "0": "na",
+  "1": "owner_action",
+  "2": "condition",
+  "3": "condition",
+  "4": "fail",
+  "5": "condition",
+  "6": "fail",
+  "7": "condition",
+  "8": "condition",
+  "9": "fail",
+  "10": "na"
+ },
+ "findings": [
+  {
+   "id": "ATTN-6",
+   "title": "Over-budget alarm from double-counted caterer money",
+   "stage": 4,
+   "severity": "P0",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/hostSpending.js:267,290 (unpaid vendor balance added on top of a budget line that already holds the full contract)",
+    "src/lib/hostSpending.js:20-26 header claims the overlap cannot happen",
+    "runtime: sample event money sheet '$16,627 spoken for … $3,027 over' then $13,477 after Mark as paid; agentB shots"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The One Move ranks a budget overrun that is not real and tells the host to trim food; two different 'spoken for' totals on one sheet.",
+   "reproduction": "Default sample event → money sheet (note over) → Mark caterer paid → over disappears; vendor conflicts gains 'Reconcile vendor payment with budget line'.",
+   "estimated_engineering_hours": 6,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "RSVP-LIVE-1",
+   "title": "Live RSVP links are dead but the app promises they work",
+   "stage": 3,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/api/rsvp.js:19 isRsvpApiConfigured = Boolean(API base)",
+    "hostv2/src/HostShellV2.jsx:5955-5999 copy toast keys on it",
+    "backend/app/routers/rsvp.py:233 resolves only public.events rows",
+    "live: REACT_APP_SUPABASE_URL empty in shipped bundle (services profile, no sign-in) so no event reaches public.events",
+    "live probe 2026-11-03: GET https://ngw-events-api.onrender.com/api/public/invite/<22-char code> -> 404 'invite not found'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "On the live site the copy toast says 'anyone who opens it can RSVP themselves, no app needed' and the native share sends the link; every guest gets a dead link. The 2026-08-06 board fix assumed demo profile = no API base; the services profile (2026-09-23) broke that assumption.",
+   "reproduction": "Live site → any event → Share/copy the invite → open the link on another device → invite not found.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "TRUST-1",
+   "title": "Reveal says guest list built and RSVP tracking live over an empty list",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/assembleRevealEngines.js:535 'Guest list built. RSVP tracking live.' printed unconditionally (stage shown when a guest count exists, :328)",
+    "runtime: guests: [] in saved event; agentA a_4_reveal.txt, b_reveal.txt"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Host believes guests exist and replies are being collected; neither is true.",
+   "reproduction": "Create any event with a headcount → read the reveal's Guest Planning line.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "TRUST-2",
+   "title": "Vendor name taken as honoree, labeled high confidence",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "runtime: 'Grad party for Jake… Tony's BBQ is catering' -> name 'Tony's Graduation', honoree 'Tony', vendors [] (agentA c_ev.json)",
+    "reveal: 'HIGH CONFIDENCE · READY' and 'nothing made up'; 'Tony's BBQ' absent from the didn't-make-it list"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Invite and event carry the wrong person's name; the caterer is silently lost, under a 'nothing made up' claim.",
+   "reproduction": "Create with the Seed J sentence in the report → read the chips and reveal.",
+   "estimated_engineering_hours": 6,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-1",
+   "title": "HostHome contradicts itself about the location",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/phaseProgress.js:131-149 counts 'Backyard' as a named venue",
+    "src/lib/assembleRevealEngines.js:120-122 raises the venue blocker for a home venue without a town",
+    "runtime agentA c_home.txt"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The first HostHome says 'Add the location' while the plan parts say 'Where it happens · handled'.",
+   "reproduction": "Create 'backyard' event with no town → HostHome.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-2",
+   "title": "'The rest can wait till Jun 7' on a destination event with near-term lodging work",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:11271-11273 renders 'the rest can wait till <date>'",
+    "src/lib/phaseProgress.js:404-418 date = shopping list opens (7 days out)",
+    "runtime: destination event with lodging task due within weeks (agentA a_5_home.txt)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Host reads permission to wait months while the room block is due in weeks.",
+   "reproduction": "Create the Santa Fe destination seed → HostHome horizon line vs checklist dates.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-3",
+   "title": "'Spoken for' counts NGW's own estimate as committed money",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/hostSpending.js:290 includes NGW's food/supply estimate in 'spoken for'",
+    "hostv2/src/HostShellV2.jsx:11984",
+    "runtime: '$1,932 spoken for (est.) · $0 spent' with no vendors or food choices"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Planned/expected/committed/spent collapse: NGW's own guess shown under a commitment word on day 0.",
+   "reproduction": "Create Seed J → HostHome money line.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "ATTN-2",
+   "title": "Choosing a caterer leaves money wrong and prompts nothing",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "runtime: choosing 'A caterer handles it' leaves grocery pricing in budget, creates no vendor, next One Move 'Nothing needs you until Feb 28' (agentB 23-after-caterer.png, 25-budget-sheet.png)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Headroom overstated and the key booking (the caterer) is never prompted.",
+   "reproduction": "New event → One Move food step → 'A caterer handles it'.",
+   "estimated_engineering_hours": 6,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "ATTN-3",
+   "title": "'Then, in order' rows that do nothing",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:11395 openThen -> onCta(a,key) without settling; its comment :11323 names the rows as previously dead",
+    "runtime: 'Confirm the start time →' and 'Is there a step-free way…? →' do nothing (agentB 92-*.png)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "An arrow row that does nothing on the core attention surface.",
+   "reproduction": "Sample/new event → 'Then, in order' → tap those rows.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "FRIC-2",
+   "title": "Correcting the honoree creates a phantom second milestone",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/assembleRevealEngines.js:67-72 compound flag with no second type",
+    "runtime agentB 41-reveal-after-correction.png: 'An anniversary + . Two milestones, one event' and a required 'Ceremony Timing' decision"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Correcting NGW's misunderstanding makes the plan worse and invents a second milestone.",
+   "reproduction": "'Mom and Dad 50th anniversary…' → fix 'Who's it for?' chip → reveal.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "FRIC-3",
+   "title": "Attendance toast says '40 confirmed' after one Yes",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:6668-6670 toast uses confirmedCovers",
+    "src/lib/confirmedCovers.js:60 returns planned number in headcount mode",
+    "runtime: 'Aunt Carol → Yes — 40 confirmed' while the sheet says 1"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The attendance confirmation reports the wrong count.",
+   "reproduction": "Headcount-mode event → add a guest → set Yes.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "FRIC-4",
+   "title": "Venue cannot be changed once set at 390px",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:11913-11915 venue chips sit in a tile hidden at 390px",
+    "runtime: 'Everything in your plan' has no Venue entry; search 'venue' → 'Nothing matches' (agentB 51-search-venue.png); city alone marks 'Venue address · handled'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A host on a phone cannot change a venue once set; a city counts as an address.",
+   "reproduction": "Phone, event with a venue set → try to change it.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "medium"
+  },
+  {
+   "id": "FRIC-5",
+   "title": "No way to record an expense",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "no writer of a budget line's spent amount in hostv2/src (agentB search)",
+    "src/lib/hostSpending.js:20-26 vendor 'paid in full' deliberately not counted as spent",
+    "runtime money sheet: no entry control"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A deposit or store run cannot be logged, so 'spent' is fiction — on a product sold on money truth.",
+   "reproduction": "Any event → money sheet → try to record an expense.",
+   "estimated_engineering_hours": 10,
+   "external_dependency": false,
+   "confidence": "medium"
+  },
+  {
+   "id": "GOLD-F-1",
+   "title": "Army retirement guidance silently lost on a real cold start",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/militaryRetirement.js:185-195 detector never reads the creation sentence",
+    "probe: cold-created WANDA-A -> branch null, 0 Army decisions; fixture -> 6"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Honor guard, shadowbox and uniform guidance appear in demos but not on the real Army retirement.",
+   "reproduction": "Create WANDA-A from the sentence → no Army decisions.",
+   "estimated_engineering_hours": 5,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-4",
+   "title": "Vendor intent and program heard but never applied",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "HostShellV2.jsx:8457-8458 creation writes empty vendors and timeline",
+    "'Noted' is the only response to vendor intent and the program",
+    "src/lib/vendorCategoriesByType.js:51 already lists the categories"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Her stated vendors and program neither shape nor rank the plan.",
+   "reproduction": "WANDA-A sentence → vendors/timeline empty.",
+   "estimated_engineering_hours": 13,
+   "external_dependency": false,
+   "confidence": "medium"
+  },
+  {
+   "id": "GOLD-F-5",
+   "title": "No test runs GOLD-01's own sentence",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "grep: the WANDA-A sentence exists only in docs (docs/redesign/NGW_PRODUCT_EXPERIENCE_REFERENCE.md:474) and shortened jest strings"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "GOLD-01 was never measured on its own input — which is how GOLD-F-1/F-2 shipped.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 5,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "UAT-1",
+   "title": "Two first-time-human sessions never run",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "docs/COORDINATOR_TEST_SCRIPT.md exists; no recorded run by a first-time human (HANDOFF, gate artifact)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Nobody has watched a stranger use the product; every comprehension finding above was found by a script, not a person.",
+   "reproduction": "Run Tester A and Tester B per §17.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "PAY-1",
+   "title": "Live-key Stripe purchase/refund lifecycle never run",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "live bundle REACT_APP_BILLING_LIVE empty; pass sheet 'in preview'",
+    "no live-key purchase, refund or failure run on record"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Cannot charge a stranger: purchase, entitlement, failure and refund never exercised with live keys.",
+   "reproduction": "Per §18.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "LEGAL-1",
+   "title": "Privacy/refund/terms/support not published or linked",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "docs/legal/*.md drafts, unreviewed, placeholders unfilled",
+    "live bundle: no Privacy/Terms/Refund link"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Charging without published refund/privacy/terms and a support address.",
+   "reproduction": "Per §18.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "SEC-1",
+   "title": "Live RLS applied-status unattested",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "supabase/migrations/018_research_tables_rls.sql present; everyPublicTableHasRls 14/14 (repo)",
+    "live application unattested — RUNBOOK §A"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "If 018 is not applied, six tables are readable/writable with the public anon key.",
+   "reproduction": "RUNBOOK check A query.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "SEC-2",
+   "title": "Backups on + one restore drill",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "no restore ever performed; RUNBOOK §B"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A data-loss incident with an untested restore.",
+   "reproduction": "RUNBOOK check B.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "SEC-3",
+   "title": "Auth rate-limit posture unverified",
+   "stage": 5,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "no supabase/config.toml in repo; posture lives only in the dashboard; RUNBOOK §C"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Unknown brute-force/abuse posture on auth.",
+   "reproduction": "RUNBOOK check C.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "SEC-4",
+   "title": "External pentest not run",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "no engagement report exists"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "No independent test of a public, paid surface.",
+   "reproduction": "Engage a firm; scope in §14.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "OBS-1",
+   "title": "Sentry/PostHog production arrival unproven",
+   "stage": 7,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "Sentry ingest host and PostHog key present in live bundle (2026-11-03 scan); arrival never observed — RUNBOOK §D"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Telemetry may be silently dark in production.",
+   "reproduction": "RUNBOOK check D.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "OBS-2",
+   "title": "hostv2 local save, provider and route failures not reported",
+   "stage": 7,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/customEventStore.js: 0 captureError calls (hostv2's real store)",
+    "no analytics event for save/provider/route/clause failures (src/lib/analytics.js EVENTS)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Support is blind to local save failures, provider failures and route failures in production.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "FRIC-7",
+   "title": "Failed save leaves the One Move claiming success",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "runtime storage-full: correct 'didn't save' toast, but One Move says 'Handled — 4 of 7' (agentB 80-failed-save.png); payment overdue again after reload"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A failed save is celebrated as progress.",
+   "reproduction": "Fill storage → Mark as paid.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-4",
+   "title": "Reveal says menu built; HostHome says plan the food",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/assembleRevealEngines.js:509-529 'Menu is built … READY'",
+    "HostHome 'Plan the food — other steps wait on this'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The historical reveal-vs-HostHome contradiction persists for food.",
+   "reproduction": "Create any event → compare.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "TRUST-3",
+   "title": "Headcount marks an after-party task done",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/taskEngine.js:182 'guest list\\b' marks a day-after gift task done at creation"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A real task silently disappears on day 0.",
+   "reproduction": "Create with a headcount → 'Checklist 1 of 26 done'.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "TRUST-4",
+   "title": "'Budget … live. Track spending in real time.'",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/assembleRevealEngines.js:557-560 'Track spending in real time'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Overclaims a feed that does not exist (and FRIC-5: no entry).",
+   "reproduction": "Create with a budget → reveal.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "TRUST-5",
+   "title": "'Vendors assigned' at any status",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/assembleRevealEngines.js:443-448,565-568 'N vendors assigned' for any named vendor at any status"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "'Considering' reads as assigned.",
+   "reproduction": "Vendor at 'Considering' → reveal.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "medium"
+  },
+  {
+   "id": "COMP-5",
+   "title": "Type guess admitted, then stated as certain",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "HostShellV2.jsx:9712-9718 admits a type guess; reveal says 'HIGH CONFIDENCE · READY'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A guess becomes certainty one screen later.",
+   "reproduction": "'Grad party…' seed.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-8",
+   "title": "Access and health needs heard but not shown back",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "walker/altitude saved and tasked but not shown on chips, reveal or first HostHome (agentA a_2,a_4,a_5)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The host cannot see that NGW heard the most personal thing she said.",
+   "reproduction": "Santa Fe seed.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "FRIC-1",
+   "title": "City in the sentence dropped then asked again",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "'in Austin' saved as empty city; HostHome then asks 'Add the location'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Duplicated question; a stated fact discarded.",
+   "reproduction": "'…dinner in Austin…' seed.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-2",
+   "title": "Two-letter clauses silently dropped",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/smartParseEvent.js:1741,1882 drops clauses of <=2 characters"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "'DJ', 'AV', 'PA' vanish without a receipt; the didn't-make-it list claims completeness.",
+   "reproduction": "WANDA-A sentence.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-6",
+   "title": "GOLD-05 absence check incomplete",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/e2e/ryanWay.spec.mjs:31-38 VENUE_ASKS omits 'Pick the place in {town}'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The no-venue-nag guard can stay green while nagging.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "ATTN-4",
+   "title": "Right section, wrong control",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "food/vendor One Move lands at sheet top, not the control; dietary heading mismatch is the exception (fix)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "One extra tap; one mislabeled step.",
+   "reproduction": "Sample event.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-6",
+   "title": "Two 'handled' counts",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "two different 'handled' counts on HostHome; comment drift at HostShellV2.jsx:12201"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Two numbers for one idea.",
+   "reproduction": "Any event.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-7",
+   "title": "'Guests · handled' for an estimate",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "src/lib/phaseProgress.js:159-162 any estimate = 'Guests · handled'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A rough estimate reads as done.",
+   "reproduction": "Any event with a headcount.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "FRIC-6",
+   "title": "Vendor flow limited",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "only suggested vendor roles addable; nameless card; blank arrival field (blank field is a fix)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Vendor setup friction.",
+   "reproduction": "Vendor sheet.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "NIELSEN-1",
+   "title": "Historical Nielsen #1: ambient sync visibility (partly fixed)",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "sync state shown in Settings (HostShellV2.jsx:18485-18510), lodging line (:15373) and one-time toasts; no ambient cue on the editing surface"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Queued/failed sync noticed late.",
+   "reproduction": "Signed-in, offline edit.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-3",
+   "title": "Facts inside used clauses absorbed silently",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "condition",
+   "disposition": "defer_hostv3",
+   "evidence": [
+    "facts inside a 'used' clause absorbed silently by design (smartParseEvent.js:1857-1859,1913)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "'30-year', 'Army', 'Maryland/DC' unreported.",
+   "reproduction": "WANDA-A.",
+   "estimated_engineering_hours": 10,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-7",
+   "title": "GOLD-07 backend leg mocked",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "gold07RsvpCascade.spec.mjs mocks the backend"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Server-side RSVP storage bug would pass.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 8,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-8",
+   "title": "GOLD-09 shell-only",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "thePassSurvivesTheWebhookRace covers the shell only"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Server entitlement fault unseen in CI.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 7,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-10",
+   "title": "GOLD-02/08 lack acceptance specs",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "no acceptance spec for GOLD-02, GOLD-08"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Two rows untested end-to-end.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 8,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "SEC-5",
+   "title": "No security headers on the static host",
+   "stage": 5,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "live response headers 2026-11-03: no CSP, HSTS-only-by-host, no X-Frame-Options/Referrer-Policy (GitHub Pages cannot set headers)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Clickjacking/injection hardening absent; matters more once money is taken.",
+   "reproduction": "curl -D - the live URL.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "SEC-6",
+   "title": "Admin console facing internal, reach public",
+   "stage": 5,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "gate artifact sf-admin-reach; docs/ADMIN-CONSOLE.md:82",
+    "admin writes gated server-side (require_admin); probe /api/admin/* -> 401"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Internal console reachable by the public (read-only shell, writes refused).",
+   "reproduction": "?admin=1 on the live site.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "VERIFY-1",
+   "title": "No WebKit/Safari engine in the matrix",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web",
+    "ios"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/playwright.config.mjs: Chromium only, no WebKit project; tablets are resized windows"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Safari/WebKit (every iPhone, every iOS app web view) untested.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 6,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "ATTN-5",
+   "title": "Events list shows nothing urgent",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "defer_hostv3",
+   "evidence": [
+    "'Your events' shows type and days-out only, no needs-you mark"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Cross-event urgency invisible.",
+   "reproduction": "Events list with an overdue payment.",
+   "estimated_engineering_hours": 6,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-9",
+   "title": "GOLD-10 doc contradiction",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "GOLD_E2E_ACCEPTANCE_MATRIX.md:76 vs :119 contradiction; producer failure tested for weather only"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Doc says closed and open.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "GOLD-F-11",
+   "title": "GOLD-04 proof starts after intake",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "theWalkerReachesThePlan.spec.mjs:22-31 seeds accessNeeds"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Intake-to-plan path for access needs not browser-proven.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-9",
+   "title": "Generic venue question under 'handled'",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "venue card asks 'Where is the event?' under 'handled'"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Minor contradiction.",
+   "reproduction": "Santa Fe seed.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "COMP-10",
+   "title": "Reveal Skip clipped",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "agentA a_3_mid.png: Skip clipped at 390px during reveal",
+    "measure-dont-look 11/3: a tap at the center of Skip lands on .reveal-stage; only 147/315 points reach the button at 390 (usable band ~22px), 105/231 at 1440 (styles.css:1965, HostShellV2.jsx:9828)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Skip partly hidden.",
+   "reproduction": "Reveal at 390px.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "medium"
+  },
+  {
+   "id": "FRIC-8",
+   "title": "Polish set",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "condition",
+   "disposition": "defer_hostv3",
+   "evidence": [
+    "Mark as paid shows no amount first; shifting plan-parts denominator; '4 days out' copy at 43 days; span-as-button"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Polish.",
+   "reproduction": "Sample event.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "STAGE1-1",
+   "title": "Stage 1 basis, kill gate and ruler unrecorded",
+   "stage": 1,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "gate record has no basis, kill gate or ruledBy; proposal ngw-event-planner-workspace/docs/gate-records/2026-11-02/STAGE_1_PROPOSAL.md"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Money taken before the kill threshold is pre-registered.",
+   "reproduction": "Rule the proposal, post records.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "STAGE2-1",
+   "title": "Name not cleared",
+   "stage": 2,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "src/lib/brand.js: 'an available domain is not a cleared mark'; no USPTO search recorded"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Brand fronting a revenue line without clearance.",
+   "reproduction": "USPTO search / attorney.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "STAGE2-2",
+   "title": "iOS/Android surfaces undeclared at stage 2",
+   "stage": 2,
+   "severity": "P1",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "fail",
+   "disposition": "native_packaging_work",
+   "evidence": [
+    "workspace CLAUDE.md surfaces table declares web only; docs/alpha/README.md declares web-only; no iOS/Android scope, HIG/Material review or criteria"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Native surfaces have no stage-2 record; every later native gate inherits wrong defaults.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 8,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-1",
+   "title": "Store billing policy for the $39 pass",
+   "stage": 9,
+   "severity": "P0",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "fail",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "pass unlocks in-app features (HostShellV2.jsx:3582,14987,16353,16536); Stripe Checkout opened in-app (:17452)",
+    "Apple 3.1.1; Google Play Payments policy (retrieved 2026-11-03)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Store rejection, or removal, if the $39 pass is sold via Stripe inside the app.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-2",
+   "title": "No account deletion",
+   "stage": 9,
+   "severity": "P0",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "fail",
+   "disposition": "native_packaging_work",
+   "evidence": [
+    "only event deletion exists (HostShellV2.jsx:3329); Apple 5.1.1(v); Google account-deletion policy (in-app + web URL)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Mandatory rejection reason.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 20,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-3",
+   "title": "Public links derive from the app origin",
+   "stage": 9,
+   "severity": "P0",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "fail",
+   "disposition": "native_packaging_work",
+   "evidence": [
+    "public links built from window.location.origin: HostShellV2.jsx:3850,5955; src/lib/stripeApi.js:53,135; src/lib/supabaseClient.js:73"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Inside a shell every RSVP/vendor/QR/return link becomes capacitor://localhost — dead for guests.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 6,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-4",
+   "title": "Magic-link sign-in cannot return to the app",
+   "stage": 9,
+   "severity": "P0",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "fail",
+   "disposition": "native_packaging_work",
+   "evidence": [
+    "Supabase magic link, implicit flow (src/lib/supabaseClient.js:40-46); no universal/app link handler"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Sign-in cannot return into the app; App Review has no usable demo login.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 14,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-5",
+   "title": "Policies and support URL unpublished",
+   "stage": 9,
+   "severity": "P0",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "docs/legal/README.md drafts unpublished; support email placeholder"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Store listings require privacy policy and support URLs.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-6",
+   "title": "No custom domain",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "ios",
+    "android",
+    "web"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "app served from twillis45.github.io/ngw-event-planner/; apple-app-site-association and assetlinks.json need a domain root"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "No universal links / app links possible; brand URL absent.",
+   "reproduction": "Point noguessworksystems.com (registered) at the app.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-7",
+   "title": "Shell-specific gaps (origin, CORS, downloads, storage)",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "fail",
+   "disposition": "native_packaging_work",
+   "evidence": [
+    "src/lib/analytics.js:22 IS_LOCAL matches localhost — a shell origin disables PostHog silently",
+    "backend/app/config.py:35-42 CORS allowlist lacks capacitor://localhost",
+    "downloads/print no-ops in web views (HostShellV2.jsx:9002,18289,1262; InviteV2.jsx:1299)",
+    "localStorage evictable on iOS"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Silent analytics loss, blocked API calls, dead exports, possible data eviction in the app.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 30,
+   "external_dependency": false,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-8",
+   "title": "Privacy labels / Data safety declarations",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "guest dietary/allergy data = health data for App Privacy labels / Play Data safety; PostHog, Sentry, Stripe, Supabase processors"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Mis-declared privacy labels are a rejection and a legal exposure.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 0,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-9",
+   "title": "Developer accounts, signing, store assets, reviewer login",
+   "stage": 9,
+   "severity": "P2",
+   "surface": [
+    "ios",
+    "android"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "no developer accounts, signing, bundle IDs, icons/screenshots, reviewer account"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Cannot submit.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 8,
+   "external_dependency": true,
+   "confidence": "high"
+  },
+  {
+   "id": "NAT-10",
+   "title": "Guideline 4.2 risk",
+   "stage": 9,
+   "severity": "P2",
+   "surface": [
+    "ios"
+   ],
+   "status": "condition",
+   "disposition": "native_packaging_work",
+   "evidence": [
+    "Apple 4.2 minimum functionality; risk medium for a bundled build, high for a remote-URL shell"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Rejection as a repackaged website.",
+   "reproduction": "n/a",
+   "estimated_engineering_hours": 8,
+   "external_dependency": false,
+   "confidence": "medium"
+  },
+  {
+   "id": "S9-1",
+   "title": "RSVP purge function callable by the anon key deletes every RSVP",
+   "stage": 5,
+   "severity": "P0",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "supabase/migrations/009_rsvp_submissions.sql:111 SECURITY DEFINER, no revoke from public/anon (contrast 010:52, 011:65)",
+    "PostgREST exposes public-schema functions as RPC; the anon key ships in the live-profile bundle"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Once the live profile ships, anyone can wipe every studio's guest replies, including dietary and allergy data.",
+   "reproduction": "On a non-production project: POST /rest/v1/rpc/purge_old_rsvp_submissions {older_than_days:-1} with the anon key. Live check (read-only): select has_function_privilege('anon','public.purge_old_rsvp_submissions(int)','execute').",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-2",
+   "title": "Anyone with an invite link can forge RSVP rows directly",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "supabase/migrations/009_rsvp_submissions.sql:86-90 rsvp_anon_insert with check (true)",
+    "backend/app/routers/rsvp.py:246 returns the event id in the public invite; backend per-IP/per-code limits (rsvp.py:289) bypassed"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Forged replies appear in the host read-back; headcount and food quantities follow them.",
+   "reproduction": "Anon PostgREST insert into the owner's own test event using the event id from GET /api/public/invite/{code}.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-3",
+   "title": "Any signed-in user can create Stripe Checkout pages for any amount on the NGW account",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "backend/app/auth.py:80-90 require_planner is authentication only",
+    "backend/app/routers/stripe_payments.py create-checkout-session takes amount_cents from the caller; no hostv2 caller"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Card testing, chargebacks and branded phishing on the business's Stripe account once sign-in is open.",
+   "reproduction": "Sign up on live, POST /api/stripe/create-checkout-session with any amount → a real NGW-branded Checkout URL.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-4",
+   "title": "Refunded or disputed passes are never revoked; duplicate charge logged as granted",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "backend/app/routers/stripe_payments.py:522 handles only checkout.session.completed",
+    "no code deletes event_passes; grant path never checks rowcount (:609-620)",
+    "docs/legal/REFUND_POLICY_DRAFT.md:82 promises revocation"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A refunded host keeps the pass; the published refund policy would be false; a double charge is kept without a grant.",
+   "reproduction": "Test mode: buy the pass, refund it in the dashboard, GET /api/stripe/pass still returns the entitlement.",
+   "estimated_engineering_hours": 4,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-5",
+   "title": "Pass entitlement enforced only in the client",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "owner_action",
+   "disposition": "owner_action_before_prod",
+   "evidence": [
+    "hostv2 passGate (client); backend/app/routers/vendor_brief.py:180-196 mints links without reading event_passes"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Anyone can use paid features without paying; revenue integrity rests on an honor system.",
+   "reproduction": "Call the vendor-brief mint endpoint as a signed-in user with no pass.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-6",
+   "title": "PROMOTION-DEFERRED.md describes the demo profile, not services or live",
+   "stage": 9,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "PROMOTION-DEFERRED.md (9/2) states localStorage-only, no accounts"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The written deferrals no longer match what ships, so deferred risks are effectively dropped at promotion.",
+   "reproduction": "Read the file against the services and live profile definitions in .github/workflows/pages-from-source.yml.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "RP-1",
+   "title": "Protected-routes sweep cannot see an ungated route whose docstring names the gate, or one that needs a body",
+   "stage": 5,
+   "severity": "P1",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "backend/tests/test_protected_routes_sweep.py matches the string \"require_planner\" in inspect.getsource (docstrings count)",
+    "live probe sends json={} and accepts 422 before auth runs",
+    "red-proof 11/3: POST /api/ai/orchestrate with its gate removed stayed green (escape)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The security gate stage 5 relies on can pass a public, ungated AI route.",
+   "reproduction": "Replace the gate call in /api/ai/orchestrate with principal = {} and run the sweep: 4 passed.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-1",
+   "title": "A price typed with cents is stored 100x too large",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:22625 strips every non-digit, so 4800.00 becomes 480000",
+    "reproduced 11/3 at 390px: toast \"$480,000 agreed\""
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "One routine price entry corrupts the money truth.",
+   "reproduction": "Vendor card → \"agreed to pay $\" → type 4800.00 → blur.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-2",
+   "title": "An \"agreed\" vendor price is excluded from spoken-for while the toast says it is tracked",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/vendorMoney.js:35-37,60 counts booked status only",
+    "src/lib/hostSpending.js:267",
+    "HostShellV2.jsx:3798 toast \"Payment tracking reads it now\""
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The host sees thousands more headroom than she has.",
+   "reproduction": "Add Catering, agree $4,800 without marking booked → money sheet unchanged.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-3",
+   "title": "Restore from a file says \"Your events are back\" when nothing was restored",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:18306-18311 toast ignores added/updated/skipped",
+    "src/lib/customEventStore.js:316-317 skips existing ids unless overwriteExisting"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The emergency exit lies; the host stops looking for her data.",
+   "reproduction": "Settings → restore a backup over the same event → toast success, data unchanged.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-4",
+   "title": "A vendor cannot be removed once added",
+   "stage": 4,
+   "severity": "P1",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "hostv2/src/HostShellV2.jsx:3875 addVendorCategory, :3662 writeVendor; no remove control on the vendor card (~:22600-22940)"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A mis-tap vendor stays forever and keeps generating nags.",
+   "reproduction": "Tap a suggested role's Add, let the 6.5s toast lapse; no remove path exists.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "S9-7",
+   "title": "No analytics event for the pass funnel; the activation-funnel events fire only from the frozen CRA",
+   "stage": 7,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "src/lib/analytics.js:148-280 has no pass/checkout/purchase key",
+    "signed_up, intake_committed, first_value… have 0 calls in hostv2"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Paid conversion cannot be diagnosed from the shipping app.",
+   "reproduction": "grep hostv2/src for capture calls.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "NEW-1",
+   "title": "Env-var seam guard reads only config.py; 23 server-read variables are undeclared",
+   "stage": 5,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "theBlueprintNamesWhatTheServerNeeds.test.js reads config.py only; routers read ANTHROPIC_API_KEY, OPENAI_API_KEY, DOCUSIGN_*, …"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Production configuration for AI, DocuSign and Instacart cannot be attested.",
+   "reproduction": "Diff os.getenv calls under backend/ against render.yaml.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-5",
+   "title": "Phone Back during creation leaves the app and loses the sentence",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:5000-5010, :9099"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Typed draft lost.",
+   "reproduction": "Create → type → Back.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-6",
+   "title": "A guest's name cannot be edited",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:24440, :24029"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Fixing a typo loses the reply and needs.",
+   "reproduction": "Open a guest; no name field.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-7",
+   "title": "Restore copies are bare timestamps; only 10 kept",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:18322-18348; src/lib/customEventStore.js:40,240"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The copy from before a mistake is evicted after ~10 edits.",
+   "reproduction": "Make 11 edits; the earliest copy is gone.",
+   "estimated_engineering_hours": 3,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-8",
+   "title": "80th birthday gets kid-party vendor suggestions",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "src/lib/playbooks/data/birthday.js:143-144"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "App reads as not understanding the event.",
+   "reproduction": "80th-birthday sentence → vendors.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-9",
+   "title": "No help, support or contact route anywhere in the host app",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "grep hostv2/src: no mailto/support/contact for the host"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "A paying host has nowhere to go.",
+   "reproduction": "Look for help in the menu and the error boundary.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "NEW-3",
+   "title": "HANDOFF SHA stale and the two freshness scripts disagree",
+   "stage": 7,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "fix_before_prod",
+   "evidence": [
+    "scripts/handoff-freshness.mjs exit 1; ngw-os copy exit 2"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Measured state unreliable.",
+   "reproduction": "npm run handoff:check",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-10",
+   "title": "A negative price is silently stored as positive",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:22625"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Minor money error.",
+   "reproduction": "Type -500.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-11",
+   "title": "Vendor due dates render year-first",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:22737"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Cosmetic.",
+   "reproduction": "Vendor card.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "N4-12",
+   "title": "Insurance ask shown twice on every vendor card",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "shared"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "HostShellV2.jsx:22798, :22934"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Clutter.",
+   "reproduction": "Vendor card.",
+   "estimated_engineering_hours": 0,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md)"
+  },
+  {
+   "id": "M4-1",
+   "title": "Guests sheet tap targets under 44px at 390 (chips 32px, name-only rows 22px)",
+   "stage": 4,
+   "severity": "P2",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "styles.css:5625 min-height:32px",
+    "HostShellV2.jsx:24583 roster button 22px tall",
+    "mobileTapFloor fixture has no guests, so the roster never renders"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Mis-taps on the guest list on a phone.",
+   "reproduction": "Sample event → Guests tile → measure \"Thomas Whitfield\" at iPhone 13.",
+   "estimated_engineering_hours": 2,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md) — measure-dont-look"
+  },
+  {
+   "id": "M4-2",
+   "title": "Money sheet has two right edges for amounts at desktop widths",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "styles.css:4624 820px reading cap applies to priced rows not on its exemption list"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Amounts misalign by 310px.",
+   "reproduction": "Money sheet at 1440.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md) — measure-dont-look"
+  },
+  {
+   "id": "M4-3",
+   "title": "Frame width changes between surfaces at 1920 (1580 → 1500px)",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "styles.css:5083-5086 legacy-surface width rule"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "The frame jumps 40px when opening the QR sheet or reveal.",
+   "reproduction": "Guests → Show the QR at 1920.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md) — measure-dont-look"
+  },
+  {
+   "id": "M4-4",
+   "title": "Truncated \"other steps wait on this\" reason with no way to read it at 390",
+   "stage": 4,
+   "severity": "P3",
+   "surface": [
+    "web"
+   ],
+   "status": "fail",
+   "disposition": "accepted_hostv2_debt",
+   "evidence": [
+    "styles.css:900 .ef-why max-width:42%"
+   ],
+   "evidence_currency": "current",
+   "customer_consequence": "Reason text cut off.",
+   "reproduction": "Cold-created event HostHome at 390.",
+   "estimated_engineering_hours": 1,
+   "external_dependency": false,
+   "confidence": "high",
+   "source": "2026-11-03 Path-to-Production command run (docs/audits/2026-11-03_PTP_COMMAND_RUN.md) — measure-dont-look"
+  }
+ ],
+ "addendum_2026_11_03": {
+  "note": "Findings appended by the Path-to-Production command run. No recertification finding was removed, merged away or relabeled; each keeps its original stage number, which already used the spine numbering even where the recertification table mislabeled the stage name.",
+  "added": [
+   "S9-1",
+   "S9-2",
+   "S9-3",
+   "S9-4",
+   "S9-5",
+   "S9-6",
+   "RP-1",
+   "N4-1",
+   "N4-2",
+   "N4-3",
+   "N4-4",
+   "S9-7",
+   "NEW-1",
+   "N4-5",
+   "N4-6",
+   "N4-7",
+   "N4-8",
+   "N4-9",
+   "NEW-3",
+   "N4-10",
+   "N4-11",
+   "N4-12",
+   "M4-1",
+   "M4-2",
+   "M4-3",
+   "M4-4"
+  ],
+  "evidence_added_to": [
+   "COMP-10"
+  ]
+ }
+}

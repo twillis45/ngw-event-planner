@@ -1107,6 +1107,17 @@ button{font-family:inherit}
      instead of a boundary tuned to the sub-pixel. */
   .efold{ margin-top:0; padding-top:2px; }
 }
+/* A 320px PHONE (run 2, R2-12): the left label truncated to "3 of 7 plan par…" —
+   losing the count itself — and the short-viewport rule above (max-height:699px,
+   written for a landscape phone) pulled the fold handle up against the text.
+   Under 360px wide the two labels wrap rather than truncate, and the handle keeps
+   a real gap. Width-gated, so the landscape case that rule protects is untouched. */
+@media (max-width: 359px){
+  .eprog-labels{ flex-wrap:wrap; row-gap:2px; }
+  .eprog-labels > span:first-child{ white-space:normal; overflow:visible; }
+  .eprog-labels > span:last-child{ padding-left:0; }
+  .efold{ padding-top:12px; }
+}
 @media(max-width:699px){
   .hero{min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px))}
 }

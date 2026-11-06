@@ -85,6 +85,11 @@ export function answerPlanQuestion(questionRaw, ctx = {}) {
   // part ("cover the crabs") or to a different head count ("for 50") is a
   // different question — decline so the caller can escalate to a tool-calling
   // answer rather than quietly answering the one we can compute.
+  // A NEGATIVE AMOUNT IS NOT A POSITIVE ONE (run 2, R2-19): "will $-5 cover
+  // it?" was answered as $5. It is said back plainly instead.
+  if (/(?:-\s*\$\s*\d|\$\s*-\s*\d)/.test(q) && money) {
+    return { answer: 'A negative amount can’t cover a plan — try the amount you have, like “will $500 cover it?”.', basis: [], matched: true, route: 'budget' };
+  }
   const askedHead = parseHeadcount(q);
   const partScoped = has(SCOPED_TO_PART);
   const whatIfSize = askedHead != null && (guests == null || askedHead !== Number(guests));
@@ -97,20 +102,26 @@ export function answerPlanQuestion(questionRaw, ctx = {}) {
   if (budgetShaped && (partScoped || whatIfSize)) return unanswered(eventName);
 
   if (budgetShaped) {
-    const committed = Number(money.committed) || 0;
+    // ONE FIGURE FOR "WHAT THE PLAN COSTS" (run 2, R2-18): this compared against
+    // `committed` ($255) while Home and Money tell the host the plan's lines add
+    // up to the EXPECTED total ($285) — so "will $270 cover it?" got yes here and
+    // "more than $270" there. The expected total is the one the host is shown;
+    // `committed` stays the fallback for a caller that has only that.
+    const committed = Number(money.expected) > 0 ? Number(money.expected) : (Number(money.committed) || 0);
     const diff = amount - committed;
-    const basis = [`Your plan commits about ${money$(committed)} so far — food, supplies, space, and anything you've priced (vendors, crab).`];
+    // No "crab" (R2-17): this sentence was a crab feast's, on every event.
+    const basis = [`Your plan comes to about ${money$(committed)} so far — food, supplies, space, and anything you've priced, like vendors.`];
     if (Number(money.spentEstimated) > 0) basis.push(`${money$(money.spentEstimated)} of that is still an estimate, not a firm price — the real total can move.`);
     const answer = diff >= 0
-      ? `${money$(amount)} covers what your plan commits so far — you're about ${money$(diff)} under.`
-      : `${money$(amount)} is about ${money$(-diff)} short of what your plan already commits (${money$(committed)}).`;
+      ? `${money$(amount)} covers what your plan comes to so far — you're about ${money$(diff)} under.`
+      : `${money$(amount)} is about ${money$(-diff)} short of what your plan already comes to (${money$(committed)}).`;
     return { answer, basis, matched: true, route: 'budget' };
   }
 
   // ── Spend so far: "how much have I spent?"
   if (has(/\bspent\b|how much.*(paid|out the door)|money.*(gone|spent)/) && money) {
     const spent = Number(money.spent) || 0;
-    const basis = [`Counts every line you've marked bought — food, supplies, space, and priced vendors/crab.`];
+    const basis = [`Counts every line you've marked bought — food, supplies, space, and priced vendors.`];
     if (Number(money.spentEstimated) > 0) basis.push(`${money$(money.spentEstimated)} of it is still an estimate (a midpoint), not a receipt you typed.`);
     return { answer: `You've spent about ${money$(spent)} so far${money.planned ? ` of your ${money$(money.planned)} budget` : ''}.`, basis, matched: true, route: 'budget' };
   }

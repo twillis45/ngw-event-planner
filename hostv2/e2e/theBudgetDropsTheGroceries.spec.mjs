@@ -53,12 +53,18 @@ const openBudget = async (page, pick) => {
   await settled(page);
 };
 
+// The food row's own sentence. It was the row label "Food & drinks" until
+// c6150d44 split money by category (rows now read "Food" and "Bar / Beverage");
+// after that the label matched nothing, so every ABSENCE check below passed
+// whatever the sheet showed. This is text only the priced food row renders.
+const FOOD_ROW = /Full food and drink plan/i;
+
 test('(premise) a kitchen event really does show the food row and price it', async ({ page }) => {
   // Everything below asserts an absence. This is what makes the absence mean
   // something rather than meaning the sheet never opened.
   await openBudget(page, 'A house we rent for everyone');
   const t = await bodyText(page);
-  expect(t).toMatch(/Food & drinks/i);
+  expect(t).toMatch(FOOD_ROW);
   expect(t).toMatch(/Supplies/i);
   expect(t).not.toMatch(/Food is not in this total/i);
 });
@@ -67,7 +73,7 @@ test('a room block drops the grocery rows and SAYS the food is missing', async (
   await openBudget(page, 'A room block I guarantee fills');
   const t = await bodyText(page);
   // The rows are gone…
-  expect(t).not.toMatch(/Food & drinks/i);
+  expect(t).not.toMatch(FOOD_ROW);
   // …and the hole is named, rather than leaving a quietly smaller number.
   expect(t).toMatch(/Food is not in this total/i);
   expect(t).toMatch(/no kitchen the meals are eaten out/i);
@@ -89,13 +95,13 @@ test('no restaurant number is invented anywhere on the sheet', async ({ page }) 
   const t = await bodyText(page);
   expect(t).not.toMatch(/eating out ~?\$/i);
   expect(t).not.toMatch(/Meals out \$/i);
-  expect(t).not.toMatch(/Food & drinks/i);
+  expect(t).not.toMatch(FOOD_ROW);
 });
 
 test('NEGATIVE CONTROL: an UNTOLD kitchen keeps its food money', async ({ page }) => {
   // Same asymmetry the gate itself draws. Not being asked is not being told no.
   await openBudget(page, null);
   const t = await bodyText(page);
-  expect(t).toMatch(/Food & drinks/i);
+  expect(t).toMatch(FOOD_ROW);
   expect(t).not.toMatch(/Food is not in this total/i);
 });

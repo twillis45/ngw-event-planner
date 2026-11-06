@@ -145,8 +145,8 @@ test('11d · answering the budget never enlarges the plan — the denominator ho
 });
 
 test('11b · a budget the known costs BLOW THROUGH is an open gap, and says by how much', () => {
-  // A 12-person dinner party carries ~$864 of known food cost. $500 does not cover it.
-  const over = deriveEventPhaseProgress(base({ totalBudget: 500 }), NOW);
+  // A recorded $750 payment exceeds a $500 target; unbought estimates do not.
+  const over = deriveEventPhaseProgress(base({ totalBudget: 500, budget: [{ id: 'paid', category: 'Venue', actual: 750 }] }), NOW);
   const budget = over.items.find(i => i.id === 'budget');
   expect(budget).toBeTruthy();
   expect(budget.handled).toBe(false);

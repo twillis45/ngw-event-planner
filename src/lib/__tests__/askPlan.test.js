@@ -89,3 +89,18 @@ describe('answerPlanQuestion — deterministic, honest, sourced', () => {
     expect(r.matched).toBe(false); // falls through to honest fallback, not a made-up forecast
   });
 });
+
+// Run 2 (11/6/2026): R2-17 crab copy on a game night; R2-18 Ask compared
+// against `committed` ($255) while Home and Money showed the expected total ($285).
+describe('one figure for what the plan costs, in words true to any event', () => {
+  const GAME = { money: { planned: 0, expected: 285, committed: 255, spent: 0, spentEstimated: 255 }, guests: 10, eventName: 'Vida’s Game Night' };
+  test('"will $270 cover it?" answers against the expected total Home shows', () => {
+    const r = answerPlanQuestion('will $270 cover it?', GAME);
+    expect(r.answer).toMatch(/short/);
+    expect(r.answer).toMatch(/\$285/);
+  });
+  test('no crab in the money basis', () => {
+    expect(answerPlanQuestion('will $2,000 cover it?', GAME).basis.join(' ')).not.toMatch(/crab/i);
+    expect(answerPlanQuestion('how much have I spent?', GAME).basis.join(' ')).not.toMatch(/crab/i);
+  });
+});

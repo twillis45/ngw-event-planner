@@ -28,8 +28,9 @@ import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
 import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
-import { daysUntil, spanEnd } from './dates';
+import { daysUntil, spanEnd, getToday, localISO } from './dates';
 import { venueFor } from './venueFor';
+import { taskLeadDays } from './taskLead';
 import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
 import { lodgingIsHeld } from './lodgingIntel';
@@ -256,8 +257,21 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
     const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
     const unboughtItems = plan.list.filter(i => i && !i.skipped && !got[i.id]);
     const unbought = unboughtItems.length;
+    // THE SHOP IS A CLOSING WINDOW (issue #100, D-11). This row reached the
+    // ranker with no clock and no consequence, so two days out "Set your
+    // budget." led a main shop due tomorrow. The playbook's own shop task
+    // carries the lead; and the window does not reopen — you cannot shop for the
+    // event after it — which is exactly what the 2026-09-23 closing-window
+    // ruling says a raise must DECLARE rather than leave to inference. Only
+    // while a shop task is still open; no task, no clock, no claim.
+    const shopTask = (Array.isArray(ev.timeline) ? ev.timeline : [])
+      .filter((t) => t && !t.done && /\bshop(ping)?\b/i.test(String(t.task || '')))
+      .map((t) => ({ t, lead: taskLeadDays(t) }))
+      .filter((x) => x.lead != null)
+      .sort((a, b) => a.lead - b.lead)[0] || null;
     add('shopping', true, unbought === 0, `Buy the remaining items · ${unbought} left`,
-      unbought ? { tab: 'Planning', foodFocus: unboughtItems[0].id } : { tab: 'Planning', focusField: 'food-plan' }, 6);
+      unbought ? { tab: 'Planning', foodFocus: unboughtItems[0].id } : { tab: 'Planning', focusField: 'food-plan' }, 6,
+      unbought && shopTask ? { leadDays: shopTask.lead, closingWindow: true } : null);
   }
 
   // ── LODGING — destination events only ───────────────────────────────────────
@@ -612,4 +626,28 @@ function postProgress(ev) {
     nextCue: pickCue(items),
     items,
   };
+}
+
+
+/** Earliest dated work already declared by eventPlan; never re-ranks its actions. */
+export function nextPlanAttentionDate(plan, ledgerChange, now) {
+  let earliest = ledgerChange && daysUntil(ledgerChange.date, now) != null
+    ? { ...ledgerChange, days: daysUntil(ledgerChange.date, now) } : null;
+  const rows = [...((plan && plan.nextActions) || []), ...((plan && plan.worries) || []), ...((plan && plan.setAside) || [])];
+  for (const action of rows) {
+    if (!action || action.done) continue;
+    const dates = [];
+    if (Number.isFinite(action.dueInDays)) {
+      const date = getToday(now);
+      date.setDate(date.getDate() + action.dueInDays);
+      dates.push(localISO(date));
+    }
+    if (action.snoozedUntil) dates.push(action.snoozedUntil);
+    for (const date of dates) {
+      const days = daysUntil(date, now);
+      if (days == null || (earliest && days >= earliest.days)) continue;
+      earliest = { date, days, id: action.id || null, what: action.title || null };
+    }
+  }
+  return earliest;
 }

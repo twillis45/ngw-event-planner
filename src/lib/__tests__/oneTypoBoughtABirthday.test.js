@@ -42,7 +42,11 @@ describe('(premise) the defect is real and this is its size', () => {
 
 describe('a guessed type declares itself', () => {
   test('a typo that falls through to the catch-all is marked generic', () => {
-    expect(basis('Graduaton party in Austin Texas on June 14 2027, 30 people')).toBe('generic');
+    // "Graduaton" was the example here until run 2 (11/6/2026, R2-9) taught the
+    // parser the misspellings people actually type — it now resolves to
+    // Graduation, which is the point. A typo outside that closed list still falls
+    // through to the catch-all and must still declare itself.
+    expect(basis('Housewarmng party in Austin Texas on June 14 2027, 30 people')).toBe('generic');
     expect(basis('Bridl Shower party in Austin Texas, 30 people')).toBe('generic');
   });
 

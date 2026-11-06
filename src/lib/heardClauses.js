@@ -51,6 +51,8 @@
 import { unusedClauses } from './smartParseEvent';
 import { heardAccessNeeds } from './accessNeeds';
 import { heardMustHaves, heardStayStyle } from './lodgingIntel';
+import { heardFoods } from './heardFoods';
+import { heardGameStyle } from './heardGameStyle';
 
 // ── THIS FILE IS THE COMPOSITION ROOT (Sprint 0.5 Decision 2) ──────────────
 //
@@ -84,7 +86,34 @@ import { heardMustHaves, heardStayStyle } from './lodgingIntel';
 // extension point, and it is the reason the list is here rather than inlined at
 // a call site: a new reader added to the creation seam and not to this list is
 // a new false alarm, and this is the one place a reviewer has to look.
-const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle];
+// Intake records interest, never a booking. Category labels come from the
+// existing vendor vocabulary; an unnamed role stays unnamed.
+export function heardVendorIntents(text) {
+  const rows = [];
+  const clauses = String(text || '').split(/[,;]|\band\b/i).map((c) => c.trim());
+  const categories = [
+    ['Catering', /\bcater(?:er|ing|ed)?\b/i, /^food$/i],
+    ['Mobile Bar', /\bmobile\s+bar\b/i, /^bar$/i],
+    ['DJ', /\bDJ\b/i],
+    ['Photography', /\bphotograph(?:y|er)\b/i],
+  ];
+  for (const clause of clauses) {
+    if (/\b(?:no|without|skip|don't|do not|not hiring)\b/i.test(clause)) continue;
+    for (const [category, ...patterns] of categories) {
+      if (!patterns.some((re) => re.test(clause)) || rows.some((v) => v.category === category)) continue;
+      const named = clause.match(/\b([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)?['’]s\s+(?:BBQ|Catering|Kitchen|Photography|Bakery))\b/);
+      rows.push({ category, name: named ? named[1] : '', status: 'Considering' });
+    }
+  }
+  return rows;
+}
+
+// heardFoods (gold run GOLD-05, 11/5/2026): the creation seam now writes the
+// foods she named, so they are read here too — otherwise they are reported as
+// dropped while being on the menu. Mapped to names: its rows carry a regex.
+const heardFoodNames = (text) => heardFoods(text).map((f) => f.name);
+// heardGameStyle (run 2, R2-15): creation records "Team games" as her pick.
+const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents, heardFoodNames, heardGameStyle];
 
 /**
  * clausesNotUsed(text) → the clauses NOTHING in creation read.

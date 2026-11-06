@@ -2,8 +2,8 @@
 
 NAMING (read this before trusting `require_planner`): it authenticates — it does
 NOT authorize a role. ANY signed-in Supabase user passes it, host and planner
-alike; there is no planner role and nothing checks for one. `require_admin` below
-is the only real role gate (app_metadata.role).
+alike. The separate `require_admin` and fee-only `require_fee_planner` gates
+authorize server-controlled app_metadata roles.
 
 That split is deliberate, and the two halves are separate concerns:
   * AUTHENTICATION — "is this a real signed-in user?" → require_planner.
@@ -38,6 +38,30 @@ _cache: dict[str, tuple[float, dict]] = {}
 _CACHE_TTL = 300  # seconds
 
 
+def invalidate_user_cache(user_id: str) -> None:
+    for token, (_, user) in list(_cache.items()):
+        if user.get("id") == user_id:
+            _cache.pop(token, None)
+
+
+def _session_id(token: str) -> Optional[str]:
+    """The `session_id` claim of an access token GoTrue already verified.
+
+    Read only to look the session up — never to trust the token: the signature
+    was checked by GoTrue when the token entered the cache.
+    """
+    try:
+        import base64
+        import json
+        import uuid
+        part = token.split(".")[1]
+        payload = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
+        sid = payload.get("session_id")
+        return str(uuid.UUID(str(sid))) if sid else None
+    except Exception:
+        return None
+
+
 def _bearer(authorization: Optional[str]) -> Optional[str]:
     if authorization and authorization.lower().startswith("bearer "):
         return authorization[7:].strip() or None
@@ -55,7 +79,31 @@ async def verify_supabase_token(token: str) -> Optional[dict]:
     now = time.time()
     cached = _cache.get(token)
     if cached and cached[0] > now:
-        return cached[1]
+        # Another worker may have deleted this user after we cached it. Check
+        # shared identity existence instead of honoring a five-minute ghost.
+        from .db import get_pool
+        try:
+            pool = await get_pool()
+            # A SIGNED-OUT TOKEN IS REFUSED AT ONCE (owner decision, 11/6/2026):
+            # after a sign-out GoTrue refuses the token, but this cache kept
+            # honoring it for up to five minutes. The user must still exist AND,
+            # when the token names its session, that session must still exist.
+            sid = _session_id(token)
+            async with pool.acquire() as conn:
+                if sid:
+                    exists = await conn.fetchval(
+                        "select exists(select 1 from auth.users where id=$1::uuid)"
+                        " and exists(select 1 from auth.sessions where id=$2::uuid)",
+                        cached[1]["id"], sid,
+                    )
+                else:
+                    exists = await conn.fetchval("select 1 from auth.users where id=$1::uuid", cached[1]["id"])
+            if exists:
+                return cached[1]
+        except Exception:
+            # Fall back to GoTrue verification, never to stale cached identity.
+            pass
+        _cache.pop(token, None)
     url = SUPABASE_URL.rstrip("/") + "/auth/v1/user"
     try:
         async with httpx.AsyncClient(timeout=8) as client:
@@ -143,3 +191,19 @@ async def require_admin(
         return {"id": "dev-token", "email": None, "role": "admin", "via": "dev_token"}
 
     raise HTTPException(status_code=401, detail="Authentication required")
+
+
+async def require_fee_planner(authorization=None, x_planner_token=None) -> dict:
+    """Fee invoicing only: a server-assigned planner/admin role, never a host.
+
+    Keep require_planner's historical signed-in semantics for host routes.
+    User-editable metadata and the shared local token cannot grant this role.
+    """
+    token = _bearer(authorization)
+    user = await verify_supabase_token(token) if token else None
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    role = (user.get("app_metadata") or {}).get("role")
+    if role not in ("planner", "admin"):
+        raise HTTPException(status_code=403, detail="Planner role required")
+    return {"id": user.get("id"), "role": role, "via": "supabase"}

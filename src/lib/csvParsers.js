@@ -19,9 +19,28 @@ export const PLATFORMS = {
       table_number:         'table_number',
       dietary_restrictions: 'dietary_restrictions',
       notes:                'notes',
+      // A HOST'S OWN SPREADSHEET (run 3, R3-7): "Name, RSVP, Email" read 0 of 3
+      // rows here. The column names people actually type, beside the template's.
+      'Guest Name': 'name', 'Full Name': 'name',
+      'First Name': '_first', 'Last Name': '_last',
+      RSVP: 'rsvp_status', Response: 'rsvp_status', Status: 'rsvp_status', Attending: 'rsvp_status',
+      'E-mail': 'email', 'Email Address': 'email',
+      'Phone Number': 'phone', Mobile: 'phone', Cell: 'phone',
+      Party: 'group', Household: 'group',
+      Meal: 'meal_preference', 'Plus One': 'plus_one_name', Guest: 'plus_one_name',
+      Table: 'table_number',
+      Dietary: 'dietary_restrictions', 'Dietary Needs': 'dietary_restrictions', Allergies: 'dietary_restrictions',
+      Note: 'notes', Comments: 'notes',
     },
     rsvpMap: {
       yes: 'Yes', no: 'No', maybe: 'Maybe', pending: 'Pending', '': 'Pending',
+      attending: 'Yes', accepted: 'Yes', declined: 'No', 'not attending': 'No', 'no reply': 'Pending',
+    },
+    postProcess(row) {
+      if (!row.name && (row._first || row._last)) row.name = [row._first, row._last].filter(Boolean).join(' ').trim();
+      delete row._first;
+      delete row._last;
+      return row;
     },
   },
   theknot: {
@@ -174,6 +193,8 @@ const normEmail = (s) => (s || '').toLowerCase().trim();
 
 // ─── guest transform ─────────────────────────────────────────────────────────
 
+const normHeader = (h) => String(h || '').replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[\s_-]+/g, ' ');
+
 export function transformRows(rawRows, platformKey) {
   const config = PLATFORMS[platformKey];
   if (!config) throw new Error(`Unknown platform: ${platformKey}`);
@@ -181,9 +202,14 @@ export function transformRows(rawRows, platformKey) {
   return rawRows.slice(0, MAX_ROWS).map((raw, i) => {
     const row = { _row: i + 2, _warnings: [] }; // 2 = 1-indexed + header row
 
+    // HEADERS ARE READ AS A PERSON WROTE THEM (run 3, R3-7): case, spacing,
+    // "_"/"-" and an Excel byte-order mark no longer decide whether a column is
+    // seen. The first column that has a value wins for each field.
+    const byNorm = {};
+    for (const [k, v] of Object.entries(raw || {})) { const nk = normHeader(k); if (!(nk in byNorm)) byNorm[nk] = v; }
     for (const [srcField, targetField] of Object.entries(config.fields)) {
-      const val = String(raw[srcField] ?? '').trim();
-      if (val) row[targetField] = val;
+      const val = String((srcField in raw ? raw[srcField] : byNorm[normHeader(srcField)]) ?? '').trim();
+      if (val && !row[targetField]) row[targetField] = val;
     }
 
     // Normalise RSVP — warn when unknown value is coerced
@@ -573,7 +599,11 @@ export function applyVendorMerge(existing, incoming, mode, batchId) {
 // ─── export helpers ──────────────────────────────────────────────────────────
 
 function escapeCell(val) {
-  const s = String(val ?? '');
+  // A CELL IS TEXT, NEVER A FORMULA (run 3, R3-6): a vendor named
+  // "=cmd|' /C calc'!A0" exported as a live formula. Text that a spreadsheet
+  // would evaluate (= + - @, tab, CR) gets a leading apostrophe — OWASP's CSV
+  // injection guidance. Real numbers stay numbers.
+  const s = (typeof val === 'string' && /^[=+\-@\t\r]/.test(val)) ? "'" + val : String(val ?? '');
   return s.includes(',') || s.includes('"') || s.includes('\n')
     ? `"${s.replace(/"/g, '""')}"`
     : s;

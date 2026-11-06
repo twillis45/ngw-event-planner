@@ -1,3 +1,5 @@
+// November 3 C1: unbought estimates now belong to expected, not committed.
+// Historical measurements below describe the former mixed total.
 // ─── $333 OF GROCERIES FOR A ROOM WITH NO STOVE ──────────────────────────────
 //
 // The kitchen gate withheld the shopping list on a no-kitchen destination stay.
@@ -68,8 +70,8 @@ describe('the budget follows the list it is pricing', () => {
     // two numbers on screen, and they must both move.
     const hotel = hostSpending(HOTEL, 1);
     const rental = hostSpending(RENTAL, 1);
-    expect(hotel.committed).toBeLessThan(rental.committed);
-    expect(hotel.uncommitted).toBeGreaterThan(rental.uncommitted);
+    expect(hotel.expected).toBeLessThan(rental.expected);
+    expect(hotel.committed).toBe(rental.committed);
   });
 
   test('the hole is REPORTED, not silently left as a smaller number', () => {
@@ -110,7 +112,7 @@ describe('the budget follows the list it is pricing', () => {
     expect(s.suppliesEstimate).toBe(0);
     // And the total is exactly the non-food remainder, with nothing slipped in.
     const rental = hostSpending(RENTAL, 1);
-    expect(rental.committed - s.committed).toBe(rental.foodEstimate + rental.suppliesEstimate);
+    expect(rental.expected - s.expected).toBe(rental.foodEstimate + rental.suppliesEstimate);
   });
 
   test('NEGATIVE CONTROL: an UNTOLD kitchen still gets its estimate', () => {

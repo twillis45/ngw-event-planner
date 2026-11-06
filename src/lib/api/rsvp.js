@@ -60,10 +60,10 @@ async function hasPlannerAuth() {
 // as "this link is dead." Compared by reference against the same import.
 export const INVITE_FETCH_FAILED = { fetchFailed: true };
 
-export async function fetchPublicInvite(code) {
+export async function fetchPublicInvite(code, options) {
   if (!BASE || !code) return null;
   try {
-    const res = await fetch(`${BASE}/api/public/invite/${encodeURIComponent(code)}`);
+    const res = await fetch(`${BASE}/api/public/invite/${encodeURIComponent(code)}`, options);
     if (res.status === 404) return null;          // genuinely not found
     if (!res.ok) return INVITE_FETCH_FAILED;      // 5xx / transient — retryable
     const data = await res.json();
@@ -71,6 +71,24 @@ export async function fetchPublicInvite(code) {
   } catch {
     return INVITE_FETCH_FAILED;                   // network / offline — retryable
   }
+}
+
+// A configured proxy is not a published event. Check the same public lookup
+// a guest's empty browser uses, including identity, before offering its link.
+export async function checkRsvpCapability(event) {
+  if (!isRsvpApiConfigured()) return { ready: false, reason: 'not-configured' };
+  const code = String((event && event.rsvpCode) || '').trim();
+  if (!event || !event.id || code.length < 16) return { ready: false, reason: 'unpublished' };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  let remote;
+  try { remote = await fetchPublicInvite(code, { signal: controller.signal }); }
+  finally { clearTimeout(timeout); }
+  if (remote === INVITE_FETCH_FAILED) return { ready: false, reason: 'unavailable' };
+  if (!remote || String(remote.id) !== String(event.id) || remote.rsvpCode !== code) {
+    return { ready: false, reason: 'unpublished' };
+  }
+  return { ready: true, code };
 }
 
 // ── Public: submit a guest RSVP (idempotent) ──────────────────────────────────
@@ -90,12 +108,37 @@ export async function submitRsvp(code, payload) {
     e.status = res.status;
     throw e;
   }
-  return res.json(); // { ok, submitted_at }
+  const result = await res.json();
+  if (!result || result.ok !== true) throw new Error('RSVP was not accepted');
+  return result; // { ok, submitted_at }
 }
 
 // ── Planner: host read-back ───────────────────────────────────────────────────
 // Returns the array of submissions, or [] when not configured / errored. NEVER
 // throws — the host UI keeps the existing local-queue merge for same-browser dev.
+// THE SAME READ, WITH ITS REASON (issue #100, D-8). fetchEventRsvps maps every
+// failure to [] — so a host whose session had died saw "No reply" for every
+// guest, presented as the truth. This keeps that contract for its callers and
+// says, for the host screen, whether the list is empty or the read was refused.
+//   { ok: true, rows }                       — the server answered
+//   { ok: false, reason: 'signed-out' }      — no session, or the server said 401
+//   { ok: false, reason: 'forbidden' }       — 403: signed in, not this event's
+//   { ok: false, reason: 'unavailable' }     — offline, 5xx, unconfigured
+export async function readEventRsvps(eventId) {
+  if (!BASE || !eventId) return { ok: false, reason: 'unavailable' };
+  if (!(await hasPlannerAuth())) return { ok: false, reason: 'signed-out' };
+  try {
+    const res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/rsvps`, { headers: await authHeaders() });
+    if (res.status === 401) return { ok: false, reason: 'signed-out' };
+    if (res.status === 403) return { ok: false, reason: 'forbidden' };
+    if (!res.ok) return { ok: false, reason: 'unavailable' };
+    const data = await res.json();
+    return { ok: true, rows: Array.isArray(data) ? data : [] };
+  } catch {
+    return { ok: false, reason: 'unavailable' };
+  }
+}
+
 export async function fetchEventRsvps(eventId) {
   if (!BASE || !eventId) return [];
   if (!(await hasPlannerAuth())) return [];

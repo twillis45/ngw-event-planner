@@ -34,10 +34,11 @@
 // .env.passgate) because the shared one has billing dormant by design.
 import { test, expect } from '@playwright/test';
 import { previewUrl } from '../deployBase.mjs';
+import { openSectionByName } from './fixtures.mjs';
 
 // Only the passgate bundle has REACT_APP_BILLING_LIVE=1. Addressing 5233 here
 // would measure a dormant paywall and pass vacuously.
-const BASE = previewUrl(5266);
+const BASE = previewUrl(Number(process.env.PW_PASSGATE_PORT || 5266));
 const API = 'https://passgate-mock.invalid';
 
 const EVENT_ID = 'cust-passgate-1';   // cust- => isUserCreatedEvent true
@@ -109,9 +110,7 @@ const boot = async (page, { event = eventFixture(), id = EVENT_ID } = {}) => {
  * had nothing to do with entitlement.
  */
 const readPassSheet = async (page) => {
-  const opener = page.getByRole('button', { name: /^The One-Event Pass$/i }).first();
-  await opener.waitFor({ state: 'visible', timeout: 15_000 });
-  await opener.click();
+  await openSectionByName(page, 'The One-Event Pass');
   await page.waitForTimeout(900);
   const t = await page.evaluate(() => {
     const sh = document.querySelector('.sheet');
@@ -145,7 +144,10 @@ test.describe('GOLD-09 — the pass entitlement reaches the shell', () => {
   test('the shell asks the server for the pass when an event opens', async ({ page }) => {
     const asks = await stubPass(page, [false]);
     await boot(page);
-    expect(asks.length, 'no GET /api/stripe/pass — the refresh effect never fired').toBeGreaterThan(0);
+    // Wait FOR the request, not a fixed 1.2s: the refresh is an effect that runs
+    // after boot, and on the WebKit phone runner it once landed after the sleep
+    // (CI on #101, 11/5/2026). The claim is unchanged — the request must happen.
+    await expect.poll(() => asks.length, { timeout: 10_000, message: 'no GET /api/stripe/pass — the refresh effect never fired' }).toBeGreaterThan(0);
   });
 
   // ── 3 · THE GUARD HOLDS ──────────────────────────────────────────────────

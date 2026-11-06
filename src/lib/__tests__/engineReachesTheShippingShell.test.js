@@ -312,7 +312,9 @@ const CRA_ONLY_BY_SURFACE = {
   // from a CRA path, invisible to a direct-import census. Not planner
   // inventory, and emphatically not a gap — it is the provenance gate that
   // stops an app-invented headcount reaching a caterer.
-  hostLive: ['decisionMemory', 'eventIdentity', 'seatingPlan', 'doItForMe', 'crabPlan',
+  // `api/rsvp` joined 2026-11-05: hostv2 reads replies through readEventRsvps
+  // (issue #100, D-8); fetchEventRsvps stays for the frozen CRA alone.
+  hostLive: ['api/rsvp', 'decisionMemory', 'eventIdentity', 'seatingPlan', 'doItForMe', 'crabPlan',
     'momentLibrary', 'playbooks/index', 'artworkMarks', 'hostIntel', 'eventGeoQuery',
     'guestCountFor'],
 

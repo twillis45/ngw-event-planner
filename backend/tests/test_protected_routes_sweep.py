@@ -6,17 +6,19 @@ someone had already worried about, not the enumerated surface — which is
 exactly how the next unauthenticated route ships. This walks the actual
 routers two ways:
 
-1. SOURCE gate — each endpoint's source must call an auth/verification gate
+1. SOURCE gate — each endpoint's parsed code must call an auth/verification gate
    (require_planner, admin auth, webhook signature verify, or a brief-token
    resolve) unless its "METHOD /path" is listed in PUBLIC with a reason.
-2. LIVE gate — every require_planner endpoint, hit bare over a TestClient
-   (no headers, dummy path params), must answer 401 — never 200 and never a
+2. LIVE gate — every signed-in endpoint, hit bare over a TestClient
+   (no headers, schema-valid body/query and path params), must answer 401 — never 200 and never a
    500 from assuming a user exists.
 
 A new route in these routers fails (1) until it either gates or is
 explicitly argued onto the allowlist here. Fully offline: bare requests are
 refused before any external call.
 """
+import ast
+import textwrap
 import inspect
 import sys
 import types
@@ -29,6 +31,7 @@ if "asyncpg" not in sys.modules:
 import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from pydantic import TypeAdapter
 
 from app.main import app as MOUNTED_APP
 
@@ -110,10 +113,28 @@ PUBLIC = {
 # Source markers that count as a caller gate.
 GATES = (
     "require_planner",
+    "require_fee_planner",
     "require_admin",             # admin console: app_metadata.role, server-side
-    "Webhook.construct_event",   # Stripe signature verification (fixed 2026-08-07)
+    "stripe.Webhook.construct_event",   # Stripe signature verification (fixed 2026-08-07)
     "_verify_resend_signature",  # Resend (Svix) HMAC, main.py
 )
+
+
+def gate_calls(source):
+    """Executed call syntax only; comments, strings, and bare names are not gates."""
+    tree = ast.parse(textwrap.dedent(source))
+    calls = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            name = ast.unparse(node.func)
+            if name in GATES:
+                calls.add(name)
+    return calls
+
+
+def test_documentation_cannot_impersonate_a_gate():
+    assert not gate_calls('async def route():\n    """require_planner"""\n    # require_admin()\n    return "require_fee_planner()"')
+    assert gate_calls('async def route():\n    await require_planner(None, None)') == {'require_planner'}
 
 
 def _routes():
@@ -131,7 +152,7 @@ def test_every_sensitive_route_is_gated_or_argued_public():
     for method, r in _routes():
         src = inspect.getsource(r.endpoint)
         key = _key(method, r)
-        if any(g in src for g in GATES):
+        if gate_calls(src):
             continue
         if key in PUBLIC:
             continue
@@ -167,22 +188,51 @@ def bare_client():
     return TestClient(MOUNTED_APP, raise_server_exceptions=False)
 
 
+def schema_value(schema, root=None):
+    """Build structurally valid input: validation must not hide missing auth."""
+    root = root or schema
+    if "$ref" in schema:
+        target = root
+        for part in schema["$ref"].split("/")[1:]:
+            target = target[part]
+        return schema_value(target, root)
+    if "default" in schema:
+        return schema["default"]
+    if "enum" in schema:
+        return schema["enum"][0]
+    if "const" in schema:
+        return schema["const"]
+    if "anyOf" in schema:
+        return schema_value(next(x for x in schema["anyOf"] if x.get("type") != "null"), root)
+    kind = schema.get("type")
+    if kind == "object":
+        return {k: schema_value(schema["properties"][k], root) for k in schema.get("required", [])}
+    if kind == "array":
+        return [schema_value(schema.get("items", {}), root) for _ in range(schema.get("minItems", 0))]
+    if kind in ("integer", "number"):
+        return max(1, schema.get("minimum", 1), schema.get("exclusiveMinimum", 0) + 1)
+    if kind == "boolean":
+        return False
+    return "x" * max(1, schema.get("minLength", 1))
+
+
 def test_planner_gated_routes_answer_401_bare(bare_client):
     hit = 0
     for method, r in _routes():
         src = inspect.getsource(r.endpoint)
-        if "require_planner" not in src and "require_admin" not in src:
+        if not gate_calls(src) & {"require_planner", "require_admin", "require_fee_planner"}:
             continue
         path = r.path
         for name in r.param_convertors:
-            path = path.replace("{" + name + "}", "x")
-        resp = bare_client.request(method, path, json={})
+            path = path.replace("{" + name + "}", "INTERNAL_TEAM" if name == "channel_type" else "x")
+        payload = schema_value(TypeAdapter(r.body_field.type_).json_schema()) if r.body_field else None
+        params = {f.alias: schema_value(TypeAdapter(f.field_info.annotation).json_schema())
+                  for f in r.dependant.query_params if f.required}
+        resp = bare_client.request(method, path, json=payload, params=params)
         hit += 1
-        # 401 is the contract. 422/400 are tolerated ONLY when the shape is
-        # rejected before auth runs (FastAPI body validation, or an explicit
-        # assert_channel_type on the dummy 'x' path param); anything else —
-        # 200, 404-as-a-lie, 500 — fails.
-        assert resp.status_code in (400, 401, 422), (
+        # Valid route/body/query input must reach authentication. A validation
+        # error is a broken probe, never evidence of an auth boundary.
+        assert resp.status_code == 401, (
             f"{method} {path}: expected 401 bare, got {resp.status_code}"
         )
     assert hit >= 20, f"sweep only reached {hit} require_planner routes — wiring broke?"

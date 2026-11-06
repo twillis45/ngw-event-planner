@@ -33,7 +33,7 @@ Setup (Render dashboard):
 
 Stripe webhook endpoint to configure:
   URL:    https://ngw-events-api.onrender.com/api/stripe/webhook
-  Events: checkout.session.completed
+  Events: checkout.session.completed, charge.refunded, charge.dispute.created
 """
 
 import json
@@ -43,7 +43,7 @@ from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel, Field
 from typing import Optional
 from ..config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
-from ..auth import require_planner
+from ..auth import require_planner, require_fee_planner
 from ..app_origins import is_app_redirect
 from ..db import get_pool
 
@@ -200,7 +200,7 @@ async def create_checkout_session(
     #
     # AUTH BEFORE CONFIGURATION, deliberately: below the _configured() check an
     # anonymous caller learns whether this deployment has Stripe wired.
-    await require_planner(authorization, x_planner_token)
+    await require_fee_planner(authorization, x_planner_token)
 
     if not _configured():
         raise HTTPException(
@@ -306,7 +306,7 @@ async def create_pass_session(
         if held:
             raise HTTPException(
                 status_code=409,
-                detail="This event already has a pass. Nothing more to buy.",
+                detail="This event has a recorded purchase. If access was refunded or disputed, contact support before buying again.",
             )
 
     stripe.api_key = STRIPE_SECRET_KEY
@@ -375,7 +375,9 @@ async def get_pass(
         await _studio_for_event(conn, event_id, principal)
         row = await conn.fetchrow(
             """select sku, amount_cents, currency, purchased_at
-                 from public.event_passes where event_id=$1""",
+                 from public.event_passes p where event_id=$1
+                  and not exists (select 1 from public.pass_payment_blocks b
+                                  where b.stripe_payment_intent=p.stripe_payment_intent)""",
             event_id,
         )
 
@@ -437,15 +439,14 @@ async def stripe_webhook(
     stripe_signature: Optional[str] = Header(None, alias="stripe-signature"),
 ):
     """
-    Receive Stripe webhook events (checkout.session.completed).
+    Receive signature-verified checkout, refund, and dispute events.
 
     Configure in Stripe Dashboard → Webhooks:
       URL:    https://ngw-events-api.onrender.com/api/stripe/webhook
-      Events: checkout.session.completed
+      Events: checkout.session.completed, charge.refunded, charge.dispute.created
 
     The frontend uses /verify-session for immediate status checks.
-    This endpoint logs completions and is the hook point for future
-    Supabase writes when the data model moves server-side.
+    This endpoint retains purchase receipts and blocks refunded/disputed payments.
     """
     if not _configured():
         return {"ok": True}
@@ -543,6 +544,16 @@ async def stripe_webhook(
             log.info("stripe: payment completed fee_id=%s session=%s amount=%s", fee_id, sess_id, amount)
             # Future: update Supabase client record here when feeSchedule moves server-side.
 
+    elif event_type in ("charge.refunded", "charge.dispute.created"):
+        if not verified:
+            log.error("stripe: REFUSING unverified payment block")
+        elif event_type == "charge.dispute.created":
+            await _block_pass_payment(session_data, "disputed", event.get("id"))
+        # Owner ruling, November 5: partial refunds KEEP access. Stripe's
+        # refunded flag becomes true only after the charge is fully refunded.
+        elif session_data.get("refunded") is True:
+            await _block_pass_payment(session_data, "refunded", event.get("id"))
+
     return {"ok": True}
 
 
@@ -593,30 +604,65 @@ async def _grant_pass(meta: dict, session_data, sess_id, amount) -> None:
         )
         return
 
+    payment_intent = session_data.get("payment_intent")
+    if not isinstance(payment_intent, str) or not payment_intent:
+        raise HTTPException(status_code=500, detail="Paid session is missing its payment reference.")
+
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # `on conflict do nothing` WITHOUT a target, covering BOTH unique
-        # constraints: stripe_session_id (the same event redelivered — Stripe
-        # retries until acknowledged) and event_id (a second session for an
-        # event that already has a pass, which the purchase route refuses but a
-        # race could still produce). Either way the first grant stands and the
-        # replay is a no-op rather than a crash or a second row.
-        await conn.execute(
-            """insert into public.event_passes
-                   (event_id, studio_id, sku, amount_cents, currency,
-                    stripe_session_id, purchased_by)
-               values ($1, $2, $3, $4, $5, $6, $7)
-               on conflict do nothing""",
-            event_id,
-            studio_id,
-            meta.get("sku") or PASS_SKU,
-            amount if amount is not None else PASS_AMOUNT_CENTS,
-            (session_data.get("currency") or "usd"),
-            sess_id,
-            meta.get("purchased_by") or None,
-        )
+        async with conn.transaction():
+            # Both writers serialize on the same durable payment identity.
+            await conn.execute("select pg_advisory_xact_lock(hashtextextended($1, 0))", payment_intent)
+            blocked = await conn.fetchval(
+                "select reason from public.pass_payment_blocks where stripe_payment_intent=$1", payment_intent)
+            result = await conn.execute(
+                """insert into public.event_passes
+                       (event_id, studio_id, sku, amount_cents, currency,
+                        stripe_session_id, purchased_by, stripe_payment_intent)
+                   values ($1, $2, $3, $4, $5, $6, $7, $8)
+                   on conflict do nothing""",
+                event_id, studio_id, meta.get("sku") or PASS_SKU,
+                amount if amount is not None else PASS_AMOUNT_CENTS,
+                session_data.get("currency") or "usd", sess_id,
+                meta.get("purchased_by") or None, payment_intent,
+            )
+    if blocked:
+        log.warning("stripe: PASS BLOCKED event=%s session=%s reason=%s", event_id, sess_id, blocked)
+    elif result == "INSERT 0 1":
+        log.info("stripe: PASS GRANTED event=%s studio=%s session=%s amount=%s", event_id, studio_id, sess_id, amount)
+    else:
+        log.warning("stripe: DUPLICATE pass payment event=%s session=%s — no grant written", event_id, sess_id)
 
-    log.info(
-        "stripe: PASS GRANTED event=%s studio=%s session=%s amount=%s",
-        event_id, studio_id, sess_id, amount,
-    )
+
+async def _block_pass_payment(payment, reason: str, stripe_event_id) -> None:
+    """Retain receipts and permanently remember refund/dispute before granting.
+
+    Disputes suspend access until reviewed; a later won-dispute notification
+    does not silently restore it. Full refunds cannot be downgraded by replay.
+    """
+    payment_intent = payment.get("payment_intent")
+    if not isinstance(payment_intent, str) or not payment_intent:
+        raise HTTPException(status_code=500, detail="Payment block is missing its payment reference.")
+    stripe.api_key = STRIPE_SECRET_KEY
+    # Old receipts lack the payment-intent column. Only Stripe's authenticated
+    # lookup may map those session IDs; event/host metadata is not a credential.
+    sessions = stripe.checkout.Session.list(payment_intent=payment_intent, limit=100)
+    if sessions.get("has_more"):
+        raise HTTPException(status_code=500, detail="Payment session mapping requires review.")
+    session_ids = [session["id"] for session in sessions.get("data", [])]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("select pg_advisory_xact_lock(hashtextextended($1, 0))", payment_intent)
+            await conn.execute(
+                """insert into public.pass_payment_blocks (stripe_payment_intent, reason, stripe_event_id)
+                   values ($1,$2,$3) on conflict (stripe_payment_intent) do update
+                   set reason=case when pass_payment_blocks.reason='refunded' then 'refunded' else excluded.reason end""",
+                payment_intent, reason, stripe_event_id,
+            )
+            await conn.execute(
+                """update public.event_passes set stripe_payment_intent=$1
+                   where stripe_session_id=any($2::text[]) and stripe_payment_intent is null""",
+                payment_intent, session_ids,
+            )
+    log.warning("stripe: PAYMENT BLOCKED payment=%s reason=%s", payment_intent, reason)

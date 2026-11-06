@@ -41,6 +41,7 @@ import {
   clearPendingEventWrite,
   getPendingCount as eventsGetPendingCount,
   getLastSyncTime as eventsGetGlobalLastSync,
+  isEventWriteInFlight,
 } from './events';
 
 const STAMPS_KEY   = 'ngw-hostv2-sync-stamps';
@@ -175,6 +176,10 @@ export function getEventSyncStatus(event) {
   if (id == null || id === '') return null;
   let queued = false;
   try { queued = getPendingEventIds().includes(id); } catch { queued = false; }
+  // A write on its way is not in the cloud yet either (issue #100, D-7).
+  let sending = false;
+  try { sending = isEventWriteInFlight(id); } catch { sending = false; }
+  if (sending && !queued) return SYNC_STATUS.PENDING;
   if (queued) {
     const a = readMap(ATTEMPTS_KEY)[id];
     return a && a.error ? SYNC_STATUS.SYNC_FAILED : SYNC_STATUS.PENDING;

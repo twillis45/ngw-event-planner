@@ -67,6 +67,14 @@ function laneHeaders() {
   return [...new Set(out)];
 }
 
+// 11/5/2026: the strip moved into lib/worryLabel (so a playbook trigger can be
+// read as a condition, "If …", and tested). The premise is unchanged — the
+// lane's label drops the raiser's prefix — whether the shell does it inline or
+// delegates to that one module.
+const WORRY_LABEL = (() => { try { return fs.readFileSync(require('path').join(__dirname, '../worryLabel.js'), 'utf8'); } catch { return ''; } })();
+const STRIPS = /replace\(\/\^have a plan for:/i.test(CODE)
+  || (/worryLabel\(/.test(CODE) && /replace\(\/\^have a plan for:/i.test(WORRY_LABEL));
+
 describe('the worry lane header and wlabel are one contract', () => {
   test('the registry still ships the ask as a prefix on the row title', () => {
     // If this changes, the whole contract moves and this file must be re-read.
@@ -77,11 +85,11 @@ describe('the worry lane header and wlabel are one contract', () => {
     // Guard against a vacuous pass: every assertion below only matters while
     // the strip exists. A grep proves a string present, never a behaviour, so
     // this is the narrowest honest premise check.
-    expect(CODE).toMatch(/replace\(\/\^have a plan for:/i);
+    expect(STRIPS).toBe(true);
   });
 
   test('the lane header carries the ask, because the rows no longer can', () => {
-    const strips = /replace\(\/\^have a plan for:/i.test(CODE);
+    const strips = STRIPS;
     if (!strips) return;                       // other build; see the header note
     const headers = laneHeaders();
     expect(headers.length).toBeGreaterThan(0); // never assert over an empty set

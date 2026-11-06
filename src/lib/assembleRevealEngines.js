@@ -3,6 +3,7 @@
 // Consumes: Event Identity, existing playbook engines, risk, vendor intelligence
 // Outputs: Array of cards matching the unified contract
 
+import { occasionNoun } from './occasionWords';
 import { playbookFoodPlan, effectiveRos } from './playbooks';
 // Was: Math.floor((eventMidnight - new Date()) / 86400000) — a floor over a diff whose
 // right side still carried the wall clock, so for most of every day it reported one day
@@ -64,9 +65,12 @@ function buildIdentityStage(event, eventIdentity, persona) {
   // hardcoded, so every vowel-initial type (anniversary, engagement, open house,
   // induction) read wrong on the first screen of the app.
   const article = (word) => (/^[aeiou]/i.test(String(word || '').trim()) ? 'An' : 'A');
+  // …and "A the cookout." (gold run, 11/5/2026): a type that carries its own
+  // "The" kept it. occasionNoun drops it; the article is chosen on what remains.
+  const _primaryNoun = occasionNoun(primaryEventType);
   const eventDesc = isCompound
-    ? `${article(primaryEventType)} ${primaryEventType.toLowerCase()} + ${secondaryEventTypes.map(t => t.toLowerCase()).join(' + ')}.`
-    : `${article(primaryEventType)} ${primaryEventType.toLowerCase()}.`;
+    ? `${article(_primaryNoun)} ${_primaryNoun} + ${secondaryEventTypes.map(t => occasionNoun(t)).join(' + ')}.`
+    : `${article(_primaryNoun)} ${_primaryNoun}.`;
 
   const compoundExplanation = isCompound
     ? ' Two milestones, one event. I\'ll plan both.'
@@ -80,7 +84,8 @@ function buildIdentityStage(event, eventIdentity, persona) {
     ? ` Guests span ${participants.join(' and ')}.`
     : '';
 
-  const confidenceWord = confidence >= 0.85 ? 'High confidence' : 'Fairly confident';
+  const confidenceWord = !String((event && event.honoree) || '').trim()
+    ? 'Honoree not named' : (confidence >= 0.85 ? 'High confidence' : 'Fairly confident');
 
   return {
     key: 'identity',
@@ -174,6 +179,9 @@ function deriveDecisionBlockers(event, eventIdentity) {
     blockers.push({
       type: 'venue-selection',
       urgency: venueUrgency,
+      // A home with no town: the PLACE is settled, the town is what is missing
+      // (gold run GOLD-05, 11/5/2026). Carried so the stage asks that question.
+      homeNeedsTown: !!(vf.isHome && vf.needsCityForWeather),
       // Carried so a consumer can say WHY it escalated rather than re-deriving
       // the ladder and drifting from it.
       daysToEvent: _dte,
@@ -267,6 +275,18 @@ function buildBlockerStage(blocker) {
     }
   };
 
+  // GOLD-05: "Backyard cookout at my house, I'm handling the venue myself" was
+  // asked "Where is the event? … Choose or confirm the venue." The venue is the
+  // one thing she settled; the blocker exists because the town is missing.
+  if (blocker.type === 'venue-selection' && blocker.homeNeedsTown) {
+    blockerCopy['venue-selection'] = {
+      ...blockerCopy['venue-selection'],
+      title: 'Your town',
+      what: 'Which town is your place in?',
+      why: 'The place is set. Weather, the rain note and shopping read the town.',
+      nextDecision: 'Add the town.',
+    };
+  }
   const copy = blockerCopy[blocker.type] || {
     title: 'Decision Needed',
     what: blocker.type,
@@ -329,7 +349,7 @@ function assemblePlanningDomains(event, profile, foodPP) {
     if (guestCount > 0) {
       domains.push({
         type: 'guests',
-        data: { guestCount, rsvpCount: (event.guests || []).filter(g => g && g.rsvp === 'Yes').length || 0 }
+        data: { guestCount, rosterCount: (event.guests || []).filter(g => g && String(g.name || '').trim()).length, rsvpCount: (event.guests || []).filter(g => g && g.rsvp === 'Yes').length || 0 }
       });
     }
   } catch {}
@@ -441,7 +461,7 @@ function assemblePlanningDomains(event, profile, foodPP) {
 
   // === VENDORS (if any named) ===
   try {
-    const namedVendors = (event.vendors || []).filter(v => v && v.name && String(v.name).trim());
+    const namedVendors = (event.vendors || []).filter(v => v && (String(v.name || '').trim() || String(v.category || '').trim()));
     if (namedVendors.length > 0) {
       domains.push({
         type: 'vendors',
@@ -506,8 +526,8 @@ function buildDomainStage(domain) {
       // silently multiplied — nobody has researched the multi-day meal model.
       buildWhy: (data) => {
         const base = data.planFor > data.guestCount
-          ? `Menu is built. Quantities are an estimate — sized for about ${data.planFor} so you don't run short if more show up. Choose sourcing next.`
-          : 'Menu is built. Quantities are an estimate — they scale with your head count. Choose sourcing next.';
+          ? `Draft menu to review. Quantities are an estimate — sized for about ${data.planFor} so you don't run short if more show up. Choose sourcing next.`
+          : 'Draft menu to review. Quantities are an estimate — they scale with your head count. Choose sourcing next.';
         return data.spanNote ? `${base} ${data.spanNote}` : base;
       },
       status: 'Ready to fill'
@@ -532,7 +552,9 @@ function buildDomainStage(domain) {
       icon: 'people',
       title: 'Guest Planning',
       buildWhat: (data) => `${data.guestCount} guest${data.guestCount === 1 ? '' : 's'}${data.rsvpCount > 0 ? `, ${data.rsvpCount} confirmed` : ''}.`,
-      buildWhy: (data) => 'Guest list built. RSVP tracking live.',
+      buildWhy: (data) => data.rosterCount > 0
+        ? `${data.rosterCount} guest name${data.rosterCount === 1 ? '' : 's'} recorded. Add names and record replies in your guest list.`
+        : 'Headcount recorded; no guest names added yet. Add names and record replies in your guest list.',
       status: 'In progress'
     },
     budget: {
@@ -557,14 +579,14 @@ function buildDomainStage(domain) {
       // never gave us. Say what is true of each shape.
       buildWhy: (data) => (data.budgetBasis === 'rows'
         ? 'Your categories add up — set an overall number whenever you want a ceiling to track against.'
-        : 'Budget is set and live. Track spending in real time.'),
+        : 'Budget recorded. Log payments as you make them.'),
       status: 'Ready'
     },
     vendors: {
       icon: 'briefcase',
       title: 'Vendors',
-      buildWhat: (data) => `${data.vendorCount} vendor${data.vendorCount === 1 ? '' : 's'} assigned.`,
-      buildWhy: (data) => 'Vendor list built. Confirm each one, then track deliverables.',
+      buildWhat: (data) => `${data.vendorCount} vendor role${data.vendorCount === 1 ? '' : 's'} recorded.`,
+      buildWhy: (data) => 'Review each role and its booking status. Considering does not mean booked.',
       status: 'Ready to confirm'
     }
   };

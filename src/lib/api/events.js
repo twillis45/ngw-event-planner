@@ -329,6 +329,51 @@ export async function saveEvent(event) {
     : [...local, event]);
 
   if (!isSupabaseConfigured() || !supabase) return { ok: false, queued: false, reason: 'not-configured' };
+  // Marked BEFORE the first await (issue #100, D-7): until the write settles the
+  // event is neither queued nor re-stamped, and a pull landing in that gap read
+  // it as synced and adopted the older cloud row over the edit.
+  saving.set(event.id, (saving.get(event.id) || 0) + 1);
+  try { return await saveEventToCloud(event); } finally {
+    const n = (saving.get(event.id) || 1) - 1;
+    if (n > 0) saving.set(event.id, n); else saving.delete(event.id);
+  }
+}
+
+// Writes started on this device that have not settled yet. In memory only: a
+// reload ends every in-flight write, and a write that failed is in the queue.
+const saving = new Map();
+/** True while a save for this event is on its way to the cloud. */
+export function isEventWriteInFlight(eventId) { return (saving.get(eventId) || 0) > 0; }
+
+/**
+ * True when a pulled copy is OLDER than the newest version this device wrote
+ * or saw — a read that started before this device's own write landed. Such a
+ * copy is not "someone else's later write" and must never replace the local
+ * one. Strictly older: loadEvents records the stamp of every row it returns,
+ * so a genuinely newer row from another device carries exactly that stamp.
+ */
+export function cloudCopyIsStale(cloudEvent) {
+  const stamp = cloudEvent && cloudEvent._cloudUpdatedAt;
+  if (!stamp || !cloudEvent.id) return false;
+  return newerStamp(readStamps()[cloudEvent.id], stamp);
+}
+
+/**
+ * Two copies of one event say the same thing. `_cloudUpdatedAt` is the row's
+ * version, not the event, and object KEY ORDER is not content: Postgres jsonb
+ * stores keys in its own order, so this device's own write came back "different"
+ * and was announced as a newer version from the account (issue #100, D-7).
+ * Array order IS content (guest and task order are the host's).
+ */
+export function sameEventContent(a, b) {
+  const canon = (v) => (Array.isArray(v) ? v.map(canon)
+    : v && typeof v === 'object' ? Object.keys(v).sort().reduce((o, k) => { o[k] = canon(v[k]); return o; }, {})
+      : v);
+  const strip = (e) => { if (!e || typeof e !== 'object') return e; const { _cloudUpdatedAt, ...rest } = e; return rest; };
+  return JSON.stringify(canon(strip(a))) === JSON.stringify(canon(strip(b)));
+}
+
+async function saveEventToCloud(event) {
   const sid = await currentStudioId();
   if (!sid) { enqueueMutation({ type: 'upsert', id: event.id, data: event }); return { ok: false, queued: true, reason: 'no-studio' }; }
   // Sprint 58E-B: a non-uuid studio (dev-bypass) has no cloud row — stay local-only

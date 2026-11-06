@@ -56,6 +56,8 @@ test.describe('activation funnel — hostv2 emits it, not just the frozen CRA', 
 
   test('sharing an invite reports the reach, and whether it can convert', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+    await page.addInitScript(() => { localStorage.setItem('ngw-hostv2-patch-test-two-days', JSON.stringify({ rsvpCode: 'activation-public-invite-code' })); });
+    await page.route('https://e2e-mock.invalid/api/public/invite/**', route => route.fulfill({ status: 200, json: { ok: true, event: { id: 'test-two-days', rsvpCode: 'activation-public-invite-code' } } }));
     await boot(page);
     // 'Guests' is the rail's own label, read off the running app rather than
     // guessed — the previous guess made this spec fail on navigation and say
@@ -63,7 +65,7 @@ test.describe('activation funnel — hostv2 emits it, not just the frozen CRA', 
     await openSectionByName(page, 'Guests');
     await settled(page);
 
-    const share = page.getByRole('button', { name: /Share the RSVP link/i }).first();
+    const share = page.getByRole('button', { name: /Check and share link/i }).first();
     // Asserted, not skipped, for the reason above: a missing control must fail
     // this spec rather than excuse it.
     await expect(share).toBeVisible();
@@ -83,7 +85,7 @@ test.describe('activation funnel — hostv2 emits it, not just the frozen CRA', 
     // that reaches a dead end. A share that cannot convert must not read as one
     // that could.
     expect(hits[0]).toHaveProperty('method');
-    expect(typeof hits[0].rsvp_live === 'boolean' || hits[0].method === 'native_share').toBe(true);
+    expect(hits[0].rsvp_live).toBe(true);
   });
 
   test('a guest opening a real invite reports invite_viewed, once', async ({ page }) => {

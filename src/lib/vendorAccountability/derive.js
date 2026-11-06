@@ -5,7 +5,7 @@
 
 import { getVendorPlaybook, normalizeCategory, UNIVERSAL_VENDOR_QUESTIONS } from './playbooks.js';
 import { makePromise, PROMISE_STATUS_SEVERITY } from './promiseModel.js';
-import { daysUntil } from '../dates.js';
+import { daysUntil, localISO, usShortDate } from '../dates.js';
 import { isVendorBooked } from '../workstreams.js';
 
 // Internal accountability tier (machine-internal). UI maps to display labels.
@@ -50,10 +50,21 @@ export function deriveVendorExpectedPromises(vendor, event) {
   if (vendor.isInformal) return [];
   const playbook = getVendorPlaybook(vendor.category);
   const eventDate = event.date || null;
+  // A DEADLINE IS NEVER EARLIER THAN THE PLAN (run 2, R2-11): an event created
+  // a day out had every vendor promise "overdue" — "Final guest count overdue
+  // (2026-10-31)" — for a deadline that passed before the vendor existed. When
+  // the usual lead time is already gone, the promise is due the day planning
+  // began: "due now", never "late" for something no one could have done.
+  const began = (() => {
+    const at = vendor.createdAt || event.createdAt;
+    const d = at ? new Date(at) : null;
+    return d && !isNaN(d) ? localISO(d) : null;
+  })();
   return playbook.commonPromises.map(pp => {
-    const dueDate = eventDate
+    let dueDate = eventDate
       ? new Date(new Date(eventDate).getTime() - pp.daysBefore * 86_400_000).toISOString().slice(0, 10)
       : null;
+    if (dueDate && began && dueDate < began) dueDate = began;
     return makePromise({
       vendorId: vendor.id,
       eventId: event.id,
@@ -164,11 +175,12 @@ export function deriveVendorAccountability(vendor, event, promises = []) {
 
   // Reasons — explainable, plain language
   const reasons = [];
-  missed.forEach(p => reasons.push(`${p.promiseText} promised by ${p.dueDate || 'unknown date'} — no completion or evidence.`));
+  missed.forEach(p => reasons.push(`${p.promiseText} promised by ${p.dueDate ? usShortDate(p.dueDate) : 'unknown date'} — no completion or evidence.`));
   overdueRaw.forEach(p => {
-    if (!missed.includes(p)) reasons.push(`${p.promiseText} overdue (${p.dueDate || 'no date'}).`);
+    if (!missed.includes(p)) reasons.push(`${p.promiseText} overdue (${p.dueDate ? usShortDate(p.dueDate) : 'no date'}).`);
   });
-  dueSoon.forEach(p => reasons.push(`${p.promiseText} due in ${daysUntil(p.dueDate)} day(s).`));
+  // "due in 0 day(s)" (run 3, R3-1) reads like a form; say the day.
+  dueSoon.forEach(p => { const d = daysUntil(p.dueDate); reasons.push(`${p.promiseText} due ${d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + ' days'}.`); });
   evidenceMissing.forEach(p => {
     if (!overdueRaw.includes(p) && !missed.includes(p)) reasons.push(`${p.promiseText} — evidence missing.`);
   });

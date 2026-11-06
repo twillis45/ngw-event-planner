@@ -145,10 +145,12 @@ describe('the Reveal prints the money that is actually there', () => {
     expect(s.why).toMatch(/overall number|ceiling/i);
   });
 
-  test('a host who DID set a total still hears the confident line', () => {
+  test('a host-set total is recorded without promising an automatic spending feed', () => {
     const s = budgetStage(BOTH());
     expect(s.what).toContain('25,000');
-    expect(s.why).toMatch(/set and live/i);
+    expect(s.why).toMatch(/budget recorded/i);
+    expect(s.why).toMatch(/log payments/i);
+    expect(s.why).not.toMatch(/live|real time/i);
   });
 
   test('no budget at all — no card, rather than a $0 card', () => {

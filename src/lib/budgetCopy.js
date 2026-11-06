@@ -6,21 +6,23 @@
 // SUPPORT line ("based on known costs", "about", "still unpriced").
 //
 // TRUTHFUL SEMANTICS (do not weaken):
-//   spent      = budget rows' actual + food actually bought → the ONLY thing
-//                the copy may call "spent".
-//   committed  = spent + still-planned food → "known costs" / "spoken for".
-//   Quotes and estimates are NEVER "paid" or "spent".
+//   spent      = owned payment/purchase records, with estimated prices labeled.
+//   committed  = booked contracts and purchases → "known costs" / "spoken for".
+//   expected   = category-owned forecast, including allocations and estimates.
+//   Unbought quotes and estimates are NEVER "paid" or "spent".
 import { hostSpending } from './hostSpending';
+import { formatCurrency, roundCurrency } from './currency';
 import { isOwnEvidence } from './knowledge/lodgingBasisLadder';
 
 export const NEAR_BUDGET_HEADROOM = 0.15; // <15% left = "getting close"
 
-const fmt = (n) => '$' + Math.round(Math.abs(Number(n) || 0)).toLocaleString();
+const fmt = (n) => formatCurrency(Math.abs(Number(n) || 0));
 
 // Named vendors that still have no price — the "this can change" caveat.
 export function unpricedVendorCount(event) {
   return ((event && event.vendors) || []).filter(v =>
-    v && String(v.name || '').trim() && !(Number(v.cost) > 0)).length;
+    v && String(v.name || '').trim() && !(Number(v.cost) > 0)
+      && !(v.cost === 0 && v.costAgreed === true)).length;
 }
 
 // Returns { state, title, line, caveat|null, numbers } — plain strings.
@@ -29,9 +31,10 @@ export function budgetHeroCopy(event, priceFactor) {
   const sp = hostSpending(event, priceFactor);
   const { total, spent, committed } = sp;
   const unpriced = unpricedVendorCount(event);
-  const caveat = unpriced > 0
-    ? `${unpriced} vendor${unpriced === 1 ? ' is' : 's are'} still unpriced, so this can change.`
-    : null;
+  const caveat = [
+    unpriced > 0 ? `${unpriced} vendor${unpriced === 1 ? ' is' : 's are'} still unpriced, so this can change.` : null,
+    sp.moneyDiscrepancies.length > 0 ? 'Payment records differ — review them before relying on spent.' : null,
+  ].filter(Boolean).join(' ') || null;
 
   // 1. No budget set — ask for the ceiling so overspend can be flagged early.
   if (!(total > 0)) {
@@ -47,13 +50,13 @@ export function budgetHeroCopy(event, priceFactor) {
   if (committed <= 0) {
     return {
       state: 'waiting',
-      title: "Your budget's set — prices still need to come in.",
-      line: 'Add costs as vendors quote you so this stays useful.',
+      title: "Your budget's set — nothing committed yet.",
+      line: sp.expected > 0 ? `${fmt(sp.expected)} expected so far, including allocations and estimates. Booked costs and payments will appear as spoken for.` : 'Add costs as you book vendors or make purchases.',
       caveat, numbers: sp,
     };
   }
 
-  const delta = committed - total;
+  const delta = roundCurrency(committed - total);
 
   // 5. Over — direct, not alarming; the action is in the line.
   if (delta > 0) {
@@ -132,6 +135,25 @@ export function estimateShortfallNote(est) {
   // authored, tier 'estimate', confidence 'low'. Same correction as the budget
   // ask's "Typical" -> "Mid-range": say what the number IS.
   return `This range is a planning band for an event of this kind. Your own plan already calls for vendors that start around ${fmt(floor)} — more than the ${fmt(high)} top of it. Worth setting your number from the vendors, not the range.`;
+}
+
+// ─── THE PLAN ALREADY COSTS MORE THAN THE SUGGESTION ─────────────────────────
+//
+// Issue #100 (11/5/2026): ten at a game night, "Use $200" one tap away, while
+// the same sheet's money section said "$293 expected in total" from the plan's
+// own estimates. The band and the plan answer different questions (what an
+// event of this kind runs vs what THIS plan's lines add up to), so neither
+// replaces the other — same ruling as estimateShortfallNote. The host is told
+// both, and offered a figure that covers the plan, rounded up to the hundred
+// the way the tiers are. `expected` is hostSpending's expected total.
+export function planCostsAboveNote(expected, suggested) {
+  const e = Math.round(Number(expected));
+  const s = Math.round(Number(suggested));
+  if (!(e > 0) || !(s > 0) || e <= s) return null;
+  return {
+    text: `Your plan’s own lines already add up to about ${fmt(e)} — more than this ${fmt(s)}. Set the number from the plan, or trim the plan to fit.`,
+    cover: Math.ceil(e / 100) * 100,
+  };
 }
 
 // ─── THE ROOMS ARE ON TOP OF THIS, AND THE HOST HAS THE NUMBER ──────────────

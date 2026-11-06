@@ -8,6 +8,7 @@
 //   Sharing the URL       → LIGHT HANDOFF (copy to clipboard or share externally)
 
 import { plannerAuthHeaders } from './commApi';
+import { publicAppUrl } from './publicAppUrl';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
@@ -50,8 +51,7 @@ export const stripeCanHonourPurchases    = () => _canHonourPurchases;
 export const createCheckoutSession = async ({ amountCents, label, feeId, eventId, clientName }) => {
   if (!BASE) throw new Error('No API backend configured (REACT_APP_API_BASE_URL).');
 
-  const origin   = window.location.origin;
-  const pathname = window.location.pathname;
+  const appUrl = publicAppUrl();
 
   const res = await fetch(`${BASE}/api/stripe/create-checkout-session`, {
     method:  'POST',
@@ -67,8 +67,8 @@ export const createCheckoutSession = async ({ amountCents, label, feeId, eventId
       // VERIFY payment server-side (verifySession) instead of trusting the
       // redirect params. Additive for the planner fee flow, load-bearing for
       // the One-Event Pass unlock (Model D, D-2 gate 3: audited Stripe path).
-      success_url: `${origin}${pathname}?stripe_paid=1&fee_id=${encodeURIComponent(feeId)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  `${origin}${pathname}?stripe_cancel=1`,
+      success_url: `${appUrl}?stripe_paid=1&fee_id=${encodeURIComponent(feeId)}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${appUrl}?stripe_cancel=1`,
     }),
   });
 
@@ -88,8 +88,7 @@ export const createCheckoutSession = async ({ amountCents, label, feeId, eventId
  */
 export const createSubscriptionSession = async ({ plan, email, studioId }) => {
   if (!BASE) throw new Error('billing-not-configured');
-  const origin   = window.location.origin;
-  const pathname = window.location.pathname;
+  const appUrl = publicAppUrl();
   const res = await fetch(`${BASE}/api/stripe/create-subscription-session`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', ...(await plannerAuthHeaders()) },
@@ -97,8 +96,8 @@ export const createSubscriptionSession = async ({ plan, email, studioId }) => {
       plan,
       email:     email    || '',
       studio_id: studioId || '',
-      success_url: `${origin}${pathname}?plan_upgraded=1&plan=${encodeURIComponent(plan)}`,
-      cancel_url:  `${origin}${pathname}?plan_cancel=1`,
+      success_url: `${appUrl}?plan_upgraded=1&plan=${encodeURIComponent(plan)}`,
+      cancel_url:  `${appUrl}?plan_cancel=1`,
     }),
   });
   if (!res.ok) {
@@ -132,8 +131,7 @@ export const createSubscriptionSession = async ({ plan, email, studioId }) => {
 export const createPassSession = async ({ eventId }) => {
   if (!BASE) throw new Error('No API backend configured (REACT_APP_API_BASE_URL).');
 
-  const origin   = window.location.origin;
-  const pathname = window.location.pathname;
+  const appUrl = publicAppUrl();
 
   const res = await fetch(`${BASE}/api/stripe/create-pass-session`, {
     method:  'POST',
@@ -145,8 +143,8 @@ export const createPassSession = async ({ eventId }) => {
       // return shape has nothing to verify against. The session id still rides
       // along — not as evidence of payment (the webhook is what grants), but so
       // the return can say something true about a session it can name.
-      success_url: `${origin}${pathname}?pass_paid=1&event_id=${encodeURIComponent(eventId)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  `${origin}${pathname}?pass_cancel=1`,
+      success_url: `${appUrl}?pass_paid=1&event_id=${encodeURIComponent(eventId)}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${appUrl}?pass_cancel=1`,
     }),
   });
 

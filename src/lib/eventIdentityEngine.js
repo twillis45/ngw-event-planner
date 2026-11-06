@@ -249,10 +249,8 @@ export function resolveEventIdentity(intake, eventType, relationship, optionalFr
   // Detect secondary types from free text
   const secondaryTypes = detectMilestones(freeText, primaryType);
 
-  // Detect if this is compound (multiple milestones or explicit conjunction)
-  const isCompound = secondaryTypes.length > 0 ||
-                     lowerText.includes(' and ') ||
-                     lowerText.includes('+');
+  // A joiner can join people's names. Only a second occasion makes a compound event.
+  const isCompound = secondaryTypes.length > 0;
 
   // Detect ceremony components
   let ceremonyComponents = detectCeremonyComponents(freeText);

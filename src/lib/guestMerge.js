@@ -43,7 +43,7 @@
 //   guests   — the next roster (new array; untouched rows are the same refs)
 //   merged   — existing rows that actually changed
 //   added    — new rows appended
-//   yesCount — submissions processed whose rsvp === 'Yes'
+//   yesCount — guests this merge changed or added whose final rsvp === 'Yes' (once each)
 // Extracted so any caller resolving a free-text name against the guest list
 // (RSVP merge here, helper/owner-assignment resolution in
 // helperResponsibility.js) shares the exact same match rules — see the
@@ -64,6 +64,9 @@ export function matchGuestIndexByName(guests, fullName) {
     const gn = String((g && g.name) || '').trim().toLowerCase();
     if (!gn) return false;
     if (gn === full.toLowerCase()) return true;
+    // A name the host confirmed IS this guest ("eve" → Eve Brooks), so the
+    // reply that re-arrives on every visit lands on her, not on a new row.
+    if (Array.isArray(g.aka) && g.aka.includes(full.toLowerCase())) return true;
     if (coupleShaped) return false;
     const gp = gn.split(/\s+/).filter(Boolean);
     const gFirst = gp[0] || '';
@@ -74,15 +77,97 @@ export function matchGuestIndexByName(guests, fullName) {
   });
 }
 
+/**
+ * The names in `added` already on the list, or repeated within `added`
+ * (gold run, 11/5/2026: "Ana Rivera" pasted twice went in silently, and the
+ * first Ana got the reply). Flagged, never refused — two guests can share a
+ * name. Compared ignoring case and spacing; each name reported once.
+ */
+export function repeatedGuestNames(existingGuests, added) {
+  const key = (n) => String(n || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const seen = new Set((existingGuests || []).map((g) => key(g && g.name)).filter(Boolean));
+  const out = [];
+  for (const n of added || []) {
+    const k = key(n);
+    if (!k) continue;
+    if (seen.has(k) && !out.some((o) => key(o) === k)) out.push(String(n).trim().replace(/\s+/g, ' '));
+    seen.add(k);
+  }
+  return out;
+}
+
+// ── A SHORT FIRST NAME IS ASKED ABOUT, NEVER ASSUMED (owner ruling, 11/5/2026) ──
+// "eve" on a reply is not matched to Eve Brooks — the ladder above refuses a
+// first name under four letters alone, so a stranger's reply on an open link
+// can never land on the wrong guest. But when exactly one guest has that first
+// name, the new row carries `maybeSameAs` and the host is asked.
+export function likelySameGuest(guests, fullName) {
+  const full = String(fullName || '').trim().toLowerCase();
+  if (!full || /\s/.test(full) || full.length >= 4) return null;
+  const hits = (guests || []).filter((g) => g && g.id && String(g.name || '').trim().toLowerCase().split(/\s+/)[0] === full
+    && String(g.name || '').trim().toLowerCase() !== full);
+  return hits.length === 1 ? hits[0] : null;
+}
+
+const REPLY_FIELDS = ['meal', 'needs', 'plusOne', 'plusOneMeal', 'plusOneNeeds', 'kids', 'address', 'partyNotes', 'phone', 'email', 'lodgingPick'];
+const BLANK = (v) => v == null || v === '' || v === '—' || v === 0 || (Array.isArray(v) && !v.length);
+
+/** The host said yes: the short-name row's reply moves onto the guest, its name
+ *  becomes her alias, and the row goes. */
+export function confirmSameGuest(guests, rowId) {
+  const list = guests || [];
+  const row = list.find((g) => g && g.id === rowId);
+  const target = row && list.find((g) => g && g.id === row.maybeSameAs);
+  if (!row || !target) return list;
+  const next = { ...target, rsvp: row.rsvp || target.rsvp };
+  for (const f of REPLY_FIELDS) if (!BLANK(row[f])) next[f] = row[f];
+  for (const f of ['allergens', 'diets', 'access']) if (!BLANK(row[f])) next[f] = row[f];
+  if (typeof row.picksCrabs === 'boolean') next.picksCrabs = row.picksCrabs;
+  const alias = String(row.name || '').trim().toLowerCase();
+  next.aka = [...new Set([...(Array.isArray(target.aka) ? target.aka : []), alias].filter(Boolean))];
+  return list.filter((g) => g !== row).map((g) => (g === target ? next : g));
+}
+
+/** The replies-came-in line for rows this batch flagged — so the host hears
+ *  the question when the reply lands, not only inside the Guests sheet. */
+export function sameGuestAskLine(before, after) {
+  const had = new Set((before || []).map((g) => g && g.id));
+  const asks = (after || []).filter((g) => g && g.maybeSameAs && !had.has(g.id))
+    .map((g) => ({ row: g, who: (after || []).find((x) => x && x.id === g.maybeSameAs) }))
+    .filter((a) => a.who);
+  if (!asks.length) return '';
+  if (asks.length === 1) return ' A reply signed “' + asks[0].row.name + '” may be ' + asks[0].who.name + ' — check Guests.';
+  return ' ' + asks.length + ' replies may be guests already on your list — check Guests.';
+}
+
+/** The host said no: two people. The question is not asked again. */
+export function keepSeparateGuest(guests, rowId) {
+  return (guests || []).map((g) => {
+    if (!g || g.id !== rowId || !('maybeSameAs' in g)) return g;
+    const { maybeSameAs, ...rest } = g;
+    return rest;
+  });
+}
+
 export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
   const guests = [...(existingGuests || [])];
-  let merged = 0, added = 0, yesCount = 0;
-  for (const sub of (submissions || [])) {
-    if (!sub) continue;
+  let added = 0;
+  // THE LATEST ANSWER WINS (owner's Vida run, 11/5/2026). The server returns
+  // replies newest first, and applying them in that order let a guest's OLDER
+  // answer overwrite her change ("Maybe" over "Yes"). When every reply carries
+  // its time (`at`), apply them oldest → newest; otherwise the given order is
+  // already chronological (the same-browser outbox appends).
+  const list = (submissions || []).filter(Boolean);
+  const stamped = list.length > 0 && list.every((x) => Number.isFinite(Date.parse(x.at)));
+  const ordered = stamped ? [...list].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : list;
+  // Counted per GUEST, not per row: a guest who changed her answer is one
+  // reply, and "K yes" is the number of those guests whose final answer is Yes
+  // — the same figure the list shows.
+  const changed = new Set();   // existing guests this batch changed, plus guests it added
+  for (const sub of ordered) {
     const full = String(sub.name || '').trim();
     if (!full) continue;
     const ix = matchGuestIndexByName(guests, full);
-    if (sub.rsvp === 'Yes') yesCount += 1;
     if (ix >= 0) {
       const g = guests[ix];
       const next = {
@@ -117,9 +202,11 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
       };
       // Server rows re-arrive on every visit — only count real changes.
-      if (JSON.stringify(next) !== JSON.stringify(g)) { guests[ix] = next; merged += 1; }
+      if (JSON.stringify(next) !== JSON.stringify(g)) guests[ix] = next;
     } else {
+      const maybe = likelySameGuest(guests, full);
       guests.push({
+        ...(maybe ? { maybeSameAs: maybe.id } : {}),
         id: opts.makeId ? opts.makeId(sub) : 'g-rsvp-' + (sub.idempotencyKey || Math.random().toString(36).slice(2, 10)),
         name: full,
         group: 'Friends',
@@ -147,5 +234,14 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
       added += 1;
     }
   }
-  return { guests, merged, added, yesCount };
+  // Changed = different at the END from where it STARTED. Applied in time
+  // order, a guest's older rows re-arriving flip her answer and flip it back
+  // (Yes → Maybe → Yes); that is not a reply. Added guests are always news.
+  const start = existingGuests || [];
+  start.forEach((g, ix) => { if (JSON.stringify(guests[ix]) !== JSON.stringify(g)) changed.add(ix); });
+  for (let ix = start.length; ix < guests.length; ix++) changed.add(ix);
+  // Only the guests THIS batch changed or added, so "N replies came in — K yes"
+  // describes the same N. Rows re-arriving unchanged on every visit are not news.
+  const yesCount = [...changed].filter((ix) => guests[ix] && guests[ix].rsvp === 'Yes').length;
+  return { guests, merged: changed.size - added, added, yesCount };
 }

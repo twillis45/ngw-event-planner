@@ -16,7 +16,15 @@ Supabase SQL Editor — there is **no automated migration runner yet**.
 | 0001 | `0001_communication.sql` | Communication ledger: `event_channels`, `event_messages`, message reads, pins. | Anything calling `/api/events/{id}/communication/*`. |
 | 0002 | `0002_event_owners.sql` | `event_owners` table for multi-tenant ownership. Backend claims-on-first-touch. | Per-event auth path in `app/auth.py`. |
 | 0003 | `0003_studios.sql` | `studios` + `studio_members` workspaces, RLS helpers, auto-provision trigger, backfill, adds `studio_id` to `event_owners`. | Studio-scoped access in comms service + future studio-scoped tables. |
+| 0003b | `0003b_event_owners_studio_id.sql` | **Fresh databases only, instead of 0003.** Adds just `event_owners.studio_id` + index + backfill (0003's comms section). Idempotent. | `routers/communication.py`, `routers/rsvp.py` studio scoping. |
 | 0004 | `0004_email_delivery.sql` | Partial GIN index over `event_messages.metadata->'delivery'` for fast delivery-status queries. No new columns (jsonb only). | Sprint 58.2+ delivery tracking surfaces. |
+
+**A NEW database (owner decision, 11/6/2026): run 0001, 0002, then `0003b` — NOT
+0003 — then 0004 onward.** 0003's `studios` / `studio_members` tables, helpers and
+provisioning trigger are owned by `supabase/migrations` and must not be defined
+twice; the one thing the backend still needs from it is `event_owners.studio_id`,
+which 0003b adds alone. Databases where 0003 already ran need nothing (0003b is a
+no-op there).
 
 A later `0005_docusign.sql` may exist for `planner_docusign_tokens` once DocuSign
 moves token storage server-side; not present at the time of writing.

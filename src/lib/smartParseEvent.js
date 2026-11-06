@@ -68,12 +68,42 @@ export function parseSmartEventText(text, opts = {}) {
     let out = null;
     try { const c = resolveCanonicalType(text); if (c && HOST_TYPES.includes(c)) out = c; } catch { out = null; }
     if (!out) {
-      const hit = HOST_TYPES.find(ht => text.toLowerCase().includes(ht.toLowerCase().replace(' party', '')));
+      // WHOLE WORDS ONLY (clean-host run, 11/5/2026): a bare substring test made
+      // "Day Party" → "day" match inside "Sunday", so "Book club … this Sunday"
+      // was planned, and named, as a Day Party ("My Day"). A trailing "s" still
+      // counts ("showers", "reunions").
+      const hit = HOST_TYPES.find(ht => {
+        const word = ht.toLowerCase().replace(' party', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`(^|[^a-z])${word}s?($|[^a-z])`, 'i').test(text);
+      });
       if (hit && hit.length > 3) out = hit;
     }
     return out;
   };
-  const type = _resolveType(t);
+  // "<Name>'s Nth" WITH NO OTHER OCCASION IS A MILESTONE BIRTHDAY (gold run,
+  // GOLD-04, 11/5/2026). "Mom's 80th in Santa Fe…" resolved no occasion — and
+  // the Creation box's own example is that sentence. Only a possessive name
+  // directly before the ordinal, never an ordinal followed by a word that makes
+  // it something else (anniversary, grade, street, …), and only when nothing
+  // else named the occasion: a stated type always wins.
+  const _POSS_ORDINAL = /\b[\w]+['’]s\s+(\d{1,3}(?:st|nd|rd|th))\b(?!\s+(?:anniversary|wedding|reunion|retirement|year|years|grade|street|st\b|avenue|ave\b|floor|place|annual|jubilee|birthday))/i;
+  const _possMilestone = t.match(_POSS_ORDINAL);
+  // A TYPO STILL NAMES THE OCCASION (run 2, R2-9 / R2-22): "retirment pary",
+  // "anniversery dinner", "graduaton party" resolved to nothing, Dinner Party or
+  // Birthday. A closed list of the misspellings people actually type, plus
+  // "book club" → get-together, applied ONLY to recognizing the occasion; every
+  // other field still reads her exact words.
+  const tType = t
+    .replace(/\bretir(?:e?ment|ment|emnt|mnet)\b/gi, 'retirement')
+    .replace(/\bp(?:ary|arty|artty|arrty|atry)\b/gi, 'party')
+    .replace(/\banniver(?:sery|sary|sairy|ssary|sry)\b/gi, 'anniversary')
+    .replace(/\bgradu(?:aton|ation|tion|ateion|atin)\b/gi, 'graduation')
+    .replace(/\bwed(?:ing|dding|ding)\b/gi, 'wedding')
+    .replace(/\bbook\s+club\b/gi, 'get-together');
+  const type = _resolveType(tType) || (_possMilestone ? 'Birthday' : null);
+  // The generic word she actually used ("party", "fiesta", "celebration"), so a
+  // guess is declared in her words, not ours (run 2, R2-8).
+  const _typeWord = (() => { const m = t.match(new RegExp(GENERIC_GATHERING_WORDS.source, 'i')); return m ? m[0] : null; })();
 
   // ── WAS THAT TYPE A GUESS? ───────────────────────────────────────────────
   //
@@ -97,9 +127,15 @@ export function parseSmartEventText(text, opts = {}) {
   let typeBasis = null;
   if (type) {
     let specific = null;
-    try { specific = _resolveType(t.replace(_GENERIC_PARTY_WORDS, ' ')); } catch { specific = null; }
+    try { specific = _resolveType(tType.replace(_GENERIC_PARTY_WORDS, ' ')); } catch { specific = null; }
     typeBasis = specific === type ? 'named' : 'generic';
+    // Inferred from "<Name>'s Nth" alone: still a guess, but not a "party" one,
+    // so it is declared for what it is (the reveal names the milestone word).
+    if (typeBasis === 'generic' && !_resolveType(tType) && _possMilestone) typeBasis = 'milestone';
   }
+  // Only a GENERIC guess quotes the word it rested on; a named occasion carries
+  // none, so the word is never mistaken for something the plan used.
+  const typeHeard = typeBasis === 'generic' ? _typeWord : null;
 
   // ── Guests ──────────────────────────────────────────────────────────────
   let guests = null;
@@ -119,6 +155,9 @@ export function parseSmartEventText(text, opts = {}) {
     'coworkers', 'colleagues', 'classmates', 'teammates', 'neighbors', 'neighbours',
     'students', 'staff', 'employees', 'players', 'members',
     'guys', 'girls', 'gals', 'ladies', 'dudes', 'bridesmaids', 'groomsmen',
+    // "Ten girlfriends" (owner acceptance run, 11/5/2026): `\bfriends\b` and
+    // `\bgirls\b` both refuse the compound, so the count fell to the playbook.
+    'girlfriends', 'boyfriends', 'besties', 'buddies', 'pals', 'friends and family',
   ].join('|');
   // ── "for 4 nights" IS NOT FOUR GUESTS (2026-09-28) ──────────────────────
   // This alternative is a bare `for N`, and it runs FIRST, so it swallowed
@@ -137,8 +176,12 @@ export function parseSmartEventText(text, opts = {}) {
   // 12 guests" still matches here, and anything this now declines falls
   // through to the COUNT_NOUNS and "N of us" patterns below, which is where
   // a headcount belongs.
-  const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b(?!\s*(?:nights?|nites?|days?|weeks?|wks?|months?|mos?|years?|yrs?|hours?|hrs?|minutes?|mins?|am|pm))/i)
-    || t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
+  const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b(?!,\d)(?!\s*(?:nights?|nites?|days?|weeks?|wks?|months?|mos?|years?|yrs?|hours?|hrs?|minutes?|mins?|am|pm))/i)
+    // A BIG COUNT IS STILL HER COUNT (run 2, R2-5): "for 10000 people" matched
+    // nothing (three digits max) and the plan sized itself to the 35 typical
+    // without a word. Four- and five-digit counts and "1,000" are read only
+    // when a people-noun follows, so a year ("for 2027") never becomes guests.
+    || t.match(new RegExp(`\\b(\\d{1,3}(?:,\\d{3})?|\\d{4,5})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
     // "12 of us", "20 of them" — the count with no noun at all.
     || t.match(/\b(\d{1,3})\s+of\s+(?:us|them)\b/i)
     // HOW PEOPLE ACTUALLY HEDGE A NUMBER (measured 2026-09-23 against a corpus
@@ -149,7 +192,7 @@ export function parseSmartEventText(text, opts = {}) {
     // estimate, and the app already shows a likely-attendance band around it.
     || t.match(/\b(\d{1,3})\s*(?:ish|-ish)\b/i)
     || t.match(/\b(\d{1,3})\s+or\s+so\b/i);
-  if (gm) guests = parseInt(gm[1], 10);
+  if (gm) guests = parseInt(String(gm[1]).replace(/,/g, ''), 10);
 
   // ── A COUPLE IS TWO PEOPLE (2026-09-25) ───────────────────────────
   //
@@ -198,6 +241,21 @@ export function parseSmartEventText(text, opts = {}) {
       const mult = { half: 0.5, a: 1, one: 1, two: 2, couple: 2, few: 3, three: 3 }[word];
       if (mult) guests = Math.round(12 * mult);
     }
+  }
+
+  // ── A COUNT WRITTEN IN WORDS IS A COUNT (owner acceptance run, 11/5/2026) ─
+  // "Ten girlfriends are coming" planned for 8, the playbook typical, because
+  // every pattern above reads digits only — and nothing told the host her
+  // number was set aside. Same nouns and the same "N of us" shape as the digit
+  // forms, so "one longer headliner" or "two nights" can never become a count;
+  // and only when no digit form matched, so digits always win.
+  if (guests === null) {
+    const NUM_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+      eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
+      nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100 };
+    const W = Object.keys(NUM_WORDS).join('|');
+    const wm = t.match(new RegExp(`\\b(${W})(?:[\\s-]+(one|two|three|four|five|six|seven|eight|nine))?\\s+(?:(?:${COUNT_NOUNS})\\b|of\\s+(?:us|them)\\b)`, 'i'));
+    if (wm) guests = NUM_WORDS[wm[1].toLowerCase()] + (wm[2] ? NUM_WORDS[wm[2].toLowerCase()] : 0);
   }
 
   // ── Budget — "$3,000", "$3k budget", "budget of $5000", "2500 budget" ────
@@ -352,6 +410,11 @@ export function parseSmartEventText(text, opts = {}) {
   // Requires the ordinal or the word "of" — a bare "14 June" is admitted, but
   // "20 people June 14" must never read the 20 as a day, so the day half is
   // capped at 31 and an intervening word is not allowed.
+  // A DAY THAT DOES NOT EXIST IS NOT ROLLED OVER (run 2, R2-2): JavaScript's
+  // Date turns "February 30" into March 2 without a word, and that was saved as
+  // the day. Each month-day reading below checks the day survived; one that did
+  // not is kept as `impossibleDate` and no date is set — the plan asks.
+  let impossibleDate = null;
   const dmOf = date ? null : t.match(
     /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s*(\d{4}))?\b/i);
   if (dmOf && Number(dmOf[1]) >= 1 && Number(dmOf[1]) <= 31) {
@@ -359,7 +422,7 @@ export function parseSmartEventText(text, opts = {}) {
     const cand = new Date(saidY || now.getFullYear(),
       MONTHS.indexOf(dmOf[2].slice(0, 3).toLowerCase()), parseInt(dmOf[1], 10), 12);
     if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-    date = localISO(cand);
+    if (cand.getDate() === parseInt(dmOf[1], 10)) date = localISO(cand); else impossibleDate = dmOf[0];
   }
 
   const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
@@ -367,14 +430,15 @@ export function parseSmartEventText(text, opts = {}) {
     const saidY = dm[3] ? parseInt(dm[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
     if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-    date = localISO(cand);
+    if (cand.getDate() === parseInt(dm[2], 10)) date = localISO(cand); else impossibleDate = dm[0];
   } else if (!date) {
     const sm2 = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
     if (sm2) {
       const y = sm2[3] ? (sm2[3].length === 2 ? 2000 + Number(sm2[3]) : Number(sm2[3])) : now.getFullYear();
       const cand = new Date(y, Number(sm2[1]) - 1, Number(sm2[2]), 12);
       if (!sm2[3] && cand < now) cand.setFullYear(cand.getFullYear() + 1);
-      if (!isNaN(cand)) date = localISO(cand);
+      if (!isNaN(cand) && cand.getMonth() === Number(sm2[1]) - 1 && cand.getDate() === Number(sm2[2])) date = localISO(cand);
+      else impossibleDate = sm2[0];
     }
   }
   // "The weekend of June 12" — extremely common for a trip, and it was parsing
@@ -541,7 +605,7 @@ export function parseSmartEventText(text, opts = {}) {
   // and only there. The POSSESSIVE branch above it required a capital, so
   // "Mom's 80th" resolved and "mom's 80th" did not, which is how a host types
   // it in a hurry. Same list, both constructions, one definition.
-  const REL_WORDS = '(?:great[\\s-]*)?(?:grand)?(?:mom|mommy|mama|momma|mother|dad|daddy|father|pop|pops|ma|grandma|granny|grandmother|grandad|granddad|grandpa|grandfather|auntie|aunt|uncle|sister|brother|cousin|wife|husband|son|daughter|nephew|niece|godmother|godfather|bestie|best\\s+friend|partner|fianc[\u00e9e]e?)';
+  const REL_WORDS = '(?:great[\\s-]*)?(?:grand)?(?:mom|mommy|mama|momma|mother|dad|daddy|father|pop|pops|ma|grandma|granny|grandmother|grandad|granddad|grandpa|grandfather|auntie|aunt|uncle|sister|brother|cousin|wife|husband|son|daughter|nephew|niece|godmother|godfather|bestie|best\\s+friend|friend|partner|fianc[\u00e9e]e?|boss|coach|teacher|mentor|pastor|neighbor|roommate|coworker|colleague)';
   //
   // ── AND A POSSESSIVE IS NOT ALWAYS AN HONOREE ───────────────────────────
   // Measured 2026-09-27, on the CAPITALISED path that already shipped:
@@ -562,7 +626,7 @@ export function parseSmartEventText(text, opts = {}) {
   // match lower case and the whole distinction collapse. Written this way the
   // one guard serves both branches. (Measured: with a bare lower-case `day`,
   // "Mother's Day brunch" still returned the honoree "Mother".)
-  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool)\\b)';
+  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool|[Bb][Bb][Qq]|[Cc]atering|[Cc]aterer|[Dd][Jj]|[Pp]hotography|[Bb]akery|[Ff]lorist)\\b)';
   // ── A COUPLE IS TWO PEOPLE, AND WE WERE NAMING ONE ────────────────────
   //
   // "Mom and Dad's 50th anniversary" returned the honoree "Dad". Not a
@@ -583,8 +647,12 @@ export function parseSmartEventText(text, opts = {}) {
   // case-insensitively; names match case-sensitively. Exactly as the
   // singular branches below already do it.
   const COUPLE_JOIN = '\\s*(?:and|&)\\s*';
+  // A vendor role before a possessive is evidence of a supplier, not an honoree.
+  const matchPerson = (pattern) => [...t.matchAll(new RegExp(pattern.source, pattern.flags + 'g'))]
+    .find((m) => !/\b(?:caterer|vendor|photographer|DJ)\s*$/i.test(t.slice(0, m.index))
+      && !/^(?:caterer|vendor|photographer|DJ)\s/i.test(m[1])) || null;
   const hm = (() => {
-    const rel = t.match(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + COUPLE_JOIN
+    const rel = matchPerson(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + COUPLE_JOIN
       + REL_WORDS + ')[\u2019\']s\\b' + NOT_WHO, 'i'));
     if (rel) {
       const pair = rel[1].replace(/\s*&\s*/, ' and ').replace(/\s+/g, ' ').toLowerCase();
@@ -593,11 +661,11 @@ export function parseSmartEventText(text, opts = {}) {
         .join(' ');
       return [rel[0], titled];
     }
-    const nm = t.match(new RegExp('\\b([A-Z][a-zA-Z]+' + COUPLE_JOIN + '[A-Z][a-zA-Z]+)[\u2019\']s\\b' + NOT_WHO));
+    const nm = matchPerson(new RegExp('\\b([A-Z][a-zA-Z]+' + COUPLE_JOIN + '[A-Z][a-zA-Z]+)[\u2019\']s\\b' + NOT_WHO));
     if (nm) return [nm[0], nm[1].replace(/\s*&\s*/, ' and ').replace(/\s+/g, ' ')];
     return null;
   })()
-    || t.match(new RegExp('([A-Z][a-zA-Z]+(?:\\s+[A-Z][a-zA-Z]+)?)[\u2019\']s\\b' + NOT_WHO))
+    || matchPerson(new RegExp('([A-Z][a-zA-Z]+(?:\\s+[A-Z][a-zA-Z]+)?)[\u2019\']s\\b' + NOT_WHO))
     // "for Vida", "honoring Marcus" — the honoree named without a possessive
     // (host report 2026-07-27: "Birthday celebration for Vida" dropped the name).
     // Months/weekdays/pronouns/articles are excluded so "for November" or
@@ -619,8 +687,19 @@ export function parseSmartEventText(text, opts = {}) {
     // possessive "my" is dropped so the label reads "for Mom" rather than
     // "for my mom".
     || (() => {
-      const m = t.match(new RegExp('\\b(?:for|honoring|celebrating)\\s+(?:my\\s+|our\\s+)?(' + REL_WORDS + ')\\b', 'i'));
+      const m = matchPerson(new RegExp('\\b(?:for|honoring|celebrating)\\s+(?:my\\s+|our\\s+)?(' + REL_WORDS + ')\\b', 'i'));
       if (!m) return null;
+      // THE NAME AFTER THE RELATION IS THE HONOREE (run 2, R2-6): "for my son
+      // jaxon turning 7" saved "Son's 7th Birthday". A relation followed at once
+      // by a single word that is not a sentence word — "turning", "who", a day,
+      // a month — is how a host names the person. She said it, so it is used,
+      // capitalized; nothing is guessed when no such word follows.
+      const after = t.slice(m.index + m[0].length).match(/^\s+([A-Za-z][a-z'’-]{1,20}|[A-Z][a-zA-Z'’-]{1,20})\b/);
+      const STOP = /^(?:turning|turns|turned|who|whose|and|or|is|was|will|for|at|in|on|to|with|from|this|that|next|last|the|a|an|his|her|their|our|my|birthday|bday|party|dinner|celebration|retirement|graduation|anniversary|shower|surprise|just|finally|today|tonight|tomorrow|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\d.*)$/i;
+      if (after && !STOP.test(after[1])) {
+        const nm = after[1];
+        return [m[0] + after[0], nm.charAt(0).toUpperCase() + nm.slice(1)];
+      }
       const word = m[1].replace(/\s+/g, ' ').toLowerCase();
       return [m[0], word.charAt(0).toUpperCase() + word.slice(1)];
     })()
@@ -631,7 +710,7 @@ export function parseSmartEventText(text, opts = {}) {
     // first names, and guessing one would invent a person. "my mom's" and
     // "our grandma's" drop the pronoun the way the "for" branch does.
     || (() => {
-      const m = t.match(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + ')[\u2019\']s\\b' + NOT_WHO, 'i'));
+      const m = matchPerson(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + ')[\u2019\']s\\b' + NOT_WHO, 'i'));
       if (!m) return null;
       const word = m[1].replace(/\s+/g, ' ').toLowerCase();
       return [m[0], word.charAt(0).toUpperCase() + word.slice(1)];
@@ -714,7 +793,8 @@ export function parseSmartEventText(text, opts = {}) {
     return n + ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th');
   };
   const milestone = msm ? msm[1].toLowerCase()
-    : (turnM ? _ord(parseInt(turnM[1], 10)) : null);
+    : (turnM ? _ord(parseInt(turnM[1], 10))
+      : (_possMilestone && type === 'Birthday' ? _possMilestone[1].toLowerCase() : null));
 
   // ── City + state ("in Santa Fe, New Mexico") ─────────────────────────────
   // Routed through the SAME parseVenueLocation the manual "Which town?" field
@@ -1203,6 +1283,18 @@ export function parseSmartEventText(text, opts = {}) {
       || (inLowerM ? resolveLoose(inLowerM[1]) : null)
       || (awayLowerM ? resolveLoose(awayLowerM[1]) : null));
 
+  // A STATE SHE NAMED ON ITS OWN (gold run, 11/5/2026): "cookout in Maryland
+  // for 30" dropped the state silently. Only when nothing else located the
+  // event, only a full state name the state table knows, and never a region —
+  // "Maryland/DC" or "the … area" spans states, so it is disclosed (see
+  // unusedClauses), not guessed. The town is still asked.
+  const stateOnly = (loc || area || landmark || spokenCity) ? null : (() => {
+    const names = Object.keys(US_STATE_NAME_TO_ABBR).sort((a, b) => b.length - a.length)
+      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const m = t.match(new RegExp(`\\bin\\s+(${names})\\b(?!\\s*[/&-]|\\s+(?:area|region)\\b)`, 'i'));
+    return m ? US_STATE_NAME_TO_ABBR[m[1].toLowerCase()] || null : null;
+  })();
+
   const normCity = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
   const homeCity = normCity(opts.homeCity);
   // A lowercase town only reaches placeName once the WHITELIST has vouched for
@@ -1267,11 +1359,17 @@ export function parseSmartEventText(text, opts = {}) {
   const saidDrive = /\bdriv(?:e|es|ing)\b|\broad\s+trip\b|\bcaravan\b|\bcarpool\b/i.test(t);
   const travelMode = (saidFly && saidDrive) ? 'mixed' : saidFly ? 'fly' : saidDrive ? 'drive' : null;
 
+  // "NIGHT" IS AN OVERNIGHT ONLY AS A DURATION (owner acceptance run, 11/5/2026).
+  // A bare `\bnights?\b` matched the event's own name, so every game night, trivia
+  // night and date night was planned as people sleeping over, and the chip said
+  // "Staying overnight · heard" about something the host never said. A number or
+  // quantifier before it ("two nights", "for the night"), or a sleepover word, is.
+  //
   // Overnight. A multi-day span is the strongest honest signal there is — if the
   // plan runs across days, people are sleeping somewhere. Lodging words say it
   // outright. A staycation is local AND overnight, which is exactly the case the
   // single boolean could not express.
-  const saidOvernight = /\bovernight\b|\bnights?\b|\bstaycation\b|\bstay(?:ing|cation)?\s+over\b|\bhotels?\b|\bairbnb\b|\bvrbo\b|\brentals?\b|\blodging\b|\broom\s+block\b|\bcabins?\b/i.test(t);
+  const saidOvernight = /\bovernight\b|\b(?:\d+|one|two|three|four|five|six|seven|a\s+couple(?:\s+of)?|a\s+few|several|for\s+the)\s+nights?\b|\bsleep\s*overs?\b|\bslumber\s+part(?:y|ies)\b|\bstaycation\b|\bstay(?:ing|cation)?\s+over\b|\bhotels?\b|\bairbnb\b|\bvrbo\b|\brentals?\b|\blodging\b|\broom\s+block\b|\bcabins?\b/i.test(t);
   const overnight = (endDate || saidOvernight) ? true : null;
   // SAID beats DERIVED when both are true (2026-08-06). This read `endDate ?
   // 'multi-day-span' : 'said-so'`, so a host who wrote the word "overnight" AND
@@ -1407,7 +1505,16 @@ export function parseSmartEventText(text, opts = {}) {
   //   'said-with-bucket' — "afternoon at 1": the host's own bucket disambiguates.
   //   'said-hour-only'   — "at 1" alone: the NUMBER is hers, the half of the day
   //                        is a reading of it, so it is marked as the weakest.
+  const tFull = t;
   const startTimeParsed = (() => {
+    // A HOUSE NUMBER IS NOT A TIME (owner's Vida run, 11/5/2026). "at 12 Sample
+    // Rd" read as 12:00 PM, said-with-bucket, and reached every guest's invite.
+    // Street addresses are blanked out of the text this search reads: a house
+    // number, one to three Capitalized words, then a street suffix. Names are
+    // matched case-SENSITIVELY on purpose — that is what tells "at 7 Oak Lane"
+    // (an address) from "at 7 at the lake" (a time); the time patterns below
+    // stay case-insensitive. Only the time search sees the blanked copy.
+    const t = tFull.replace(/\b\d{1,5}\s+(?:[NSEW]\.?\s+)?(?:[A-Z][\w'’-]*\s+){1,3}(?:Rd|Road|St|Street|Ave|Avenue|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place|Pkwy|Parkway|Ter|Terrace|Cir|Circle|Hwy|Highway|Trl|Trail|Loop|Row|Sq|Square|rd|road|st|street|ave|avenue|blvd|dr|drive|ln|lane|ct|court|way|pl|place)\b\.?/g, ' ');
     // "at 1", "at 1:30", "at 1pm", "1:30pm", "kickoff at 1", "doors at 6:30".
     // Anchored on a preposition/cue or an explicit meridiem so it cannot eat a
     // guest count ("for 20"), a budget ("$3,000") or a date ("Aug 2").
@@ -1440,7 +1547,20 @@ export function parseSmartEventText(text, opts = {}) {
     const halfPast = t.match(
       /\b(?:at\s+)?half\s+past\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*([ap])?\.?m?\.?\b/i);
     let forced = null;
-    if (halfPast) {
+    // A TIME RANGE STARTS AT ITS FIRST TIME (run 2, R2-1): "from 2-6pm" saved
+    // 6:00 PM — the end — as the start, and it reached the invite. Read only when
+    // the range ENDS in am/pm, so a count or an age span is never a time. The
+    // start takes its own meridiem, else the end's — unless that would put it
+    // after the end ("11-2pm" is 11 AM).
+    const range = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?m?\.?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?\b/i);
+    if (range) {
+      const sh = parseInt(range[1], 10); const eh = parseInt(range[4], 10);
+      const endMer = range[6].toLowerCase();
+      let sMer = (range[3] || '').toLowerCase();
+      if (!sMer) sMer = (endMer === 'p' && sh !== 12 && eh !== 12 && sh > eh) ? 'a' : endMer;
+      if (sh >= 1 && sh <= 12) forced = { h: sh, min: range[2] ? parseInt(range[2], 10) : 0, mer: sMer };
+    }
+    if (halfPast && !forced) {
       const raw = halfPast[1].toLowerCase();
       const hh = /^\d+$/.test(raw) ? parseInt(raw, 10) : _HOURWORD[raw];
       if (hh) forced = { h: hh, min: 30, mer: (halfPast[2] || '').toLowerCase() };
@@ -1670,8 +1790,20 @@ export function parseSmartEventText(text, opts = {}) {
     return null;
   })();
 
+  // ── "<Name> is hosting" NAMES THE HOST (owner acceptance run, 11/5/2026) ──
+  // "Vida is hosting a girls' game night…" saved as "My Game Night" with no host
+  // anywhere and nothing disclosed. A host is not an honoree — nobody is being
+  // celebrated — so this is its own field, and only a capitalized name at the
+  // very start of the sentence counts, never a pronoun or "This".
+  const hostName = (() => {
+    const m = t.match(/^\s*([A-Z][a-z'’\-]{1,20})\s+(?:is|will\s+be)\s+(?:hosting|throwing|having)\b/);
+    if (!m) return null;
+    return /^(?:this|that|it|he|she|we|they|there|who|everyone|someone|my|our)$/i.test(m[1]) ? null : m[1];
+  })();
+
   return {
-    type, typeBasis, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    hostName,
+    type, typeBasis, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     healthNoted,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
@@ -1700,7 +1832,7 @@ export function parseSmartEventText(text, opts = {}) {
     venueCity: loc ? (loc.zip || loc.city)
       : (area ? area.hubTown : (landmark ? landmark.city : (spokenCity ? spokenCity.city : null))),
     venueState: loc ? (loc.state || null)
-      : (area ? area.state : (landmark ? landmark.state : (spokenCity ? (spokenCity.state || null) : null))),
+      : (area ? area.state : (landmark ? landmark.state : (spokenCity ? (spokenCity.state || null) : stateOnly))),
     vacationArea: area ? area.id : null,
     // "No kids." / "adults only" → the invite policy InviteV2 + doItForMe already
     // consume; never invented — only when the host said it.
@@ -1777,7 +1909,34 @@ const _FILLER = new Set([
  * back into phrases so the host reads "2 excursions", not "2" and "excursions".
  * Short strings only, so N re-parses is cheap.
  */
+// A REGION SHE NAMED IS NEVER SWALLOWED (gold run, GOLD-01, 11/5/2026). "…about
+// 75 guests in the Maryland/DC area…" was absorbed: its clause also carried the
+// guest count, so the clause test saw it as used, while the plan held no place.
+// A region spans states and is not guessed into one; when the plan ended up with
+// no town and no state, the phrase itself is reported as not applied.
 export function unusedClauses(text, opts = {}) {
+  const out = _unusedClausesCore(text, opts);
+  let p = null;
+  try { p = parseSmartEventText(text, opts); } catch { return out; }
+  if (!p) return out;
+  const said = (phrase) => out.some((c) => String(c).toLowerCase().includes(phrase.replace(/^(?:the|at)\s+/, '').toLowerCase()));
+  const m = String(text || '').match(/\bin\s+(the\s+[A-Z][\w.]*(?:\s*[/&]\s*[A-Z][\w.]*)*\s+area)\b/);
+  if (m && !p.venueCity && !p.venueState) {
+    const phrase = m[1].replace(/^the\s+/, 'the ');
+    if (!said(phrase)) out.push(phrase);
+  }
+  // A PLACE SHE NAMED IS NEVER SWALLOWED EITHER (run 2, R2-6): "…next friday
+  // at chuck e cheese, like 20 kids" kept no place, and its clause counted as
+  // used because the date beside it was read — so nothing said so, and the plan
+  // asked "Where is the event?". Venue NAMES stay strict (capitalized or a
+  // City, ST); when the plan ended up with no place at all, an "at …" phrase
+  // she wrote is reported as not applied. Times, home and relatives are not places.
+  const at = String(text || '').match(/\bat\s+((?!(?:home|my|our|his|her|their|the house|night|noon|midnight|dusk|sunset|sunrise|least|most|once|all|first|last|about|around|\d))[a-z][a-z'’&.-]*(?:\s+[a-z][a-z'’&.-]*){0,4}?)(?=\s*(?:[,.;!]|$|\s(?:on|for|with|this|next|from|at|in|by|and|around|about)\b))/i);
+  if (at && !p.venue && !p.venueAddress && !p.venueKind && !p.venueCity && !said('at ' + at[1])) out.push('at ' + at[1]);
+  return out;
+}
+
+function _unusedClausesCore(text, opts = {}) {
   const t = String(text || '').trim();
   if (t.length < 12) return [];
 
@@ -1859,6 +2018,13 @@ export function unusedClauses(text, opts = {}) {
   // a false alarm costs them the belief that the list means anything.
   const carried = JSON.stringify(full || {}).toLowerCase();
   const alreadyInThePlan = (clause) => {
+    // A DATE THE PLAN APPLIED WAS NOT DROPPED (owner acceptance run, 11/5/2026):
+    // "this Saturday, November 7" saved 2026-11-07 and still listed "November 7"
+    // under "didn't make it", because the token check reads "november" against a
+    // plan that stores the date as digits. Ask the parser what the clause means.
+    if (full && full.date) {
+      try { const p = parseSmartEventText(clause, opts); if (p && p.date === full.date) return true; } catch { /* fall through */ }
+    }
     const toks = String(clause).toLowerCase().match(/[a-z0-9]+/g) || [];
     if (!toks.length) return false;
     // Connective words carry no fact, so they cannot keep a clause alive; every
@@ -1873,13 +2039,13 @@ export function unusedClauses(text, opts = {}) {
     // unused, and "for" at three letters was one character too long to be
     // excused. Naming a fact we honoured is the same lie as staying quiet about
     // one we dropped, pointed the other way.
-    return toks.every((tk) => ((_FILLER.has(tk) || (tk.length <= 2 && !/^\d+$/.test(tk)))
-      ? true : carried.includes(tk)));
+    return toks.every((tk) => (_FILLER.has(tk)
+      ? true : (tk.length <= 2 ? new RegExp('\\b' + tk + '\\b').test(carried) : carried.includes(tk))));
   };
 
   // Punctuated input keeps the original clause reading — a host who wrote
   // commas told us where the boundaries are, and that beats guessing them.
-  const clauses = t.split(_CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length > 2);
+  const clauses = t.split(_CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c && !_FILLER.has(c.toLowerCase()));
   if (clauses.length >= 2) {
     const out = [];
     for (const c of clauses) {
@@ -1921,7 +2087,7 @@ export function unusedClauses(text, opts = {}) {
     if (!run.length) { runStart = -1; return; }
     const meaty = run.some((w) => {
       const bare = w.replace(/[^a-z0-9]/gi, '').toLowerCase();
-      return bare.length > 2 && !_FILLER.has(bare);
+      return bare.length > 0 && !_FILLER.has(bare);
     });
     const leftUsed = runStart > 0 && used[runStart - 1];
     const rightUsed = endExclusive < words.length && used[endExclusive];
