@@ -550,7 +550,15 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: hostv2
-      - run: npx playwright install webkit --with-deps
+      # The same two guards the e2e shards carry (see the chromium install
+      # above): drop the image's stale Google Chrome apt repo before
+      # --with-deps runs apt-get update, and retry a transient mirror failure.
+      # Without them this step hung to the 25-minute job limit twice on
+      # 2026-11-06 with zero code changes between attempts. One line on
+      # purpose — see the seamRunsInCi note above.
+      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*
+        working-directory: hostv2
+      - run: s=1; for i in 1 2 3 4; do timeout 600 npx playwright install --with-deps webkit && s=0 && break; s=1; echo "playwright install failed (attempt $i/4)"; sleep $((i * 30)); done; exit $s
         working-directory: hostv2
       - run: npm run e2e:build
         working-directory: hostv2
