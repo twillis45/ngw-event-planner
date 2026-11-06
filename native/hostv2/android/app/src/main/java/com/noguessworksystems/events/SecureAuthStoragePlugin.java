@@ -1,4 +1,4 @@
-package com.example.ngwhostrc;
+package com.noguessworksystems.events;
 
 import android.content.Context;
 import android.content.SharedPreferences;

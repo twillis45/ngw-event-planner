@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">NGW Host RC</string>
     <string name="title_activity_main">NGW Host RC</string>
-    <string name="package_name">com.example.ngwhostrc</string>
-    <string name="custom_url_scheme">com.example.ngwhostrc</string>
+    <string name="package_name">com.noguessworksystems.events</string>
+    <string name="custom_url_scheme">com.noguessworksystems.events</string>
 </resources>

@@ -33,7 +33,7 @@ async function boot() {
   const handleUrl = async ({ url }) => {
     try {
       const { supabase } = await import('../../../src/lib/supabaseClient.js');
-      await acceptAuthCallback(url, process.env.REACT_APP_AUTH_REDIRECT || 'com.example.ngwhostrc://auth-callback', supabase?.auth);
+      await acceptAuthCallback(url, process.env.REACT_APP_AUTH_REDIRECT || 'com.noguessworksystems.events://auth-callback', supabase?.auth);
     } catch { showAuthError(); }
   };
   await App.addListener('appUrlOpen', handleUrl);

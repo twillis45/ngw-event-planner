@@ -1,4 +1,4 @@
-package com.example.ngwhostrc;
+package com.noguessworksystems.events;
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {

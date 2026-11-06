@@ -2,7 +2,7 @@
 
 Status: local implementation in progress. These are new iOS/Android clients of HostV2, with its existing UI and canonical engines. No store submission or approval is claimed.
 
-Surfaces: iOS — public / iOS; Android — public / Android. Provisional local identifier: `com.example.ngwhostrc`. It must never be submitted. Final owner identifiers, signing, billing/distribution ruling, policies, and store records remain release gates.
+Surfaces: iOS — public / iOS; Android — public / Android. App identifier (owner decision, November 6, 2026): `com.noguessworksystems.events` on iOS and Android. Signing, billing/distribution ruling, policies, and store records remain release gates.
 
 ## Architecture decision — November 5, 2026
 
@@ -35,7 +35,7 @@ Native projects, secure-storage bootstrap, and custom debug callbacks now exist.
 
 Use Node22 on PATH, run `npm ci` in this directory, then `npm run build:web` and `npm run sync`. For Android set ANDROID_HOME to the installed SDK and JAVA_HOME to JDK21, then run `./gradlew assembleDebug` in `android`. For iOS run `xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -derivedDataPath artifacts/ios-simulator CODE_SIGN_IDENTITY=- build`. Ad-hoc simulator signing is required for Keychain access; CODE_SIGNING_ALLOWED=NO builds but fails closed at runtime. These commands do not submit anything.
 
-Public links require REACT_APP_PUBLIC_APP_URL (validated HTTPS). Auth has a separate REACT_APP_AUTH_REDIRECT; the debug default is com.example.ngwhostrc://auth-callback and must be allowed by the configured Supabase project. No production credentials or targets are implied. NGW_NATIVE_RELEASE=1 deliberately refuses this provisional packaging profile.
+Public links require REACT_APP_PUBLIC_APP_URL (validated HTTPS). Auth has a separate REACT_APP_AUTH_REDIRECT; the default is com.noguessworksystems.events://auth-callback and must be allowed by the configured Supabase project. No production credentials or targets are implied. NGW_NATIVE_RELEASE=1 deliberately refuses this packaging profile until store billing, signing, and device gates pass.
 
 Native billing defaults: Android consumption-only, confirmed server entitlement only; iOS none, paid tools unavailable even for a web-bought pass. Native pass sheets, settings sales rows, prices, and website-purchase links are absent. No external-link exception was selected. The policy owner's iOS external_link option remains an unresolved release decision.
 

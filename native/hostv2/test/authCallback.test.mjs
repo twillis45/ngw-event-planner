@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { acceptAuthCallback } from '../runtime/authCallback.mjs';
-const redirect = 'com.example.ngwhostrc://auth-callback';
+const redirect = 'com.noguessworksystems.events://auth-callback';
 test('unrelated URL never passes tokens to auth', async () => {
-  for (const url of ['https://auth-callback/#access_token=a&refresh_token=b', 'com.example.ngwhostrc://evil/#access_token=a&refresh_token=b', redirect + '/extra#access_token=a&refresh_token=b']) {
+  for (const url of ['https://auth-callback/#access_token=a&refresh_token=b', 'com.noguessworksystems.events://evil/#access_token=a&refresh_token=b', redirect + '/extra#access_token=a&refresh_token=b']) {
     assert.equal(await acceptAuthCallback(url, redirect, { setSession: () => assert.fail('unexpected session') }), false);
   }
 });

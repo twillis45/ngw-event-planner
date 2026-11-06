@@ -12,7 +12,7 @@ export default env => {
     appEnv['REACT_APP_' + key] = process.env['REACT_APP_NATIVE_' + key] || '';
   }
   appEnv.REACT_APP_PUBLIC_APP_URL = process.env.REACT_APP_PUBLIC_APP_URL || '';
-  appEnv.REACT_APP_AUTH_REDIRECT = process.env.REACT_APP_AUTH_REDIRECT || 'com.example.ngwhostrc://auth-callback';
+  appEnv.REACT_APP_AUTH_REDIRECT = process.env.REACT_APP_AUTH_REDIRECT || 'com.noguessworksystems.events://auth-callback';
   appEnv.REACT_APP_NATIVE_DEBUG = '1';
   config.define['process.env'] = JSON.stringify(appEnv);
   config.build = { outDir: path.join(here, 'www'), emptyOutDir: true };
