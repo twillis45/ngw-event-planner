@@ -17,6 +17,19 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 6, 2026 — owner decisions settled (PR #101 head `ace6fd87`)
+
+Todd settled the four open decisions. Three are built and verified; the fourth waits on branch permission.
+
+| Decision | Ruling | Done | Evidence |
+|---|---|---|---|
+| Revoked sign-ins | The backend refuses a token whose session is gone | `d13655af` — `auth.py` cache hit also requires the token's `session_id` to exist in `auth.sessions` | Live: after a global sign-out GoTrue 403 / backend **401** (was 200 for up to 5 min); fresh sign-in still 200. `test_signed_out_token_is_refused.py` (3), red-proofed. Production DB role needs SELECT on `auth.sessions`; a failed lookup falls back to GoTrue, never to the cache |
+| Migration 0003 on a new DB | Skip 0003; add only `event_owners.studio_id` | `ace6fd87` — `backend/migrations/0003b_event_owners_studio_id.sql`; `backend/MIGRATIONS.md` new-DB order: 0001, 0002, **0003b**, 0004+ | Disposable DB: applies, idempotent, backfills; `check:migrations` passes |
+| Merge PR #101 | Test 019–021 first | Upgrade test on a disposable DB at the 018 state with seeded data (3 hosts, shared studio, orphan membership, events, anon RSVP, paid pass), then 019→020→021 | All apply cleanly; every row kept; anon can no longer insert RSVPs or call studio helpers; authenticated `ensure_studio` still works; old pass intact; 021 FKs NOT VALID keep the orphan; solo-host deletion removes her studio/event/RSVPs; shared-studio owner deletion refused (`ownership_transfer_required`); new write for a deleted user refused. `test_account_deletion_transaction.py` **5 passed** (previously always skipped). **Ready for Todd to merge.** |
+| Native app ID | `com.noguessworksystems.events` | **Not applied** — the native project is on `codex/native-rc-2026-11-05`, and pushing there was not explicitly permitted | Files that carry `com.example.ngwhostrc` on that branch: `native/hostv2/capacitor.config.json`; `ios/App/App.xcodeproj/project.pbxproj` (2× PRODUCT_BUNDLE_IDENTIFIER); `ios/App/App/Info.plist` (URL scheme); `android/app/build.gradle` (namespace, applicationId); `AndroidManifest.xml` (auth-callback scheme); `res/values/strings.xml` (package_name, custom_url_scheme); `java/com/example/ngwhostrc/*.java` (package + move to `java/com/noguessworksystems/events/`); `runtime/bootstrap.js`, `vite.config.mjs`, `test/authCallback.test.mjs` (auth redirect default); `README.md`; `docs/implementation/2026-11-05-native-debug.md`. Then add `com.noguessworksystems.events://auth-callback` to Supabase Auth → Redirect URLs. The ID is permanent once published |
+
+Same day, before the decisions: break runs 2 and 3 (every screen at 390/320/1440 plus the real backend) and all their fixes are on PR #101 — see issue #100 for the per-finding tables. PR #101 CI green on `89068be6` (the WebKit job gained the e2e shards' apt guards).
+
 ## November 5, 2026 — Vida private executable preview and C7
 
 C7 integrated at `f6cc02e2` (lane37071605): actual WebKit81/81 and affected Chromium20/20 passed; no physical Safari or production gate claim. Previous integrated pre-push run passed all six checks, Jest642 suites/8,687 tests, one standing skip. C7 integration is being checked separately before push.
