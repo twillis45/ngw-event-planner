@@ -4682,7 +4682,11 @@ export default function HostShellV2() {
   // ── Actions that ACT: patch the real event, let the engine recompute ──
   const [editor, setEditor] = useState(null); // which card's inline editor is open
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
-  const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
+  // in-progress typed guest count, before commit. NULL means "not editing" — an
+  // empty string is a host who cleared the field to type a new number (run 2,
+  // R2-16: '' doubled as both, so Backspace snapped back to the old count and
+  // typing appended: 10 → "105", "1015").
+  const [guestDraft, setGuestDraft] = useState(null);
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
   useEffect(() => {
     if (sheet && sheet.kind === 'pass') recordPassFunnel('sheet_viewed', eventId);
@@ -7620,9 +7624,9 @@ export default function HostShellV2() {
       const commitDraft = () => {
         const n = parseInt(guestDraft, 10);
         if (n > 0) setGuests(n);
-        setGuestDraft('');
+        setGuestDraft(null);
       };
-      const bump = (delta) => { setGuestDraft(''); setGuests(Math.max(1, guestN + delta)); };
+      const bump = (delta) => { setGuestDraft(null); setGuests(Math.max(1, guestN + delta)); };
       // PARITY RECOMPOSE (host "feels unbalanced", 2026-07-22 W6): the number at
       // BigValue scale flanked by the stepper → quick chips → ONE quiet roster
       // link — kit atoms, ASK_RHYTHM gaps. The ask FRAMING (record line + guide
@@ -7633,7 +7637,7 @@ export default function HostShellV2() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: ASK_RHYTHM.eyebrowToValue }}>
             <button className="mini" onClick={() => bump(-1)} aria-label="Fewer guests">−</button>
             <BigValueInput ariaLabel="Exact guest count"
-              value={guestDraft !== '' ? guestDraft : (guestN || '')}
+              value={guestDraft !== null ? guestDraft : (guestN || '')}
               onFocus={() => setGuestDraft(String(guestN || ''))}
               onChange={e => setGuestDraft(e.target.value)}
               onCommit={commitDraft} />
@@ -7658,7 +7662,7 @@ export default function HostShellV2() {
             return (
               <div className="chips hc-row" style={{ margin: `${ASK_RHYTHM.whyToCta}px 0 0` }}>
                 {picks.map(n => (
-                  <button key={n} className="chip" aria-pressed={guests === n} onClick={() => { setGuestDraft(''); setGuests(n); }}>{n}</button>
+                  <button key={n} className="chip" aria-pressed={guests === n} onClick={() => { setGuestDraft(null); setGuests(n); }}>{n}</button>
                 ))}
               </div>
             );
@@ -25186,19 +25190,19 @@ export default function HostShellV2() {
                     No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
                   </div>
                   <div id="guests-entry-anchor" style={{ display: peopleMode && !peopleAdjust ? 'none' : 'flex', gap: 'var(--sp-2)', alignItems: 'center', margin: '0 0 10px', scrollMarginTop: 12 }}>
-                    <button className="mini" onClick={() => { setGuestDraft(''); setGuests(Math.max(1, (Number(guests) || 0) - 1)); }} aria-label="Fewer guests">−</button>
+                    <button className="mini" onClick={() => { setGuestDraft(null); setGuests(Math.max(1, (Number(guests) || 0) - 1)); }} aria-label="Fewer guests">−</button>
                     <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 6px' }}
                       type="number" inputMode="numeric" min="1"
-                      value={guestDraft !== '' ? guestDraft : (Number(guests) || '')}
+                      value={guestDraft !== null ? guestDraft : (Number(guests) || '')}
                       onFocus={() => setGuestDraft(String(Number(guests) || ''))}
                       onChange={e => setGuestDraft(e.target.value)}
                       onKeyDown={e => {
-                        if (e.key === 'Enter') { const n = parseInt(guestDraft, 10); if (n > 0) setGuests(n); setGuestDraft(''); }
-                        else if (e.key === 'Escape') setGuestDraft('');
+                        if (e.key === 'Enter') { const n = parseInt(guestDraft, 10); if (n > 0) setGuests(n); setGuestDraft(null); }
+                        else if (e.key === 'Escape') setGuestDraft(null);
                       }}
-                      onBlur={() => { const n = parseInt(guestDraft, 10); if (n > 0) setGuests(n); setGuestDraft(''); }}
+                      onBlur={() => { const n = parseInt(guestDraft, 10); if (n > 0) setGuests(n); setGuestDraft(null); }}
                       aria-label="Exact guest count" />
-                    <button className="mini" onClick={() => { setGuestDraft(''); setGuests((Number(guests) || 0) + 1); }} aria-label="More guests">+</button>
+                    <button className="mini" onClick={() => { setGuestDraft(null); setGuests((Number(guests) || 0) + 1); }} aria-label="More guests">+</button>
                     <span className="of">guests</span>
                   </div>
                   {/* KIDS-INVISIBLE FIX: by-headcount hosts (no roster to sum
