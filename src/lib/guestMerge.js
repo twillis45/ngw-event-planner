@@ -128,6 +128,18 @@ export function confirmSameGuest(guests, rowId) {
   return list.filter((g) => g !== row).map((g) => (g === target ? next : g));
 }
 
+/** The replies-came-in line for rows this batch flagged — so the host hears
+ *  the question when the reply lands, not only inside the Guests sheet. */
+export function sameGuestAskLine(before, after) {
+  const had = new Set((before || []).map((g) => g && g.id));
+  const asks = (after || []).filter((g) => g && g.maybeSameAs && !had.has(g.id))
+    .map((g) => ({ row: g, who: (after || []).find((x) => x && x.id === g.maybeSameAs) }))
+    .filter((a) => a.who);
+  if (!asks.length) return '';
+  if (asks.length === 1) return ' A reply signed “' + asks[0].row.name + '” may be ' + asks[0].who.name + ' — check Guests.';
+  return ' ' + asks.length + ' replies may be guests already on your list — check Guests.';
+}
+
 /** The host said no: two people. The question is not asked again. */
 export function keepSeparateGuest(guests, rowId) {
   return (guests || []).map((g) => {

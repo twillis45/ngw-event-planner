@@ -45,3 +45,21 @@ test('"Different people": the flag clears and the next visit does not re-ask', (
   expect(again.added).toBe(0);
   expect(again.guests[2].maybeSameAs).toBeUndefined();
 });
+
+describe('the replies-came-in line names the question', () => {
+  const { sameGuestAskLine } = require('../guestMerge');
+  test('one new flagged row → named', () => {
+    const before = roster();
+    const { guests } = mergeGuestReplies(before, [{ name: 'eve', rsvp: 'Yes', idempotencyKey: 'k1' }]);
+    expect(sameGuestAskLine(before, guests)).toBe(' A reply signed “eve” may be Eve Brooks — check Guests.');
+  });
+  test('a row flagged on an earlier visit is not re-announced', () => {
+    const { guests } = mergeGuestReplies(roster(), [{ name: 'eve', rsvp: 'Yes', idempotencyKey: 'k1' }]);
+    expect(sameGuestAskLine(guests, guests)).toBe('');
+  });
+  test('no flagged rows → nothing added', () => {
+    const before = roster();
+    const { guests } = mergeGuestReplies(before, [{ name: 'Zora Neale', rsvp: 'Yes' }]);
+    expect(sameGuestAskLine(before, guests)).toBe('');
+  });
+});

@@ -272,7 +272,7 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
-import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest } from '@app/lib/guestMerge';
+import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
@@ -7178,7 +7178,7 @@ export default function HostShellV2() {
     if (!n) return;
     const kidsCount = kidsTotal(gs);
     patchEvent({ guests: gs, kidsCount },
-      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.',
+      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.' + sameGuestAskLine(event.guests, gs),
       { noUndo: true, cloud: true }); // real replies arriving isn't a host edit to undo; they came from the account, so they go back to it
   };
   // NEVER A BLANK START TIME (host directive 2026-07-15, frictionless). The create flow already

@@ -56,3 +56,26 @@ test('"Different people" keeps both and does not ask again', async ({ page }, te
   await page.getByLabel(/Add guest names/i).waitFor({ state: 'visible', timeout: 20000 });
   await expect(page.getByRole('group', { name: 'Is eve Eve Brooks?' })).toHaveCount(0);
 });
+
+// The question is also said WHEN THE REPLY LANDS, in the replies-came-in toast,
+// so the host hears it without opening Guests. Driven through the same-browser
+// reply outbox (ngw-rsvp-queue-<id>), which runs through the same merge and
+// the same announcement as the server read-back.
+test('the replies-came-in toast names the short-name question', async ({ page }) => {
+  const ev = { ...EV, id: 'E2E_short_toast', guests: EV.guests.slice(0, 2) };
+  await page.addInitScript((e) => {
+    window.__t = [];
+    new MutationObserver(() => document.querySelectorAll('[role=status]').forEach((n) => {
+      const x = (n.innerText || '').trim(); if (x && window.__t[window.__t.length - 1] !== x) window.__t.push(x);
+    })).observe(document, { subtree: true, childList: true, characterData: true });
+    if (localStorage.getItem('ngw-hostv2-last-event')) return;
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.setItem('ngw-rsvp-queue-' + e.id, JSON.stringify([{ name: 'eve', rsvp: 'Yes', idempotencyKey: 'k1', submittedAt: Date.now() }]));
+  }, ev);
+  await page.goto('./');
+  await expect.poll(() => page.evaluate(() => window.__t), { timeout: 20000 })
+    .toContainEqual(expect.stringMatching(/A reply signed “eve” may be Eve Brooks — check Guests\./));
+});
