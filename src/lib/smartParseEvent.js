@@ -605,7 +605,7 @@ export function parseSmartEventText(text, opts = {}) {
   // and only there. The POSSESSIVE branch above it required a capital, so
   // "Mom's 80th" resolved and "mom's 80th" did not, which is how a host types
   // it in a hurry. Same list, both constructions, one definition.
-  const REL_WORDS = '(?:great[\\s-]*)?(?:grand)?(?:mom|mommy|mama|momma|mother|dad|daddy|father|pop|pops|ma|grandma|granny|grandmother|grandad|granddad|grandpa|grandfather|auntie|aunt|uncle|sister|brother|cousin|wife|husband|son|daughter|nephew|niece|godmother|godfather|bestie|best\\s+friend|partner|fianc[\u00e9e]e?)';
+  const REL_WORDS = '(?:great[\\s-]*)?(?:grand)?(?:mom|mommy|mama|momma|mother|dad|daddy|father|pop|pops|ma|grandma|granny|grandmother|grandad|granddad|grandpa|grandfather|auntie|aunt|uncle|sister|brother|cousin|wife|husband|son|daughter|nephew|niece|godmother|godfather|bestie|best\\s+friend|friend|partner|fianc[\u00e9e]e?|boss|coach|teacher|mentor|pastor|neighbor|roommate|coworker|colleague)';
   //
   // ── AND A POSSESSIVE IS NOT ALWAYS AN HONOREE ───────────────────────────
   // Measured 2026-09-27, on the CAPITALISED path that already shipped:

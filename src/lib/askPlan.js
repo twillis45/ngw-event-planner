@@ -113,7 +113,7 @@ export function answerPlanQuestion(questionRaw, ctx = {}) {
     const basis = [`Your plan comes to about ${money$(committed)} so far — food, supplies, space, and anything you've priced, like vendors.`];
     if (Number(money.spentEstimated) > 0) basis.push(`${money$(money.spentEstimated)} of that is still an estimate, not a firm price — the real total can move.`);
     const answer = diff >= 0
-      ? `${money$(amount)} covers what your plan commits so far — you're about ${money$(diff)} under.`
+      ? `${money$(amount)} covers what your plan comes to so far — you're about ${money$(diff)} under.`
       : `${money$(amount)} is about ${money$(-diff)} short of what your plan already comes to (${money$(committed)}).`;
     return { answer, basis, matched: true, route: 'budget' };
   }

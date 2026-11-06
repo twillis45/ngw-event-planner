@@ -179,7 +179,8 @@ export function deriveVendorAccountability(vendor, event, promises = []) {
   overdueRaw.forEach(p => {
     if (!missed.includes(p)) reasons.push(`${p.promiseText} overdue (${p.dueDate ? usShortDate(p.dueDate) : 'no date'}).`);
   });
-  dueSoon.forEach(p => reasons.push(`${p.promiseText} due in ${daysUntil(p.dueDate)} day(s).`));
+  // "due in 0 day(s)" (run 3, R3-1) reads like a form; say the day.
+  dueSoon.forEach(p => { const d = daysUntil(p.dueDate); reasons.push(`${p.promiseText} due ${d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + ' days'}.`); });
   evidenceMissing.forEach(p => {
     if (!overdueRaw.includes(p) && !missed.includes(p)) reasons.push(`${p.promiseText} — evidence missing.`);
   });
