@@ -558,6 +558,12 @@ jobs:
       # purpose — see the seamRunsInCi note above.
       - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*
         working-directory: hostv2
+      # `timeout 600` stops npx, not the apt-get it started: on 2026-11-06 a
+      # slow mirror outlived the timeout and that orphan held the dpkg lock,
+      # so attempts 2-4 each failed in one second ("Could not get lock ...
+      # held by process 3002 (apt-get)"). Let a retry wait for the lock (the
+      # orphan finishes the same install) instead of failing on it.
+      - run: echo 'DPkg::Lock::Timeout "900";' | sudo tee /etc/apt/apt.conf.d/90-ngw-lock-timeout
       - run: s=1; for i in 1 2 3 4; do timeout 600 npx playwright install --with-deps webkit && s=0 && break; s=1; echo "playwright install failed (attempt $i/4)"; sleep $((i * 30)); done; exit $s
         working-directory: hostv2
       - run: npm run e2e:build
