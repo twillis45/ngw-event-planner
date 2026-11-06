@@ -243,6 +243,11 @@ async def _resolve_event(conn, rsvp_code: str):
         except Exception:
             data = {}
     public = {k: data.get(k) for k in PUBLIC_EVENT_FIELDS if data.get(k) is not None}
+    # A start time the APP derived is not the host's hour (run 2, R2-23): a
+    # guest is never handed it. The client's gate reads startTimeSource, which
+    # this projection does not carry, so the derived hour stops here.
+    if str(data.get("startTimeSource") or "") == "derived":
+        public.pop("startTime", None)
     public["id"] = row["id"]
     # Anonymized social proof: the COUNT of confirmed guests only — never names,
     # emails, or the roster itself. Closes the invite's "zero social proof on

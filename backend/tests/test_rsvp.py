@@ -266,3 +266,19 @@ def test_submit_keeps_the_structured_guest_details_the_form_sends():
     assert m.access == ["step-free"]
     assert m.picks_crabs is True
     assert m.lodging_pick == "opt-3"
+
+
+# ── A start time the app DERIVED is not the host's hour (run 2, R2-23) ──────
+# The client's outward gate (lib/eventWhen.eventStartLabel) hides a derived
+# hour, but it reads `startTimeSource`, which this projection did not carry —
+# so every remotely opened invite stated the app's guess ("3:00 PM") as fact.
+def test_a_derived_start_time_never_reaches_a_guest():
+    public = _resolved_public({"name": "n", "startTime": "15:00", "startTimeSource": "derived", "timeOfDay": "afternoon"})
+    assert "startTime" not in public
+    assert public["timeOfDay"] == "afternoon"   # the host's own coarse words still go
+
+
+def test_a_start_time_the_host_set_still_reaches_a_guest():
+    assert _resolved_public({"name": "n", "startTime": "19:00", "startTimeSource": "host"})["startTime"] == "19:00"
+    # Events from before provenance existed carry no source: the host's own.
+    assert _resolved_public({"name": "n", "startTime": "19:00"})["startTime"] == "19:00"
