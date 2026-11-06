@@ -7161,7 +7161,9 @@ export default function HostShellV2() {
           toast(msg, { label: 'Undo', fn: undoFn }, 'ok');
         }
       }
-      else toast(msg, null, 'ok');
+      // A non-undoable write may still carry one action (opts.action) — e.g.
+      // the replies toast's "Check" that opens Guests.
+      else toast(msg, (opts && opts.action) || null, 'ok');
     }
     return { ok: true };
   };
@@ -7177,9 +7179,10 @@ export default function HostShellV2() {
   const announceReplies = (gs, n, yesCount) => {
     if (!n) return;
     const kidsCount = kidsTotal(gs);
+    const ask = sameGuestAskLine(event.guests, gs);
     patchEvent({ guests: gs, kidsCount },
-      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.' + sameGuestAskLine(event.guests, gs),
-      { noUndo: true, cloud: true }); // real replies arriving isn't a host edit to undo; they came from the account, so they go back to it
+      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.' + ask,
+      { noUndo: true, cloud: true, ...(ask ? { action: { label: 'Check', fn: () => setSheet({ kind: 'guests' }) } } : {}) }); // real replies arriving isn't a host edit to undo; they came from the account, so they go back to it
   };
   // NEVER A BLANK START TIME (host directive 2026-07-15, frictionless). The create flow already
   // grounds a new event's start time; this does the same, ONCE, for an event that ARRIVED

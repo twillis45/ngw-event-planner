@@ -78,4 +78,22 @@ test('the replies-came-in toast names the short-name question', async ({ page })
   await page.goto('./');
   await expect.poll(() => page.evaluate(() => window.__t), { timeout: 20000 })
     .toContainEqual(expect.stringMatching(/A reply signed “eve” may be Eve Brooks — check Guests\./));
+  // …and its Check button opens Guests on the question itself.
+  await page.getByRole('status').getByRole('button', { name: 'Check' }).first().click();
+  await expect(page.getByRole('group', { name: 'Is eve Eve Brooks?' })).toBeVisible({ timeout: 10000 });
+});
+
+test('CONTROL — a reply with no question carries no Check button', async ({ page }) => {
+  const ev = { ...EV, id: 'E2E_short_none', guests: EV.guests.slice(0, 2) };
+  await page.addInitScript((e) => {
+    if (localStorage.getItem('ngw-hostv2-last-event')) return;
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.setItem('ngw-rsvp-queue-' + e.id, JSON.stringify([{ name: 'Zora Neale', rsvp: 'Yes', idempotencyKey: 'k2', submittedAt: Date.now() }]));
+  }, ev);
+  await page.goto('./');
+  await expect(page.getByRole('status').filter({ hasText: 'came in from your invite link' }).first()).toBeVisible({ timeout: 20000 });
+  await expect(page.getByRole('status').getByRole('button', { name: 'Check' })).toHaveCount(0);
 });
