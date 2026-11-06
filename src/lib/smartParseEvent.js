@@ -88,7 +88,22 @@ export function parseSmartEventText(text, opts = {}) {
   // else named the occasion: a stated type always wins.
   const _POSS_ORDINAL = /\b[\w]+['’]s\s+(\d{1,3}(?:st|nd|rd|th))\b(?!\s+(?:anniversary|wedding|reunion|retirement|year|years|grade|street|st\b|avenue|ave\b|floor|place|annual|jubilee|birthday))/i;
   const _possMilestone = t.match(_POSS_ORDINAL);
-  const type = _resolveType(t) || (_possMilestone ? 'Birthday' : null);
+  // A TYPO STILL NAMES THE OCCASION (run 2, R2-9 / R2-22): "retirment pary",
+  // "anniversery dinner", "graduaton party" resolved to nothing, Dinner Party or
+  // Birthday. A closed list of the misspellings people actually type, plus
+  // "book club" → get-together, applied ONLY to recognizing the occasion; every
+  // other field still reads her exact words.
+  const tType = t
+    .replace(/\bretir(?:e?ment|ment|emnt|mnet)\b/gi, 'retirement')
+    .replace(/\bp(?:ary|arty|artty|arrty|atry)\b/gi, 'party')
+    .replace(/\banniver(?:sery|sary|sairy|ssary|sry)\b/gi, 'anniversary')
+    .replace(/\bgradu(?:aton|ation|tion|ateion|atin)\b/gi, 'graduation')
+    .replace(/\bwed(?:ing|dding|ding)\b/gi, 'wedding')
+    .replace(/\bbook\s+club\b/gi, 'get-together');
+  const type = _resolveType(tType) || (_possMilestone ? 'Birthday' : null);
+  // The generic word she actually used ("party", "fiesta", "celebration"), so a
+  // guess is declared in her words, not ours (run 2, R2-8).
+  const _typeWord = (() => { const m = t.match(new RegExp(GENERIC_GATHERING_WORDS.source, 'i')); return m ? m[0] : null; })();
 
   // ── WAS THAT TYPE A GUESS? ───────────────────────────────────────────────
   //
@@ -112,12 +127,15 @@ export function parseSmartEventText(text, opts = {}) {
   let typeBasis = null;
   if (type) {
     let specific = null;
-    try { specific = _resolveType(t.replace(_GENERIC_PARTY_WORDS, ' ')); } catch { specific = null; }
+    try { specific = _resolveType(tType.replace(_GENERIC_PARTY_WORDS, ' ')); } catch { specific = null; }
     typeBasis = specific === type ? 'named' : 'generic';
     // Inferred from "<Name>'s Nth" alone: still a guess, but not a "party" one,
     // so it is declared for what it is (the reveal names the milestone word).
-    if (typeBasis === 'generic' && !_resolveType(t) && _possMilestone) typeBasis = 'milestone';
+    if (typeBasis === 'generic' && !_resolveType(tType) && _possMilestone) typeBasis = 'milestone';
   }
+  // Only a GENERIC guess quotes the word it rested on; a named occasion carries
+  // none, so the word is never mistaken for something the plan used.
+  const typeHeard = typeBasis === 'generic' ? _typeWord : null;
 
   // ── Guests ──────────────────────────────────────────────────────────────
   let guests = null;
@@ -1785,7 +1803,7 @@ export function parseSmartEventText(text, opts = {}) {
 
   return {
     hostName,
-    type, typeBasis, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    type, typeBasis, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     healthNoted,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,

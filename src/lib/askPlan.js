@@ -85,6 +85,11 @@ export function answerPlanQuestion(questionRaw, ctx = {}) {
   // part ("cover the crabs") or to a different head count ("for 50") is a
   // different question — decline so the caller can escalate to a tool-calling
   // answer rather than quietly answering the one we can compute.
+  // A NEGATIVE AMOUNT IS NOT A POSITIVE ONE (run 2, R2-19): "will $-5 cover
+  // it?" was answered as $5. It is said back plainly instead.
+  if (/(?:-\s*\$\s*\d|\$\s*-\s*\d)/.test(q) && money) {
+    return { answer: 'A negative amount can’t cover a plan — try the amount you have, like “will $500 cover it?”.', basis: [], matched: true, route: 'budget' };
+  }
   const askedHead = parseHeadcount(q);
   const partScoped = has(SCOPED_TO_PART);
   const whatIfSize = askedHead != null && (guests == null || askedHead !== Number(guests));

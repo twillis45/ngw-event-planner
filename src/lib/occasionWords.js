@@ -5,7 +5,8 @@
 // occasion on its own — and kept a leading "The". One place decides both.
 
 // " Party" stays when the word before it is not an occasion by itself.
-const KEEPS_PARTY = /^(watch|card|day)\s+party$/i;
+// "Holiday" alone reads as a day off, not an event (run 2, R2-7: "My Holiday").
+const KEEPS_PARTY = /^(watch|card|day|holiday)\s+party$/i;
 
 /** For an event NAME after "My " or "<Name>’s ": "Cookout", "Watch Party", "Retirement". */
 export function occasionShortName(type) {
