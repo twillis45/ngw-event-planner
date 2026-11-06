@@ -44,6 +44,24 @@ def invalidate_user_cache(user_id: str) -> None:
             _cache.pop(token, None)
 
 
+def _session_id(token: str) -> Optional[str]:
+    """The `session_id` claim of an access token GoTrue already verified.
+
+    Read only to look the session up — never to trust the token: the signature
+    was checked by GoTrue when the token entered the cache.
+    """
+    try:
+        import base64
+        import json
+        import uuid
+        part = token.split(".")[1]
+        payload = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
+        sid = payload.get("session_id")
+        return str(uuid.UUID(str(sid))) if sid else None
+    except Exception:
+        return None
+
+
 def _bearer(authorization: Optional[str]) -> Optional[str]:
     if authorization and authorization.lower().startswith("bearer "):
         return authorization[7:].strip() or None
@@ -66,8 +84,20 @@ async def verify_supabase_token(token: str) -> Optional[dict]:
         from .db import get_pool
         try:
             pool = await get_pool()
+            # A SIGNED-OUT TOKEN IS REFUSED AT ONCE (owner decision, 11/6/2026):
+            # after a sign-out GoTrue refuses the token, but this cache kept
+            # honoring it for up to five minutes. The user must still exist AND,
+            # when the token names its session, that session must still exist.
+            sid = _session_id(token)
             async with pool.acquire() as conn:
-                exists = await conn.fetchval("select 1 from auth.users where id=$1::uuid", cached[1]["id"])
+                if sid:
+                    exists = await conn.fetchval(
+                        "select exists(select 1 from auth.users where id=$1::uuid)"
+                        " and exists(select 1 from auth.sessions where id=$2::uuid)",
+                        cached[1]["id"], sid,
+                    )
+                else:
+                    exists = await conn.fetchval("select 1 from auth.users where id=$1::uuid", cached[1]["id"])
             if exists:
                 return cached[1]
         except Exception:
