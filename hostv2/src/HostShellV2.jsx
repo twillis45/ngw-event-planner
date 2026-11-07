@@ -271,7 +271,8 @@ import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent } from '@app/lib/api/events';
-import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict } from '@app/lib/api/syncState';
+import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
+import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
@@ -1865,6 +1866,7 @@ export default function HostShellV2() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
+  const [authCode, setAuthCode] = useState('');
   // In-app account deletion (issue #100, D-12; Apple 5.1.1(v), Google Play).
   const [acctDelete, setAcctDelete] = useState(null);   // null | { text, busy, error }
   useEffect(() => {
@@ -2074,7 +2076,11 @@ export default function HostShellV2() {
         // isRealHostEvent is the same predicate the welcome gate and the `fresh`
         // filter above use — demo- ids, non-host records and unnamed stubs are
         // not the host's work and must never be uploaded to their account.
-        const toUpload = mine.filter(e => isRealHostEvent(e) && !inCloud.has(e.id));
+        // ...and NEVER an event this device already synced to an account that
+        // isn't this one: a deleted account's plans, or another person's on a
+        // shared device (live smoke test, 11/7/2026). Only plans that never
+        // reached any account move in.
+        const toUpload = eventsToUploadOnSignIn(mine, inCloud, isRealHostEvent);
         if (toUpload.length) {
           Promise.all(toUpload.map(ev =>
             cloudSaveEvent(ev)
@@ -2127,7 +2133,24 @@ export default function HostShellV2() {
   // once set, the sheet was stuck on "Check your email" for the rest of the
   // session — no resend, no "wrong address, try again," no way out short of
   // reloading the app. This is the only place authSent is ever reset.
-  const resetAuthSent = () => { setAuthSent(false); };
+  const resetAuthSent = () => { setAuthSent(false); setAuthCode(''); };
+  // THE CODE KEEPS YOU HERE (live smoke test, 11/7/2026). A link tapped in a
+  // mail app opens that app's own browser, which has none of this plan, so the
+  // host's event seemed to vanish. The same email carries a code; typing it
+  // signs in THIS browser, where the plan already is.
+  const signInWithCode = async () => {
+    const code = signInCode(authCode);
+    if (!code) { toast('Type the code from the email — 6 digits.'); return; }
+    setAuthBusy(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email: authEmail.trim(), token: code, type: 'email' });
+      if (error) throw error;
+      setAuthCode('');
+    } catch (e) {
+      toast((e && e.message) || 'That code didn’t work — check it, or send a new one.');
+    }
+    setAuthBusy(false);
+  };
 
   const patchProfile = (fields, msg) => {
     let next = null;
@@ -18827,10 +18850,28 @@ export default function HostShellV2() {
                           if (!res.ok) { setAcctDelete({ ...acctDelete, busy: false, error: res.message }); return; }
                           try { await supabase.auth.signOut(); } catch { /* the account is already gone */ }
                           setAcctDelete(null);
-                          toast('Your account is deleted. Plans saved only on this device are still here — remove them from this device any time.');
+                          // THE ACCOUNT'S EVENTS LEAVE WITH IT (live smoke test, 11/7/2026).
+                          // The device kept every copy, so signing in again uploaded the
+                          // deleted plan into the new account. Copies of account events
+                          // go; plans that never reached the account stay, as promised.
+                          const { accountCopies, deviceOnly } = splitAccountCopies(customs || []);
+                          const goneIds = new Set([...accountCopies, ...(hydratedEvents || [])].map(e => e && e.id).filter(Boolean));
+                          let kept = customs || [];
+                          if (accountCopies.length) {
+                            const saved = saveCustomEvents(deviceOnly, { reason: 'hostshell:account-deleted', allowRemovingUserEvents: true });
+                            if (saved && saved.ok !== false) { kept = deviceOnly; setCustoms(deviceOnly); }
+                          }
+                          forgetSyncState([...goneIds]);
+                          setHydratedEvents([]);
+                          if (goneIds.has(eventId) && !kept.some(e => e && e.id === eventId)) {
+                            switchEvent((kept[0] && kept[0].id) || (REAL_EVENTS[0] && REAL_EVENTS[0].id) || (ROSTER[0] && ROSTER[0].id) || BOOT_EVENT_ID);
+                          }
+                          toast(kept.length
+                            ? 'Your account is deleted, with its events. Plans saved only on this device are still here — remove them from this device any time.'
+                            : 'Your account is deleted, with its events.');
                         }}>
                           <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
-                            This permanently deletes your account and everything saved to it: your events, guest lists and guests’ replies. Payment receipts are kept because the law requires it. It can’t be undone. Copies saved only on this device stay here until you remove them.
+                            This permanently deletes your account and everything saved to it: your events, guest lists and guests’ replies. Payment receipts are kept because the law requires it. It can’t be undone. Its events leave this device too; plans saved only on this device stay here until you remove them.
                           </p>
                           <label className="grounding" style={{ display: 'block', margin: '0 0 var(--sp-2)' }}>Type DELETE to confirm
                             <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} aria-label="Type DELETE to confirm account deletion" autoComplete="off" autoCapitalize="characters"
@@ -18846,10 +18887,16 @@ export default function HostShellV2() {
                     </>
                   ) : authSent ? (
                     <>
-                      <p className="grounding" style={{ margin: 0 }}>Check your email — the sign-in link lands you in {BRAND.full}, and this shell picks the session up automatically.</p>
+                      <p className="grounding" style={{ margin: 0 }}>Check your email. Type the code from it here to sign in on this browser, where this plan is. A link tapped in a mail app can open a different browser that doesn’t have your plan.</p>
+                      <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email"
+                        value={authCode} onChange={e => setAuthCode(e.target.value)} aria-label="Sign-in code from the email"
+                        onKeyDown={e => { if (e.key === 'Enter') signInWithCode(); }} />
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="cta" disabled={authBusy || !signInCode(authCode)} onClick={signInWithCode}>{authBusy ? 'Signing in…' : 'Sign in with the code'}</button>
+                      </div>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="mini" onClick={resetAuthSent}>Use a different email</button>
-                        <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Resend the link'}</button>
+                        <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
                       </div>
                     </>
                   ) : (
@@ -18859,7 +18906,7 @@ export default function HostShellV2() {
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the link signs you in. One account, both apps, this device and your others.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
                     </>
                   )}
 
