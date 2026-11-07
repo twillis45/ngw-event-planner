@@ -17,6 +17,21 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 7, 2026 — production went `live`; smoke-test fixes on `main-2utz0n`
+
+Measured, not planned. PR #101 (`3be32200`) and #102 (`951ed39a`) are merged.
+
+| Item | State |
+|---|---|
+| Pages | Deployed by hand with `release_profile: live` at 9:48 UTC on 11/7 (`RELEASE_SHA.txt` says `live-authenticated-backend-connected`). **`DEFAULT_RELEASE_PROFILE` is still `services`**, so an automatic deploy (any merge to `main`) rebuilds as `services` with billing on. Set it to `live` once the smoke test passes. |
+| GitHub variables | `REACT_APP_SUPABASE_URL` (project `ewoggzxarpcwesqxsdoz`), `REACT_APP_SUPABASE_ANON_KEY` (legacy `eyJ…` anon key; the build check rejects `sb_publishable_` keys), `REACT_APP_API_BASE_URL`, `REACT_APP_BILLING_LIVE=1`. |
+| Production database | Migrations **017–021 applied by hand in the SQL Editor on 11/7**; `supabase_migrations.schema_migrations` still ends at 016 and will not show them. All 12 object checks read true, including `event_owners.studio_id`. |
+| Backend (Render) | `ALLOWED_ORIGINS` includes `capacitor://localhost` (also declared in `render.yaml` by #102). `/api/stripe/status`: configured, webhook verified. The backend role can read `auth.sessions`. |
+| Auth email | Resend SMTP; the domain was verified, but the Supabase sender was a non-domain address and every sign-in email failed with a 550 until the sender became `noreply@noguessworksystems.com`. |
+| Smoke test | Checklist page at the owner's claude.ai artifact "NGW Launch Smoke Test". Not yet passed end to end. |
+
+**On `main-2utz0n`, not merged:** `f16537c` closes the two sign-in traps the owner hit (a link opening in the mail app's browser; a deleted account's plan returning on the next sign-in). It adds a code box to sign-in, which **needs the Supabase Magic Link email template to include `{{ .Token }}`** before it ships, or the box asks for a code the email doesn't carry. `6544fcc` fixes "this Saturday, November 7" parsing as November 14 on the day itself, which had turned `creationReadsVidasSentence` red on `main`.
+
 ## November 6, 2026 — owner decisions settled (PR #101 head `ace6fd87`)
 
 Todd settled the four open decisions. Three are built and verified; the fourth waits on branch permission.

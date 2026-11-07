@@ -86,8 +86,18 @@ describe('deleting an event', () => {
     //     pointing it at a key that does not exist.
     // Before this existed, four recovery functions had zero callers: backups
     // were taken that no button could put back.
+    //
+    // THE FIFTH, ARGUED (11/7/2026, live smoke test): "Delete my account". The
+    // device kept copies of the account's events, so the next sign-in uploaded
+    // the deleted plan into a new account. It earns the lift the same way:
+    //   · the host types DELETE, under copy saying the account's events go;
+    //   · it removes ONLY copies this device confirmed in the account (a sync
+    //     stamp), never a plan saved only on this device;
+    //   · it runs only after the server confirmed the deletion;
+    //   · e2e/theSignInTrapsAreClosed.spec.mjs drives it, red-proofed against
+    //     the code before it.
     const lifts = SHELL.match(/allowRemovingUserEvents\s*:/g) || [];
-    expect(lifts.length).toBe(4);
+    expect(lifts.length).toBe(5);
   });
 
   test('a refused write does not lie about having deleted anything', () => {

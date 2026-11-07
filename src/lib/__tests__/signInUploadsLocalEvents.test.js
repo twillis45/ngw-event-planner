@@ -25,6 +25,9 @@ const SHELL = fs.readFileSync(
   path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
 const EVENTS_API = fs.readFileSync(path.join(__dirname, '../api/events.js'), 'utf8');
 const WELCOME = fs.readFileSync(path.join(__dirname, '../welcomeGate.js'), 'utf8');
+// The filter moved into syncState (11/7/2026) so it can also refuse an event
+// this device synced to another account; aDeletedAccountStaysDeleted drives it.
+const SYNC = fs.readFileSync(path.join(__dirname, '../api/syncState.js'), 'utf8');
 
 // The upload block, isolated once so every test reads the same region rather
 // than matching loose strings anywhere in an 18k-line file.
@@ -54,13 +57,15 @@ describe('sign-in uploads the local events', () => {
 
   test('it skips what is already in the cloud, so a second sign-in is a no-op', () => {
     expect(BLOCK).toMatch(/inCloud/);
-    expect(BLOCK).toMatch(/!inCloud\.has\(e\.id\)/);
+    expect(BLOCK).toMatch(/eventsToUploadOnSignIn\(mine, inCloud, isRealHostEvent\)/);
+    expect(SYNC).toMatch(/!inCloud\.has\(e\.id\)/);
   });
 
   test('it uploads only genuine host events', () => {
     // Same predicate the welcome gate uses — demo- ids, non-host records and
     // unnamed stubs are not the host's work and must not reach their account.
-    expect(BLOCK).toMatch(/isRealHostEvent\(e\)/);
+    expect(BLOCK).toMatch(/isRealHostEvent\)/);
+    expect(SYNC).toMatch(/isReal\(e\)/);
     expect(WELCOME).toMatch(/export function isRealHostEvent/);
     expect(WELCOME).toMatch(/\^demo-/);
   });

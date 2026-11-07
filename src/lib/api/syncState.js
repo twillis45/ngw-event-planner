@@ -193,6 +193,42 @@ export function getEventSyncStatus(event) {
   return SYNC_STATUS.LOCAL_ONLY;
 }
 
+// ─── Which account an event belongs to (live smoke test, 11/7/2026) ─────────
+// A success stamp means this device once confirmed the event in an account.
+// If the account signed in now doesn't have it, it belongs to another account
+// or to one that was deleted, so it must never be uploaded into this one.
+// Only events that never reached any account (built signed out) move in.
+
+/** The local events sign-in should upload: real, not in this account, never synced. */
+export function eventsToUploadOnSignIn(localEvents, cloudIds, isReal) {
+  const inCloud = cloudIds instanceof Set ? cloudIds : new Set();
+  const stamps = readMap(STAMPS_KEY);
+  return (Array.isArray(localEvents) ? localEvents : [])
+    .filter(e => e && e.id && isReal(e) && !inCloud.has(e.id) && !stamps[e.id]);
+}
+
+/** Split local events into copies of account events and plans saved only on this device. */
+export function splitAccountCopies(localEvents) {
+  const stamps = readMap(STAMPS_KEY);
+  const list = (Array.isArray(localEvents) ? localEvents : []).filter(e => e && e.id);
+  return { accountCopies: list.filter(e => stamps[e.id]), deviceOnly: list.filter(e => !stamps[e.id]) };
+}
+
+/** Drop every sync record for these ids (stamps, attempts, queued writes). */
+export function forgetSyncState(ids) {
+  const list = (Array.isArray(ids) ? ids : []).filter(id => id != null && id !== '');
+  if (!list.length) return;
+  const stamps = readMap(STAMPS_KEY);
+  const attempts = readMap(ATTEMPTS_KEY);
+  for (const id of list) {
+    delete stamps[id];
+    delete attempts[id];
+    try { clearPendingEventWrite(id); } catch { /* queue unreadable — nothing to flush to a deleted account */ }
+  }
+  writeMap(STAMPS_KEY, stamps);
+  writeMap(ATTEMPTS_KEY, attempts);
+}
+
 /** Count of queued (unflushed) writes — pass-through to the one real queue. */
 export function getPendingCount() {
   try { return eventsGetPendingCount(); } catch { return 0; }
