@@ -305,6 +305,16 @@ export function parseSmartEventText(text, opts = {}) {
 
   // ── Date ────────────────────────────────────────────────────────────────
   let date = null;
+  // "PAST" MEANS BEFORE TODAY, NOT BEFORE THIS MINUTE (11/7/2026). A stated day
+  // is built at noon, so on the day itself, after noon, "November 7" counted as
+  // already gone and moved to next year. Every past-date bump below compares to
+  // the start of today.
+  const today0 = new Date(now); today0.setHours(0, 0, 0, 0);
+  // A MONTH AND DAY THE HOST SAID BEATS A WEEKDAY PHRASE (11/7/2026). On
+  // Saturday, November 7, "this Saturday, November 7" read as November 14: the
+  // weekday ran first, "this <today>" jumps a week, and the stated date was
+  // then thrown away as unused.
+  const saidMonthDay = /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b|\b\d{1,2}(?:st|nd|rd|th)?\s+of\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\b\d{1,2}\/\d{1,2}\b/i.test(t);
   // Relative forms first — "today", "tonight", "in 2 weeks", "tomorrow", "next saturday".
   // "Today"/"tonight" is the most literal date a host can say — same-day plans
   // ("BBQ at my brother's house today at 3pm") were falling through every
@@ -322,7 +332,7 @@ export function parseSmartEventText(text, opts = {}) {
   } else if (/\btomorrow\b/i.test(t)) {
     const d = new Date(now); d.setDate(d.getDate() + 1); d.setHours(12); date = localISO(d);
   } else {
-    const wd = t.match(/\b(?:next|this)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
+    const wd = saidMonthDay ? null : t.match(/\b(?:next|this)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
     if (wd) {
       const d = new Date(now); const target = DAYS.indexOf(wd[1].toLowerCase());
       let add = (target - d.getDay() + 7) % 7; if (add === 0) add = 7;
@@ -360,7 +370,7 @@ export function parseSmartEventText(text, opts = {}) {
       const y2 = rng[6] ? parseInt(rng[6], 10) : null;
       const saidYear = y1 || y2;
       const start = new Date(saidYear || now.getFullYear(), m1, parseInt(rng[2], 10), 12);
-      if (!saidYear && start < now) start.setFullYear(start.getFullYear() + 1);
+      if (!saidYear && start < today0) start.setFullYear(start.getFullYear() + 1);
       const end = new Date(y2 || start.getFullYear(), m2, parseInt(rng[5], 10), 12);
       // Year-straddling ranges ("Dec 30 – Jan 2") bump the end year — but ONLY
       // when a second month was explicitly said AND the host did not state the
@@ -383,7 +393,7 @@ export function parseSmartEventText(text, opts = {}) {
       if (nrng) {
         const y1 = nrng[3] ? (nrng[3].length === 2 ? 2000 + Number(nrng[3]) : Number(nrng[3])) : now.getFullYear();
         const start = new Date(y1, Number(nrng[1]) - 1, Number(nrng[2]), 12);
-        if (!nrng[3] && start < now) start.setFullYear(start.getFullYear() + 1);
+        if (!nrng[3] && start < today0) start.setFullYear(start.getFullYear() + 1);
         const y2 = nrng[6] ? (nrng[6].length === 2 ? 2000 + Number(nrng[6]) : Number(nrng[6])) : start.getFullYear();
         const end = new Date(y2, Number(nrng[4]) - 1, Number(nrng[5]), 12);
         // Dec→Jan straddle bumps the end year ONLY on an explicit earlier end
@@ -421,7 +431,7 @@ export function parseSmartEventText(text, opts = {}) {
     const saidY = dmOf[3] ? parseInt(dmOf[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(),
       MONTHS.indexOf(dmOf[2].slice(0, 3).toLowerCase()), parseInt(dmOf[1], 10), 12);
-    if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
+    if (!saidY && cand < today0) cand.setFullYear(cand.getFullYear() + 1);
     if (cand.getDate() === parseInt(dmOf[1], 10)) date = localISO(cand); else impossibleDate = dmOf[0];
   }
 
@@ -429,14 +439,14 @@ export function parseSmartEventText(text, opts = {}) {
   if (dm) {
     const saidY = dm[3] ? parseInt(dm[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
-    if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
+    if (!saidY && cand < today0) cand.setFullYear(cand.getFullYear() + 1);
     if (cand.getDate() === parseInt(dm[2], 10)) date = localISO(cand); else impossibleDate = dm[0];
   } else if (!date) {
     const sm2 = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
     if (sm2) {
       const y = sm2[3] ? (sm2[3].length === 2 ? 2000 + Number(sm2[3]) : Number(sm2[3])) : now.getFullYear();
       const cand = new Date(y, Number(sm2[1]) - 1, Number(sm2[2]), 12);
-      if (!sm2[3] && cand < now) cand.setFullYear(cand.getFullYear() + 1);
+      if (!sm2[3] && cand < today0) cand.setFullYear(cand.getFullYear() + 1);
       if (!isNaN(cand) && cand.getMonth() === Number(sm2[1]) - 1 && cand.getDate() === Number(sm2[2])) date = localISO(cand);
       else impossibleDate = sm2[0];
     }
