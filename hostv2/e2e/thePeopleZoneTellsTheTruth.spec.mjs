@@ -344,7 +344,7 @@ test('AND WHEN SHE HAS SET ONE, IT IS SPOKEN AS THE OUTCOME IT BUYS', async ({ p
 // So the rule these pin is: EVERY action is reachable in at most ONE disclosure
 // from the state the host is already in.
 const ACTIONS = [
-  'Check and share link', 'Check and show QR', 'Preview on this device', 'Copy the invite',
+  'Check and share link', 'Copy the link', 'Check and show QR', 'Preview on this device', 'Copy the invite',
   'Draft the guest brief', 'Update everyone', 'Write a nudge to send',
 ];
 

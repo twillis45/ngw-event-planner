@@ -6149,6 +6149,9 @@ export default function HostShellV2() {
         return;
       } catch (error) { if (error && error.name === 'AbortError') return; }
     }
+    await copyLinkOnly(url);
+  };
+  const copyLinkOnly = async (url) => {
     try {
       await navigator.clipboard.writeText(url);
       try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'clipboard', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
@@ -6158,6 +6161,15 @@ export default function HostShellV2() {
         event.invitesSentAt ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
       feedback('act');
     } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
+  };
+  // THE LINK ALONE (live smoke test, 11/8/2026). On Android, the share sheet's
+  // Copy takes the whole message ("You're invited… RSVP here: <link>"), and
+  // pasted into a browser that is a search, not the invite. The message stays
+  // right for texting; this copies only the verified link.
+  const copyInviteLink = async () => {
+    const url = await verifiedRsvpUrl();
+    if (!url) return;
+    await copyLinkOnly(url);
   };
 
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
@@ -24252,6 +24264,7 @@ export default function HostShellV2() {
               // override is review-only, never persisted, and labelled on screen.
               const countInviteTools = (<>
                     <button className="mini" onClick={shareInviteLink}>Check and share link</button>
+                    <button className="mini" onClick={copyInviteLink}>Copy the link</button>
                     <button className="mini" onClick={showQr}>Check and show QR</button>
                     {/* A local preview does not attest public availability. Sharing
                         and QR generation perform the separate public lookup above. */}
@@ -24269,6 +24282,7 @@ export default function HostShellV2() {
               // wrong one for the state the host is actually in.
               const _inviteActs = {
                 share:   { label: 'Check and share link', onClick: shareInviteLink },
+                link:    { label: 'Copy the link', onClick: copyInviteLink },
                 qr:      { label: 'Check and show QR', onClick: showQr },
                 preview: { label: 'Preview on this device', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
                 copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite) },
@@ -24284,18 +24298,19 @@ export default function HostShellV2() {
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
               const inviteTiers = _chasing ? {
                 primary: _inviteActs.share,
-                secondary: [_inviteActs.qr, _inviteActs.nudge].filter(Boolean),
+                secondary: [_inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
                 more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.update],
               } : {
                 primary: _inviteActs.update,
                 secondary: [_inviteActs.share, _inviteActs.qr],
-                more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.nudge].filter(Boolean),
+                more: [_inviteActs.link, _inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.nudge].filter(Boolean),
               };
               // The BASELINE composition keeps its flat 2-up grid, unchanged, so
               // the two are still comparable on one build.
               const inviteTools = (<>
                   <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="mini" onClick={_inviteActs.share.onClick}>Check and share link</button>
+                    <button className="mini" onClick={_inviteActs.link.onClick}>Copy the link</button>
                     <button className="mini" onClick={_inviteActs.qr.onClick}>Check and show QR</button>
                     <button className="mini" onClick={_inviteActs.preview.onClick}>Preview on this device</button>
                     <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
@@ -25459,7 +25474,7 @@ export default function HostShellV2() {
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={deadlineOpen ? renderDeadlineEditor() : null}
                         primary={_inviteActs.share}
-                        secondary={[_inviteActs.qr]}
+                        secondary={[_inviteActs.link, _inviteActs.qr]}
                         more={[_inviteActs.preview]}
                       />
                     </div>
