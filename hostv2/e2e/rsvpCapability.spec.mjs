@@ -89,6 +89,28 @@ test('a verified event also supports clipboard and a guest QR', async ({ page })
 });
 
 
+// THE LINK ALONE (live smoke test, 11/8/2026). On Android the share sheet's
+// Copy took the whole "You're invited… RSVP here: <link>" message; pasted into
+// a browser it became a search. With the share sheet available (this boot
+// stubs navigator.share), "Copy the link" must still copy exactly the link and
+// open no share sheet.
+test('Copy the link copies only the verified link, even where a share sheet exists', async ({ page }) => {
+  await boot(page, 200);
+  await page.getByRole('button', { name: 'Copy the link', exact: true }).first().click();
+  await expect.poll(() => page.evaluate(() => window.__rsvpCopies.length)).toBe(1);
+  const current = new URL(page.url());
+  const appUrl = process.env.REACT_APP_PUBLIC_APP_URL || current.origin + current.pathname;
+  expect(await page.evaluate(() => window.__rsvpCopies[0])).toBe(appUrl + '?rsvp=' + EVENT.rsvpCode);
+  expect(await page.evaluate(() => window.__rsvpShares.length)).toBe(0);
+});
+
+test('Copy the link refuses an unpublished event, like every other share', async ({ page }) => {
+  await boot(page);
+  await page.getByRole('button', { name: 'Copy the link', exact: true }).first().click();
+  await expect(page.locator('.toast')).toContainText('Online RSVPs are not available');
+  expect(await page.evaluate(() => window.__rsvpCopies.length)).toBe(0);
+});
+
 test('an unacknowledged API reply stays queued and never celebrates delivery', async ({ page }) => {
   await boot(page, 200);
   await page.route(API + '/api/public/rsvp/**', route => route.fulfill({ status: 200, json: { ok: false } }));
