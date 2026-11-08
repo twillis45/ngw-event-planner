@@ -48,6 +48,8 @@ const SELF_PINNED = [
 // self-pinned ones, because a test has to run SOMEWHERE.
 const VIEWPORT_INDEPENDENT = [
   '**/crossDeviceSync.spec.mjs',
+  // Same 5244 harness: a second device's edits must not pin over later account copies.
+  '**/anEditOnTheSecondDeviceStillSyncs.spec.mjs',
   '**/aHostCanTurnAnalyticsOff.spec.mjs',
   '**/a11yFloor.spec.mjs',
   // ── THE RSVP CASCADE (GOLD-07, 2026-10-18) ─────────────────────────────

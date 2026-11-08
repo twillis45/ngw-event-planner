@@ -7182,7 +7182,30 @@ export default function HostShellV2() {
     if (undoable) { undoPrev = {}; for (const k of Object.keys(obj || {})) undoPrev[k] = event[k]; }
     let result;
     let savedEv = null;
-    if (activeCustom) {
+    // AN EVENT FROM THE ACCOUNT BECOMES THIS DEVICE'S OWN ON ITS FIRST EDIT
+    // (live smoke test, 11/8/2026). It used to live only in memory, with every
+    // edit saved as an LS_PATCH override laid over the account copy on each
+    // load — uploaded, but never cleared. So a field this device once changed
+    // was frozen against every later edit from anywhere: the laptop showed 8
+    // after the phone had set 6. In the custom store, the queue rule applies:
+    // a newer account copy wins unless this device has an unuploaded edit.
+    const fromAccount = !activeCustom && hydratedEvents.find(e => e && e.id === eventId);
+    if (fromAccount) {
+      let current = patch;
+      try { current = JSON.parse(localStorage.getItem(LS_PATCH(eventId))) || patch; } catch { /* the write below reports refusal */ }
+      const own = { ...fromAccount, ...current, ...obj };
+      const stored = readCustomEvents();
+      const next = [...stored.filter(c => c && c.id !== eventId), own];
+      result = saveCustomEvents(next, { reason: 'hostshell:adopt-account-event', eventId });
+      if (result.ok) {
+        committedCustomSnapshot.current = JSON.stringify(next);
+        setCustoms(next);
+        setHydratedEvents(list => list.filter(e => e && e.id !== eventId));
+        try { localStorage.removeItem(LS_PATCH(eventId)); } catch { /* an orphaned override is ignored once the event is custom */ }
+        setPatch({});
+        savedEv = own;
+      }
+    } else if (activeCustom) {
       // Read the committed list so back-to-back edits build on the preceding
       // successful write, even before React has rendered it.
       const stored = readCustomEvents();
