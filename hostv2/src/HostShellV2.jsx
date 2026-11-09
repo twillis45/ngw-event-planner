@@ -270,7 +270,7 @@ import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
-import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent } from '@app/lib/api/events';
+import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent, forgetAccountCache } from '@app/lib/api/events';
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
@@ -18896,6 +18896,11 @@ export default function HostShellV2() {
                             const saved = saveCustomEvents(deviceOnly, { reason: 'hostshell:account-deleted', allowRemovingUserEvents: true });
                             if (saved && saved.ok !== false) { kept = deviceOnly; setCustoms(deviceOnly); }
                           }
+                          // THE CACHE BROUGHT IT BACK (live smoke test, 11/9/2026): every
+                          // event loaded from the account is also cached in 'ngw-events'
+                          // and read back at boot. Its account copies leave it too.
+                          splitAccountCopies(REAL_EVENTS).accountCopies.forEach(e => goneIds.add(e.id));
+                          forgetAccountCache([...goneIds]);
                           forgetSyncState([...goneIds]);
                           setHydratedEvents([]);
                           if (goneIds.has(eventId) && !kept.some(e => e && e.id === eventId)) {
@@ -18904,6 +18909,9 @@ export default function HostShellV2() {
                           toast(kept.length
                             ? 'Your account is deleted, with its events. Plans saved only on this device are still here — remove them from this device any time.'
                             : 'Your account is deleted, with its events.');
+                          // The boot-time event pool still holds the cached copies in
+                          // memory; a fresh load reads the cleaned cache.
+                          setTimeout(() => { try { window.location.reload(); } catch { /* stay */ } }, 3000);
                         }}>
                           <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
                             This permanently deletes your account and everything saved to it: your events, guest lists and guests’ replies. Payment receipts are kept because the law requires it. It can’t be undone. Its events leave this device too; plans saved only on this device stay here until you remove them.
