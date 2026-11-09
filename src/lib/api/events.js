@@ -51,6 +51,20 @@ function enqueueMutation(op) {
 // can tell the truth about which events have unflushed writes. The queue itself
 // stays the ONE pending-writes source of truth (key: ngw-cache-pending).
 
+/**
+ * After the account is deleted, drop its events from the cache of everything
+ * loaded from it (read back at every boot). Removes the given ids and any entry
+ * that carries a cloud version; plans saved only on this device stay.
+ */
+export function forgetAccountCache(ids) {
+  const gone = new Set((Array.isArray(ids) ? ids : []).filter((id) => id != null && id !== ''));
+  const local = readLocal();
+  if (!Array.isArray(local)) return 0;
+  const kept = local.filter((e) => e && !gone.has(e.id) && !e._cloudUpdatedAt);
+  if (kept.length !== local.length) writeLocal(kept);
+  return local.length - kept.length;
+}
+
 /** Ids of events with a queued (unflushed) upsert. */
 export function getPendingEventIds() {
   return getPending().filter((m) => m && m.type === 'upsert' && m.id != null).map((m) => m.id);

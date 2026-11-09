@@ -30,7 +30,7 @@ const session = () => ({
 const ev = (id, name) => ({ id, name, type: 'Game Night', date: '2027-03-06', createdAt: '2026-11-01T10:00:00.000Z',
   guestMode: 'count', guestEstimate: 6, guestCountSource: 'host', budget: [], vendors: [], guests: [] });
 
-const install = async (page, { signedIn, locals, stamped = [], cloud = [], failUploads = [] }) => {
+const install = async (page, { signedIn, locals, stamped = [], cloud = [], failUploads = [], cache = [] }) => {
   const calls = { writes: [], verify: [], deleted: 0 };
   await page.route(`${PROJECT}/**`, async (route) => {
     const req = route.request(); const url = req.url();
@@ -58,7 +58,7 @@ const install = async (page, { signedIn, locals, stamped = [], cloud = [], failU
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
   });
-  await page.addInitScript(([sess, list, ids]) => {
+  await page.addInitScript(([sess, list, ids, cached]) => {
     window.__toasts = [];
     new MutationObserver(() => {
       document.querySelectorAll('[role=status]').forEach((n) => {
@@ -76,7 +76,8 @@ const install = async (page, { signedIn, locals, stamped = [], cloud = [], failU
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  }, [signedIn ? session() : null, locals, stamped]);
+    if (cached.length) localStorage.setItem('ngw-events', JSON.stringify(cached));
+  }, [signedIn ? session() : null, locals, stamped, cache]);
   return calls;
 };
 
@@ -156,4 +157,33 @@ test('deleting the account takes its events off this device, and keeps device-on
   await page.reload();
   await page.waitForTimeout(2000);
   expect(await localIds(page)).toEqual(['ev-device-only']);
+});
+
+// THE CACHE BROUGHT IT BACK (live smoke test, 11/9/2026). After a real
+// deletion the owner's event still showed: the app also keeps every event it
+// loaded from the account in 'ngw-events', and that cache is read back on
+// every boot. The account's copies must leave it too.
+test('a deleted account\'s events do not come back from the account cache', async ({ page }) => {
+  const calls = await install(page, {
+    signedIn: true,
+    locals: [ev('ev-device-only', 'Device Brunch')],
+    stamped: ['ev-cached-account'],
+    cache: [ev('ev-cached-account', 'Cached Account Night')],
+    cloud: [ev('ev-cached-account', 'Cached Account Night')],
+    failUploads: ['ev-device-only'],
+  });
+  await boot(page);
+  await page.waitForTimeout(2500);
+  await openSettings(page);
+  await page.getByRole('button', { name: 'Delete my account…' }).click();
+  await page.getByLabel('Type DELETE to confirm account deletion').fill('DELETE');
+  await page.getByRole('button', { name: 'Delete my account', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__toasts.join(' | '))).toContain('Your account is deleted, with its events.');
+  expect(calls.deleted).toBe(1);
+  await page.waitForTimeout(4000);   // past the reload that follows a deletion
+  const cachedIds = await page.evaluate(() => (JSON.parse(localStorage.getItem('ngw-events') || '[]')).map((e) => e && e.id));
+  expect(cachedIds, 'the account cache still holds the deleted account\'s event').not.toContain('ev-cached-account');
+  await page.reload();
+  await page.waitForTimeout(2000);
+  expect(await page.locator('body').innerText()).not.toMatch(/Cached Account Night/i);
 });
