@@ -17865,6 +17865,13 @@ export default function HostShellV2() {
                     toast('This event hasn’t finished syncing to your account yet — give it a moment and try again.');
                     return;
                   }
+                  // SIGNED OUT (live smoke test, 11/9/2026): the pass belongs to the
+                  // account, so the server answers 401 — and the host was told only
+                  // "Checkout isn't available right now."
+                  if (/authentication required/i.test(why)) {
+                    toast('You’re not signed in on this browser — sign in, then get the pass. Nothing was charged.', { label: 'Sign in', fn: () => setSheet({ kind: 'settings' }) });
+                    return;
+                  }
                   reportFailure('pass_checkout', { where: 'hostv2.checkout', reason: 'request-failed', eventId: event.id });
                   toast('Checkout isn’t available right now.');
                 }

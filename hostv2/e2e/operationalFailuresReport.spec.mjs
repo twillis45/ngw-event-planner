@@ -59,12 +59,12 @@ test('an unresolved event pointer reports route failure and still opens a usable
   expect(JSON.stringify(await events(page, 'route_failed'))).not.toContain('missing-private-route');
 });
 
-const passBoot = async (page, { verifyFails = false } = {}) => {
+const passBoot = async (page, { verifyFails = false, checkout = { status: 503, json: { detail: 'checkout unavailable' } } } = {}) => {
   await seed(page);
   const api = 'https://passgate-mock.invalid';
   await page.route(api + '/**', route => route.fulfill({ status: 200, json: {} }));
   await page.route(api + '/api/stripe/pass**', route => route.fulfill({ status: verifyFails ? 503 : 200, json: verifyFails ? { detail: 'unavailable' } : { held: false } }));
-  await page.route(api + '/api/stripe/create-pass-session', route => route.fulfill({ status: 503, json: { detail: 'checkout unavailable' } }));
+  await page.route(api + '/api/stripe/create-pass-session', route => route.fulfill(checkout));
   await page.goto(previewUrl(5266) + '?elegant=1');
   await settled(page);
 };
@@ -83,6 +83,25 @@ test('pass view, checkout intent, and a real checkout failure are counted separa
   await expect(page.locator('.toast')).toContainText('Checkout isn’t available');
   await expect.poll(async () => (await events(page, 'pass_checkout_started')).length).toBe(1);
   await expect.poll(async () => (await events(page, 'pass_checkout_failed')).length).toBe(1);
+});
+
+// SIGNED OUT (live smoke test, 11/9/2026): the server's real 401 reply to a
+// browser with no sign-in. The host was told only "Checkout isn't available
+// right now"; now the message says what to do, and offers the way there.
+test('a signed-out checkout says to sign in, not that checkout is unavailable', async ({ page }) => {
+  await passBoot(page, { checkout: { status: 401, json: { detail: 'Planner authentication required' } } });
+  const rail = page.locator('.srail-row', { hasText: 'You & settings' });
+  if (await rail.count()) await rail.first().click();
+  else {
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+  }
+  await page.getByRole('button', { name: /^The One-Event Pass/ }).first().click();
+  await page.getByRole('button', { name: 'Get the pass — $39', exact: true }).click();
+  await expect(page.locator('.toast')).toContainText('not signed in on this browser');
+  await expect(page.locator('.toast')).toContainText('Nothing was charged');
+  await page.locator('.toast').getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.locator('#sheet-title')).toHaveText('You & settings');
 });
 
 test('a pass verification failure is visible to support without falsely revoking a pass', async ({ page }) => {
