@@ -253,7 +253,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 // still uses it for that) and wrong for a fixed-price product. hostv2 sells one
 // thing, and `createPassSession` is the route that prices it server-side.
 import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases } from '@app/lib/stripeApi';
-import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld } from '@app/lib/passGate';
+import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
@@ -12101,6 +12101,31 @@ export default function HostShellV2() {
                   ))}
                 </>
               )}
+
+              {/* THE PASS ON THE COMMAND BOARD (owner decision, 11/9/2026). On an
+                  event that needs the pass, this screen said nothing: the host
+                  learned only on opening a locked sheet. One quiet, honest line —
+                  shown only where passStatus has something true to say (never on a
+                  free event, a sample, or while billing is dormant), and it turns
+                  into the held state once the pass is bought. */}
+              {!isPast && (() => {
+                let st = null;
+                try { st = passStatus(event); } catch { st = null; }
+                if (!st) return null;
+                if (st.state === 'held') {
+                  return (
+                    <p className="grounding pass-status pass-status-held">
+                      <span aria-hidden="true">✓ </span>This event has the pass — everything on it is unlocked.
+                    </p>
+                  );
+                }
+                return (
+                  <button type="button" className="pass-status pass-status-needed" onClick={() => setSheet({ kind: 'pass' })}>
+                    <span className="f-name" style={{ display: 'block', margin: '0 0 2px' }}>This event takes the One-Event Pass — $39, once</span>
+                    <span className="grounding" style={{ display: 'block', margin: 0 }}>{st.covers} <b style={{ whiteSpace: 'nowrap' }}>See what it covers ›</b></span>
+                  </button>
+                );
+              })()}
 
               <div className="bento" style={elegantMode && isPast ? { display: 'none' } : undefined}>
                 {/* "WHERE YOU STAND" WAS A PSEUDO-ELEMENT (board, 2026-08-07).
