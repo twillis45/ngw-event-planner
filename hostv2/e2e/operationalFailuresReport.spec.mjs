@@ -104,6 +104,38 @@ test('a signed-out checkout says to sign in, not that checkout is unavailable', 
   await expect(page.locator('#sheet-title')).toHaveText('You & settings');
 });
 
+// A SAMPLE CAN'T BE BOUGHT (live smoke test, 11/9/2026): after a deletion the
+// app landed on the sample "Margaret Adeyemi's Retirement Celebration", offered
+// $39 for it, and the server refused (403). No buy button on a sample.
+test('a sample event offers no pass checkout, and says why', async ({ page }) => {
+  let checkouts = 0;
+  await page.addInitScript(() => {
+    localStorage.setItem('ngw-hostv2-last-event', 'ev-x-retirement-party');
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  });
+  const api = 'https://passgate-mock.invalid';
+  await page.route(api + '/**', route => route.fulfill({ status: 200, json: {} }));
+  await page.route(api + '/api/stripe/pass**', route => route.fulfill({ status: 200, json: { held: false } }));
+  await page.route(api + '/api/stripe/create-pass-session', route => { checkouts += 1; return route.fulfill({ status: 403, json: { detail: "You don't have access to this event." } }); });
+  await page.goto(previewUrl(5266) + '?elegant=1');
+  await settled(page);
+  await expect(page.getByText(/Margaret Adeyemi/i).first()).toBeVisible();   // PREMISE: on the sample
+  const rail = page.locator('.srail-row', { hasText: 'You & settings' });
+  if (await rail.count()) await rail.first().click();
+  else {
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+  }
+  await page.getByRole('button', { name: /^The One-Event Pass/ }).first().click();
+  await expect(page.locator('.sheet').last()).toContainText('This is a sample event');
+  await expect(page.getByRole('button', { name: 'Get the pass — $39', exact: true })).toHaveCount(0);
+  expect(checkouts).toBe(0);
+  // Not a dead end: it leads to an event of their own, where the pass is sold.
+  await page.getByRole('button', { name: 'Start your own event', exact: true }).click();
+  await expect(page.getByText(/What are we planning\?/i).first()).toBeVisible();
+});
+
 test('a pass verification failure is visible to support without falsely revoking a pass', async ({ page }) => {
   await passBoot(page, { verifyFails: true });
   await expect.poll(async () => (await events(page, 'pass_verify_failed')).length).toBeGreaterThan(0);

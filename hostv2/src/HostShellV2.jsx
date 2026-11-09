@@ -17919,6 +17919,16 @@ export default function HostShellV2() {
                           it, that sentence would be inventing a confirmation. */}
                       <p className="grounding" style={{ margin: 0 }}>Every vendor brief and the full destination toolkit are unlocked here. Nothing more to pay on this event — the pass covers it.</p>
                     </div>
+                  ) : canCharge && !eventIsSyncable ? (
+                    // A SAMPLE CAN'T BE BOUGHT (live smoke test, 11/9/2026): after an
+                    // account deletion the app landed on a sample, offered $39 for
+                    // it, and the server refused (403) as "Checkout isn't
+                    // available". UX_07: no buy button that cannot be honored.
+                    <div className="brow" style={{ borderTop: 'none', background: 'var(--steel-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
+                      <p className="f-name" style={{ margin: '0 0 2px' }}>This is a sample event</p>
+                      <p className="grounding" style={{ margin: 0 }}>The pass is for an event of your own. Start yours, and you can get the pass there.</p>
+                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={startNewEvent}>Start your own event</button>
+                    </div>
                   ) : canCharge ? (
                     <>
                       <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
