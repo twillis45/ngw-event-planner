@@ -5,9 +5,11 @@
 // said nothing. The host learned only on opening a locked sheet, and the buy
 // itself lived two taps deep in You & settings.
 //
-// Now one honest line sits above "Where you stand" on such an event, opens the
-// pass sheet, and becomes "This event has the pass" once bought. A free event
-// shows nothing: the ruled free tier never nags.
+// First it sat above "Where you stand", which on a phone is below the whole
+// to-do list. Now (owner's second decision, same night) a quiet pill sits in
+// the FIRST SCREEN of such an event and opens the pass sheet, and the Jump to
+// menu carries a One-Event Pass row on every event, saying the truth for that
+// event. A free event shows no pill: the ruled free tier never nags.
 //
 // On the passgate bundle (5266), the only one with billing live; every request
 // to its API host is answered below.
@@ -35,35 +37,60 @@ const boot = async (page, event, { held = false } = {}) => {
   await settled(page);
 };
 
-test('a destination event that needs the pass says so on its main screen, and opens the pass', async ({ page }) => {
+const openJumpTo = async (page) => {
+  await page.locator('[aria-label="Menu"]').first().click();
+  await expect(page.locator('#sheet-title')).toHaveText('Jump to');
+};
+
+test('a destination event that needs the pass says so in its first screen, and opens the pass', async ({ page }) => {
   await boot(page, ev({ isDestination: true, passRequired: true, passReasons: ['destination'] }));
-  const line = page.locator('.pass-status-needed');
-  await expect(line).toBeVisible();
-  await expect(line).toContainText(LINE);
-  await expect(line).toContainText('where everyone stays');
-  // It fits the screen: no sideways overflow at any viewport.
-  const overflow = await line.evaluate((el) => el.scrollWidth > el.clientWidth + 1 || el.getBoundingClientRect().right > window.innerWidth + 1);
-  expect(overflow, 'the pass line overflows').toBe(false);
-  await line.click();
+  const pill = page.locator('.pass-status-needed');
+  await expect(pill).toBeVisible();
+  await expect(pill).toContainText(LINE);
+  expect(await pill.getAttribute('aria-label')).toContain('where everyone stays');
+  // In the first screen without scrolling, and never off the side of it.
+  const fit = await pill.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, right: r.right, vh: window.innerHeight, vw: window.innerWidth, scrolled: window.scrollY };
+  });
+  expect(fit.scrolled).toBe(0);
+  expect(fit.bottom, 'the pass pill is below the first screen').toBeLessThanOrEqual(fit.vh);
+  expect(fit.right, 'the pass pill overflows sideways').toBeLessThanOrEqual(fit.vw + 1);
+  await pill.click();
   await expect(page.locator('#sheet-title')).toHaveText('The One-Event Pass');
   await expect(page.getByRole('button', { name: 'Get the pass — $39', exact: true })).toBeVisible();
 });
 
 test('a next event names only what the pass unlocks there', async ({ page }) => {
   await boot(page, ev({ passRequired: true, passReasons: ['additional-event'] }));
-  await expect(page.locator('.pass-status-needed')).toContainText('sharing vendor briefs with every vendor');
-  await expect(page.locator('.pass-status-needed')).not.toContainText('where everyone stays');
+  const label = await page.locator('.pass-status-needed').getAttribute('aria-label');
+  expect(label).toContain('sharing vendor briefs with every vendor');
+  expect(label).not.toContain('where everyone stays');
 });
 
-test('a free event shows no pass line', async ({ page }) => {
+test('a free event shows no pass pill, and Jump to still reaches the pass', async ({ page }) => {
   await boot(page, ev({ passRequired: false, passReasons: [] }));
   // PREMISE: the board rendered.
   await expect(page.getByText(/Lake House Weekend/i).first()).toBeVisible();
   await expect(page.locator('.pass-status')).toHaveCount(0);
+  await openJumpTo(page);
+  const row = page.locator('.nav-pass');
+  await expect(row).toContainText('The One-Event Pass');
+  await expect(row).toContainText('$39 · one event');
+  await row.click();
+  await expect(page.locator('#sheet-title')).toHaveText('The One-Event Pass');
 });
 
-test('once bought, the line says the event has the pass', async ({ page }) => {
+test('Jump to says when this event needs the pass', async ({ page }) => {
+  await boot(page, ev({ isDestination: true, passRequired: true, passReasons: ['destination'] }));
+  await openJumpTo(page);
+  await expect(page.locator('.nav-pass')).toContainText('$39 · this event needs it');
+});
+
+test('once bought, the first screen is quiet and Jump to says the event has it', async ({ page }) => {
   await boot(page, ev({ isDestination: true, passRequired: true, passReasons: ['destination'] }), { held: true });
-  await expect(page.locator('.pass-status-held')).toContainText('This event has the pass');
+  await expect(page.getByText(/Lake House Weekend/i).first()).toBeVisible();
   await expect(page.locator('.pass-status-needed')).toHaveCount(0);
+  await openJumpTo(page);
+  await expect(page.locator('.nav-pass')).toContainText('this event has it');
 });

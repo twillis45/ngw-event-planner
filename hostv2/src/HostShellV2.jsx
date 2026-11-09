@@ -10345,6 +10345,24 @@ export default function HostShellV2() {
                   progress, robustly at ANY content length (flex:1 + justify-center). Invisible
                   (display:contents) outside elegant so the normal board is untouched. */}
               <div className="ecenter">
+              {/* THE PASS IN THE FIRST SCREEN (owner decisions, 11/9/2026). Placed
+                  first above Where you stand, it sat below the whole to-do list on
+                  a phone; the owner moved it here. One quiet line, never a card, so
+                  the ask below stays the single loud thing. Only on an event that
+                  needs the pass (passStatus 'needed'): free events, samples, past
+                  events and dormant billing show nothing, and a held pass shows on
+                  the Jump to row instead of taking first-screen room. */}
+              {!isPast && (() => {
+                let st = null;
+                try { st = passStatus(event); } catch { st = null; }
+                if (!st || st.state !== 'needed') return null;
+                return (
+                  <button type="button" className="pass-status pass-status-needed" onClick={() => setSheet({ kind: 'pass' })}
+                    aria-label={'This event takes the One-Event Pass, $39 once. ' + st.covers + ' See what it covers.'}>
+                    This event takes the One-Event Pass — $39 <span aria-hidden="true">›</span>
+                  </button>
+                );
+              })()}
               {/* REBALANCE (host-approved 2026-07-17): instruction-first display.
                   askMode → the display slot speaks the ASK in plain words and the
                   countdown folds into the TRUTH line; otherwise the countdown
@@ -12101,31 +12119,6 @@ export default function HostShellV2() {
                   ))}
                 </>
               )}
-
-              {/* THE PASS ON THE COMMAND BOARD (owner decision, 11/9/2026). On an
-                  event that needs the pass, this screen said nothing: the host
-                  learned only on opening a locked sheet. One quiet, honest line —
-                  shown only where passStatus has something true to say (never on a
-                  free event, a sample, or while billing is dormant), and it turns
-                  into the held state once the pass is bought. */}
-              {!isPast && (() => {
-                let st = null;
-                try { st = passStatus(event); } catch { st = null; }
-                if (!st) return null;
-                if (st.state === 'held') {
-                  return (
-                    <p className="grounding pass-status pass-status-held">
-                      <span aria-hidden="true">✓ </span>This event has the pass — everything on it is unlocked.
-                    </p>
-                  );
-                }
-                return (
-                  <button type="button" className="pass-status pass-status-needed" onClick={() => setSheet({ kind: 'pass' })}>
-                    <span className="f-name" style={{ display: 'block', margin: '0 0 2px' }}>This event takes the One-Event Pass — $39, once</span>
-                    <span className="grounding" style={{ display: 'block', margin: 0 }}>{st.covers} <b style={{ whiteSpace: 'nowrap' }}>See what it covers ›</b></span>
-                  </button>
-                );
-              })()}
 
               <div className="bento" style={elegantMode && isPast ? { display: 'none' } : undefined}>
                 {/* "WHERE YOU STAND" WAS A PSEUDO-ELEMENT (board, 2026-08-07).
@@ -18199,6 +18192,20 @@ export default function HostShellV2() {
                     <span className="nr-l">Feeling stuck?</span>
                     <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
                   </button>
+                  {/* THE PASS, ONE TAP FROM ANY EVENT (owner decision, 11/9/2026).
+                      Only while billing is live; the right side says the truth
+                      for THIS event, from passStatus. */}
+                  {isBillingLive() && (() => {
+                    let st = null;
+                    try { st = passStatus(event); } catch { st = null; }
+                    const note = st && st.state === 'held' ? 'this event has it' : st && st.state === 'needed' ? '$39 · this event needs it' : '$39 · one event';
+                    return (
+                      <button className="navrow nav-pass" onClick={() => setSheet({ kind: 'pass' })}>
+                        <span className="nr-l">The One-Event Pass</span>
+                        <span className="nr-r">{note}<span className="chev" aria-hidden="true">›</span></span>
+                      </button>
+                    );
+                  })()}
                   <button className="navrow" onClick={() => setSheet({ kind: 'settings' })}>
                     <span className="nr-l">You &amp; settings</span>
                     <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
