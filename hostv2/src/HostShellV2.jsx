@@ -17865,6 +17865,13 @@ export default function HostShellV2() {
                     toast('This event hasn’t finished syncing to your account yet — give it a moment and try again.');
                     return;
                   }
+                  // SIGNED OUT (live smoke test, 11/9/2026): the pass belongs to the
+                  // account, so the server answers 401 — and the host was told only
+                  // "Checkout isn't available right now."
+                  if (/authentication required/i.test(why)) {
+                    toast('You’re not signed in on this browser — sign in, then get the pass. Nothing was charged.', { label: 'Sign in', fn: () => setSheet({ kind: 'settings' }) });
+                    return;
+                  }
                   reportFailure('pass_checkout', { where: 'hostv2.checkout', reason: 'request-failed', eventId: event.id });
                   toast('Checkout isn’t available right now.');
                 }
@@ -17911,6 +17918,16 @@ export default function HostShellV2() {
                           with Stripe" — when only the event's own record claims
                           it, that sentence would be inventing a confirmation. */}
                       <p className="grounding" style={{ margin: 0 }}>Every vendor brief and the full destination toolkit are unlocked here. Nothing more to pay on this event — the pass covers it.</p>
+                    </div>
+                  ) : canCharge && !eventIsSyncable ? (
+                    // A SAMPLE CAN'T BE BOUGHT (live smoke test, 11/9/2026): after an
+                    // account deletion the app landed on a sample, offered $39 for
+                    // it, and the server refused (403) as "Checkout isn't
+                    // available". UX_07: no buy button that cannot be honored.
+                    <div className="brow" style={{ borderTop: 'none', background: 'var(--steel-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
+                      <p className="f-name" style={{ margin: '0 0 2px' }}>This is a sample event</p>
+                      <p className="grounding" style={{ margin: 0 }}>The pass is for an event of your own. Start yours, and you can get the pass there.</p>
+                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={startNewEvent}>Start your own event</button>
                     </div>
                   ) : canCharge ? (
                     <>
