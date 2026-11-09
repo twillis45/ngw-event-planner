@@ -4,7 +4,7 @@
 // fail, it is contradicting a board ruling, not just breaking a test.
 import {
   isBillingLive, isUserCreatedEvent, passVerdictAtCreation, briefAllowed,
-  destinationLocked, creationDisclosure,
+  destinationLocked, creationDisclosure, passStatus,
 } from '../passGate';
 
 const OLD_ENV = { ...process.env };
@@ -118,5 +118,37 @@ describe('sample exemption', () => {
     expect(isUserCreatedEvent({ id: 'ev-x-retirement-party' })).toBe(false);
     expect(isUserCreatedEvent({ id: 'demo-jun' })).toBe(false);
     expect(isUserCreatedEvent(null)).toBe(false);
+  });
+});
+
+
+// Owner decision, 11/9/2026: the command board names the pass on an event that
+// needs it, and stays quiet everywhere else (the free tier never nags).
+describe('passStatus — the command board line', () => {
+  test('silent while billing is dormant, on samples, and on a free event', () => {
+    billingOff();
+    expect(passStatus(local({ passRequired: true, passReasons: ['destination'] }))).toBeNull();
+    billingOn();
+    expect(passStatus({ id: 'ev-x-retirement-party', passRequired: true, passReasons: ['destination'] })).toBeNull();
+    expect(passStatus(local({ passRequired: false, passReasons: [] }))).toBeNull();
+    expect(passStatus(local())).toBeNull();
+  });
+  test('a destination or multi-day event names the whole toolkit', () => {
+    billingOn();
+    for (const reason of ['destination', 'multi-day']) {
+      const s = passStatus(local({ passRequired: true, passReasons: [reason] }));
+      expect(s.state).toBe('needed');
+      expect(s.covers).toMatch(/where everyone stays/);
+    }
+  });
+  test('a next event names only what it unlocks: vendor briefs', () => {
+    billingOn();
+    const s = passStatus(local({ passRequired: true, passReasons: ['additional-event'] }));
+    expect(s).toEqual({ state: 'needed', covers: 'It covers sharing vendor briefs with every vendor on this event.' });
+  });
+  test('a held pass reads as held, even on a free event', () => {
+    billingOn();
+    expect(passStatus(local({ passRequired: true, passReasons: ['destination'], passPurchased: true }))).toEqual({ state: 'held' });
+    expect(passStatus(local({ passPurchased: true }))).toEqual({ state: 'held' });
   });
 });

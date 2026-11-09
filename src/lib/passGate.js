@@ -153,6 +153,30 @@ export function destinationLocked(ev) {
 }
 
 /**
+ * The pass status line on the event's command board (owner decision,
+ * 11/9/2026: on an event that needs the pass, the main screen said nothing —
+ * the host learned only on opening a locked sheet). Returns null where there
+ * is nothing true to say: billing dormant, a sample, or a free event without
+ * the pass (the ruling's free tier stays quiet — no invented urgency).
+ *   { state: 'held' }                        — this event has the pass
+ *   { state: 'needed', covers }              — stamped pass-required; `covers`
+ *     names what the pass unlocks HERE, from the stamped reasons only.
+ */
+export function passStatus(ev) {
+  if (!isBillingLive() || !ev || !isUserCreatedEvent(ev)) return null;
+  if (passHeld(ev).held) return { state: 'held' };
+  if (ev.passRequired !== true) return null;
+  const r = Array.isArray(ev.passReasons) ? ev.passReasons : [];
+  const destination = r.includes('destination') || r.includes('multi-day');
+  return {
+    state: 'needed',
+    covers: destination
+      ? 'It covers where everyone stays, getting here, getting around, and every vendor brief.'
+      : 'It covers sharing vendor briefs with every vendor on this event.',
+  };
+}
+
+/**
  * The blunt creation-time disclosure (Grandmother's rider, fourth sitting:
  * the pass sheet SELLS; this line INFORMS — it names the concrete boundary
  * and never softens). Returns null while billing is dormant: no boundary

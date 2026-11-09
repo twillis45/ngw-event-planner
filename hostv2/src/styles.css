@@ -7347,3 +7347,12 @@ button.vc-pill::after{
   font-size:var(--t-body-s); font-weight:650; color:var(--muted);
   letter-spacing:0; text-transform:none;
 }
+
+/* THE PASS ON THE COMMAND BOARD (owner decision, 11/9/2026): one quiet line on
+   an event that needs the pass, above "Where you stand". Steel, not warn: it is
+   information with a door, not an alarm. */
+.pass-status{margin:0 0 var(--sp-3)}
+.pass-status-needed{display:block;width:100%;text-align:left;cursor:pointer;padding:var(--sp-3) 16px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--steel-tint);color:inherit;font:inherit}
+.pass-status-needed:hover{border-color:var(--steel)}
+.pass-status-needed:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+.pass-status-held{color:var(--ok)}
