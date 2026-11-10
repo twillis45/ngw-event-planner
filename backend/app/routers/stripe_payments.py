@@ -434,7 +434,8 @@ async def verify_session(
             "payment_status": session.payment_status,
             "amount_total":   session.amount_total,
             "currency":       session.currency,
-            "fee_id":         session.metadata.get("fee_id"),
+            # Not `.get`: stripe-python >= 15 objects are not dicts (11/10/2026).
+            "fee_id":         session.metadata["fee_id"] if "fee_id" in session.metadata else None,
         }
     except stripe.error.InvalidRequestError:
         raise HTTPException(status_code=404, detail="Stripe session not found.")
@@ -511,12 +512,19 @@ async def stripe_webhook(
             raise HTTPException(status_code=400, detail="Missing Stripe signature.")
         try:
             stripe.api_key = STRIPE_SECRET_KEY
-            event = stripe.Webhook.construct_event(payload, stripe_signature, STRIPE_WEBHOOK_SECRET)
+            stripe.Webhook.construct_event(payload, stripe_signature, STRIPE_WEBHOOK_SECRET)
         except stripe.error.SignatureVerificationError:
             log.warning("stripe: invalid webhook signature")
             raise HTTPException(status_code=400, detail="Invalid Stripe signature.")
-        event_type = event.type
-        session_data = event.data.object
+        # READ THE VERIFIED BODY AS PLAIN JSON (live smoke test, 11/10/2026).
+        # construct_event's return value was read with `.get(...)` below, but
+        # stripe-python >= 15 objects are not dicts: the first live purchase was
+        # charged and its webhook crashed into a quiet 500. The signature has just
+        # been checked against these exact bytes, so their JSON is the verified
+        # event — the same dicts the unverified branch reads, on any library version.
+        event = json.loads(payload)
+        event_type = event.get("type", "")
+        session_data = (event.get("data") or {}).get("object") or {}
         verified = True
     else:
         # No secret configured — local dev only. Unverified, and loud about it.
@@ -524,9 +532,9 @@ async def stripe_webhook(
             "stripe: STRIPE_WEBHOOK_SECRET is unset — accepting an UNVERIFIED webhook. "
             "This must never be the case on a deployed environment."
         )
-        data = json.loads(payload)
-        event_type   = data.get("type", "")
-        session_data = data.get("data", {}).get("object", {})
+        event = json.loads(payload)
+        event_type   = event.get("type", "")
+        session_data = event.get("data", {}).get("object", {})
 
     log.info("stripe: webhook %s", event_type)
 
