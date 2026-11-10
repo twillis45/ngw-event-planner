@@ -17886,6 +17886,13 @@ export default function HostShellV2() {
                   // SIGNED OUT (live smoke test, 11/9/2026): the pass belongs to the
                   // account, so the server answers 401 — and the host was told only
                   // "Checkout isn't available right now."
+                  // A RECORDED PURCHASE (live smoke test, 11/10/2026): after a full
+                  // refund the server refuses a second sale on the same event rather
+                  // than re-grant it, and the host read "Checkout isn't available".
+                  if (/recorded purchase/i.test(why)) {
+                    toast('This event already has a recorded pass purchase. If it was refunded, the pass can’t be bought again here. Nothing was charged.');
+                    return;
+                  }
                   if (/authentication required/i.test(why)) {
                     toast('You’re not signed in on this browser — sign in, then get the pass. Nothing was charged.', { label: 'Sign in', fn: () => setSheet({ kind: 'settings' }) });
                     return;

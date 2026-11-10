@@ -136,6 +136,24 @@ test('a sample event offers no pass checkout, and says why', async ({ page }) =>
   await expect(page.getByText(/What are we planning\?/i).first()).toBeVisible();
 });
 
+// A RECORDED PURCHASE (live smoke test, 11/10/2026): after a full refund the
+// server refuses to sell the same event a second pass (409). The host was told
+// only "Checkout isn't available right now."
+test('a refunded event\'s second purchase says why it was refused, not that checkout is unavailable', async ({ page }) => {
+  await passBoot(page, { checkout: { status: 409, json: { detail: 'This event has a recorded purchase. If access was refunded or disputed, contact support before buying again.' } } });
+  const rail = page.locator('.srail-row', { hasText: 'You & settings' });
+  if (await rail.count()) await rail.first().click();
+  else {
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+  }
+  await page.getByRole('button', { name: /^The One-Event Pass/ }).first().click();
+  await page.getByRole('button', { name: 'Get the pass — $39', exact: true }).click();
+  await expect(page.locator('.toast')).toContainText('already has a recorded pass purchase');
+  await expect(page.locator('.toast')).toContainText('Nothing was charged');
+  await expect(page.locator('.toast')).not.toContainText('isn’t available');
+});
+
 test('a pass verification failure is visible to support without falsely revoking a pass', async ({ page }) => {
   await passBoot(page, { verifyFails: true });
   await expect.poll(async () => (await events(page, 'pass_verify_failed')).length).toBeGreaterThan(0);

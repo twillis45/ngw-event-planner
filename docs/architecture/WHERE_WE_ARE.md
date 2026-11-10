@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 8–10, 2026 — live smoke test end to end; the paid path works on live
+
+The owner ran the launch smoke test on the live site and every defect it found was fixed, tested, and merged (#103–#112). Sign-in by 6-digit code, second-device sync, invite links, account deletion, and the One-Event Pass — checkout, grant, refund, and removal — now pass on live with a real $39 charge, refunded. Four of the fixes were backend Stripe defects: a rejected parameter, Managed Payments on by default, and two places that read stripe-python 16 objects as dicts. The library is now pinned. Open: `RESEND_WEBHOOK_SECRET` on Render, and no support contact in the app. Detail in `HANDOFF.md`, November 8–10 entry.
+
 ## 2026-11-03 — recertification, a one-week plan, and the command itself
 
 Branch `main-2utz0n`, docs only, pushed and **not on `main`** (no Checks run
