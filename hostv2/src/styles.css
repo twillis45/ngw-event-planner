@@ -7348,11 +7348,12 @@ button.vc-pill::after{
   letter-spacing:0; text-transform:none;
 }
 
-/* THE PASS ON THE COMMAND BOARD (owner decision, 11/9/2026): one quiet line on
-   an event that needs the pass, above "Where you stand". Steel, not warn: it is
+/* THE PASS ON THE COMMAND BOARD (owner decision, 11/9/2026): one quiet pill in
+   the first screen of an event that needs the pass, above the ask. Steel, not warn: it is
    information with a door, not an alarm. */
 .pass-status{margin:0 0 var(--sp-3)}
-.pass-status-needed{display:block;width:100%;text-align:left;cursor:pointer;padding:var(--sp-3) 16px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--steel-tint);color:inherit;font:inherit}
+.pass-status-needed{display:inline-flex;align-self:flex-start;align-items:center;gap:4px;max-width:100%;cursor:pointer;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--steel-tint);color:var(--ink-soft);font:inherit;font-size:var(--t-pill);font-weight:600;text-align:left}
 .pass-status-needed:hover{border-color:var(--steel)}
 .pass-status-needed:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
-.pass-status-held{color:var(--ok)}
+/* The Jump to row: its note ("$39 · this event needs it") stays on one line. */
+.nav-pass .nr-r{white-space:nowrap}
