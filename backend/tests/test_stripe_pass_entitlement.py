@@ -467,3 +467,21 @@ def test_a_delayed_payment_that_fails_grants_nothing(dev_webhook, monkeypatch):
     _pool_of(conn, monkeypatch)
     _webhook(_async("checkout.session.async_payment_failed", PASS_META, payment_status="unpaid"))
     assert _inserts(conn) == []
+
+
+# ─── MANAGED PAYMENTS IS ON BY DEFAULT (live smoke test, 11/10/2026) ───────────
+#
+# With the parameter above gone, Stripe answered 400 on the LIVE account:
+# "the product tax code is missing ... Product tax code is required for
+# Managed Payments, which is enabled by default on your account. If you want to
+# disable Managed Payments on this session, you can pass
+# managed_payments[enabled]=false." The owner chose not to use Managed Payments
+# (Stripe as merchant of record, a 3.5% add-on), and the live Dashboard offers
+# no switch, so each session opts out itself.
+
+def test_the_pass_session_opts_out_of_managed_payments(signed_in, monkeypatch):
+    conn = FakeConn(vals={"studio_id from public.events": "studio-1",
+                          "from studio_members": 1})
+    captured = {}
+    _call_create(monkeypatch, conn, captured)
+    assert captured.get("managed_payments") == {"enabled": False}
