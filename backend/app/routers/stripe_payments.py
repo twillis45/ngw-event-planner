@@ -671,9 +671,11 @@ async def _block_pass_payment(payment, reason: str, stripe_event_id) -> None:
     # Old receipts lack the payment-intent column. Only Stripe's authenticated
     # lookup may map those session IDs; event/host metadata is not a credential.
     sessions = stripe.checkout.Session.list(payment_intent=payment_intent, limit=100)
-    if sessions.get("has_more"):
+    # Attribute access, not `.get`: stripe-python >= 15 objects are not dicts
+    # (live smoke test, 11/10/2026: the refund crashed into a 500 here).
+    if sessions.has_more:
         raise HTTPException(status_code=500, detail="Payment session mapping requires review.")
-    session_ids = [session["id"] for session in sessions.get("data", [])]
+    session_ids = [session.id for session in sessions.data]
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
