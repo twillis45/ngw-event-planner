@@ -135,3 +135,17 @@ def test_the_fee_session_leaves_payment_methods_to_the_dashboard(configured, sig
     monkeypatch.setattr(stripe.checkout.Session, "create", create)
     call(authorization="Bearer t", x_planner_token=None)
     assert "payment_method_types" not in seen
+
+
+def test_the_fee_session_opts_out_of_managed_payments(configured, signed_in, monkeypatch):
+    # Live smoke test, 11/10/2026: Managed Payments is on by default and demands
+    # a product tax code; the owner chose not to use it.
+    seen = {}
+
+    class S:
+        id, url = "cs_1", "https://checkout.stripe.com/c/pay/cs_1"
+    def create(**kw):
+        seen.update(kw); return S()
+    monkeypatch.setattr(stripe.checkout.Session, "create", create)
+    call(authorization="Bearer t", x_planner_token=None)
+    assert seen.get("managed_payments") == {"enabled": False}

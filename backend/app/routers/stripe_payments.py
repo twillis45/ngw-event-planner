@@ -240,6 +240,11 @@ async def create_checkout_session(
                 "quantity": 1,
             }],
             mode="payment",
+            # Managed Payments (Stripe as merchant of record, a 3.5% add-on) is ON
+            # by default for this account and refuses any line without a product
+            # tax code. The owner chose not to use it (11/10/2026); the live
+            # Dashboard offers no switch, so each session opts out.
+            managed_payments={"enabled": False},
             success_url=body.success_url,
             cancel_url=body.cancel_url,
             metadata={
@@ -321,6 +326,11 @@ async def create_pass_session(
                 "quantity": 1,
             }],
             mode="payment",
+            # Managed Payments (Stripe as merchant of record, a 3.5% add-on) is ON
+            # by default for this account and refuses any line without a product
+            # tax code. The owner chose not to use it (11/10/2026); the live
+            # Dashboard offers no switch, so each session opts out.
+            managed_payments={"enabled": False},
             success_url=body.success_url,
             cancel_url=body.cancel_url,
             # ── WHY THE TENANT KEY TRAVELS THROUGH STRIPE ────────────────────
