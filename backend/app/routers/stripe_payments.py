@@ -33,7 +33,8 @@ Setup (Render dashboard):
 
 Stripe webhook endpoint to configure:
   URL:    https://ngw-events-api.onrender.com/api/stripe/webhook
-  Events: checkout.session.completed, charge.refunded, charge.dispute.created
+  Events: checkout.session.completed, checkout.session.async_payment_succeeded,
+          charge.refunded, charge.dispute.created
 """
 
 import json
@@ -230,7 +231,6 @@ async def create_checkout_session(
 
     try:
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
             line_items=[{
                 "price_data": {
                     "currency": "usd",
@@ -312,7 +312,6 @@ async def create_pass_session(
     stripe.api_key = STRIPE_SECRET_KEY
     try:
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
             line_items=[{
                 "price_data": {
                     "currency": "usd",
@@ -443,7 +442,8 @@ async def stripe_webhook(
 
     Configure in Stripe Dashboard → Webhooks:
       URL:    https://ngw-events-api.onrender.com/api/stripe/webhook
-      Events: checkout.session.completed, charge.refunded, charge.dispute.created
+      Events: checkout.session.completed, checkout.session.async_payment_succeeded,
+              charge.refunded, charge.dispute.created
 
     The frontend uses /verify-session for immediate status checks.
     This endpoint retains purchase receipts and blocks refunded/disputed payments.
@@ -520,7 +520,12 @@ async def stripe_webhook(
 
     log.info("stripe: webhook %s", event_type)
 
-    if event_type == "checkout.session.completed":
+    # STRIPE NOW CHOOSES THE PAYMENT METHODS (live smoke test, 11/10/2026): the
+    # sessions no longer send `payment_method_types` (Stripe answers 400), so the
+    # Dashboard's methods apply, and a delayed one completes checkout UNPAID and
+    # settles later in `async_payment_succeeded`. Both reach the same grant, which
+    # writes only on payment_status == "paid".
+    if event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
         meta    = session_data.get("metadata") or {}
         sess_id = session_data.get("id")
         amount  = session_data.get("amount_total")
@@ -583,8 +588,9 @@ async def _grant_pass(meta: dict, session_data, sess_id, amount) -> None:
     """
     # ASYNC PAYMENT METHODS COMPLETE UNPAID. `checkout.session.completed` fires
     # when the session finishes, which for some methods is before money moves;
-    # only `payment_status == "paid"` means paid. We request card only, so this
-    # should not trigger — "should not" is why it is checked rather than assumed.
+    # only `payment_status == "paid"` means paid. Payment methods come from the
+    # Stripe Dashboard now, so a delayed method can reach here unpaid: no grant,
+    # and its later `async_payment_succeeded` (status "paid") grants instead.
     status = session_data.get("payment_status")
     if status != "paid":
         log.warning(
