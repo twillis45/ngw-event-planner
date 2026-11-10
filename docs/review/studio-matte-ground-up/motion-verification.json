@@ -1,0 +1,133 @@
+{
+  "scope": "Chromium mouse input and viewport emulation; no physical touchscreen validation",
+  "results": [
+    {
+      "name": "dark 390 quick look from guest screen",
+      "pass": true
+    },
+    {
+      "name": "dark 390 card visibly follows drag",
+      "pass": true
+    },
+    {
+      "name": "dark 390 swipe changes card",
+      "pass": true
+    },
+    {
+      "name": "dark 390 selection animation active",
+      "pass": true
+    },
+    {
+      "name": "dark 390 selection undo visible",
+      "pass": true
+    },
+    {
+      "name": "dark 390 completion animation survives navigation",
+      "pass": true
+    },
+    {
+      "name": "dark 390 draft example opens",
+      "pass": true
+    },
+    {
+      "name": "dark 390 reduced motion has no animation",
+      "pass": true
+    },
+    {
+      "name": "dark 768 quick look from guest screen",
+      "pass": true
+    },
+    {
+      "name": "dark 768 card visibly follows drag",
+      "pass": true
+    },
+    {
+      "name": "dark 768 swipe changes card",
+      "pass": true
+    },
+    {
+      "name": "dark 768 selection animation active",
+      "pass": true
+    },
+    {
+      "name": "dark 768 selection undo visible",
+      "pass": true
+    },
+    {
+      "name": "dark 768 completion animation survives navigation",
+      "pass": true
+    },
+    {
+      "name": "dark 768 draft example opens",
+      "pass": true
+    },
+    {
+      "name": "dark 768 reduced motion has no animation",
+      "pass": true
+    },
+    {
+      "name": "light 390 quick look from guest screen",
+      "pass": true
+    },
+    {
+      "name": "light 390 card visibly follows drag",
+      "pass": true
+    },
+    {
+      "name": "light 390 swipe changes card",
+      "pass": true
+    },
+    {
+      "name": "light 390 selection animation active",
+      "pass": true
+    },
+    {
+      "name": "light 390 selection undo visible",
+      "pass": true
+    },
+    {
+      "name": "light 390 completion animation survives navigation",
+      "pass": true
+    },
+    {
+      "name": "light 390 draft example opens",
+      "pass": true
+    },
+    {
+      "name": "light 390 reduced motion has no animation",
+      "pass": true
+    },
+    {
+      "name": "light 768 quick look from guest screen",
+      "pass": true
+    },
+    {
+      "name": "light 768 card visibly follows drag",
+      "pass": true
+    },
+    {
+      "name": "light 768 swipe changes card",
+      "pass": true
+    },
+    {
+      "name": "light 768 selection animation active",
+      "pass": true
+    },
+    {
+      "name": "light 768 selection undo visible",
+      "pass": true
+    },
+    {
+      "name": "light 768 completion animation survives navigation",
+      "pass": true
+    },
+    {
+      "name": "light 768 draft example opens",
+      "pass": true
+    },
+    {
+      "name": "light 768 reduced motion has no animation",
+      "pass": true
+    }
+  ]
+}

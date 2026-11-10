@@ -1,0 +1,85 @@
+{
+  "scope": "Chromium mobile viewport with mouse; synthetic one-pixel upload fixture",
+  "results": [
+    {
+      "name": "light photo loaded",
+      "pass": true
+    },
+    {
+      "name": "light moment visible",
+      "pass": true
+    },
+    {
+      "name": "light cancel preserves event",
+      "pass": true
+    },
+    {
+      "name": "light remove keeps editor open",
+      "pass": true
+    },
+    {
+      "name": "light photo removed",
+      "pass": true
+    },
+    {
+      "name": "light moment reaches food",
+      "pass": true
+    },
+    {
+      "name": "light home completion stays home",
+      "pass": true
+    },
+    {
+      "name": "light home undo restores action",
+      "pass": true
+    },
+    {
+      "name": "light selected card persists",
+      "pass": true
+    },
+    {
+      "name": "light shortlist count visible",
+      "pass": true
+    },
+    {
+      "name": "dark photo loaded",
+      "pass": true
+    },
+    {
+      "name": "dark moment visible",
+      "pass": true
+    },
+    {
+      "name": "dark cancel preserves event",
+      "pass": true
+    },
+    {
+      "name": "dark remove keeps editor open",
+      "pass": true
+    },
+    {
+      "name": "dark photo removed",
+      "pass": true
+    },
+    {
+      "name": "dark moment reaches food",
+      "pass": true
+    },
+    {
+      "name": "dark home completion stays home",
+      "pass": true
+    },
+    {
+      "name": "dark home undo restores action",
+      "pass": true
+    },
+    {
+      "name": "dark selected card persists",
+      "pass": true
+    },
+    {
+      "name": "dark shortlist count visible",
+      "pass": true
+    }
+  ]
+}
