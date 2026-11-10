@@ -426,3 +426,44 @@ def test_the_read_route_is_studio_scoped(signed_in, monkeypatch):
     with pytest.raises(SP.HTTPException) as e:
         asyncio.run(SP.get_pass(event_id="cust-123"))
     assert e.value.status_code == 403
+
+
+# ─── STRIPE REFUSED THE CARD-ONLY PARAMETER (live smoke test, 11/10/2026) ───────
+#
+# Render log, POST /api/stripe/create-pass-session → 400: "The
+# `payment_method_types` parameter is no longer supported when creating a
+# Checkout Session. Payment methods are now managed from your Dashboard
+# settings." Every pass checkout failed before a page could open. The session
+# must not send it; the Dashboard decides which methods are offered.
+
+def test_the_pass_session_leaves_payment_methods_to_the_dashboard(signed_in, monkeypatch):
+    conn = FakeConn(vals={"studio_id from public.events": "studio-1",
+                          "from studio_members": 1})
+    captured = {}
+    _call_create(monkeypatch, conn, captured)
+    assert "payment_method_types" not in captured
+
+
+# With Dashboard-managed methods a delayed method (bank debit, for one) can be
+# offered: checkout COMPLETES unpaid and the money settles later, announced by
+# checkout.session.async_payment_succeeded. Unhandled, that customer pays and
+# never gets the pass.
+
+def _async(kind, metadata, *, payment_status):
+    payload = _completed(metadata, payment_status=payment_status)
+    payload["type"] = kind
+    return payload
+
+
+def test_a_delayed_payment_that_later_succeeds_grants_the_pass(dev_webhook, monkeypatch):
+    conn = FakeConn()
+    _pool_of(conn, monkeypatch)
+    _webhook(_async("checkout.session.async_payment_succeeded", PASS_META, payment_status="paid"))
+    assert len(_inserts(conn)) == 1, "the settled delayed payment must write the entitlement"
+
+
+def test_a_delayed_payment_that_fails_grants_nothing(dev_webhook, monkeypatch):
+    conn = FakeConn()
+    _pool_of(conn, monkeypatch)
+    _webhook(_async("checkout.session.async_payment_failed", PASS_META, payment_status="unpaid"))
+    assert _inserts(conn) == []

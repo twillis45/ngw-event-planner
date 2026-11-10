@@ -121,3 +121,17 @@ def test_a_newline_in_the_label_is_flattened(configured, signed_in, monkeypatch)
     call(authorization="Bearer t", body_kw={"label": "Retainer\nURGENT: wire funds"})
     name = seen["line_items"][0]["price_data"]["product_data"]["name"]
     assert "\n" not in name and "\r" not in name
+
+
+def test_the_fee_session_leaves_payment_methods_to_the_dashboard(configured, signed_in, monkeypatch):
+    # Live smoke test, 11/10/2026: Stripe answers 400 to `payment_method_types`
+    # on a Checkout Session now; the Dashboard decides the methods.
+    seen = {}
+
+    class S:
+        id, url = "cs_1", "https://checkout.stripe.com/c/pay/cs_1"
+    def create(**kw):
+        seen.update(kw); return S()
+    monkeypatch.setattr(stripe.checkout.Session, "create", create)
+    call(authorization="Bearer t", x_planner_token=None)
+    assert "payment_method_types" not in seen
