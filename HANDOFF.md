@@ -17,6 +17,36 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 8–10, 2026 — the live smoke test, end to end; ten fixes merged (#103–#112)
+
+Measured on the live site (`twillis45.github.io/ngw-event-planner/hostv2/`, Supabase `ewoggzxarpcwesqxsdoz`, Render `ngw-events-api`) by the owner on a Galaxy S25 (Chrome) and a laptop (Chrome Incognito), against the "NGW Launch Smoke Test" checklist (owner's claude.ai artifact, version 12).
+
+| Area | Result | Fixed by |
+|---|---|---|
+| Sign-in by code | Passes. The Confirm signup and Magic Link templates now carry `{{ .Token }}`, and the code is 6 digits (owner confirmed 11/10). The app accepts 6–10 digits. | Supabase settings (owner) |
+| Second-device sync (3.5) | An account event's first edit is adopted into the device's own store, so a newer account copy wins later. | #104 |
+| Invite "Copy the link" (4.5) | Copies only the verified link; Android's share-sheet Copy took the whole message. | #104 |
+| Account deletion (8.x) | Passes. Render was missing `SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_URL` (503 `deletion_unavailable`; owner added them). The account's events also leave the `ngw-events` load cache, then the page reloads. | #103, #105 |
+| Pass checkout messages | A signed-out 401 says to sign in; a sample event shows no buy button ("This is a sample event" + Start your own event); a refunded event's second purchase (409) says why. | #106, this PR |
+| Pass visibility | Events that need the pass show a steel pill in the first screen; Jump to has a One-Event Pass row on every event. | #107, #108 |
+| Checkout (6.1–6.5) | Passes on live: a real $39 charge. Three backend defects in a row: Stripe now rejects `payment_method_types` (#109); Managed Payments is on by default and demands a tax code, so each session sends `managed_payments[enabled]=false` (#110; owner chose not to use it, 3.5% add-on); delayed methods now grant on `checkout.session.async_payment_succeeded` (#109). | #109, #110 |
+| Grant webhook (6.6) | Passes after a resend. It answered 500: `stripe>=7.0.0` installed 16.x, whose objects are not dicts, and the webhook read them with `.get`. | #111 |
+| Refund (7.1–7.3) | Passes: `PAYMENT BLOCKED … reason=refunded`, and the pass is gone from the event. Same `.get` defect in the refund block's `Session.list` read. | #112 |
+
+**Configuration changed this session (owner):**
+- Stripe live webhook destination created: `…/api/stripe/webhook`, with `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded` and `charge.dispute.created`.
+- Render `STRIPE_WEBHOOK_SECRET` now holds that destination's secret, and `STRIPE_SECRET_KEY` is the live key.
+- Stripe Payment methods are managed in the Dashboard; buyers see only the methods that fit their device and the amount.
+
+**Still open:**
+- `RESEND_WEBHOOK_SECRET` is not set on Render, so email-delivery webhooks are accepted unverified.
+- The app has no support contact anywhere; the server's 409 text says "contact support" and the app can't point anywhere.
+- Smoke-test parts not re-run after today's fixes: 6.7 (pass on the second device) and the checklist's remaining marks.
+- The HEAD row in State was not restamped. `npm run handoff:check` can't run in a shallow cloud clone.
+
+- 🔴 **Trap: a stub that returns dicts hid three live failures.** Every Stripe webhook test stubbed `construct_event` and `Session.list` with plain dicts, so the path a live purchase takes never ran. Stripe tests now use real library objects (`construct_from`, `ListObject`) and a real HMAC signature. The library is pinned to `stripe==16.1.0`, the version proven on live.
+- 🔴 **Trap: the error middleware hides tracebacks.** A crash in a route becomes a 500 with nothing in the Render log. The message is in `admin_error_log`: `select created_at, message from admin_error_log order by created_at desc limit 5;`.
+
 ## November 7, 2026 — production went `live`; smoke-test fixes on `main-2utz0n`
 
 Measured, not planned. PR #101 (`3be32200`) and #102 (`951ed39a`) are merged.
