@@ -535,3 +535,27 @@ def test_a_really_signed_full_refund_reaches_the_block(monkeypatch):
     body, header = _really_signed(payload, "whsec_real_test")
     asyncio.run(SP.stripe_webhook(FakeRequest(body), stripe_signature=header))
     assert seen == [("pi_pass_1", "refunded", "evt_refund_1")]
+
+
+def test_the_refund_block_reads_a_real_stripe_list(monkeypatch):
+    # Live smoke test, 11/10/2026, the refund half of the same defect: the block
+    # maps old receipts with stripe.checkout.Session.list(...) and read the
+    # result with `.get(...)`, which stripe-python >= 15 list objects refuse.
+    # Real library objects here, and the real _block_pass_payment.
+    monkeypatch.setattr(SP, "STRIPE_SECRET_KEY", "sk_test_x")
+    monkeypatch.setattr(SP, "STRIPE_WEBHOOK_SECRET", "whsec_real_test")
+    listed = SP.stripe.ListObject.construct_from(
+        {"object": "list", "has_more": False, "url": "/v1/checkout/sessions",
+         "data": [{"id": "cs_pass_1", "object": "checkout.session"}]}, "sk_test_x")
+    monkeypatch.setattr(SP.stripe.checkout.Session, "list", lambda **k: listed)
+    conn = FakeConn()
+    _pool_of(conn, monkeypatch)
+    payload = {"id": "evt_refund_2", "object": "event", "type": "charge.refunded",
+               "data": {"object": {"id": "ch_1", "object": "charge", "refunded": True,
+                                   "payment_intent": "pi_pass_1"}}}
+    body, header = _really_signed(payload, "whsec_real_test")
+    asyncio.run(SP.stripe_webhook(FakeRequest(body), stripe_signature=header))
+    blocks = [(sql, args) for sql, args in conn.executed if "pass_payment_blocks" in sql and "insert" in sql]
+    assert blocks and "pi_pass_1" in blocks[0][1], "a full refund must record the block"
+    remaps = [args for sql, args in conn.executed if "update public.event_passes" in sql]
+    assert remaps and list(remaps[0][1]) == ["cs_pass_1"], "old receipts must be mapped to the payment"

@@ -40,7 +40,12 @@ def ledger(monkeypatch):
     conn = Ledger()
     async def pool(): return FakePool(conn)
     monkeypatch.setattr(SP, 'get_pool', pool)
-    monkeypatch.setattr(SP.stripe.checkout.Session, 'list', lambda **kw: {'data': [{'id':'cs_pass_1'}]})
+    # The real list class, not a dict: stripe-python >= 15 objects refuse `.get`,
+    # and a dict stub here hid exactly that on the live refund (11/10/2026).
+    listed = SP.stripe.ListObject.construct_from(
+        {'object': 'list', 'has_more': False, 'url': '/v1/checkout/sessions',
+         'data': [{'id': 'cs_pass_1', 'object': 'checkout.session'}]}, 'sk_test_x')
+    monkeypatch.setattr(SP.stripe.checkout.Session, 'list', lambda **kw: listed)
     return conn
 
 def grant():
@@ -113,7 +118,9 @@ def test_old_receipt_mapping_comes_from_stripe_lookup(ledger, monkeypatch):
     seen = {}
     def lookup(**kwargs):
         seen.update(kwargs)
-        return {'data':[{'id':'cs_historic'}]}
+        return SP.stripe.ListObject.construct_from(
+            {'object': 'list', 'has_more': False, 'url': '/v1/checkout/sessions',
+             'data': [{'id': 'cs_historic', 'object': 'checkout.session'}]}, 'sk_test_x')
     monkeypatch.setattr(SP.stripe.checkout.Session, 'list', lookup)
     asyncio.run(SP._block_pass_payment({'payment_intent':'pi_pass_1','metadata':{'session_id':'cs_forged'}},'refunded','evt'))
     assert seen == {'payment_intent':'pi_pass_1','limit':100}
