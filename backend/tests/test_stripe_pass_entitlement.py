@@ -485,3 +485,53 @@ def test_the_pass_session_opts_out_of_managed_payments(signed_in, monkeypatch):
     captured = {}
     _call_create(monkeypatch, conn, captured)
     assert captured.get("managed_payments") == {"enabled": False}
+
+
+# ─── A REAL SIGNATURE, THE REAL LIBRARY (live smoke test, 11/10/2026) ──────────
+#
+# The first live purchase was charged, and Stripe's checkout.session.completed
+# answered 500 twice. The payload was correct (paid, payment_intent, full tenant
+# metadata). The webhook read it with `.get(...)`, but stripe-python >= 15 (16
+# is what `stripe>=7.0.0` installs) returns objects that are no longer dicts,
+# so `.get` raised AttributeError, which the error middleware turned into a
+# quiet 500. Every test above stubs construct_event to return dicts, so none of
+# them took the path a live purchase takes. These sign the body for real.
+import hashlib
+import hmac
+import time as _time
+
+
+def _really_signed(payload: dict, secret: str):
+    body = json.dumps(payload)
+    t = int(_time.time())
+    sig = hmac.new(secret.encode(), f"{t}.{body}".encode(), hashlib.sha256).hexdigest()
+    return body.encode(), f"t={t},v1={sig}"
+
+
+def test_a_really_signed_paid_session_grants_the_pass(monkeypatch):
+    monkeypatch.setattr(SP, "STRIPE_SECRET_KEY", "sk_test_x")
+    monkeypatch.setattr(SP, "STRIPE_WEBHOOK_SECRET", "whsec_real_test")
+    conn = FakeConn()
+    _pool_of(conn, monkeypatch)
+    payload = _completed(PASS_META)
+    payload.update({"id": "evt_real_1", "object": "event"})
+    body, header = _really_signed(payload, "whsec_real_test")
+    out = asyncio.run(SP.stripe_webhook(FakeRequest(body), stripe_signature=header))
+    assert out == {"ok": True}
+    assert len(_inserts(conn)) == 1, "a verified, paid pass session must write the entitlement"
+
+
+def test_a_really_signed_full_refund_reaches_the_block(monkeypatch):
+    monkeypatch.setattr(SP, "STRIPE_SECRET_KEY", "sk_test_x")
+    monkeypatch.setattr(SP, "STRIPE_WEBHOOK_SECRET", "whsec_real_test")
+    seen = []
+
+    async def _block(payment, reason, event_id):
+        seen.append((payment["payment_intent"], reason, event_id))
+    monkeypatch.setattr(SP, "_block_pass_payment", _block)
+    payload = {"id": "evt_refund_1", "object": "event", "type": "charge.refunded",
+               "data": {"object": {"id": "ch_1", "object": "charge", "refunded": True,
+                                   "payment_intent": "pi_pass_1"}}}
+    body, header = _really_signed(payload, "whsec_real_test")
+    asyncio.run(SP.stripe_webhook(FakeRequest(body), stripe_signature=header))
+    assert seen == [("pi_pass_1", "refunded", "evt_refund_1")]

@@ -149,3 +149,18 @@ def test_the_fee_session_opts_out_of_managed_payments(configured, signed_in, mon
     monkeypatch.setattr(stripe.checkout.Session, "create", create)
     call(authorization="Bearer t", x_planner_token=None)
     assert seen.get("managed_payments") == {"enabled": False}
+
+
+def test_verify_session_reads_a_real_stripe_object(configured, monkeypatch):
+    # Live smoke test, 11/10/2026: stripe-python >= 15 objects are not dicts,
+    # so `session.metadata.get(...)` raises. Use the real class, not a stub.
+    async def ok(auth, tok):
+        return {"id": "user-1", "via": "supabase"}
+    monkeypatch.setattr(SP, "require_planner", ok)
+    real = stripe.checkout.Session.construct_from(
+        {"id": "cs_9", "object": "checkout.session", "payment_status": "paid",
+         "amount_total": 25_000, "currency": "usd", "metadata": {"fee_id": "fee-1"}}, "sk_test_x")
+    monkeypatch.setattr(stripe.checkout.Session, "retrieve", lambda *a, **k: real)
+    out = asyncio.run(SP.verify_session("cs_9", authorization="Bearer t", x_planner_token=None))
+    assert out["fee_id"] == "fee-1"
+    assert out["payment_status"] == "paid"
