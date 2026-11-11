@@ -43,6 +43,7 @@ not review a draft that contradicts the product.
 | Where | Says | Code says |
 |---|---|---|
 | `PRIVACY_POLICY_DRAFT.md:24` | Sign-in "by a one-time link" | A link or a code: `signInWithOtp` (`HostShellV2.jsx:2122`) and `verifyOtp` (`:2147`). Minor. |
+| `PRIVACY_POLICY_DRAFT.md:42-44` (Guests) | Guests give name, reply, meal, dietary needs or allergies, plus-one, note | Also structured allergens and diets, **access needs**, and optional **phone, email, and mailing address** (`supabase/migrations/015_rsvp_guest_details.sql:18-25`, `backend/app/routers/rsvp.py:192-197`). Found 11/11/2026 while writing `ATTORNEY_COVER_MEMO.md`. Not minor: the policy under-states what is collected. |
 
 Fixed 11/11/2026 in a follow-up commit (removed from this list): self-serve
 account deletion now described in privacy §6 and the README; "can buy the pass

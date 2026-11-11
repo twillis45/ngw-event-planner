@@ -8,7 +8,7 @@
 
 **Effective:** `[OWNER: effective date]`
 **Seller:** No Guesswork Systems LLC, `[OWNER: mailing address]`
-**Questions and requests:** events@noguessworksystems.com ⟶ `src/lib/brand.js:145` (owner decision 11/11/2026)
+**Questions and requests:** events@noguessworksystems.com ⟶ `src/lib/brand.js:145` (owner decision 11/11/2026) ⟵
 
 ---
 
@@ -17,20 +17,20 @@
 The **One-Event Pass** is a single purchase of **$39 (USD)** that unlocks the
 paid parts of planning for **one event**: sharing vendor briefs beyond the
 first one, destination and multi-day planning, and the features the app names
-as covered by the pass when it asks. ⟶ `src/lib/passGate.js:9, 164-170`
+as covered by the pass when it asks. ⟶ `src/lib/passGate.js:9, 164-170` ⟵
 
 - It is **one event, one time.** It is not a subscription. Nothing renews,
   nothing is charged again, and you will never be billed without going through
-  checkout yourself. ⟶ `routers/stripe_payments.py` (`mode="payment"`)
+  checkout yourself. ⟶ `routers/stripe_payments.py` (`mode="payment"`) ⟵
 - The price is set by us at checkout and is not editable by the app or by you.
-  ⟶ `stripe_payments.py` (`PASS_AMOUNT_CENTS` is server-set)
+  ⟶ `stripe_payments.py` (`PASS_AMOUNT_CENTS` is server-set) ⟵
 - Planning itself stays free. You can plan an event end to end, run the day,
   and send one vendor brief without buying anything. The pass is for the parts
   that go beyond that, and the app tells you which ones before it asks.
 - **Vendors are never charged.** No fee is taken from any vendor, caterer, or
   venue, and none ever will be. ⟶ standing commitment: `src/lib/passGate.js:43`
   ("no vendor-side fees while the no-vendor-fees sentence ships"),
-  `docs/audits/2026-08-19_MODEL_D_VS_LEADERS.md:70`
+  `docs/audits/2026-08-19_MODEL_D_VS_LEADERS.md:70` ⟵
 
 Payment is taken on Stripe's hosted checkout page. We do not see or store your
 card details. Your receipt comes from Stripe.
@@ -41,7 +41,7 @@ Immediately after a successful payment. If you return from checkout and the
 event still shows as locked, wait a few seconds — the confirmation from Stripe
 can arrive after you do — and reload. If it is still locked after a minute,
 email us with your Stripe receipt and we will fix it the same day.
-⟶ `refreshEventPass` retry ladder, `passEntitlement.js`
+⟶ `refreshEventPass` retry ladder, `passEntitlement.js` ⟵
 
 ## 3. Refunds — the rule `[OWNER: refund rule — pick one]`
 
@@ -53,24 +53,24 @@ to share a brief.** You may request a full refund within 14 days of purchase
 as long as you have not shared a vendor brief beyond your first one or used
 destination/multi-day planning on the event. If you have, the pass has done
 the thing it was bought for and the purchase is final.
-*Why:* it matches how the pass is sold (a tool for a specific job), it is
+⟶ *Why:* it matches how the pass is sold (a tool for a specific job), it is
 simple to administer (one look at the event's share count), and it does not
 invite buying, using, and refunding. Stripe's dispute fee makes a contested
 chargeback cost more than a $39 refund, so a clear no-quibble window inside
-which we refund first and ask later is cheaper than a strict policy.
+which we refund first and ask later is cheaper than a strict policy. ⟵
 
 **Option B: 14 days, unconditional.** Full refund on request within 14 days,
 used or not.
-*Why you might:* the simplest promise to make and the easiest to explain in
+⟶ *Why you might:* the simplest promise to make and the easiest to explain in
 one line on the pass sheet; the exposure is $39 per event and the pass cannot
 be resold. *Why you might not:* a host can plan a whole event on the pass and
-refund it on day 13.
+refund it on day 13. ⟵
 
 **Option C: 30 days, unconditional, one per customer.** Full refund within 30
 days, once; a second pass purchased later is final.
-*Why you might:* events run on long timelines and 14 days may land before the
+⟶ *Why you might:* events run on long timelines and 14 days may land before the
 host has learned whether the pass earned its keep. *Why you might not:* the
-one-per-customer rule needs tracking we do not have today.
+one-per-customer rule needs tracking we do not have today. ⟵
 
 Whichever rule is chosen, the following apply:
 
@@ -83,14 +83,14 @@ Whichever rule is chosen, the following apply:
   nothing you planned is deleted. ⟶ `stripe_payments.py:575-578` (only once
   Stripe marks the charge fully refunded), `:661-694` (`pass_payment_blocks`,
   `supabase/migrations/020_pass_payment_revocations.sql`); the app re-checks
-  the server record, `passEntitlement.js`
+  the server record, `passEntitlement.js` ⟵
 - **A partial refund keeps the pass.** If we refund part of the price, the
   event keeps everything the pass unlocked. ⟶ `stripe_payments.py:575-576`
-  (owner ruling, November 5)
+  (owner ruling, November 5) ⟵
 - **A refunded event cannot buy the pass again at checkout.** Checkout refuses
   any event with a recorded purchase and points you to us instead; write to
   events@noguessworksystems.com if you want the pass back on that event.
-  ⟶ `stripe_payments.py:306-315`
+  ⟶ `stripe_payments.py:306-315` ⟵
 - **One refund per pass.** A pass that has been refunded cannot be refunded a
   second time.
 
@@ -137,7 +137,7 @@ dispute is decided — and the event returns to the free tier; nothing you
 planned is deleted. If the dispute is later decided in our favor, the pass does
 not come back on its own; write to us. ⟶ `stripe_payments.py:570-574`,
 `:661-665` ("Disputes suspend access until reviewed; a later won-dispute
-notification does not silently restore it"). We will provide Stripe with the
+notification does not silently restore it"). ⟵ We will provide Stripe with the
 purchase record. We would much rather refund you
 directly — it is faster for you and cheaper for us — so please write first.
 

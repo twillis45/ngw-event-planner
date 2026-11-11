@@ -13,6 +13,8 @@ until the owner rules it.
 | `REFUND_POLICY_DRAFT.md` | The $39 One-Event Pass: what it is, what it is not, and the refund rule (one recommended, two alternatives, owner picks) | `src/lib/passGate.js`, `backend/app/routers/stripe_payments.py`, `supabase/migrations/017_event_passes.sql`, the no-vendor-fees commitment |
 | `TERMS_OF_SERVICE_DRAFT.md` | Terms of service (2026-11-11): eligibility, sign-in, free tier and the pass, refund/dispute mechanics, host duties for guest and vendor data, invite and brief links, acceptable use, content license, no warranty, liability, in-app account deletion, governing law. `COUNSEL:` notes mark each point an attorney decides | `src/lib/passGate.js`, `backend/app/routers/stripe_payments.py`, `account.py`, `rsvp.py`, `vendor_brief.py`, `ai.py`, `supabase/migrations/020`, `021`, `src/lib/brand.js` |
 | `OWNER_FILL_SHEET.md` | Every `[OWNER: …]` placeholder across these drafts, one row per fact, with file:line, what to supply, what the repo already knows, and the order to do them | grep of `docs/legal/` |
+| `ATTORNEY_COVER_MEMO.md` | One page to send with the drafts: the product, what is live, the 29 numbered `COUNSEL` questions, decisions made and pending, what to send back | the drafts' `COUNSEL` notes, `OWNER_FILL_SHEET.md`, `HANDOFF.md` |
+| `PUBLISH_CHECKLIST.md` | The steps after sign-off: fill, remove markers, `npm run policies:publish` (refuses while any `[OWNER:`, `COUNSEL`, `VERIFY:` or `DRAFT` remains; strips `⟶ … ⟵` citations), set `BRAND.policies`, PR, curl for 200 | `scripts/publish-policies.mjs`, `scripts/policy-publish-core.js` |
 
 ## Placeholders the owner fills before anything ships
 
