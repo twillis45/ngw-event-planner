@@ -768,9 +768,30 @@ export function eventSizing(event, playbook) {
   const pb = playbook || getPlaybook(event && event.type);
   const band = attendanceBand(event);
   const ceiling = sizingGuests(event, pb);
-  const floor = (band.applicable && band.band && band.low > 0 && band.low < ceiling) ? band.low : ceiling;
+  // N1 (stage-4, 11/11/2026): when the host's planned count outranks a roster that
+  // has not caught up to it (40 planned, 6 named), sizingGuests sizes to the plan —
+  // and the reply band (2–5) is a reply status, not a range around that plan. There
+  // is no reply-grounded floor under people nobody has named yet.
+  const plannedOverRoster = band.basis === 'rsvp'
+    && (Number(event.guestCount) || Number(event.guestEstimate) || 0) > 0
+    && ceiling > (Number(band.planning) || 0);
+  const floor = (!plannedOverRoster && band.applicable && band.band && band.low > 0 && band.low < ceiling) ? band.low : ceiling;
   const lowRatio = ceiling > 0 ? floor / ceiling : 1;
-  return { band, ceiling, floor, lowRatio };
+  return { band, ceiling, floor, lowRatio, plannedOverRoster };
+}
+
+// sizingRange(event) — the ONE "sized for N guests" label. Every surface that names
+// the headcount a plan is sized for reads this, never attendanceBandLabel directly:
+// the band label is the reply/turnout status and diverges from the size exactly when
+// a planned count outranks a short roster (N1). Same as attendanceBandLabel in every
+// other case. → { label, low, high, spread, plannedOverRoster } | null
+export function sizingRange(event, playbook) {
+  if (!event) return null;
+  const { band, ceiling, plannedOverRoster } = eventSizing(event, playbook);
+  if (plannedOverRoster) return { label: String(ceiling), low: ceiling, high: ceiling, spread: false, plannedOverRoster: true };
+  const label = attendanceBandLabel(band);
+  if (!label) return null;
+  return { label, low: band.low, high: band.high, spread: !!band.band, plannedOverRoster: false };
 }
 
 // playbookContingencyForWeather(event, wx) — surfaces the ALREADY-AUTHORED contingency

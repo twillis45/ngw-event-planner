@@ -188,7 +188,7 @@ import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -4256,6 +4256,9 @@ export default function HostShellV2() {
     try {
       const b = attendanceBand(event);
       if (!b || !b.applicable || !b.band) return null;
+      // N1: a reply band under a planned count it hasn't caught up to is not "likely on the day".
+      const sr = sizingRange(event);
+      if (!sr || sr.plannedOverRoster) return null;
       return { low: b.low, high: b.high, note: b.note || (b.shift && b.shift.note) || '' };
     } catch (_e) { return null; }
   })();
@@ -20058,14 +20061,14 @@ export default function HostShellV2() {
                     {foodSpan ? <Grounding gap={ASK_RHYTHM.valueToWhy}>{foodSpan.text}</Grounding> : null}
                   </div>
                 ) : foodPlan.hasRealCount ? (() => {
-                  const fBand = (() => { try { return attendanceBand(event); } catch { return null; } })();
-                  const fBandLbl = (() => { try { return attendanceBandLabel(fBand); } catch { return null; } })();
+                  // N1: the sizing label (lib sizingRange), never the reply band — they differ when a planned count outranks a short roster.
+                  const fSized = (() => { try { return sizingRange(event); } catch { return null; } })();
                   // A BAND OF ONE IS A NUMBER. With a locked headcount bandLow
                   // and bandHigh are equal, and the old hero hid that behind
                   // "sized for 10–10 guests" — which nobody noticed until the
                   // rewrite put the phrase on its own line and it read "10–10".
-                  const fGuestPhrase = (fBand && fBand.applicable && fBand.band && fBandLbl)
-                    ? fBandLbl
+                  const fGuestPhrase = (fSized && fSized.spread)
+                    ? fSized.label
                     : (foodPlan.bandLow === foodPlan.bandHigh
                         ? `${foodPlan.bandHigh}`
                         : `${foodPlan.bandLow}–${foodPlan.bandHigh}`);
@@ -23631,10 +23634,11 @@ export default function HostShellV2() {
                     // DENOMINATORS-1: name the guest count this budget was sized
                     // against — the same band the Guests tile and food plan use,
                     // never a second unreconciled number.
-                    let budgetBand = null;
-                    try { budgetBand = attendanceBand(event); } catch { budgetBand = null; }
-                    const hasSpread = budgetBand && budgetBand.applicable && budgetBand.band;
-                    const guestPhrase = hasSpread ? attendanceBandLabel(budgetBand) + ' guests' : null;
+                    // N1: through lib sizingRange — the reply band is not the size
+                    // when a planned count outranks a short roster.
+                    let budgetSized = null;
+                    try { budgetSized = sizingRange(event); } catch { budgetSized = null; }
+                    const guestPhrase = budgetSized && (budgetSized.spread || budgetSized.plannedOverRoster) ? budgetSized.label + ' guests' : null;
                     // Hero copy (host request 2026-07-11): the old summary row is
                     // PROMOTED to the full hero. The warm line RENDERS budgetHeroCopy's
                     // own strings (lib/budgetCopy — one source of truth per fact):
@@ -24004,8 +24008,11 @@ export default function HostShellV2() {
             })()}
             {sheet.kind === 'guests' && (() => {
               const gcr = (() => { try { return guestCountResolved(event); } catch { return null; } })();
-              const band = (() => { try { return attendanceBand(event); } catch { return null; } })();
-              const bandLbl = (() => { try { return attendanceBandLabel(band); } catch { return null; } })();
+              // N1: lib sizingRange. A reply band under a planned count it hasn't caught
+              // up to is a reply status, not "likely on the day" — the plan is the size.
+              const sized = (() => { try { return sizingRange(event); } catch { return null; } })();
+              const bandLbl = sized && !sized.plannedOverRoster ? sized.label : null;
+              const planLbl = sized && sized.plannedOverRoster ? sized.label : null;
               const quickAdd = (
                 <div style={{ marginTop: 'var(--sp-3)' }}>
                   {/* §25 · PRIMARY WORK IS STATE-DEPENDENT. With no list, adding
@@ -24210,7 +24217,7 @@ export default function HostShellV2() {
                   // sub says so. It read the yes-count under that label (gold run,
                   // 11/5/2026), so five names showed "—" until someone replied.
                   n = chase ? heads : (event.guests || []).length;
-                  const tail = bandLbl ? ' — likely ' + bandLbl + ' on the day' : '';
+                  const tail = planLbl ? ' — planning for ' + planLbl : bandLbl ? ' — likely ' + bandLbl + ' on the day' : '';
                   sub = !chase
                     ? 'on the list — counted, never chased'
                     // FIX (host report): "said yes" must track the uncheck — never claim yeses
@@ -24221,7 +24228,7 @@ export default function HostShellV2() {
                         : 'no yes replies yet — everyone’s answered')
                       : (gcr && gcr.pending > 0
                         ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered') + tail
-                        : 'said yes — the list has settled' + (bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
+                        : 'said yes — the list has settled' + (planLbl ? ' · planning for ' + planLbl : bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
                 } else {
                   n = Number(guests) || 0;
                   sub = n > 0
