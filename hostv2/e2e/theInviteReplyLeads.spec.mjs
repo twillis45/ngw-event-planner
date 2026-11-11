@@ -82,6 +82,12 @@ for (const tone of ['light', 'dark']) {
       const bg = (el) => getComputedStyle(el).backgroundColor;
       return bg(r[0]) === bg(r[2]);
     }), { message: 'two filled buttons at once: Yes kept its fill after another answer was picked' }).toBe(true);
+    // ...and the pick is visibly picked (it was not, on the dark invite).
+    await expect.poll(() => page.evaluate(() => {
+      const r = [...document.querySelectorAll('.inv2-replies [role=radio]')];
+      const bg = (el) => getComputedStyle(el).backgroundColor;
+      return bg(r[1]) !== bg(r[2]);
+    }), { message: 'the picked reply looks the same as an unpicked one' }).toBe(true);
   });
 }
 
