@@ -51,8 +51,13 @@ Search each draft for `[OWNER:` — every one is a fact only the owner has:
 - No retention schedule that is not actually running. The RSVP purge helper
   exists (`purge_old_rsvp_submissions`, 009:111) and **is not scheduled** —
   the draft says "we intend to" and names the window, not "we do."
-- No self-serve account deletion, because none exists. The draft routes it to
-  the support address and names the systems the deletion touches.
+- No deletion broader than the code's. Account deletion **is** self-serve
+  (You & settings → Delete my account…, `hostv2/src/HostShellV2.jsx:18949`;
+  `backend/app/routers/account.py`, `supabase/migrations/021_account_deletion.sql`).
+  The privacy draft §6 and terms §12 list exactly what it removes and the
+  three categories it keeps (`account.py:105`: payment receipts, security and
+  admin records, shared-studio content) — not "everything." (Corrected
+  2026-11-11: until then this line said no self-serve deletion existed.)
 - No "we never share data with AI providers" — the AI routes send event
   context to Anthropic / OpenAI under server-owned prompts (`routers/ai.py`),
   and the draft says so.

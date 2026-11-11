@@ -79,11 +79,40 @@ Whichever rule is chosen, the following apply:
 - **We refund to the original payment method**, through Stripe. Stripe
   typically posts a refund within 5–10 business days; the timing after that is
   your card issuer's.
-- **A refunded pass is revoked.** The event returns to the free tier; nothing
-  you planned is deleted, and you can buy the pass again later.
-  ⟶ `event_passes` server record; the app re-checks it, `passEntitlement.js`
+- **A full refund revokes the pass.** The event returns to the free tier;
+  nothing you planned is deleted. ⟶ `stripe_payments.py:575-578` (only once
+  Stripe marks the charge fully refunded), `:661-694` (`pass_payment_blocks`,
+  `supabase/migrations/020_pass_payment_revocations.sql`); the app re-checks
+  the server record, `passEntitlement.js`
+- **A partial refund keeps the pass.** If we refund part of the price, the
+  event keeps everything the pass unlocked. ⟶ `stripe_payments.py:575-576`
+  (owner ruling, November 5)
+- **A refunded event cannot buy the pass again at checkout.** Checkout refuses
+  any event with a recorded purchase and points you to us instead; write to
+  events@noguessworksystems.com if you want the pass back on that event.
+  ⟶ `stripe_payments.py:306-315`
 - **One refund per pass.** A pass that has been refunded cannot be refunded a
   second time.
+
+> **COUNSEL — where the rule choice meets the code** (the code behaves the
+> same whichever option is picked):
+> - **Partial refunds keep the pass.** Under Option A ("not used to share a
+>   brief"), a host who used the pass could be offered a partial refund as a
+>   goodwill middle ground and keep access; under B and C that path is not
+>   needed. Should the policy mention partial refunds at all, or leave them
+>   as a discretionary remedy?
+> - **No repurchase after a full refund.** Option C's "a second pass purchased
+>   later is final" assumes a second purchase is possible; on the same event it
+>   is not (`stripe_payments.py:306-315`), only on a different event. Confirm
+>   the wording, and whether "refund, then come back" must be handled by
+>   support by hand.
+> - **A dispute switches the pass off before it is decided**, and a won
+>   dispute does not restore it. Is that fair and adequately disclosed in §6,
+>   especially under Option B/C, where a refund would have been granted on
+>   request anyway?
+> - **"One refund per pass"** is enforced by Stripe (a fully refunded charge
+>   cannot be refunded again), not by our code — confirm the sentence needs no
+>   more.
 
 ## 4. When we refund regardless of the window
 
@@ -102,8 +131,14 @@ if the pass fell short we would like to know how.
 
 ## 6. Chargebacks
 
-If you dispute the charge with your card issuer instead of writing to us, we
-will provide Stripe with the purchase record. We would much rather refund you
+If you dispute the charge with your card issuer instead of writing to us, the
+pass is switched off as soon as Stripe tells us about the dispute — before the
+dispute is decided — and the event returns to the free tier; nothing you
+planned is deleted. If the dispute is later decided in our favor, the pass does
+not come back on its own; write to us. ⟶ `stripe_payments.py:570-574`,
+`:661-665` ("Disputes suspend access until reviewed; a later won-dispute
+notification does not silently restore it"). We will provide Stripe with the
+purchase record. We would much rather refund you
 directly — it is faster for you and cheaper for us — so please write first.
 
 ## 7. Changes

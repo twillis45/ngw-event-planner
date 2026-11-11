@@ -363,9 +363,8 @@ of your use.
 > **COUNSEL:** (a) Retention of "security and administrative records" is named
 > in code (`account.py:105`) but not itemized — confirm the description is
 > adequate. (b) What a pass holder is owed if we discontinue the service.
-> (c) The privacy draft still says deletion "is not self-serve yet"
-> (`PRIVACY_POLICY_DRAFT.md` §6) — superseded by the in-app deletion above;
-> the two must agree before either is published.
+> (c) `PRIVACY_POLICY_DRAFT.md` §6 describes the same deletion (corrected
+> 2026-11-11); the two must stay in agreement before either is published.
 
 ## 13. Changes to these terms
 
