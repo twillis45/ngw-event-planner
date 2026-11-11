@@ -15,6 +15,7 @@ import PhotoStrip from './PhotoStrip.jsx';
 import PolicyLinks from './PolicyLinks.jsx';
 import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
 import { guestSafeText } from '@app/lib/guestFacing';
+import { GUEST_DATA_NOTICE } from '@app/lib/guestDataNotice';
 import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytics';
 import { isRsvpApiConfigured, checkRsvpCapability, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
@@ -1129,6 +1130,10 @@ export default function InviteV2({ code }) {
                           <p className="inv2-fine" style={{ margin: '6px 0 0' }}>
                             The whole menu is shellfish — your host will plan you a separate plate.
                           </p>
+                          {/* Health detail handed over with no published policy yet (stage 9
+                              WO #5): say what the code makes true, at the field. One owner-
+                              approved sentence — lib/guestDataNotice. */}
+                          <p className="inv2-fine" style={{ margin: '4px 0 0' }} data-guest-data-notice="shellfish">{GUEST_DATA_NOTICE}</p>
                         </>
                       )}
                       {/* PICKERS. The crab order is the biggest cost of the whole event, and
@@ -1264,6 +1269,8 @@ export default function InviteV2({ code }) {
                           </div>
                           <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Anything else we should know about food or access"
                             value={needsOther} onChange={e => setNeedsOther(e.target.value)} aria-label="Other needs" />
+                          {/* Same notice, same constant, at the full allergy / diet / access group. */}
+                          <p className="inv2-fine" style={{ margin: '6px 0 0' }} data-guest-data-notice="needs">{GUEST_DATA_NOTICE}</p>
                         </>
                       )}
                     </>
