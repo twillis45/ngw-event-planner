@@ -2549,6 +2549,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    takes a real, bounded break instead of a greedy one. The reply stays well within
    thumb reach on a phone; it just no longer sits at the far end of a canyon. */
 .inv2-ask{ margin-top:clamp(18px,4vh,34px); padding-top:14px; }
+/* BALANCED ON THE CARD (owner, 11/11/2026). With the ask fixed above, all of the
+   fixed canvas's slack still fell to the bottom: measured 20px above the content
+   and 209–238px below it on phones, tablets, laptops and desktops. Centering the
+   column splits that slack evenly above and below; the gap above the ask stays
+   bounded, so the canyon this file records does not return. Guarded by
+   e2e/theInviteSitsBalanced.spec.mjs. */
+.inv2-sheet{ justify-content:center; }
 .inv2-countflex{ flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; min-height:0; margin:14px 0 0; }
 .inv2-dark .inv2-sheet{
   --hue:#d99a63; --hue-deep:#c9854f; --stock-ink:#e4dbc6; --stock-sub:#a89f8e;
