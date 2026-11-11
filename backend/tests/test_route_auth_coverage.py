@@ -29,6 +29,8 @@ INTENTIONALLY_PUBLIC = {
     # Public-by-design, each gated by its OWN unguessable credential
     ("GET", "/api/public/invite/{rsvp_code}"): "rsvpCode is the credential; entropy floor enforced",
     ("POST", "/api/public/rsvp/{rsvp_code}"): "same rsvpCode credential",
+    ("POST", "/api/public/rsvp/{rsvp_code}/mine"): "rsvpCode + the guest's own device key",
+    ("POST", "/api/public/rsvp/{rsvp_code}/withdraw"): "rsvpCode + the guest's own device key",
     ("GET", "/api/public/vendor-brief/{code}"): "per-brief code is the credential",
     ("POST", "/api/public/vendor-brief/{code}/confirm"): "same brief code",
     ("POST", "/messages/{message_id}/portal-respond"): "per-message portal_token is checked",

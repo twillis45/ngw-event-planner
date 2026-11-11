@@ -7336,12 +7336,14 @@ export default function HostShellV2() {
   //      roster (audit find 2026-07-08: delivery success made replies vanish).
   // THE single merge (lib/guestMerge) — extracted from App.js + this file's
   // former inline copy; both apps now consume one implementation.
-  const announceReplies = (gs, n, yesCount) => {
-    if (!n) return;
+  const announceReplies = (gs, n, yesCount, withdrawn = 0) => {
+    if (!n && !withdrawn) return;
     const kidsCount = kidsTotal(gs);
     const ask = sameGuestAskLine(event.guests, gs);
+    // A guest who deleted her reply is said plainly, never folded into "replies came in".
+    const gone = withdrawn ? (withdrawn === 1 ? 'A guest deleted their reply' : withdrawn + ' guests deleted their replies') + ', so their answers are off your list.' : '';
     patchEvent({ guests: gs, kidsCount },
-      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.' + ask,
+      (n ? n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.' + (gone ? ' ' : '') : '') + gone + ask,
       { noUndo: true, cloud: true, ...(ask ? { action: { label: 'Check', fn: () => setSheet({ kind: 'guests' }) } } : {}) }); // real replies arriving isn't a host edit to undo; they came from the account, so they go back to it
   };
   // NEVER A BLANK START TIME (host directive 2026-07-15, frictionless). The create flow already
@@ -7417,6 +7419,9 @@ export default function HostShellV2() {
           name: r.guest_name, rsvp: r.rsvp, meal: r.meal, needs: r.needs,
           plusOne: r.plus_one, plusOneMeal: r.plus_one_meal, plusOneNeeds: r.plus_one_needs,
           kids: r.kids, note: r.note, idempotencyKey: r.idempotency_key,
+          // A reply the guest deleted from her invite (11/11/2026): the merge
+          // takes the copy it made off this list.
+          withdrawn: r.withdrawn === true,
           // Structured details (2026-07-27 fix): before migration 015 the server
           // dropped these, so a remote guest's allergy answer never landed here.
           allergens: r.allergens, diets: r.diets, access: r.access,
@@ -7428,8 +7433,8 @@ export default function HostShellV2() {
           // Each reply's own time, so the merge applies a changed answer last.
           at: r.updated_at || r.submitted_at,
         }));
-        const { guests: gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], subs);
-        if (!dead) announceReplies(gs, merged + added, yesCount);
+        const { guests: gs, merged, added, yesCount, withdrawn } = mergeGuestReplies(event.guests || [], subs);
+        if (!dead) announceReplies(gs, merged + added, yesCount, withdrawn);
       } catch { /* offline or unauthorized — the local queue path still works */ }
     })();
     return () => { dead = true; };

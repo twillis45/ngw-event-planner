@@ -44,6 +44,7 @@
 //   merged   — existing rows that actually changed
 //   added    — new rows appended
 //   yesCount — guests this merge changed or added whose final rsvp === 'Yes' (once each)
+//   withdrawn — rows cleared or removed because the guest deleted her reply
 // Extracted so any caller resolving a free-text name against the guest list
 // (RSVP merge here, helper/owner-assignment resolution in
 // helperResponsibility.js) shares the exact same match rules — see the
@@ -164,9 +165,31 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
   // reply, and "K yes" is the number of those guests whose final answer is Yes
   // — the same figure the list shows.
   const changed = new Set();   // existing guests this batch changed, plus guests it added
+  let withdrawn = 0;
+  let removedAny = false;
+  const clearedRefs = new Set();   // rows a deleted reply emptied (counted as withdrawn, not as replies)
   for (const sub of ordered) {
     const full = String(sub.name || '').trim();
     if (!full) continue;
+    // A GUEST DELETED HER REPLY (11/11/2026, backend public_rsvp_withdraw). The
+    // copy this merge made of it must go too, or "delete my reply" deletes
+    // nothing the host sees. A row her reply ADDED (id g-rsvp-<key>) is removed;
+    // a row the host already had keeps its name and loses every answer.
+    if (sub.withdrawn) {
+      const own = sub.idempotencyKey ? guests.findIndex((g) => g && g.id === 'g-rsvp-' + sub.idempotencyKey) : -1;
+      if (own >= 0) { guests.splice(own, 1); withdrawn += 1; removedAny = true; continue; }
+      const wx = matchGuestIndexByName(guests, full);
+      if (wx < 0) continue;
+      const g = guests[wx];
+      const { picksCrabs: _pc, lodgingPick: _lp, ...rest } = g;
+      const cleared = {
+        ...rest, rsvp: '', meal: '—', needs: '', allergens: [], diets: [], access: [],
+        plusOne: '', plusOneMeal: '—', plusOneNeeds: '', kids: 0, address: '',
+        partyNotes: '', phone: '', email: '',
+      };
+      if (JSON.stringify(cleared) !== JSON.stringify(g)) { guests[wx] = cleared; clearedRefs.add(cleared); withdrawn += 1; }
+      continue;
+    }
     const ix = matchGuestIndexByName(guests, full);
     if (ix >= 0) {
       const g = guests[ix];
@@ -238,10 +261,28 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
   // order, a guest's older rows re-arriving flip her answer and flip it back
   // (Yes → Maybe → Yes); that is not a reply. Added guests are always news.
   const start = existingGuests || [];
-  start.forEach((g, ix) => { if (JSON.stringify(guests[ix]) !== JSON.stringify(g)) changed.add(ix); });
-  for (let ix = start.length; ix < guests.length; ix++) changed.add(ix);
+  let addedNow = added;
+  if (!removedAny) {
+    start.forEach((g, ix) => { if (JSON.stringify(guests[ix]) !== JSON.stringify(g)) changed.add(ix); });
+    for (let ix = start.length; ix < guests.length; ix++) changed.add(ix);
+  } else {
+    // A deleted reply removed a row, so positions shifted: compare each row
+    // with the starting row of the same id (same reference = untouched).
+    const was = new Map(start.filter((g) => g && g.id != null).map((g) => [g.id, JSON.stringify(g)]));
+    const kept = new Set(start);
+    let fresh = 0;
+    guests.forEach((g, ix) => {
+      if (kept.has(g)) return;
+      const before = g && g.id != null ? was.get(g.id) : undefined;
+      if (before === undefined) { fresh += 1; changed.add(ix); }
+      else if (before !== JSON.stringify(g)) changed.add(ix);
+    });
+    addedNow = fresh;
+  }
   // Only the guests THIS batch changed or added, so "N replies came in — K yes"
   // describes the same N. Rows re-arriving unchanged on every visit are not news.
   const yesCount = [...changed].filter((ix) => guests[ix] && guests[ix].rsvp === 'Yes').length;
-  return { guests, merged: changed.size - added, added, yesCount };
+  const replies = [...changed].filter((ix) => !clearedRefs.has(guests[ix])).length;
+  const mergedNow = Math.max(0, replies - addedNow);
+  return { guests, merged: mergedNow, added: addedNow, yesCount, withdrawn };
 }

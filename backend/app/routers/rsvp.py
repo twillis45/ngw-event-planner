@@ -6,10 +6,12 @@ planner-only endpoint. No direct frontend DB writes; the FastAPI service connect
 with the Postgres role from DATABASE_URL (bypasses RLS — the "service role" path),
 which is how it both resolves the event by rsvp_code and reads submissions back.
 
-Three endpoints:
+Endpoints:
   GET  /api/public/invite/{rsvp_code}     — public; resolves an event to PUBLIC
                                             display fields only (no host PII).
   POST /api/public/rsvp/{rsvp_code}       — public; upserts a guest RSVP (idempotent).
+  POST /api/public/rsvp/{rsvp_code}/mine     — public; the caller's OWN reply (code + key).
+  POST /api/public/rsvp/{rsvp_code}/withdraw — public; deletes the caller's own reply.
   GET  /api/events/{event_id}/rsvps       — planner-only; host read-back.
 
 Security model:
@@ -406,6 +408,90 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
     return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
 
 
+# ── 2b. A GUEST'S OWN REPLY: read it back, or delete it (11/11/2026) ─────────
+# The invite asks for allergies, diet rules and access needs. A guest who
+# shared them must be able to see what she sent, change it, and take it back,
+# without writing to anyone. Changing it already works: a re-submit with the
+# same idempotency_key updates her row in place (public_rsvp above). These two
+# add reading it back and deleting it.
+#
+# THE CREDENTIAL is the pair (rsvp_code, idempotency_key). The code is shared
+# by every guest of the event; the key is a random UUID minted in HER browser
+# (rsvpIdempotencyKey) and never shown to anyone, so only the device that sent
+# the reply can read or delete it. That is exactly who can already overwrite
+# it, so neither route grants anything a re-submit didn't. Another device, or a
+# cleared browser, has no key and gets the privacy policy's email route.
+#
+# DELETE IS A TOMBSTONE, NOT A MISSING ROW. The host's app copies replies into
+# its own guest list when it reads them (lib/guestMerge). A row that simply
+# vanished would leave that copy forever. So every answer is wiped and `rsvp`
+# goes NULL — no live submission can be NULL, the model requires an answer —
+# and the host's next read sees "withdrawn" and clears its copy too. The
+# guest's name is kept on the tombstone only so the host's app can find the
+# row it copied; it is a name the host already holds. Replying again from the
+# same device overwrites the tombstone with the new reply.
+class RsvpOwnKey(BaseModel):
+    idempotency_key: str = Field(..., min_length=1)
+
+
+_OWN_FIELDS = (
+    "guest_name, rsvp, meal, needs, plus_one, plus_one_meal, plus_one_needs, kids, note, "
+    "allergens, diets, access, picks_crabs, phone, email, mailing_address, lodging_pick, "
+    "submitted_at, updated_at"
+)
+
+
+@router.post("/api/public/rsvp/{rsvp_code}/mine")
+async def public_rsvp_mine(rsvp_code: str, payload: RsvpOwnKey, request: Request):
+    """Return the caller's own reply (matched on code + key), so she can change
+    it. 404 when there is none, or it was deleted. Never another guest's row."""
+    rsvp_code = (rsvp_code or "")[:MAX_CODE]
+    _enforce(request, rsvp_code, per_code=True)
+    idk = _clip(payload.idempotency_key, MAX_KEY)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if not await _resolve_event(conn, rsvp_code):
+            raise HTTPException(404, "invite not found")
+        row = await conn.fetchrow(
+            f"select {_OWN_FIELDS} from public.rsvp_submissions"
+            " where rsvp_code = $1 and idempotency_key = $2",
+            rsvp_code, idk,
+        )
+    if not row or row["rsvp"] is None:
+        raise HTTPException(404, "no reply from this device")
+    out = dict(row)
+    for k in ("submitted_at", "updated_at"):
+        if out.get(k) is not None:
+            out[k] = out[k].isoformat()
+    return {"ok": True, "reply": out}
+
+
+@router.post("/api/public/rsvp/{rsvp_code}/withdraw")
+async def public_rsvp_withdraw(rsvp_code: str, payload: RsvpOwnKey, request: Request):
+    """Delete the caller's own reply: wipe every answer and mark it withdrawn.
+    Idempotent: deleting twice, or deleting nothing, still answers ok."""
+    rsvp_code = (rsvp_code or "")[:MAX_CODE]
+    _enforce(request, rsvp_code, per_code=True)
+    idk = _clip(payload.idempotency_key, MAX_KEY)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if not await _resolve_event(conn, rsvp_code):
+            raise HTTPException(404, "invite not found")
+        row = await conn.fetchrow(
+            """update public.rsvp_submissions set
+                 rsvp = null, meal = null, needs = null,
+                 plus_one = null, plus_one_meal = null, plus_one_needs = null,
+                 kids = 0, note = null,
+                 allergens = null, diets = null, access = null, picks_crabs = null,
+                 phone = null, email = null, mailing_address = null, lodging_pick = null,
+                 updated_at = now()
+               where rsvp_code = $1 and idempotency_key = $2
+               returning id""",
+            rsvp_code, idk,
+        )
+    return {"ok": True, "withdrawn": bool(row)}
+
+
 # ── Planner read authz — event_owners + studio_members ───────────────────────
 async def _assert_event_studio_read(conn, event_id: str, principal: dict) -> None:
     """Authorize a planner to read an event's RSVPs.
@@ -504,4 +590,6 @@ async def list_rsvps(
                order by submitted_at desc""",
             event_id,
         )
-        return [dict(r) for r in rows]
+        # A NULL answer is a guest-deleted reply (public_rsvp_withdraw): say so
+        # outright, so the host's app clears the copy it made of it.
+        return [{**dict(r), "withdrawn": r["rsvp"] is None} for r in rows]
