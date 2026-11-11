@@ -140,6 +140,9 @@ export const BRAND = Object.freeze({
   short: 'No Guesswork',
   caps: 'NO GUESSWORK EVENTS',
   company: 'No Guesswork Systems LLC',
+  // Where a host reaches a person (owner decision, 11/11/2026). One place, so
+  // every "email us" in the app names the same inbox.
+  support: 'events@noguessworksystems.com',
   // Two stacked lines, big type. Joining them with a space must equal `full`,
   // and a test asserts exactly that — the split is a typographic decision, not
   // a second copy of the name.
