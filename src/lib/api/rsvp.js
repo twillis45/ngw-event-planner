@@ -113,6 +113,49 @@ export async function submitRsvp(code, payload) {
   return result; // { ok, submitted_at }
 }
 
+// ── Public: a guest's OWN reply — read it back, or delete it (11/11/2026) ───────
+// The credential is the invite code plus the key this browser minted when the
+// guest first replied (rsvpIdempotencyKey). No key on this device = no reply to
+// read or delete here; callers check existingRsvpKey first.
+//   fetchMyRsvp   → the reply row, or null (none, deleted, or unreachable)
+//   withdrawRsvp  → resolves when the server confirmed; throws otherwise
+export function existingRsvpKey(eventKey) {
+  try { return localStorage.getItem(`ngw-rsvp-idemp-${eventKey}`) || null; } catch { return null; }
+}
+
+export async function fetchMyRsvp(code, idempotencyKey) {
+  if (!BASE || !code || !idempotencyKey) return null;
+  try {
+    const res = await fetch(`${BASE}/api/public/rsvp/${encodeURIComponent(code)}/mine`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idempotency_key: idempotencyKey }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data && data.ok && data.reply) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function withdrawRsvp(code, idempotencyKey) {
+  if (!BASE) throw new Error('RSVP API not configured');
+  const res = await fetch(`${BASE}/api/public/rsvp/${encodeURIComponent(code)}/withdraw`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idempotency_key: idempotencyKey }),
+  });
+  if (!res.ok) {
+    const e = new Error(`withdrawRsvp ${res.status}`);
+    e.status = res.status;
+    throw e;
+  }
+  const result = await res.json();
+  if (!result || result.ok !== true) throw new Error('Delete was not accepted');
+  return result; // { ok, withdrawn }
+}
+
 // ── Planner: host read-back ───────────────────────────────────────────────────
 // Returns the array of submissions, or [] when not configured / errored. NEVER
 // throws — the host UI keeps the existing local-queue merge for same-browser dev.

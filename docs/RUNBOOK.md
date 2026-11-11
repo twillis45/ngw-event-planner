@@ -126,16 +126,31 @@ turn auto-deploy off in the service settings for the duration, and back on
 after the fix merges.
 
 **3. Payments: stop selling** (seconds, no deploy). Render → `ngw-events-api` →
-Environment → remove `STRIPE_SECRET_KEY` and save (Render restarts the
-service). Checkout then refuses with a 503, `/api/capabilities` reports Stripe
-off, and the pass sheet stops offering the button. Passes already bought stay
-held: entitlements live in `event_passes`, not in Stripe. To also pause
-webhook delivery: Stripe Dashboard → Developers → Webhooks → the
+Environment → set `PASS_SALES_PAUSED=1` and save (Render restarts the service).
+New pass checkouts then refuse with a 503 ("Pass sales are paused."), and
+`/api/capabilities` reports `pass_sales_paused: true` and
+`stripe_can_honour_purchases: false`, so the pass sheet drops the buy button
+and says "Pass sales are paused right now" with the support address. Check it
+without a login: `curl -s https://<api-host>/api/capabilities`. Everything
+else keeps working: the webhook still grants a pass paid just before the pause,
+`GET /api/stripe/pass` and refunds still work, passes already bought stay held
+(entitlements live in `event_passes`, not in Stripe), and **the vendor-brief
+gate stays on**, so an unpaid event still cannot share a brief with a second
+vendor. To resume, set it to `0` (or delete it) and save. Planner fee checkouts
+(`create-checkout-session`) are not covered by this flag.
+
+To also pause webhook delivery: Stripe Dashboard → Developers → Webhooks → the
 `…/api/stripe/webhook` destination → Disable. Stripe retries a failed delivery
 for up to 3 days, so after re-enabling, resend any failed events from the same
 screen. The client's pass locks are set at build time
 (`REACT_APP_BILLING_LIVE`) and stay until that variable is unset and the site
 redeployed (layer 1).
+
+**Last resort, only if the flag cannot be set:** remove `STRIPE_SECRET_KEY`
+and save. That also stops every Stripe call (all checkouts 503,
+`/api/capabilities` reports Stripe off), **and it turns off the vendor-brief
+gate**: `vendor_brief._billing_live()` reads false, so every vendor brief
+becomes free on every event until the key is restored.
 
 **4. Database: there is no down migration.** Migrations are forward-only. A bad
 schema change is fixed by a new migration, or by restoring a backup (§B below:
@@ -219,6 +234,8 @@ date and what you saw), the matching checkbox on
 (`s5-rls`, `s5-backup`, `s5-rate`), and one line in `HANDOFF.md`. Three
 places, one fact, same edit — the gate artifact's own corrections record what
 happens when the done line and the open line are updated separately.
+
+**One-pass pack:** `docs/attestation/OWNER_STEPS.md` covers A–D plus alerting in six steps, with one read-only script (`docs/attestation/PRODUCTION_ATTESTATION.sql`) for every database-side check.
 
 ### A — RLS is actually applied (two minutes, and it is a query, not an eyeball)
 

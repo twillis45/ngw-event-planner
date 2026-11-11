@@ -15,8 +15,9 @@ import PhotoStrip from './PhotoStrip.jsx';
 import PolicyLinks from './PolicyLinks.jsx';
 import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
 import { guestSafeText } from '@app/lib/guestFacing';
+import { GUEST_DATA_NOTICE } from '@app/lib/guestDataNotice';
 import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytics';
-import { isRsvpApiConfigured, checkRsvpCapability, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
+import { isRsvpApiConfigured, checkRsvpCapability, submitRsvp, rsvpIdempotencyKey, existingRsvpKey, fetchMyRsvp, withdrawRsvp, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
@@ -353,6 +354,53 @@ export default function InviteV2({ code }) {
   const [shareState, setShareState] = useState('');
   const [shareError, setShareError] = useState('');
   const shareTimer = useRef(null);
+  // ── A GUEST'S OWN REPLY: change it or delete it (11/11/2026) ─────────────
+  // This device's key (minted when she first replied) is the only credential,
+  // so a returning guest on the same phone sees what she sent and can change
+  // or delete it. Another device has no key and sees the blank form.
+  const [deleteAsk, setDeleteAsk] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteNote, setDeleteNote] = useState('');   // '' | 'done' | 'failed'
+  const restoredRef = useRef('');
+  const fillFromReply = (r) => {
+    const list = (v) => (Array.isArray(v) ? v.filter(Boolean) : []);
+    const al = list(r.allergens), di = list(r.diets), ac = list(r.access);
+    const structured = new Set([...al, ...di, ...ac]);
+    const other = String(r.needs || '').split(',').map((x) => x.trim()).filter((x) => x && !structured.has(x)).join(', ');
+    setGuestName(r.guest_name || ''); setRsvp(r.rsvp || '');
+    setMeal(MEALS.includes(r.meal) ? r.meal : 'Standard');
+    setAllergensSel(al); setRulesSel(di); setAccessSel(ac); setNeedsOther(other);
+    setNeedsOpen(!!(al.length || di.length || ac.length || other));
+    setHasPlusOne(!!r.plus_one); setPlusOne(r.plus_one || '');
+    setPlusOneMeal(MEALS.includes(r.plus_one_meal) ? r.plus_one_meal : 'Standard'); setPlusOneNeeds(r.plus_one_needs || '');
+    setKids(Number(r.kids) || 0);
+    setPicksCrabs(typeof r.picks_crabs === 'boolean' ? r.picks_crabs : null);
+    setLodgingPick(r.lodging_pick || ''); setNote(r.note || ''); setMailingAddress(r.mailing_address || '');
+    setContactPhone(r.phone || ''); setContactEmail(r.email || '');
+  };
+  const clearReplyForm = () => {
+    setGuestName(''); setRsvp(''); setMeal('Standard'); setAllergensSel([]); setRulesSel([]); setAccessSel([]);
+    setNeedsOther(''); setNeedsOpen(false); setHasPlusOne(false); setPlusOne(''); setPlusOneMeal('Standard');
+    setPlusOneNeeds(''); setKids(0); setPicksCrabs(null); setLodgingPick(''); setNote(''); setMailingAddress('');
+    setContactPhone(''); setContactEmail('');
+  };
+  useEffect(() => {
+    const ev = resolved && resolved.event;
+    if (!ev || !code || !isRsvpApiConfigured()) return undefined;
+    const tag = ev.id + ':' + code;
+    if (restoredRef.current === tag) return undefined;
+    restoredRef.current = tag;
+    const idk = existingRsvpKey(tag);
+    if (!idk) return undefined;
+    let live = true;
+    fetchMyRsvp(code, idk).then((r) => {
+      if (!live || !r || !r.rsvp) return;
+      fillFromReply(r);
+      setQueued(false); setSubmitted(true);
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolved, code]);
   useEffect(() => {
     const ev = resolved && resolved.event;
     if (!ev || viewedRef.current === code) return;
@@ -653,7 +701,7 @@ export default function InviteV2({ code }) {
       try { if (missingName && nameRef.current) nameRef.current.focus(); } catch { /* no focus */ }
       return;
     }
-    setErr(''); setNameInvalid(false); setAttendInvalid(false);
+    setErr(''); setNameInvalid(false); setAttendInvalid(false); setDeleteNote('');
     const parts = fullName.split(/\s+/);
     const payload = {
       name: fullName, firstName: parts[0], lastName: parts.slice(1).join(' '),
@@ -732,6 +780,33 @@ export default function InviteV2({ code }) {
     // Behavioural only — the guest's name, meal and notes never ride along.
     try { trackInvite(INVITE_EVENTS.INVITE_RSVP_SUBMITTED, { rsvp: payload.rsvp, delivered, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a reply */ }
     try { if (navigator.vibrate) navigator.vibrate([12, 70, 12]); } catch { /* no haptics */ }
+  };
+
+  // Delete her reply: the server wipes every answer (and the host's app takes
+  // its copy off the list on its next read); this device forgets it too. Only
+  // a confirmed delete says "deleted".
+  const deleteReply = async () => {
+    if (deleting) return;
+    const tag = event.id + ':' + code;
+    const idk = existingRsvpKey(tag);
+    setDeleting(true); setDeleteNote('');
+    let ok = false;
+    if (isRsvpApiConfigured() && idk) {
+      try { await withdrawRsvp(code, idk); ok = true; } catch { ok = false; }
+    } else {
+      ok = true;   // never left this device: forgetting it here is the whole delete
+    }
+    if (ok) {
+      try {
+        const key = 'ngw-rsvp-queue-' + event.id;
+        const q = JSON.parse(localStorage.getItem(key) || '[]');
+        const rest = (Array.isArray(q) ? q : []).filter((e) => e.idempotencyKey !== idk);
+        if (rest.length) localStorage.setItem(key, JSON.stringify(rest)); else localStorage.removeItem(key);
+      } catch { /* nothing stored here */ }
+      clearReplyForm(); setDeleteAsk(false); setSubmitted(false); setQueued(false);
+    }
+    setDeleteNote(ok ? 'done' : 'failed');
+    setDeleting(false);
   };
 
   // "I'm in" forward — the guest recruits the next guest with the SAME link.
@@ -1061,6 +1136,7 @@ export default function InviteV2({ code }) {
               </div>
             ) : !submitted ? (
               <div {...rv('inv2-ask')}>
+                {deleteNote === 'done' && <p className="grounding" role="status" data-reply-deleted style={{ margin: '0 0 10px' }}>Your reply is deleted. Your host’s list drops it the next time they open their plan. You can reply again below.</p>}
                 {/* THE ONE ASK — attendance alone; everything else is earned */}
                 <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>The favor of a reply</div>
                 {/* REPLY IS THE PRIMARY ACTION (owner, 11/11/2026): all three on one
@@ -1129,6 +1205,10 @@ export default function InviteV2({ code }) {
                           <p className="inv2-fine" style={{ margin: '6px 0 0' }}>
                             The whole menu is shellfish — your host will plan you a separate plate.
                           </p>
+                          {/* Health detail handed over with no published policy yet (stage 9
+                              WO #5): say what the code makes true, at the field. One owner-
+                              approved sentence — lib/guestDataNotice. */}
+                          <p className="inv2-fine" style={{ margin: '4px 0 0' }} data-guest-data-notice="shellfish">{GUEST_DATA_NOTICE}</p>
                         </>
                       )}
                       {/* PICKERS. The crab order is the biggest cost of the whole event, and
@@ -1228,6 +1308,8 @@ export default function InviteV2({ code }) {
                               </div>
                               <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Their allergies or needs — optional"
                                 value={plusOneNeeds} onChange={e => setPlusOneNeeds(e.target.value)} aria-label="Plus-one needs" />
+                              {/* The plus-one's needs are health details too (owner, 11/11/2026). */}
+                              <p className="inv2-fine" style={{ margin: '6px 0 0' }} data-guest-data-notice="plus-one">{GUEST_DATA_NOTICE}</p>
                             </div>
                           )}
                         </>
@@ -1264,6 +1346,8 @@ export default function InviteV2({ code }) {
                           </div>
                           <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Anything else we should know about food or access"
                             value={needsOther} onChange={e => setNeedsOther(e.target.value)} aria-label="Other needs" />
+                          {/* Same notice, same constant, at the full allergy / diet / access group. */}
+                          <p className="inv2-fine" style={{ margin: '6px 0 0' }} data-guest-data-notice="needs">{GUEST_DATA_NOTICE}</p>
                         </>
                       )}
                     </>
@@ -1386,8 +1470,19 @@ export default function InviteV2({ code }) {
                 <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
                   {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Add to Google Calendar</a>}
                   {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Add to Apple Calendar</a>}
-                  <button className="mini" onClick={() => setSubmitted(false)}>Change my answer</button>
+                  <button className="mini" onClick={() => { setDeleteAsk(false); setDeleteNote(''); setSubmitted(false); }}>Change my answer</button>
+                  {!deleteAsk && <button className="mini" onClick={() => { setDeleteAsk(true); setDeleteNote(''); }}>Delete my reply</button>}
                 </div>
+                {deleteAsk && (
+                  <div role="group" aria-label="Delete your reply" data-delete-reply style={{ marginTop: 12, textAlign: 'center' }}>
+                    <p className="grounding" style={{ margin: 0 }}>Delete your reply? Your answers, including any allergies or needs, come off your host’s guest list.</p>
+                    <div className="actions-row" style={{ marginTop: 8, justifyContent: 'center' }}>
+                      <button className="mini" onClick={deleteReply} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete it'}</button>
+                      <button className="mini" onClick={() => setDeleteAsk(false)} disabled={deleting}>Keep it</button>
+                    </div>
+                  </div>
+                )}
+                {deleteNote === 'failed' && <p className="grounding" role="alert" style={{ margin: '8px 0 0', textAlign: 'center' }}>Your reply was not deleted. Check your connection and try again.</p>}
                 {replyFoot}
               </div>
             )}

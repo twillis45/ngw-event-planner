@@ -252,7 +252,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 // an amount from the caller, which is right for a planner's own fee (App.js
 // still uses it for that) and wrong for a fixed-price product. hostv2 sells one
 // thing, and `createPassSession` is the route that prices it server-side.
-import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases } from '@app/lib/stripeApi';
+import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases, passSalesPaused } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
@@ -274,7 +274,7 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
-import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
+import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
@@ -3408,6 +3408,20 @@ export default function HostShellV2() {
     refreshEventPass(eventId, { claimed: passClaimed });
   }, [eventId, passClaimed]);
 
+  // ASK THE SERVER WHAT IT CAN DO (stage 9 work order #9, 11/11/2026). The pass
+  // sheet reads `stripeCanHonourPurchases()` and `passSalesPaused()`, which only
+  // `commApi.getCapabilities()` fills — and nothing in hostv2 ever called it, so
+  // both stayed "not known" and the sheet offered checkout even when the server
+  // said it could not honour one. Once per load, only where billing is live;
+  // the tick re-renders the sheet if it is already open when the answer lands.
+  const [, setCapsTick] = useState(0);
+  useEffect(() => {
+    if (!isBillingLive() || !isCommApiConfigured()) return undefined;
+    let live = true;
+    commApi.getCapabilities().then(() => { if (live) setCapsTick((t) => t + 1); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+
 
   const switchEvent = (id) => {
     redoEventId.current = null; // moving to another event abandons any pending create correction
@@ -3951,9 +3965,9 @@ export default function HostShellV2() {
   // WHITELIST (lib/vendorBrief.js) is the ONLY thing that ever leaves the
   // host's hands; money/ops/private notes never enter the payload. Prefer a
   // short server-resolvable code (mintVendorBriefLink — VB2 Phase 1: the
-  // backend rebuilds the brief live, so the link never goes stale); fall back
-  // to the legacy frozen base64 snapshot when the API isn't configured or
-  // minting fails — sharing must never break because a backend is down. The
+  // backend rebuilds the brief live, so the link never goes stale); the
+  // legacy frozen base64 snapshot is made ONLY when the API isn't configured —
+  // a failed mint is shown as a failure, never papered over (S9-5). The
   // resulting ?vendor=TOKEN link on THIS origin is caught by main.jsx's own
   // redirect to the one real public brief page (legacy App.js) — no second
   // brief surface is ever rendered here.
@@ -3979,10 +3993,27 @@ export default function HostShellV2() {
     try { appUrl = publicAppUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return; }
     setVendorBrief({ vendorId: v.id, url: null, qrDataUrl: null, minting: true, copied: false });
+    // NO SILENT LEGACY FALLBACK (stage 9 work order #13, S9-5 option B). With
+    // the brief API configured, a failed mint used to fall through to the
+    // frozen snapshot below: the host thought a live brief had gone out — one
+    // that updates and takes confirmations — and it did neither, and the
+    // server's 402 pass gate was bypassed. Now a failed mint makes NO link,
+    // says which failure it was, offers the one next step, and is reported.
+    // Only a build with no API (local/demo) still makes the snapshot: there it
+    // is the only kind of link there is. Links already sent keep decoding —
+    // the public ?vendor= route is untouched.
     let code = null;
-    try {
-      if (isVendorBriefApiConfigured() && event.id && v.id) code = await mintVendorBriefLink(event.id, v.id);
-    } catch { code = null; }
+    if (isVendorBriefApiConfigured()) {
+      let r;
+      try { r = await mintVendorBriefLinkResult(event.id, v.id); }
+      catch { r = { ok: false, kind: 'failed', status: null }; }
+      if (!r.ok) {
+        reportFailure('brief_mint', { where: 'hostv2.vendor-brief', reason: r.kind, statusClass: mintStatusClass(r), eventId: event.id });
+        setVendorBrief(b => (b && b.vendorId === v.id) ? { vendorId: v.id, url: null, qrDataUrl: null, minting: false, copied: false, error: r.kind } : b);
+        return;
+      }
+      code = r.code;
+    }
     const brief = buildVendorBriefPayload(v, event, ros, profile);
     const token = code || b64encode(JSON.stringify(brief));
     const url = appUrl + '?vendor=' + token;
@@ -7305,12 +7336,14 @@ export default function HostShellV2() {
   //      roster (audit find 2026-07-08: delivery success made replies vanish).
   // THE single merge (lib/guestMerge) — extracted from App.js + this file's
   // former inline copy; both apps now consume one implementation.
-  const announceReplies = (gs, n, yesCount) => {
-    if (!n) return;
+  const announceReplies = (gs, n, yesCount, withdrawn = 0) => {
+    if (!n && !withdrawn) return;
     const kidsCount = kidsTotal(gs);
     const ask = sameGuestAskLine(event.guests, gs);
+    // A guest who deleted her reply is said plainly, never folded into "replies came in".
+    const gone = withdrawn ? (withdrawn === 1 ? 'A guest deleted their reply' : withdrawn + ' guests deleted their replies') + ', so their answers are off your list.' : '';
     patchEvent({ guests: gs, kidsCount },
-      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.' + ask,
+      (n ? n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.' + (gone ? ' ' : '') : '') + gone + ask,
       { noUndo: true, cloud: true, ...(ask ? { action: { label: 'Check', fn: () => setSheet({ kind: 'guests' }) } } : {}) }); // real replies arriving isn't a host edit to undo; they came from the account, so they go back to it
   };
   // NEVER A BLANK START TIME (host directive 2026-07-15, frictionless). The create flow already
@@ -7386,6 +7419,9 @@ export default function HostShellV2() {
           name: r.guest_name, rsvp: r.rsvp, meal: r.meal, needs: r.needs,
           plusOne: r.plus_one, plusOneMeal: r.plus_one_meal, plusOneNeeds: r.plus_one_needs,
           kids: r.kids, note: r.note, idempotencyKey: r.idempotency_key,
+          // A reply the guest deleted from her invite (11/11/2026): the merge
+          // takes the copy it made off this list.
+          withdrawn: r.withdrawn === true,
           // Structured details (2026-07-27 fix): before migration 015 the server
           // dropped these, so a remote guest's allergy answer never landed here.
           allergens: r.allergens, diets: r.diets, access: r.access,
@@ -7397,8 +7433,8 @@ export default function HostShellV2() {
           // Each reply's own time, so the merge applies a changed answer last.
           at: r.updated_at || r.submitted_at,
         }));
-        const { guests: gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], subs);
-        if (!dead) announceReplies(gs, merged + added, yesCount);
+        const { guests: gs, merged, added, yesCount, withdrawn } = mergeGuestReplies(event.guests || [], subs);
+        if (!dead) announceReplies(gs, merged + added, yesCount, withdrawn);
       } catch { /* offline or unauthorized — the local queue path still works */ }
     })();
     return () => { dead = true; };
@@ -17842,6 +17878,18 @@ export default function HostShellV2() {
                     && stripeCanHonourPurchases() !== false;
                 } catch { return false; }
               })();
+              // ── SALES PAUSED (PASS_SALES_PAUSED, stage 9 work order #9) ─────
+              // The backend's stop-selling lever turns canCharge false, which on
+              // its own would fall through to "Free while … in preview" — untrue
+              // when billing IS live and only new sales are stopped. Same live
+              // gates as canCharge, so a real preview build still says preview.
+              const salesPaused = (() => {
+                try {
+                  return isStripeApiConfigured()
+                    && process.env.REACT_APP_BILLING_LIVE === '1'
+                    && passSalesPaused() === true;
+                } catch { return false; }
+              })();
               // ── NEVER OFFER TO SELL SOMETHING THIS EVENT ALREADY OWNS ──────
               // `canCharge` answers "may this deployment take money", which is
               // not the same question as "does this host owe any". Until
@@ -17902,6 +17950,11 @@ export default function HostShellV2() {
                       { label: 'Email us', fn: () => { try { window.location.href = 'mailto:' + BRAND.support + '?subject=' + encodeURIComponent('One-Event Pass — ' + (event.name || 'my event')); } catch { /* the address is in the message */ } } });
                     return;
                   }
+                  // Paused after this sheet's capabilities were read: say so.
+                  if (/sales are paused/i.test(why)) {
+                    toast('Pass sales are paused right now. Nothing was charged. Questions: ' + BRAND.support);
+                    return;
+                  }
                   if (/authentication required/i.test(why)) {
                     toast('You’re not signed in on this browser — sign in, then get the pass. Nothing was charged.', { label: 'Sign in', fn: () => setSheet({ kind: 'settings' }) });
                     return;
@@ -17952,6 +18005,11 @@ export default function HostShellV2() {
                           with Stripe" — when only the event's own record claims
                           it, that sentence would be inventing a confirmation. */}
                       <p className="grounding" style={{ margin: 0 }}>Every vendor brief and the full destination toolkit are unlocked here. Nothing more to pay on this event — the pass covers it.</p>
+                    </div>
+                  ) : salesPaused ? (
+                    <div className="brow" style={{ borderTop: 'none', background: 'var(--steel-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
+                      <p className="f-name" style={{ margin: '0 0 2px' }}>Pass sales are paused right now</p>
+                      <p className="grounding" style={{ margin: 0 }}>Nothing can be charged at the moment. Questions: <a href={'mailto:' + BRAND.support}>{BRAND.support}</a></p>
                     </div>
                   ) : canCharge && !eventIsSyncable ? (
                     // A SAMPLE CAN'T BE BOUGHT (live smoke test, 11/9/2026): after an
@@ -23418,7 +23476,7 @@ export default function HostShellV2() {
                                       const val = validateFile(file); if (!val.ok) { toast(val.error || 'That file won’t work.'); e.target.value = ''; return; }
                                       setContractUploading(m => ({ ...m, [v.id]: true }));
                                       try {
-                                        const r = await uploadFile({ file, eventId: event.id || 'unknown', category: inferCategory(file), userId: (profile && profile.id) || 'anon' });
+                                        const r = await uploadFile({ file, eventId: event.id || 'unknown', category: inferCategory(file), userId: (session && session.user && session.user.id) || null });
                                         if (r && r.ok) writeVendor(v.id, { contractStoragePath: r.path, contractFileName: file.name, contractUrl: r.url }, file.name + ' attached — the paper trail’s clean.');
                                         else toast((r && r.error) || 'Upload failed — try again.');
                                       } catch { toast('Upload failed — try again.'); }
@@ -23525,6 +23583,27 @@ export default function HostShellV2() {
                             <div style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
                               {vendorBrief.minting ? (
                                 <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
+                              ) : vendorBrief.error ? (
+                                // A failed mint: no link was made, and nothing
+                                // here pretends one was. One honest next step.
+                                <div role="alert" data-brief-error={vendorBrief.error}>
+                                  <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>
+                                    {vendorBrief.error === 'pass-required'
+                                      ? 'Sharing this brief takes the One-Event Pass. No link was made.'
+                                      : vendorBrief.error === 'signed-out'
+                                        ? 'You’re not signed in on this browser — sign in to share the brief. No link was made.'
+                                        : 'Couldn’t create the brief link. Try again.'}
+                                  </p>
+                                  <div className="actions-row">
+                                    {vendorBrief.error === 'pass-required' ? (
+                                      <button className="mini" onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass</button>
+                                    ) : vendorBrief.error === 'signed-out' ? (
+                                      <button className="mini" onClick={() => setSheet({ kind: 'settings' })}>Sign in</button>
+                                    ) : (
+                                      <button className="mini" onClick={() => shareVendorBrief(v)}>Try again</button>
+                                    )}
+                                  </div>
+                                </div>
                               ) : (
                                 <>
                                   <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)', wordBreak: 'break-all' }}>{vendorBrief.url}</p>

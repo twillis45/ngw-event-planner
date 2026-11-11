@@ -76,6 +76,10 @@ PUBLIC = {
     # Guest RSVP: guests never have accounts; the rsvp code is the credential.
     "GET /api/public/invite/{rsvp_code}": "guest-facing; code is the credential",
     "POST /api/public/rsvp/{rsvp_code}": "guest-facing; code is the credential",
+    # A guest's OWN reply: the code plus the random key minted in her browser is
+    # the credential, matched in the WHERE clause (test_rsvp_guest_owns_reply).
+    "POST /api/public/rsvp/{rsvp_code}/mine": "guest's own reply; code + device key in body",
+    "POST /api/public/rsvp/{rsvp_code}/withdraw": "guest's own reply; code + device key in body",
     # portal-respond: the portal_token in the BODY is the credential, matched
     # against metadata.portal_token stamped on the approval_request message.
     "POST /api/events/{event_id}/communication/messages/{message_id}/portal-respond":

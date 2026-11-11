@@ -9,7 +9,7 @@
 // The planner token is a TEMPORARY dev gate (matches backend PLANNER_DEV_TOKEN)
 // until Supabase Auth is wired. It is sent as X-Planner-Token.
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { setStripeConfigured, setStripeCanHonourPurchases } from './stripeApi';
+import { setStripeConfigured, setStripeCanHonourPurchases, setPassSalesPaused } from './stripeApi';
 
 const BASE  = process.env.REACT_APP_API_BASE_URL;
 const TOKEN = process.env.REACT_APP_PLANNER_TOKEN; // transition fallback only
@@ -96,6 +96,10 @@ export const getCapabilities = async () => {
       // redeployed yet.
       if (typeof data.stripe_can_honour_purchases === 'boolean') {
         setStripeCanHonourPurchases(data.stripe_can_honour_purchases);
+      }
+      // Same rule: an older backend without the key leaves it `null`.
+      if (typeof data.pass_sales_paused === 'boolean') {
+        setPassSalesPaused(data.pass_sales_paused);
       }
       return data;
     } catch {

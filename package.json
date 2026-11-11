@@ -44,7 +44,8 @@
     "verify:push": "node scripts/verify-all.mjs handoff knowledge unit seam release cra",
     "handoff:check": "node scripts/handoff-freshness.mjs",
     "handoff:stamp": "node scripts/handoff-freshness.mjs --stamp",
-    "coverage:honesty": "node scripts/coverage-honesty.mjs"
+    "coverage:honesty": "node scripts/coverage-honesty.mjs",
+    "policies:publish": "node scripts/publish-policies.mjs"
   },
   "eslintConfig": {
     "extends": "react-app"

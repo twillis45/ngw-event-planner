@@ -2,6 +2,15 @@
 
 Welcome. Thanks for agreeing to help test NGW Event Boss in alpha.
 
+> **For Todd: owner-run kits (not for testers)**
+>
+> - `UAT_KIT.md`: recruiting, consent, the one-page facilitator script, and
+>   filing for the two first-time-user sessions (`UAT-1`, recertification §17).
+> - `UAT_SESSION_LOG_TEMPLATE.md`: the per-session log, severity triage, and
+>   the summary block the stage 9 board reads. Copy it once per tester.
+> - `KILL_CHECK_KIT.md`: the stage 1 kill check, asking three qualifying hosts
+>   to pay $39, with the pre-registered threshold, ask script, and result table.
+
 **Plain language: this is rough on purpose.** It works end-to-end for the
 core flows, but things will break, surprise you, or feel half-finished. That's
 the trade we're making — early access in exchange for honest feedback while

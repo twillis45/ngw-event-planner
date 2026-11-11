@@ -96,7 +96,10 @@ describe('the six research tables specifically', () => {
 describe('no SQL file sits outside the gate', () => {
   test('every .sql file in the repo is in a scanned source', () => {
     const covered = (f) => FOLDERS.some((src) => (src.endsWith('.sql') ? f === src : f.startsWith(`${src}/`)));
-    const outside = allSql().filter((f) => !covered(f));
+    // A read-only file creates no table, so it has nothing to scan; that it
+    // cannot create one is proven by attestationSqlIsReadOnly.test.js.
+    const READ_ONLY = ['docs/attestation/PRODUCTION_ATTESTATION.sql'];
+    const outside = allSql().filter((f) => !covered(f) && !READ_ONLY.includes(f));
     // A new file here means: add it to FOLDERS (and give its tables RLS), or
     // move it into supabase/migrations where the Supabase integration applies it.
     expect(outside).toEqual([]);

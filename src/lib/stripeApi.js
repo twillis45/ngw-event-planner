@@ -43,6 +43,15 @@ let _canHonourPurchases = null;
 export const setStripeCanHonourPurchases = (v) => { _canHonourPurchases = (v === null ? null : !!v); };
 export const stripeCanHonourPurchases    = () => _canHonourPurchases;
 
+// ── SALES PAUSED (PASS_SALES_PAUSED, stage 9 work order #9) ─────────────────
+// The backend's stop-selling lever. When true, `stripe_can_honour_purchases`
+// is also false, so the buy button is already gone; this says WHY, so the
+// pass sheet can say "paused" instead of the untrue "free while in preview".
+// Same three states as above: only a confirmed `true` changes anything.
+let _passSalesPaused = null;
+export const setPassSalesPaused = (v) => { _passSalesPaused = (v === null ? null : !!v); };
+export const passSalesPaused    = () => _passSalesPaused;
+
 /**
  * Create a Stripe Checkout Session for a fee milestone.
  * Returns { url, session_id }.

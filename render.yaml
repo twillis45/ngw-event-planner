@@ -60,6 +60,13 @@ services:
       # Check it without a dashboard login: GET /api/stripe/status.
       - key: STRIPE_WEBHOOK_SECRET   # Stripe → Webhooks → endpoint signing secret (whsec_...)
         sync: false                  #   The endpoint must subscribe checkout.session.completed.
+      # The stop-selling lever (RUNBOOK Rollback layer 3). Not a secret: "1"
+      # refuses NEW One-Event Pass checkouts and hides the buy button; unset or
+      # "0" (the default) sells. Unlike removing STRIPE_SECRET_KEY it leaves the
+      # vendor-brief gate on. sync:false so a Blueprint sync never resets a
+      # pause set in the dashboard.
+      - key: PASS_SALES_PAUSED
+        sync: false
       # Resend's own webhook verification (Svix HMAC-SHA256). config.py: "If
       # unset, verification is skipped (dev/testing only — set this in
       # production)." Same shape as the Stripe secret above, and it was missing

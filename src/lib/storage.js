@@ -39,6 +39,20 @@ export function validateFile(file) {
   return { ok: true };
 }
 
+// The bucket accepts only ALLOWED_TYPES (migration 022). Some browsers report
+// an empty or vague type for a file validateFile accepted by its extension
+// (HEIC especially), so name the type from the extension in that case.
+const TYPE_BY_EXT = {
+  pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  webp: 'image/webp', heic: 'image/heic', doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+export function contentTypeFor(file) {
+  if (file && ALLOWED_TYPES.includes(file.type)) return file.type;
+  const ext = String((file && file.name) || '').split('.').pop().toLowerCase();
+  return TYPE_BY_EXT[ext] || (file && file.type) || 'application/octet-stream';
+}
+
 /** Build the storage path for a file */
 function buildPath(userId, eventId, category, filename) {
   // Sanitize filename — no directory traversal
@@ -56,6 +70,9 @@ export async function uploadFile({ file, eventId, category = 'other', userId }) 
 
   const validation = validateFile(file);
   if (!validation.ok) return { ok: false, error: validation.error };
+  // Files live under the uploader's own id, and the bucket refuses anyone
+  // signed out (migration 022). Say that instead of a bare "upload failed".
+  if (!userId || userId === 'anon') return { ok: false, error: 'Sign in to attach files.' };
 
   const path = buildPath(userId || 'anon', eventId, category, file.name);
 
@@ -64,8 +81,10 @@ export async function uploadFile({ file, eventId, category = 'other', userId }) 
       .from(BUCKET)
       .upload(path, file, {
         cacheControl: '3600',
-        upsert: true,   // allow re-upload of the same filename
-        contentType: file.type || 'application/octet-stream',
+        // Never overwrite: every path carries a timestamp, so a conflict would
+        // mean a different file, and the bucket grants no UPDATE (022).
+        upsert: false,
+        contentType: contentTypeFor(file),
       });
 
     if (error) {

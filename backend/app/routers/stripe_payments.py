@@ -44,6 +44,7 @@ from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel, Field
 from typing import Optional
 from ..config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+from .. import config
 from ..auth import require_planner, require_fee_planner
 from ..app_origins import is_app_redirect
 from ..db import get_pool
@@ -124,6 +125,12 @@ async def _studio_for_event(conn, event_id: str, principal: dict) -> str:
 
 def _configured() -> bool:
     return bool(STRIPE_SECRET_KEY)
+
+
+def pass_sales_paused() -> bool:
+    """PASS_SALES_PAUSED, read at call time so a test can flip it. Stops NEW
+    pass checkouts only — see config.py for what it deliberately leaves alone."""
+    return bool(config.PASS_SALES_PAUSED)
 
 
 @router.get("/status")
@@ -288,6 +295,12 @@ async def create_pass_session(
     # the _configured() check an anonymous caller learns whether this deployment
     # has Stripe wired.
     principal = await require_planner(authorization, x_planner_token)
+
+    # THE STOP-SELLING LEVER (PASS_SALES_PAUSED). Before the Stripe check so a
+    # paused deployment answers "paused", not "not configured". The vendor-brief
+    # gate is keyed on the Stripe keys, not on this, so unpaid briefs stay blocked.
+    if pass_sales_paused():
+        raise HTTPException(status_code=503, detail="Pass sales are paused.")
 
     if not _configured():
         raise HTTPException(
