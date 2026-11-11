@@ -41,6 +41,7 @@ from pydantic import BaseModel, Field
 
 from ..db import get_pool
 from ..auth import require_planner
+from .. import config
 from .rsvp import _assert_event_studio_read, _client_ip
 
 router = APIRouter(tags=["vendor-brief"])
@@ -210,6 +211,10 @@ async def mint_vendor_brief_link(
         if existing:
             return {"ok": True, "code": existing}
 
+        blocked = await _brief_blocked_reason(conn, event_id, payload.vendor_id, _event_data(row))
+        if blocked:
+            raise HTTPException(402, {"reason": blocked, "detail": "Sharing this brief takes the One-Event Pass."})
+
         code = _mint_code()
         # The partial unique index makes a concurrent double-mint race safe: the
         # loser hits the conflict and returns the winner's code.
@@ -230,6 +235,52 @@ async def mint_vendor_brief_link(
         if not winner:
             raise HTTPException(500, "could not mint brief link")
         return {"ok": True, "code": winner}
+
+
+# ── THE PASS, ENFORCED WHERE THE LINK IS MADE (S9-5, 11/11/2026) ───────────────
+# The One-Event Pass was enforced only in the browser (lib/passGate.briefAllowed):
+# any signed-in caller could POST here and get a live brief link for every
+# vendor on a free event. This mirrors briefAllowed's order, trusting only what
+# the server owns for an ALLOW (its own event_passes and vendor_brief_links
+# rows) and using the event blob only to BLOCK:
+#   billing not live (Stripe can't honour purchases) → allowed, as in the client
+#   the event holds an unblocked pass                → allowed
+#   this vendor already has a link (caller checks)   → allowed, never mid-conversation
+#   the event is stamped pass-required (door 2/3)    → 402
+#   a DIFFERENT vendor already holds a brief (door 1)→ 402
+#   otherwise                                        → allowed, the free first brief
+# What this cannot close: the legacy self-contained brief URL (the brief encoded
+# in the link, no server involved). The client falls back to it when minting
+# fails, and anyone can construct one. Only the LIVE, server-resolved link — the
+# one that updates and takes vendor confirmations — is gated here.
+def _billing_live() -> bool:
+    return bool(config.STRIPE_SECRET_KEY and config.STRIPE_WEBHOOK_SECRET)
+
+
+async def _brief_blocked_reason(conn, event_id: str, vendor_id: str, data: dict) -> Optional[str]:
+    if not _billing_live():
+        return None
+    held = await conn.fetchval(
+        """select 1 from public.event_passes p where p.event_id=$1
+              and not exists (select 1 from public.pass_payment_blocks b
+                              where b.stripe_payment_intent=p.stripe_payment_intent)
+            limit 1""",
+        event_id,
+    )
+    if held:
+        return None
+    if data.get("passRequired") is True:
+        return "pass-required"
+    linked = await conn.fetch(
+        """select distinct vendor_id from public.vendor_brief_links
+             where event_id=$1 and vendor_id<>$2""",
+        event_id, vendor_id,
+    )
+    shared = data.get("briefSharedVendorIds")
+    shared = [x for x in shared if x and x != vendor_id] if isinstance(shared, list) else []
+    if linked or shared:
+        return "second-vendor"
+    return None
 
 
 # ── 2. GET /api/public/vendor-brief/{code} — PUBLIC live brief resolver ────────
