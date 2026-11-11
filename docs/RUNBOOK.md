@@ -220,6 +220,8 @@ date and what you saw), the matching checkbox on
 places, one fact, same edit — the gate artifact's own corrections record what
 happens when the done line and the open line are updated separately.
 
+**One-pass pack:** `docs/attestation/OWNER_STEPS.md` covers A–D plus alerting in six steps, with one read-only script (`docs/attestation/PRODUCTION_ATTESTATION.sql`) for every database-side check.
+
 ### A — RLS is actually applied (two minutes, and it is a query, not an eyeball)
 
 1. Supabase dashboard → your project → **SQL Editor** → new query. Paste:
