@@ -255,7 +255,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
-import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
+import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
 import { commApi, isCommApiConfigured } from '@app/lib/commApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
@@ -904,6 +904,9 @@ const DEMO_TOOLS_ARMED = (() => {
     return localStorage.getItem('ngw-demo-tools') === '1';
   } catch { return false; }
 })();
+// The "Test — …" QA fixtures list (shelf + Search) only with the tools armed;
+// they still resolve by id either way (stage-4 P1, N2).
+const LISTED_ROSTER = listedSamples(ROSTER, DEMO_TOOLS_ARMED);
 
 // ─── SHOP / BRINGING — the spread sheet's two modes ──────────────────────────
 //
@@ -18316,7 +18319,7 @@ export default function HostShellV2() {
                     above now, including the ones minted on this device, so
                     nothing here belongs to anybody. Every `_custom` branch this
                     block used to carry went up with them. */}
-                {ROSTER.map((e, i) => {
+                {LISTED_ROSTER.map((e, i) => {
                   const isActive = e.id === eventId;
                   const src = e;
                   const d = daysUntil(src.date);
@@ -25775,7 +25778,7 @@ export default function HostShellV2() {
       {paletteOpen && (() => {
         const q = paletteQ.trim().toLowerCase();
         const seen = new Set();
-        const evList = [...REAL_EVENTS, ...hydratedEvents, ...ROSTER, ...customs].filter(e => e && e.id && !seen.has(e.id) && seen.add(e.id));
+        const evList = [...REAL_EVENTS, ...hydratedEvents, ...LISTED_ROSTER, ...customs].filter(e => e && e.id && !seen.has(e.id) && seen.add(e.id));
         const events = evList.map(e => ({
           kind: 'event', id: e.id,
           label: e.name || e.type || 'Event',

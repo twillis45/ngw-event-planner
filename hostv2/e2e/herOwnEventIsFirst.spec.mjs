@@ -56,8 +56,11 @@ test('PREMISE: the list really is mostly samples', async ({ page }) => {
   await openTheList(page);
   const all = await rows(page).count();
   const samples = await page.locator('.sheet .frow', { hasText: 'Sample' }).count();
-  expect(all).toBeGreaterThan(10);
-  expect(samples).toBeGreaterThan(8);
+  // 7 public samples since the six "Test — …" QA fixtures became demo-tools
+  // only (stage-4 P1, N2) — still most of the list, which is the premise.
+  expect(all).toBeGreaterThan(6);
+  expect(samples).toBeGreaterThan(5);
+  expect(samples).toBeGreaterThan(all / 2);
 });
 
 test("the host's own event comes before every sample", async ({ page }) => {
@@ -110,7 +113,7 @@ test('NEGATIVE CONTROL: no sample offers to be deleted', async ({ page }) => {
   });
 
   expect(pos.samplesAt, 'there is a Samples shelf to be below').toBeGreaterThan(-1);
-  expect(pos.sampleRows).toBeGreaterThan(8);
+  expect(pos.sampleRows).toBeGreaterThan(5);
   expect(pos.deletesAt.length, 'the host’s own event can be deleted').toBeGreaterThan(0);
   for (const d of pos.deletesAt) expect(d).toBeLessThan(pos.samplesAt);
 });
