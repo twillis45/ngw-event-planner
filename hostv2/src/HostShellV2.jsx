@@ -3686,6 +3686,7 @@ export default function HostShellV2() {
       // only after the server or Stripe has confirmed, so nothing here can
       // manufacture the claim that `passGate` falls back to.
       setCustoms(list => list.map(c => (c && c.id === paidEventId) ? { ...c, passPurchased: true } : c));
+      recordPassFunnel('purchase_confirmed', paidEventId);
       toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
     };
 

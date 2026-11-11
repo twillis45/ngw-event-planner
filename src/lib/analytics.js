@@ -157,6 +157,7 @@ export const EVENTS = {
   PASS_VERIFY_FAILED:     'pass_verify_failed',
   PASS_SHEET_VIEWED:      'pass_sheet_viewed',
   PASS_CHECKOUT_STARTED:  'pass_checkout_started',
+  PASS_PURCHASE_CONFIRMED: 'pass_purchase_confirmed', // once per event, after the server confirms
 
   // Navigation
   PAGE_VIEW:              'page_view',

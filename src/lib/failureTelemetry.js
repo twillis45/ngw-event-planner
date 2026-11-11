@@ -1,7 +1,7 @@
 // Operational failures use the existing transports, with no event content or
 // raw identifiers. Reporting is always best-effort and never blocks an action.
 import { captureError } from './sentry';
-import { track, EVENTS } from './analytics';
+import { track, trackOnce, EVENTS } from './analytics';
 
 const FAILURE_EVENTS = {
   save: EVENTS.SAVE_FAILED, provider: EVENTS.PROVIDER_FAILED, route: EVENTS.ROUTE_FAILED,
@@ -34,8 +34,20 @@ export async function reportFailure(kind, context = {}) {
   } catch { /* analytics cannot break an action */ }
 }
 
+const PASS_FUNNEL = {
+  sheet_viewed: EVENTS.PASS_SHEET_VIEWED, checkout_started: EVENTS.PASS_CHECKOUT_STARTED,
+  purchase_confirmed: EVENTS.PASS_PURCHASE_CONFIRMED,
+};
+
+// `purchase_confirmed` is called only after the server (or Stripe, for a legacy
+// receipt link) has confirmed the pass, and fires once per event per browser so
+// reopening a return link does not count a second purchase.
 export async function recordPassFunnel(stage, eventId) {
-  if (stage !== 'sheet_viewed' && stage !== 'checkout_started') return;
-  const event = stage === 'sheet_viewed' ? EVENTS.PASS_SHEET_VIEWED : EVENTS.PASS_CHECKOUT_STARTED;
-  try { await track(event, await contextFor({ eventId, where: 'hostv2.pass' })); } catch { /* observational only */ }
+  const event = PASS_FUNNEL[stage];
+  if (!event) return;
+  try {
+    const props = await contextFor({ eventId, where: 'hostv2.pass' });
+    if (stage === 'purchase_confirmed') trackOnce('ngw-pass-confirmed-' + eventId, event, props);
+    else await track(event, props);
+  } catch { /* observational only */ }
 }

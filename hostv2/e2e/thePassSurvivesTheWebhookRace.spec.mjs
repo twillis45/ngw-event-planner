@@ -262,6 +262,33 @@ test.describe('GOLD-09 — the pass entitlement reaches the shell', () => {
       'an unconfirmed return claimed the payment').toHaveLength(0);
   });
 
+  // The pass funnel's last step: pass_purchase_confirmed fires once the
+  // server confirms the pass after a checkout return, and only once per event
+  // (reopening the return link is not a second purchase); an unconfirmed
+  // return records nothing. Read from the dev tap, since this runs on
+  // localhost where PostHog is off. Written 11/11/2026, NOT YET RUN.
+  test('a confirmed return records pass_purchase_confirmed once; a reopen and an unconfirmed return do not', async ({ page }) => {
+    const confirmedSteps = () => page.evaluate(() =>
+      (window.__NGW_TRACK__ || []).filter((row) => row.event === 'pass_purchase_confirmed').length);
+    const returnUrl = `${BASE}?pass_paid=1&event_id=${encodeURIComponent(EVENT_ID)}`;
+    await stubPass(page, [true]);
+    await boot(page);
+    await page.goto(returnUrl, { waitUntil: 'load' });
+    await expect.poll(confirmedSteps, { timeout: 10_000, message: 'a confirmed return recorded no purchase step' }).toBe(1);
+    await page.goto(returnUrl, { waitUntil: 'load' });
+    await page.waitForTimeout(3000);
+    expect(await confirmedSteps(), 'reopening the return link counted a second purchase').toBe(0);
+  });
+
+  test('an unconfirmed return records no purchase step', async ({ page }) => {
+    await stubPass(page, [false, false, false]);
+    await boot(page);
+    await page.goto(`${BASE}?pass_paid=1&event_id=${encodeURIComponent(EVENT_ID)}`, { waitUntil: 'load' });
+    await page.waitForTimeout(9000);
+    const steps = await page.evaluate(() => (window.__NGW_TRACK__ || []).map((row) => row.event));
+    expect(steps).not.toContain('pass_purchase_confirmed');
+  });
+
   test('a claim the server never confirms ends revoked', async ({ page }) => {
     const asks = await stubPass(page, [false, false, false]);
     await boot(page, { event: eventFixture({ passPurchased: true }) });
