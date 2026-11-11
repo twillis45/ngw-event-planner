@@ -148,14 +148,14 @@ ALTER TABLE research_pipeline_manifests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scheduler_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE research_metrics ENABLE ROW LEVEL SECURITY;
 
--- Admin-only policies (adjust role name to match your Supabase setup)
-CREATE POLICY "admin-only" ON worker_instances FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "admin-only" ON worker_runs FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "admin-only" ON provider_check_log FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "admin-only" ON change_records FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "admin-only" ON research_pipeline_manifests FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "admin-only" ON scheduler_jobs FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "admin-only" ON research_metrics FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+-- Server-only: RLS enabled, NO policy for anon/authenticated (the posture of
+-- supabase/migrations/018). The service role bypasses RLS; nothing client-side
+-- reads these tables. This file originally created an "admin-only" policy per
+-- table that trusted the JWT's user_metadata role — a value any signed-in user
+-- can set on themselves — which granted every account full access over
+-- PostgREST. supabase/migrations/022 drops those policies wherever this file
+-- was applied. Never authorize on user_metadata here; if a client ever needs
+-- to read, use app_metadata (server-set only).
 
 -- ── Notes ──────────────────────────────────────────────────────────────────────
 -- 1. observations, evidence, findings, campaigns tables already exist (KAS pipeline)
