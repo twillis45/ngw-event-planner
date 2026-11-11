@@ -2187,8 +2187,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    lit — the resolved plan. Audio is deferred to the native port, where device
    haptics carry each stop. Supersedes the takeover cards + tile grid. */
 .rv-spinewrap{position:relative; z-index:2; display:flex; flex-direction:column; justify-content:center; min-height:100%; padding:6px 2px 2px; text-align:left}
-.rv-seyebrow{font-size:var(--t-pill); letter-spacing:3px; font-weight:600; color:var(--steel-soft); opacity:.7; margin-bottom:6px}
-.rv-sname{font-family:var(--sans); font-weight:800; font-size:clamp(24px,7cqw,30px); line-height:1.04; letter-spacing:-.03em; color:var(--ink); margin:0}
+/* The stage is carbon in BOTH themes, so its text reads fixed --carbon-* tokens,
+   never the moded --ink/--steel-soft (light painted the name at 1.01:1). The
+   eyebrow drops its .7 opacity: at .7 it was 4.09:1 even in dark. */
+.rv-seyebrow{font-size:var(--t-pill); letter-spacing:3px; font-weight:600; color:var(--carbon-steel-soft); margin-bottom:6px}
+.rv-sname{font-family:var(--sans); font-weight:800; font-size:clamp(24px,7cqw,30px); line-height:1.04; letter-spacing:-.03em; color:var(--carbon-ink); margin:0}
 .rv-ssub{margin:4px 0 0; color:#8b98a3; font-size:var(--t-body-s); font-style:italic; font-family:var(--serif)}
 
 .rv-spine-col{position:relative; margin:16px 0 2px; padding-left:26px}
@@ -2233,6 +2236,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .rv-spinewrap.resolved .rv-snode .rv-sprov{opacity:1}
 
 .rv-sground{margin-top:12px}
+.reveal-stage .cta{color:var(--carbon-ink)}
+.reveal-stage .cta.ghost{color:var(--carbon-steel-soft)}
 
 @media(prefers-reduced-motion:reduce){
   .rv-sdot,.rv-shalo,.rv-slabel,.rv-sval,.rv-sprov{transition:none!important}

@@ -13,6 +13,8 @@ const SELF_PINNED = [
   '**/aPlannedCountOutranksAShortRoster.spec.mjs',
   // Pins 390x844 (stage-4 N2, 11/11/2026).
   '**/qaFixturesAreDemoOnly.spec.mjs',
+  // Pins 390x844 (reveal text legibility, 11/11/2026): the phone-first reveal.
+  '**/revealTextLegible.spec.mjs',
   '**/heroVoid.spec.mjs',
   // Pins 320x640 in its one test (run 2, R2-12).
   '**/theCountFitsAt320.spec.mjs',
