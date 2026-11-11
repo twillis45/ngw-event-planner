@@ -680,11 +680,19 @@ async def _block_pass_payment(payment, reason: str, stripe_event_id) -> None:
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute("select pg_advisory_xact_lock(hashtextextended($1, 0))", payment_intent)
+            # A full refund is final: a later dispute (or a replayed event) must
+            # never downgrade it. Decided here, under the lock, rather than only in
+            # the SQL below, so the route's own tests exercise the rule; the fake
+            # database used to re-implement it, and deleting it from the SQL stayed
+            # green (independent red-proof, 11/11/2026). The SQL keeps it too.
+            existing = await conn.fetchval(
+                "select reason from public.pass_payment_blocks where stripe_payment_intent=$1", payment_intent)
+            final_reason = "refunded" if existing == "refunded" else reason
             await conn.execute(
                 """insert into public.pass_payment_blocks (stripe_payment_intent, reason, stripe_event_id)
                    values ($1,$2,$3) on conflict (stripe_payment_intent) do update
                    set reason=case when pass_payment_blocks.reason='refunded' then 'refunded' else excluded.reason end""",
-                payment_intent, reason, stripe_event_id,
+                payment_intent, final_reason, stripe_event_id,
             )
             await conn.execute(
                 """update public.event_passes set stripe_payment_intent=$1

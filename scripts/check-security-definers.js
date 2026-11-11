@@ -29,7 +29,12 @@ function auditDefiners(sources) {
         const prior = functions.get(key);
         functions.set(key, { key, source: name, definer: /\bsecurity\s+definer\b/i.test(create[3]),
           // CREATE OR REPLACE preserves privileges, not default PUBLIC access.
-          grants: prior ? prior.grants : new Set(['public']),
+          // A NEW function on Supabase is executable by PUBLIC *and*, through the
+          // project's default privileges, directly by anon and authenticated
+          // (018_research_tables_rls.sql says the same of tables). Starting from
+          // PUBLIC alone let a migration revoke `from public, authenticated` and
+          // pass while anon could still call it (independent red-proof, 11/11/2026).
+          grants: prior ? prior.grants : new Set(['public', 'anon', 'authenticated']),
           safePath: /\bset\s+search_path\s*=\s*pg_catalog\s*,\s*public\s*,\s*pg_temp\b/i.test(create[3]) });
         continue;
       }
