@@ -8,7 +8,7 @@
 
 **Effective:** `[OWNER: effective date]`
 **Seller:** No Guesswork Systems LLC, `[OWNER: mailing address]`
-**Questions and requests:** `[OWNER: support email]`
+**Questions and requests:** events@noguessworksystems.com ⟶ `src/lib/brand.js:145` (owner decision 11/11/2026)
 
 ---
 
@@ -94,7 +94,7 @@ timing. A broken product is not a change of mind.
 
 ## 5. How to ask
 
-Email `[OWNER: support email]` from the address on your account with the
+Email events@noguessworksystems.com from the address on your account with the
 Stripe receipt (or the last four digits of the card and the date). We answer
 within two business days and, if the request falls inside the rule above, we
 issue the refund in the same reply. You do not need to give a reason, though

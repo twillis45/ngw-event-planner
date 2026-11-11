@@ -7,7 +7,7 @@
 
 **Effective:** `[OWNER: effective date]`
 **Who we are:** No Guesswork Systems LLC (“we,” “us”), `[OWNER: mailing address]`.
-**How to reach us about privacy:** `[OWNER: support email]`.
+**How to reach us about privacy:** events@noguessworksystems.com. ⟶ `src/lib/brand.js:145` (owner decision 11/11/2026)
 
 No Guesswork Events (“the app”) helps a person plan an event — a wedding, a
 milestone birthday, a reunion — without a paid planner. This policy explains
@@ -152,7 +152,7 @@ receives. We do not send them more than the row says.
 
 ## 6. What you can ask us to do
 
-Write to `[OWNER: support email]` from the address on the account (or, for a
+Write to events@noguessworksystems.com from the address on the account (or, for a
 guest, with the invitation code you replied to) and we will, within 30 days:
 
 - **Tell you what we hold** about you and send you a copy.
@@ -208,6 +208,6 @@ change takes effect.
 - Payment happens on Stripe; we never see card numbers.
 - Analytics are minimal and opt-out; error reports carry no personal data.
 - Nothing is sold, nothing is advertised.
-- Email `[OWNER: support email]` to see, fix or delete your data.
+- Email events@noguessworksystems.com to see, fix or delete your data.
 
 **Governing law:** `[OWNER: governing state]`, United States.
