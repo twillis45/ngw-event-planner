@@ -36,8 +36,16 @@ test('the invitation card splits its spare height evenly above and below the con
   await page.waitForTimeout(600);   // past the entrance animation
 
   const m = await sheet.evaluate((s) => {
-    const r = s.getBoundingClientRect();
-    const kids = [...s.children].filter((k) => k.getBoundingClientRect().height > 0 && getComputedStyle(k).display !== 'none');
+    // At 1024 and up the card is two columns (theInviteReplyLeads.spec.mjs), and
+    // the balance that matters is the invitation inside its own column. Below
+    // that, .inv2-face has no box (display:contents) and its children are the
+    // card's column, as they always were.
+    const face = s.querySelector('.inv2-face');
+    const twoColumn = getComputedStyle(face).display !== 'contents';
+    const frame = twoColumn ? face : s;
+    const r = frame.getBoundingClientRect();
+    const inner = twoColumn ? [...face.children] : [...s.children].flatMap((k) => (k === face ? [...face.children] : [k]));
+    const kids = inner.filter((k) => k.getBoundingClientRect().height > 0 && getComputedStyle(k).display !== 'none');
     const first = kids[0].getBoundingClientRect();
     const last = kids[kids.length - 1].getBoundingClientRect();
     const ask = s.querySelector('.inv2-ask');
@@ -45,8 +53,8 @@ test('the invitation card splits its spare height evenly above and below the con
     return {
       top: first.top - r.top,
       bottom: r.bottom - last.bottom,
-      aboveAsk: ask && count ? ask.getBoundingClientRect().top - count.getBoundingClientRect().bottom : 0,
-      right: r.right, vw: window.innerWidth,
+      aboveAsk: !twoColumn && ask && count ? ask.getBoundingClientRect().top - count.getBoundingClientRect().bottom : 0,
+      right: s.getBoundingClientRect().right, vw: window.innerWidth,
     };
   });
   expect(Math.abs(m.top - m.bottom), `unbalanced: ${Math.round(m.top)}px above the content, ${Math.round(m.bottom)}px below`).toBeLessThanOrEqual(24);

@@ -2533,7 +2533,10 @@ button:disabled, .cta:disabled{ pointer-events:none; }
     linear-gradient(180deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 8%);
 }
 .inv2-sheet > *{ position:relative; z-index:1; }
-@media(max-width:699px){ .inv2-sheet{ min-height:calc(100dvh - 132px); } }
+/* The card fills the screen's height through tablet portrait (was phones only,
+   which left a 768x1024 tablet with a phone-height card and a blank lower third).
+   At 1024 and up the two-column rule below takes over. */
+@media(max-width:1023px){ .inv2-sheet{ min-height:calc(100dvh - 132px); } }
 /* Layout: .inv2-sheet is a top-aligned flex column (no justify-content) with a
    min-height, so content stacks from the top and the sheet holds its fixed
    canvas. .inv2-countflex is flex:0 0 auto with a fixed margin — a self-sized
@@ -2703,6 +2706,62 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   transition:opacity var(--ms-slow) var(--ease-standard), max-height var(--ms-slow) var(--ease-standard); }
 .inv2-more.open{ opacity:1; max-height:1400px; }
 @media (prefers-reduced-motion: reduce){ .inv2-more{ transition:none; } }
+
+/* ── THE REPLY IS THE PRIMARY ACTION (owner, 11/11/2026) ──────────────────────
+   Three outlined chips, wrapping onto two rows on a phone, weighed less than the
+   124px countdown above them. Now: one row at every width, a real 48px target,
+   and "Yes" filled until the guest picks. Once a choice is made the picked
+   button carries the selected green (rule above) and Yes drops its fill, so two
+   filled buttons never compete. A label too long for its third of the row
+   wraps INSIDE its button rather than pushing a button to a second row. */
+.inv2-face{ display:contents; }
+/* The sent state (was inline, which no breakpoint could adjust). */
+.inv2-done{ text-align:center; padding:20px 4px 8px; }
+.inv2-replies{ flex-wrap:nowrap; gap:var(--sp-2); }
+.inv2-replies .chip{ flex:1 1 0; min-width:0; min-height:48px; padding:var(--sp-2);
+  white-space:normal; line-height:1.15; text-align:center; justify-content:center; font-weight:700; }
+.inv2-replies .inv2-yes{ flex-grow:1.35; }
+.inv2-replies:not(.chosen) .inv2-yes{ background:var(--hue-deep); border-color:var(--hue-deep); color:#fff;
+  box-shadow:0 3px 10px rgba(120,60,20,.28); }
+.inv2-dark .inv2-sheet .inv2-replies:not(.chosen) .inv2-yes{ background:var(--hue); border-color:var(--hue); color:#16181b;
+  box-shadow:0 3px 10px rgba(0,0,0,.45); }
+/* Where the reply goes, and Forward, directly under the reply buttons. */
+.inv2-replyfoot{ margin-top:var(--sp-3); text-align:center; }
+.inv2-replyfoot .grounding{ margin:0; text-align:center; }
+.inv2-forward{ margin-top:var(--sp-2); justify-content:center; }
+
+/* ── FULL SCREEN AT 1024 AND UP (owner, 11/11/2026: "full screen") ────────────
+   The invite took the phone silhouette at 1280+ (a 393px card in a 1440 window)
+   and a 720px column at 1024–1279. It now fills the window, light and dark: the
+   invitation on the left, the reply on the right. The breakpoint matches
+   lib/viewport's tablet-land (InviteV2 reads it to keep the countdown full size
+   here, since it no longer sits above the reply).
+   · The left column is sticky, so opening the reply form scrolls the right
+     column while the invitation stays put — nothing on the left moves.
+   · The reply starts a fixed distance above the middle of the window rather than
+     centring, so opening the form grows it DOWNWARD: the buttons a guest just
+     tapped never jump.
+   · overflow:clip, not hidden: hidden makes the card a scroll container, and a
+     sticky child would stick to the card instead of the window. */
+@media (min-width:1024px){
+  .stagewrap.inv2-stage{ width:auto; height:100dvh; margin:0; transform:none; }
+  .inv2-stage .app{ border-radius:0; box-shadow:none; }
+  .inv2-stage .content{ max-width:none; margin:0; padding:0 0 var(--sp-7); }
+  .inv2-stage .inv2-sheet{ display:grid; grid-template-columns:minmax(0,1.3fr) minmax(400px,1fr); align-items:start;
+    min-height:100dvh; padding:0; border-radius:0; overflow:clip; }
+  .inv2-stage .inv2-face{ display:flex; flex-direction:column; justify-content:center; position:sticky; top:0;
+    min-height:100dvh; padding:clamp(32px,6vh,80px) clamp(40px,6vw,80px); }
+  .inv2-stage .inv2-ask{ margin:0; min-height:100dvh; text-align:left;
+    padding:max(48px, calc(50dvh - 9rem)) clamp(32px,4vw,80px) 48px;
+    border-left:1px solid rgba(196,178,148,.45); background:rgba(255,255,255,.3); }
+  .inv2-stage .inv2-dark .inv2-ask{ border-left-color:rgba(255,244,224,.09); background:rgba(255,255,255,.025); }
+  .inv2-stage .inv2-ask.inv2-done{ text-align:center; }
+  .inv2-stage .inv2-name{ font-size:clamp(40px,4.2vw,72px); }
+  .inv2-stage .inv2-count{ font-size:clamp(64px,5.5vw,96px); }
+  .inv2-stage .inv2-replies .chip{ min-height:56px; font-size:16px; }
+  /* Footer pieces under the full-screen card keep a readable measure. */
+  .inv2-stage .inv2 > :not(.inv2-sheet){ max-width:720px; margin-inline:auto; padding-inline:var(--sp-5); }
+}
 
 
 
