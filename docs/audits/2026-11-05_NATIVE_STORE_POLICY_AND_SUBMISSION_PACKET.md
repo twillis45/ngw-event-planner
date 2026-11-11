@@ -105,6 +105,8 @@ The current privacy draft routes deletion through `[OWNER: support email]` (docs
 
 ## 3. Draft privacy declarations, derived from the code
 
+> **Extended 11/11/2026:** field-by-field answers, deletion paths and corrections to this table are in `docs/native/STORE_PRIVACY_DECLARATIONS_DRAFT.md`. Where the two disagree, that file is newer.
+
 Code facts:
 - PostHog: `autocapture:false`, session recording disabled, identifies only by `studio_<sha256 prefix>`, has an opt-out (src/lib/analytics.js:83-123).
 - Sentry: `sendDefaultPii:false`, `tracesSampleRate:0.1`, no `setUser` (src/lib/sentry.js:18-26).
