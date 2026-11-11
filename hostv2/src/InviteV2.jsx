@@ -26,6 +26,7 @@ import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { venueFor } from '@app/lib/venueFor';
+import { useBreakpoint } from '@app/lib/viewport';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
 // ctx.eventIdentity, to choose a headline. But experienceContext imports
@@ -437,6 +438,43 @@ export default function InviteV2({ code }) {
   // async) and armed only once the event exists, so a backend-resolved invite
   // still gets the full reveal.
   const [rvOn, setRvOn] = useState(false);
+  // FULL SCREEN AT 1024 AND UP (owner, 11/11/2026): the invitation on the left,
+  // the reply on the right. Same breakpoint as the stylesheet's two-column rule
+  // (lib/viewport: tablet-land starts at 1024). Read here only so the countdown
+  // keeps its full size there: it sits beside the reply, not above it, so there
+  // is nothing to make room for, and condensing it would shift the left column.
+  const bp = useBreakpoint();
+  const twoColumn = bp === 'tablet-land' || bp === 'desktop';
+  // A guest scrolls down the form to reach "Send my reply"; sending collapses the
+  // form, and the page stayed scrolled to where the button was — the
+  // confirmation opened with the top of the card cut off. Show the whole card
+  // when it fits the screen; when it doesn't, at least the whole confirmation.
+  const doneRef = useRef(null);
+  // THE CARD HOLDS STILL WHEN THE FORM OPENS. The card centers its content
+  // (theInviteSitsBalanced), and the form outgrows it, so the centering slack
+  // vanished and everything slid up under the guest's finger: measured 140px on
+  // a 768x1024 tablet. On the first tap the content's current offset is pinned
+  // as top padding, so the form grows downward only.
+  const sheetRef = useRef(null);
+  const [holdTop, setHoldTop] = useState(null);
+  const pinSheet = () => {
+    const sheet = sheetRef.current;
+    const mast = sheet && sheet.querySelector('.inv2-mast');
+    if (!sheet || !mast || holdTop != null) return;
+    setHoldTop(Math.round(mast.parentElement.getBoundingClientRect().top - sheet.getBoundingClientRect().top));
+  };
+  useEffect(() => { if (submitted) setHoldTop(null); }, [submitted]);
+  useEffect(() => {
+    const done = doneRef.current;
+    if (!submitted || !done) return;
+    const scroller = done.closest('.app');
+    const card = done.closest('.inv2-sheet');
+    if (!scroller || !card) return;
+    const top = scroller.scrollTop + card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    const fits = done.getBoundingClientRect().bottom - card.getBoundingClientRect().top <= scroller.clientHeight;
+    if (fits) scroller.scrollTo({ top: Math.max(0, top - 14) });
+    else if (done.scrollIntoView) done.scrollIntoView({ block: 'nearest' });
+  }, [submitted]);
   useEffect(() => {
     if (!event) return undefined;
     const t = setTimeout(() => setRvOn(true), 60);
@@ -505,11 +543,11 @@ export default function InviteV2({ code }) {
     if (event.rosterUnknown) {
       const n = event.goingCount;
       if (n == null) return null;
-      if (n <= 0) return 'Be the first to say yes';
+      if (n <= 0) return null;   // owner, 11/11/2026: no "Be the first to say yes"
       return n === 1 ? '1 person is going' : `${n} going`;
     }
     const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-    if (!yes.length) return 'Be the first to say yes';
+    if (!yes.length) return null;
     const names = [];
     for (const g of yes) {
       const n = String(g.name || '').trim();
@@ -769,8 +807,8 @@ export default function InviteV2({ code }) {
   // single-select attendance chips inside role="radiogroup"; without it a chip
   // renders aria-pressed (toggle-button), which is invalid as a radiogroup child.
   // Multi-select chips (NEEDS) legitimately keep aria-pressed, so this is opt-in.
-  const chip = (on, label, onClick, key, radio) => (
-    <button key={key || label} className="chip"
+  const chip = (on, label, onClick, key, radio, cls) => (
+    <button key={key || label} className={'chip' + (cls ? ' ' + cls : '')}
       role={radio ? 'radio' : undefined}
       aria-checked={radio ? on : undefined}
       aria-pressed={radio ? undefined : on}
@@ -788,16 +826,44 @@ export default function InviteV2({ code }) {
   });
 
   const toneClass = pal.dark ? 'inv2-dark' : somber ? 'inv2-muted' : '';
-  const answered = !!rsvp || submitted;
+  // The countdown condenses once the reply is SENT (it used to on the first tap,
+  // which yanked the reply buttons ~115px up under the guest's thumb).
+  const condensed = submitted && !twoColumn;
+
+  // THE NOTE AND FORWARD SIT UNDER THE REPLY (owner, 11/11/2026). They lived
+  // below the card, under the fold on every viewport, so a guest read "Yes, I'm
+  // in" without the line that says where the reply goes. Same conditions as
+  // before: Forward stays after Maybe/No (a guest who answered either way can
+  // still pass the invite on), hides only where the Yes recruit button already
+  // forwards, and never shows on a somber invite; a past-event recap carries its
+  // own "Share the memory" and no reply, so neither renders there.
+  const replyFoot = isPast ? null : (
+    <div className="inv2-replyfoot">
+      <p className="grounding inv2-delivery">{localEvent ? 'Preview on this device. Online reply delivery has not been verified.' : 'Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.'}</p>
+      {shareError && <p className="grounding" role="alert">{shareError}</p>}
+      {!somber && !(submitted && rsvp === 'Yes' && !queued) && (
+        <div className="actions-row inv2-forward">
+          <button className="mini" onClick={() => shareForward(false)}>
+            {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'Forward this invite'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="stagewrap">
+    <div className="stagewrap inv2-stage">
       <div className="app" style={toneVars}><div className="content">
-        <section className={'inv2 ' + toneClass + (answered ? ' answered' : '')} style={{ paddingTop: 14 }}>
+        <section className={'inv2 ' + toneClass + (condensed ? ' answered' : '')} style={twoColumn ? undefined : { paddingTop: 14 }}>
           {/* ── The stationery — the approved remake: linen stock, letterpress,
               embossed crest, staged reveal, ONE ask, disclosure earned by the
               answer, countdown that condenses but never vanishes. ── */}
-          <div className="inv2-sheet">
+          <div className="inv2-sheet" ref={sheetRef}
+            style={holdTop != null && rsvp && !submitted && !twoColumn ? { paddingTop: holdTop, justifyContent: 'flex-start' } : undefined}>
+            {/* The invitation itself. On a phone this wrapper has no box
+                (display:contents) and the column reads exactly as before; at 1024
+                and up it is the left column, beside the reply. */}
+            <div className="inv2-face">
             <div {...rv()}>
               <div className="inv2-mast lp"><span>An invitation</span><span className="mr" aria-hidden /><span>{mastRight}</span></div>
             </div>
@@ -961,12 +1027,13 @@ export default function InviteV2({ code }) {
                 {/* condensed state is INLINE-driven — a deployed-build cascade
                     quirk left the .answered descendant rules matching-but-inert,
                     so the state carries its own styles (transitions stay CSS). */}
-                <div className="inv2-countwrap" style={answered ? { maxHeight: 24, margin: '6px 0 0' } : undefined}>
-                  <div className="inv2-count lp-display" style={answered ? { display: 'inline', fontSize: 11, fontFamily: 'inherit', fontWeight: 800, letterSpacing: '.16em', margin: 0 } : undefined}>{days}</div>
-                  <div className="inv2-label lp inv2-countlab" style={answered ? { display: 'inline', marginLeft: 5, marginTop: 0 } : { marginTop: 2 }}>{days === 1 ? 'day to go' : 'days to go'}</div>
+                <div className="inv2-countwrap" style={condensed ? { maxHeight: 24, margin: '6px 0 0' } : undefined}>
+                  <div className="inv2-count lp-display" style={condensed ? { display: 'inline', fontSize: 11, fontFamily: 'inherit', fontWeight: 800, letterSpacing: '.16em', margin: 0 } : undefined}>{days}</div>
+                  <div className="inv2-label lp inv2-countlab" style={condensed ? { display: 'inline', marginLeft: 5, marginTop: 0 } : { marginTop: 2 }}>{days === 1 ? 'day to go' : 'days to go'}</div>
                 </div>
               </div>
             )}
+            </div>
 
             {isPast ? (
               <div {...rv('inv2-ask')}>
@@ -989,16 +1056,21 @@ export default function InviteV2({ code }) {
                   {albumUrl && <a className="mini" href={albumUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>See the photos</a>}
                   <button className="mini" onClick={() => shareForward(false)}>{shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'Share the memory'}</button>
                 </div>
+                {shareError && <p className="grounding" role="alert">{shareError}</p>}
               </div>
             ) : !submitted ? (
               <div {...rv('inv2-ask')}>
                 {/* THE ONE ASK — attendance alone; everything else is earned */}
                 <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>The favor of a reply</div>
-                <div className="chips" role="radiogroup" aria-label="Attendance">
+                {/* REPLY IS THE PRIMARY ACTION (owner, 11/11/2026): all three on one
+                    row, and "Yes" filled until the guest picks — then the picked
+                    one carries the fill, so two buttons never shout at once. */}
+                <div className={'chips inv2-replies' + (rsvp ? ' chosen' : '')} role="radiogroup" aria-label="Attendance">
                   {[['Yes', 'Yes, I’m in'], ['No', 'Can’t make it'], ['Maybe', 'Maybe']].map(([val, label]) =>
-                    chip(rsvp === val, label, () => { setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val, true))}
+                    chip(rsvp === val, label, () => { if (!twoColumn) pinSheet(); setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val, true, val === 'Yes' ? 'inv2-yes' : ''))}
                 </div>
                 {attendInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Let us know if you can make it.</p>}
+                {replyFoot}
 
                 <div className={'inv2-more' + (rsvp ? ' open' : '')} aria-hidden={!rsvp}
                   // inert while closed: max-height:0 hides visually but fields would
@@ -1254,7 +1326,7 @@ export default function InviteV2({ code }) {
                 </div>
               </div>
             ) : (
-              <div className="inv2-ask" style={{ textAlign: 'center', padding: '20px 4px 8px' }}>
+              <div className="inv2-ask inv2-done" ref={doneRef}>
                 {(!queued && rsvp === 'Yes' && !somber) ? (
                   /* ── Signature moment (Goal 1) — a screenshot-worthy confirmation
                      for a delivered Yes: the event mark (same ARTWORK_MARKS crest
@@ -1315,6 +1387,7 @@ export default function InviteV2({ code }) {
                   {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Add to Apple Calendar</a>}
                   <button className="mini" onClick={() => setSubmitted(false)}>Change my answer</button>
                 </div>
+                {replyFoot}
               </div>
             )}
           </div>
@@ -1348,20 +1421,6 @@ export default function InviteV2({ code }) {
             </div></div>
           )}
 
-          {/* Keep forward visible after Maybe/No too (per-screen audit: it used to
-              vanish on any submit — a guest who answered Maybe/No then had NO way
-              to pass the invite on). Hidden only when the Yes-only recruit CTA
-              above already covers forwarding — and on a past-event recap, which
-              carries its own "Share the memory" action (no duplicate forward). */}
-          {shareError && <p className="grounding" role="alert">{shareError}</p>}
-          {!somber && !isPast && !(submitted && rsvp === 'Yes' && !queued) && (
-            <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
-              <button className="mini" onClick={() => shareForward(false)}>
-                {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'Forward this invite'}
-              </button>
-            </div>
-          )}
-          {!isPast && <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>{localEvent ? 'Preview on this device. Online reply delivery has not been verified.' : 'Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.'}</p>}
           {/* ── RECRUIT — IN THE FOOTER (host ruling 2026-07-29: "footer") ────────
               Growth loop half (b). Half (a) — the host sharing the link — has been
               live and measured for a while; this is the other end: a guest who
@@ -1375,6 +1434,7 @@ export default function InviteV2({ code }) {
               rule; see the solemn register in lib/heartPrompts.
               Fires PLAN_YOURS_TAPPED with its surface so footer-vs-card can be
               compared honestly if the payoff card is ever built. */}
+          <div className="inv2-foot">
           {!isPast && !/repast|memorial|funeral|celebration of life|wake|shiva|homegoing/i.test(String((event && event.type) || '')) && (
             <p className="grounding" style={{ marginTop: 16, textAlign: 'center' }}>
               <a
@@ -1389,6 +1449,7 @@ export default function InviteV2({ code }) {
               wordmark + machined brand period — on the one surface every guest
               touches. Tuned to the stationery's own palette, not the app steel. */}
           <div {...rv('inv2-wordmark')}>{BRAND.full}<span className="inv2-wm-dot" aria-hidden="true" /></div>
+          </div>
         </section>
       </div></div>
     </div>

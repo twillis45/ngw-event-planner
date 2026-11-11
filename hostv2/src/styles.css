@@ -2533,7 +2533,10 @@ button:disabled, .cta:disabled{ pointer-events:none; }
     linear-gradient(180deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 8%);
 }
 .inv2-sheet > *{ position:relative; z-index:1; }
-@media(max-width:699px){ .inv2-sheet{ min-height:calc(100dvh - 132px); } }
+/* The card fills the screen's height through tablet portrait (was phones only,
+   which left a 768x1024 tablet with a phone-height card and a blank lower third).
+   At 1024 and up the two-column rule below takes over. */
+@media(max-width:1023px){ .inv2-sheet{ min-height:calc(100dvh - 132px); } }
 /* Layout: .inv2-sheet is a top-aligned flex column (no justify-content) with a
    min-height, so content stacks from the top and the sheet holds its fixed
    canvas. .inv2-countflex is flex:0 0 auto with a fixed margin — a self-sized
@@ -2549,6 +2552,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    takes a real, bounded break instead of a greedy one. The reply stays well within
    thumb reach on a phone; it just no longer sits at the far end of a canyon. */
 .inv2-ask{ margin-top:clamp(18px,4vh,34px); padding-top:14px; }
+/* BALANCED ON THE CARD (owner, 11/11/2026). With the ask fixed above, all of the
+   fixed canvas's slack still fell to the bottom: measured 20px above the content
+   and 209–238px below it on phones, tablets, laptops and desktops. Centering the
+   column splits that slack evenly above and below; the gap above the ask stays
+   bounded, so the canyon this file records does not return. Guarded by
+   e2e/theInviteSitsBalanced.spec.mjs. */
+.inv2-sheet{ justify-content:center; }
 .inv2-countflex{ flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; min-height:0; margin:14px 0 0; }
 .inv2-dark .inv2-sheet{
   --hue:#d99a63; --hue-deep:#c9854f; --stock-ink:#e4dbc6; --stock-sub:#a89f8e;
@@ -2687,6 +2697,12 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   box-shadow:0 3px 10px rgba(62,122,90,.35); }
 .inv2-dark .inv2-sheet .chip{ background:#22262b; border-color:rgba(255,244,224,.14); color:#ece5d8;
   box-shadow:inset 0 1px 0 rgba(255,246,230,.08), inset 0 -1px 1px rgba(0,0,0,.5); }
+/* THE PICK WAS INVISIBLE ON THE DARK INVITE (found 11/11/2026 in the state
+   screenshots). The rule above has the same specificity as the selected rule
+   and comes after it, so a picked reply or meal stayed charcoal: a guest could
+   not see what they chose. The selected fill is restated here, after it. */
+.inv2-dark .inv2-sheet .chip[aria-pressed="true"], .inv2-dark .inv2-sheet .chip[aria-checked="true"]{
+  background:#3E7A5A; border-color:#3E7A5A; color:#fff; box-shadow:0 3px 10px rgba(0,0,0,.45); }
 .inv2-sheet .field{ background:rgba(255,255,255,.7); border-color:rgba(196,178,148,.6); color:#1a1a1a; }
 .inv2-dark .inv2-sheet .field{ background:#1c2024; border-color:rgba(255,244,224,.16); color:#ece5d8; }
 .inv2-sheet .shelf-label{ color:var(--hue-deep); }
@@ -2696,6 +2712,92 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   transition:opacity var(--ms-slow) var(--ease-standard), max-height var(--ms-slow) var(--ease-standard); }
 .inv2-more.open{ opacity:1; max-height:1400px; }
 @media (prefers-reduced-motion: reduce){ .inv2-more{ transition:none; } }
+
+/* ── THE REPLY IS THE PRIMARY ACTION (owner, 11/11/2026) ──────────────────────
+   Three outlined chips, wrapping onto two rows on a phone, weighed less than the
+   124px countdown above them. Now: one row at every width, a real 48px target,
+   and "Yes" filled until the guest picks. Once a choice is made the picked
+   button carries the selected green (rule above) and Yes drops its fill, so two
+   filled buttons never compete. A label too long for its third of the row
+   wraps INSIDE its button rather than pushing a button to a second row. */
+.inv2-face{ display:contents; }
+/* The sent state (was inline, which no breakpoint could adjust). */
+.inv2-done{ text-align:center; padding:20px 4px 8px; }
+.inv2-replies{ flex-wrap:nowrap; gap:var(--sp-2); }
+.inv2-replies .chip{ flex:1 1 auto; min-width:0; min-height:48px; padding:var(--sp-2) var(--sp-3);
+  white-space:normal; line-height:1.15; text-align:center; justify-content:center; font-weight:700; }
+/* At phone width the three labels only fit on one line each when the buttons
+   size to their words (flex-basis auto) with tighter side padding; measured,
+   "Can't make it" wrapped at 390 with equal thirds. */
+@media (max-width:479px){ .inv2-replies .chip{ padding-inline:var(--sp-2); font-size:13px; } }
+.inv2-replies:not(.chosen) .inv2-yes{ background:var(--hue-deep); border-color:var(--hue-deep); color:#fff;
+  box-shadow:0 3px 10px rgba(120,60,20,.28); }
+.inv2-dark .inv2-sheet .inv2-replies:not(.chosen) .inv2-yes{ background:var(--hue); border-color:var(--hue); color:#16181b;
+  box-shadow:0 3px 10px rgba(0,0,0,.45); }
+/* BUTTONS ON THE STOCK (owner, 11/11/2026). Forward, the calendar links,
+   "Change my answer" and the primary buttons ("Send my reply", "I'm in — bring
+   a friend") rendered in the app's steel on the cream card, the only steel on
+   the stationery. Secondary buttons take the reply chips' engraved treatment;
+   primaries take the same fill as the "Yes" button, so the card has one primary
+   color. Contrast measured: white on #B84E1E 5.06:1, #16181b on #d99a63
+   7.41:1, white on the somber #6f6152 5.99:1. */
+.inv2 .inv2-sheet .mini{ background:rgba(255,255,255,.55); border:1.5px solid rgba(196,178,148,.6); color:var(--stock-ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 1px rgba(120,96,60,.10); }
+.inv2.inv2-dark .inv2-sheet .mini{ background:#22262b; border-color:rgba(255,244,224,.14); color:#ece5d8;
+  box-shadow:inset 0 1px 0 rgba(255,246,230,.08), inset 0 -1px 1px rgba(0,0,0,.5); }
+.inv2 .inv2-sheet .cta{ background:var(--hue-deep); color:#fff; box-shadow:0 3px 10px rgba(120,60,20,.28); }
+.inv2.inv2-dark .inv2-sheet .cta{ background:var(--hue); color:#16181b; box-shadow:0 3px 10px rgba(0,0,0,.45); }
+/* Where the reply goes, and Forward, directly under the reply buttons. */
+.inv2-replyfoot{ margin-top:var(--sp-3); text-align:center; }
+.inv2-replyfoot .grounding{ margin:0; text-align:center; }
+.inv2-forward{ margin-top:var(--sp-2); justify-content:center; }
+
+/* ── FULL SCREEN AT 1024 AND UP (owner, 11/11/2026: "full screen") ────────────
+   The invite took the phone silhouette at 1280+ (a 393px card in a 1440 window)
+   and a 720px column at 1024–1279. It now fills the window, light and dark: the
+   invitation on the left, the reply on the right. The breakpoint matches
+   lib/viewport's tablet-land (InviteV2 reads it to keep the countdown full size
+   here, since it no longer sits above the reply).
+   · The left column is sticky, so opening the reply form scrolls the right
+     column while the invitation stays put — nothing on the left moves.
+   · The reply starts a fixed distance above the middle of the window rather than
+     centring, so opening the form grows it DOWNWARD: the buttons a guest just
+     tapped never jump.
+   · overflow:clip, not hidden: hidden makes the card a scroll container, and a
+     sticky child would stick to the card instead of the window. */
+@media (min-width:1024px){
+  .stagewrap.inv2-stage{ width:auto; height:100dvh; margin:0; transform:none; }
+  .inv2-stage .app{ border-radius:0; box-shadow:none; }
+  .inv2-stage .content{ max-width:none; margin:0; padding:0 0 var(--sp-7); }
+  .inv2-stage .inv2-sheet{ display:grid; grid-template-columns:minmax(0,1.3fr) minmax(400px,1fr); align-items:start;
+    min-height:100dvh; padding:0; border-radius:0; overflow:clip; }
+  .inv2-stage .inv2-face{ display:flex; flex-direction:column; justify-content:center; position:sticky; top:0;
+    min-height:100dvh; padding:clamp(32px,6vh,80px) clamp(40px,6vw,80px); }
+  .inv2-stage .inv2-ask{ margin:0; min-height:100dvh; text-align:left;
+    padding:max(48px, calc(50dvh - 9rem)) clamp(32px,4vw,80px) 48px;
+    border-left:1px solid rgba(196,178,148,.45); background:rgba(255,255,255,.3); }
+  .inv2-stage .inv2-dark .inv2-ask{ border-left-color:rgba(255,244,224,.09); background:rgba(255,255,255,.025); }
+  .inv2-stage .inv2-ask.inv2-done{ text-align:center; }
+  .inv2-stage .inv2-name{ font-size:clamp(40px,4.2vw,72px); }
+  .inv2-stage .inv2-count{ font-size:clamp(64px,5.5vw,96px); }
+  /* THE REPLY COLUMN CARRIES WEIGHT (owner, 11/11/2026: it read as an empty
+     half). Same content, scaled to the column: the ask becomes a serif line,
+     the buttons and note grow, and the recruit line and wordmark — which sat
+     below the full-screen card, out of sight — sit at the foot of this column. */
+  .inv2-stage .inv2-ask > .inv2-label:first-child{ font-family:var(--serif); font-size:clamp(24px,2.2vw,32px);
+    font-weight:700; letter-spacing:0; text-transform:none; color:var(--stock-ink); margin-bottom:var(--sp-4) !important; }
+  .inv2-stage .inv2-replies .chip{ min-height:64px; font-size:18px; padding-inline:var(--sp-4); }
+  .inv2-stage .inv2-replyfoot{ margin-top:var(--sp-4); }
+  .inv2-stage .inv2-replyfoot .grounding{ font-size:15px; }
+  .inv2-stage .inv2-ask{ padding-bottom:9rem; }
+  .inv2-stage .app::after{ display:none; }
+  .inv2-stage .content{ padding-bottom:0; }
+  .inv2-stage .inv2{ position:relative; }
+  .inv2-stage .inv2 > .inv2-foot{ position:absolute; right:0; bottom:var(--sp-7); width:max(400px, calc(100% / 2.3));
+    max-width:none; margin:0; padding-inline:var(--sp-5); z-index:2; }
+  /* Footer pieces under the full-screen card keep a readable measure. */
+  .inv2-stage .inv2 > :not(.inv2-sheet):not(.inv2-foot){ max-width:720px; margin-inline:auto; padding-inline:var(--sp-5); }
+}
 
 
 
