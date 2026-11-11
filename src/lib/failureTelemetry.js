@@ -6,9 +6,14 @@ import { track, trackOnce, EVENTS } from './analytics';
 const FAILURE_EVENTS = {
   save: EVENTS.SAVE_FAILED, provider: EVENTS.PROVIDER_FAILED, route: EVENTS.ROUTE_FAILED,
   pass_checkout: EVENTS.PASS_CHECKOUT_FAILED, pass_verify: EVENTS.PASS_VERIFY_FAILED,
+  brief_mint: EVENTS.BRIEF_MINT_FAILED,
 };
 
-async function contextFor({ where, reason, eventId } = {}) {
+// A status CLASS is the only response detail that travels, and only from this
+// fixed set — never a raw status body or anything a caller passes by mistake.
+const STATUS_CLASSES = new Set(['network', '1xx', '2xx', '3xx', '4xx', '5xx']);
+
+async function contextFor({ where, reason, eventId, statusClass } = {}) {
   let hash = null;
   try {
     if (eventId && typeof crypto !== 'undefined' && crypto.subtle && typeof TextEncoder !== 'undefined') {
@@ -21,6 +26,7 @@ async function contextFor({ where, reason, eventId } = {}) {
     release_sha: process.env.REACT_APP_RELEASE_SHA || 'unreported',
     release_profile: process.env.REACT_APP_RELEASE_PROFILE || 'unreported',
     ...(hash ? { event_id_hash: hash } : {}),
+    ...(STATUS_CLASSES.has(statusClass) ? { status_class: statusClass } : {}),
   };
 }
 

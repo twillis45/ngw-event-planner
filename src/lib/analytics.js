@@ -155,6 +155,7 @@ export const EVENTS = {
   ROUTE_FAILED:           'route_failed',
   PASS_CHECKOUT_FAILED:   'pass_checkout_failed',
   PASS_VERIFY_FAILED:     'pass_verify_failed',
+  BRIEF_MINT_FAILED:      'brief_mint_failed',   // a configured vendor-brief mint did not return a code
   PASS_SHEET_VIEWED:      'pass_sheet_viewed',
   PASS_CHECKOUT_STARTED:  'pass_checkout_started',
   PASS_PURCHASE_CONFIRMED: 'pass_purchase_confirmed', // once per event, after the server confirms

@@ -183,6 +183,12 @@ const VIEWPORT_INDEPENDENT = [
   // fixed inline chrome that is identical at every width. Six geometries
   // would buy six identical results and tap Seed / reset twelve more times.
   '**/theDemoResetsToTheSamePlace.spec.mjs',
+  // ── NO SILENT LEGACY BRIEF (S9-5, 11/11/2026) ─────────────────────────
+  // Asserts which sentence appeared, whether a link was made, how many mint
+  // requests went out, and which client event fired. No geometry, and it
+  // addresses 5266 directly, so a project on the shared preview would measure
+  // a bundle with billing dormant.
+  '**/aFailedBriefMakesNoLink.spec.mjs',
 ];
 
 const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];

@@ -6,7 +6,7 @@ const { reportFailure, recordPassFunnel } = require('../failureTelemetry');
 
 beforeEach(() => jest.clearAllMocks());
 
-test.each(['save', 'provider', 'route', 'pass_checkout', 'pass_verify'])('%s failure reports sanitized context to both existing transports', async kind => {
+test.each(['save', 'provider', 'route', 'pass_checkout', 'pass_verify', 'brief_mint'])('%s failure reports sanitized context to both existing transports', async kind => {
   await reportFailure(kind, { where: 'test.seam', eventId: 'Alice-personal-event', reason: 'request-failed', name: 'Alice', body: 'private notes' });
   expect(captureError).toHaveBeenCalledTimes(1);
   expect(track).toHaveBeenCalledTimes(1);
@@ -69,4 +69,13 @@ test('a configured provider HTTP failure reports while retaining its honest fall
   expect(result.factor).toBe(1);
   expect(captureError).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({ where: 'foodPrices.get', reason: 'http-503' }));
   delete global.fetch;
+});
+
+test('a brief mint failure carries only a status class from the fixed set', async () => {
+  await reportFailure('brief_mint', { where: 'hostv2.vendor-brief', reason: 'failed', statusClass: '5xx', eventId: 'Alice-personal-event' });
+  expect(track.mock.calls[0][0]).toBe('brief_mint_failed');
+  expect(track.mock.calls[0][1]).toMatchObject({ where: 'hostv2.vendor-brief', reason: 'failed', status_class: '5xx' });
+  jest.clearAllMocks();
+  await reportFailure('brief_mint', { where: 'hostv2.vendor-brief', reason: 'failed', statusClass: 'Alice 500 body' });
+  expect(track.mock.calls[0][1]).not.toHaveProperty('status_class');
 });

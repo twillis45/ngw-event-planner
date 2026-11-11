@@ -1,9 +1,10 @@
 // ─── Vendor Brief link API client (Vendor Brief v2 Phase 1) ───────────────────
 // Talks to the FastAPI service at REACT_APP_API_BASE_URL. Mirrors api/rsvp.js.
 //
-// GRACEFUL DEGRADATION: when the API is unset / unreachable / errors, callers
-// fall back to the legacy frozen base64 snapshot URL — sharing a brief NEVER
-// breaks because the backend is down. Nothing here throws into the UI.
+// GRACEFUL DEGRADATION: when the API is UNSET, callers use the legacy frozen
+// base64 snapshot URL (it is the only path in that build). When the API is set
+// and a mint FAILS, hostv2 says so instead (mintVendorBriefLinkResult, below).
+// Nothing here throws into the UI.
 //
 // Planner endpoint (Supabase session / dev token):
 //   POST /api/events/{id}/vendor-brief-links  → mint-or-reuse the active code
@@ -52,22 +53,63 @@ async function hasPlannerAuth() {
 }
 
 // ── Planner: mint-or-reuse the active brief code for a vendor ─────────────────
-// Returns the short code string, or null when not configured / unauthorized /
-// errored. NEVER throws — the caller falls back to the legacy base64 URL.
-export async function mintVendorBriefLink(eventId, vendorId) {
-  if (!BASE || !eventId || !vendorId) return null;
-  try {
-    const res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/vendor-brief-links`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-      body:    JSON.stringify({ vendor_id: vendorId }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data && data.ok && data.code ? data.code : null;
-  } catch {
-    return null;
+// NO SILENT LEGACY FALLBACK (stage 9 work order #13, S9-5 option B, 11/11/2026).
+// A failed mint used to return null and the shell quietly built the legacy
+// frozen snapshot instead: the host believed they had sent a live brief that
+// updates and takes confirmations, it did neither, and the server's 402 pass
+// gate was walked around. So the result now says WHICH failure it was:
+//
+//   { ok: true,  code }
+//   { ok: false, kind: 'not-configured' }            — no API in this build: the
+//                                                      legacy URL is the only path
+//   { ok: false, kind: 'pass-required', status: 402 }
+//   { ok: false, kind: 'signed-out',    status: 401 }
+//   { ok: false, kind: 'failed',        status }      — any other HTTP failure
+//   { ok: false, kind: 'network',       status: null } — no response, after ONE retry
+//
+// A network error (fetch rejected — no response at all) is retried once; an
+// HTTP answer is the server's answer and is not. NEVER throws.
+const MINT_RETRIES = 1;
+export async function mintVendorBriefLinkResult(eventId, vendorId) {
+  if (!BASE || !eventId || !vendorId) return { ok: false, kind: 'not-configured', status: null };
+  for (let attempt = 0; ; attempt++) {
+    let res;
+    try {
+      res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/vendor-brief-links`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body:    JSON.stringify({ vendor_id: vendorId }),
+      });
+    } catch {
+      if (attempt < MINT_RETRIES) continue;
+      return { ok: false, kind: 'network', status: null };
+    }
+    if (!res.ok) {
+      const status = res.status;
+      if (status === 402) return { ok: false, kind: 'pass-required', status };
+      if (status === 401) return { ok: false, kind: 'signed-out', status };
+      return { ok: false, kind: 'failed', status };
+    }
+    try {
+      const data = await res.json();
+      if (data && data.ok && data.code) return { ok: true, code: data.code };
+    } catch { /* a 2xx with an unreadable body is still not a code */ }
+    return { ok: false, kind: 'failed', status: res.status };
   }
+}
+
+// The status CLASS for telemetry — never the raw body, never an identifier.
+export function mintStatusClass(result) {
+  if (!result || result.ok) return null;
+  if (result.status == null) return 'network';
+  return String(result.status).charAt(0) + 'xx';
+}
+
+// The original contract, kept for the frozen CRA shell (App.js VendorBriefModal):
+// the short code string, or null on any failure. NEVER throws.
+export async function mintVendorBriefLink(eventId, vendorId) {
+  const r = await mintVendorBriefLinkResult(eventId, vendorId);
+  return r.ok ? r.code : null;
 }
 
 // ── Public: resolve a brief code to the CURRENT brief payload ─────────────────

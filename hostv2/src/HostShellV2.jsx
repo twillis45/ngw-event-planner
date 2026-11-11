@@ -274,7 +274,7 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
-import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
+import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
@@ -3951,9 +3951,9 @@ export default function HostShellV2() {
   // WHITELIST (lib/vendorBrief.js) is the ONLY thing that ever leaves the
   // host's hands; money/ops/private notes never enter the payload. Prefer a
   // short server-resolvable code (mintVendorBriefLink — VB2 Phase 1: the
-  // backend rebuilds the brief live, so the link never goes stale); fall back
-  // to the legacy frozen base64 snapshot when the API isn't configured or
-  // minting fails — sharing must never break because a backend is down. The
+  // backend rebuilds the brief live, so the link never goes stale); the
+  // legacy frozen base64 snapshot is made ONLY when the API isn't configured —
+  // a failed mint is shown as a failure, never papered over (S9-5). The
   // resulting ?vendor=TOKEN link on THIS origin is caught by main.jsx's own
   // redirect to the one real public brief page (legacy App.js) — no second
   // brief surface is ever rendered here.
@@ -3979,10 +3979,27 @@ export default function HostShellV2() {
     try { appUrl = publicAppUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return; }
     setVendorBrief({ vendorId: v.id, url: null, qrDataUrl: null, minting: true, copied: false });
+    // NO SILENT LEGACY FALLBACK (stage 9 work order #13, S9-5 option B). With
+    // the brief API configured, a failed mint used to fall through to the
+    // frozen snapshot below: the host thought a live brief had gone out — one
+    // that updates and takes confirmations — and it did neither, and the
+    // server's 402 pass gate was bypassed. Now a failed mint makes NO link,
+    // says which failure it was, offers the one next step, and is reported.
+    // Only a build with no API (local/demo) still makes the snapshot: there it
+    // is the only kind of link there is. Links already sent keep decoding —
+    // the public ?vendor= route is untouched.
     let code = null;
-    try {
-      if (isVendorBriefApiConfigured() && event.id && v.id) code = await mintVendorBriefLink(event.id, v.id);
-    } catch { code = null; }
+    if (isVendorBriefApiConfigured()) {
+      let r;
+      try { r = await mintVendorBriefLinkResult(event.id, v.id); }
+      catch { r = { ok: false, kind: 'failed', status: null }; }
+      if (!r.ok) {
+        reportFailure('brief_mint', { where: 'hostv2.vendor-brief', reason: r.kind, statusClass: mintStatusClass(r), eventId: event.id });
+        setVendorBrief(b => (b && b.vendorId === v.id) ? { vendorId: v.id, url: null, qrDataUrl: null, minting: false, copied: false, error: r.kind } : b);
+        return;
+      }
+      code = r.code;
+    }
     const brief = buildVendorBriefPayload(v, event, ros, profile);
     const token = code || b64encode(JSON.stringify(brief));
     const url = appUrl + '?vendor=' + token;
@@ -23547,6 +23564,27 @@ export default function HostShellV2() {
                             <div style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
                               {vendorBrief.minting ? (
                                 <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
+                              ) : vendorBrief.error ? (
+                                // A failed mint: no link was made, and nothing
+                                // here pretends one was. One honest next step.
+                                <div role="alert" data-brief-error={vendorBrief.error}>
+                                  <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>
+                                    {vendorBrief.error === 'pass-required'
+                                      ? 'Sharing this brief takes the One-Event Pass. No link was made.'
+                                      : vendorBrief.error === 'signed-out'
+                                        ? 'You’re not signed in on this browser — sign in to share the brief. No link was made.'
+                                        : 'Couldn’t create the brief link. Try again.'}
+                                  </p>
+                                  <div className="actions-row">
+                                    {vendorBrief.error === 'pass-required' ? (
+                                      <button className="mini" onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass</button>
+                                    ) : vendorBrief.error === 'signed-out' ? (
+                                      <button className="mini" onClick={() => setSheet({ kind: 'settings' })}>Sign in</button>
+                                    ) : (
+                                      <button className="mini" onClick={() => shareVendorBrief(v)}>Try again</button>
+                                    )}
+                                  </div>
+                                </div>
                               ) : (
                                 <>
                                   <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)', wordBreak: 'break-all' }}>{vendorBrief.url}</p>
