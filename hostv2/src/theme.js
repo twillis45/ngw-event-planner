@@ -243,6 +243,12 @@ export function applyStudioMatte(override) {
   // It used to be stated here instead, which made a doctrine change visible only
   // to someone reading this file. Amend the standard, not this comment.
   set('--cta-grad', bundle.steelBlueGradientTop);
+  // The LABEL on any steel fill (--cta-grad, --steel). Both fills are the same
+  // in both themes, so their label must be too: the moded --carbon-text / --ink
+  // went to #0d0f12 in light and read 3.26:1 on the primary (3.17 on --steel).
+  // Dark's textPrimary, the value dark already painted: 5.16 on #4E6877, 5.31
+  // on #4c6675, 5.32 under the .cta hover's brightness(1.07) (measured).
+  set('--on-steel', dark.textPrimary);
 
   // ── Status anchors (Dark calibrations) ──
   set('--ok', bundle.successGreen);
@@ -301,6 +307,11 @@ export function applyStudioMatte(override) {
   // goes dark in light and lands ~2.7-3.5:1 there. 6.87:1 on the stage base,
   // 5.44:1 on its glow peak (stage-4 P1, M1).
   set('--carbon-ink-soft', dsColor.text.secondary);
+  // The rest of the reveal's text, on the same fixed stage and for the same
+  // reason. Both are the values dark already painted, so dark is unchanged and
+  // light stops painting dark ink on carbon (name 1.01:1, buttons 2.75-3.26:1).
+  set('--carbon-ink', dark.textPrimary);          // event name, primary button label
+  set('--carbon-steel-soft', dsColor.text.onTint); // eyebrow, quiet button labels
 
   // ── Motion: choreography timings, no bounce ever ──
   set('--ease-out', easings.out || 'cubic-bezier(0,0,.2,1)');
