@@ -18,8 +18,11 @@
 // without remembering an env prefix; an env var still overrides it.
 const PH_KEY    = process.env.REACT_APP_POSTHOG_KEY || 'phc_kViRwC7yZp9aAqfvqyKw7HJCBxuGqfCnzMAb7yZzgd9p';
 const PH_HOST   = process.env.REACT_APP_POSTHOG_HOST || 'https://us.i.posthog.com';
+// A Capacitor shell serves the bundle from localhost (capacitor://localhost, https://localhost)
+// but is a real install, not dev (NAT-7). Same native check as publicAppUrl.js.
+const IS_NATIVE = typeof window !== 'undefined' && !!(window.Capacitor && window.Capacitor.isNativePlatform());
 // Never report from local dev — keep the production funnel clean.
-const IS_LOCAL  = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+const IS_LOCAL  = typeof window !== 'undefined' && !IS_NATIVE && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
 
 export const isAnalyticsConfigured = () => Boolean(PH_KEY) && !IS_LOCAL;
 
@@ -154,6 +157,7 @@ export const EVENTS = {
   PASS_VERIFY_FAILED:     'pass_verify_failed',
   PASS_SHEET_VIEWED:      'pass_sheet_viewed',
   PASS_CHECKOUT_STARTED:  'pass_checkout_started',
+  PASS_PURCHASE_CONFIRMED: 'pass_purchase_confirmed', // once per event, after the server confirms
 
   // Navigation
   PAGE_VIEW:              'page_view',

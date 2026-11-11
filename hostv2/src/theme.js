@@ -296,6 +296,11 @@ export function applyStudioMatte(override) {
   set('--carbon-text', bundle.textPrimary);
   set('--carbon-muted', bundle.textMuted);
   set('--steel-muted', bundle.steelBlueMuted);
+  // Secondary text ON A FIXED CARBON STAGE — the creation reveal, whose ground
+  // is #0d1014 in BOTH themes. Deliberately not moded: every moded text token
+  // goes dark in light and lands ~2.7-3.5:1 there. 6.87:1 on the stage base,
+  // 5.44:1 on its glow peak (stage-4 P1, M1).
+  set('--carbon-ink-soft', dsColor.text.secondary);
 
   // ── Motion: choreography timings, no bounce ever ──
   set('--ease-out', easings.out || 'cubic-bezier(0,0,.2,1)');

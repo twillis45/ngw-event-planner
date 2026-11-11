@@ -143,6 +143,12 @@ export const BRAND = Object.freeze({
   // Where a host reaches a person (owner decision, 11/11/2026). One place, so
   // every "email us" in the app names the same inbox.
   support: 'events@noguessworksystems.com',
+  // THE PUBLISHED POLICIES (stage 9, LEGAL-1). Each is the https URL of a
+  // policy that is LIVE and attorney-reviewed, or null. Nothing links to a
+  // policy until its URL is set here: a link to a draft, or to a page that
+  // 404s, would tell a buyer terms exist that nobody has agreed to. Drafts live
+  // in docs/legal/; setting a URL here is the whole wiring (lib/policyLinks).
+  policies: Object.freeze({ privacy: null, terms: null, refunds: null }),
   // Two stacked lines, big type. Joining them with a space must equal `full`,
   // and a test asserts exactly that — the split is a typographic decision, not
   // a second copy of the name.

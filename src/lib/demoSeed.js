@@ -27,6 +27,17 @@ export const DEMO_ID_PREFIX = 'demoqa-';
 export const isDemoEvent = (e) =>
   !!(e && typeof e.id === 'string' && e.id.startsWith(DEMO_ID_PREFIX));
 
+// QA fixtures ("Test — Cookout (day of)" …, hostv2/src/eventPool.js) are QA
+// chrome: they LIST only while the demo tools are armed. Listing only — they
+// still resolve by id, which is how the e2e specs and QA deep links reach them.
+export const QA_FIXTURE_PREFIX = 'test-';
+
+export const isQaFixture = (e) =>
+  !!(e && typeof e.id === 'string' && e.id.startsWith(QA_FIXTURE_PREFIX));
+
+export const listedSamples = (samples, demoToolsOn) =>
+  (demoToolsOn ? samples : samples.filter((e) => !isQaFixture(e)));
+
 // Deterministic given (now); ids carry a run suffix so every seed is a fresh
 // identity (fresh vendor ids → fresh brief codes → clean confirmation state).
 export function buildDemoEvent(now = Date.now()) {

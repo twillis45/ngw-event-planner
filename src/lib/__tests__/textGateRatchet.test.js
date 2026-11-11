@@ -393,7 +393,13 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // strict audit level on hostv2, the explicit report-only on the CRA tree —
 // which is a file-content claim by definition and has no rendered equivalent.
 // It never opens a file under hostv2/.
-const MAX_HOSTV2_TEXT_GATES = 58;
+//
+// 58 → 59 (11/11/2026): thePassPriceIsTheServersPrice.test.js. It ties every
+// "$NN" the host reads for the pass (copy in HostShellV2.jsx, passGate.js and
+// sectionDirectory.js) to PASS_AMOUNT_CENTS in the backend — a claim about the
+// two files agreeing, which no rendered test can make: e2e runs against a
+// mocked backend and never sees the constant Stripe is told to charge.
+const MAX_HOSTV2_TEXT_GATES = 59;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

@@ -23,7 +23,9 @@ class Ledger(FakeConn):
         self.executed.append((sql, args))
         assert self.in_transaction
         if 'insert into public.pass_payment_blocks' in sql:
-            self.blocks[args[0]] = 'refunded' if self.blocks.get(args[0]) == 'refunded' else args[1]
+            # Stored exactly as given: the never-downgrade-a-refund rule is the
+            # route's to enforce, so a fake that applied it would hide its removal.
+            self.blocks[args[0]] = args[1]
         if 'insert into public.event_passes' in sql:
             if self.receipt: return 'INSERT 0 0'
             self.receipt = args

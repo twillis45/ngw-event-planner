@@ -11,19 +11,25 @@ until the owner rules it.
 | `PRIVACY_POLICY_DRAFT.md` | Who we are, what we collect from hosts / guests / vendors, which processors see it, how long it stays, what a person can ask for | `src/lib/analytics.js`, `src/lib/sentry.js`, `supabase/migrations/009`, `013`, `017`, `backend/app/routers/*`, `src/lib/vendorBrief.js` |
 | `CONSENT_AND_TRACKING_COPY_DRAFT.md` | Gate row `s5-consent`: the first-open notice (or opt-in prompt), the Settings toggle, and two fixes that must land before the copy is true (business name reaching PostHog; no visible opt-out) | `src/lib/analytics.js`, `src/lib/sentry.js`, `src/App.js:46176` |
 | `REFUND_POLICY_DRAFT.md` | The $39 One-Event Pass: what it is, what it is not, and the refund rule (one recommended, two alternatives, owner picks) | `src/lib/passGate.js`, `backend/app/routers/stripe_payments.py`, `supabase/migrations/017_event_passes.sql`, the no-vendor-fees commitment |
+| `TERMS_OF_SERVICE_DRAFT.md` | Terms of service (2026-11-11): eligibility, sign-in, free tier and the pass, refund/dispute mechanics, host duties for guest and vendor data, invite and brief links, acceptable use, content license, no warranty, liability, in-app account deletion, governing law. `COUNSEL:` notes mark each point an attorney decides | `src/lib/passGate.js`, `backend/app/routers/stripe_payments.py`, `account.py`, `rsvp.py`, `vendor_brief.py`, `ai.py`, `supabase/migrations/020`, `021`, `src/lib/brand.js` |
+| `OWNER_FILL_SHEET.md` | Every `[OWNER: …]` placeholder across these drafts, one row per fact, with file:line, what to supply, what the repo already knows, and the order to do them | grep of `docs/legal/` |
 
 ## Placeholders the owner fills before anything ships
 
 Search each draft for `[OWNER:` — every one is a fact only the owner has:
 
-- `[OWNER: support email]` — the one address both policies route requests to.
-  D-2's own precondition #5 is "a support/refund story, even if it's one
+- ~~`[OWNER: support email]`~~ — **decided 11/11/2026:
+  events@noguessworksystems.com** (`src/lib/brand.js:145`), filled into every
+  draft. D-2's own precondition #5 is "a support/refund story, even if it's one
   email address." This is that address.
 - `[OWNER: mailing address]` — required by several US state privacy laws for a
   controller's notice; a registered-agent or PO box address is fine.
 - `[OWNER: governing state]` — the LLC's state of organization.
 - `[OWNER: effective date]` — the day it goes live, not the day it was drafted.
 - `[OWNER: refund rule]` — pick one of the three in the refund draft.
+- The terms draft adds five more (minimum age, sales-tax treatment, liability
+  floor, venue county, what pass holders get if the service ends).
+  `OWNER_FILL_SHEET.md` is the complete, ordered list with file:line for each.
 
 ## Where they get wired, once ruled (one link each — not a new surface)
 
@@ -45,8 +51,13 @@ Search each draft for `[OWNER:` — every one is a fact only the owner has:
 - No retention schedule that is not actually running. The RSVP purge helper
   exists (`purge_old_rsvp_submissions`, 009:111) and **is not scheduled** —
   the draft says "we intend to" and names the window, not "we do."
-- No self-serve account deletion, because none exists. The draft routes it to
-  the support address and names the systems the deletion touches.
+- No deletion broader than the code's. Account deletion **is** self-serve
+  (You & settings → Delete my account…, `hostv2/src/HostShellV2.jsx:18949`;
+  `backend/app/routers/account.py`, `supabase/migrations/021_account_deletion.sql`).
+  The privacy draft §6 and terms §12 list exactly what it removes and the
+  three categories it keeps (`account.py:105`: payment receipts, security and
+  admin records, shared-studio content) — not "everything." (Corrected
+  2026-11-11: until then this line said no self-serve deletion existed.)
 - No "we never share data with AI providers" — the AI routes send event
   context to Anthropic / OpenAI under server-owned prompts (`routers/ai.py`),
   and the draft says so.

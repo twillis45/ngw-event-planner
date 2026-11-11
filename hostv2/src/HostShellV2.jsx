@@ -188,7 +188,7 @@ import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -255,7 +255,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
-import { withDemoSeeded, withDemoRemoved, isDemoEvent } from '@app/lib/demoSeed';
+import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
 import { commApi, isCommApiConfigured } from '@app/lib/commApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
@@ -275,6 +275,7 @@ import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, 
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
+import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
@@ -903,6 +904,9 @@ const DEMO_TOOLS_ARMED = (() => {
     return localStorage.getItem('ngw-demo-tools') === '1';
   } catch { return false; }
 })();
+// The "Test — …" QA fixtures list (shelf + Search) only with the tools armed;
+// they still resolve by id either way (stage-4 P1, N2).
+const LISTED_ROSTER = listedSamples(ROSTER, DEMO_TOOLS_ARMED);
 
 // ─── SHOP / BRINGING — the spread sheet's two modes ──────────────────────────
 //
@@ -3685,6 +3689,7 @@ export default function HostShellV2() {
       // only after the server or Stripe has confirmed, so nothing here can
       // manufacture the claim that `passGate` falls back to.
       setCustoms(list => list.map(c => (c && c.id === paidEventId) ? { ...c, passPurchased: true } : c));
+      recordPassFunnel('purchase_confirmed', paidEventId);
       toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
     };
 
@@ -4254,6 +4259,9 @@ export default function HostShellV2() {
     try {
       const b = attendanceBand(event);
       if (!b || !b.applicable || !b.band) return null;
+      // N1: a reply band under a planned count it hasn't caught up to is not "likely on the day".
+      const sr = sizingRange(event);
+      if (!sr || sr.plannedOverRoster) return null;
       return { low: b.low, high: b.high, note: b.note || (b.shift && b.shift.note) || '' };
     } catch (_e) { return null; }
   })();
@@ -17959,6 +17967,12 @@ export default function HostShellV2() {
                     <>
                       <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
+                      {/* BEFORE THE MONEY (stage 9, 11/11/2026): a person to ask, and the
+                          policies once published. The refund RULE is the owner's to
+                          choose (docs/legal/REFUND_POLICY_DRAFT.md), so no rule is
+                          stated here — only where to ask, which is true today. */}
+                      <p className="grounding" style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }}>Questions about the pass or a charge? <a href={'mailto:' + BRAND.support}>{BRAND.support}</a></p>
+                      <PolicyLinks style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }} />
                     </>
                   ) : (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
@@ -18305,7 +18319,7 @@ export default function HostShellV2() {
                     above now, including the ones minted on this device, so
                     nothing here belongs to anybody. Every `_custom` branch this
                     block used to carry went up with them. */}
-                {ROSTER.map((e, i) => {
+                {LISTED_ROSTER.map((e, i) => {
                   const isActive = e.id === eventId;
                   const src = e;
                   const d = daysUntil(src.date);
@@ -19016,6 +19030,7 @@ export default function HostShellV2() {
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
                       <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
+                      <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
                     </>
                   )}
 
@@ -20049,14 +20064,14 @@ export default function HostShellV2() {
                     {foodSpan ? <Grounding gap={ASK_RHYTHM.valueToWhy}>{foodSpan.text}</Grounding> : null}
                   </div>
                 ) : foodPlan.hasRealCount ? (() => {
-                  const fBand = (() => { try { return attendanceBand(event); } catch { return null; } })();
-                  const fBandLbl = (() => { try { return attendanceBandLabel(fBand); } catch { return null; } })();
+                  // N1: the sizing label (lib sizingRange), never the reply band — they differ when a planned count outranks a short roster.
+                  const fSized = (() => { try { return sizingRange(event); } catch { return null; } })();
                   // A BAND OF ONE IS A NUMBER. With a locked headcount bandLow
                   // and bandHigh are equal, and the old hero hid that behind
                   // "sized for 10–10 guests" — which nobody noticed until the
                   // rewrite put the phrase on its own line and it read "10–10".
-                  const fGuestPhrase = (fBand && fBand.applicable && fBand.band && fBandLbl)
-                    ? fBandLbl
+                  const fGuestPhrase = (fSized && fSized.spread)
+                    ? fSized.label
                     : (foodPlan.bandLow === foodPlan.bandHigh
                         ? `${foodPlan.bandHigh}`
                         : `${foodPlan.bandLow}–${foodPlan.bandHigh}`);
@@ -23622,10 +23637,11 @@ export default function HostShellV2() {
                     // DENOMINATORS-1: name the guest count this budget was sized
                     // against — the same band the Guests tile and food plan use,
                     // never a second unreconciled number.
-                    let budgetBand = null;
-                    try { budgetBand = attendanceBand(event); } catch { budgetBand = null; }
-                    const hasSpread = budgetBand && budgetBand.applicable && budgetBand.band;
-                    const guestPhrase = hasSpread ? attendanceBandLabel(budgetBand) + ' guests' : null;
+                    // N1: through lib sizingRange — the reply band is not the size
+                    // when a planned count outranks a short roster.
+                    let budgetSized = null;
+                    try { budgetSized = sizingRange(event); } catch { budgetSized = null; }
+                    const guestPhrase = budgetSized && (budgetSized.spread || budgetSized.plannedOverRoster) ? budgetSized.label + ' guests' : null;
                     // Hero copy (host request 2026-07-11): the old summary row is
                     // PROMOTED to the full hero. The warm line RENDERS budgetHeroCopy's
                     // own strings (lib/budgetCopy — one source of truth per fact):
@@ -23995,8 +24011,11 @@ export default function HostShellV2() {
             })()}
             {sheet.kind === 'guests' && (() => {
               const gcr = (() => { try { return guestCountResolved(event); } catch { return null; } })();
-              const band = (() => { try { return attendanceBand(event); } catch { return null; } })();
-              const bandLbl = (() => { try { return attendanceBandLabel(band); } catch { return null; } })();
+              // N1: lib sizingRange. A reply band under a planned count it hasn't caught
+              // up to is a reply status, not "likely on the day" — the plan is the size.
+              const sized = (() => { try { return sizingRange(event); } catch { return null; } })();
+              const bandLbl = sized && !sized.plannedOverRoster ? sized.label : null;
+              const planLbl = sized && sized.plannedOverRoster ? sized.label : null;
               const quickAdd = (
                 <div style={{ marginTop: 'var(--sp-3)' }}>
                   {/* §25 · PRIMARY WORK IS STATE-DEPENDENT. With no list, adding
@@ -24201,7 +24220,7 @@ export default function HostShellV2() {
                   // sub says so. It read the yes-count under that label (gold run,
                   // 11/5/2026), so five names showed "—" until someone replied.
                   n = chase ? heads : (event.guests || []).length;
-                  const tail = bandLbl ? ' — likely ' + bandLbl + ' on the day' : '';
+                  const tail = planLbl ? ' — planning for ' + planLbl : bandLbl ? ' — likely ' + bandLbl + ' on the day' : '';
                   sub = !chase
                     ? 'on the list — counted, never chased'
                     // FIX (host report): "said yes" must track the uncheck — never claim yeses
@@ -24212,7 +24231,7 @@ export default function HostShellV2() {
                         : 'no yes replies yet — everyone’s answered')
                       : (gcr && gcr.pending > 0
                         ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered') + tail
-                        : 'said yes — the list has settled' + (bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
+                        : 'said yes — the list has settled' + (planLbl ? ' · planning for ' + planLbl : bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
                 } else {
                   n = Number(guests) || 0;
                   sub = n > 0
@@ -25759,7 +25778,7 @@ export default function HostShellV2() {
       {paletteOpen && (() => {
         const q = paletteQ.trim().toLowerCase();
         const seen = new Set();
-        const evList = [...REAL_EVENTS, ...hydratedEvents, ...ROSTER, ...customs].filter(e => e && e.id && !seen.has(e.id) && seen.add(e.id));
+        const evList = [...REAL_EVENTS, ...hydratedEvents, ...LISTED_ROSTER, ...customs].filter(e => e && e.id && !seen.has(e.id) && seen.add(e.id));
         const events = evList.map(e => ({
           kind: 'event', id: e.id,
           label: e.name || e.type || 'Event',

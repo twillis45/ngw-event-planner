@@ -1,5 +1,23 @@
 # Where We Are -- live status board
 
+## November 10–11, 2026 — the last smoke-test gaps closed; the guest invite redesigned
+
+Three PRs merged and deployed (#113–#115). The live build is `61cb1324`, and the automatic deploy now builds `live`.
+
+- **Gaps the smoke test left open.**
+  - The Stripe library is pinned to the version proven on live.
+  - The app names a support contact, `events@noguessworksystems.com`, and the inbox receives mail.
+  - The owner set `RESEND_WEBHOOK_SECRET`, and Resend webhooks now verify.
+- **The guest invite**, the one surface every guest sees, was redesigned at the owner's direction.
+  - At 1024 and up it fills the window in light and dark, with the invitation beside the reply.
+  - The reply is the primary action: one row, with "Yes" filled.
+  - The line saying where the reply goes, and Forward, sit right under it.
+  - "Be the first to say yes" is gone.
+  - Nothing moves when a guest taps a reply.
+- **Checks.** Every state was measured at six widths in both tones, and new guard specs were red-proofed.
+
+The owner reports smoke-test 6.7 (the pass on a second device) complete, which closes the paid path on live. Detail in `HANDOFF.md`, November 10–11 entry.
+
 ## November 8–10, 2026 — live smoke test end to end; the paid path works on live
 
 The owner ran the launch smoke test on the live site and every defect it found was fixed, tested, and merged (#103–#112). Sign-in by 6-digit code, second-device sync, invite links, account deletion, and the One-Event Pass — checkout, grant, refund, and removal — now pass on live with a real $39 charge, refunded. Four of the fixes were backend Stripe defects: a rejected parameter, Managed Payments on by default, and two places that read stripe-python 16 objects as dicts. The library is now pinned. Open: `RESEND_WEBHOOK_SECRET` on Render, and no support contact in the app. Detail in `HANDOFF.md`, November 8–10 entry.

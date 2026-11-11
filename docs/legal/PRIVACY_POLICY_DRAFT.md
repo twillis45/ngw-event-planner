@@ -7,7 +7,7 @@
 
 **Effective:** `[OWNER: effective date]`
 **Who we are:** No Guesswork Systems LLC (“we,” “us”), `[OWNER: mailing address]`.
-**How to reach us about privacy:** `[OWNER: support email]`.
+**How to reach us about privacy:** events@noguessworksystems.com. ⟶ `src/lib/brand.js:145` (owner decision 11/11/2026)
 
 No Guesswork Events (“the app”) helps a person plan an event — a wedding, a
 milestone birthday, a reunion — without a paid planner. This policy explains
@@ -142,8 +142,9 @@ receives. We do not send them more than the row says.
   date. The routine that does this exists and is run by hand today; it is not
   yet automatic, and this sentence will change when it is.
   ⟶ `purge_old_rsvp_submissions`, `009:101-130`; not scheduled as of 2026-11-02
-- **Pass purchases:** kept as a record of what you bought, for as long as the
-  account exists; required for refunds and disputes.
+- **Pass purchases:** kept as a record of what you bought; required for
+  refunds and disputes. The receipt survives account deletion, with the link
+  to your account removed (section 6). ⟶ `021_account_deletion.sql:71-75`
 - **Error reports and analytics:** on Sentry's and PostHog's default retention
   for our plan; they hold no name or email from us.
 - **Email we sent through Resend:** on Resend's default retention.
@@ -152,15 +153,53 @@ receives. We do not send them more than the row says.
 
 ## 6. What you can ask us to do
 
-Write to `[OWNER: support email]` from the address on the account (or, for a
+Write to events@noguessworksystems.com from the address on the account (or, for a
 guest, with the invitation code you replied to) and we will, within 30 days:
 
 - **Tell you what we hold** about you and send you a copy.
 - **Correct** it.
-- **Delete** it. For a host that means the studio's events, guest lists, pass
-  records and sign-in identity; for a guest it means your reply. Deletion is
-  not self-serve yet — it is a request, and we confirm when it is done.
+- **Delete** it. For a guest that means your reply. A host can also delete
+  their own account directly — see below.
 - **Stop analytics** for you (or just use `?noanalytics=1`).
+
+**Deleting your account yourself.** A signed-in host can delete their account
+in the app: **You & settings → Your account → Delete my account…**, then type
+`DELETE` to confirm. ⟶ `hostv2/src/HostShellV2.jsx:18935-19000`;
+`backend/app/routers/account.py:30-41` (`DELETE /api/account`; the literal
+word `DELETE` is required, and only a signed-in session can do it). It happens
+at once and cannot be undone. It removes:
+
+- your sign-in identity; ⟶ `account.py:88-92`
+- every event that belongs only to you — the events in studios where you are
+  the only member, and events you own outside any studio — with their guests'
+  replies, vendor-brief links and vendors' confirmations, and event messages,
+  so those invitation and brief links stop working; ⟶ `account.py:62-70`;
+  `supabase/migrations/021_account_deletion.sql:30-59`; events go with their
+  studio, `001_initial_schema.sql:46` (`on delete cascade`)
+- studios where you are the only member, your studio memberships, and studio
+  invitations you sent or received; ⟶ `021_account_deletion.sql:76-79`
+- the files you uploaded to those events; ⟶ `account.py:71-87`
+- on that device, the app's copies of the account's events. Plans that were
+  only ever saved on the device stay there until you remove them. ⟶
+  `HostShellV2.jsx:18961-18986`
+
+It keeps, and the app says so before you confirm ⟶ `account.py:105`
+(`retained_categories`), `HostShellV2.jsx:18990`:
+
+- **payment receipts** for any pass you bought, with the link to your account
+  removed; ⟶ `021_account_deletion.sql:71-75`
+- **security and administrative records**;
+- **content in a studio you share with other people**, which stays with them.
+  In those studios your name is taken off the events you owned and off
+  pinned messages. ⟶ `021_account_deletion.sql:60, 64-69, 77`
+
+It stops and tells you what to do first if you are the only owner of a studio
+other people still use (make someone else an owner), or if you uploaded files
+to an event someone else still has (transfer or remove them). ⟶
+`account.py:56-61, 76-77`; `021_account_deletion.sql:19-28`
+
+Signed-out plans never reached us; to delete them, remove them from the device.
+If you cannot sign in, write to us and we will do the deletion for you.
 
 We will not treat you differently for asking. If you are in a US state with a
 privacy law that gives you these rights by statute (California, Virginia,
@@ -208,6 +247,6 @@ change takes effect.
 - Payment happens on Stripe; we never see card numbers.
 - Analytics are minimal and opt-out; error reports carry no personal data.
 - Nothing is sold, nothing is advertised.
-- Email `[OWNER: support email]` to see, fix or delete your data.
+- Email events@noguessworksystems.com to see, fix or delete your data.
 
 **Governing law:** `[OWNER: governing state]`, United States.

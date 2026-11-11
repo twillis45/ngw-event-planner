@@ -54,7 +54,8 @@ const scan = (file) => {
 // So it holds the line instead: the count may fall, never rise. Same shape as
 // spacingLadder.test.js, which this repo already runs for exactly this reason.
 // The tab strip is one fewer as of today, and this is what stops the next one.
-const BASELINE = { 'styles.css': 9, 'LodgingCockpit.jsx': 0 };
+// 9 -> 8 on 2026-11-11: the reveal's .rv-sprov confidence line moved 9px -> --t-overline (M1).
+const BASELINE = { 'styles.css': 8, 'LodgingCockpit.jsx': 0 };
 
 describe('type below the stated floor never increases', () => {
   for (const file of FILES) {

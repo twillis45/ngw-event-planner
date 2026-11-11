@@ -1542,6 +1542,8 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   transform:rotate(-45deg);
 }
 .grounding{font-size:var(--t-meta); color:var(--muted); margin-top:6px; font-weight:550}
+/* Published policy links (PolicyLinks.jsx): quiet, inherit the line's color. */
+.policy-links a{color:inherit}
 
 /* ── THE EXCLUSIONS FOLD ────────────────────────────────────────────────────
    The budget ask's "N things this number leaves out". It shipped as one
@@ -2205,15 +2207,15 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   color:#5d6772; opacity:.34; transition:color .7s var(--ease-out), opacity .7s, transform .7s cubic-bezier(.33,0,.2,1)}
 .rv-sval{margin-top:3px; font-size:12px; line-height:1.35; color:#5a6570; opacity:.16; transition:color .7s, opacity .7s}
 .rv-swhy{color:inherit; opacity:.82}
-.rv-sprov{margin-top:3px; font-size:9px; font-weight:600; letter-spacing:.5px; text-transform:uppercase;
-  color:var(--muted); opacity:.05; transition:opacity .7s}
+.rv-sprov{margin-top:3px; font-size:var(--t-overline); font-weight:600; letter-spacing:.5px; text-transform:uppercase;
+  color:var(--carbon-ink-soft); opacity:.05; transition:opacity .7s}
 
 /* visited (lit) — quiet, legible, on the record */
 .rv-snode.lit .rv-sdot{opacity:1}
 .rv-snode.lit .rv-shalo{opacity:.22}
 .rv-snode.lit .rv-slabel{color:#9aa7b2; opacity:.72}
 .rv-snode.lit .rv-sval{color:#8792a0; opacity:.5}
-.rv-snode.lit .rv-sprov{opacity:.3}
+.rv-snode.lit .rv-sprov{opacity:1}
 
 /* focus — the one loud thing: the label expands + self-illuminates, dot flares */
 .rv-snode.focus .rv-sdot{background:#dbe9f2; opacity:1; width:12px; height:12px; margin:-6px 0 0 -6px;
@@ -2221,14 +2223,14 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .rv-snode.focus .rv-shalo{opacity:.6; width:30px; height:30px; margin:-15px 0 0 -15px}
 .rv-snode.focus .rv-slabel{color:#fbfdff; opacity:1; transform:scale(1.26)}
 .rv-snode.focus .rv-sval{color:#cdd6de; opacity:1}
-.rv-snode.focus .rv-sprov{color:var(--steel-soft); opacity:.9}
+.rv-snode.focus .rv-sprov{opacity:1}
 
 /* resolved (rest) — the spotlight lifts, the WHOLE spine reads fully lit */
 .rv-spinewrap.resolved .rv-snode .rv-sdot{opacity:1; background:var(--steel-soft); width:8px; height:8px; margin:-4px 0 0 -4px; box-shadow:0 0 8px 1px rgba(78,104,119,.45)}
 .rv-spinewrap.resolved .rv-snode .rv-shalo{opacity:.24}
 .rv-spinewrap.resolved .rv-snode .rv-slabel{color:#e4eaef; opacity:.96; transform:none}
 .rv-spinewrap.resolved .rv-snode .rv-sval{color:#a6b1bb; opacity:.88}
-.rv-spinewrap.resolved .rv-snode .rv-sprov{opacity:.42}
+.rv-spinewrap.resolved .rv-snode .rv-sprov{opacity:1}
 
 .rv-sground{margin-top:12px}
 

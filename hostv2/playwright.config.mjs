@@ -9,6 +9,10 @@ import { previewUrl } from './deployBase.mjs';
 // Specs whose every test calls setViewportSize (or a boot() helper that does).
 // See the note above `projects` for why this is per-test, not per-file.
 const SELF_PINNED = [
+  // Pins 390x844 in both tests (stage-4 N1, 11/11/2026): one geometry, run once.
+  '**/aPlannedCountOutranksAShortRoster.spec.mjs',
+  // Pins 390x844 (stage-4 N2, 11/11/2026).
+  '**/qaFixturesAreDemoOnly.spec.mjs',
   '**/heroVoid.spec.mjs',
   // Pins 320x640 in its one test (run 2, R2-12).
   '**/theCountFitsAt320.spec.mjs',
