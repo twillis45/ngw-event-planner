@@ -145,6 +145,55 @@ backups on, and one restore performed, are both still owed). Note that
 push, or a push may try to re-run them; 021's `add constraint` is not safe to
 re-run.
 
+**Record the hand-applied migrations** (once, about 5 minutes, SQL editor on
+production). This changes no schema and runs no migration: it writes five rows
+saying 017–021 are applied. The CLI takes the version and name from the file
+name (`017_event_passes.sql` → `017`, `event_passes`) and decides what to push
+by version. First, read only:
+```sql
+-- a. What is recorded now. Expect 001 … 016 and nothing after, in this format.
+select version, name from supabase_migrations.schema_migrations order by version;
+
+-- b. The table's actual columns. The insert writes only version and name; if
+--    any other column is NOT NULL with no default, stop and ask.
+select column_name, data_type, is_nullable, column_default
+from information_schema.columns
+where table_schema = 'supabase_migrations' and table_name = 'schema_migrations'
+order by ordinal_position;
+
+-- c. 017–021 really are in this database. Every column must read true.
+select
+  to_regclass('public.event_passes') is not null                                   as m017_event_passes,
+  (select relrowsecurity from pg_class
+    where oid = to_regclass('public.research_campaign_runs'))                       as m018_research_rls,
+  not has_function_privilege('anon', 'public.ensure_studio()', 'execute')          as m019_anon_revoked,
+  to_regclass('public.pass_payment_blocks') is not null                            as m020_payment_blocks,
+  exists (select 1 from pg_constraint where conname = 'studio_members_auth_user_fk') as m021_account_fk;
+```
+Then record. Safe to run twice (`on conflict` skips a version already there),
+and it refuses, recording nothing, if 017 or 021 is missing from the database:
+```sql
+begin;
+do $$ begin
+  if to_regclass('public.event_passes') is null
+     or not exists (select 1 from pg_constraint where conname = 'studio_members_auth_user_fk')
+  then raise exception '017-021 are not all applied here; nothing recorded';
+  end if;
+end $$;
+insert into supabase_migrations.schema_migrations (version, name) values
+  ('017', 'event_passes'),
+  ('018', 'research_tables_rls'),
+  ('019', 'browser_privilege_boundaries'),
+  ('020', 'pass_payment_revocations'),
+  ('021', 'account_deletion')
+on conflict (version) do nothing;
+commit;
+```
+Re-run query a: it must end at 021. The CLI's own route to the same rows is
+`supabase migration repair --status applied 017 018 019 020 021` against the
+linked project. `runbookRecordsHandAppliedMigrations.test.js` ties every row
+above to a file in `supabase/migrations`.
+
 **Take the whole site down** (last resort): Settings → Pages → unpublish, or
 `gh repo edit twillis45/ngw-event-planner --visibility private`. The API keeps
 running; do layer 3 as well if money is involved.
