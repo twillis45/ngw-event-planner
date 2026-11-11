@@ -33,7 +33,12 @@ const openTheList = async (page) => {
 };
 
 const searchFor = async (page, q) => {
-  await page.keyboard.press('Control+k');
+  // The board must be up before the shortcut has a listener; then open Search
+  // by its own button (⌘K is the same toggle).
+  await expect(page.locator('.ev-eyebrow').first()).toBeVisible({ timeout: 20000 });
+  if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
+  await page.locator('.ev-eyebrow').first().click();
+  await page.locator('.navrow', { hasText: /^Search/ }).first().click();
   const input = page.locator('.palette-input');
   await expect(input).toBeVisible({ timeout: 10000 });
   await input.fill(q);
@@ -73,5 +78,6 @@ test('hidden from the list, a fixture still boots by id', async ({ page }) => {
   await seed(page, 'test-day-before-vendors');
   await page.goto('?elegant=1&demo=0');
   await expect(page.locator('.ev-eyebrow').first()).toBeVisible({ timeout: 20000 });
-  await expect(page.locator('.app')).toContainText('Ironwood');
+  // The board is the fixture's own, booted by id with the list filtered.
+  await expect(page.locator('.app')).toContainText(/Test — Dinner/i);
 });
