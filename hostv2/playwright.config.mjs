@@ -15,6 +15,9 @@ const SELF_PINNED = [
   '**/qaFixturesAreDemoOnly.spec.mjs',
   // Pins 390x844 (reveal text legibility, 11/11/2026): the phone-first reveal.
   '**/revealTextLegible.spec.mjs',
+  // Pins 390x844 in all four tests (light-theme contrast, 11/11/2026): the
+  // welcome and the steel-filled labels, measured as the phone meets them.
+  '**/lightThemeContrast.spec.mjs',
   '**/heroVoid.spec.mjs',
   // Pins 320x640 in its one test (run 2, R2-12).
   '**/theCountFitsAt320.spec.mjs',

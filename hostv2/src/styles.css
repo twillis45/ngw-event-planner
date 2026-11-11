@@ -473,7 +473,7 @@ button{font-family:inherit}
   cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; z-index:1;
   box-shadow:0 2px 8px -3px rgba(0,0,0,.5)}
 .tpuck:active{cursor:grabbing; z-index:2}
-.tpuck.seated{background:var(--steel); border-color:var(--steel); color:var(--carbon-text)}
+.tpuck.seated{background:var(--steel); border-color:var(--steel); color:var(--on-steel)}
 .tpuck.seatable{box-shadow:0 0 0 2px var(--steel-soft), 0 2px 8px -3px rgba(0,0,0,.5)}
 .tp-label{font-size:var(--t-caption-min); font-weight:750; line-height:1.05; text-align:center; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .tp-count{font-size:var(--t-caption-min); font-weight:700; opacity:.8; font-variant-numeric:tabular-nums}
@@ -515,7 +515,7 @@ button{font-family:inherit}
 /* Drag-a-person: a chip follows the pointer; tables glow as drop targets; the
    dragged row dims; the tray highlights so a seated guest can be dropped back. */
 .seat-ghost{position:fixed; transform:translate(-50%,-140%); z-index:120; pointer-events:none;
-  background:var(--steel); color:var(--carbon-text); font-size:var(--t-pill); font-weight:700;
+  background:var(--steel); color:var(--on-steel); font-size:var(--t-pill); font-weight:700;
   padding:6px 12px; border-radius:999px; box-shadow:0 6px 18px -4px rgba(0,0,0,.6); white-space:nowrap}
 .frow.dragging{opacity:.4}
 .seat-tray.droptarget{outline:1px dashed var(--steel-soft); outline-offset:4px; border-radius:var(--r-md)}
@@ -550,7 +550,7 @@ button{font-family:inherit}
 /* Selected state matches BOTH aria-pressed (toggle chips) AND aria-checked
    (radiogroup chips, e.g. the invite's Yes/Maybe/No) — without the aria-checked
    half, radio chips render identically selected vs unselected. */
-.chip[aria-pressed="true"], .chip[aria-checked="true"]{background:var(--steel); border-color:var(--steel); color:var(--ink)}
+.chip[aria-pressed="true"], .chip[aria-checked="true"]{background:var(--steel); border-color:var(--steel); color:var(--on-steel)}
 /* RECAP, NOT SELECTION (host 2026-08-04: "does the CTA stand out enough?").
    The intake recognition row states what was HEARD; every filled chip there wore
    solid --steel — the primary CTA's own weight — so five of them out-shouted the
@@ -1213,10 +1213,10 @@ button{font-family:inherit}
 .tile-b, .tile-c{justify-content:flex-start; gap:var(--sp-2)}
 .tile-b{grid-area:b; background:var(--bg-band)}
 .tile-c{grid-area:c; background:var(--card); border:1px solid var(--line-soft)}
-.tile-d{grid-area:d; background:var(--cta-grad); color:var(--carbon-text); cursor:pointer;
+.tile-d{grid-area:d; background:var(--cta-grad); color:var(--on-steel); cursor:pointer;
   transition:transform var(--ms-press) var(--ease-out), filter var(--ms-press) var(--ease-out)}
 .tile-d:hover:not(:disabled){filter:brightness(1.06); transform:translateY(-2px)}
-.tile-d .t-label{color:var(--carbon-text); opacity:.7}
+.tile-d .t-label{color:var(--on-steel); opacity:.7}
 .tile-d .t-num{font-size:var(--t-stat-sm); letter-spacing:-.02em}
 .tile-d .t-go{font-size:var(--t-meta); font-weight:700}
 /* Tighten the sticky NEXT's headline margins so, on an overflowing hero, the tile is short
@@ -1240,7 +1240,7 @@ button{font-family:inherit}
   transition:all var(--ms-press) var(--ease-out);
 }
 .lens:hover{border-color:var(--steel)}
-.lens[aria-pressed="true"]{background:var(--steel); border-color:var(--steel); color:var(--ink)}
+.lens[aria-pressed="true"]{background:var(--steel); border-color:var(--steel); color:var(--on-steel)}
 
 .sect{display:flex; align-items:baseline; gap:14px; margin:var(--break-major) 0 var(--sp-4)}/* audit: 48→44, one major-break token */
 .sect h2{font-size:var(--t-section); font-weight:800; letter-spacing:-.03em; margin:0; white-space:nowrap}
@@ -1301,7 +1301,7 @@ button{font-family:inherit}
    half-width in the 2-col phone grid (host 2026-07-22). */
 .pill-grid > :last-child:nth-child(odd){ grid-column:1 / -1 }
 .cta{
-  font-size:var(--t-cta); font-weight:700; color:var(--carbon-text); border:none; cursor:pointer;
+  font-size:var(--t-cta); font-weight:700; color:var(--on-steel); border:none; cursor:pointer;
   background:var(--cta-grad); border-radius:var(--r-row); padding:10px 18px; letter-spacing:-.01em;/* radius audit: 11px→--r-row(14) — ONE radius across the whole .cta family */
   /* audit S1: primary buttons were ~38px — under the 44px floor and, per the QA
      scorecard, the tallest tap target should be the primary action, not the
@@ -1460,7 +1460,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   border-radius:var(--r-pill); padding:10px var(--sp-4); cursor:pointer; white-space:nowrap;
   transition:background var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out), transform var(--ms-press) var(--ease-out);
 }
-.dock button[aria-current="true"]{background:var(--steel); color:var(--ink)}
+.dock button[aria-current="true"]{background:var(--steel); color:var(--on-steel)}
 
 .toast{
   position:absolute; left:50%; bottom:calc(84px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,0); z-index:60;
@@ -1946,7 +1946,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .chip[aria-pressed="true"] .chip-sub{color:var(--ink); background:rgba(255,255,255,.16)}
 .tile-a{cursor:pointer}
 .tile-a:active{transform:scale(.99)}
-.chip[aria-pressed="true"] .chip-sub{color:var(--card); background:rgba(0,0,0,.12)}
+.chip[aria-pressed="true"] .chip-sub{color:var(--on-steel); background:rgba(0,0,0,.12)}
 
 /* ── Reveal: full-screen ceremonial takeover (host request 2026-07-11 —
    "the magic moment... has to be put back"; legacy's AssembleReveal is a
@@ -2369,16 +2369,22 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* SANS to match the operational host shell (the Plan countdown, event names,
    sheet heroes are all --sans). The welcome is the app's front door, not a
    ceremonial/stationery surface, so it uses the app's display face, not serif. */
-.welcome-h1{font-weight:800; font-size:var(--t-display-xl);
+/* THE WELCOME IS CARBON IN BOTH THEMES (#0d1014 above), so every line on it
+   reads a fixed --carbon-* token, as the creation reveal does — never the moded
+   --ink/--ink-soft/--muted/--steel-soft. Light painted the headline at 1.01:1,
+   the sub and note 3.45, the eyebrow 3.51, the ghost button 2.75. */
+.content.welcome .eyebrow{color:var(--carbon-ink-soft)}
+.content.welcome .cta.ghost{color:var(--carbon-steel-soft)}
+.welcome-h1{font-weight:800; font-size:var(--t-display-xl); color:var(--carbon-ink);
   line-height:1.02; letter-spacing:-.035em; margin:12px 0 12px; text-wrap:balance}
 /* Sub: one tight line, constrained measure so it never sprawls, clearly readable
    (not the muted link-blue it drifted toward). */
-.welcome-sub{max-width:30ch; font-weight:500; color:var(--ink-soft);
+.welcome-sub{max-width:30ch; font-weight:500; color:var(--carbon-ink-soft);
   font-size:var(--t-sub); line-height:1.5; letter-spacing:-.01em; margin:0}
 /* Footnote: readable (was 11.5px caption — too small), kept secondary to the
    CTAs by weight + muted color rather than by shrinking it below legible size. */
 .welcome-note{margin:18px 0 0; font-size:var(--t-body); font-weight:500;
-  color:var(--ink-soft); line-height:1.5; max-width:34ch}
+  color:var(--carbon-ink-soft); line-height:1.5; max-width:34ch}
 /* the headline's own period is the brand bead — the mark that just dropped
    in on the splash, now landed in the copy. Sized/seated in em so it rides
    the display type at any viewport. */
@@ -3261,7 +3267,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   color:var(--steel-soft); background:var(--steel-tint); border:none; border-radius:var(--r-pill); padding:var(--sp-1) 11px;
   cursor:pointer; transition:background var(--ms-press) var(--ease-out);
 }
-.ev-kicker:hover, .ev-kicker:active{background:var(--steel); color:var(--ink)}
+.ev-kicker:hover, .ev-kicker:active{background:var(--steel); color:var(--on-steel)}
 .ev-kicker span{font-size:var(--t-caption-min); opacity:.85}
 .ev-title{
   font-size:19px/*rebalance 2026-07-17: identity recedes under the ask (ramp: 40/19/16/14)*/; font-weight:700; letter-spacing:-.015em; line-height:1.28;
@@ -3375,7 +3381,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:22;
   display:flex; align-items:center; gap:var(--sp-3); text-align:left;
   padding:15px 18px; border:none; border-radius:var(--r-pill); cursor:pointer;
-  background:var(--cta-grad); color:var(--carbon-text);
+  background:var(--cta-grad); color:var(--on-steel);
   box-shadow:0 16px 44px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14);
   transition:transform var(--ms-press) var(--ease-out), filter var(--ms-press) var(--ease-out);
 }
@@ -3435,11 +3441,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 }
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
-.next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--carbon-text); opacity:.72}
+.next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--on-steel); opacity:.72}
 .next-bar .nb-title{flex:1; min-width:0; font-size:var(--t-row-sub); font-weight:700; line-height:1.3;
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis}
-.next-bar .nb-more{flex:0 0 auto; font-size:var(--t-overline); font-weight:800; letter-spacing:.02em; color:var(--carbon-text); background:rgba(255,255,255,.16); border-radius:var(--r-pill); padding:2px 8px; opacity:.9}
-.next-bar .nb-chev{flex:0 0 auto; font-size:var(--t-section); color:var(--carbon-text); opacity:.6}
+.next-bar .nb-more{flex:0 0 auto; font-size:var(--t-overline); font-weight:800; letter-spacing:.02em; color:var(--on-steel); background:rgba(255,255,255,.16); border-radius:var(--r-pill); padding:2px 8px; opacity:.9}
+.next-bar .nb-chev{flex:0 0 auto; font-size:var(--t-section); color:var(--on-steel); opacity:.6}
 .next-bar.allset .nb-more{background:rgba(0,0,0,.14)}
 .next-bar.allset{background:var(--ok); color:var(--on-ok)}
 .next-bar.allset .nb-label,.next-bar.allset .nb-title,.next-bar.allset .nb-chev{color:var(--on-ok)}
@@ -7411,7 +7417,7 @@ button.vc-pill::after{
    steel with carbon text, which is the value the brand's own CTA gradient
    starts from — not a new colour, the top of the existing one. */
 .people-move-cta, .pr-primary{
-  background:var(--steel); border-color:var(--steel); color:var(--carbon-text);
+  background:var(--steel); border-color:var(--steel); color:var(--on-steel);
   font-weight:700;
 }
 .people-move-cta:hover, .pr-primary:hover{ background:var(--steel-strong, var(--steel)); }
