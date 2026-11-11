@@ -1233,6 +1233,8 @@ export default function InviteV2({ code }) {
                               </div>
                               <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Their allergies or needs — optional"
                                 value={plusOneNeeds} onChange={e => setPlusOneNeeds(e.target.value)} aria-label="Plus-one needs" />
+                              {/* The plus-one's needs are health details too (owner, 11/11/2026). */}
+                              <p className="inv2-fine" style={{ margin: '6px 0 0' }} data-guest-data-notice="plus-one">{GUEST_DATA_NOTICE}</p>
                             </div>
                           )}
                         </>

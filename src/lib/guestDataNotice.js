@@ -10,19 +10,20 @@
 // approve, and every place the invite shows it reads it from here.
 //
 // WHY EACH CLAIM IS TRUE (re-check these before changing a word):
-//   · "Only your host sees" — the public endpoints never return another guest's
+//   · "Only your host and their planning team see" (owner-approved 11/11/2026;
+//     "team" because every member of the host's studio can read the answers,
+//     so "only your host" would overstate it) — the public endpoints never return another guest's
 //     answers: GET /api/public/invite/{code} whitelists display fields and sends
 //     a COUNT of confirmed guests, never names or details; the guest-detail
 //     read-back GET /api/events/{id}/rsvps is planner-authenticated and scoped to
 //     the event's studio (backend/app/routers/rsvp.py, list_rsvps +
-//     _assert_event_studio_read). NOTE FOR COUNSEL: "host" there means the host's
-//     studio — every member of the studio that owns the event can read it.
+//     _assert_event_studio_read): every member of the studio that owns the event.
 //     InviteV2 shows other guests as a count or first-name initials only, and
 //     only from the roster already on the host's own device.
 //   · Where it lives — the answers are stored with the host's event in the app's
 //     database (supabase/migrations/009_rsvp_submissions.sql,
 //     015_rsvp_guest_details.sql: allergens / diets / access columns).
-//   · "To have it removed, email …" — BRAND.support (src/lib/brand.js), the one
+//   · "To have them deleted, email …" (owner-approved 11/11/2026) — BRAND.support (src/lib/brand.js), the one
 //     inbox the app names for a person.
 //   · Nothing is shown on a public page.
 //
@@ -36,4 +37,4 @@
 import { BRAND } from './brand';
 
 export const GUEST_DATA_NOTICE =
-  `Only your host sees what you share here. To have it removed, email ${BRAND.support}.`;
+  `Only your host and their planning team see these answers. To have them deleted, email ${BRAND.support}.`;

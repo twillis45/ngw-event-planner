@@ -7,7 +7,8 @@
 // the fields it is about (not at the foot of the page), in light and dark
 // invites, after a guest taps Yes:
 //   · the full allergies / diet / access group (any event), and
-//   · the shellfish question asked outright on a crab event.
+//   · the shellfish question asked outright on a crab event, and
+//   · the plus-one's own allergies-or-needs field.
 // Seeded like theInviteReplyLeads.spec.mjs.
 import { test, expect } from './fixtures.mjs';
 
@@ -108,5 +109,22 @@ for (const tone of ['light', 'dark']) {
     expect(p.questionsBetween, 'the notice drifted past the next question').toBe(0);
     // The menu line sits between the chip and the notice, so allow two short lines.
     expect(p.gap).toBeLessThanOrEqual(60);
+  });
+
+  test(`${tone}: the plus-one's needs field says who sees the answer`, async ({ page }) => {
+    await open(page, { inviteStyle });
+    await expect(page.locator('[data-guest-data-notice="plus-one"]')).toHaveCount(0);
+    await page.getByRole('button', { name: /^Add a plus-one$/ }).click();
+    const field = page.getByRole('textbox', { name: 'Plus-one needs' });
+    await expect(field).toBeVisible();
+    const note = page.locator('[data-guest-data-notice="plus-one"]');
+    await note.scrollIntoViewIfNeeded();
+    await expect(note).toBeVisible();
+    await expect(note).toContainText(SUPPORT);
+    const p = await placement(page, 'plus-one', 'input[aria-label="Plus-one needs"]', 'input[aria-label="Plus-one needs"]');
+    expect(p.found).toBe(true);
+    expect(p.afterFields).toBe(true);
+    expect(p.questionsBetween).toBe(0);
+    expect(p.gap).toBeLessThanOrEqual(24);
   });
 }
