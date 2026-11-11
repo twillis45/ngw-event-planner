@@ -446,11 +446,20 @@ export default function InviteV2({ code }) {
   const bp = useBreakpoint();
   const twoColumn = bp === 'tablet-land' || bp === 'desktop';
   // A guest scrolls down the form to reach "Send my reply"; sending collapses the
-  // form, and the page stayed scrolled to where the button was — on a laptop the
-  // confirmation opened with the top of the card cut off. Bring it into view.
+  // form, and the page stayed scrolled to where the button was — the
+  // confirmation opened with the top of the card cut off. Show the whole card
+  // when it fits the screen; when it doesn't, at least the whole confirmation.
   const doneRef = useRef(null);
   useEffect(() => {
-    if (submitted && doneRef.current && doneRef.current.scrollIntoView) doneRef.current.scrollIntoView({ block: 'nearest' });
+    const done = doneRef.current;
+    if (!submitted || !done) return;
+    const scroller = done.closest('.app');
+    const card = done.closest('.inv2-sheet');
+    if (!scroller || !card) return;
+    const top = scroller.scrollTop + card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    const fits = done.getBoundingClientRect().bottom - card.getBoundingClientRect().top <= scroller.clientHeight;
+    if (fits) scroller.scrollTo({ top: Math.max(0, top - 14) });
+    else if (done.scrollIntoView) done.scrollIntoView({ block: 'nearest' });
   }, [submitted]);
   useEffect(() => {
     if (!event) return undefined;
@@ -803,8 +812,9 @@ export default function InviteV2({ code }) {
   });
 
   const toneClass = pal.dark ? 'inv2-dark' : somber ? 'inv2-muted' : '';
-  const answered = !!rsvp || submitted;
-  const condensed = answered && !twoColumn;
+  // The countdown condenses once the reply is SENT (it used to on the first tap,
+  // which yanked the reply buttons ~115px up under the guest's thumb).
+  const condensed = submitted && !twoColumn;
 
   // THE NOTE AND FORWARD SIT UNDER THE REPLY (owner, 11/11/2026). They lived
   // below the card, under the fold on every viewport, so a guest read "Yes, I'm
@@ -1409,6 +1419,7 @@ export default function InviteV2({ code }) {
               rule; see the solemn register in lib/heartPrompts.
               Fires PLAN_YOURS_TAPPED with its surface so footer-vs-card can be
               compared honestly if the payoff card is ever built. */}
+          <div className="inv2-foot">
           {!isPast && !/repast|memorial|funeral|celebration of life|wake|shiva|homegoing/i.test(String((event && event.type) || '')) && (
             <p className="grounding" style={{ marginTop: 16, textAlign: 'center' }}>
               <a
@@ -1423,6 +1434,7 @@ export default function InviteV2({ code }) {
               wordmark + machined brand period — on the one surface every guest
               touches. Tuned to the stationery's own palette, not the app steel. */}
           <div {...rv('inv2-wordmark')}>{BRAND.full}<span className="inv2-wm-dot" aria-hidden="true" /></div>
+          </div>
         </section>
       </div></div>
     </div>

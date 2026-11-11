@@ -2718,13 +2718,29 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* The sent state (was inline, which no breakpoint could adjust). */
 .inv2-done{ text-align:center; padding:20px 4px 8px; }
 .inv2-replies{ flex-wrap:nowrap; gap:var(--sp-2); }
-.inv2-replies .chip{ flex:1 1 0; min-width:0; min-height:48px; padding:var(--sp-2);
+.inv2-replies .chip{ flex:1 1 auto; min-width:0; min-height:48px; padding:var(--sp-2) var(--sp-3);
   white-space:normal; line-height:1.15; text-align:center; justify-content:center; font-weight:700; }
-.inv2-replies .inv2-yes{ flex-grow:1.35; }
+/* At phone width the three labels only fit on one line each when the buttons
+   size to their words (flex-basis auto) with tighter side padding; measured,
+   "Can't make it" wrapped at 390 with equal thirds. */
+@media (max-width:479px){ .inv2-replies .chip{ padding-inline:var(--sp-2); font-size:13px; } }
 .inv2-replies:not(.chosen) .inv2-yes{ background:var(--hue-deep); border-color:var(--hue-deep); color:#fff;
   box-shadow:0 3px 10px rgba(120,60,20,.28); }
 .inv2-dark .inv2-sheet .inv2-replies:not(.chosen) .inv2-yes{ background:var(--hue); border-color:var(--hue); color:#16181b;
   box-shadow:0 3px 10px rgba(0,0,0,.45); }
+/* BUTTONS ON THE STOCK (owner, 11/11/2026). Forward, the calendar links,
+   "Change my answer" and the primary buttons ("Send my reply", "I'm in — bring
+   a friend") rendered in the app's steel on the cream card, the only steel on
+   the stationery. Secondary buttons take the reply chips' engraved treatment;
+   primaries take the same fill as the "Yes" button, so the card has one primary
+   color. Contrast measured: white on #B84E1E 5.06:1, #16181b on #d99a63
+   7.41:1, white on the somber #6f6152 5.99:1. */
+.inv2 .inv2-sheet .mini{ background:rgba(255,255,255,.55); border:1.5px solid rgba(196,178,148,.6); color:var(--stock-ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 1px rgba(120,96,60,.10); }
+.inv2.inv2-dark .inv2-sheet .mini{ background:#22262b; border-color:rgba(255,244,224,.14); color:#ece5d8;
+  box-shadow:inset 0 1px 0 rgba(255,246,230,.08), inset 0 -1px 1px rgba(0,0,0,.5); }
+.inv2 .inv2-sheet .cta{ background:var(--hue-deep); color:#fff; box-shadow:0 3px 10px rgba(120,60,20,.28); }
+.inv2.inv2-dark .inv2-sheet .cta{ background:var(--hue); color:#16181b; box-shadow:0 3px 10px rgba(0,0,0,.45); }
 /* Where the reply goes, and Forward, directly under the reply buttons. */
 .inv2-replyfoot{ margin-top:var(--sp-3); text-align:center; }
 .inv2-replyfoot .grounding{ margin:0; text-align:center; }
@@ -2758,9 +2774,23 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   .inv2-stage .inv2-ask.inv2-done{ text-align:center; }
   .inv2-stage .inv2-name{ font-size:clamp(40px,4.2vw,72px); }
   .inv2-stage .inv2-count{ font-size:clamp(64px,5.5vw,96px); }
-  .inv2-stage .inv2-replies .chip{ min-height:56px; font-size:16px; }
+  /* THE REPLY COLUMN CARRIES WEIGHT (owner, 11/11/2026: it read as an empty
+     half). Same content, scaled to the column: the ask becomes a serif line,
+     the buttons and note grow, and the recruit line and wordmark — which sat
+     below the full-screen card, out of sight — sit at the foot of this column. */
+  .inv2-stage .inv2-ask > .inv2-label:first-child{ font-family:var(--serif); font-size:clamp(24px,2.2vw,32px);
+    font-weight:700; letter-spacing:0; text-transform:none; color:var(--stock-ink); margin-bottom:var(--sp-4) !important; }
+  .inv2-stage .inv2-replies .chip{ min-height:64px; font-size:18px; padding-inline:var(--sp-4); }
+  .inv2-stage .inv2-replyfoot{ margin-top:var(--sp-4); }
+  .inv2-stage .inv2-replyfoot .grounding{ font-size:15px; }
+  .inv2-stage .inv2-ask{ padding-bottom:9rem; }
+  .inv2-stage .app::after{ display:none; }
+  .inv2-stage .content{ padding-bottom:0; }
+  .inv2-stage .inv2{ position:relative; }
+  .inv2-stage .inv2 > .inv2-foot{ position:absolute; right:0; bottom:var(--sp-7); width:max(400px, calc(100% / 2.3));
+    max-width:none; margin:0; padding-inline:var(--sp-5); z-index:2; }
   /* Footer pieces under the full-screen card keep a readable measure. */
-  .inv2-stage .inv2 > :not(.inv2-sheet){ max-width:720px; margin-inline:auto; padding-inline:var(--sp-5); }
+  .inv2-stage .inv2 > :not(.inv2-sheet):not(.inv2-foot){ max-width:720px; margin-inline:auto; padding-inline:var(--sp-5); }
 }
 
 
