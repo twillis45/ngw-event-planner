@@ -450,6 +450,20 @@ export default function InviteV2({ code }) {
   // confirmation opened with the top of the card cut off. Show the whole card
   // when it fits the screen; when it doesn't, at least the whole confirmation.
   const doneRef = useRef(null);
+  // THE CARD HOLDS STILL WHEN THE FORM OPENS. The card centers its content
+  // (theInviteSitsBalanced), and the form outgrows it, so the centering slack
+  // vanished and everything slid up under the guest's finger: measured 140px on
+  // a 768x1024 tablet. On the first tap the content's current offset is pinned
+  // as top padding, so the form grows downward only.
+  const sheetRef = useRef(null);
+  const [holdTop, setHoldTop] = useState(null);
+  const pinSheet = () => {
+    const sheet = sheetRef.current;
+    const mast = sheet && sheet.querySelector('.inv2-mast');
+    if (!sheet || !mast || holdTop != null) return;
+    setHoldTop(Math.round(mast.parentElement.getBoundingClientRect().top - sheet.getBoundingClientRect().top));
+  };
+  useEffect(() => { if (submitted) setHoldTop(null); }, [submitted]);
   useEffect(() => {
     const done = doneRef.current;
     if (!submitted || !done) return;
@@ -844,7 +858,8 @@ export default function InviteV2({ code }) {
           {/* ── The stationery — the approved remake: linen stock, letterpress,
               embossed crest, staged reveal, ONE ask, disclosure earned by the
               answer, countdown that condenses but never vanishes. ── */}
-          <div className="inv2-sheet">
+          <div className="inv2-sheet" ref={sheetRef}
+            style={holdTop != null && rsvp && !submitted && !twoColumn ? { paddingTop: holdTop, justifyContent: 'flex-start' } : undefined}>
             {/* The invitation itself. On a phone this wrapper has no box
                 (display:contents) and the column reads exactly as before; at 1024
                 and up it is the left column, beside the reply. */}
@@ -1052,7 +1067,7 @@ export default function InviteV2({ code }) {
                     one carries the fill, so two buttons never shout at once. */}
                 <div className={'chips inv2-replies' + (rsvp ? ' chosen' : '')} role="radiogroup" aria-label="Attendance">
                   {[['Yes', 'Yes, I’m in'], ['No', 'Can’t make it'], ['Maybe', 'Maybe']].map(([val, label]) =>
-                    chip(rsvp === val, label, () => { setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val, true, val === 'Yes' ? 'inv2-yes' : ''))}
+                    chip(rsvp === val, label, () => { if (!twoColumn) pinSheet(); setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val, true, val === 'Yes' ? 'inv2-yes' : ''))}
                 </div>
                 {attendInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Let us know if you can make it.</p>}
                 {replyFoot}

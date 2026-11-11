@@ -41,7 +41,9 @@ const replyRow = (page) => page.evaluate(() => {
   return {
     count: radios.length,
     tops: [...new Set(radios.map((r) => Math.round(r.getBoundingClientRect().top)))],
-    yesY: Math.round(yes.getBoundingClientRect().top),
+    // Position in the page, not the window: clicking a button below the fold
+    // scrolls the page, which is not the layout moving.
+    yesY: Math.round(yes.getBoundingClientRect().top + (document.querySelector('.app') || {}).scrollTop),
     yesFilled: bg(yes) !== bg(maybe),
     rowBottom: Math.max(...radios.map((r) => r.getBoundingClientRect().bottom)),
     minHeight: Math.min(...radios.map((r) => r.getBoundingClientRect().height)),
@@ -74,12 +76,12 @@ for (const tone of ['light', 'dark']) {
 
     // Once the guest picks, the pick carries the fill and Yes lets go of it.
     await page.getByRole('radio', { name: /Can.t make it/i }).first().click();
-    const after = await page.evaluate(() => {
+    // Polled: the fill change is a color transition.
+    await expect.poll(() => page.evaluate(() => {
       const r = [...document.querySelectorAll('.inv2-replies [role=radio]')];
       const bg = (el) => getComputedStyle(el).backgroundColor;
-      return { yes: bg(r[0]), maybe: bg(r[2]) };
-    });
-    expect(after.yes, 'two filled buttons at once: Yes kept its fill after another answer was picked').toBe(after.maybe);
+      return bg(r[0]) === bg(r[2]);
+    }), { message: 'two filled buttons at once: Yes kept its fill after another answer was picked' }).toBe(true);
   });
 }
 
@@ -121,4 +123,17 @@ test('at 1024 and up the invite fills the window, and opening the form moves not
   const countAfter = await page.locator('.inv2-count').evaluate((el) => el.getBoundingClientRect().top);
   expect(Math.abs(afterRow.yesY - before.yesY), 'the reply buttons jumped when the form opened').toBeLessThanOrEqual(1);
   expect(Math.abs(countAfter - countBefore), 'the invitation moved when the form opened').toBeLessThanOrEqual(1);
+});
+
+// Every width: tapping a reply opens the form BELOW the buttons. It used to move
+// them, measured 115px on a phone (the countdown condensed on the first tap) and
+// 140px on a 768 tablet (the centered card lost its slack when the form outgrew it).
+test('tapping a reply moves nothing the guest is looking at', async ({ page }) => {
+  await open(page);
+  const before = await replyRow(page);
+  await page.getByRole('radio', { name: /Yes, I.m in/i }).first().click();
+  await expect(page.getByLabel(/Your name/i).first()).toBeVisible();
+  await page.waitForTimeout(700);
+  const after = await replyRow(page);
+  expect(Math.abs(after.yesY - before.yesY), 'the reply buttons jumped when the form opened').toBeLessThanOrEqual(2);
 });
