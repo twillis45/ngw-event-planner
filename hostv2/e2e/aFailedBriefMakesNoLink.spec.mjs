@@ -41,7 +41,7 @@ const boot = async (page, mint) => {
   await page.route(MINT, (route) => { calls.mint += 1; return route.fulfill(mint); });
   await page.goto(previewUrl(5266) + '?elegant=1');
   await settled(page);
-  await openSectionByName(page, 'Vendors');
+  await openSectionByName(page, 'People you’re hiring');
   await settled(page);
   // The share button lives inside the card's fold; open the card first.
   await page.locator('.vcard', { hasText: 'Spin Cycle' }).first().evaluate((c) => c.click());

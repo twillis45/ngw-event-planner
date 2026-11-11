@@ -34,7 +34,14 @@ const boot = async (page, caps, { held = false } = {}) => {
     : { event_id: event.id, held: false } }));
   await page.goto(previewUrl(5266) + '?elegant=1');
   await settled(page);
-  await page.locator('.pass-status-needed').click();
+  // A held pass shows no "needs the pass" pill (by design), so open the sheet
+  // from Jump to, the door every event has.
+  if (held) {
+    await page.locator('[aria-label="Menu"]').first().click();
+    await page.locator('.nav-pass').click();
+  } else {
+    await page.locator('.pass-status-needed').click();
+  }
   await expect(page.locator('#sheet-title')).toHaveText('The One-Event Pass');
 };
 

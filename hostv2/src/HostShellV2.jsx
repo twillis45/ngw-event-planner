@@ -3408,6 +3408,20 @@ export default function HostShellV2() {
     refreshEventPass(eventId, { claimed: passClaimed });
   }, [eventId, passClaimed]);
 
+  // ASK THE SERVER WHAT IT CAN DO (stage 9 work order #9, 11/11/2026). The pass
+  // sheet reads `stripeCanHonourPurchases()` and `passSalesPaused()`, which only
+  // `commApi.getCapabilities()` fills — and nothing in hostv2 ever called it, so
+  // both stayed "not known" and the sheet offered checkout even when the server
+  // said it could not honour one. Once per load, only where billing is live;
+  // the tick re-renders the sheet if it is already open when the answer lands.
+  const [, setCapsTick] = useState(0);
+  useEffect(() => {
+    if (!isBillingLive() || !isCommApiConfigured()) return undefined;
+    let live = true;
+    commApi.getCapabilities().then(() => { if (live) setCapsTick((t) => t + 1); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+
 
   const switchEvent = (id) => {
     redoEventId.current = null; // moving to another event abandons any pending create correction
