@@ -39,16 +39,70 @@ version is at the end.
 
 ### Guests (someone replying to an invitation)
 
-When you open an invitation link and reply, we store what you type: **your
-name, your reply (Yes / No / Maybe), a meal choice, any dietary needs or
-allergies, a plus-one and their meal and needs, and a note to the host.**
-⟶ `supabase/migrations/009_rsvp_submissions.sql:25-33` ⟵
+When you open an invitation link and reply, we store what you choose to give.
+Only your name and your answer are required; everything else is optional.
+⟶ `hostv2/src/InviteV2.jsx:643-646` (name and answer are the only required
+fields); `supabase/migrations/009_rsvp_submissions.sql:25-33`;
+`supabase/migrations/015_rsvp_guest_details.sql:18-25` ⟵
 
-Dietary needs and allergies can reveal health information. We treat those
-fields as sensitive: they are stored only so the host can feed you safely,
-shown only to the host of that event, never used for analytics, and never
-shared with vendors unless the host chooses to pass them on. ⟶ `009:28-33`,
-`src/lib/vendorBrief.js` (vendor payload is an explicit whitelist) ⟵
+- **Your name and your answer** (Yes / No / Maybe), so the host knows who is
+  coming. ⟶ `009:25-26`; `InviteV2.jsx:659-660` ⟵
+- **A meal choice**, if you are coming, so the host can plan the food.
+  ⟶ `009:27`; `InviteV2.jsx:660` ⟵
+- **Allergies and diet:** allergens picked from a list (peanut, tree nuts,
+  milk, egg, fish, shellfish, soy, wheat or gluten, sesame), diet rules (such as
+  gluten-free, dairy-free, halal, kosher, or no alcohol), and anything else you
+  type, so the host can serve food that is safe for you. ⟶ `InviteV2.jsx:71-72,
+  660, 663`; `009:28`; `015:19-20` ⟵
+- **Access needs**, such as step-free or wheelchair access or an accessible
+  seat, so the host can plan the way in and where you sit. ⟶ `InviteV2.jsx:73,
+  663`; `015:21` ⟵
+- **A plus-one** (their name, meal, and needs) and **how many children** are
+  coming with you, when the host allows them, so the host has a true headcount.
+  ⟶ `009:29-32`; `InviteV2.jsx:534-535, 664-666` ⟵
+- **A phone number or email**, so the host can reach you with day-of details.
+  ⟶ `015:23-24`; `InviteV2.jsx:678-679, 1285` ⟵
+- **Your mailing address**, asked only when the host has turned this on and you
+  are coming, so the host can mail thank-you notes or favors. ⟶ `015:25`;
+  `InviteV2.jsx:673, 1302-1306` ⟵
+- **A note to the host.** ⟶ `009:33`; `InviteV2.jsx:672` ⟵
+- For some events, **which lodging you would prefer** from options the host
+  listed, or **whether you will pick crabs** at a crab feast, so the host can
+  plan what to book or buy. ⟶ `015:22`; `016_rsvp_lodging_pick.sql:18`;
+  `InviteV2.jsx:669-671` ⟵
+
+**Who sees your reply.** The host of the event sees everything above, and so
+does anyone the host shares the event's studio with (section 2). ⟶
+`backend/app/routers/rsvp.py:18-22` (public resolver returns whitelisted display
+fields only; host read-back requires sign-in and studio access) ⟵ Other guests
+do not. An invitation shows other guests only how many people have said yes:
+never names, contact details, needs, or notes. ⟶ `rsvp.py:250-262`
+(`goingCount`, a number only); `InviteV2.jsx:539-547` ⟵ The one exception is an
+invitation opened on the same device where the host's plan is saved, such as
+the host previewing it. That view can show the first names of up to two guests
+who said yes. ⟶ `InviteV2.jsx:549-562` (local roster only; first names, never
+other fields) ⟵
+
+Allergies, diets, and access needs can reveal health information, and **access
+needs may describe a disability.** We treat those fields, and your phone number,
+email, mailing address, and note, as sensitive. They are stored only for the
+purpose listed above and shown only to the host of that event. They never
+appear on any public page and are never sent to analytics; the only analytics
+event a reply sends is your Yes / No / Maybe and the type of event. They are
+never shared with vendors unless the host chooses to pass them on. ⟶ `009:28-33`
+and `015:13-16` (marked sensitive; host read-back only); `rsvp.py:186-191`;
+`InviteV2.jsx:733` (analytics payload); `src/lib/vendorBrief.js` (vendor payload
+is an explicit whitelist) ⟵
+
+> **COUNSEL:** Access needs (step-free or wheelchair access, an accessible
+> seat) can describe a disability, and allergies and diets can reveal health
+> conditions or religion (halal, kosher). Under state privacy laws that treat
+> health, disability, or religious data as "sensitive" (for example Virginia,
+> Colorado, Connecticut, or California's "sensitive personal information"), do
+> we need opt-in consent at the point of collection on the invite form, a
+> specific notice there, or a limit-use right? Is "the host only, never
+> analytics, never vendors unless the host passes it on" adequate handling, given
+> the host, not us, decides what happens next?
 
 You do not create an account, and we do not set an identity on you. Your
 reply is tied to the invitation code and an idempotency key your browser
