@@ -23476,7 +23476,7 @@ export default function HostShellV2() {
                                       const val = validateFile(file); if (!val.ok) { toast(val.error || 'That file won’t work.'); e.target.value = ''; return; }
                                       setContractUploading(m => ({ ...m, [v.id]: true }));
                                       try {
-                                        const r = await uploadFile({ file, eventId: event.id || 'unknown', category: inferCategory(file), userId: (profile && profile.id) || 'anon' });
+                                        const r = await uploadFile({ file, eventId: event.id || 'unknown', category: inferCategory(file), userId: (session && session.user && session.user.id) || null });
                                         if (r && r.ok) writeVendor(v.id, { contractStoragePath: r.path, contractFileName: file.name, contractUrl: r.url }, file.name + ' attached — the paper trail’s clean.');
                                         else toast((r && r.error) || 'Upload failed — try again.');
                                       } catch { toast('Upload failed — try again.'); }

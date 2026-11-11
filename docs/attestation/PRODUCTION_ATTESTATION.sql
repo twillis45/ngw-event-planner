@@ -32,6 +32,9 @@
 --                      authenticated, grants service_role, drops rsvp_anon_insert.
 --   017–021 objects    named in each file; the same probes as the RUNBOOK's
 --                      "Record the hand-applied migrations" query c, extended.
+--   event files        022: storage.objects policies for the event-files bucket
+--                      grant nothing to anon/public and all check auth.uid();
+--                      the bucket is private with the app's 10 MB / type limits.
 --   user_metadata      not from a migration: a security property. Supabase lets a
 --                      signed-in user write their own user_metadata, so a policy
 --                      that authorizes on it is open to every signed-in user.
@@ -200,7 +203,7 @@ recorded as (
 ),
 
 expected_versions as (
-  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 21) g
+  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 22) g
 ),
 
 all_rows (ord, k, "check", subject, expected, actual, verdict) as (
@@ -305,6 +308,42 @@ all_rows (ord, k, "check", subject, expected, actual, verdict) as (
          case when exists (select 1 from pg_policies where schemaname = 'public' and policyname = 'rsvp_anon_insert')
               then 'FAIL' else 'PASS' end
 
+  -- (d2) uploaded event files (022): no anon access, every policy scoped to
+  --      the uploader or the event's studio, and the bucket private
+  union all
+  select 32, 'a', 'event_files_anon', 'policies on storage.objects for event-files granting anon or public',
+         '(none)',
+         coalesce((select string_agg(p.policyname, ' | ' order by p.policyname) from pg_policies p
+                    where p.schemaname = 'storage' and p.tablename = 'objects'
+                      and coalesce(p.qual, '') || coalesce(p.with_check, '') like '%event-files%'
+                      and ('anon' = any (p.roles) or 'public' = any (p.roles))), '(none)'),
+         case when exists (select 1 from pg_policies p
+                    where p.schemaname = 'storage' and p.tablename = 'objects'
+                      and coalesce(p.qual, '') || coalesce(p.with_check, '') like '%event-files%'
+                      and ('anon' = any (p.roles) or 'public' = any (p.roles)))
+              then 'FAIL' else 'PASS' end
+  union all
+  select 32, 'b', 'event_files_scoped', 'event-files policies that do not check auth.uid()',
+         '(none)',
+         coalesce((select string_agg(p.policyname, ' | ' order by p.policyname) from pg_policies p
+                    where p.schemaname = 'storage' and p.tablename = 'objects'
+                      and coalesce(p.qual, '') || coalesce(p.with_check, '') like '%event-files%'
+                      and coalesce(p.qual, '') || coalesce(p.with_check, '') not like '%auth.uid()%'), '(none)'),
+         case when exists (select 1 from pg_policies p
+                    where p.schemaname = 'storage' and p.tablename = 'objects'
+                      and coalesce(p.qual, '') || coalesce(p.with_check, '') like '%event-files%'
+                      and coalesce(p.qual, '') || coalesce(p.with_check, '') not like '%auth.uid()%')
+              then 'FAIL' else 'PASS' end
+  union all
+  select 32, 'c', 'event_files_bucket', 'storage.buckets event-files: private, 10 MB limit, type list set',
+         'public=false, 10485760, types set',
+         coalesce((select 'public=' || b.public::text || ', ' || coalesce(b.file_size_limit::text, 'no limit')
+                          || ', ' || case when b.allowed_mime_types is null then 'any type' else 'types set' end
+                   from storage.buckets b where b.id = 'event-files'), 'bucket absent'),
+         case when exists (select 1 from storage.buckets b where b.id = 'event-files' and not b.public
+                             and b.file_size_limit = 10485760 and b.allowed_mime_types is not null)
+              then 'PASS' else 'FAIL' end
+
   -- (e) objects that prove 015–021 are in this database
   union all
   select 40, m.migration || ' ' || m.object, 'migration_object', m.migration || ': ' || m.object, 'present',
@@ -314,14 +353,14 @@ all_rows (ord, k, "check", subject, expected, actual, verdict) as (
 
   -- (f) what supabase_migrations.schema_migrations records
   union all
-  select 50, 'a', 'migrations_recorded', 'supabase_migrations.schema_migrations', '001 … 021',
+  select 50, 'a', 'migrations_recorded', 'supabase_migrations.schema_migrations', '001 … 022',
          case when not rc.present then 'table absent'
               else coalesce(nullif(array_to_string(rc.versions, ','), ''), '(no rows)') end,
          case when rc.present and rc.versions @> ev.versions then 'PASS' else 'FAIL' end
   from recorded rc cross join expected_versions ev
 
   union all
-  select 51, 'b', 'migrations_missing', 'versions 001–021 not recorded', '(none)',
+  select 51, 'b', 'migrations_missing', 'versions 001–022 not recorded', '(none)',
          case when not rc.present then 'table absent'
               else coalesce(nullif(array_to_string(array(select x from unnest(ev.versions) x
                                                           where not (x = any (rc.versions)) order by x), ','), ''),
