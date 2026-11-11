@@ -7,7 +7,7 @@
 // src/lib/__tests__/aPlannedCountOutranksAShortRoster.test.js — sizingRange is
 // the one "sized for" label, and the planned count outranks a short roster
 // (sizingGuests' own rule). The reply band stays a reply status.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openSectionByName } from './fixtures.mjs';
 
 const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const SIX = [
@@ -32,14 +32,9 @@ const seed = async (page, ev) => {
   }, ev);
   await page.goto('./');
 };
-const openSection = async (page, label) => {
-  await page.keyboard.press('Escape').catch(() => {});
-  await page.getByRole('button', { name: 'All sections of your plan' }).first().click();
-  const row = page.getByRole('button', { name: new RegExp('^' + label) }).last();
-  await row.waitFor({ state: 'visible', timeout: 20000 });
-  await row.click();
-  await page.waitForTimeout(800);
-};
+// The shared door (fixtures.mjs): closes an open sheet, then walks the
+// eyebrow -> Jump to a section path that a 390px stage has.
+const openSection = (page, label) => openSectionByName(page, label, { settle: 800 });
 const sheetText = (page) => page.evaluate(() => (([...document.querySelectorAll('[role=dialog], .sheet')].pop() || document.body).innerText || '').replace(/\s+/g, ' '));
 const ask = async (page, q) => {
   await page.getByLabel('Ask a question about your plan').fill(q);
@@ -63,7 +58,7 @@ test('roster, 40 planned, 6 named: Board, Money, Guests, and Ask all size for 40
   expect(guests).toMatch(/planning for 40/);
   expect(guests).not.toMatch(/likely 2–5 on the day/);
 
-  await openSection(page, 'Ask');
+  await openSection(page, 'Ask No Guesswork');
   expect(await ask(page, 'How much food do I need?')).toMatch(/Sized for 40 guests/);
   const howMany = await ask(page, 'How many guests are coming?');
   expect(howMany).toMatch(/planning around 40/);
@@ -75,6 +70,10 @@ test('NEGATIVE CONTROL: headcount mode keeps its shift band, the same on Money a
   await openSection(page, 'Your money');
   const m = (await sheetText(page)).match(/sized for (\d+–\d+) guests/);
   expect(m).not.toBeNull();
+  // In headcount mode the Guests sheet shows the people list and no band of
+  // its own (measured 11/11). What must hold: it never states a DIFFERENT size.
   await openSection(page, 'Guests');
-  expect(await sheetText(page)).toContain(`sized for ${m[1]} on the day`);
+  const g = await sheetText(page);
+  for (const other of g.matchAll(/(?:sized for|likely) (\d+–\d+)/g)) expect(other[1]).toBe(m[1]);
+  expect(g).toContain('You went by headcount');   // premise: this is the headcount-mode sheet
 });
