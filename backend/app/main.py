@@ -214,7 +214,12 @@ async def capabilities():
         #
         # The shell uses this to keep a buy button off a deployment that cannot
         # record what it sells. A boolean, never the secrets.
-        "stripe_can_honour_purchases": bool(STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET),
+        # PASS_SALES_PAUSED forces this false so the shell hides the buy
+        # button; `pass_sales_paused` tells it WHY, so it can say "paused"
+        # rather than the untrue "free while in preview".
+        "stripe_can_honour_purchases": bool(STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET)
+                                       and not stripe_payments.pass_sales_paused(),
+        "pass_sales_paused": stripe_payments.pass_sales_paused(),
         "service": "ngw-events-api",
     }
 

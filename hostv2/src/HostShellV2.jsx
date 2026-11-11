@@ -252,7 +252,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 // an amount from the caller, which is right for a planner's own fee (App.js
 // still uses it for that) and wrong for a fixed-price product. hostv2 sells one
 // thing, and `createPassSession` is the route that prices it server-side.
-import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases } from '@app/lib/stripeApi';
+import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases, passSalesPaused } from '@app/lib/stripeApi';
 import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
@@ -17842,6 +17842,18 @@ export default function HostShellV2() {
                     && stripeCanHonourPurchases() !== false;
                 } catch { return false; }
               })();
+              // ── SALES PAUSED (PASS_SALES_PAUSED, stage 9 work order #9) ─────
+              // The backend's stop-selling lever turns canCharge false, which on
+              // its own would fall through to "Free while … in preview" — untrue
+              // when billing IS live and only new sales are stopped. Same live
+              // gates as canCharge, so a real preview build still says preview.
+              const salesPaused = (() => {
+                try {
+                  return isStripeApiConfigured()
+                    && process.env.REACT_APP_BILLING_LIVE === '1'
+                    && passSalesPaused() === true;
+                } catch { return false; }
+              })();
               // ── NEVER OFFER TO SELL SOMETHING THIS EVENT ALREADY OWNS ──────
               // `canCharge` answers "may this deployment take money", which is
               // not the same question as "does this host owe any". Until
@@ -17902,6 +17914,11 @@ export default function HostShellV2() {
                       { label: 'Email us', fn: () => { try { window.location.href = 'mailto:' + BRAND.support + '?subject=' + encodeURIComponent('One-Event Pass — ' + (event.name || 'my event')); } catch { /* the address is in the message */ } } });
                     return;
                   }
+                  // Paused after this sheet's capabilities were read: say so.
+                  if (/sales are paused/i.test(why)) {
+                    toast('Pass sales are paused right now. Nothing was charged. Questions: ' + BRAND.support);
+                    return;
+                  }
                   if (/authentication required/i.test(why)) {
                     toast('You’re not signed in on this browser — sign in, then get the pass. Nothing was charged.', { label: 'Sign in', fn: () => setSheet({ kind: 'settings' }) });
                     return;
@@ -17952,6 +17969,11 @@ export default function HostShellV2() {
                           with Stripe" — when only the event's own record claims
                           it, that sentence would be inventing a confirmation. */}
                       <p className="grounding" style={{ margin: 0 }}>Every vendor brief and the full destination toolkit are unlocked here. Nothing more to pay on this event — the pass covers it.</p>
+                    </div>
+                  ) : salesPaused ? (
+                    <div className="brow" style={{ borderTop: 'none', background: 'var(--steel-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
+                      <p className="f-name" style={{ margin: '0 0 2px' }}>Pass sales are paused right now</p>
+                      <p className="grounding" style={{ margin: 0 }}>Nothing can be charged at the moment. Questions: <a href={'mailto:' + BRAND.support}>{BRAND.support}</a></p>
                     </div>
                   ) : canCharge && !eventIsSyncable ? (
                     // A SAMPLE CAN'T BE BOUGHT (live smoke test, 11/9/2026): after an

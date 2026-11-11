@@ -68,6 +68,14 @@ ALLOW_DEV_TOKEN   = os.environ.get("ALLOW_DEV_TOKEN", "").lower() == "true"
 STRIPE_SECRET_KEY     = os.environ.get("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
+# PASS_SALES_PAUSED: the stop-selling lever (stage 9 work order #9, 11/11/2026).
+# "1"/"true" refuses NEW One-Event Pass checkouts (503) and tells the shell to
+# hide the buy button. It touches nothing else: webhooks, GET /pass, refunds,
+# existing passes and the vendor-brief gate (keyed on the Stripe keys) keep
+# working. Removing STRIPE_SECRET_KEY also stops sales but makes every vendor
+# brief free — this flag exists so nobody has to pull that one.
+PASS_SALES_PAUSED = os.environ.get("PASS_SALES_PAUSED", "").strip().lower() in ("1", "true", "yes")
+
 # ── PostHog Query API (read-only analytics proxy) — ANALYTICS-1 ─────────────────
 # Server-side HogQL proxy so the admin console can render the behavioral funnel/
 # friction natively instead of linking out. The client SDK is write-only; this is the
