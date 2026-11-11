@@ -152,6 +152,22 @@ test('a refunded event\'s second purchase says why it was refused, not that chec
   await expect(page.locator('.toast')).toContainText('already has a recorded pass purchase');
   await expect(page.locator('.toast')).toContainText('Nothing was charged');
   await expect(page.locator('.toast')).not.toContainText('isn’t available');
+  // Owner decision, 11/11/2026: it names a person to reach, and offers the email.
+  await expect(page.locator('.toast')).toContainText('events@noguessworksystems.com');
+  await expect(page.locator('.toast').getByRole('button', { name: 'Email us' })).toBeVisible();
+});
+
+test('You & settings offers a way to email a person', async ({ page }) => {
+  await passBoot(page);
+  const rail = page.locator('.srail-row', { hasText: 'You & settings' });
+  if (await rail.count()) await rail.first().click();
+  else {
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+  }
+  const help = page.locator('a.help-email');
+  await expect(help).toContainText('events@noguessworksystems.com');
+  expect(await help.getAttribute('href')).toMatch(/^mailto:events@noguessworksystems\.com\?subject=/);
 });
 
 test('a pass verification failure is visible to support without falsely revoking a pass', async ({ page }) => {

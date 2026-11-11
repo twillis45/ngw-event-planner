@@ -17890,7 +17890,8 @@ export default function HostShellV2() {
                   // refund the server refuses a second sale on the same event rather
                   // than re-grant it, and the host read "Checkout isn't available".
                   if (/recorded purchase/i.test(why)) {
-                    toast('This event already has a recorded pass purchase. If it was refunded, the pass can’t be bought again here. Nothing was charged.');
+                    toast('This event already has a recorded pass purchase. If it was refunded, the pass can’t be bought again here — email ' + BRAND.support + ' and we’ll sort it out. Nothing was charged.',
+                      { label: 'Email us', fn: () => { try { window.location.href = 'mailto:' + BRAND.support + '?subject=' + encodeURIComponent('One-Event Pass — ' + (event.name || 'my event')); } catch { /* the address is in the message */ } } });
                     return;
                   }
                   if (/authentication required/i.test(why)) {
@@ -18849,6 +18850,15 @@ export default function HostShellV2() {
                     <span className="t" style={{ fontWeight: 550 }}>The One-Event Pass<span className="of" style={{ marginLeft: 6 }}>$39 · one event, no subscription</span></span>
                     <span className="chev" aria-hidden="true">›</span>
                   </button>
+
+                  {/* HELP (owner decision, 11/11/2026): the app had no way to reach a
+                      person, while the server's own refusals said "contact support". */}
+                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 8px' }}>Help</div>
+                  <a className="later-row help-email" style={{ width: '100%', textAlign: 'left', borderTop: 'none', textDecoration: 'none', color: 'inherit' }}
+                    href={'mailto:' + BRAND.support + '?subject=' + encodeURIComponent(BRAND.full + ' help')}>
+                    <span className="t" style={{ fontWeight: 550 }}>Email us<span className="of" style={{ marginLeft: 8 }}>{BRAND.support}</span></span>
+                    <span className="chev" aria-hidden="true">›</span>
+                  </a>
 
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>What {BRAND.short} remembers</div>
                   {mem.present && mem.groups.length ? (

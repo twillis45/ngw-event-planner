@@ -7357,3 +7357,7 @@ button.vc-pill::after{
 .pass-status-needed:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
 /* The Jump to row: its note ("$39 · this event needs it") stays on one line. */
 .nav-pass .nr-r{white-space:nowrap}
+
+/* HELP in You & settings (owner decision, 11/11/2026): a mailto row that reads
+   like the other settings rows and is clearly tappable. */
+.later-row.help-email{cursor:pointer}
