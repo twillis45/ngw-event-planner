@@ -99,18 +99,58 @@ before an action is not a gate. Put it in the condition, or it is decoration.
 
 ## Rollback
 
-**Take the site down** (fastest first — the first two need no deploy):
+**Rewritten 11/11/2026 for the `live` profile.** The 9/2 procedure assumed the
+`demo` profile, where taking the site down was the whole story. Production is
+now four layers: the front end (GitHub Pages), the API (Render
+`ngw-events-api`), payments (Stripe) and the database (Supabase). Roll back
+only the layer that broke, fastest first. **Written, never rehearsed:** run
+layers 1 and 2 once, deliberately, and record the times here.
+
+**1. Front end: roll the site back to a good commit** (about 5 minutes, no
+downtime). `--ref` takes a branch, not a SHA, so point a branch at the good
+commit first. **Pass `live` explicitly:** a manual run defaults to `demo`, and
+`demo` builds with no sign-in, so every host would lose sight of their cloud
+events.
 ```
-# 1. Settings > Pages > Source: None      — under a minute, reversible there
-# 2. gh repo edit twillis45/ngw-event-planner --visibility private
-# 3. gh workflow run "Deploy Pages (from source)" --ref <good-sha>   # content only
+git push origin <good-sha>:refs/heads/rollback-$(date +%Y%m%d)
+gh workflow run "Deploy Pages (from source)" --ref rollback-$(date +%Y%m%d) -f release_profile=live
+# then: curl -s https://twillis45.github.io/ngw-event-planner/RELEASE_SHA.txt  → must name <good-sha> and release_profile=live
 ```
-**Written, never rehearsed.** Run #1 once, deliberately, to confirm the path and
-the timing — a procedure nobody has executed is a different thing from one that
-has. Recorded as owed in `PROMOTION-DEFERRED.md`.
+The next merge to `main` deploys `main` again, so fix forward or revert on
+`main` (`git revert <sha>`) before merging anything else.
+
+**2. API: roll Render back to the previous deploy** (about 2 minutes). Render
+dashboard → `ngw-events-api` → Events → the last good deploy → **Rollback**.
+`render.yaml` sets `autoDeploy: true`, so the next push to `main` redeploys:
+turn auto-deploy off in the service settings for the duration, and back on
+after the fix merges.
+
+**3. Payments: stop selling** (seconds, no deploy). Render → `ngw-events-api` →
+Environment → remove `STRIPE_SECRET_KEY` and save (Render restarts the
+service). Checkout then refuses with a 503, `/api/capabilities` reports Stripe
+off, and the pass sheet stops offering the button. Passes already bought stay
+held: entitlements live in `event_passes`, not in Stripe. To also pause
+webhook delivery: Stripe Dashboard → Developers → Webhooks → the
+`…/api/stripe/webhook` destination → Disable. Stripe retries a failed delivery
+for up to 3 days, so after re-enabling, resend any failed events from the same
+screen. The client's pass locks are set at build time
+(`REACT_APP_BILLING_LIVE`) and stay until that variable is unset and the site
+redeployed (layer 1).
+
+**4. Database: there is no down migration.** Migrations are forward-only. A bad
+schema change is fixed by a new migration, or by restoring a backup (§B below:
+backups on, and one restore performed, are both still owed). Note that
+`supabase_migrations.schema_migrations` ends at 016 while production carries
+017–021 (applied by hand 11/7). Record them there before the next migration
+push, or a push may try to re-run them; 021's `add constraint` is not safe to
+re-run.
+
+**Take the whole site down** (last resort): Settings → Pages → unpublish, or
+`gh repo edit twillis45/ngw-event-planner --visibility private`. The API keeps
+running; do layer 3 as well if money is involved.
 
 **Undo a code change:** `git revert <sha>`. Restore a file from a red-proof with
-a saved copy, **never `git checkout --`** — that reverts the guarded edit along
+a saved copy, **never `git checkout --`**, which reverts the guarded edit along
 with the reintroduced fault.
 
 ---
