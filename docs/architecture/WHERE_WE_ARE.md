@@ -16,7 +16,7 @@ Three PRs merged and deployed (#113–#115). The live build is `61cb1324`, and t
   - Nothing moves when a guest taps a reply.
 - **Checks.** Every state was measured at six widths in both tones, and new guard specs were red-proofed.
 
-Still open: smoke-test 6.7 (the pass on a second device). Detail in `HANDOFF.md`, November 10–11 entry.
+The owner reports smoke-test 6.7 (the pass on a second device) complete, which closes the paid path on live. Detail in `HANDOFF.md`, November 10–11 entry.
 
 ## November 8–10, 2026 — live smoke test end to end; the paid path works on live
 

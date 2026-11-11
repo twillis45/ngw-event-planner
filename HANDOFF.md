@@ -26,7 +26,7 @@ Merged and deployed. The live build is `61cb1324` with `release_profile=live` (`
 | Stripe library | Pinned to `stripe==16.1.0`, the version proven on live. A refunded event's second purchase (409) says why. | #113 |
 | Support contact | `events@noguessworksystems.com` (`BRAND.support`). It appears in You & settings → Help and in the refunded-pass message. The owner confirmed the inbox receives mail. | #114 |
 | `RESEND_WEBHOOK_SECRET` | Set on Render by the owner. The Render log then showed Resend webhooks answered 200 with no unverified warning. | owner |
-| Smoke test, owner-reported | 4 (invites) passed, 4.5 passed, and the guest list stays in sync between laptop and phone. | — |
+| Smoke test, owner-reported | 4 (invites) passed, 4.5 passed, 6.7 (the pass on a second device) passed, and the guest list stays in sync between laptop and phone. | — |
 | Guest invite (`?rsvp=`) | Redesigned. Details below. | #115 |
 
 **The invite (#115).** Owner decisions: "balanced for viewports", then "full screen and fix 1-3", then "all problems".
@@ -54,7 +54,6 @@ Merged and deployed. The live build is `61cb1324` with `release_profile=live` (`
   - 39 pass and 3 skip by design across the 7 projects. 170 existing invite specs pass. CI green on all 10 checks.
 
 **Still open:**
-- Smoke-test 6.7 (the pass on a second device) was not reported this session.
 - The board's other invite must-fixes were not chosen: line up the misaligned axes, and keep the promo line below the reply.
 - On a phone, a sent reply opens with the top of the invitation above the fold. The card is taller than the screen, so the confirmation is kept whole instead.
 
