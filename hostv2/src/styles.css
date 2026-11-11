@@ -1542,6 +1542,8 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   transform:rotate(-45deg);
 }
 .grounding{font-size:var(--t-meta); color:var(--muted); margin-top:6px; font-weight:550}
+/* Published policy links (PolicyLinks.jsx): quiet, inherit the line's color. */
+.policy-links a{color:inherit}
 
 /* ── THE EXCLUSIONS FOLD ────────────────────────────────────────────────────
    The budget ask's "N things this number leaves out". It shipped as one

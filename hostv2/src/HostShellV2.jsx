@@ -275,6 +275,7 @@ import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, 
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
+import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
@@ -17959,6 +17960,12 @@ export default function HostShellV2() {
                     <>
                       <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
+                      {/* BEFORE THE MONEY (stage 9, 11/11/2026): a person to ask, and the
+                          policies once published. The refund RULE is the owner's to
+                          choose (docs/legal/REFUND_POLICY_DRAFT.md), so no rule is
+                          stated here — only where to ask, which is true today. */}
+                      <p className="grounding" style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }}>Questions about the pass or a charge? <a href={'mailto:' + BRAND.support}>{BRAND.support}</a></p>
+                      <PolicyLinks style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }} />
                     </>
                   ) : (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
@@ -19016,6 +19023,7 @@ export default function HostShellV2() {
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
                       <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
+                      <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
                     </>
                   )}
 

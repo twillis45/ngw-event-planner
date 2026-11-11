@@ -12,6 +12,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { BRAND } from '@app/lib/brand';
 import PhotoStrip from './PhotoStrip.jsx';
+import PolicyLinks from './PolicyLinks.jsx';
 import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
 import { guestSafeText } from '@app/lib/guestFacing';
 import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytics';
@@ -1448,6 +1449,9 @@ export default function InviteV2({ code }) {
           {/* Guest-visible brand moment (build-map #6): the locked identity — the
               wordmark + machined brand period — on the one surface every guest
               touches. Tuned to the stationery's own palette, not the app steel. */}
+          {/* Guests hand over dietary and access needs without ever signing in,
+              so the privacy policy belongs on their door too, once published. */}
+          <PolicyLinks prefix="How your answer is used:" style={{ marginTop: 8, textAlign: 'center' }} />
           <div {...rv('inv2-wordmark')}>{BRAND.full}<span className="inv2-wm-dot" aria-hidden="true" /></div>
           </div>
         </section>
