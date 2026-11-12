@@ -20,7 +20,7 @@
 //
 // NOTHING HERE INVENTS DATA. Every number comes from the engines the live sheet
 // uses. A stage the data has not reached says so plainly.
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useSyncExternalStore } from 'react';
 // The published rungs of the lodging ladder. Rungs 1-2 are the host's own
 // shortlist and this surface already shows those; 3 and 4 are what there is
 // to say BEFORE they have one.
@@ -47,6 +47,8 @@ import { venueFor } from '@app/lib/venueFor';
 import { settleChoicePatch } from '@app/lib/choiceProvenance';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
+import { destinationLocked, isBillingLive, isUserCreatedEvent } from '@app/lib/passGate';
+import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 
 // ─── THE WORKED EXAMPLE (2026-08-04) ───────────────────────────────────────
 // A fresh device has an empty store (localStorage is per origin), so a phone on
@@ -104,6 +106,21 @@ export default function LodgingCockpit() {
   const [eventId, setEventId] = useState(() =>
     (events.find((e) => e && e.id === lastId) ? lastId : (events[0] && events[0].id)) || null);
   const event = events.find((e) => e && e.id === eventId) || null;
+
+  // ── THE BACKSTOP (gap H1, 11/12/2026) ──────────────────────────────────
+  // The pass sells lodging coordination as destination toolkit. Every door in
+  // the host shell checks `destinationLocked` before it leaves for this page,
+  // but this page is also reachable by its own URL, so it asks again. Same
+  // server question the shell asks on event open (HostShellV2's
+  // usePassEntitlement + refreshEventPass), so a pass the server confirms
+  // unlocks this page too, not only the blob's claim.
+  useSyncExternalStore(subscribePassEntitlements, () => serverPassHeld(eventId), () => null);
+  const passClaimed = !!(event && event.passPurchased === true);
+  useEffect(() => {
+    if (!isBillingLive()) return;
+    if (!eventId || !isUserCreatedEvent({ id: eventId })) return;
+    refreshEventPass(eventId, { claimed: passClaimed });
+  }, [eventId, passClaimed]);
 
   // ONE write path. Everything on this surface goes through it, so the cockpit
   // and the live sheet can never hold different truths about the same event.
@@ -213,6 +230,32 @@ export default function LodgingCockpit() {
       </Panel>
     </Solo></Frame>
   );
+  // MODEL D visibility rule (passGate): teased with honest copy naming the
+  // pass — never hidden, never fake-functional. Same words and door as the
+  // host shell's locked lodging sheet; the door goes back to the plan with
+  // the pass sheet open (HostShellV2's OPEN_PASS_ON_LOAD), on THIS event.
+  if (destinationLocked(event)) {
+    const goSeePass = () => {
+      try { localStorage.setItem(LS_LAST_EVENT, event.id); } catch { /* the shell falls back to its own last event */ }
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.delete('demo');
+        u.searchParams.delete('focus');
+        u.searchParams.set('open', 'pass');
+        window.location.href = u.toString();
+      } catch {
+        window.location.href = window.location.pathname + '?open=pass';
+      }
+    };
+    return (
+      <Frame><Solo>
+        <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
+        <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Where everyone stays lives here — the stay, who needs a room, and the lodging plan for a multi-day event. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+        <button className="cta" style={{ width: '100%' }} onClick={goSeePass}>See the One-Event Pass — $39</button>
+        <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
+      </Solo></Frame>
+    );
+  }
   if (!derived) return (
     <Frame><Solo>
       <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>

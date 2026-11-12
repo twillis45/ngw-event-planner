@@ -889,6 +889,21 @@ const PASS_PAID_RETURN = (() => {
   return null;
 })();
 
+// ── THE COCKPIT'S PASS DOOR LANDS HERE (gap H1, 11/12/2026) ────────────────
+// LodgingCockpit.jsx is its own page, so when it is reached on a locked event
+// its "See the One-Event Pass" door cannot call setSheet — it comes back with
+// `?open=pass`. Read once at module scope (params get stripped during boot)
+// and removed from the address bar so a refresh does not reopen the sheet.
+const OPEN_PASS_ON_LOAD = (() => {
+  try {
+    const u = new URL(window.location.href);
+    if (u.searchParams.get('open') !== 'pass') return false;
+    u.searchParams.delete('open');
+    window.history.replaceState(null, '', u.toString());
+    return true;
+  } catch { return false; }
+})();
+
 // ── DEMO TOOLS arming (D-2 precondition 2: a seedable, resettable demo
 // account). Same protocol and localStorage key as the CRA bar (?demo=1 arms,
 // ?demo=0 disarms) so one runbook covers both shells. Module scope, because
@@ -953,9 +968,9 @@ function FoodModes({ mode, count, setSheet }) {
 // ─── THE PASS FACT, MADE REACTIVE ────────────────────────────────────────────
 // `passGate` is synchronous and reads `passEntitlement` directly, which is what
 // lets `briefAllowed` work inside a tap handler with no prop plumbing. The cost
-// is that nothing tells React when a server answer lands — and the three
-// `destinationLocked` call sites are in RENDER (the lodging, ground and
-// arrivals sheets), so without this a teased surface stays teased after the
+// is that nothing tells React when a server answer lands — and the
+// `destinationLocked` call sites are in RENDER (the lodging, ground,
+// arrivals and cost-pool sheets and the weekend plan), so without this a teased surface stays teased after the
 // server has confirmed the pass, until some unrelated state change happens to
 // re-render it.
 //
@@ -4805,7 +4820,7 @@ export default function HostShellV2() {
   // R2-16: '' doubled as both, so Backspace snapped back to the old count and
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
-  const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  const [sheet, setSheet] = useState(() => (OPEN_PASS_ON_LOAD ? { kind: 'pass' } : null));   // deep-link landing: {kind, focus}
   useEffect(() => {
     if (sheet && sheet.kind === 'pass') recordPassFunnel('sheet_viewed', eventId);
   }, [sheet && sheet.kind, eventId]);
@@ -5500,6 +5515,13 @@ export default function HostShellV2() {
   // obligation about a deadline and arrived at a screen that never mentioned
   // one.
   const goToLodgingCockpit = (focus) => {
+    // THE PASS SELLS THIS (owner review board 11/12/2026, gap H1): the pass
+    // sheet names lodging coordination as destination toolkit, but every door
+    // here left for the cockpit, which never asked. A locked event opens the
+    // lodging sheet instead — whose first branch is the teased, honest locked
+    // state with the pass door. Every lodging entry point funnels through this
+    // function, so one check covers them all; the cockpit re-checks itself.
+    if (destinationLocked(event)) { setSheet({ kind: 'lodging' }); return; }
     const f = focus != null && String(focus).trim() ? String(focus).trim() : null;
     try {
       const u = new URL(window.location.href);
@@ -15051,6 +15073,21 @@ export default function HostShellV2() {
               // see host-accepted rows (event.itinerary), never a raw proposal.
               const it = guestItinerary(event, getPlaybook);
               if (!it.relevant) return null;
+              // MODEL D visibility rule — see the lodging sheet's note. The
+              // multi-day program is destination toolkit the pass sells. Only
+              // the HOST's editor locks: a plan already accepted stays on the
+              // guest invite (InviteV2 reads event.itinerary, ungated).
+              if (destinationLocked(event)) {
+                return (
+                  <>
+                    <div id="space-days" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
+                    <div style={{ padding: '2px 0' }}>
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>The weekend plan lives here — what happens each day, written once and shown to guests on the invite. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                    </div>
+                  </>
+                );
+              }
               const days = Math.max(1, spanNights(event) + 1);
               const writeRows = (rows, msg) => patchEvent({ itinerary: rows }, msg);
               const SLOT_OPTS = ['', 'morning', 'midday', 'afternoon', 'evening', 'night'];
@@ -15380,6 +15417,17 @@ export default function HostShellV2() {
               // sits BESIDE the budget, never inside it — nothing here
               // touches spending math, and the pool is never totaled
               // (per-tier headcounts are the family's business).
+              // MODEL D visibility rule — see the lodging sheet's note. The
+              // group pool is a destination money tool; budget lines are not
+              // touched by this and never lock.
+              if (destinationLocked(event)) {
+                return (
+                  <div style={{ padding: '2px 0' }}>
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Who pays for what lives here — everyone covering their own, or a shared pool with tiers for the trip. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event. Your budget stays open either way.</p>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                  </div>
+                );
+              }
               if (!travel.relevant) {
                 return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — everyone covers their own costs. If it becomes a destination event (Space, seats & helpers), you can set up a shared pool here.</div>;
               }
