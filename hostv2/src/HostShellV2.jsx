@@ -17977,12 +17977,14 @@ export default function HostShellV2() {
               //  · The destination toolkit is framed as included product, never
               //    as the reason an event "costs money" — the blunt boundary
               //    lives in the creation-time disclosure, not here.
+              //  · No perk the free tier already has (owner board, 11/12/2026):
+              //    "Yours to keep" was cut — nothing expires a free event's plan,
+              //    link or recap, so listing it implied a loss that never happens.
               const perks = [
-                ['Every vendor, one brief each', 'Plan your first event free, including sharing one vendor brief. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
+                ['Every vendor, one brief each', 'Plan your first event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
                 ['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.'],
                 ['Your next events', 'The first event’s free run is once; the pass covers each event after it. One event, one price.'],
                 ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
-                ['Yours to keep', 'The plan, the invite link, and the recap stay live through the event and after.'],
               ];
               return (
                 <>

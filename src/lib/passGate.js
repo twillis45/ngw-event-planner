@@ -185,7 +185,7 @@ export function passStatus(ev) {
 export function creationDisclosure(verdict) {
   if (!isBillingLive()) return null;
   if (!verdict || !verdict.passRequired) {
-    return 'This event is free to plan, including sharing one vendor brief. Sharing with more vendors, destination planning, or your next event takes the $39 One-Event Pass.';
+    return 'This event is free to plan, including sharing one vendor brief (that takes a free account). Sharing with more vendors, destination planning, or your next event takes the $39 One-Event Pass.';
   }
   const r = verdict.passReasons || [];
   if (r.includes('destination') || r.includes('multi-day')) {

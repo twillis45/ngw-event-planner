@@ -81,6 +81,14 @@ test('on sale: the refund rule sits above the buy button', async ({ page }) => {
   expect(r.y + r.height).toBeLessThanOrEqual(b.y);
 });
 
+// Owner board 11/12/2026: the pass sells only what free does not already give,
+// and says the free brief needs an account.
+test('on sale: no perk the free tier already has, and the account is named', async ({ page }) => {
+  await boot(page, { stripe_configured: true, stripe_can_honour_purchases: true, pass_sales_paused: false });
+  await expect(page.getByText('Yours to keep')).toHaveCount(0);
+  await expect(page.getByText(/sharing one vendor brief with a free account/)).toBeVisible();
+});
+
 test('paused: no refund rule is offered for a sale that cannot happen', async ({ page }) => {
   await boot(page, PAUSED);
   await expect(page.locator('[data-refund-rule]')).toHaveCount(0);
