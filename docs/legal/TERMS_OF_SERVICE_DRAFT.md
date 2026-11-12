@@ -145,11 +145,12 @@ can need the pass. ⟶ `passGate.js:19-22, 134` ⟵
 
 ## 5. Refunds, disputes, and revocation
 
-Refunds are governed by the **Refund Policy**. The refund rule itself — the
-window and its conditions — is the owner's decision and is set there, not here.
-⟶ `REFUND_POLICY_DRAFT.md` §3 (`[OWNER: refund rule — pick one]`) ⟵
+Refunds are governed by the **Refund Policy**: a full refund within 14 days
+of purchase, no questions asked, as long as no new vendor brief has been sent
+from that event since the purchase.
+⟶ `REFUND_POLICY_DRAFT.md` §3 (owner ruling 11/12/2026) ⟵
 
-What happens mechanically, whatever rule is chosen:
+What happens mechanically:
 
 - **A full refund ends the pass.** The event returns to the free tier; nothing
   you planned is deleted. ⟶ `stripe_payments.py:575-578` (`charge.refunded`,

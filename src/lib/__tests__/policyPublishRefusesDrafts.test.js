@@ -29,8 +29,10 @@ test('today\'s drafts are refused, nothing is produced, and each placeholder is 
   expectAt(privacy, '[OWNER: governing state]', '[OWNER:');
   expectAt(terms, '[OWNER: minimum age', '[OWNER:');
   expectAt(terms, '**COUNSEL:** Is incorporation by reference', 'COUNSEL');
-  expectAt(refunds, '[OWNER: refund rule — pick one]', '[OWNER:');
-  expectAt(refunds, '**COUNSEL — where the rule choice', 'COUNSEL');
+  // The refund rule itself was ruled 11/12/2026; the draft still carries
+  // owner fields and counsel questions, so it is still refused.
+  expectAt(refunds, '[OWNER: effective date]', '[OWNER:');
+  expectAt(refunds, '**COUNSEL — the chosen rule', 'COUNSEL');
   for (const doc of sources) expectAt(doc, '**DRAFT ', 'DRAFT');
 
   // Every ⟶ citation in the drafts is closed, so once the markers are gone the

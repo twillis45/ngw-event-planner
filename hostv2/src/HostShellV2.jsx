@@ -236,6 +236,7 @@ import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from '@app/lib/storage';
+import { REFUND_LINE } from '@app/lib/refundRule';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
@@ -18023,12 +18024,13 @@ export default function HostShellV2() {
                     </div>
                   ) : canCharge ? (
                     <>
-                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
+                      {/* THE REFUND RULE, BEFORE THE MONEY (owner ruling 11/12/2026,
+                          lib/refundRule). Above the button, so it is read before paying. */}
+                      <p className="grounding" data-refund-rule style={{ margin: 'var(--sp-3) 0 0', textAlign: 'center' }}>{REFUND_LINE}</p>
+                      <button className="cta" style={{ marginTop: 'var(--sp-2)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
                       {/* BEFORE THE MONEY (stage 9, 11/11/2026): a person to ask, and the
-                          policies once published. The refund RULE is the owner's to
-                          choose (docs/legal/REFUND_POLICY_DRAFT.md), so no rule is
-                          stated here — only where to ask, which is true today. */}
+                          policies once published. */}
                       <p className="grounding" style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }}>Questions about the pass or a charge? <a href={'mailto:' + BRAND.support}>{BRAND.support}</a></p>
                       <PolicyLinks style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }} />
                     </>

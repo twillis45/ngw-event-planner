@@ -17,6 +17,21 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 11–12, 2026 — #119 live; production attested clean; refund rule ruled
+
+Live: `main` @ `3a14c3e9` (PR #119, merged 11/11 1:12 PM UTC), `release_profile=live`, Pages deploy 8:47 AM EST. Checks run 43026996302 green. The Render API answers the new routes (`/api/public/rsvp/{code}/withdraw` returns "invite not found" for a bad code, not a missing route) and `/api/capabilities` reports `pass_sales_paused: false`.
+
+| Item | State | Where |
+|---|---|---|
+| Production attestation | **0 FAIL, 136 PASS** (11/11 7:37 AM EST), after the owner recorded 017–021 and applied 022 | `docs/attestation/2026-11-11_RESULT.md` |
+| Uploaded-files hole | Found by the owner's storage check: seven bucket-wide policies (anon could read and upload; any user could delete). **Closed** by migration 022, applied in production and confirmed by the pack | `supabase/migrations/022_event_files_owner_scoped.sql` |
+| Rate limits, SMTP, backups | Recorded: 25 sign-in emails/hour (custom SMTP on); Pro daily backups, 7 kept, PITR off; uploaded files not backed up | same |
+| Guest reply change / delete | Live (#119). Delete wipes the answers and the host's copy on its next read | `backend/app/routers/rsvp.py`, `src/lib/guestMerge.js` |
+| Refund rule | **Owner ruling 11/12** on the board's 4–2: 14 days, full, if no new vendor brief sent since purchase. Line above the buy button; support check in RUNBOOK → "Refund check" | `src/lib/refundRule.js`, `docs/legal/REFUND_POLICY_DRAFT.md` §3 |
+| Gate records | 7 of 10 posted 11/11 from the owner's machine. Stage 1: owner declined to confirm the amended threshold (11/12) → not-yet. Stage 6: owner not-yet (11/12). Stage 7: board not-yet 8–2–1 (11/12). All three drafted for posting | workspace `docs/gate-records/2026-11-11/` |
+
+**Trap:** on the owner's machine the app repo is `~/Code/ngw-event-planner`; the workspace gate records live only on the workspace branch `main-2utz0n`, so the poster was run from a scratch copy.
+
 ## November 10–11, 2026 — support contact, Resend verified, the guest invite redesigned (#113–#115)
 
 Merged and deployed. The live build is `61cb1324` with `release_profile=live` (`RELEASE_SHA.txt`, built 05:22 UTC on 11/11 by the automatic deploy). So `DEFAULT_RELEASE_PROFILE` now resolves to `live`, and the November 7 warning about merges rebuilding as `services` no longer holds.
