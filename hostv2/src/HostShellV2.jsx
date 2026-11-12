@@ -894,14 +894,17 @@ const PASS_PAID_RETURN = (() => {
 // its "See the One-Event Pass" door cannot call setSheet — it comes back with
 // `?open=pass`. Read once at module scope (params get stripped during boot)
 // and removed from the address bar so a refresh does not reopen the sheet.
-const OPEN_PASS_ON_LOAD = (() => {
+// `?open=settings` is the cockpit's sign-in door (owner, 11/12/2026: lodging is
+// never device-only), landing on You & settings where sign-in lives.
+const OPEN_ON_LOAD = (() => {
   try {
     const u = new URL(window.location.href);
-    if (u.searchParams.get('open') !== 'pass') return false;
+    const kind = u.searchParams.get('open');
+    if (kind !== 'pass' && kind !== 'settings') return null;
     u.searchParams.delete('open');
     window.history.replaceState(null, '', u.toString());
-    return true;
-  } catch { return false; }
+    return kind;
+  } catch { return null; }
 })();
 
 // ── DEMO TOOLS arming (D-2 precondition 2: a seedable, resettable demo
@@ -4820,7 +4823,7 @@ export default function HostShellV2() {
   // R2-16: '' doubled as both, so Backspace snapped back to the old count and
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
-  const [sheet, setSheet] = useState(() => (OPEN_PASS_ON_LOAD ? { kind: 'pass' } : null));   // deep-link landing: {kind, focus}
+  const [sheet, setSheet] = useState(() => (OPEN_ON_LOAD ? { kind: OPEN_ON_LOAD } : null));   // deep-link landing: {kind, focus}
   useEffect(() => {
     if (sheet && sheet.kind === 'pass') recordPassFunnel('sheet_viewed', eventId);
   }, [sheet && sheet.kind, eventId]);

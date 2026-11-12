@@ -135,10 +135,13 @@ export default function LodgingCockpit() {
   // (getSession + onAuthStateChange); the save is its `saveEvent` and its
   // `recordSaveResult`, so the queue and conflict rules are the same ones.
   const [session, setSession] = useState(null);
+  // Until the first session read answers, nothing is known: no sign-in door
+  // flashes at a host who is in fact signed in.
+  const [authKnown, setAuthKnown] = useState(() => !isSupabaseConfigured() || !supabase);
   useEffect(() => {
     if (!isSupabaseConfigured() || !supabase) return undefined;
     let dead = false;
-    supabase.auth.getSession().then(({ data }) => { if (!dead) setSession((data && data.session) || null); }).catch(() => {});
+    supabase.auth.getSession().then(({ data }) => { if (!dead) { setSession((data && data.session) || null); setAuthKnown(true); } }).catch(() => { if (!dead) setAuthKnown(true); });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) setSession(s || null); });
     return () => { dead = true; try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch { /* gone */ } };
   }, []);
@@ -265,7 +268,7 @@ export default function LodgingCockpit() {
   // MODEL D visibility rule (passGate): teased with honest copy naming the
   // pass — never hidden, never fake-functional. Same words and door as the
   // host shell's locked lodging sheet; the door goes back to the plan with
-  // the pass sheet open (HostShellV2's OPEN_PASS_ON_LOAD), on THIS event.
+  // the pass sheet open (HostShellV2's OPEN_ON_LOAD), on THIS event.
   if (destinationLocked(event)) {
     const goSeePass = () => {
       try { localStorage.setItem(LS_LAST_EVENT, event.id); } catch { /* the shell falls back to its own last event */ }
@@ -284,6 +287,34 @@ export default function LodgingCockpit() {
         <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
         <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Where everyone stays lives here — the stay, who needs a room, and the lodging plan for a multi-day event. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
         <button className="cta" style={{ width: '100%' }} onClick={goSeePass}>See the One-Event Pass — $39</button>
+        <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
+      </Solo></Frame>
+    );
+  }
+  // LODGING IS NEVER DEVICE-ONLY (owner ruling 11/12/2026). Where accounts
+  // exist, a host must be signed in to work here, so the shortlist, the pick
+  // and the booking code always reach the account (G10's save) and cannot be
+  // lost with the browser. The worked example stays open: it is never the
+  // host's work. Builds with no accounts at all keep this device's copy.
+  if (isSupabaseConfigured() && !event.demoSeed && !authKnown) return <Frame><Solo><p className="lc-eyebrow">WHERE EVERYONE STAYS</p></Solo></Frame>;
+  if (isSupabaseConfigured() && !event.demoSeed && !session) {
+    const goSignIn = () => {
+      try { localStorage.setItem(LS_LAST_EVENT, event.id); } catch { /* the shell falls back to its own last event */ }
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.delete('demo');
+        u.searchParams.delete('focus');
+        u.searchParams.set('open', 'settings');
+        window.location.href = u.toString();
+      } catch {
+        window.location.href = window.location.pathname + '?open=settings';
+      }
+    };
+    return (
+      <Frame><Solo>
+        <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
+        <p className="grounding" data-lodging-signin style={{ margin: '0 0 var(--sp-3)' }}>Sign in to plan where everyone stays. Your places, your pick and your booking code save to your account, so they can’t be lost.</p>
+        <button className="cta" style={{ width: '100%' }} onClick={goSignIn}>Sign in</button>
         <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
       </Solo></Frame>
     );

@@ -214,12 +214,21 @@ test.describe('lodging reaches the account', () => {
     await expect(page.locator(STATUS)).toHaveText(/^Saved on this device only\.$/);
   });
 
-  test('signed out: the change stays on this device, and says so', async ({ page }) => {
+  // Owner ruling 11/12/2026: lodging is never device-only. Signed out, the
+  // cockpit asks for sign-in instead of letting work pile up in one browser,
+  // and its door lands on You & settings in the plan.
+  test('signed out: lodging asks you to sign in, and nothing is kept on this device only', async ({ page }) => {
     const { writes } = await install(page, { mode: 'ok', signedIn: false });
-    await openCockpit(page);
-    await addTwoHotels(page);
-    expect((await stored(page, EVENT_ID)).options).toBe(2);
-    expect(writes, 'a signed-out change was sent to an account').toHaveLength(0);
-    await expect(page.locator(STATUS)).toHaveText(/^Saved on this device only\.$/);
+    await page.goto(BASE + '?demo=lodging');
+    const ask = page.locator('[data-lodging-signin]');
+    await expect(ask).toBeVisible({ timeout: 15000 });
+    await expect(ask).toContainText('Sign in to plan where everyone stays');
+    await expect(page.locator('textarea')).toHaveCount(0);
+    await expect(page.locator(STATUS)).toHaveCount(0);
+    expect(writes).toHaveLength(0);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page).not.toHaveURL(/demo=lodging/);
+    await expect(page.locator('#sheet-title')).toBeVisible({ timeout: 20000 });
+    await expect(page).not.toHaveURL(/open=settings/);
   });
 });
