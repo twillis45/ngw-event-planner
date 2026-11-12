@@ -236,6 +236,7 @@ import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from '@app/lib/storage';
+import { contractUrlFor } from '@app/lib/contractLink';
 import { REFUND_LINE } from '@app/lib/refundRule';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
@@ -23451,14 +23452,40 @@ export default function HostShellV2() {
                                 // Already on file — the real stored file (or a link), with View / Remove.
                                 <>
                                   <span className="vc-detail" style={{ margin: 0, flex: 1, minWidth: 120 }}>{v.contractFileName || 'On file'}</span>
-                                  {v.contractUrl && <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">View</a>}
-                                  {isAiProxyConfigured() && v.contractUrl && (
+                                  {/* An UPLOADED file is re-signed at the tap (H4, 11/12/2026): the
+                                      URL saved at upload is a one-hour signature, so opening it later
+                                      failed silently while the card still said "on file". A PASTED
+                                      link (no storage path) is the host's own and opens as written.
+                                      The tab opens INSIDE the tap and is pointed at the fresh URL once
+                                      it arrives — a popup opened after an await is refused by Safari
+                                      (the Instacart button's lesson, 2026-09-24). */}
+                                  {v.contractStoragePath ? (
+                                    <button className="mini" onClick={async () => {
+                                      let win = null;
+                                      try { win = window.open('', '_blank'); } catch (_e) { win = null; }
+                                      try { if (win) win.opener = null; } catch (_e) { /* already safe */ }
+                                      const r = await contractUrlFor(v);
+                                      if (!r.ok) {
+                                        try { if (win) win.close(); } catch (_e) { /* already gone */ }
+                                        toast('Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap View again.', null, null, { sticky: true });
+                                        return;
+                                      }
+                                      if (win) { try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
+                                      else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
+                                    }}>View</button>
+                                  ) : v.contractUrl ? (
+                                    <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">View</a>
+                                  ) : null}
+                                  {isAiProxyConfigured() && (v.contractStoragePath || v.contractUrl) && (
                                     <button className="mini" disabled={!!contractExtracting[v.id]}
                                       onClick={async () => {
                                         setContractExtracting(m => ({ ...m, [v.id]: true }));
                                         setContractExtractErr(m => ({ ...m, [v.id]: null }));
                                         try {
-                                          const out = await extractDocumentAI({ documentUrl: v.contractUrl, vendorName: v.name, eventName: event.name });
+                                          // Re-signed now for an uploaded file, for the same reason as View.
+                                          const link = await contractUrlFor(v);
+                                          if (!link.ok) throw new Error('We couldn’t get a fresh link to the file, so it wasn’t analyzed. Check you’re online and signed in, then try again.');
+                                          const out = await extractDocumentAI({ documentUrl: link.url, vendorName: v.name, eventName: event.name });
                                           setContractExtracted(m => ({ ...m, [v.id]: out.extracted }));
                                         } catch (e) {
                                           setContractExtractErr(m => ({ ...m, [v.id]: (e && e.message) || 'Analysis failed — try again.' }));
