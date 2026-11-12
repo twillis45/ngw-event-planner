@@ -49,6 +49,10 @@ import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
 import { destinationLocked, isBillingLive, isUserCreatedEvent } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
+// The shell's own save path, session check and status reader — not a copy.
+import { isSupabaseConfigured, supabase } from '@app/lib/supabaseClient';
+import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
+import { recordSaveResult, getEventSyncStatus, SYNC_STATUS_LABEL } from '@app/lib/api/syncState';
 
 // ─── THE WORKED EXAMPLE (2026-08-04) ───────────────────────────────────────
 // A fresh device has an empty store (localStorage is per origin), so a phone on
@@ -122,6 +126,25 @@ export default function LodgingCockpit() {
     refreshEventPass(eventId, { claimed: passClaimed });
   }, [eventId, passClaimed]);
 
+  // ── THE ACCOUNT HEARS ABOUT IT TOO (G10, 11/12/2026) ─────────────────────
+  // `patch` used to write this browser only. A signed-in host's shortlist,
+  // pick and booking code reached the account only if a later edit in the
+  // shell happened to save the event — and worse, the shell's next signed-in
+  // load read the event as "synced", found the account copy different, and
+  // replaced the lodging work with it. The session check is the shell's own
+  // (getSession + onAuthStateChange); the save is its `saveEvent` and its
+  // `recordSaveResult`, so the queue and conflict rules are the same ones.
+  const [session, setSession] = useState(null);
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !supabase) return undefined;
+    let dead = false;
+    supabase.auth.getSession().then(({ data }) => { if (!dead) setSession((data && data.session) || null); }).catch(() => {});
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) setSession(s || null); });
+    return () => { dead = true; try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch { /* gone */ } };
+  }, []);
+  // The worked example is never the host's work and never leaves this device.
+  const toAccount = (ev) => !!(ev && isSupabaseConfigured() && session && !ev.demoSeed);
+
   // ONE write path. Everything on this surface goes through it, so the cockpit
   // and the live sheet can never hold different truths about the same event.
   // `opts.keepPeek` — see the note on setViewing below for the one kind of
@@ -132,8 +155,16 @@ export default function LodgingCockpit() {
       const next = all.map((e) => (e && e.id === eventId ? { ...e, ...changes } : e));
       // A map preserves every id, so this can never be refused — the guard is
       // here so no future edit to this line can quietly become a replacement.
-      saveCustomEvents(next, { reason: 'lodging:patch' });
+      const res = saveCustomEvents(next, { reason: 'lodging:patch' });
       setTick((t) => t + 1);
+      // A rejected local edit never starts a cloud write (the shell's rule).
+      const saved = res && res.ok ? next.find((e) => e && e.id === eventId) : null;
+      if (toAccount(saved)) {
+        cloudSaveEvent(saved)
+          .then((r) => { try { recordSaveResult(saved, r); } catch { /* stamping is best-effort */ } })
+          .catch(() => {})
+          .then(() => setTick((t) => t + 1));   // re-read the status line
+      }
       // FINISHING A STEP LANDS YOU ON THE NEXT ONE (host, 2026-08-04). The
       // stage is derived, so the data moving forward already moves the host —
       // EXCEPT while they are peeking at another step, where `viewing` pinned
@@ -156,7 +187,8 @@ export default function LodgingCockpit() {
         setFocus(null);
       }
     } catch { /* storage full or blocked — the surface simply does not change */ }
-  }, [eventId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, session]);
 
   const intel = useMemo(() => { try { return event ? lodgingIntel(event) : null; } catch { return null; } }, [event]);
   const derived = useMemo(() => { try { return event ? lodgingStage(event, intel) : null; } catch { return null; } }, [event, intel]);
@@ -329,6 +361,14 @@ export default function LodgingCockpit() {
             {/* A seeded example must SAY it is one, everywhere it is on screen —
                 otherwise the first honest-looking number a host reads is fiction. */}
             {event.demoSeed ? <span className="lc-demo"> · EXAMPLE</span> : null}
+          </p>
+          {/* Where the last change lives. Signed in: the shell's own status
+              words, read off the same queue and stamps. Otherwise — signed
+              out, no accounts, or the example — this device only, said so. */}
+          <p className="lc-note lc-savestate" role="status" aria-live="polite">
+            {toAccount(event)
+              ? (SYNC_STATUS_LABEL[getEventSyncStatus(event)] || 'Saved on this device only.')
+              : 'Saved on this device only.'}
           </p>
           <nav className="lc-rail">
             {LODGING_STAGES.map((s) => {
