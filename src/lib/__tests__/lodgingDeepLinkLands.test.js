@@ -69,7 +69,9 @@ describe('the receiver reads it and lands on it', () => {
   });
 
   test('acting clears the focus, the same way it clears a stage peek', () => {
-    const patchFn = COCKPIT.match(/const patch = useCallback\([\s\S]*?\}, \[eventId\]\);/);
+    // The dependency list grew a session (G10, 11/12/2026: the cockpit also saves
+    // to the account), so match whatever follows eventId in it.
+    const patchFn = COCKPIT.match(/const patch = useCallback\([\s\S]*?\}, \[eventId[^\]]*\]\);/);
     expect(patchFn).not.toBeNull();
     expect(patchFn[0]).toMatch(/setViewing\(null\)/);
     expect(patchFn[0]).toMatch(/setFocus\(null\)/);

@@ -119,7 +119,7 @@ const openContract = async (page) => {
   await expect(row, 'premise: the contract row is on the open card').toBeVisible({ timeout: 10_000 });
   await expect(row).toContainText('Ironwood contract.pdf');
   // Link or button: what matters is where the tap lands, not the element.
-  return row.locator('a, button').filter({ hasText: /^View$/ }).first();
+  return row.locator('a, button').filter({ hasText: /^Open the contract$/ }).first();
 };
 
 test.describe('a stored contract is re-signed when the host opens it', () => {
@@ -142,7 +142,7 @@ test.describe('a stored contract is re-signed when the host opens it', () => {
     const popupP = page.waitForEvent('popup', { timeout: 5000 }).catch(() => null);
     await view.click();
     await expect.poll(() => page.evaluate(() => window.__toastsSeen.join(' | ')), { timeout: 8000 })
-      .toMatch(/Couldn’t open Ironwood contract\.pdf.*fresh link.*tap View again/);
+      .toMatch(/Couldn’t open Ironwood contract\.pdf.*fresh link.*tap Open the contract again/);
     expect(seen.signs.length, 'premise: the sign call went out').toBe(1);
     expect(seen.opened, 'something was opened although signing failed').toHaveLength(0);
     const popup = await popupP;

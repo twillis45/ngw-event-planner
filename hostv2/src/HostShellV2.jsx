@@ -23518,14 +23518,14 @@ export default function HostShellV2() {
                                       const r = await contractUrlFor(v);
                                       if (!r.ok) {
                                         try { if (win) win.close(); } catch (_e) { /* already gone */ }
-                                        toast('Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap View again.', null, null, { sticky: true });
+                                        toast('Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap Open the contract again.', null, null, { sticky: true });
                                         return;
                                       }
                                       if (win) { try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
                                       else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
-                                    }}>View</button>
+                                    }}>Open the contract</button>
                                   ) : v.contractUrl ? (
-                                    <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">View</a>
+                                    <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
                                   ) : null}
                                   {isAiProxyConfigured() && (v.contractStoragePath || v.contractUrl) && (
                                     <button className="mini" disabled={!!contractExtracting[v.id]}
