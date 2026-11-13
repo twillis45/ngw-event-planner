@@ -105,6 +105,7 @@ import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf,
 import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
+import { askExchange, appendAskExchange, attachBroaderLook } from '@app/lib/askHistory';
 import { runOrchestration } from '@app/lib/orchestrator';
 import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
@@ -271,7 +272,7 @@ import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimF
 import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@app/lib/eventOrientation';
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
-import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
+import { syncProfile as cloudSyncProfile, saveProfile as cloudSaveProfile, installProfileOnlineFlush } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent, forgetAccountCache } from '@app/lib/api/events';
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
@@ -1896,12 +1897,14 @@ export default function HostShellV2() {
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
     let dead = false;
-    // On sign-in, pull the cloud profile (studio_settings) into localStorage +
-    // state — cloud wins, so a fresh device inherits the host's real identity.
+    // On sign-in, reconcile the profile (studio_settings) with the account —
+    // the account wins EXCEPT for fields this device changed and never got
+    // confirmed, which are pushed instead (G19: those used to be wiped here).
     const hydrate = () => {
-      cloudLoadProfile().then(p => {
+      cloudSyncProfile().then(({ profile: p }) => {
         if (dead || !p) return;
         setProfileState(p);
+        adoptAccountPrefs(p);
         // Build-map #3: stash the account's last-viewed event; the resume effect
         // below follows it once the event resolves and only if the host hasn't
         // already switched away from the boot event on this device.
@@ -2061,6 +2064,64 @@ export default function HostShellV2() {
             }
           }
         } catch { /* unreadable store — the device keeps what it has, never data loss */ }
+
+        // ── AN ACCOUNT EVENT CACHED IN AN EARLIER SESSION (G18, 11/12/2026) ──
+        // REAL_EVENTS are the account events this device cached last time
+        // (`ngw-events`, read once at load). They were never moved into the
+        // store above, so their edits went to an LS_PATCH layer that was never
+        // cleared: it pinned this device's old values over newer edits from
+        // anywhere, and the base under it was the load-time snapshot, so the
+        // next edit uploaded stale fields — past the conditional write, because
+        // this pull had just noted the newer version as "seen". The 11/8 fix
+        // covered only events that arrived this session.
+        //
+        // Now each one the account returned moves into the store, on the copy
+        // the account just sent, and its layer is folded in once and cleared:
+        //   - a layer value the cached copy already holds was uploaded or
+        //     pulled — it is in the account's history, and the account's
+        //     current copy wins (the queue rule, as above);
+        //   - a value the cached copy does NOT hold never reached the account
+        //     (an edit made signed out), and so does every value of an event
+        //     with an unsent or refused write. Those are kept, and sent through
+        //     the conditional write against the version the cache was at: it
+        //     lands if the account has not moved, and is refused — the host
+        //     chooses, through the conflict choice — if it has. Never a silent
+        //     pick in either direction.
+        try {
+          const stored = readCustomEvents();
+          const have = new Set(stored.map(e => e && e.id));
+          const cloudById = new Map(evs.filter(e => e && e.id).map(e => [e.id, e]));
+          const moved = [];
+          const toSend = [];
+          for (const cached of REAL_EVENTS) {
+            const fresh = cached && cloudById.get(cached.id);
+            if (!fresh || have.has(cached.id) || tombstoned.has(cached.id)) continue;
+            let layer = {};
+            try { layer = JSON.parse(localStorage.getItem(LS_PATCH(cached.id))) || {}; } catch { layer = {}; }
+            const dirty = getEventSyncStatus(cached) !== SYNC_STATUS.SYNCED;
+            const unsent = {};
+            for (const k of Object.keys(layer)) {
+              if (dirty || !sameEventContent({ v: layer[k] }, { v: cached[k] })) unsent[k] = layer[k];
+            }
+            if (!Object.keys(unsent).length) { moved.push({ ...fresh }); continue; }
+            const own = { ...fresh, ...unsent, _cloudUpdatedAt: cached._cloudUpdatedAt };
+            moved.push(own);
+            if (!dirty) toSend.push(own);   // a dirty one is already queued or refused
+          }
+          if (moved.length) {
+            const next = [...stored, ...moved];
+            const res = saveCustomEvents(next, { reason: 'hostshell:adopt-cached-account-events' });
+            if (res && res.ok) {
+              setCustoms(next);
+              moved.forEach(e => { try { localStorage.removeItem(LS_PATCH(e.id)); } catch { /* ignored once the event is in the store */ } });
+              toSend.forEach(ev => {
+                // No version to write against: never a blind write — the host chooses.
+                if (!ev._cloudUpdatedAt) { try { markEventConflict(ev.id); } catch { /* best-effort */ } return; }
+                cloudSaveEvent(ev, { base: ev._cloudUpdatedAt }).then(r => noteSaveResult(ev, r)).catch(() => {});
+              });
+            }
+          }
+        } catch { /* unreadable store — the cached copy and its layer stay as they were */ }
         // Welcome-gate re-eval (engine-gap NEW-5): shouldShowWelcome was
         // decided ONCE at load, before the cloud could answer — so a signed-in
         // host on a fresh device got welcomed as brand-new. The moment
@@ -2137,6 +2198,8 @@ export default function HostShellV2() {
   useEffect(() => installOnlineFlush(res => {
     if (res && res.flushed > 0) toast(res.flushed + (res.flushed === 1 ? ' change' : ' changes') + ' synced to your account.');
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // G19: the same moment retries profile fields the account never confirmed.
+  useEffect(() => installProfileOnlineFlush(r => { if (r && r.ok && r.profile) setProfileState(r.profile); }), []);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('A real email address — the sign-in link goes there.'); return; }
@@ -2184,11 +2247,55 @@ export default function HostShellV2() {
       localStorage.setItem('ngw-profile', JSON.stringify(next));
     } catch { next = { ...(profile || {}), ...fields }; }
     setProfileState(next);
-    // Push to the cloud when signed in — no longer dependent on the main app's
-    // debounced save. Fire-and-forget; saveProfile already wrote localStorage.
-    if (next && session) { try { cloudSaveProfile(next); } catch { /* offline — localStorage holds it */ } }
+    // Always through saveProfile, signed in or not (G19). It marks these fields
+    // unsent until the account confirms them; signed out, offline, or refused,
+    // the marker stays and the next sign-in, token refresh or reconnect sends
+    // them instead of letting the account copy replace them.
+    if (next) { try { cloudSaveProfile(next, { changed: Object.keys(fields || {}) }).catch(() => {}); } catch { /* localStorage holds it */ } }
     if (msg) toast(msg);
   };
+  // ── PREFERENCES FOLLOW THE ACCOUNT (owner, 11/12/2026) ───────────────────
+  // Theme, the analytics opt-out, message sound, the writing voice and the
+  // unfinished new-event sentence live on the profile record. Each control
+  // still writes its own device key first, so boot paints this device's last
+  // answer with no network wait; the account's answer is applied here, once
+  // the sign-in reconcile returns, and a value the account has never held is
+  // seeded from this device. A ?theme= link outranks the account for its load.
+  function adoptAccountPrefs(p) {
+    if (!p) return;
+    const seed = {};
+    const ls = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+    let urlTheme = false;
+    try { urlTheme = !!new URLSearchParams(window.location.search).get('theme'); } catch { /* no URL */ }
+    if (p.theme === 'light' || p.theme === 'dark') {
+      if (!urlTheme && p.theme !== (ls('ngw-theme') === 'light' ? 'light' : 'dark')) setThemeState(setStoredTheme(p.theme));
+    } else if (ls('ngw-theme') === 'light' || ls('ngw-theme') === 'dark') seed.theme = ls('ngw-theme');
+    if (typeof p.analyticsOff === 'boolean') {
+      if (p.analyticsOff !== isAnalyticsOptedOut()) { setAnalyticsOptOut(p.analyticsOff); setAnalyticsOff(p.analyticsOff); }
+    } else if (isAnalyticsOptedOut()) seed.analyticsOff = true;
+    if (typeof p.messageSoundMuted === 'boolean') setMuted(p.messageSoundMuted);
+    else if (ls('ngw-hostv2-muted') === '1') seed.messageSoundMuted = true;
+    if (typeof p.draftTone === 'string' && p.draftTone) setDraftTone(p.draftTone);
+    else if (ls('ngw-hostv2-voice') && ls('ngw-hostv2-voice') !== 'as-written') seed.draftTone = ls('ngw-hostv2-voice');
+    const d = p.createDraft;
+    if (d && typeof d.text === 'string' && d.text.trim() && Date.now() - Number(d.at || 0) < 86400000 && !readCreateDraft()) {
+      try { localStorage.setItem(LS_CREATE_DRAFT, JSON.stringify({ text: d.text, at: d.at })); } catch { /* private mode */ }
+      setSmartText(cur => (cur && cur.trim() ? cur : d.text));
+    }
+    if (Object.keys(seed).length) patchProfile(seed);
+  }
+  // The unfinished sentence is typed a key at a time: send it once typing
+  // pauses, and clear it from the account once the event is made or the box is
+  // emptied (same rule as the device copy above).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const text = smartText.trim() && !revealed ? smartText : '';
+      const held = profile && profile.createDraft;
+      if (text) { if (!held || held.text !== text) patchProfile({ createDraft: { text, at: Date.now() } }); }
+      else if (held) patchProfile({ createDraft: null });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [smartText, revealed]); // eslint-disable-line react-hooks/exhaustive-deps
   const ctx = useMemo(() => { try { return buildExperienceContext(event, profile, 1); } catch { return null; } }, [event, profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── THE REAL ENGINE ──
@@ -5197,6 +5304,13 @@ export default function HostShellV2() {
   // null | {loading:true} | {answer, grounded} | {unavailable:true}. Only ever
   // set when the deterministic path misses AND a backend is configured.
   const [askLLM, setAskLLM] = useState(null);
+  // Ask history is kept on the event (owner, 11/12/2026; lib/askHistory). The
+  // exchange the broader look belongs to, and which event was current when it
+  // was asked — the answer can land after the host has switched events.
+  const askEntryRef = useRef(null);
+  const askEventIdRef = useRef(eventId);
+  askEventIdRef.current = eventId;
+  const [askShowAll, setAskShowAll] = useState(false);
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPaletteOpen(o => !o); }
@@ -7189,7 +7303,9 @@ export default function HostShellV2() {
     // account at all, so "it will reach your account" would be false.
     const why = res && res.queued
       ? (res.reason === 'error' ? 'it will reach your account when the connection is back.'
-        : res.reason === 'no-studio' ? 'it will reach your account as soon as your account finishes setting up.'
+        : res.reason === 'no-studio' ? (session
+          ? 'it will reach your account as soon as your account finishes setting up.'
+          : 'it will be saved to your account when you sign in again.')
         : null)
       : null;
     if (why && !syncCueShown.current) {
@@ -7197,6 +7313,20 @@ export default function HostShellV2() {
       // Keep the edit's Undo if it is still showing — one toast slot, and this
       // notice must not cost her the way back (N4).
       toast('Saved on this device — ' + why, toastActionRef.current);
+    }
+  };
+  // ── A COPY PUT BACK HERE GOES TO THE ACCOUNT TOO (G16/G17, 11/12/2026) ────
+  // "Put this back" and import with "Replace matching events" wrote this store
+  // only. A restored event kept its sync record and had nothing queued, so the
+  // next refresh read it as synced and put the account copy back — undoing the
+  // one recovery tool within the hour. Each account event the store write
+  // changed is now saved like any edit: written conditionally, or queued.
+  const saveChangedToAccount = (before) => {
+    const was = new Map((Array.isArray(before) ? before : []).map(e => [e && e.id, e]));
+    for (const ev of readCustomEventsSafe()) {
+      if (!ev || !ev.id || !getLastSyncTime(ev.id)) continue;
+      if (was.has(ev.id) && sameEventContent(was.get(ev.id), ev)) continue;
+      cloudSaveEvent(ev).then(res => noteSaveResult(ev, res)).catch(() => {});
     }
   };
   // ── THE CHECKLIST FOLLOWS THE DECISIONS (audit 2026-08-21) ────────────────
@@ -7328,7 +7458,17 @@ export default function HostShellV2() {
     // that follows sign-in then adopted the older cloud copy over the replies.
     // cloudSaveEvent queues when it cannot write yet, and a queued event is the one
     // the pull leaves alone.
-    if ((session || (opts && opts.cloud)) && savedEv) cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
+    // AN EVENT ALREADY IN THE ACCOUNT IS SAVED SIGNED OUT TOO (G15, 11/12/2026;
+    // owner: "try first, sign in to keep"). Skipped, the edit sat in this store
+    // under a "Synced" badge, and the next sign-in pull replaced it with the
+    // account copy. Saved, it waits in the queue (reason 'no-studio') that the
+    // pull leaves alone, and sign-in sends it through the conditional write —
+    // refused, not written, if the account moved on or someone else signed in.
+    // Only events with a sync record: a plan that never reached an account is
+    // uploaded at sign-in by eventsToUploadOnSignIn, and only into an account
+    // that does not already hold it.
+    const inAccount = !!(savedEv && getLastSyncTime(savedEv.id));
+    if ((session || (opts && opts.cloud) || inAccount) && savedEv) cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
     feedback('act');
     if (msg) {
       // CONFIRM-GREEN: patchEvent is the ONE write path every successful edit funnels
@@ -18168,7 +18308,18 @@ export default function HostShellV2() {
                 readiness: (phaseCues && phaseCues.totalCount) ? { done: phaseCues.completedCount, total: phaseCues.totalCount, nextLabel: phaseCues.nextCue && phaseCues.nextCue.label } : null,
                 eventName: event.name,
               };
-              const ask = (text) => { const t = String(text || '').trim(); if (!t) return; setAskQ(t); setAskLLM(null); setAskResult(answerPlanQuestion(t, askCtx)); };
+              const ask = (text) => {
+                const t = String(text || '').trim(); if (!t) return;
+                const result = answerPlanQuestion(t, askCtx);
+                setAskQ(t); setAskLLM(null); setAskResult(result);
+                // Kept on the event through the one event write path, so it
+                // follows the event to the account (no toast, no undo).
+                if (result) {
+                  const entry = askExchange(t, result);
+                  askEntryRef.current = { id: entry.id, eventId };
+                  patchEvent({ askHistory: appendAskExchange(event.askHistory, entry) });
+                }
+              };
               // B3 escalation: when the deterministic engine can't answer, and a
               // backend is configured, hand the question to the grounded orchestrator
               // (engines run locally as tools; every number still traces to one).
@@ -18191,6 +18342,10 @@ export default function HostShellV2() {
                   });
                   const out = await runOrchestration({ question: askQ, ctx: { event }, transport });
                   setAskLLM(out.answer ? { answer: out.answer, grounded: out.grounded } : { unavailable: true });
+                  const kept = askEntryRef.current;
+                  if (out.answer && kept && kept.eventId === askEventIdRef.current) {
+                    patchEvent({ askHistory: attachBroaderLook(event.askHistory, kept.id, out) });
+                  }
                 } catch {
                   setAskLLM({ unavailable: true });
                 }
@@ -18227,6 +18382,32 @@ export default function HostShellV2() {
                       ))}
                     </div>
                   )}
+                  {/* ASKED BEFORE (owner, 11/12/2026): kept on the event, newest
+                      first. Each answer is dated and said to be as of then —
+                      the plan may have moved since, and asking again is one tap. */}
+                  {!askResult && Array.isArray(event.askHistory) && event.askHistory.length > 0 && (() => {
+                    const past = [...event.askHistory].reverse();
+                    const shown = askShowAll ? past : past.slice(0, 5);
+                    return (
+                      <div style={{ marginTop: 'var(--sp-4)' }} data-ask-history>
+                        <div className="of" style={{ marginBottom: 2 }}>Asked before</div>
+                        <p className="grounding" style={{ margin: '0 0 6px', color: 'var(--faint)' }}>Each answer is as of the day you asked. Tap a question to ask it again with today’s numbers.</p>
+                        {shown.map(x => (
+                          <div key={x.id || x.at} className="later-row" style={{ display: 'block' }}>
+                            <button className="mini" style={{ marginBottom: 4 }} onClick={() => ask(x.q)}>{x.q}</button>
+                            <p className="grounding" style={{ margin: 0 }}>{x.answer}</p>
+                            {x.broader && x.broader.answer && (
+                              <p className="grounding" style={{ margin: '4px 0 0' }}>A broader look: {x.broader.answer}{x.broader.flagged ? ' (One figure here wasn’t from your numbers.)' : ''}</p>
+                            )}
+                            <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--faint)' }}>Asked {new Date(x.at).toLocaleDateString('en-US')}</p>
+                          </div>
+                        ))}
+                        {past.length > 5 && (
+                          <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => setAskShowAll(v => !v)}>{askShowAll ? 'Show fewer' : `Show all ${past.length}`}</button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {askResult && (
                     <div className="brow" style={{ marginTop: 'var(--sp-4)' }}>
                       <p className="f-name" style={{ marginBottom: askResult.basis.length ? 6 : 0 }}>{askResult.answer}</p>
@@ -18792,7 +18973,7 @@ export default function HostShellV2() {
                       carries only the account icon. Same toggle, same prime. */}
                   <div className="later-row" style={{ borderTop: 'none', padding: 'var(--sp-1) 2px 14px' }}>
                     <span className="t">Sound</span>
-                    <button className="mini" onClick={() => { primeMessageSound(); setMuted(m => !m); }}>
+                    <button className="mini" onClick={() => { primeMessageSound(); const m = !muted; setMuted(m); patchProfile({ messageSoundMuted: m }); }}>
                       {muted ? 'Muted — tap for sound' : 'On — tap to mute'}
                     </button>
                   </div>
@@ -18813,7 +18994,7 @@ export default function HostShellV2() {
                   <div className="later-row">
                     <span className="t">Light mode</span>
                     <button className="mini" aria-pressed={theme === 'light'}
-                      onClick={() => setThemeState(setStoredTheme(theme === 'light' ? 'dark' : 'light'))}>
+                      onClick={() => { const t = setStoredTheme(theme === 'light' ? 'dark' : 'light'); setThemeState(t); patchProfile({ theme: t }); }}>
                       {theme === 'light' ? 'On — tap for dark' : 'Off — tap for light'}
                     </button>
                   </div>
@@ -18826,7 +19007,7 @@ export default function HostShellV2() {
                   <div className="later-row" style={{ flexWrap: 'wrap' }}>
                     <span className="t">Help improve the app</span>
                     <button className="mini" aria-pressed={!analyticsOff}
-                      onClick={() => { const off = !analyticsOff; setAnalyticsOptOut(off); setAnalyticsOff(off); }}>
+                      onClick={() => { const off = !analyticsOff; setAnalyticsOptOut(off); setAnalyticsOff(off); patchProfile({ analyticsOff: off }); }}>
                       {analyticsOff ? 'Off — tap to turn on' : 'On — tap to turn off'}
                     </button>
                     <span className="v-meta" style={{ flexBasis: '100%', margin: '4px 0 0' }} data-analytics-line>
@@ -18895,6 +19076,7 @@ export default function HostShellV2() {
                                 catch { toast('That file isn’t a copy of your events.'); return; }
                                 const applyImport = (overwriteExisting = false) => {
                                   let res;
+                                  const before = readCustomEventsSafe();
                                   try { res = importCustomEvents(payload, { reason: 'settings:import', overwriteExisting }); }
                                   catch {
                                     reportFailure('save', { where: 'hostv2.import', reason: 'unexpected-failure' });
@@ -18907,6 +19089,7 @@ export default function HostShellV2() {
                                   }
                                   setCustoms(readCustomEventsSafe());
                                   setDataTick(t => t + 1);
+                                  saveChangedToAccount(before);
                                   toast(`${res.added} added · ${res.updated} updated · ${res.skipped} kept`,
                                     !overwriteExisting && res.skipped > 0
                                       ? { label: 'Replace matching events', fn: () => applyImport(true) }
@@ -18943,11 +19126,13 @@ export default function HostShellV2() {
                                   // told otherwise, so the host is asked first.
                                   if (!window.confirm('Put this copy back? Anything you changed since then is replaced.')) return;
                                   let res = null;
+                                  const before = readCustomEventsSafe();
                                   try { res = restoreBackup(b.key || b, { allowRemovingUserEvents: true, reason: 'settings:restore' }); }
                                   catch { toast('Couldn’t restore that copy.'); return; }
                                   if (!res || res.ok === false) { toast('Couldn’t restore that copy — nothing was changed.'); return; }
                                   setCustoms(readCustomEventsSafe());
                                   setDataTick(t => t + 1);
+                                  saveChangedToAccount(before);
                                   toast('That copy is back.');
                                 }}>Put this back</button>
                               </div>
@@ -19063,7 +19248,7 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
                       )}
                       <div className="actions-row">
-                        <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — everything here stays on this device.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
+                        <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — changes you make while signed out are kept here and saved to your account when you sign in again.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
                       </div>
                       {isAccountDeletionAvailable() && !acctDelete && (
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
@@ -19526,11 +19711,11 @@ export default function HostShellV2() {
                       // 2026-11-02; e2e yourWordsStayWithTheirEvent).
                       const key = draftEditKey(sheet.title);
                       const hers = draftBody; const prevTone = draftTone;
-                      setDraftTone(k); setDraftBody(null);
+                      setDraftTone(k); setDraftBody(null); patchProfile({ draftTone: k });
                       try { delete draftEditsRef.current[key]; } catch { /* kept copy is best-effort */ }
                       if (hers != null) {
                         toast('Rewritten in a new voice.', { label: 'Undo', fn: () => {
-                          setDraftTone(prevTone); setDraftBody(hers);
+                          setDraftTone(prevTone); setDraftBody(hers); patchProfile({ draftTone: prevTone });
                           try { draftEditsRef.current[key] = hers; } catch { /* best-effort */ }
                         } });
                       }

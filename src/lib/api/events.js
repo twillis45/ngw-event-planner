@@ -39,11 +39,33 @@ function enqueueMutation(op) {
   const q = getPending();
   if (op.type === 'upsert') {
     const idx = q.findIndex((m) => m.type === 'upsert' && m.id === op.id);
-    if (idx !== -1) { q[idx] = op; } else { q.push(op); }
+    // A newer snapshot replaces the queued one but keeps its `base`: every
+    // unsent edit in it was built on the version the FIRST one was.
+    if (idx !== -1) { q[idx] = { ...op, base: q[idx].base || op.base }; } else { q.push(op); }
   } else {
     q.push(op);
   }
   setPending(q);
+}
+// ─── A QUEUED EDIT IS WRITTEN AGAINST THE VERSION IT WAS MADE ON (G15, 11/12) ─
+// `knownVersion` is the newest version this device has SEEN, and a pull notes
+// every row it returns as seen — including the row of an event with an unsent
+// edit, which the shell deliberately does not adopt (local wins while queued).
+// So a queued edit flushed after that pull wrote against a version whose
+// content it never had, and overwrote another device's newer edit without a
+// word: an edit made signed out, then a sign-in, was enough. The queue entry
+// now carries the version the edit was built on (`base`), and every write of
+// that event checks against it until it lands.
+function queuedBase(id) {
+  const op = getPending().find((m) => m && m.type === 'upsert' && m.id === id);
+  return (op && op.base) || undefined;
+}
+// This device's own write landed: whatever is still queued for the event is
+// now built on the version that write produced.
+function rebaseQueued(id, stamp) {
+  const q = getPending();
+  const idx = q.findIndex((m) => m && m.type === 'upsert' && m.id === id);
+  if (idx !== -1 && stamp) { q[idx] = { ...q[idx], base: stamp }; setPending(q); }
 }
 
 // ─── Queue observability (SYNC-HONESTY-1) ────────────────────────────────────
@@ -179,18 +201,21 @@ export function knownVersion(event) {
 }
 
 const inFlight = new Map();   // eventId → the write currently running for it
-function writeGuarded(sid, event) {
+function writeGuarded(sid, event, base) {
   const id = event && event.id;
   const prev = inFlight.get(id) || Promise.resolve();
-  const run = prev.catch(() => {}).then(() => writeGuardedNow(sid, event));
+  const run = prev.catch(() => {}).then(() => writeGuardedNow(sid, event, base));
   inFlight.set(id, run);
   run.then(() => { if (inFlight.get(id) === run) inFlight.delete(id); }, () => { if (inFlight.get(id) === run) inFlight.delete(id); });
   return run;
 }
 
-async function writeGuardedNow(sid, event) {
+async function writeGuardedNow(sid, event, base) {
   const { _cloudUpdatedAt: _carried, ...data } = event;
-  const loadedAt = knownVersion(event);
+  // A held conflict outranks everything (resolveConflict writes through it);
+  // then the version the caller or the queue says the edit was made on.
+  const held = readHolds()[event.id];
+  const loadedAt = (!held && (base || queuedBase(event.id))) || knownVersion(event);
   if (loadedAt) {
     const { data: rows, error } = await supabase
       .from('events')
@@ -199,7 +224,11 @@ async function writeGuardedNow(sid, event) {
       .lte('updated_at', loadedAt)
       .select('id, updated_at');
     if (error) throw error;
-    if (rows && rows.length) { noteStamp(event.id, rows[0].updated_at); return { ok: true, updatedAt: rows[0].updated_at }; }
+    if (rows && rows.length) {
+      noteStamp(event.id, rows[0].updated_at);
+      rebaseQueued(event.id, rows[0].updated_at);
+      return { ok: true, updatedAt: rows[0].updated_at };
+    }
     // Zero rows: newer write, or gone. One cheap read tells the host which.
     const { data: cur, error: e2 } = await supabase
       .from('events').select('updated_at').eq('id', event.id).eq('studio_id', sid).maybeSingle();
@@ -336,7 +365,7 @@ export async function loadEvents() {
  *   { ok: false, queued: true,  reason: 'error', error } — cloud write failed; queued for retry
  *   { ok: false, queued: false, reason: 'not-configured' | 'local-studio' } — local-only world
  */
-export async function saveEvent(event) {
+export async function saveEvent(event, opts = {}) {
   const local = readLocal();
   writeLocal(local.some((e) => e.id === event.id)
     ? local.map((e) => (e.id === event.id ? event : e))
@@ -347,7 +376,9 @@ export async function saveEvent(event) {
   // event is neither queued nor re-stamped, and a pull landing in that gap read
   // it as synced and adopted the older cloud row over the edit.
   saving.set(event.id, (saving.get(event.id) || 0) + 1);
-  try { return await saveEventToCloud(event); } finally {
+  // `opts.base`: the version this copy was built on, when the caller knows it
+  // is older than the newest this device has seen (see queuedBase).
+  try { return await saveEventToCloud(event, opts && opts.base); } finally {
     const n = (saving.get(event.id) || 1) - 1;
     if (n > 0) saving.set(event.id, n); else saving.delete(event.id);
   }
@@ -387,9 +418,11 @@ export function sameEventContent(a, b) {
   return JSON.stringify(canon(strip(a))) === JSON.stringify(canon(strip(b)));
 }
 
-async function saveEventToCloud(event) {
+async function saveEventToCloud(event, base) {
+  // Read before the first await: the version this edit was made on.
+  const madeOn = base || queuedBase(event.id) || knownVersion(event);
   const sid = await currentStudioId();
-  if (!sid) { enqueueMutation({ type: 'upsert', id: event.id, data: event }); return { ok: false, queued: true, reason: 'no-studio' }; }
+  if (!sid) { enqueueMutation({ type: 'upsert', id: event.id, data: event, base: madeOn }); return { ok: false, queued: true, reason: 'no-studio' }; }
   // Sprint 58E-B: a non-uuid studio (dev-bypass) has no cloud row — stay local-only
   // (the localStorage write above already persisted it). Do NOT send 'dev-studio'
   // to a uuid column (22P02 400). Real prod studios are uuids and proceed normally.
@@ -397,10 +430,10 @@ async function saveEventToCloud(event) {
   try {
     // A conflict is an ANSWER, not an error: it is not queued (retrying a
     // refused overwrite would just refuse again) and it is not thrown.
-    return await writeGuarded(sid, event);
+    return await writeGuarded(sid, event, base);
   } catch (e) {
     captureError(e, { where: 'events.saveEvent', id: event.id, onLine: onLine(), pending: getPendingCount() });
-    enqueueMutation({ type: 'upsert', id: event.id, data: event });
+    enqueueMutation({ type: 'upsert', id: event.id, data: event, base: madeOn });
     return { ok: false, queued: true, reason: 'error', error: (e && e.message) || String(e) };
   }
 }
@@ -452,7 +485,7 @@ export async function flushPendingEvents() {
   for (const op of queue) {
     try {
       if (op.type === 'upsert') {
-        const r = await writeGuarded(sid, { ...op.data, id: op.id });
+        const r = await writeGuarded(sid, { ...op.data, id: op.id }, op.base);
         if (r && r.reason === 'conflict') {
           // Not retried: the refusal is final until the host sees a newer
           // version. Dropped from the queue, reported by name, and the local

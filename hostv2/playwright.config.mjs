@@ -141,6 +141,15 @@ const VIEWPORT_INDEPENDENT = [
   // Same 5244 harness. Asserts the wire (which writes carried the shortlist),
   // the cockpit's save-state line and localStorage — no geometry.
   '**/lodgingReachesTheAccount.spec.mjs',
+  // ── NOTHING IS LOST TO THE ACCOUNT REFRESH (G15–G18, 11/12/2026) ────────
+  // Same 5244 harness, with a multi-studio stateful account. Asserts the wire
+  // (which writes landed, and against which version), stored state and toast
+  // text — no geometry.
+  '**/nothingIsLostToTheAccountRefresh.spec.mjs',
+  // ── THE PROFILE FOLLOWS THE ACCOUNT (G19, 11/13/2026) ──────────────────
+  // Same 5244 harness. Asserts stored state, the account row and settings-row
+  // labels; it opens Ask from the desktop rail, so it runs at desktop only.
+  '**/theProfileFollowsTheAccount.spec.mjs',
   // ── THE PEOPLE ATTENDANCE ZONE (redesign step 3, 2026-10-20) ───────────
   // Six tests on text and stored state, including a paired fixture that
   // differs by ONE field (guestCountSource) and a negative control proving
