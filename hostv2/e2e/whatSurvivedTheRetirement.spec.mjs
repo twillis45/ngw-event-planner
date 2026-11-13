@@ -132,9 +132,10 @@ test.describe('the shopping list can leave the app', () => {
     //
     // The LABEL is the assertion that matters. The Instacart key lives on the
     // server and is not set, so every host today takes the fallback — copy the
-    // list, open the store, paste. "Send to Instacart" is true on both
-    // paths; a label promising a filled cart would be false on the only one that
-    // currently runs.
+    // list, open the store, paste. A label promising a filled cart would be
+    // false on the only path that currently runs, and "Send to Instacart" read
+    // as one (G9, 11/13/2026): today the tap opens Instacart's search one item
+    // at a time, so the label says "Search Instacart".
     await boot(page, { id: 'cart-probe', type: 'Birthday' });
     await openSection(page, 'The spread & shopping');
     const text = await sheetText(page);
@@ -142,7 +143,8 @@ test.describe('the shopping list can leave the app', () => {
     // is what this assertion is really about and the verb survived. Missed on
     // the first pass because the sweep for the old label was case-SENSITIVE
     // and this assertion lowercases the sheet text — the full matrix caught it.
-    expect(text).toContain('send to instacart');
+    expect(text).toContain('search instacart');
+    expect(text).not.toContain('send to instacart');
     // …and the copy action it sits beside is still there — this is an addition,
     // not a replacement.
     expect(text).toContain('copy the shopping list');

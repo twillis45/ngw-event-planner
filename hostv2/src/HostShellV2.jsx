@@ -18172,10 +18172,13 @@ export default function HostShellV2() {
               //  · No perk the free tier already has (owner board, 11/12/2026):
               //    "Yours to keep" was cut — nothing expires a free event's plan,
               //    link or recap, so listing it implied a loss that never happens.
+              //  · MODEL H (owner ruling 11/13/2026, lib/passGate): every event is
+              //    free to plan, so "Your next events" is gone — there is no
+              //    event-count door left to sell — and the sheet leads with the
+              //    board's before-paying line, word for word.
               const perks = [
-                ['Every vendor, one brief each', 'Plan your first event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
+                ['Every vendor, one brief each', 'Plan every event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
                 ['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.'],
-                ['Your next events', 'The first event’s free run is once; the pass covers each event after it. One event, one price.'],
                 ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
               ];
               return (
@@ -18183,7 +18186,7 @@ export default function HostShellV2() {
                   <div style={{ padding: '2px 0 8px' }}>
                     <div className="eyebrow">One event · one price</div>
                     <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 4px', color: 'var(--ink)' }}>$39</div>
-                    <p className="grounding" style={{ margin: 0 }}>No subscription. Pay once for this event and everything’s yours.</p>
+                    <p className="grounding" data-before-paying style={{ margin: 0 }}>Planning stays free. Pay $39 once so all your vendors can say yes to you, and get trip tools.</p>
                     <p className="grounding" style={{ margin: '6px 0 0' }}>Your vendors pay us nothing — no lead fees, no pay-to-play placement, nothing baked into their quotes. That’s why the pass exists.</p>
                   </div>
                   {perks.map(([t, d], i) => (
@@ -18231,7 +18234,7 @@ export default function HostShellV2() {
                   ) : (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
                       <p className="f-name" style={{ margin: '0 0 2px', color: 'var(--ok)' }}>Free while {BRAND.full} is in preview</p>
-                      <p className="grounding" style={{ margin: 0 }}>This event is fully unlocked right now — nothing to pay. When we launch, keeping an event is a one-time $39, and we’ll tell you before anything changes.</p>
+                      <p className="grounding" style={{ margin: 0 }}>This event is fully unlocked right now — nothing to pay. When we launch, planning stays free, and the one-time $39 pass is for sharing with more than one vendor or for a destination or multi-day event. We’ll tell you before anything changes.</p>
                     </div>
                   )}
                 </>
@@ -21097,9 +21100,13 @@ export default function HostShellV2() {
                         pastes it — and we SAY that, rather than opening an empty
                         store and letting them think the send failed.
 
-                        "Send the list to Instacart" is the act either way. A
-                        label promising a filled cart would be false exactly when
-                        the key is missing, which is today. */}
+                        "Search Instacart" is what happens today (G9, carried with
+                        Model H, 11/13/2026): there is no Instacart key in
+                        production, so the tap opens Instacart's search for ONE
+                        item at a time and the host adds each one. "Send to
+                        Instacart" read as the list arriving in a filled cart,
+                        which is false exactly when the key is missing. Copy
+                        only; the behavior is unchanged. */}
                     <button className="food-act" disabled={sendingCart}
                       onClick={async () => {
                         if (sendingCart) return;
@@ -21255,8 +21262,8 @@ export default function HostShellV2() {
                         }
                         if (!win) {
                           toast(copied
-                            ? 'Your browser blocked the new tab. The list is copied — open instacart.com and paste it.'
-                            : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and paste it.',
+                            ? 'Your browser blocked the new tab. The list is copied — open instacart.com and search for each item.'
+                            : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and search for each item.',
                             null, null, { sticky: true });
                         }
                       /* SHORTENED 2026-09-26 (owner: "can it be condensed to save
@@ -21274,7 +21281,7 @@ export default function HostShellV2() {
                          rule is about (UX_05: buttons carry verbs about the
                          work, not nouns) — a bare "Instacart" would have been
                          93px and the wrong cut. */
-                      }}>{sendingCart ? 'Sending…' : 'Send to Instacart'}</button>
+                      }}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
                     {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
                         Host asked for print, email, and "integration with anylist
                         or other apps". Researched 2026-09-24, and the honest

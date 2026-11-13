@@ -246,13 +246,29 @@ async def mint_vendor_brief_link(
 #   billing not live (Stripe can't honour purchases) → allowed, as in the client
 #   the event holds an unblocked pass                → allowed
 #   this vendor already has a link (caller checks)   → allowed, never mid-conversation
-#   the event is stamped pass-required (door 2/3)    → 402
+#   the event is stamped destination/multi-day (door 2) → 402
 #   a DIFFERENT vendor already holds a brief (door 1)→ 402
 #   otherwise                                        → allowed, the free first brief
+# MODEL H (owner ruling 11/13/2026, lib/passGate.lockingReasons): there is no
+# event-count door. A stamp counts as pass-required only when its passReasons
+# include 'destination' or 'multi-day'; a stored 'additional-event' reason
+# (Model D's door 3, "any event after the first") locks nothing, so an event
+# stamped under door 3 alone gets its free first brief like any other event.
+# Same rule as the client, or this answers 402 where the client says allowed.
 # What this cannot close: the legacy self-contained brief URL (the brief encoded
 # in the link, no server involved). The client falls back to it when minting
 # fails, and anyone can construct one. Only the LIVE, server-resolved link — the
 # one that updates and takes vendor confirmations — is gated here.
+_LOCKING_REASONS = ("destination", "multi-day")
+
+
+def _stamp_locks(data: dict) -> bool:
+    if data.get("passRequired") is not True:
+        return False
+    reasons = data.get("passReasons")
+    return isinstance(reasons, list) and any(r in _LOCKING_REASONS for r in reasons)
+
+
 def _billing_live() -> bool:
     return bool(config.STRIPE_SECRET_KEY and config.STRIPE_WEBHOOK_SECRET)
 
@@ -269,7 +285,7 @@ async def _brief_blocked_reason(conn, event_id: str, vendor_id: str, data: dict)
     )
     if held:
         return None
-    if data.get("passRequired") is True:
+    if _stamp_locks(data):
         return "pass-required"
     linked = await conn.fetch(
         """select distinct vendor_id from public.vendor_brief_links
