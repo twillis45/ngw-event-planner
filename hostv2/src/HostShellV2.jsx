@@ -7189,7 +7189,9 @@ export default function HostShellV2() {
     // account at all, so "it will reach your account" would be false.
     const why = res && res.queued
       ? (res.reason === 'error' ? 'it will reach your account when the connection is back.'
-        : res.reason === 'no-studio' ? 'it will reach your account as soon as your account finishes setting up.'
+        : res.reason === 'no-studio' ? (session
+          ? 'it will reach your account as soon as your account finishes setting up.'
+          : 'it will be saved to your account when you sign in again.')
         : null)
       : null;
     if (why && !syncCueShown.current) {
@@ -7328,7 +7330,17 @@ export default function HostShellV2() {
     // that follows sign-in then adopted the older cloud copy over the replies.
     // cloudSaveEvent queues when it cannot write yet, and a queued event is the one
     // the pull leaves alone.
-    if ((session || (opts && opts.cloud)) && savedEv) cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
+    // AN EVENT ALREADY IN THE ACCOUNT IS SAVED SIGNED OUT TOO (G15, 11/12/2026;
+    // owner: "try first, sign in to keep"). Skipped, the edit sat in this store
+    // under a "Synced" badge, and the next sign-in pull replaced it with the
+    // account copy. Saved, it waits in the queue (reason 'no-studio') that the
+    // pull leaves alone, and sign-in sends it through the conditional write —
+    // refused, not written, if the account moved on or someone else signed in.
+    // Only events with a sync record: a plan that never reached an account is
+    // uploaded at sign-in by eventsToUploadOnSignIn, and only into an account
+    // that does not already hold it.
+    const inAccount = !!(savedEv && getLastSyncTime(savedEv.id));
+    if ((session || (opts && opts.cloud) || inAccount) && savedEv) cloudSaveEvent(savedEv).then(res => noteSaveResult(savedEv, res)).catch(() => {});
     feedback('act');
     if (msg) {
       // CONFIRM-GREEN: patchEvent is the ONE write path every successful edit funnels
@@ -19063,7 +19075,7 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
                       )}
                       <div className="actions-row">
-                        <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — everything here stays on this device.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
+                        <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — changes you make while signed out are kept here and saved to your account when you sign in again.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
                       </div>
                       {isAccountDeletionAvailable() && !acctDelete && (
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
