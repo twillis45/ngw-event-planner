@@ -2061,6 +2061,64 @@ export default function HostShellV2() {
             }
           }
         } catch { /* unreadable store — the device keeps what it has, never data loss */ }
+
+        // ── AN ACCOUNT EVENT CACHED IN AN EARLIER SESSION (G18, 11/12/2026) ──
+        // REAL_EVENTS are the account events this device cached last time
+        // (`ngw-events`, read once at load). They were never moved into the
+        // store above, so their edits went to an LS_PATCH layer that was never
+        // cleared: it pinned this device's old values over newer edits from
+        // anywhere, and the base under it was the load-time snapshot, so the
+        // next edit uploaded stale fields — past the conditional write, because
+        // this pull had just noted the newer version as "seen". The 11/8 fix
+        // covered only events that arrived this session.
+        //
+        // Now each one the account returned moves into the store, on the copy
+        // the account just sent, and its layer is folded in once and cleared:
+        //   - a layer value the cached copy already holds was uploaded or
+        //     pulled — it is in the account's history, and the account's
+        //     current copy wins (the queue rule, as above);
+        //   - a value the cached copy does NOT hold never reached the account
+        //     (an edit made signed out), and so does every value of an event
+        //     with an unsent or refused write. Those are kept, and sent through
+        //     the conditional write against the version the cache was at: it
+        //     lands if the account has not moved, and is refused — the host
+        //     chooses, through the conflict choice — if it has. Never a silent
+        //     pick in either direction.
+        try {
+          const stored = readCustomEvents();
+          const have = new Set(stored.map(e => e && e.id));
+          const cloudById = new Map(evs.filter(e => e && e.id).map(e => [e.id, e]));
+          const moved = [];
+          const toSend = [];
+          for (const cached of REAL_EVENTS) {
+            const fresh = cached && cloudById.get(cached.id);
+            if (!fresh || have.has(cached.id) || tombstoned.has(cached.id)) continue;
+            let layer = {};
+            try { layer = JSON.parse(localStorage.getItem(LS_PATCH(cached.id))) || {}; } catch { layer = {}; }
+            const dirty = getEventSyncStatus(cached) !== SYNC_STATUS.SYNCED;
+            const unsent = {};
+            for (const k of Object.keys(layer)) {
+              if (dirty || !sameEventContent({ v: layer[k] }, { v: cached[k] })) unsent[k] = layer[k];
+            }
+            if (!Object.keys(unsent).length) { moved.push({ ...fresh }); continue; }
+            const own = { ...fresh, ...unsent, _cloudUpdatedAt: cached._cloudUpdatedAt };
+            moved.push(own);
+            if (!dirty) toSend.push(own);   // a dirty one is already queued or refused
+          }
+          if (moved.length) {
+            const next = [...stored, ...moved];
+            const res = saveCustomEvents(next, { reason: 'hostshell:adopt-cached-account-events' });
+            if (res && res.ok) {
+              setCustoms(next);
+              moved.forEach(e => { try { localStorage.removeItem(LS_PATCH(e.id)); } catch { /* ignored once the event is in the store */ } });
+              toSend.forEach(ev => {
+                // No version to write against: never a blind write — the host chooses.
+                if (!ev._cloudUpdatedAt) { try { markEventConflict(ev.id); } catch { /* best-effort */ } return; }
+                cloudSaveEvent(ev, { base: ev._cloudUpdatedAt }).then(r => noteSaveResult(ev, r)).catch(() => {});
+              });
+            }
+          }
+        } catch { /* unreadable store — the cached copy and its layer stay as they were */ }
         // Welcome-gate re-eval (engine-gap NEW-5): shouldShowWelcome was
         // decided ONCE at load, before the cloud could answer — so a signed-in
         // host on a fresh device got welcomed as brand-new. The moment

@@ -324,3 +324,53 @@ test.describe('G16/G17: a copy put back on this device reaches the account', () 
     expect(adoptedOver(s)).toHaveLength(0);
   });
 });
+
+// ─── G18 ─────────────────────────────────────────────────────────────────────
+// An account event this device cached in an earlier session (`ngw-events`),
+// with the old per-event edit layer still on it.
+test.describe('G18: an account event cached in an earlier session', () => {
+  test('an old edit already in the account does not mask a newer one from another device', async ({ page }) => {
+    // Last session this device set 7 and uploaded it (the cache holds 7);
+    // another device has since set 9.
+    const { writes, cloud } = await install(page, {
+      cloud: { [ID]: { data: gameNight(9), updated_at: T2, studio: USER_A.studio } },
+      local: { cache: { ...gameNight(7), _cloudUpdatedAt: T1 }, overlay: { guestEstimate: 7 }, stamped: true },
+    });
+    await boot(page);
+    expect(await shownGuests(page), "this device's old edit is pinned over the account's newer copy").toBe(9);
+    expect(writes.filter((w) => w.id === ID), 'nothing needed sending').toHaveLength(0);
+
+    await oneMoreGuest(page);
+    expect(cloud.get(ID).data.guestEstimate, 'the edit was built on a stale copy').toBe(10);
+    expect((await localState(page)).overlay, 'the old edit layer is still there').toBeNull();
+  });
+
+  test('an old edit that never reached the account is sent, conditionally', async ({ page }) => {
+    // Signed out last time: 7 is only in the edit layer; the account is unchanged.
+    const { writes, cloud } = await install(page, {
+      cloud: { [ID]: { data: gameNight(6), updated_at: T1, studio: USER_A.studio } },
+      local: { cache: { ...gameNight(6), _cloudUpdatedAt: T1 }, overlay: { guestEstimate: 7 }, stamped: true },
+    });
+    await boot(page);
+    expect(cloud.get(ID).data.guestEstimate, 'the unsent edit never reached the account').toBe(7);
+    const sent = writes.filter((w) => w.id === ID);
+    expect(sent[0].method).toBe('PATCH');
+    expect(sent[0].lte).toBe(T1);
+    expect(await shownGuests(page)).toBe(7);
+    expect((await localState(page)).overlay).toBeNull();
+  });
+
+  test('an old unsent edit is refused, and kept, when the account moved on', async ({ page }) => {
+    // 7 is only in the edit layer; another device has since set 9.
+    const { cloud } = await install(page, {
+      cloud: { [ID]: { data: gameNight(9), updated_at: T2, studio: USER_A.studio } },
+      local: { cache: { ...gameNight(6), _cloudUpdatedAt: T1 }, overlay: { guestEstimate: 7 }, stamped: true },
+    });
+    await boot(page);
+    await oneMoreGuest(page);
+    expect(cloud.get(ID).data.guestEstimate, "the device's stale copy overwrote another device's newer edit").toBe(9);
+    const s = await localState(page);
+    expect(s.conflict, 'the refusal must be on record so the host can choose').toBe(true);
+    expect(s.custom && s.custom.guestEstimate, 'the unsent edit was lost').toBe(8);
+  });
+});
