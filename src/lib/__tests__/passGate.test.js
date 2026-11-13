@@ -106,6 +106,8 @@ describe('the blunt disclosure (Grandmother rider: informs, never sells)', () =>
   test('names the concrete boundary for each verdict shape', () => {
     billingOn();
     expect(creationDisclosure({ passRequired: false, passReasons: [] })).toMatch(/free to plan.*one vendor brief/);
+    // The free brief needs an account; the free-tier promise must say so (11/12/2026).
+    expect(creationDisclosure({ passRequired: false, passReasons: [] })).toMatch(/one vendor brief \(that takes a free account\)/);
     expect(creationDisclosure({ passRequired: true, passReasons: ['destination'] })).toMatch(/destination event.*\$39/);
     expect(creationDisclosure({ passRequired: true, passReasons: ['additional-event'] })).toMatch(/first event already had the free run/);
   });

@@ -236,6 +236,8 @@ import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from '@app/lib/storage';
+import { contractUrlFor } from '@app/lib/contractLink';
+import { REFUND_LINE } from '@app/lib/refundRule';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
@@ -887,6 +889,24 @@ const PASS_PAID_RETURN = (() => {
   return null;
 })();
 
+// ── THE COCKPIT'S PASS DOOR LANDS HERE (gap H1, 11/12/2026) ────────────────
+// LodgingCockpit.jsx is its own page, so when it is reached on a locked event
+// its "See the One-Event Pass" door cannot call setSheet — it comes back with
+// `?open=pass`. Read once at module scope (params get stripped during boot)
+// and removed from the address bar so a refresh does not reopen the sheet.
+// `?open=settings` is the cockpit's sign-in door (owner, 11/12/2026: lodging is
+// never device-only), landing on You & settings where sign-in lives.
+const OPEN_ON_LOAD = (() => {
+  try {
+    const u = new URL(window.location.href);
+    const kind = u.searchParams.get('open');
+    if (kind !== 'pass' && kind !== 'settings') return null;
+    u.searchParams.delete('open');
+    window.history.replaceState(null, '', u.toString());
+    return kind;
+  } catch { return null; }
+})();
+
 // ── DEMO TOOLS arming (D-2 precondition 2: a seedable, resettable demo
 // account). Same protocol and localStorage key as the CRA bar (?demo=1 arms,
 // ?demo=0 disarms) so one runbook covers both shells. Module scope, because
@@ -951,9 +971,9 @@ function FoodModes({ mode, count, setSheet }) {
 // ─── THE PASS FACT, MADE REACTIVE ────────────────────────────────────────────
 // `passGate` is synchronous and reads `passEntitlement` directly, which is what
 // lets `briefAllowed` work inside a tap handler with no prop plumbing. The cost
-// is that nothing tells React when a server answer lands — and the three
-// `destinationLocked` call sites are in RENDER (the lodging, ground and
-// arrivals sheets), so without this a teased surface stays teased after the
+// is that nothing tells React when a server answer lands — and the
+// `destinationLocked` call sites are in RENDER (the lodging, ground,
+// arrivals and cost-pool sheets and the weekend plan), so without this a teased surface stays teased after the
 // server has confirmed the pass, until some unrelated state change happens to
 // re-render it.
 //
@@ -4803,7 +4823,7 @@ export default function HostShellV2() {
   // R2-16: '' doubled as both, so Backspace snapped back to the old count and
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
-  const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  const [sheet, setSheet] = useState(() => (OPEN_ON_LOAD ? { kind: OPEN_ON_LOAD } : null));   // deep-link landing: {kind, focus}
   useEffect(() => {
     if (sheet && sheet.kind === 'pass') recordPassFunnel('sheet_viewed', eventId);
   }, [sheet && sheet.kind, eventId]);
@@ -5498,6 +5518,13 @@ export default function HostShellV2() {
   // obligation about a deadline and arrived at a screen that never mentioned
   // one.
   const goToLodgingCockpit = (focus) => {
+    // THE PASS SELLS THIS (owner review board 11/12/2026, gap H1): the pass
+    // sheet names lodging coordination as destination toolkit, but every door
+    // here left for the cockpit, which never asked. A locked event opens the
+    // lodging sheet instead — whose first branch is the teased, honest locked
+    // state with the pass door. Every lodging entry point funnels through this
+    // function, so one check covers them all; the cockpit re-checks itself.
+    if (destinationLocked(event)) { setSheet({ kind: 'lodging' }); return; }
     const f = focus != null && String(focus).trim() ? String(focus).trim() : null;
     try {
       const u = new URL(window.location.href);
@@ -15049,6 +15076,21 @@ export default function HostShellV2() {
               // see host-accepted rows (event.itinerary), never a raw proposal.
               const it = guestItinerary(event, getPlaybook);
               if (!it.relevant) return null;
+              // MODEL D visibility rule — see the lodging sheet's note. The
+              // multi-day program is destination toolkit the pass sells. Only
+              // the HOST's editor locks: a plan already accepted stays on the
+              // guest invite (InviteV2 reads event.itinerary, ungated).
+              if (destinationLocked(event)) {
+                return (
+                  <>
+                    <div id="space-days" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
+                    <div style={{ padding: '2px 0' }}>
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>The weekend plan lives here — what happens each day, written once and shown to guests on the invite. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                    </div>
+                  </>
+                );
+              }
               const days = Math.max(1, spanNights(event) + 1);
               const writeRows = (rows, msg) => patchEvent({ itinerary: rows }, msg);
               const SLOT_OPTS = ['', 'morning', 'midday', 'afternoon', 'evening', 'night'];
@@ -15378,6 +15420,17 @@ export default function HostShellV2() {
               // sits BESIDE the budget, never inside it — nothing here
               // touches spending math, and the pool is never totaled
               // (per-tier headcounts are the family's business).
+              // MODEL D visibility rule — see the lodging sheet's note. The
+              // group pool is a destination money tool; budget lines are not
+              // touched by this and never lock.
+              if (destinationLocked(event)) {
+                return (
+                  <div style={{ padding: '2px 0' }}>
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Who pays for what lives here — everyone covering their own, or a shared pool with tiers for the trip. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event. Your budget stays open either way.</p>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                  </div>
+                );
+              }
               if (!travel.relevant) {
                 return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — everyone covers their own costs. If it becomes a destination event (Space, seats & helpers), you can set up a shared pool here.</div>;
               }
@@ -17976,12 +18029,14 @@ export default function HostShellV2() {
               //  · The destination toolkit is framed as included product, never
               //    as the reason an event "costs money" — the blunt boundary
               //    lives in the creation-time disclosure, not here.
+              //  · No perk the free tier already has (owner board, 11/12/2026):
+              //    "Yours to keep" was cut — nothing expires a free event's plan,
+              //    link or recap, so listing it implied a loss that never happens.
               const perks = [
-                ['Every vendor, one brief each', 'Plan your first event free, including sharing one vendor brief. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
+                ['Every vendor, one brief each', 'Plan your first event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
                 ['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.'],
                 ['Your next events', 'The first event’s free run is once; the pass covers each event after it. One event, one price.'],
                 ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
-                ['Yours to keep', 'The plan, the invite link, and the recap stay live through the event and after.'],
               ];
               return (
                 <>
@@ -18023,12 +18078,13 @@ export default function HostShellV2() {
                     </div>
                   ) : canCharge ? (
                     <>
-                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
+                      {/* THE REFUND RULE, BEFORE THE MONEY (owner ruling 11/12/2026,
+                          lib/refundRule). Above the button, so it is read before paying. */}
+                      <p className="grounding" data-refund-rule style={{ margin: 'var(--sp-3) 0 0', textAlign: 'center' }}>{REFUND_LINE}</p>
+                      <button className="cta" style={{ marginTop: 'var(--sp-2)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
                       {/* BEFORE THE MONEY (stage 9, 11/11/2026): a person to ask, and the
-                          policies once published. The refund RULE is the owner's to
-                          choose (docs/legal/REFUND_POLICY_DRAFT.md), so no rule is
-                          stated here — only where to ask, which is true today. */}
+                          policies once published. */}
                       <p className="grounding" style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }}>Questions about the pass or a charge? <a href={'mailto:' + BRAND.support}>{BRAND.support}</a></p>
                       <PolicyLinks style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }} />
                     </>
@@ -23447,14 +23503,40 @@ export default function HostShellV2() {
                                 // Already on file — the real stored file (or a link), with View / Remove.
                                 <>
                                   <span className="vc-detail" style={{ margin: 0, flex: 1, minWidth: 120 }}>{v.contractFileName || 'On file'}</span>
-                                  {v.contractUrl && <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">View</a>}
-                                  {isAiProxyConfigured() && v.contractUrl && (
+                                  {/* An UPLOADED file is re-signed at the tap (H4, 11/12/2026): the
+                                      URL saved at upload is a one-hour signature, so opening it later
+                                      failed silently while the card still said "on file". A PASTED
+                                      link (no storage path) is the host's own and opens as written.
+                                      The tab opens INSIDE the tap and is pointed at the fresh URL once
+                                      it arrives — a popup opened after an await is refused by Safari
+                                      (the Instacart button's lesson, 2026-09-24). */}
+                                  {v.contractStoragePath ? (
+                                    <button className="mini" onClick={async () => {
+                                      let win = null;
+                                      try { win = window.open('', '_blank'); } catch (_e) { win = null; }
+                                      try { if (win) win.opener = null; } catch (_e) { /* already safe */ }
+                                      const r = await contractUrlFor(v);
+                                      if (!r.ok) {
+                                        try { if (win) win.close(); } catch (_e) { /* already gone */ }
+                                        toast('Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap Open the contract again.', null, null, { sticky: true });
+                                        return;
+                                      }
+                                      if (win) { try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
+                                      else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
+                                    }}>Open the contract</button>
+                                  ) : v.contractUrl ? (
+                                    <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
+                                  ) : null}
+                                  {isAiProxyConfigured() && (v.contractStoragePath || v.contractUrl) && (
                                     <button className="mini" disabled={!!contractExtracting[v.id]}
                                       onClick={async () => {
                                         setContractExtracting(m => ({ ...m, [v.id]: true }));
                                         setContractExtractErr(m => ({ ...m, [v.id]: null }));
                                         try {
-                                          const out = await extractDocumentAI({ documentUrl: v.contractUrl, vendorName: v.name, eventName: event.name });
+                                          // Re-signed now for an uploaded file, for the same reason as View.
+                                          const link = await contractUrlFor(v);
+                                          if (!link.ok) throw new Error('We couldn’t get a fresh link to the file, so it wasn’t analyzed. Check you’re online and signed in, then try again.');
+                                          const out = await extractDocumentAI({ documentUrl: link.url, vendorName: v.name, eventName: event.name });
                                           setContractExtracted(m => ({ ...m, [v.id]: out.extracted }));
                                         } catch (e) {
                                           setContractExtractErr(m => ({ ...m, [v.id]: (e && e.message) || 'Analysis failed — try again.' }));

@@ -1,10 +1,8 @@
 # Refund Policy — the One-Event Pass
 
 > **DRAFT 2026-11-02 — not yet reviewed, not yet in effect, not yet linked from
-> the product.** The refund rule itself is the owner's decision; section 3
-> gives one recommendation and two alternatives, with the reasoning, and the
-> rest of the document is written to fit whichever is chosen. `[OWNER: …]`
-> items are the owner's to fill.
+> the product.** The refund rule in section 3 was chosen by the owner on
+> 11/12/2026. `[OWNER: …]` items are the owner's to fill.
 
 **Effective:** `[OWNER: effective date]`
 **Seller:** No Guesswork Systems LLC, `[OWNER: mailing address]`
@@ -43,36 +41,22 @@ can arrive after you do — and reload. If it is still locked after a minute,
 email us with your Stripe receipt and we will fix it the same day.
 ⟶ `refreshEventPass` retry ladder, `passEntitlement.js` ⟵
 
-## 3. Refunds — the rule `[OWNER: refund rule — pick one]`
+## 3. Refunds — the rule
 
-Three options, in the order we recommend them. The rest of this document reads
-correctly under any of the three.
+**Refunds.** You may get a full refund within **14 days** of buying the pass,
+with no questions asked, **as long as no new vendor brief has been sent from
+that event since you bought it.** Once a new brief has been sent, the pass has
+done its job and the purchase is final. If the pass did not work for you,
+section 4 applies at any time.
+⟶ Owner ruling 11/12/2026, on the review board's 4–2 recommendation of
+11/11/2026 (dissent: two seats for 14 days unconditional; one asked for 30
+days). Checkable on the server: a brief link created after the purchase
+(`vendor_brief_links.created_at` against `event_passes.purchased_at`;
+`docs/RUNBOOK.md` → "Refund check"). Destination/multi-day use is not recorded
+on the server, so the rule does not depend on it. The line shown before
+checkout is `src/lib/refundRule.js`. ⟵
 
-**Option A (recommended): 14 days, no questions, if the pass has not been used
-to share a brief.** You may request a full refund within 14 days of purchase
-as long as you have not shared a vendor brief beyond your first one or used
-destination/multi-day planning on the event. If you have, the pass has done
-the thing it was bought for and the purchase is final.
-⟶ *Why:* it matches how the pass is sold (a tool for a specific job), it is
-simple to administer (one look at the event's share count), and it does not
-invite buying, using, and refunding. Stripe's dispute fee makes a contested
-chargeback cost more than a $39 refund, so a clear no-quibble window inside
-which we refund first and ask later is cheaper than a strict policy. ⟵
-
-**Option B: 14 days, unconditional.** Full refund on request within 14 days,
-used or not.
-⟶ *Why you might:* the simplest promise to make and the easiest to explain in
-one line on the pass sheet; the exposure is $39 per event and the pass cannot
-be resold. *Why you might not:* a host can plan a whole event on the pass and
-refund it on day 13. ⟵
-
-**Option C: 30 days, unconditional, one per customer.** Full refund within 30
-days, once; a second pass purchased later is final.
-⟶ *Why you might:* events run on long timelines and 14 days may land before the
-host has learned whether the pass earned its keep. *Why you might not:* the
-one-per-customer rule needs tracking we do not have today. ⟵
-
-Whichever rule is chosen, the following apply:
+These also apply:
 
 - **Outside the window, the purchase is final.** We will still make it right
   if the pass did not work — section 4.
@@ -80,39 +64,37 @@ Whichever rule is chosen, the following apply:
   typically posts a refund within 5–10 business days; the timing after that is
   your card issuer's.
 - **A full refund revokes the pass.** The event returns to the free tier;
-  nothing you planned is deleted. ⟶ `stripe_payments.py:575-578` (only once
-  Stripe marks the charge fully refunded), `:661-694` (`pass_payment_blocks`,
+  nothing you planned is deleted. ⟶ `stripe_payments.py:583-591` (only once
+  Stripe marks the charge fully refunded), `:674-710` (`pass_payment_blocks`,
   `supabase/migrations/020_pass_payment_revocations.sql`); the app re-checks
   the server record, `passEntitlement.js` ⟵
 - **A partial refund keeps the pass.** If we refund part of the price, the
-  event keeps everything the pass unlocked. ⟶ `stripe_payments.py:575-576`
+  event keeps everything the pass unlocked. ⟶ `stripe_payments.py:588-591`
   (owner ruling, November 5) ⟵
 - **A refunded event cannot buy the pass again at checkout.** Checkout refuses
   any event with a recorded purchase and points you to us instead; write to
   events@noguessworksystems.com if you want the pass back on that event.
-  ⟶ `stripe_payments.py:306-315` ⟵
+  ⟶ `stripe_payments.py:320-328` ⟵
 - **One refund per pass.** A pass that has been refunded cannot be refunded a
   second time.
+- **A refund turns the pass off for anything new. Vendor briefs you already
+  sent keep working.** ⟶ the public brief page never checks the pass
+  (`vendor_brief.py`), by design: a vendor mid-conversation is never cut off ⟵
 
-> **COUNSEL — where the rule choice meets the code** (the code behaves the
-> same whichever option is picked):
-> - **Partial refunds keep the pass.** Under Option A ("not used to share a
->   brief"), a host who used the pass could be offered a partial refund as a
->   goodwill middle ground and keep access; under B and C that path is not
->   needed. Should the policy mention partial refunds at all, or leave them
->   as a discretionary remedy?
-> - **No repurchase after a full refund.** Option C's "a second pass purchased
->   later is final" assumes a second purchase is possible; on the same event it
->   is not (`stripe_payments.py:306-315`), only on a different event. Confirm
->   the wording, and whether "refund, then come back" must be handled by
->   support by hand.
+> **COUNSEL — the chosen rule against the code** (owner ruling 11/12/2026):
+> - **Partial refunds keep the pass,** and are not offered in this text. The
+>   board recommended keeping them as a discretionary goodwill remedy for a
+>   host who used the pass. Confirm leaving them out of the public policy.
+> - **No repurchase after a full refund** on the same event
+>   (`stripe_payments.py:320-328`); support handles "refund, then come back"
+>   by hand. Confirm the wording above.
 > - **A dispute switches the pass off before it is decided**, and a won
->   dispute does not restore it. Is that fair and adequately disclosed in §6,
->   especially under Option B/C, where a refund would have been granted on
->   request anyway?
+>   dispute does not restore it. Is that fair and adequately disclosed in §6?
 > - **"One refund per pass"** is enforced by Stripe (a fully refunded charge
 >   cannot be refunded again), not by our code — confirm the sentence needs no
 >   more.
+> - **Briefs sent through the old self-contained link** (before 11/11) are not
+>   recorded, so the refund check cannot see them; support refunds when unsure.
 
 ## 4. When we refund regardless of the window
 

@@ -20,7 +20,7 @@
 //
 // NOTHING HERE INVENTS DATA. Every number comes from the engines the live sheet
 // uses. A stage the data has not reached says so plainly.
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useSyncExternalStore } from 'react';
 // The published rungs of the lodging ladder. Rungs 1-2 are the host's own
 // shortlist and this surface already shows those; 3 and 4 are what there is
 // to say BEFORE they have one.
@@ -47,6 +47,12 @@ import { venueFor } from '@app/lib/venueFor';
 import { settleChoicePatch } from '@app/lib/choiceProvenance';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
+import { destinationLocked, isBillingLive, isUserCreatedEvent } from '@app/lib/passGate';
+import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
+// The shell's own save path, session check and status reader — not a copy.
+import { isSupabaseConfigured, supabase } from '@app/lib/supabaseClient';
+import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
+import { recordSaveResult, getEventSyncStatus, SYNC_STATUS_LABEL } from '@app/lib/api/syncState';
 
 // ─── THE WORKED EXAMPLE (2026-08-04) ───────────────────────────────────────
 // A fresh device has an empty store (localStorage is per origin), so a phone on
@@ -105,6 +111,43 @@ export default function LodgingCockpit() {
     (events.find((e) => e && e.id === lastId) ? lastId : (events[0] && events[0].id)) || null);
   const event = events.find((e) => e && e.id === eventId) || null;
 
+  // ── THE BACKSTOP (gap H1, 11/12/2026) ──────────────────────────────────
+  // The pass sells lodging coordination as destination toolkit. Every door in
+  // the host shell checks `destinationLocked` before it leaves for this page,
+  // but this page is also reachable by its own URL, so it asks again. Same
+  // server question the shell asks on event open (HostShellV2's
+  // usePassEntitlement + refreshEventPass), so a pass the server confirms
+  // unlocks this page too, not only the blob's claim.
+  useSyncExternalStore(subscribePassEntitlements, () => serverPassHeld(eventId), () => null);
+  const passClaimed = !!(event && event.passPurchased === true);
+  useEffect(() => {
+    if (!isBillingLive()) return;
+    if (!eventId || !isUserCreatedEvent({ id: eventId })) return;
+    refreshEventPass(eventId, { claimed: passClaimed });
+  }, [eventId, passClaimed]);
+
+  // ── THE ACCOUNT HEARS ABOUT IT TOO (G10, 11/12/2026) ─────────────────────
+  // `patch` used to write this browser only. A signed-in host's shortlist,
+  // pick and booking code reached the account only if a later edit in the
+  // shell happened to save the event — and worse, the shell's next signed-in
+  // load read the event as "synced", found the account copy different, and
+  // replaced the lodging work with it. The session check is the shell's own
+  // (getSession + onAuthStateChange); the save is its `saveEvent` and its
+  // `recordSaveResult`, so the queue and conflict rules are the same ones.
+  const [session, setSession] = useState(null);
+  // Until the first session read answers, nothing is known: no sign-in door
+  // flashes at a host who is in fact signed in.
+  const [authKnown, setAuthKnown] = useState(() => !isSupabaseConfigured() || !supabase);
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !supabase) return undefined;
+    let dead = false;
+    supabase.auth.getSession().then(({ data }) => { if (!dead) { setSession((data && data.session) || null); setAuthKnown(true); } }).catch(() => { if (!dead) setAuthKnown(true); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) setSession(s || null); });
+    return () => { dead = true; try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch { /* gone */ } };
+  }, []);
+  // The worked example is never the host's work and never leaves this device.
+  const toAccount = (ev) => !!(ev && isSupabaseConfigured() && session && !ev.demoSeed);
+
   // ONE write path. Everything on this surface goes through it, so the cockpit
   // and the live sheet can never hold different truths about the same event.
   // `opts.keepPeek` — see the note on setViewing below for the one kind of
@@ -115,8 +158,16 @@ export default function LodgingCockpit() {
       const next = all.map((e) => (e && e.id === eventId ? { ...e, ...changes } : e));
       // A map preserves every id, so this can never be refused — the guard is
       // here so no future edit to this line can quietly become a replacement.
-      saveCustomEvents(next, { reason: 'lodging:patch' });
+      const res = saveCustomEvents(next, { reason: 'lodging:patch' });
       setTick((t) => t + 1);
+      // A rejected local edit never starts a cloud write (the shell's rule).
+      const saved = res && res.ok ? next.find((e) => e && e.id === eventId) : null;
+      if (toAccount(saved)) {
+        cloudSaveEvent(saved)
+          .then((r) => { try { recordSaveResult(saved, r); } catch { /* stamping is best-effort */ } })
+          .catch(() => {})
+          .then(() => setTick((t) => t + 1));   // re-read the status line
+      }
       // FINISHING A STEP LANDS YOU ON THE NEXT ONE (host, 2026-08-04). The
       // stage is derived, so the data moving forward already moves the host —
       // EXCEPT while they are peeking at another step, where `viewing` pinned
@@ -139,7 +190,8 @@ export default function LodgingCockpit() {
         setFocus(null);
       }
     } catch { /* storage full or blocked — the surface simply does not change */ }
-  }, [eventId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, session]);
 
   const intel = useMemo(() => { try { return event ? lodgingIntel(event) : null; } catch { return null; } }, [event]);
   const derived = useMemo(() => { try { return event ? lodgingStage(event, intel) : null; } catch { return null; } }, [event, intel]);
@@ -213,6 +265,60 @@ export default function LodgingCockpit() {
       </Panel>
     </Solo></Frame>
   );
+  // MODEL D visibility rule (passGate): teased with honest copy naming the
+  // pass — never hidden, never fake-functional. Same words and door as the
+  // host shell's locked lodging sheet; the door goes back to the plan with
+  // the pass sheet open (HostShellV2's OPEN_ON_LOAD), on THIS event.
+  if (destinationLocked(event)) {
+    const goSeePass = () => {
+      try { localStorage.setItem(LS_LAST_EVENT, event.id); } catch { /* the shell falls back to its own last event */ }
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.delete('demo');
+        u.searchParams.delete('focus');
+        u.searchParams.set('open', 'pass');
+        window.location.href = u.toString();
+      } catch {
+        window.location.href = window.location.pathname + '?open=pass';
+      }
+    };
+    return (
+      <Frame><Solo>
+        <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
+        <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Where everyone stays lives here — the stay, who needs a room, and the lodging plan for a multi-day event. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+        <button className="cta" style={{ width: '100%' }} onClick={goSeePass}>See the One-Event Pass — $39</button>
+        <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
+      </Solo></Frame>
+    );
+  }
+  // LODGING IS NEVER DEVICE-ONLY (owner ruling 11/12/2026). Where accounts
+  // exist, a host must be signed in to work here, so the shortlist, the pick
+  // and the booking code always reach the account (G10's save) and cannot be
+  // lost with the browser. The worked example stays open: it is never the
+  // host's work. Builds with no accounts at all keep this device's copy.
+  if (isSupabaseConfigured() && !event.demoSeed && !authKnown) return <Frame><Solo><p className="lc-eyebrow">WHERE EVERYONE STAYS</p></Solo></Frame>;
+  if (isSupabaseConfigured() && !event.demoSeed && !session) {
+    const goSignIn = () => {
+      try { localStorage.setItem(LS_LAST_EVENT, event.id); } catch { /* the shell falls back to its own last event */ }
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.delete('demo');
+        u.searchParams.delete('focus');
+        u.searchParams.set('open', 'settings');
+        window.location.href = u.toString();
+      } catch {
+        window.location.href = window.location.pathname + '?open=settings';
+      }
+    };
+    return (
+      <Frame><Solo>
+        <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
+        <p className="grounding" data-lodging-signin style={{ margin: '0 0 var(--sp-3)' }}>Sign in to plan where everyone stays. Your places, your pick and your booking code save to your account, so they can’t be lost.</p>
+        <button className="cta" style={{ width: '100%' }} onClick={goSignIn}>Sign in</button>
+        <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
+      </Solo></Frame>
+    );
+  }
   if (!derived) return (
     <Frame><Solo>
       <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
@@ -286,6 +392,14 @@ export default function LodgingCockpit() {
             {/* A seeded example must SAY it is one, everywhere it is on screen —
                 otherwise the first honest-looking number a host reads is fiction. */}
             {event.demoSeed ? <span className="lc-demo"> · EXAMPLE</span> : null}
+          </p>
+          {/* Where the last change lives. Signed in: the shell's own status
+              words, read off the same queue and stamps. Otherwise — signed
+              out, no accounts, or the example — this device only, said so. */}
+          <p className="lc-note lc-savestate" role="status" aria-live="polite">
+            {toAccount(event)
+              ? (SYNC_STATUS_LABEL[getEventSyncStatus(event)] || 'Saved on this device only.')
+              : 'Saved on this device only.'}
           </p>
           <nav className="lc-rail">
             {LODGING_STAGES.map((s) => {

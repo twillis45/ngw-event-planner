@@ -68,6 +68,32 @@ test('(premise) unpaused, the same bundle offers the buy button', async ({ page 
   await expect(page.getByText('Pass sales are paused right now')).toHaveCount(0);
 });
 
+// Owner ruling 11/12/2026 (lib/refundRule): the refund rule is read BEFORE the
+// money — visible, and above the buy button.
+test('on sale: the refund rule sits above the buy button', async ({ page }) => {
+  await boot(page, { stripe_configured: true, stripe_can_honour_purchases: true, pass_sales_paused: false });
+  const rule = page.locator('[data-refund-rule]');
+  const buy = page.getByRole('button', { name: 'Get the pass — $39', exact: true });
+  await expect(rule).toHaveText('Changed your mind? Get all $39 back within 14 days if you have not sent a new vendor brief.');
+  await rule.scrollIntoViewIfNeeded();
+  await expect(rule).toBeVisible();
+  const [r, b] = [await rule.boundingBox(), await buy.boundingBox()];
+  expect(r.y + r.height).toBeLessThanOrEqual(b.y);
+});
+
+// Owner board 11/12/2026: the pass sells only what free does not already give,
+// and says the free brief needs an account.
+test('on sale: no perk the free tier already has, and the account is named', async ({ page }) => {
+  await boot(page, { stripe_configured: true, stripe_can_honour_purchases: true, pass_sales_paused: false });
+  await expect(page.getByText('Yours to keep')).toHaveCount(0);
+  await expect(page.getByText(/sharing one vendor brief with a free account/)).toBeVisible();
+});
+
+test('paused: no refund rule is offered for a sale that cannot happen', async ({ page }) => {
+  await boot(page, PAUSED);
+  await expect(page.locator('[data-refund-rule]')).toHaveCount(0);
+});
+
 test('paused after the sheet loaded: a 503 from checkout gets the paused toast', async ({ page }) => {
   await boot(page, { stripe_configured: true, stripe_can_honour_purchases: true, pass_sales_paused: false });
   await page.route(API + '/api/stripe/create-pass-session', (route) => route.fulfill({ status: 503, json: { detail: 'Pass sales are paused.' } }));

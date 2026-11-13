@@ -323,6 +323,32 @@ happens when the done line and the open line are updated separately.
 
 ---
 
+## Refund check — before approving a pass refund (one query, read-only)
+
+The rule (owner ruling 11/12/2026, `docs/legal/REFUND_POLICY_DRAFT.md` §3,
+`src/lib/refundRule.js`): a full refund within 14 days of purchase if **no new
+vendor brief** has been sent from that event since the purchase. Production
+SQL Editor, with the event id from the host's email or the Stripe receipt
+metadata:
+
+```sql
+select p.event_id,
+       p.purchased_at,
+       now() - p.purchased_at                                  as since_purchase,
+       count(l.*) filter (where l.created_at >= p.purchased_at) as briefs_since_purchase
+from public.event_passes p
+left join public.vendor_brief_links l on l.event_id = p.event_id
+where p.event_id = '<event id>'
+group by p.event_id, p.purchased_at;
+```
+
+- `since_purchase` under 14 days **and** `briefs_since_purchase` = 0 → refund in
+  Stripe (full). The pass switches off on Stripe's `charge.refunded`.
+- Otherwise the purchase is final under the rule; section 4 of the refund
+  policy (the pass did not work) still applies at any time.
+- **Not visible to this query:** a brief sent through the old self-contained
+  link before 11/11/2026. When unsure, refund.
+
 ## Escalation
 
 | Situation | Who | Why it cannot be delegated |

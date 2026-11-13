@@ -133,6 +133,14 @@ const VIEWPORT_INDEPENDENT = [
   // settings-row label and localStorage — no geometry. Same reasoning as
   // crossDeviceSync: six viewports would buy six identical results.
   '**/aRefusedSaveIsNotCalledSaved.spec.mjs',
+  // ── A CONTRACT LINK NEVER GOES STALE (H4, 11/12/2026) ──────────────────
+  // Same 5244 harness (the one bundle with storage configured). Asserts the
+  // sign request, the popup's URL and a toast — no geometry.
+  '**/aContractLinkNeverGoesStale.spec.mjs',
+  // ── LODGING REACHES THE ACCOUNT (G10, 11/12/2026) ──────────────────────
+  // Same 5244 harness. Asserts the wire (which writes carried the shortlist),
+  // the cockpit's save-state line and localStorage — no geometry.
+  '**/lodgingReachesTheAccount.spec.mjs',
   // ── THE PEOPLE ATTENDANCE ZONE (redesign step 3, 2026-10-20) ───────────
   // Six tests on text and stored state, including a paired fixture that
   // differs by ONE field (guestCountSource) and a negative control proving

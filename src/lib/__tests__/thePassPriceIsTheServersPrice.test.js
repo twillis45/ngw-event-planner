@@ -38,6 +38,7 @@ const surfaces = () => {
     'pass lines in the shell': shell,
     'passGate disclosures': code(read('src/lib/passGate.js')),
     'the section directory row': dir,
+    'the refund line': code(read('src/lib/refundRule.js')),
   };
 };
 
