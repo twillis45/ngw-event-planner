@@ -105,6 +105,7 @@ import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf,
 import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
+import { askExchange, appendAskExchange, attachBroaderLook } from '@app/lib/askHistory';
 import { runOrchestration } from '@app/lib/orchestrator';
 import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
@@ -271,7 +272,7 @@ import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimF
 import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@app/lib/eventOrientation';
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
-import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
+import { syncProfile as cloudSyncProfile, saveProfile as cloudSaveProfile, installProfileOnlineFlush } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent, forgetAccountCache } from '@app/lib/api/events';
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
@@ -1896,12 +1897,14 @@ export default function HostShellV2() {
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
     let dead = false;
-    // On sign-in, pull the cloud profile (studio_settings) into localStorage +
-    // state — cloud wins, so a fresh device inherits the host's real identity.
+    // On sign-in, reconcile the profile (studio_settings) with the account —
+    // the account wins EXCEPT for fields this device changed and never got
+    // confirmed, which are pushed instead (G19: those used to be wiped here).
     const hydrate = () => {
-      cloudLoadProfile().then(p => {
+      cloudSyncProfile().then(({ profile: p }) => {
         if (dead || !p) return;
         setProfileState(p);
+        adoptAccountPrefs(p);
         // Build-map #3: stash the account's last-viewed event; the resume effect
         // below follows it once the event resolves and only if the host hasn't
         // already switched away from the boot event on this device.
@@ -2195,6 +2198,8 @@ export default function HostShellV2() {
   useEffect(() => installOnlineFlush(res => {
     if (res && res.flushed > 0) toast(res.flushed + (res.flushed === 1 ? ' change' : ' changes') + ' synced to your account.');
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // G19: the same moment retries profile fields the account never confirmed.
+  useEffect(() => installProfileOnlineFlush(r => { if (r && r.ok && r.profile) setProfileState(r.profile); }), []);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('A real email address — the sign-in link goes there.'); return; }
@@ -2242,11 +2247,55 @@ export default function HostShellV2() {
       localStorage.setItem('ngw-profile', JSON.stringify(next));
     } catch { next = { ...(profile || {}), ...fields }; }
     setProfileState(next);
-    // Push to the cloud when signed in — no longer dependent on the main app's
-    // debounced save. Fire-and-forget; saveProfile already wrote localStorage.
-    if (next && session) { try { cloudSaveProfile(next); } catch { /* offline — localStorage holds it */ } }
+    // Always through saveProfile, signed in or not (G19). It marks these fields
+    // unsent until the account confirms them; signed out, offline, or refused,
+    // the marker stays and the next sign-in, token refresh or reconnect sends
+    // them instead of letting the account copy replace them.
+    if (next) { try { cloudSaveProfile(next, { changed: Object.keys(fields || {}) }).catch(() => {}); } catch { /* localStorage holds it */ } }
     if (msg) toast(msg);
   };
+  // ── PREFERENCES FOLLOW THE ACCOUNT (owner, 11/12/2026) ───────────────────
+  // Theme, the analytics opt-out, message sound, the writing voice and the
+  // unfinished new-event sentence live on the profile record. Each control
+  // still writes its own device key first, so boot paints this device's last
+  // answer with no network wait; the account's answer is applied here, once
+  // the sign-in reconcile returns, and a value the account has never held is
+  // seeded from this device. A ?theme= link outranks the account for its load.
+  function adoptAccountPrefs(p) {
+    if (!p) return;
+    const seed = {};
+    const ls = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+    let urlTheme = false;
+    try { urlTheme = !!new URLSearchParams(window.location.search).get('theme'); } catch { /* no URL */ }
+    if (p.theme === 'light' || p.theme === 'dark') {
+      if (!urlTheme && p.theme !== (ls('ngw-theme') === 'light' ? 'light' : 'dark')) setThemeState(setStoredTheme(p.theme));
+    } else if (ls('ngw-theme') === 'light' || ls('ngw-theme') === 'dark') seed.theme = ls('ngw-theme');
+    if (typeof p.analyticsOff === 'boolean') {
+      if (p.analyticsOff !== isAnalyticsOptedOut()) { setAnalyticsOptOut(p.analyticsOff); setAnalyticsOff(p.analyticsOff); }
+    } else if (isAnalyticsOptedOut()) seed.analyticsOff = true;
+    if (typeof p.messageSoundMuted === 'boolean') setMuted(p.messageSoundMuted);
+    else if (ls('ngw-hostv2-muted') === '1') seed.messageSoundMuted = true;
+    if (typeof p.draftTone === 'string' && p.draftTone) setDraftTone(p.draftTone);
+    else if (ls('ngw-hostv2-voice') && ls('ngw-hostv2-voice') !== 'as-written') seed.draftTone = ls('ngw-hostv2-voice');
+    const d = p.createDraft;
+    if (d && typeof d.text === 'string' && d.text.trim() && Date.now() - Number(d.at || 0) < 86400000 && !readCreateDraft()) {
+      try { localStorage.setItem(LS_CREATE_DRAFT, JSON.stringify({ text: d.text, at: d.at })); } catch { /* private mode */ }
+      setSmartText(cur => (cur && cur.trim() ? cur : d.text));
+    }
+    if (Object.keys(seed).length) patchProfile(seed);
+  }
+  // The unfinished sentence is typed a key at a time: send it once typing
+  // pauses, and clear it from the account once the event is made or the box is
+  // emptied (same rule as the device copy above).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const text = smartText.trim() && !revealed ? smartText : '';
+      const held = profile && profile.createDraft;
+      if (text) { if (!held || held.text !== text) patchProfile({ createDraft: { text, at: Date.now() } }); }
+      else if (held) patchProfile({ createDraft: null });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [smartText, revealed]); // eslint-disable-line react-hooks/exhaustive-deps
   const ctx = useMemo(() => { try { return buildExperienceContext(event, profile, 1); } catch { return null; } }, [event, profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── THE REAL ENGINE ──
@@ -5255,6 +5304,13 @@ export default function HostShellV2() {
   // null | {loading:true} | {answer, grounded} | {unavailable:true}. Only ever
   // set when the deterministic path misses AND a backend is configured.
   const [askLLM, setAskLLM] = useState(null);
+  // Ask history is kept on the event (owner, 11/12/2026; lib/askHistory). The
+  // exchange the broader look belongs to, and which event was current when it
+  // was asked — the answer can land after the host has switched events.
+  const askEntryRef = useRef(null);
+  const askEventIdRef = useRef(eventId);
+  askEventIdRef.current = eventId;
+  const [askShowAll, setAskShowAll] = useState(false);
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPaletteOpen(o => !o); }
@@ -18252,7 +18308,18 @@ export default function HostShellV2() {
                 readiness: (phaseCues && phaseCues.totalCount) ? { done: phaseCues.completedCount, total: phaseCues.totalCount, nextLabel: phaseCues.nextCue && phaseCues.nextCue.label } : null,
                 eventName: event.name,
               };
-              const ask = (text) => { const t = String(text || '').trim(); if (!t) return; setAskQ(t); setAskLLM(null); setAskResult(answerPlanQuestion(t, askCtx)); };
+              const ask = (text) => {
+                const t = String(text || '').trim(); if (!t) return;
+                const result = answerPlanQuestion(t, askCtx);
+                setAskQ(t); setAskLLM(null); setAskResult(result);
+                // Kept on the event through the one event write path, so it
+                // follows the event to the account (no toast, no undo).
+                if (result) {
+                  const entry = askExchange(t, result);
+                  askEntryRef.current = { id: entry.id, eventId };
+                  patchEvent({ askHistory: appendAskExchange(event.askHistory, entry) });
+                }
+              };
               // B3 escalation: when the deterministic engine can't answer, and a
               // backend is configured, hand the question to the grounded orchestrator
               // (engines run locally as tools; every number still traces to one).
@@ -18275,6 +18342,10 @@ export default function HostShellV2() {
                   });
                   const out = await runOrchestration({ question: askQ, ctx: { event }, transport });
                   setAskLLM(out.answer ? { answer: out.answer, grounded: out.grounded } : { unavailable: true });
+                  const kept = askEntryRef.current;
+                  if (out.answer && kept && kept.eventId === askEventIdRef.current) {
+                    patchEvent({ askHistory: attachBroaderLook(event.askHistory, kept.id, out) });
+                  }
                 } catch {
                   setAskLLM({ unavailable: true });
                 }
@@ -18311,6 +18382,32 @@ export default function HostShellV2() {
                       ))}
                     </div>
                   )}
+                  {/* ASKED BEFORE (owner, 11/12/2026): kept on the event, newest
+                      first. Each answer is dated and said to be as of then —
+                      the plan may have moved since, and asking again is one tap. */}
+                  {!askResult && Array.isArray(event.askHistory) && event.askHistory.length > 0 && (() => {
+                    const past = [...event.askHistory].reverse();
+                    const shown = askShowAll ? past : past.slice(0, 5);
+                    return (
+                      <div style={{ marginTop: 'var(--sp-4)' }} data-ask-history>
+                        <div className="of" style={{ marginBottom: 2 }}>Asked before</div>
+                        <p className="grounding" style={{ margin: '0 0 6px', color: 'var(--faint)' }}>Each answer is as of the day you asked. Tap a question to ask it again with today’s numbers.</p>
+                        {shown.map(x => (
+                          <div key={x.id || x.at} className="later-row" style={{ display: 'block' }}>
+                            <button className="mini" style={{ marginBottom: 4 }} onClick={() => ask(x.q)}>{x.q}</button>
+                            <p className="grounding" style={{ margin: 0 }}>{x.answer}</p>
+                            {x.broader && x.broader.answer && (
+                              <p className="grounding" style={{ margin: '4px 0 0' }}>A broader look: {x.broader.answer}{x.broader.flagged ? ' (One figure here wasn’t from your numbers.)' : ''}</p>
+                            )}
+                            <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--faint)' }}>Asked {new Date(x.at).toLocaleDateString('en-US')}</p>
+                          </div>
+                        ))}
+                        {past.length > 5 && (
+                          <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => setAskShowAll(v => !v)}>{askShowAll ? 'Show fewer' : `Show all ${past.length}`}</button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {askResult && (
                     <div className="brow" style={{ marginTop: 'var(--sp-4)' }}>
                       <p className="f-name" style={{ marginBottom: askResult.basis.length ? 6 : 0 }}>{askResult.answer}</p>
@@ -18876,7 +18973,7 @@ export default function HostShellV2() {
                       carries only the account icon. Same toggle, same prime. */}
                   <div className="later-row" style={{ borderTop: 'none', padding: 'var(--sp-1) 2px 14px' }}>
                     <span className="t">Sound</span>
-                    <button className="mini" onClick={() => { primeMessageSound(); setMuted(m => !m); }}>
+                    <button className="mini" onClick={() => { primeMessageSound(); const m = !muted; setMuted(m); patchProfile({ messageSoundMuted: m }); }}>
                       {muted ? 'Muted — tap for sound' : 'On — tap to mute'}
                     </button>
                   </div>
@@ -18897,7 +18994,7 @@ export default function HostShellV2() {
                   <div className="later-row">
                     <span className="t">Light mode</span>
                     <button className="mini" aria-pressed={theme === 'light'}
-                      onClick={() => setThemeState(setStoredTheme(theme === 'light' ? 'dark' : 'light'))}>
+                      onClick={() => { const t = setStoredTheme(theme === 'light' ? 'dark' : 'light'); setThemeState(t); patchProfile({ theme: t }); }}>
                       {theme === 'light' ? 'On — tap for dark' : 'Off — tap for light'}
                     </button>
                   </div>
@@ -18910,7 +19007,7 @@ export default function HostShellV2() {
                   <div className="later-row" style={{ flexWrap: 'wrap' }}>
                     <span className="t">Help improve the app</span>
                     <button className="mini" aria-pressed={!analyticsOff}
-                      onClick={() => { const off = !analyticsOff; setAnalyticsOptOut(off); setAnalyticsOff(off); }}>
+                      onClick={() => { const off = !analyticsOff; setAnalyticsOptOut(off); setAnalyticsOff(off); patchProfile({ analyticsOff: off }); }}>
                       {analyticsOff ? 'Off — tap to turn on' : 'On — tap to turn off'}
                     </button>
                     <span className="v-meta" style={{ flexBasis: '100%', margin: '4px 0 0' }} data-analytics-line>
@@ -19614,11 +19711,11 @@ export default function HostShellV2() {
                       // 2026-11-02; e2e yourWordsStayWithTheirEvent).
                       const key = draftEditKey(sheet.title);
                       const hers = draftBody; const prevTone = draftTone;
-                      setDraftTone(k); setDraftBody(null);
+                      setDraftTone(k); setDraftBody(null); patchProfile({ draftTone: k });
                       try { delete draftEditsRef.current[key]; } catch { /* kept copy is best-effort */ }
                       if (hers != null) {
                         toast('Rewritten in a new voice.', { label: 'Undo', fn: () => {
-                          setDraftTone(prevTone); setDraftBody(hers);
+                          setDraftTone(prevTone); setDraftBody(hers); patchProfile({ draftTone: prevTone });
                           try { draftEditsRef.current[key] = hers; } catch { /* best-effort */ }
                         } });
                       }
