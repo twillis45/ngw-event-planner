@@ -267,3 +267,60 @@ test.describe('G15: an edit made signed out', () => {
     expect(cloud.get(ID).data.guestEstimate).toBe(6);
   });
 });
+
+// ─── G16 / G17 ───────────────────────────────────────────────────────────────
+test.describe('G16/G17: a copy put back on this device reaches the account', () => {
+  const synced = () => ({
+    cloud: { [ID]: { data: gameNight(6), updated_at: T1, studio: USER_A.studio } },
+    local: { custom: { ...gameNight(6), _cloudUpdatedAt: T1 } },
+  });
+
+  test('"Put this back" is saved to the account and survives the next refresh', async ({ page }) => {
+    const { cloud } = await install(page, synced());
+    await boot(page);
+    await oneMoreGuest(page);
+    expect(cloud.get(ID).data.guestEstimate, 'premise: the edit reached the account').toBe(7);
+
+    await openSettings(page);
+    // The newest listed copy that still holds 6.
+    const idx = await page.evaluate((id) => {
+      const keys = (JSON.parse(localStorage.getItem('ngw-hostv2-store-backups') || '[]') || []).slice().reverse().slice(0, 5);
+      return keys.findIndex((k) => {
+        const ev = (JSON.parse(localStorage.getItem(k) || '[]') || []).find((e) => e && e.id === id);
+        return ev && ev.guestEstimate === 6;
+      });
+    }, ID);
+    expect(idx, 'premise: a saved copy at 6 is listed').toBeGreaterThanOrEqual(0);
+    page.once('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: 'Put this back', exact: true }).nth(idx).click();
+    await expect(page.locator('.toast')).toContainText('That copy is back');
+    await page.waitForTimeout(1500);
+
+    expect(cloud.get(ID).data.guestEstimate, 'the restored copy never reached the account').toBe(6);
+    await reload(page);
+    const s = await localState(page);
+    expect(s.custom.guestEstimate, 'the refresh put the account copy back over the restore').toBe(6);
+    expect(adoptedOver(s)).toHaveLength(0);
+  });
+
+  test('import with "Replace matching events" is saved to the account and survives the next refresh', async ({ page }) => {
+    const { cloud } = await install(page, synced());
+    await boot(page);
+    await openSettings(page);
+    const restored = gameNight(4, { name: 'Game Night From The File' });
+    await page.locator('input[type=file][accept="application/json,.json"]').setInputFiles({
+      name: 'my-events.json', mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ kind: 'ngw-event-export', version: 1, events: [restored] })),
+    });
+    await expect(page.locator('.toast')).toContainText('1 kept');
+    await page.getByRole('button', { name: 'Replace matching events', exact: true }).click();
+    await expect(page.locator('.toast')).toContainText('1 updated');
+    await page.waitForTimeout(1500);
+
+    expect(cloud.get(ID).data.name, 'the imported copy never reached the account').toBe('Game Night From The File');
+    await reload(page);
+    const s = await localState(page);
+    expect(s.custom.name, 'the refresh put the account copy back over the import').toBe('Game Night From The File');
+    expect(adoptedOver(s)).toHaveLength(0);
+  });
+});

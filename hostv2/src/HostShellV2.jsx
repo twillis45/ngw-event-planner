@@ -7201,6 +7201,20 @@ export default function HostShellV2() {
       toast('Saved on this device — ' + why, toastActionRef.current);
     }
   };
+  // ── A COPY PUT BACK HERE GOES TO THE ACCOUNT TOO (G16/G17, 11/12/2026) ────
+  // "Put this back" and import with "Replace matching events" wrote this store
+  // only. A restored event kept its sync record and had nothing queued, so the
+  // next refresh read it as synced and put the account copy back — undoing the
+  // one recovery tool within the hour. Each account event the store write
+  // changed is now saved like any edit: written conditionally, or queued.
+  const saveChangedToAccount = (before) => {
+    const was = new Map((Array.isArray(before) ? before : []).map(e => [e && e.id, e]));
+    for (const ev of readCustomEventsSafe()) {
+      if (!ev || !ev.id || !getLastSyncTime(ev.id)) continue;
+      if (was.has(ev.id) && sameEventContent(was.get(ev.id), ev)) continue;
+      cloudSaveEvent(ev).then(res => noteSaveResult(ev, res)).catch(() => {});
+    }
+  };
   // ── THE CHECKLIST FOLLOWS THE DECISIONS (audit 2026-08-21) ────────────────
   // `playbookChecklist` gates its tasks on four things the host answers over
   // time — the whenChoice pick, how guests arrive, whether kids are coming, and
@@ -18907,6 +18921,7 @@ export default function HostShellV2() {
                                 catch { toast('That file isn’t a copy of your events.'); return; }
                                 const applyImport = (overwriteExisting = false) => {
                                   let res;
+                                  const before = readCustomEventsSafe();
                                   try { res = importCustomEvents(payload, { reason: 'settings:import', overwriteExisting }); }
                                   catch {
                                     reportFailure('save', { where: 'hostv2.import', reason: 'unexpected-failure' });
@@ -18919,6 +18934,7 @@ export default function HostShellV2() {
                                   }
                                   setCustoms(readCustomEventsSafe());
                                   setDataTick(t => t + 1);
+                                  saveChangedToAccount(before);
                                   toast(`${res.added} added · ${res.updated} updated · ${res.skipped} kept`,
                                     !overwriteExisting && res.skipped > 0
                                       ? { label: 'Replace matching events', fn: () => applyImport(true) }
@@ -18955,11 +18971,13 @@ export default function HostShellV2() {
                                   // told otherwise, so the host is asked first.
                                   if (!window.confirm('Put this copy back? Anything you changed since then is replaced.')) return;
                                   let res = null;
+                                  const before = readCustomEventsSafe();
                                   try { res = restoreBackup(b.key || b, { allowRemovingUserEvents: true, reason: 'settings:restore' }); }
                                   catch { toast('Couldn’t restore that copy.'); return; }
                                   if (!res || res.ok === false) { toast('Couldn’t restore that copy — nothing was changed.'); return; }
                                   setCustoms(readCustomEventsSafe());
                                   setDataTick(t => t + 1);
+                                  saveChangedToAccount(before);
                                   toast('That copy is back.');
                                 }}>Put this back</button>
                               </div>
