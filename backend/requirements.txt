@@ -5,3 +5,5 @@ httpx==0.27.2
 pydantic==2.9.2
 python-dotenv==1.0.1
 stripe==16.1.0
+# Backend 500s caught by main._error_capture go to Sentry (stage 7 board condition C2); inert without SENTRY_DSN.
+sentry-sdk==2.73.0

@@ -73,6 +73,10 @@ services:
       # from this file for the same reason.
       - key: RESEND_WEBHOOK_SECRET   # Resend → Webhooks → endpoint → Signing Secret
         sync: false
+      # Backend 500s caught by the error middleware also go to Sentry (stage 7
+      # board condition C2). UNSET = Sentry stays off; admin_error_log still records.
+      - key: SENTRY_DSN              # Sentry → Project Settings → Client Keys (DSN)
+        sync: false
       - key: PLANNER_DEV_TOKEN       # local-dev shorthand only; IGNORED in deployment
         sync: false                   # unless ALLOW_DEV_TOKEN=true is ALSO set (do NOT set in prod)
       # SECURITY: Do NOT add ALLOW_DEV_TOKEN here. It must remain unset in every
