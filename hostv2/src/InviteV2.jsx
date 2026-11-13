@@ -20,7 +20,7 @@ import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytic
 import { isRsvpApiConfigured, checkRsvpCapability, submitRsvp, rsvpIdempotencyKey, existingRsvpKey, fetchMyRsvp, withdrawRsvp, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
-import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
+import { inviteTone, invitePalette } from '@app/lib/inviteTone';
 // Optional contact at RSVP (host-approved 2026-07-14): ONE formatter/validator
 // with the host shell (lib/contactFormat — zero imports, so the guest bundle
 // pays nothing), so a number typed here reads identically in the roster and
@@ -38,7 +38,6 @@ import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 // Same function, same result, none of the freight.
 import { resolveEventIdentity } from '@app/lib/eventIdentityEngine';
 import { geocodeVenue } from '@app/lib/weather';
-import { dark as steelPalette } from '@app/theme/palette';
 // Pulls ONLY the event pool + artwork resolver — not the 8,500-line host shell.
 // This is the code-split: a guest opening ?rsvp=CODE no longer downloads
 // HostShellV2 just to say yes.
@@ -47,7 +46,7 @@ import { dark as steelPalette } from '@app/theme/palette';
 // downloaded ~490 KB gzip to tap "yes" while the invite's own code is 9 KB. The four
 // small things live in inviteShared (free); the pool is dynamic-imported inside
 // findInviteEvent, off the critical path. Same pool, same patch layers, same truth.
-import { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './inviteShared.js';
+import { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS, toneVarsFor } from './inviteShared.js';
 
 // Identity crest — the SAME registry the app's glyph system reads (real PD
 // artwork; artwork doctrine), and the HOST'S call whether it appears:
@@ -140,36 +139,7 @@ function deckLineFor(event, somber, isPast) {
 // original): light = warm paper, dark = elegant evening, muted = somber. The
 // palette lands as scoped CSS-var overrides so every class retints, and the
 // steel identity accent deepens on paper (dark-tuned hues wash out on cream).
-function toneVarsFor(pal) {
-  const steelAccent = pal.dark ? null : deepenForLight(steelPalette.steelBlue);
-  return {
-    '--bg': pal.bg, '--card': pal.panel, '--bg-band': pal.surface,
-    // Color re-audit (→10): --line-soft was === --line, flattening the border
-    // hierarchy the host has. Give it a real softer step (borders carry no text,
-    // so contrast is not a constraint).
-    '--line': pal.border, '--line-soft': `color-mix(in srgb, ${pal.border} 55%, transparent)`,
-    '--ink': pal.text, '--ink-soft': pal.sub, '--muted': pal.muted, '--faint': pal.muted,
-    // Status colors MUST be scoped per skin (per-screen audit): they weren't,
-    // so on a LIGHT skin the "You're in" eyebrow and error text fell through to
-    // the dark-calibrated --ok/--danger and computed ≈2.5:1 / ≈3.7:1 — failing.
-    // Light skins get deep green/red (≈5:1 on cream/white); dark skins keep the
-    // light calibrations (the host theme's own lightened danger, ≈4.5+:1 on dark).
-    '--ok': pal.dark ? '#4FAE7A' : '#1e7a46',
-    // Color audit I1: normalized to α0.10 to match the host (was .14/12% — the
-    // exact density the host-side pass moved off of).
-    '--ok-tint': pal.dark ? 'rgba(79,174,122,.10)' : 'color-mix(in srgb, #1e7a46 10%, transparent)',
-    '--danger': pal.dark ? '#F27A70' : '#c03838',
-    '--danger-tint': pal.dark ? 'rgba(242,122,112,.10)' : 'color-mix(in srgb, #c03838 10%, transparent)',
-    ...(steelAccent ? {
-      '--steel': steelAccent, '--steel-soft': steelAccent,
-      '--steel-tint': `color-mix(in srgb, ${steelAccent} 10%, transparent)`,
-    } : {}),
-    // Declared HERE so inherited text re-resolves against the overridden vars —
-    // body's own color computed against :root would leak white onto paper.
-    color: 'var(--ink)',
-    colorScheme: pal.dark ? 'dark' : 'light',
-  };
-}
+// toneVarsFor lives in inviteShared.js: the vendor brief page wears the same paper.
 
 // Resolve the invite against the SAME event pool + patch layers the host
 // shell reads — the guest sees exactly what the host's plan says.

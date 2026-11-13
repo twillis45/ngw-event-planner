@@ -278,25 +278,22 @@ describe('WHEN THIS SCREEN LAST HAD SIGNAL', () => {
   });
 });
 
-describe('THE VENDOR REDIRECT STAYS AHEAD OF THE REGISTRATION', () => {
-  test('a vendor opening a brief link is never given a worker', () => {
-    // Board order, 2026-09-27: "pin the vendor-redirect ordering — it is
-    // currently correct by accident of statement order, and nothing protects
-    // it." This is the protection.
-    //
-    // ?vendor=TOKEN sends the visitor one directory UP, to the frozen CRA's
-    // brief page, which is outside this bundle's scope. The redirect is a
-    // synchronous location.replace at module-eval time; the registration is
-    // in a `load` listener at the foot of the file, which the replace
-    // pre-empts. Reorder them and a vendor starts installing a worker for an
-    // app they are not using.
+describe('A VENDOR OPENING A BRIEF LINK IS NEVER GIVEN A WORKER', () => {
+  test('the registration is skipped on ?vendor=, and still deferred to load', () => {
+    // Board order, 2026-09-27: "pin the vendor-redirect ordering". Until
+    // 11/13/2026 ?vendor=TOKEN was sent one directory UP to the frozen CRA's
+    // brief page by a synchronous replace() that pre-empted the `load`
+    // listener. The brief now renders in this bundle (VendorBriefV2), so
+    // nothing pre-empts the listener any more: the rule is kept by an
+    // explicit guard instead, and this pins the guard. Drop it and a vendor
+    // starts installing a worker for an app they are not using.
     const src = readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
-    const redirect = src.indexOf('window.location.replace(briefUrl)');
+    const flag = src.indexOf("get('vendor')");
     const register = src.indexOf('registerOfflineShell(');
-    expect(redirect).toBeGreaterThan(-1);
-    expect(register).toBeGreaterThan(redirect);
-    // …and the registration is deferred to `load`, not run at module scope.
+    expect(flag).toBeGreaterThan(-1);
+    expect(register).toBeGreaterThan(flag);
     const tail = src.slice(register - 400, register);
+    expect(tail).toMatch(/if \(typeof window !== 'undefined' && !vendorToken\)/);
     expect(tail).toMatch(/addEventListener\('load'/);
   });
 });

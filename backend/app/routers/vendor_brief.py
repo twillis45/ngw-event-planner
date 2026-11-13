@@ -126,6 +126,57 @@ def _vendor_ros_slice(ros, vendor_name: str):
     ]
 
 
+# ── Board 2026-11-12, follow-up 1: headcount, host name, day-of contact ───────
+# Mirrors src/lib/vendorBrief.js (briefGuestCount / briefDietCounts). A caterer
+# cannot size an order without a headcount, so the brief now carries one — a
+# NUMBER, never a guest name or a per-person dietary row. PII review: the count
+# and the diet tallies are aggregates the host already keeps; no list, name,
+# email or phone of any guest is read into the payload.
+#
+# DIET_TAGS mirrors src/lib/dietRows.js: only the fixed vocabulary passes. A
+# host-typed custom key is free text and could name a person, so it stays home.
+DIET_TAGS = (
+    "Vegetarian", "Vegan", "Pescatarian", "Gluten-free", "Dairy-free", "Nut allergy",
+    "Shellfish", "Halal", "Kosher", "Alcohol-free", "Egg allergy", "Soy allergy",
+    "Diabetic-friendly",
+)
+
+
+def _num(v) -> float:
+    try:
+        n = float(v)
+    except (TypeError, ValueError):
+        return 0
+    return n if n == n and n not in (float("inf"), float("-inf")) else 0
+
+
+def _brief_guest_count(data: dict):
+    """guestCountFor(event).fromHost ? count : None — the outward gate. A count
+    the app filled in from a playbook typical is withheld until the host gives
+    one; a locked count or a roster is the host's by construction."""
+    locked = _num(data.get("guestCount"))
+    estimate = _num(data.get("guestEstimate"))
+    guests = data.get("guests")
+    roster = len(guests) if isinstance(guests, list) else 0
+    count = locked or estimate or roster
+    if not count:
+        return None
+    if not locked and estimate and data.get("guestCountSource") == "playbook-typical":
+        return None
+    return int(count) if float(count).is_integer() else count
+
+
+def _brief_diet_counts(data: dict) -> dict:
+    dc = data.get("dietCounts")
+    dc = dc if isinstance(dc, dict) else {}
+    out = {}
+    for tag in DIET_TAGS:
+        n = int(_num(dc.get(tag)))
+        if n > 0:
+            out[tag] = n
+    return out
+
+
 def build_vendor_brief_payload(vendor: dict, event_id: str, data: dict) -> dict:
     v = vendor or {}
     return {
@@ -144,6 +195,16 @@ def build_vendor_brief_payload(vendor: dict, event_id: str, data: dict) -> dict:
         "venue":     data.get("venue"),
         # this vendor's run-of-show slice only
         "ros": _vendor_ros_slice(data.get("ros"), v.get("name") or ""),
+        # the host's own name on their own brief (same rationale as the invite's
+        # hostNames) — so the page never says "your event planner" to a host
+        "hostName": data.get("hostName") or data.get("hostNames") or "",
+        # who the vendor calls on the day, when the host named someone else —
+        # host-authored FOR vendors, per event; empty means "call the host"
+        "briefContactName": data.get("briefContactName") or "",
+        "briefContactPhone": data.get("briefContactPhone") or "",
+        # aggregate numbers only — see _brief_guest_count / _brief_diet_counts
+        "guestCount": _brief_guest_count(data),
+        "dietCounts": _brief_diet_counts(data),
     }
 
 

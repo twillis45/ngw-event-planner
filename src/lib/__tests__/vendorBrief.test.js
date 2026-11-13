@@ -3,7 +3,8 @@
 // pin the audit: host-private bookkeeping (vendor.notes) and all money/ops
 // fields can never reach a vendor-facing brief.
 
-import { buildVendorBriefPayload, vendorRosSlice } from '../vendorBrief';
+import { buildVendorBriefPayload, vendorRosSlice, briefShowsHeadcount, briefFeedsGuests, briefGuestCount, briefDietCounts, briefDietLine } from '../vendorBrief';
+import { getVendorCategoryKey } from '../vendorQuestions';
 
 // A vendor record deliberately loaded with every private field the seed data
 // and vendor model carry — the payload must include NONE of them.
@@ -114,5 +115,74 @@ describe('vendorRosSlice', () => {
       { name: 'X' }
     );
     expect(slice.map(r => r.segment)).toEqual(['A', 'B']);
+  });
+});
+
+// ── Board 2026-11-12, follow-up 1: the host's name, the headcount, and who the
+// vendor calls on the day. Every addition is a NUMBER or a host-authored field.
+describe('host name, headcount and day-of contact (board 2026-11-12)', () => {
+  const ev = {
+    ...event, hostName: 'Vida Reyes', guestEstimate: 40, guestCountSource: 'host',
+    guests: [{ name: 'Ann Lee', dietary: 'Vegetarian' }, { name: 'Bo Park', dietary: 'Nut allergy' }],
+    dietCounts: { Vegetarian: 3, 'Nut allergy': 1, Vegan: 0, "Grandma Lee's no-salt": 1 },
+    briefContactName: 'Sam Ortiz', briefContactPhone: '(555) 010-2000',
+  };
+  const p = buildVendorBriefPayload(privateVendor, ev, ros, profile);
+
+  test('the host name and the day-of contact ride along', () => {
+    expect(p.hostName).toBe('Vida Reyes');
+    expect(p.briefContactName).toBe('Sam Ortiz');
+    expect(p.briefContactPhone).toBe('(555) 010-2000');
+    expect(buildVendorBriefPayload(privateVendor, { hostNames: 'Vida & Jo' }, [], {}).hostName).toBe('Vida & Jo');
+  });
+
+  test('the headcount is a number and no guest name ever leaves', () => {
+    expect(p.guestCount).toBe(40);
+    expect(p.dietCounts).toEqual({ Vegetarian: 3, 'Nut allergy': 1 });
+    const s = JSON.stringify(p);
+    expect(s).not.toContain('Ann Lee');
+    expect(s).not.toContain('Bo Park');
+    expect(s).not.toContain('Grandma');   // a free-text diet key could name a person
+    expect(p.guests).toBeUndefined();
+  });
+
+  test('a headcount the APP made up is withheld (guestCountFor outward gate)', () => {
+    expect(briefGuestCount({ guestEstimate: 40, guestCountSource: 'playbook-typical' })).toBeNull();
+    expect(briefGuestCount({ guestCount: 52, guestEstimate: 40, guestCountSource: 'playbook-typical' })).toBe(52);
+    expect(briefGuestCount({})).toBeNull();
+  });
+
+  test('diet counts read as one line, in the vocabulary order', () => {
+    expect(briefDietLine(briefDietCounts(ev))).toBe('3 vegetarian · 1 nut allergy');
+    expect(briefDietLine({ Shellfish: 2, Halal: 1 })).toBe('2 shellfish allergy · 1 Halal');
+    expect(briefDietLine(null)).toBe('');
+  });
+
+  // Every label in App.js CATEGORY_GROUPS, plus free-text spellings hosts type.
+  const LABELS = ['Catering', 'Bar / Beverage', 'Mobile Bar', 'Grazing Table', 'Cake', 'Coffee / Specialty Cart', 'Food Truck',
+    'Venue', 'Tent / Structures', 'Rentals', 'Restroom Trailers', 'Generator / Power',
+    'Photography', 'Videography', 'Photo Booth', '360 Booth', 'Content Creator',
+    'Florals', 'Decor', 'Balloon Décor', 'Lighting', 'Draping', 'Dance Floor / Staging', 'Calligraphy / Stationery', 'Live Painter',
+    'DJ', 'Band / Live Music', 'Entertainment', 'MC / Host', 'Choreographer', 'Speakers / Talent', 'Brand Activation', 'Send-off / Sparklers', 'Animals / Petting Zoo', 'Activities',
+    'AV / Tech', 'Live Streaming / Hybrid', 'Registration / Badging', 'Event App',
+    'Coordinator', 'Officiant', 'Hair & Makeup', 'Facilitator / Trainer', 'Staffing', 'Security', 'Valet / Parking', 'Childcare',
+    'Auctioneer', 'Fundraising Platform', 'Sponsor / Exhibitor', 'Awards / Engraving',
+    'Transport', 'Lodging / Concierge', 'Invitations', 'Printing / Signage', 'Favors', 'Misc', 'Other',
+    'caterer', 'Bartending', 'bartender', 'Bakery', 'Desserts', 'food trucks', 'Linens', 'Furniture rental'];
+  const FOOD_KEYS = new Set(['caterer', 'bar', 'cake', 'foodtruck', 'cart']);
+
+  test('who is shown the headcount agrees with the app’s own category map', () => {
+    const disagree = LABELS.filter((label) => {
+      const key = getVendorCategoryKey({ category: label });
+      // Grazing Table has no CATEGORY_MAP entry (a known gap there), and it is food.
+      const expectFood = FOOD_KEYS.has(key) || label === 'Grazing Table';
+      const expectCount = expectFood || key === 'rentals';
+      return briefFeedsGuests(label) !== expectFood || briefShowsHeadcount(label) !== expectCount;
+    });
+    expect(disagree).toEqual([]);
+    expect(briefShowsHeadcount('Catering')).toBe(true);
+    expect(briefShowsHeadcount('DJ')).toBe(false);
+    expect(briefShowsHeadcount('Rentals')).toBe(true);
+    expect(briefFeedsGuests('Rentals')).toBe(false);
   });
 });

@@ -4119,9 +4119,8 @@ export default function HostShellV2() {
   // backend rebuilds the brief live, so the link never goes stale); the
   // legacy frozen base64 snapshot is made ONLY when the API isn't configured —
   // a failed mint is shown as a failure, never papered over (S9-5). The
-  // resulting ?vendor=TOKEN link on THIS origin is caught by main.jsx's own
-  // redirect to the one real public brief page (legacy App.js) — no second
-  // brief surface is ever rendered here.
+  // resulting ?vendor=TOKEN link on THIS origin is routed by main.jsx to the
+  // public brief page (VendorBriefV2.jsx, its own chunk) — never this shell.
   const [vendorBrief, setVendorBrief] = useState(null); // { vendorId, url, qrDataUrl, minting, copied }
   useEffect(() => { setVendorBrief(null); }, [eventId]); // never carry a stale link across an event switch
   const shareVendorBrief = async (v) => {
@@ -23539,14 +23538,17 @@ export default function HostShellV2() {
                               briefNote are both in buildVendorBriefPayload's audited
                               whitelist (lib/vendorBrief.js) — legacy has always had a
                               plain field for each; V2 never got either, so a brief
-                              minted here would leave them blank. contactName is who a
-                              vendor calls on-site if the host isn't reachable; briefNote
-                              is a plain note that goes to the VENDOR (never v.notes,
-                              which is host-private bookkeeping and never leaves this
-                              cockpit). */}
+                              minted here would leave them blank. contactName is the
+                              VENDOR'S person — the brief opens "Hi {contactName}," and
+                              prefills their confirm form (board 2026-11-12: it was
+                              labelled "on-site contact (if not you)", which read as the
+                              host's day-of contact; that is now its own per-event field,
+                              in the share panel below). briefNote is a plain note that
+                              goes to the VENDOR (never v.notes, which is host-private
+                              bookkeeping and never leaves this cockpit). */}
                           <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="on-site contact (if not you)"
-                              value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="On-site contact for this vendor's brief" />
+                            <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="your contact there"
+                              value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="Your contact at this vendor, greeted in their brief" />
                           </div>
                           <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
                             placeholder="A note for them — parking, load-in door, anything they should know before they arrive" rows={2}
@@ -23995,7 +23997,20 @@ export default function HostShellV2() {
                                       </button>
                                     )}
                                   </div>
-                                  <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>{(v.name || 'They')} will see only their arrival time, your address, and their part of the day — nothing about budget, payments, or other vendors.</p>
+                                  {/* WHO VENDORS CALL ON THE DAY (board 2026-11-12, finding
+                                      3): the brief always named the host. Per EVENT, not per
+                                      vendor — it is one person for the whole day. Empty
+                                      means the host. It rides the brief's whitelist on both
+                                      builders (lib/vendorBrief.js, routers/vendor_brief.py);
+                                      a live link reads it from the event on every open. */}
+                                  <p className="vc-detail" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Who should vendors call on the day? Leave blank and it’s you.</p>
+                                  <div className="actions-row" style={{ marginTop: 0, flexWrap: 'wrap' }}>
+                                    <input className="field" style={{ maxWidth: 190, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="day-of contact name"
+                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name for vendor briefs" />
+                                    <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="their phone" type="tel"
+                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone for vendor briefs" />
+                                  </div>
+                                  <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>{(v.name || 'They')} will see only their arrival time, your address, their part of the day, who to call, and — if they bring food, drink or rentals — your guest count. Nothing about budget, payments, guests’ names, or other vendors.</p>
                                 </>
                               )}
                             </div>
