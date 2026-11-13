@@ -2978,6 +2978,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .wchip.done .wn{color:var(--ok)}
 .wchip.attn{border-color:var(--warn-tint); background:var(--warn-tint)}
 .wchip.attn .wn{color:var(--warn)}
+/* Live axe 11/13/2026: the muted label on the warn tint read 4.41:1 in dark. */
+.wchip.attn .wl{color:var(--ink-soft)}
 /* The word that carries the meaning. Until 2026-07-14 this chip said only "PHOTOGRAPHY /
    3 of 3" and turned amber — so a BLOCKED workstream was signalled by tint ALONE, and a
    colour-blind host saw an ordinary chip whose number said everything was finished. The

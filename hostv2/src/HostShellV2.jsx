@@ -1358,7 +1358,7 @@ export default function HostShellV2() {
       className="counted-caret"
       /* display lives in CSS, not here: the ≤480px tap floor switches it to
          inline-flex, and an inline style would outrank that. */
-      style={{ opacity: .55, padding: '11px 8px', margin: '-9px -2px', ...extra }}
+      style={{ color: 'var(--ink-soft)', padding: '11px 8px', margin: '-9px -2px', ...extra }}
       onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setHandledOpen(o => !o); } }}>
       {handledOpen ? '▴ what’s counted' : '▾ what’s counted'}
@@ -23005,7 +23005,7 @@ export default function HostShellV2() {
                           {LENS.map(([k, lbl, c]) => (
                             <button key={k} className="chip" aria-pressed={vendorLens === k}
                               onClick={() => setVendorLens(k)}
-                              style={vendorLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
+                              style={vendorLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : undefined}>
                               {lbl}{c === null ? '' : ' ' + c}
                             </button>
                           ))}
@@ -23124,7 +23124,7 @@ export default function HostShellV2() {
                                   not a static label — the "confirm with vendor" action
                                   routes here but the tap target wasn't discoverable. */}
                               {v.status ? vendorStatusLabel(v.status) : 'set status'}
-                              <span aria-hidden="true" style={{ marginLeft: 5, opacity: .55, fontSize: '.85em' }}>▾</span>
+                              <span aria-hidden="true" style={{ marginLeft: 5, fontSize: '.85em' }}>▾</span>
                             </button>
                           )}
                         </div>
@@ -23193,7 +23193,7 @@ export default function HostShellV2() {
                                   onClick={ev => { ev.stopPropagation(); setVendorStatus(v, s); }}
                                   title={VENDOR_STATUS_MEANING[s] ? vendorStatusLabel(s) + ' — ' + VENDOR_STATUS_MEANING[s] : vendorStatusLabel(s)}
                                   aria-label={vendorStatusLabel(s) + (VENDOR_STATUS_MEANING[s] ? ' — ' + VENDOR_STATUS_MEANING[s] : '')}
-                                  aria-pressed={cur} style={cur ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)', fontWeight: 700 } : { opacity: .82 }}>
+                                  aria-pressed={cur} style={cur ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)', fontWeight: 700 } : undefined}>
                                   {vendorStatusLabel(s)}
                                 </button>
                               );
@@ -24921,7 +24921,7 @@ export default function HostShellV2() {
                                   return (
                                     <button key={v || 'none'} className="chip" role="radio" aria-checked={cur}
                                       tabIndex={cur ? 0 : -1}
-                                      style={{ padding: '7px 12px', minHeight: 44, fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
+                                      style={{ padding: '7px 12px', minHeight: 44, fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : {}) }}
                                       onClick={() => setRsvpValue(i, v)}>{lbl}</button>
                                   );
                                 })}
@@ -24955,7 +24955,7 @@ export default function HostShellV2() {
                                     const cur = String(g.meal || '—') === m;
                                     return (
                                       <button key={m} className="chip" aria-pressed={cur}
-                                        style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
+                                        style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : {}) }}
                                         onClick={() => {
                                           writeGuest(i, { meal: m }, m === '—'
                                             ? (g.name || 'Guest') + '’s meal cleared — counts as unanswered.'
@@ -25472,7 +25472,7 @@ export default function HostShellV2() {
                           {LENS.map(([k, lbl, c]) => (
                             <button key={k} className="chip" aria-pressed={rosterLens === k}
                               onClick={() => setRosterLens(k)}
-                              style={rosterLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
+                              style={rosterLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : undefined}>
                               {lbl}{c === null ? '' : ' ' + c}
                             </button>
                           ))}
