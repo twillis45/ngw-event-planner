@@ -1,10 +1,12 @@
-// ─── Model D paywall engine — the ruling, executable ─────────────────────────
-// Each describe block pins one named clause of the 2026-08-18 ruling (+ the
-// 2026-08-19 fourth-sitting riders). If a future change makes one of these
-// fail, it is contradicting a board ruling, not just breaking a test.
+// ─── Model H paywall engine — the ruling, executable ─────────────────────────
+// Each describe block pins one named clause of the owner's 11/13/2026 ruling
+// ("Go with H for now", first-time-host board, BOARD_2026-11-12.md) and the
+// Model D mechanics it kept (2026-08-18 ruling + 2026-08-19 riders). If a
+// future change makes one of these fail, it is contradicting a ruling, not
+// just breaking a test.
 import {
   isBillingLive, isUserCreatedEvent, passVerdictAtCreation, briefAllowed,
-  destinationLocked, creationDisclosure, passStatus,
+  destinationLocked, creationDisclosure, passStatus, lockingReasons,
 } from '../passGate';
 
 const OLD_ENV = { ...process.env };
@@ -30,7 +32,7 @@ describe('DORMANT UNTIL BILLING IS LIVE — every gate answers allowed', () => {
   });
 });
 
-describe('the three doors, stamped at creation', () => {
+describe('the two doors, stamped at creation', () => {
   test('door 2a: isDestination === true requires the pass', () => {
     const v = passVerdictAtCreation(local({ isDestination: true }), []);
     expect(v.passRequired).toBe(true);
@@ -44,16 +46,15 @@ describe('the three doors, stamped at creation', () => {
     const free = passVerdictAtCreation(local({ venue: 'Santa Fe, NM' }), []);
     expect(free.passRequired).toBe(false);
   });
-  test('door 3: a prior USER event requires the pass; samples never count', () => {
-    const samplesOnly = [{ id: 'ev-x-retirement-party' }, { id: 'demo-jun' }];
-    expect(passVerdictAtCreation(local(), samplesOnly).passRequired).toBe(false);
-    const oneReal = [...samplesOnly, { id: 'cust-first' }];
-    const v = passVerdictAtCreation(local(), oneReal);
-    expect(v.passRequired).toBe(true);
-    expect(v.passReasons).toEqual(['additional-event']);
+  test('NO DOOR 3 (Model H): any number of prior user events never stamps the pass', () => {
+    const prior = [{ id: 'cust-first' }, { id: 'cust-second' }, { id: 'ev-copy-third' }, { id: 'demo-jun' }];
+    expect(passVerdictAtCreation(local(), prior)).toEqual({ passRequired: false, passReasons: [] });
+    // A destination still stamps, and only for being a destination.
+    expect(passVerdictAtCreation(local({ isDestination: true }), prior).passReasons).toEqual(['destination']);
   });
-  test('the free tier: first local single-day event owes nothing', () => {
+  test('the free tier: a local single-day event owes nothing, first or fifth', () => {
     expect(passVerdictAtCreation(local(), []).passRequired).toBe(false);
+    expect(passVerdictAtCreation(local(), [{ id: 'cust-first' }]).passRequired).toBe(false);
   });
 });
 
@@ -72,6 +73,40 @@ describe('GRANDFATHER — the stored verdict wins, live fields never re-gate', (
   });
 });
 
+// Owner ruling 11/13/2026: door 3 is gone, so an event stamped under it ALONE
+// is free. Any other stamped reason keeps locking exactly as before.
+describe('A DOOR-3-ONLY STAMP IS FREE — the removed rule locks nothing', () => {
+  const door3Only = (over = {}) => local({ passRequired: true, passReasons: ['additional-event'], ...over });
+  test('it has no locking reasons, and every gate reads it as free', () => {
+    billingOn();
+    const ev = door3Only({ briefSharedVendorIds: [] });
+    expect(lockingReasons(ev)).toEqual([]);
+    expect(briefAllowed(ev, 'v1')).toEqual({ allowed: true, reason: 'first-brief-free' });
+    expect(destinationLocked(ev)).toBe(false);
+    expect(passStatus(ev)).toBeNull();
+  });
+  test('door 1 still applies to it, like any free event: the second vendor takes the pass', () => {
+    billingOn();
+    expect(briefAllowed(door3Only({ briefSharedVendorIds: ['v1'] }), 'v2')).toEqual({ allowed: false, reason: 'second-vendor' });
+  });
+  test('a destination stamp still locks, with or without a door-3 reason beside it', () => {
+    billingOn();
+    for (const reasons of [['destination'], ['destination', 'additional-event'], ['multi-day', 'additional-event']]) {
+      const ev = local({ passRequired: true, passReasons: reasons, briefSharedVendorIds: [] });
+      expect(lockingReasons(ev)).toEqual(reasons.filter((r) => r !== 'additional-event'));
+      expect(briefAllowed(ev, 'v1')).toEqual({ allowed: false, reason: 'pass-required' });
+      expect(destinationLocked(ev)).toBe(true);
+      expect(passStatus(ev).state).toBe('needed');
+    }
+  });
+  test('the stamp is still never recomputed: live destination fields on a door-3-only event do not lock it', () => {
+    billingOn();
+    const ev = door3Only({ isDestination: true, endDate: '2026-10-05' });
+    expect(destinationLocked(ev)).toBe(false);
+    expect(briefAllowed(ev, 'v1').allowed).toBe(true);
+  });
+});
+
 describe('door 1 — the brief gate, never mid-conversation', () => {
   test('first brief is the free taste; a second vendor hits the gate', () => {
     billingOn();
@@ -82,12 +117,12 @@ describe('door 1 — the brief gate, never mid-conversation', () => {
   });
   test('an already-shared vendor is ALWAYS allowed — an open conversation is never interrupted', () => {
     billingOn();
-    const ev = local({ passRequired: true, passReasons: ['additional-event'], briefSharedVendorIds: ['v1'] });
+    const ev = local({ passRequired: true, passReasons: ['destination'], briefSharedVendorIds: ['v1'] });
     expect(briefAllowed(ev, 'v1').allowed).toBe(true);
   });
   test('a pass-required event gates a NEW vendor brief; the pass unlocks the whole event', () => {
     billingOn();
-    const ev = local({ passRequired: true, passReasons: ['additional-event'], briefSharedVendorIds: [] });
+    const ev = local({ passRequired: true, passReasons: ['destination'], briefSharedVendorIds: [] });
     expect(briefAllowed(ev, 'v1')).toEqual({ allowed: false, reason: 'pass-required' });
     expect(briefAllowed({ ...ev, passPurchased: true }, 'v1').allowed).toBe(true);
   });
@@ -105,11 +140,24 @@ describe('the destination toolkit lock — teased, purchased-away, grandfather-a
 describe('the blunt disclosure (Grandmother rider: informs, never sells)', () => {
   test('names the concrete boundary for each verdict shape', () => {
     billingOn();
-    expect(creationDisclosure({ passRequired: false, passReasons: [] })).toMatch(/free to plan.*one vendor brief/);
+    // Model H (11/13/2026): planning is free, said plainly, and the pass is
+    // named for exactly its two doors.
+    const FREE = 'Planning this event is free, including sharing one vendor brief (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the $39 One-Event Pass.';
+    expect(creationDisclosure({ passRequired: false, passReasons: [] })).toBe(FREE);
     // The free brief needs an account; the free-tier promise must say so (11/12/2026).
     expect(creationDisclosure({ passRequired: false, passReasons: [] })).toMatch(/one vendor brief \(that takes a free account\)/);
-    expect(creationDisclosure({ passRequired: true, passReasons: ['destination'] })).toMatch(/destination event.*\$39/);
-    expect(creationDisclosure({ passRequired: true, passReasons: ['additional-event'] })).toMatch(/first event already had the free run/);
+    expect(creationDisclosure({ passRequired: true, passReasons: ['destination'] }))
+      .toBe('This is a destination event. Planning it is free. Its trip tools and sharing vendor briefs take the $39 One-Event Pass.');
+    expect(creationDisclosure({ passRequired: true, passReasons: ['multi-day'] })).toMatch(/^This is a multi-day event\. Planning it is free\./);
+    // A door-3-only verdict reads as the free event it now is.
+    expect(creationDisclosure({ passRequired: true, passReasons: ['additional-event'] })).toBe(FREE);
+  });
+  test('no branch mentions a next event or a first event that used the free run', () => {
+    billingOn();
+    for (const v of [{ passRequired: false, passReasons: [] }, { passRequired: true, passReasons: ['additional-event'] },
+      { passRequired: true, passReasons: ['destination'] }, { passRequired: true, passReasons: ['multi-day'] }, null]) {
+      expect(creationDisclosure(v)).not.toMatch(/next event|first event|free run/i);
+    }
   });
 });
 
@@ -143,10 +191,9 @@ describe('passStatus — the command board line', () => {
       expect(s.covers).toMatch(/where everyone stays/);
     }
   });
-  test('a next event names only what it unlocks: vendor briefs', () => {
+  test('a door-3-only event (Model D stamp) says nothing: it is a free event now', () => {
     billingOn();
-    const s = passStatus(local({ passRequired: true, passReasons: ['additional-event'] }));
-    expect(s).toEqual({ state: 'needed', covers: 'It covers sharing vendor briefs with every vendor on this event.' });
+    expect(passStatus(local({ passRequired: true, passReasons: ['additional-event'] }))).toBeNull();
   });
   test('a held pass reads as held, even on a free event', () => {
     billingOn();

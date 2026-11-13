@@ -1,7 +1,7 @@
 // ─── THE PASS ON THE COMMAND BOARD (owner decision, 11/9/2026) ───────────────
 //
 // On an event that needs the One-Event Pass (stamped pass-required at
-// creation: a destination, multi-day, or next event), the event's main screen
+// creation: a destination or multi-day event), the event's main screen
 // said nothing. The host learned only on opening a locked sheet, and the buy
 // itself lived two taps deep in You & settings.
 //
@@ -11,8 +11,11 @@
 // menu carries a One-Event Pass row on every event, saying the truth for that
 // event. A free event shows no pill: the ruled free tier never nags.
 //
-// On the passgate bundle (5266), the only one with billing live; every request
-// to its API host is answered below.
+// Model H (owner ruling 11/13/2026): there is no "next event" door any more,
+// so an event stamped under it alone is a free event and gets no pill.
+//
+// On the passgate bundle (5266, or PW_PASSGATE_PORT), the only one with billing
+// live; every request to its API host is answered below.
 import { test, expect, settled, dateIn } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
 
@@ -33,7 +36,7 @@ const boot = async (page, event, { held = false } = {}) => {
   await page.route(API + '/api/stripe/pass**', (route) => route.fulfill({ status: 200, json: held
     ? { event_id: event.id, held: true, sku: 'one-event-pass', amount_cents: 3900, currency: 'usd' }
     : { event_id: event.id, held: false } }));
-  await page.goto(previewUrl(5266) + '?elegant=1');
+  await page.goto(previewUrl(Number(process.env.PW_PASSGATE_PORT || 5266)) + '?elegant=1');
   await settled(page);
 };
 
@@ -61,11 +64,14 @@ test('a destination event that needs the pass says so in its first screen, and o
   await expect(page.getByRole('button', { name: 'Get the pass — $39', exact: true })).toBeVisible();
 });
 
-test('a next event names only what the pass unlocks there', async ({ page }) => {
+test('an event stamped only as a "next event" (Model D) shows no pill: it is free under Model H', async ({ page }) => {
   await boot(page, ev({ passRequired: true, passReasons: ['additional-event'] }));
-  const label = await page.locator('.pass-status-needed').getAttribute('aria-label');
-  expect(label).toContain('sharing vendor briefs with every vendor');
-  expect(label).not.toContain('where everyone stays');
+  // PREMISE: the board rendered, so the missing pill is not a missing screen.
+  await expect(page.getByText(/Lake House Weekend/i).first()).toBeVisible();
+  await expect(page.locator('.pass-status')).toHaveCount(0);
+  await openJumpTo(page);
+  await expect(page.locator('.nav-pass')).toContainText('$39 · one event');
+  await expect(page.locator('.nav-pass')).not.toContainText('needs it');
 });
 
 test('a free event shows no pass pill, and Jump to still reaches the pass', async ({ page }) => {

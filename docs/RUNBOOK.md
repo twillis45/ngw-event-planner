@@ -315,6 +315,9 @@ happens when the done line and the open line are updated separately.
   the live site, trigger a harmless error (e.g. a `?rsvp=` code that does not
   exist, then watch Issues for five minutes). One event seen = `s7-delivery`
   closes for Sentry.
+- **Backend 500s → Sentry:** a route crash the API turns into a 500 goes to Sentry
+  (beside `admin_error_log`) only when `SENTRY_DSN` is set on Render; you must set it
+  in the Render dashboard (Environment → `SENTRY_DSN`), since the Blueprint holds no secret.
 - **PostHog:** Activity → Live events, filtered to the production host. Load
   the live site once; one `$pageview` from that host closes the PostHog half
   (the gated funnel events — `invite_shared` and the three beside it in

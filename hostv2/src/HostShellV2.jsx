@@ -1001,6 +1001,10 @@ function readCreateDraft() {
   } catch { return ''; }
 }
 
+// Ids of the older device-only plans already shown "Sign in to keep this
+// plan" (owner ruling, 11/12/2026: once per event, never a nag).
+const LS_KEEP_ASKED = 'ngw-hostv2-keep-asked';
+
 export default function HostShellV2() {
   const [bootDraft] = useState(readCreateDraft);
   const [stage, setStage] = useState(() => (bootDraft ? 'create' : 'plan'));
@@ -1358,7 +1362,7 @@ export default function HostShellV2() {
       className="counted-caret"
       /* display lives in CSS, not here: the ≤480px tap floor switches it to
          inline-flex, and an inline style would outrank that. */
-      style={{ opacity: .55, padding: '11px 8px', margin: '-9px -2px', ...extra }}
+      style={{ color: 'var(--ink-soft)', padding: '11px 8px', margin: '-9px -2px', ...extra }}
       onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setHandledOpen(o => !o); } }}>
       {handledOpen ? '▴ what’s counted' : '▾ what’s counted'}
@@ -1665,13 +1669,24 @@ export default function HostShellV2() {
     setListening(false);
   };
   const [revealed, setRevealed] = useState(false);
+  // ── TRY FIRST, SIGN IN TO KEEP (owner ruling, 11/12/2026) ─────────────────
+  // With accounts configured, a signed-out visitor still gets the whole
+  // creation flow and its reveal, but the plan is held HERE, in memory, and
+  // never written to this device's event store. Keeping it takes a free
+  // account: on sign-in it moves into the store and the sign-in upload sends
+  // it to the account (keepDraftOnSignIn below). A reload loses the plan but
+  // not the sentence — the creation draft above stays while the plan is
+  // unsaved, so she lands back on her own words.
+  const [draftEvent, setDraftEvent] = useState(null);
+  const draftRef = useRef(null);
+  const keepIntentRef = useRef(null);   // where she was going: 'plan' | 'invite'
   // Keep (or clear) the creation draft — see readCreateDraft.
   useEffect(() => {
     try {
-      if (smartText.trim() && !revealed) localStorage.setItem(LS_CREATE_DRAFT, JSON.stringify({ text: smartText, at: Date.now() }));
+      if (smartText.trim() && (!revealed || draftEvent)) localStorage.setItem(LS_CREATE_DRAFT, JSON.stringify({ text: smartText, at: Date.now() }));
       else localStorage.removeItem(LS_CREATE_DRAFT);
     } catch { /* private mode — the draft simply is not kept */ }
-  }, [smartText, revealed]);
+  }, [smartText, revealed, draftEvent]);
   // REVEAL — THE MONOLITH (host concept pick 2026-07-27, "partial to B", plus
   // "the fallback list should be the baseline / let the host READ"): keynote
   // choreography — intro (eyebrow tracks in) → zoom (the name arrives from
@@ -1892,6 +1907,12 @@ export default function HostShellV2() {
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
   const [authCode, setAuthCode] = useState('');
+  // False until the stored session has been read, so a signed-in host never
+  // sees (or uses up) the signed-out "Sign in to keep this plan" prompt.
+  const [authChecked, setAuthChecked] = useState(false);
+  // Assigned every render below; called from the auth listener, whose closure
+  // is from the first render.
+  const keepDraftOnSignIn = useRef(() => {});
   // In-app account deletion (issue #100, D-12; Apple 5.1.1(v), Google Play).
   const [acctDelete, setAcctDelete] = useState(null);   // null | { text, busy, error }
   useEffect(() => {
@@ -2188,9 +2209,12 @@ export default function HostShellV2() {
     };
     supabase.auth.getSession().then(({ data }) => {
       const s = data && data.session ? data.session : null;
-      if (!dead) { setSession(s); if (s) hydrate(); }
-    }).catch(() => {});
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) { setSession(s || null); if (s) hydrate(); } });
+      if (!dead) { setSession(s); setAuthChecked(true); if (s) hydrate(); }
+    }).catch(() => { if (!dead) setAuthChecked(true); });
+    // A plan made signed out moves into the store BEFORE hydrate reads it, so
+    // the sign-in upload below sends it to the account like any other plan
+    // that never reached one.
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) { setSession(s || null); if (s) { try { keepDraftOnSignIn.current(); } catch { /* the draft stays in memory */ } hydrate(); } } });
     return () => { dead = true; try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch { /* gone */ } };
   }, []);
   // SYNC-HONESTY-1: when the connection comes back, retry anything queued
@@ -8801,7 +8825,10 @@ export default function HostShellV2() {
     const redoId = redoEventId.current; redoEventId.current = null;
     const newId = redoId || mintEventId();
     // A correction keeps the invite code it already has — links already sent stay live.
-    const priorCode = redoId ? ((customs || []).find((c) => c && c.id === redoId) || {}).rsvpCode : null;
+    const priorCode = redoId ? ((customs || []).find((c) => c && c.id === redoId) || (draftRef.current && draftRef.current.id === redoId ? draftRef.current : {})).rsvpCode : null;
+    // Signed out with accounts on: the plan is shown, not kept (see draftEvent).
+    // A correction to an event already in the store stays an edit of it.
+    const holdAsDraft = isSupabaseConfigured() && !session && !(redoId && (customs || []).some((c) => c && c.id === redoId));
     const ev = {
       id: newId, rsvpCode: priorCode || mintRsvpToken(),
       createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
@@ -8998,13 +9025,17 @@ export default function HostShellV2() {
     // honest verdict rather than getting a surprise one later — though note
     // passGate treats an UNSTAMPED event as grandfathered free regardless.
     try { Object.assign(ev, passVerdictAtCreation(ev, customs), { briefSharedVendorIds: [] }); } catch { /* engine absent — event stays unstamped, i.e. free */ }
-    setCustoms(list => list.some(c => c && c.id === newId) ? list.map(c => (c && c.id === newId) ? ev : c) : [...list, ev]);
-    // `is_first` is read from the events that existed BEFORE this one, which is
-    // the same population passVerdictAtCreation just judged against — measuring
-    // it after the state update would count this event and never report a first.
-    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
-    setEventId(newId); setRevealed(true);
-    try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode — the welcome may show once more; never blocks */ }
+    if (holdAsDraft) {
+      draftRef.current = ev; setDraftEvent(ev); setRevealed(true);
+    } else {
+      setCustoms(list => list.some(c => c && c.id === newId) ? list.map(c => (c && c.id === newId) ? ev : c) : [...list, ev]);
+      // `is_first` is read from the events that existed BEFORE this one, which is
+      // the same population passVerdictAtCreation just judged against — measuring
+      // it after the state update would count this event and never report a first.
+      try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
+      setEventId(newId); setRevealed(true);
+      try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode — the welcome may show once more; never blocks */ }
+    }
     // THE TOWN THEY TYPED DID NOT MAKE IT (2026-09-18). The parser resolves a bare
     // town against a curated whitelist, so it pre-fills the create field — but the
     // commit gate needs a state or ZIP, so a state-less town is refused and stored
@@ -9077,13 +9108,74 @@ export default function HostShellV2() {
     try { return buildExperienceContext(ev, profile, 1).eventIdentity; }
     catch { return { primaryEventType: (ev && ev.type) || 'Event', secondaryEventTypes: [], isCompound: false, complexity: 'standard', ceremonyComponents: [], participants: [], confidence: 0 }; }
   };
+  // The plan the reveal shows: the signed-out draft while there is one, else
+  // the event just created.
+  const revealEv = draftEvent || activeCustom;
+  // The reveal's "keep it" steps, signed out: open You & settings on the
+  // existing sign-in, with the review board's line.
+  const askToKeep = (intent) => { keepIntentRef.current = intent; setSheet({ kind: 'settings', keep: true }); };
+  // On sign-in the draft joins the store (written straight through, so the
+  // hydrate that follows in the same tick reads it and uploads it), and she
+  // lands where she was going.
+  keepDraftOnSignIn.current = () => {
+    const ev = draftRef.current;
+    if (!ev) return;
+    const list = readCustomEventsSafe();
+    const next = list.some(c => c && c.id === ev.id) ? list : [...list, ev];
+    const res = saveCustomEvents(next, { reason: 'hostshell:keep-draft-on-sign-in', eventId: ev.id });
+    if (!res || res.ok === false) { toast('Couldn’t keep the plan on this browser — it’s still on screen.'); return; }
+    draftRef.current = null;
+    setCustoms(cur => cur.some(c => c && c.id === ev.id) ? cur : [...cur, ev]);
+    setDraftEvent(null);
+    setEventId(ev.id);
+    didResume.current = true;
+    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: list.length === 0, event_type: ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
+    try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode */ }
+    const intent = keepIntentRef.current; keepIntentRef.current = null;
+    if (intent === 'plan') { setSheet(null); setStage('plan'); }
+    else if (intent === 'invite') setSheet(null);
+  };
+  // ── A PLAN MADE BEFORE ACCOUNTS WERE NEEDED (owner ruling, 11/12/2026) ───
+  // Nothing is deleted. Signed out, a plan that never reached any account gets
+  // one quiet offer to keep it; signing in sends it up through the same
+  // sign-in upload as every other never-synced plan (eventsToUploadOnSignIn).
+  // Recorded the first time it shows, so a later visit never asks again; it
+  // stays on screen for this visit until she answers or closes it.
+  const [keepAskedBefore] = useState(() => { try { return JSON.parse(localStorage.getItem(LS_KEEP_ASKED) || '[]') || []; } catch { return []; } });
+  const [keepAskClosed, setKeepAskClosed] = useState([]);
+  const keepAskEvent = (isSupabaseConfigured() && authChecked && !session && stage === 'plan' && !welcome
+    && activeCustom && isRealHostEvent(activeCustom) && !isDemoEvent(activeCustom) && !activeCustom.demoSeed
+    && !keepAskedBefore.includes(activeCustom.id) && !keepAskClosed.includes(activeCustom.id)
+    && splitAccountCopies([activeCustom]).deviceOnly.length > 0) ? activeCustom : null;
+  useEffect(() => {
+    const id = keepAskEvent && keepAskEvent.id;
+    if (!id) return;
+    try {
+      const seen = JSON.parse(localStorage.getItem(LS_KEEP_ASKED) || '[]') || [];
+      if (!seen.includes(id)) localStorage.setItem(LS_KEEP_ASKED, JSON.stringify([...seen, id]));
+    } catch { /* private mode — it may ask once more */ }
+  }, [keepAskEvent && keepAskEvent.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The sign-in sits below the profile rows: bring it to her. A declined ask
+  // (the sheet closed signed out) forgets where she was going.
+  useEffect(() => {
+    if (!sheet || sheet.kind !== 'settings' || !sheet.keep) { keepIntentRef.current = null; return undefined; }
+    const t = setTimeout(() => {
+      try {
+        const el = document.getElementById('your-account');
+        if (el) el.scrollIntoView({ block: 'start' });
+        const f = document.querySelector('input[aria-label="Email for sign-in link"]');
+        if (f) f.focus({ preventScroll: true });
+      } catch { /* scrolling is a courtesy */ }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [sheet]);
   // Production reveal stages for the created event — identity, blockers,
   // planning domains (with real $), risk preview.
   const revealStages = useMemo(() => {
-    if (!revealed || !activeCustom) return [];
-    try { return (buildAssembleRevealStages(activeCustom, revealIdentityFor(activeCustom), profile, 1) || []).slice(0, 8); }
+    if (!revealed || !revealEv) return [];
+    try { return (buildAssembleRevealStages(revealEv, revealIdentityFor(revealEv), profile, 1) || []).slice(0, 8); }
     catch { return []; }
-  }, [revealed, activeCustom]);
+  }, [revealed, revealEv]);
   // a11y: when the reveal choreography finishes, move keyboard/SR focus to the
   // primary "Open your plan" CTA so a non-pointer user lands on the action
   // instead of being stranded at the top of a now-static screen.
@@ -10372,7 +10464,7 @@ export default function HostShellV2() {
                    back": every stage line, why/nextDecision, identity
                    statement, grounding line, both CTAs — only the frame
                    around them changed. */
-                <div className={'reveal-stage rv-' + revealPhase}>
+                <div className={'reveal-stage rv-' + revealPhase + (sheet ? ' under-sheet' : '')}>
                   <div className="reveal-inner">
                     {/* Skip for repeat creators (per-screen audit): jump straight to
                         the resolved understanding instead of replaying the theater. */}
@@ -10398,8 +10490,8 @@ export default function HostShellV2() {
                       return (
                         <div className={'rv-spinewrap' + (resolved ? ' resolved' : '')}>
                           <div className="rv-seyebrow" aria-live="polite">YOUR EVENT, STARTED</div>
-                          <h1 className="rv-sname">{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
-                          <p className="rv-ssub">{identityStatement(activeCustom)}</p>
+                          <h1 className="rv-sname">{revealEv?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
+                          <p className="rv-ssub">{identityStatement(revealEv)}</p>
                           <div className="rv-spine-col">
                             {revealStages.map((st, i) => {
                               const cls = i === focus ? ' focus' : (i < focus ? ' lit' : '');
@@ -10430,16 +10522,16 @@ export default function HostShellV2() {
                               );
                             })}
                           </div>
-                          <p className={'grounding pre rv-sground' + (resolved ? ' in' : '')}>Your details are saved. Draft suggestions come from the event playbook — review them before deciding.</p>
-                          {activeCustom?.createdFromText && <details className="grounding" style={{ marginTop: 'var(--sp-2)' }}>
+                          <p className={'grounding pre rv-sground' + (resolved ? ' in' : '')}>{draftEvent ? 'This plan isn’t saved yet.' : 'Your details are saved.'} Draft suggestions come from the event playbook — review them before deciding.</p>
+                          {revealEv?.createdFromText && <details className="grounding" style={{ marginTop: 'var(--sp-2)' }}>
                             <summary>Your original description</summary>
                             <p>Kept as context. Only the details shown in your plan have been applied.</p>
-                            <p>{activeCustom.createdFromText}</p>
+                            <p>{revealEv.createdFromText}</p>
                           </details>}
                           <div className={'actions-row pre' + (resolved ? ' in' : '')} style={{ marginTop: 'var(--sp-2)' }}>
-                            <button ref={revealCtaRef} className={'cta big' + (resolved ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
-                            <button className="cta ghost" onClick={shareInviteLink}>Check and share invite</button>
-                            <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
+                            <button ref={revealCtaRef} className={'cta big' + (resolved ? ' glow-once' : '')} onClick={() => (draftEvent ? askToKeep('plan') : setStage('plan'))}>{draftEvent ? 'Keep this plan' : 'Open your plan'}</button>
+                            <button className="cta ghost" onClick={() => (draftEvent ? askToKeep('invite') : shareInviteLink())}>Check and share invite</button>
+                            <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = revealEv ? revealEv.id : null; setRevealed(false); }}>Change an answer</button>
                           </div>
                         </div>
                       );
@@ -10457,6 +10549,16 @@ export default function HostShellV2() {
                   the always-on shelf drew more attention than the plan itself. */}
 
               {plan._error && <div className="engine-error">Engine error: {plan._error}</div>}
+
+              {keepAskEvent && (
+                <div className="grounding" data-keep-ask style={{ margin: '0 0 var(--sp-3)' }}>
+                  <p style={{ margin: '0 0 var(--sp-2)' }}>Sign in to keep this plan — it saves to your account so it can’t be lost.</p>
+                  <div className="actions-row">
+                    <button className="mini" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); setSheet({ kind: 'settings', keep: true }); }}>Sign in</button>
+                    <button className="mini" onClick={() => setKeepAskClosed(c => [...c, keepAskEvent.id])}>Not now</button>
+                  </div>
+                </div>
+              )}
 
               {/* HERO VIEWPORT (host request, 2026-07-08): the first screen is a
                   flex column sized to the visible frame — masthead + countdown
@@ -18172,10 +18274,13 @@ export default function HostShellV2() {
               //  · No perk the free tier already has (owner board, 11/12/2026):
               //    "Yours to keep" was cut — nothing expires a free event's plan,
               //    link or recap, so listing it implied a loss that never happens.
+              //  · MODEL H (owner ruling 11/13/2026, lib/passGate): every event is
+              //    free to plan, so "Your next events" is gone — there is no
+              //    event-count door left to sell — and the sheet leads with the
+              //    board's before-paying line, word for word.
               const perks = [
-                ['Every vendor, one brief each', 'Plan your first event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
+                ['Every vendor, one brief each', 'Plan every event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
                 ['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.'],
-                ['Your next events', 'The first event’s free run is once; the pass covers each event after it. One event, one price.'],
                 ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
               ];
               return (
@@ -18183,7 +18288,7 @@ export default function HostShellV2() {
                   <div style={{ padding: '2px 0 8px' }}>
                     <div className="eyebrow">One event · one price</div>
                     <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 4px', color: 'var(--ink)' }}>$39</div>
-                    <p className="grounding" style={{ margin: 0 }}>No subscription. Pay once for this event and everything’s yours.</p>
+                    <p className="grounding" data-before-paying style={{ margin: 0 }}>Planning stays free. Pay $39 once so all your vendors can say yes to you, and get trip tools.</p>
                     <p className="grounding" style={{ margin: '6px 0 0' }}>Your vendors pay us nothing — no lead fees, no pay-to-play placement, nothing baked into their quotes. That’s why the pass exists.</p>
                   </div>
                   {perks.map(([t, d], i) => (
@@ -18231,7 +18336,7 @@ export default function HostShellV2() {
                   ) : (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
                       <p className="f-name" style={{ margin: '0 0 2px', color: 'var(--ok)' }}>Free while {BRAND.full} is in preview</p>
-                      <p className="grounding" style={{ margin: 0 }}>This event is fully unlocked right now — nothing to pay. When we launch, keeping an event is a one-time $39, and we’ll tell you before anything changes.</p>
+                      <p className="grounding" style={{ margin: 0 }}>This event is fully unlocked right now — nothing to pay. When we launch, planning stays free, and the one-time $39 pass is for sharing with more than one vendor or for a destination or multi-day event. We’ll tell you before anything changes.</p>
                     </div>
                   )}
                 </>
@@ -19238,7 +19343,11 @@ export default function HostShellV2() {
                       (profile && profile.hostCapacity) === v ? 'Cleared.' : 'Noted.')}
                   />
 
-                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Your account</div>
+                  <div className="shelf-label" id="your-account" style={{ margin: 'var(--sp-4) 0 6px' }}>Your account</div>
+                  {/* The review board's wording (11/12/2026): "keep" alone read as a threat. */}
+                  {sheet.keep && isSupabaseConfigured() && !session && (
+                    <p className="grounding" data-keep-signin style={{ margin: '0 0 var(--sp-2)', color: 'var(--ink-soft)' }}>Make a free account to keep your plan and send your invite.</p>
+                  )}
                   {!isSupabaseConfigured() ? (
                     <p className="grounding" style={{ margin: 0 }}>Everything lives on this device. Accounts turn on when the cloud is configured.</p>
                   ) : session ? (
@@ -21097,9 +21206,13 @@ export default function HostShellV2() {
                         pastes it — and we SAY that, rather than opening an empty
                         store and letting them think the send failed.
 
-                        "Send the list to Instacart" is the act either way. A
-                        label promising a filled cart would be false exactly when
-                        the key is missing, which is today. */}
+                        "Search Instacart" is what happens today (G9, carried with
+                        Model H, 11/13/2026): there is no Instacart key in
+                        production, so the tap opens Instacart's search for ONE
+                        item at a time and the host adds each one. "Send to
+                        Instacart" read as the list arriving in a filled cart,
+                        which is false exactly when the key is missing. Copy
+                        only; the behavior is unchanged. */}
                     <button className="food-act" disabled={sendingCart}
                       onClick={async () => {
                         if (sendingCart) return;
@@ -21255,8 +21368,8 @@ export default function HostShellV2() {
                         }
                         if (!win) {
                           toast(copied
-                            ? 'Your browser blocked the new tab. The list is copied — open instacart.com and paste it.'
-                            : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and paste it.',
+                            ? 'Your browser blocked the new tab. The list is copied — open instacart.com and search for each item.'
+                            : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and search for each item.',
                             null, null, { sticky: true });
                         }
                       /* SHORTENED 2026-09-26 (owner: "can it be condensed to save
@@ -21274,7 +21387,7 @@ export default function HostShellV2() {
                          rule is about (UX_05: buttons carry verbs about the
                          work, not nouns) — a bare "Instacart" would have been
                          93px and the wrong cut. */
-                      }}>{sendingCart ? 'Sending…' : 'Send to Instacart'}</button>
+                      }}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
                     {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
                         Host asked for print, email, and "integration with anylist
                         or other apps". Researched 2026-09-24, and the honest
@@ -22998,7 +23111,7 @@ export default function HostShellV2() {
                           {LENS.map(([k, lbl, c]) => (
                             <button key={k} className="chip" aria-pressed={vendorLens === k}
                               onClick={() => setVendorLens(k)}
-                              style={vendorLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
+                              style={vendorLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : undefined}>
                               {lbl}{c === null ? '' : ' ' + c}
                             </button>
                           ))}
@@ -23117,7 +23230,7 @@ export default function HostShellV2() {
                                   not a static label — the "confirm with vendor" action
                                   routes here but the tap target wasn't discoverable. */}
                               {v.status ? vendorStatusLabel(v.status) : 'set status'}
-                              <span aria-hidden="true" style={{ marginLeft: 5, opacity: .55, fontSize: '.85em' }}>▾</span>
+                              <span aria-hidden="true" style={{ marginLeft: 5, fontSize: '.85em' }}>▾</span>
                             </button>
                           )}
                         </div>
@@ -23186,7 +23299,7 @@ export default function HostShellV2() {
                                   onClick={ev => { ev.stopPropagation(); setVendorStatus(v, s); }}
                                   title={VENDOR_STATUS_MEANING[s] ? vendorStatusLabel(s) + ' — ' + VENDOR_STATUS_MEANING[s] : vendorStatusLabel(s)}
                                   aria-label={vendorStatusLabel(s) + (VENDOR_STATUS_MEANING[s] ? ' — ' + VENDOR_STATUS_MEANING[s] : '')}
-                                  aria-pressed={cur} style={cur ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)', fontWeight: 700 } : { opacity: .82 }}>
+                                  aria-pressed={cur} style={cur ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)', fontWeight: 700 } : undefined}>
                                   {vendorStatusLabel(s)}
                                 </button>
                               );
@@ -24914,7 +25027,7 @@ export default function HostShellV2() {
                                   return (
                                     <button key={v || 'none'} className="chip" role="radio" aria-checked={cur}
                                       tabIndex={cur ? 0 : -1}
-                                      style={{ padding: '7px 12px', minHeight: 44, fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
+                                      style={{ padding: '7px 12px', minHeight: 44, fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : {}) }}
                                       onClick={() => setRsvpValue(i, v)}>{lbl}</button>
                                   );
                                 })}
@@ -24948,7 +25061,7 @@ export default function HostShellV2() {
                                     const cur = String(g.meal || '—') === m;
                                     return (
                                       <button key={m} className="chip" aria-pressed={cur}
-                                        style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
+                                        style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : {}) }}
                                         onClick={() => {
                                           writeGuest(i, { meal: m }, m === '—'
                                             ? (g.name || 'Guest') + '’s meal cleared — counts as unanswered.'
@@ -25465,7 +25578,7 @@ export default function HostShellV2() {
                           {LENS.map(([k, lbl, c]) => (
                             <button key={k} className="chip" aria-pressed={rosterLens === k}
                               onClick={() => setRosterLens(k)}
-                              style={rosterLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
+                              style={rosterLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : undefined}>
                               {lbl}{c === null ? '' : ' ' + c}
                             </button>
                           ))}

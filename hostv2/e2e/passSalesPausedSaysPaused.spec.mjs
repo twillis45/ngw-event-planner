@@ -32,7 +32,7 @@ const boot = async (page, caps, { held = false } = {}) => {
   await page.route(API + '/api/stripe/pass**', (route) => route.fulfill({ status: 200, json: held
     ? { event_id: event.id, held: true, sku: 'one-event-pass', amount_cents: 3900, currency: 'usd' }
     : { event_id: event.id, held: false } }));
-  await page.goto(previewUrl(5266) + '?elegant=1');
+  await page.goto(previewUrl(Number(process.env.PW_PASSGATE_PORT || 5266)) + '?elegant=1');
   await settled(page);
   // A held pass shows no "needs the pass" pill (by design), so open the sheet
   // from Jump to, the door every event has.

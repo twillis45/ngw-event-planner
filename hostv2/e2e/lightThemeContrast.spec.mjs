@@ -125,4 +125,35 @@ for (const theme of ['dark', 'light']) {
     // ghosts. The atom's label is the one that read 3.26:1 in light.
     expect(all.map((r) => r.what), 'premise: the steel-filled "Add them" was measured').toContain('cta "Add them"');
   });
+
+  // Live axe, 11/13/2026: the one serious rule on the live build was
+  // color-contrast from (1) unselected filter chips faded to .82 opacity
+  // (Guests 3.77:1 light), (2) the vendor booking pill on the lavender
+  // --progress token, 2.18:1 in light (the token PR #117 missed).
+  test(`unselected filter chips and the vendor booking pill meet the floor (${theme})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const ev = { ...EV, vendors: [{ id: 'v1', name: 'Rosa Catering', category: 'Catering', status: 'Contacted' }] };
+    await page.addInitScript((e) => {
+      if (localStorage.getItem('ngw-hostv2-last-event')) return;
+      localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+      localStorage.setItem('ngw-hostv2-last-event', e.id);
+      localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+      localStorage.setItem('ngw-v2-welcomed', '1');
+      localStorage.setItem('ngw-welcomed', '1');
+    }, ev);
+    await page.goto(`./?theme=${theme}`);
+    await expect.poll(() => page.locator('.tile-b .t-num').first().innerText(), { timeout: 20000 }).toBe('40');
+    await openSectionByName(page, 'Guests', { settle: 800 });
+    const chips = await page.evaluate(measure, ['.chip[aria-pressed="false"]', '.sheet']);
+    expect(chips.length, 'premise: unselected filter chips were measured').toBeGreaterThan(0);
+    assertRows(chips, theme, 'Guests chips');
+    await page.keyboard.press('Escape'); await page.waitForTimeout(400);
+    await openSectionByName(page, 'People you’re hiring', { settle: 800 });
+    const card = page.locator('.vcard', { hasText: 'Rosa Catering' }).first();
+    await card.waitFor({ state: 'visible', timeout: 10000 });
+    await card.click();
+    const pill = await page.evaluate(measure, ['.vc-pill.mid', '.sheet']);
+    expect(pill.length, 'premise: the in-progress booking pill was measured').toBeGreaterThan(0);
+    assertRows(pill, theme, 'vendor booking pill');
+  });
 }

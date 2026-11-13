@@ -1985,6 +1985,9 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage .tick-list li{color:#9aa7b2}
 .reveal-stage .tick-list li::before{background:rgba(78,104,119,.35)}
 .reveal-stage .grounding{color:#7a8792}
+/* A sheet opened from the reveal (the signed-out "keep this plan" ask) sits
+   ABOVE it: the takeover's 65 otherwise covers the sheet (50) and its scrim. */
+.reveal-stage.under-sheet{z-index:30}
 @keyframes revealin{0%{opacity:0} 100%{opacity:1}}
 /* The event name's period — the same locked bead as the boot splash, same
    raised-bead physics, seated at the baseline. A quiet breathe once landed. */
@@ -2978,6 +2981,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .wchip.done .wn{color:var(--ok)}
 .wchip.attn{border-color:var(--warn-tint); background:var(--warn-tint)}
 .wchip.attn .wn{color:var(--warn)}
+/* Live axe 11/13/2026: the muted label on the warn tint read 4.41:1 in dark. */
+.wchip.attn .wl{color:var(--ink-soft)}
 /* The word that carries the meaning. Until 2026-07-14 this chip said only "PHOTOGRAPHY /
    3 of 3" and turned amber — so a BLOCKED workstream was signalled by tint ALONE, and a
    colour-blind host saw an ordinary chip whose number said everything was finished. The

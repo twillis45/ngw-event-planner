@@ -6,7 +6,10 @@ Pins, with billing live:
   - the first vendor's brief on a free event is minted (the free tier works);
   - a second vendor's brief is refused with 402 'second-vendor', whether the
     first one is known from a server link or from the event's shared list;
-  - an event stamped pass-required refuses with 402 'pass-required';
+  - an event stamped destination or multi-day refuses with 402 'pass-required';
+  - Model H (owner ruling 11/13/2026): an event stamped pass-required under
+    the removed door 3 alone ('additional-event') is free, so its first brief
+    is minted, and door 1 still applies to it;
   - an unblocked pass unlocks every vendor;
   - a vendor that already has a link keeps it, even on a pass-required event
     (never mid-conversation);
@@ -124,25 +127,44 @@ def test_listing_the_vendor_itself_as_shared_does_not_count_against_it(monkeypat
 
 
 def test_a_pass_required_event_is_refused(monkeypatch):
-    conn = _Conn({"vendors": [V1], "passRequired": True})
+    conn = _Conn({"vendors": [V1], "passRequired": True, "passReasons": ["destination"]})
     r = _mint(_client(monkeypatch, conn), "v1")
     assert r.status_code == 402 and _reason(r) == "pass-required"
 
 
+def test_a_multi_day_stamp_is_refused_even_beside_a_door_3_reason(monkeypatch):
+    conn = _Conn({"vendors": [V1], "passRequired": True, "passReasons": ["multi-day", "additional-event"]})
+    r = _mint(_client(monkeypatch, conn), "v1")
+    assert r.status_code == 402 and _reason(r) == "pass-required"
+
+
+def test_a_door_3_only_stamp_is_free_its_first_brief_is_minted(monkeypatch):
+    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["additional-event"]})
+    r = _mint(_client(monkeypatch, conn), "v1")
+    assert r.status_code == 200 and r.json()["code"] == conn.inserted
+
+
+def test_a_door_3_only_stamp_still_takes_the_pass_for_a_second_vendor(monkeypatch):
+    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["additional-event"]},
+                 links={"v1": "CODE_FOR_V1_123456789"})
+    r = _mint(_client(monkeypatch, conn), "v2")
+    assert r.status_code == 402 and _reason(r) == "second-vendor"
+
+
 def test_a_held_pass_unlocks_every_vendor(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "passRequired": True}, links={"v1": "CODE_FOR_V1_123456789"}, pass_held=True)
+    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789"}, pass_held=True)
     r = _mint(_client(monkeypatch, conn), "v2")
     assert r.status_code == 200
 
 
 def test_an_existing_link_is_never_taken_back(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "passRequired": True}, links={"v1": "CODE_FOR_V1_123456789", "v2": "CODE_FOR_V2_123456789"})
+    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789", "v2": "CODE_FOR_V2_123456789"})
     r = _mint(_client(monkeypatch, conn), "v2")
     assert r.status_code == 200 and r.json()["code"] == "CODE_FOR_V2_123456789"
 
 
 def test_nothing_is_refused_while_billing_is_not_live(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "passRequired": True}, links={"v1": "CODE_FOR_V1_123456789"})
+    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789"})
     r = _mint(_client(monkeypatch, conn, live=False), "v2")
     assert r.status_code == 200
 

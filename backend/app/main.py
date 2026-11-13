@@ -2,6 +2,9 @@
 Run locally:  uvicorn app.main:app --reload --port 8000
 """
 import logging
+import os
+
+import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -30,6 +33,26 @@ from .emailer import is_email_configured
 from .config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_WEBHOOK_SECRET
 
 logging.basicConfig(level=logging.INFO)
+
+
+def _init_sentry() -> bool:
+    """Stage 7 board condition C2: handled 500s must reach Sentry, not only admin_error_log.
+    Inert unless SENTRY_DSN is set. Privacy: guest RSVP replies carry health data (allergies,
+    dietary needs), so no PII, no request bodies, no stack-frame locals, and no tracing."""
+    dsn = os.environ.get("SENTRY_DSN")
+    if not dsn:
+        return False
+    sentry_sdk.init(
+        dsn=dsn,
+        send_default_pii=False,
+        max_request_body_size="never",
+        include_local_variables=False,
+        traces_sample_rate=0,
+    )
+    return True
+
+
+_init_sentry()
 
 app = FastAPI(title="NGW Events API", version="0.1.0")
 
@@ -66,6 +89,10 @@ async def _error_capture(request: Request, call_next):
             await record_error("api", f"{request.method} {request.url.path}: {e}",
                                context={"path": request.url.path, "method": request.method})
         except Exception:  # noqa: BLE001 — capture must never mask the real error
+            pass
+        try:
+            sentry_sdk.capture_exception(e)  # no-op when SENTRY_DSN is unset (no client)
+        except Exception:  # noqa: BLE001 — a Sentry failure must never break the 500
             pass
         from fastapi.responses import JSONResponse
         origin = request.headers.get("origin")

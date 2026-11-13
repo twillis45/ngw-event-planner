@@ -1,21 +1,30 @@
-// ─── Model D paywall engine ──────────────────────────────────────────────────
+// ─── Model H paywall engine ──────────────────────────────────────────────────
 //
-// Ruled 2026-08-18 (three board sittings) + amended 2026-08-19 (fourth sitting):
-// docs/audits/2026-08-18_COMMERCE_AND_NOTIFICATIONS_RULING.md and the
-// competitive read docs/audits/2026-08-19_MODEL_D_VS_LEADERS.md.
+// Owner ruling 11/13/2026, "Go with H for now", adopting the first-time-host
+// review board's recommendation (sitting of 11/12/2026 and both follow-ups:
+// BOARD_2026-11-12.md, Model H, as amended by follow-up 1 and kept by
+// follow-up 2). It replaces Model D (ruled 2026-08-18, amended 2026-08-19:
+// docs/audits/2026-08-18_COMMERCE_AND_NOTIFICATIONS_RULING.md and
+// docs/audits/2026-08-19_MODEL_D_VS_LEADERS.md), whose mechanics below carry
+// over unchanged.
 //
-// FREE, forever: the host's first LOCAL, single-day event — full planning,
-// every vendor tracked, plus ONE complete vendor-brief loop.
-// THE $39 ONE-EVENT PASS (one price, one SKU, three doors): sharing briefs
-// beyond the first vendor · a destination/multi-day event · any event after
-// the first. Whichever door fired, one pass unlocks that whole event.
+// FREE, forever: EVERY event, first or fifth — full planning, every vendor
+// tracked, a free account, plus ONE complete vendor-brief loop per event.
+// THE $39 ONE-EVENT PASS (one price, one SKU, two doors): sharing briefs
+// beyond the first vendor on this event · a destination/multi-day event,
+// stamped at creation. Whichever door fired, one pass unlocks that whole event.
+// There is NO event-count door: Model D's door 3 ("any event after the first",
+// reason 'additional-event') is removed, and an event stamped under it alone
+// is free (see `lockingReasons`).
 //
 // LOAD-BEARING MECHANICS, each from a named ruling clause:
-//  · GRANDFATHER — the door-2/door-3 verdict is stamped ONCE, at event
-//    creation (`passVerdictAtCreation`), and stored on the event. Nothing here
-//    ever recomputes it from live fields: an event that began free stays free,
+//  · GRANDFATHER — the door-2 verdict is stamped ONCE, at event creation
+//    (`passVerdictAtCreation`), and stored on the event. Nothing here ever
+//    recomputes it from live fields: an event that began free stays free,
 //    including a host who later marks it destination or adds a span mid-plan.
-//    We eat that edge case for trust, by ruling.
+//    We eat that edge case for trust, by ruling. The one exception moves
+//    events only TOWARD free: a stored 'additional-event' reason is ignored,
+//    because the rule it recorded no longer exists.
 //  · NEVER MID-CONVERSATION — `briefAllowed` returns allowed for any vendor
 //    already in `briefSharedVendorIds`, unconditionally. A brief that has been
 //    shared is an open conversation; viewing/updating/confirming it is never
@@ -33,6 +42,10 @@
 //    server answer of "pass" survives a cleared browser, which the blob never
 //    could. See `passEntitlement.js` for why the blob is still a fallback
 //    rather than banned outright.
+//  · THE SERVER APPLIES THE SAME STAMP RULE — backend/app/routers/
+//    vendor_brief.py `_brief_blocked_reason` blocks on the same locking
+//    reasons as `lockingReasons` here. Change one, change both, or the server
+//    answers 402 where this file says allowed.
 //  · DORMANT UNTIL BILLING IS LIVE — every gate answers "allowed" while
 //    `isBillingLive()` is false. D-2's five preconditions govern flipping it;
 //    the flag is the same double-gate the pass sheet has always used
@@ -56,8 +69,8 @@ export function isBillingLive() {
 }
 
 // User-created events only. Samples (`ev-x-*`, `demo-*`, pool ids) are
-// exploration, not the host's free first event — they neither consume the
-// free tier nor get gated.
+// exploration, not the host's own event — they are never gated, and the pass
+// is never sold for one.
 export function isUserCreatedEvent(ev) {
   const id = String((ev && ev.id) || '');
   return id.startsWith('cust-') || id.startsWith('ev-copy-');
@@ -65,22 +78,47 @@ export function isUserCreatedEvent(ev) {
 
 /**
  * The ONE stamping moment (grandfather rule). Called exactly when an event is
- * created, with the list of events that existed before it. Returns the fields
- * to store on the event: { passRequired, passReasons }.
+ * created. Returns the fields to store on the event: { passRequired, passReasons }.
  *
  * Door 2 (destination/multi-day) reads the same authored facts the travel
  * stack gates on — `isDestination` (heard at intake, never inferred) and
  * `spanIntel()` (host-declared span or taxonomy-definitional; never a guess).
- * Door 3 counts prior USER-CREATED events only.
+ *
+ * Model H (owner ruling 11/13/2026): there is no event-count door, so how many
+ * events came before this one never enters the verdict. `priorEvents` is still
+ * accepted so existing callers need no change; it is deliberately unread.
  */
+// eslint-disable-next-line no-unused-vars
 export function passVerdictAtCreation(ev, priorEvents) {
   const reasons = [];
   if (ev && ev.isDestination === true) reasons.push('destination');
   let span = null;
   try { span = spanIntel(ev); } catch { span = null; }
   if (span && span.state === 'multi') reasons.push('multi-day');
-  if ((priorEvents || []).filter(isUserCreatedEvent).length > 0) reasons.push('additional-event');
   return { passRequired: reasons.length > 0, passReasons: reasons };
+}
+
+/**
+ * The stamped reasons that still LOCK anything, read from the stored verdict
+ * only (grandfather rule: never recomputed from live fields).
+ *
+ * THE RULE (Model H, owner ruling 11/13/2026): only 'destination' and
+ * 'multi-day' lock. A stored 'additional-event' reason — Model D's door 3,
+ * "any event after the first" — is ignored, because that rule no longer
+ * exists, and keeping an event locked by it would charge for a removed rule.
+ * So an event stamped `passRequired: true` with ONLY 'additional-event' is
+ * free; one whose reasons also include 'destination' or 'multi-day' keeps
+ * those and stays locked exactly as before. This only ever moves an event
+ * toward free, which the grandfather rule allows.
+ *
+ * Returns [] for an unstamped or free-stamped event. The server mirrors this
+ * in backend/app/routers/vendor_brief.py (`_LOCKING_REASONS`).
+ */
+const LOCKING_REASONS = ['destination', 'multi-day'];
+export function lockingReasons(ev) {
+  if (!ev || ev.passRequired !== true) return [];
+  const r = Array.isArray(ev.passReasons) ? ev.passReasons : [];
+  return r.filter((x) => LOCKING_REASONS.includes(x));
 }
 
 /**
@@ -121,7 +159,7 @@ export function passHeld(ev) {
  *     whether the server confirmed it ('pass') or only the event blob claims
  *     it ('pass-claimed')
  *   vendor already briefed → allowed, ALWAYS (never mid-conversation)
- *   event stamped pass-required (door 2/3) → blocked
+ *   event stamped destination/multi-day (door 2, `lockingReasons`) → blocked
  *   a different vendor already briefed (door 1) → blocked
  *   else → the free first-brief loop
  */
@@ -132,7 +170,7 @@ export function briefAllowed(ev, vendorId) {
   if (pass.held) return { allowed: true, reason: pass.source === 'server' ? 'pass' : 'pass-claimed' };
   const shared = Array.isArray(ev.briefSharedVendorIds) ? ev.briefSharedVendorIds.filter(Boolean) : [];
   if (vendorId && shared.includes(vendorId)) return { allowed: true, reason: 'already-shared' };
-  if (ev.passRequired === true) return { allowed: false, reason: 'pass-required' };
+  if (lockingReasons(ev).length > 0) return { allowed: false, reason: 'pass-required' };
   if (shared.length >= 1) return { allowed: false, reason: 'second-vendor' };
   return { allowed: true, reason: 'first-brief-free' };
 }
@@ -148,8 +186,7 @@ export function destinationLocked(ev) {
   if (!isBillingLive()) return false;
   if (!ev) return false;
   if (passHeld(ev).held) return false;
-  const reasons = Array.isArray(ev.passReasons) ? ev.passReasons : [];
-  return ev.passRequired === true && (reasons.includes('destination') || reasons.includes('multi-day'));
+  return lockingReasons(ev).length > 0;
 }
 
 /**
@@ -157,22 +194,19 @@ export function destinationLocked(ev) {
  * 11/9/2026: on an event that needs the pass, the main screen said nothing —
  * the host learned only on opening a locked sheet). Returns null where there
  * is nothing true to say: billing dormant, a sample, or a free event without
- * the pass (the ruling's free tier stays quiet — no invented urgency).
+ * the pass (the ruling's free tier stays quiet — no invented urgency). An
+ * event stamped under the removed door 3 alone is a free event here.
  *   { state: 'held' }                        — this event has the pass
- *   { state: 'needed', covers }              — stamped pass-required; `covers`
- *     names what the pass unlocks HERE, from the stamped reasons only.
+ *   { state: 'needed', covers }              — stamped destination/multi-day;
+ *     `covers` names what the pass unlocks HERE.
  */
 export function passStatus(ev) {
   if (!isBillingLive() || !ev || !isUserCreatedEvent(ev)) return null;
   if (passHeld(ev).held) return { state: 'held' };
-  if (ev.passRequired !== true) return null;
-  const r = Array.isArray(ev.passReasons) ? ev.passReasons : [];
-  const destination = r.includes('destination') || r.includes('multi-day');
+  if (lockingReasons(ev).length === 0) return null;
   return {
     state: 'needed',
-    covers: destination
-      ? 'It covers where everyone stays, getting here, getting around, and every vendor brief.'
-      : 'It covers sharing vendor briefs with every vendor on this event.',
+    covers: 'It covers where everyone stays, getting here, getting around, and every vendor brief.',
   };
 }
 
@@ -184,12 +218,9 @@ export function passStatus(ev) {
  */
 export function creationDisclosure(verdict) {
   if (!isBillingLive()) return null;
-  if (!verdict || !verdict.passRequired) {
-    return 'This event is free to plan, including sharing one vendor brief (that takes a free account). Sharing with more vendors, destination planning, or your next event takes the $39 One-Event Pass.';
+  const r = lockingReasons(verdict);
+  if (r.length > 0) {
+    return 'This is a ' + (r.includes('destination') ? 'destination' : 'multi-day') + ' event. Planning it is free. Its trip tools and sharing vendor briefs take the $39 One-Event Pass.';
   }
-  const r = verdict.passReasons || [];
-  if (r.includes('destination') || r.includes('multi-day')) {
-    return 'This is a ' + (r.includes('destination') ? 'destination' : 'multi-day') + ' event — planning is open, and the destination toolkit and vendor-brief sharing take the $39 One-Event Pass.';
-  }
-  return 'Planning this event is open — sharing vendor briefs on it takes the $39 One-Event Pass, since your first event already had the free run.';
+  return 'Planning this event is free, including sharing one vendor brief (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the $39 One-Event Pass.';
 }

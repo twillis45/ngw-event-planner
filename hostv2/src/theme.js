@@ -228,8 +228,12 @@ export function applyStudioMatte(override) {
   // Promoted to the design system 2026-08-18 as color.status.inProgress —
   // read from there rather than re-declaring the literal here, so the tier has
   // one source. The reasoning above stays: it is why the token exists.
-  set('--progress', dsColor.status.inProgress);
-  set('--progress-tint', tint(dsColor.status.inProgress, 0.12));
+  // LIGHT THEME (live axe 11/13/2026): the same lavender measured 2.18:1 on
+  // light surfaces — the one token PR #117's light pass missed. A deeper
+  // violet of the same hue clears 5.5:1 there; dark keeps the system value.
+  const progress = isLight ? '#6E5A8A' : dsColor.status.inProgress;
+  set('--progress', progress);
+  set('--progress-tint', tint(progress, 0.12));
   // Overhead-light material response (brand direction, splash work 2026-07-11):
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the .app background radial.

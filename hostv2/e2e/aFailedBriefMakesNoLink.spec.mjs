@@ -39,7 +39,7 @@ const boot = async (page, mint) => {
   await page.route(API + '/api/capabilities', (route) => route.fulfill({ status: 200, json: { stripe_configured: true, stripe_can_honour_purchases: true } }));
   await page.route(API + '/api/stripe/pass**', (route) => route.fulfill({ status: 200, json: { event_id: EVENT.id, held: false } }));
   await page.route(MINT, (route) => { calls.mint += 1; return route.fulfill(mint); });
-  await page.goto(previewUrl(5266) + '?elegant=1');
+  await page.goto(previewUrl(Number(process.env.PW_PASSGATE_PORT || 5266)) + '?elegant=1');
   await settled(page);
   await openSectionByName(page, 'People you’re hiring');
   await settled(page);
