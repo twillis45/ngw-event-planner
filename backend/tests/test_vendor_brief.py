@@ -206,6 +206,43 @@ def test_public_resolve_opaque_404s(monkeypatch):
     assert c2.get(f"/api/public/vendor-brief/{GOOD_CODE}").status_code == 404
 
 
+# ── Board 2026-11-12: host name, headcount, day-of contact ────────────────────
+
+def test_public_resolve_carries_host_name_headcount_and_day_of_contact(monkeypatch):
+    data = dict(EVENT_DATA)
+    data.update({
+        "hostName": "Vida Reyes",
+        "guestEstimate": 40, "guestCountSource": "host",
+        "guests": [{"name": "Ann Lee", "email": "ann@example.com", "dietary": "Vegetarian"},
+                   {"name": "Bo Park", "phone": "555-0199", "dietary": "Nut allergy"}],
+        "dietCounts": {"Vegetarian": 3, "Nut allergy": 1, "Vegan": 0, "Grandma Lee's no-salt": 1},
+        "briefContactName": "Sam Ortiz", "briefContactPhone": "(555) 010-2000",
+    })
+    c = _client(monkeypatch, _resolving_conn(data))
+    r = c.get(f"/api/public/vendor-brief/{GOOD_CODE}")
+    brief = r.json()["brief"]
+    assert brief["hostName"] == "Vida Reyes"
+    assert brief["guestCount"] == 40
+    assert brief["dietCounts"] == {"Vegetarian": 3, "Nut allergy": 1}
+    assert brief["briefContactName"] == "Sam Ortiz"
+    assert brief["briefContactPhone"] == "(555) 010-2000"
+    # numbers only: no guest, no guest contact, no free-text diet key
+    for needle in ("Ann Lee", "Bo Park", "ann@example.com", "555-0199", "Grandma", "guests"):
+        assert needle not in r.text
+
+
+def test_headcount_the_app_invented_is_withheld():
+    gc = vb_mod._brief_guest_count
+    assert gc({"guestEstimate": 40, "guestCountSource": "playbook-typical"}) is None
+    assert gc({"guestCount": 52, "guestEstimate": 40, "guestCountSource": "playbook-typical"}) == 52
+    assert gc({"guests": [{}, {}, {}]}) == 3
+    assert gc({}) is None
+    assert gc({"guestEstimate": "abc"}) is None
+    # an event with no host name / no day-of contact reads as empty, not missing
+    brief = vb_mod.build_vendor_brief_payload({"id": "v1", "name": "X"}, "e1", {})
+    assert brief["hostName"] == "" and brief["briefContactName"] == "" and brief["dietCounts"] == {}
+
+
 # ═══ Phase 2A — vendor confirm-back ════════════════════════════════════════════
 import datetime as _dt
 

@@ -23,6 +23,57 @@
 // (Cue-level `notes` are day-of stage directions — written to be read aloud /
 // followed on site — not host bookkeeping, so they stay.)
 import { venueFor } from './venueFor';
+import { guestCountFor } from './guestCountFor';
+import { DIET_TAGS } from './dietRows';
+
+// ── WHO NEEDS THE HEADCOUNT (board 2026-11-12, follow-up 1, finding 1) ──────
+// A caterer cannot size an order without a guest count, and the brief carried
+// none. Food & drink vendors (the "Food & Drink" group of App.js
+// CATEGORY_GROUPS — catering, bar, cake, grazing, coffee cart, food truck —
+// plus the free-text spellings hosts type) and rentals size to it; a DJ does
+// not. Kept as two zero-import regexes rather than importing vendorQuestions'
+// CATEGORY_MAP: that module pulls the playbooks into whatever imports it, and
+// the public brief chunk must stay small. vendorBrief.test.js checks these
+// against getVendorCategoryKey so the two cannot drift apart silently.
+const FEEDS_GUESTS = /cater|food|\bbar\b|bartend|beverage|drink|cake|baker|bakery|dessert|pastry|grazing|coffee|espresso|specialty cart/i;
+const SIZES_TO_GUESTS = /rental|furniture|linen|\btents?\b|structure/i;
+export const briefFeedsGuests = (category) => FEEDS_GUESTS.test(String(category || ''));
+export const briefShowsHeadcount = (category) => briefFeedsGuests(category) || SIZES_TO_GUESTS.test(String(category || ''));
+
+// The headcount a vendor may be told: a NUMBER, never a name. Only a count the
+// host gave (guestCountFor's outward gate) — a playbook typical the app filled
+// in is withheld, exactly as the vendor outreach draft withholds it.
+export function briefGuestCount(event) {
+  const g = guestCountFor(event);
+  return g.fromHost ? g.count : null;
+}
+
+// Dietary needs as AGGREGATE counts the host already keeps (event.dietCounts —
+// the food sheet's steppers): { Vegetarian: 3, 'Nut allergy': 1 }. Only the
+// fixed DIET_TAGS vocabulary passes: a host-typed custom key is free text and
+// could carry a person ("Grandma's no-salt"), so it never leaves.
+export function briefDietCounts(event) {
+  const dc = (event && event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
+  const out = {};
+  for (const tag of DIET_TAGS) {
+    const n = Math.floor(Number(dc[tag]) || 0);
+    if (n > 0) out[tag] = n;
+  }
+  return out;
+}
+
+// "3 vegetarian · 1 nut allergy" — the line a caterer reads.
+export function briefDietLine(dietCounts) {
+  const dc = dietCounts && typeof dietCounts === 'object' ? dietCounts : {};
+  return DIET_TAGS
+    .filter((tag) => Math.floor(Number(dc[tag]) || 0) > 0)
+    .map((tag) => {
+      const word = tag === 'Shellfish' ? 'shellfish allergy'
+        : (tag === 'Halal' || tag === 'Kosher') ? tag : tag.toLowerCase();
+      return `${Math.floor(Number(dc[tag]))} ${word}`;
+    })
+    .join(' · ');
+}
 
 export function vendorRosSlice(ros, vendor) {
   const name = (vendor && vendor.name) || '';
@@ -65,6 +116,17 @@ export function buildVendorBriefPayload(vendor, event, ros, profile) {
     plannerCity:     p.city      || '',
     plannerLogo:     p.logo      || '',
     brandColor:      p.brandColor || '',
+    // THE HOST, NOT "YOUR EVENT PLANNER" (finding 2). Most people who send a
+    // brief are hosting their own party. hostName is already on the event (the
+    // invite's "Hosted by"); hostNames is the plural the invite whitelist ships.
+    hostName: e.hostName || e.hostNames || '',
+    // WHO THE VENDOR CALLS ON THE DAY (finding 3), when it is not the host —
+    // set per event in the host app. Empty means "call the host".
+    briefContactName:  e.briefContactName  || '',
+    briefContactPhone: e.briefContactPhone || '',
+    // THE HEADCOUNT (finding 1): numbers only — see briefGuestCount/briefDietCounts.
+    guestCount: briefGuestCount(e),
+    dietCounts: briefDietCounts(e),
     // this vendor's run-of-show slice only
     // THE OUTWARD GATE. The event now arrives with a GROUNDED default start time so the plan
     // runs on a real clock immediately — but a default is OURS, not the host's, until they

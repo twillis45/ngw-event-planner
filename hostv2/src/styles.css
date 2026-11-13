@@ -7481,3 +7481,45 @@ button.vc-pill::after{
 /* HELP in You & settings (owner decision, 11/11/2026): a mailto row that reads
    like the other settings rows and is clearly tappable. */
 .later-row.help-email{cursor:pointer}
+
+/* ── VENDOR BRIEF (?vendor=, VendorBriefV2.jsx — 11/13/2026) ─────────────────
+   The public brief a vendor opens from the host's link. It wears the guest
+   invite's light stationery (.inv2-sheet and its type roles) so the two public
+   pages read as one product; these rules only add what a brief has and an
+   invitation does not — the arrival time, a schedule, a contact, a form. Phone
+   silhouette at every width (no .inv2-stage): a brief is read on a phone. */
+.vb2-content{ padding-bottom:var(--sp-7); }
+.vb2-from{ text-transform:none; letter-spacing:.04em; }
+.vb2-logo{ display:block; max-height:40px; max-width:140px; margin:var(--sp-3) auto 0; object-fit:contain; }
+.vb2-when{ margin:var(--sp-1) 0 0; }
+.vb2-tight{ margin:var(--sp-1) 0 0; }
+.vb2-vendor{ font-size:var(--t-body); font-weight:800; margin-top:var(--sp-2); }
+.vb2-arrival{ font-family:var(--serif); font-size:var(--t-display-l); font-weight:700; text-align:center;
+  line-height:1.1; color:var(--hue-deep); font-variant-numeric:lining-nums tabular-nums; }
+.vb2-ros{ list-style:none; margin:var(--sp-2) 0 0; padding:0; text-align:left; }
+.vb2-ros li{ display:flex; gap:var(--sp-3); padding:var(--sp-2) 0; border-top:1px solid rgba(196,178,148,.45); }
+.vb2-ros li:first-child{ border-top:none; }
+.vb2-ros-when{ flex:0 0 80px; font-size:var(--t-meta); font-weight:800; color:var(--hue-deep);
+  font-variant-numeric:tabular-nums; }
+.vb2-ros-seg{ display:block; font-size:var(--t-body-s); font-weight:700; }
+.vb2-ros-sub{ display:block; font-size:var(--t-meta); color:var(--stock-sub); margin-top:var(--sp-1); line-height:1.45; }
+.vb2-note{ margin:var(--sp-1) 0 0; font-size:var(--t-body-s); line-height:1.55; text-align:center; white-space:pre-wrap; }
+.vb2-contact{ text-align:center; }
+.vb2-link{ display:block; margin-top:var(--sp-1); font-size:var(--t-body-s); font-weight:700; color:var(--hue-deep);
+  text-decoration:none; overflow-wrap:anywhere; }
+.vb2-confirm{ margin-top:var(--sp-5); padding-top:var(--sp-3); border-top:1px solid rgba(196,178,148,.45); text-align:center; }
+.vb2-confirm .field{ max-width:none; margin-top:var(--sp-2); }
+.vb2-confirm textarea.field{ resize:vertical; }
+.vb2-confirm .actions-row{ justify-content:center; }
+.vb2-confirm[role="status"] .mini{ margin-top:var(--sp-2); }
+.vb2-choices .cta{ flex:1 1 auto; }
+.vb2-error{ color:var(--danger); text-align:center; }
+.vb2-tools{ justify-content:center; margin-top:var(--sp-5); }
+.vb2-foot{ margin-top:var(--sp-4); }
+@media print{
+  /* The global print rule hides `body *` for the host's day sheet; a vendor
+     printing their brief gets the brief, unframed, without the buttons. */
+  .vb2-stage, .vb2-stage *{ visibility:visible; }
+  .vb2-stage, .vb2-stage .app{ height:auto !important; overflow:visible !important; box-shadow:none !important; }
+  .vb2-tools, .vb2-confirm{ display:none !important; }
+}
