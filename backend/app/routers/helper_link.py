@@ -195,9 +195,12 @@ def build_helper_payload(data: dict, helper_key: str):
         "hostName": data.get("hostName") or data.get("hostNames") or "",
         "eventName": data.get("name") or "",
         "eventDate": data.get("date") or "",
-        "startTime": data.get("startTime") or "",
+        # An hour the app derived is its guess, not the host's word
+        # (doItForMe.timePhrase), so it never reaches a helper.
+        "startTime": "" if data.get("startTimeSource") == "derived" else (data.get("startTime") or ""),
         "venue": data.get("venue") or "",
-        "venueAddress": data.get("venueAddress") or data.get("address") or "",
+        # venueAddress only: event.address is a phantom nothing writes (venueFor.js).
+        "venueAddress": data.get("venueAddress") or "",
         "jobs": slot["jobs"],
     }
 

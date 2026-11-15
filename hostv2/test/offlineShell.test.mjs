@@ -293,8 +293,20 @@ describe('A VENDOR OPENING A BRIEF LINK IS NEVER GIVEN A WORKER', () => {
     expect(flag).toBeGreaterThan(-1);
     expect(register).toBeGreaterThan(flag);
     const tail = src.slice(register - 400, register);
-    expect(tail).toMatch(/if \(typeof window !== 'undefined' && !vendorToken\)/);
+    // (11/15/2026: the same guard now also names ?helper=, pinned below.)
+    expect(tail).toMatch(/if \(typeof window !== 'undefined' && !vendorToken(?: && !helperCode)?\)/);
     expect(tail).toMatch(/addEventListener\('load'/);
+  });
+
+  test('…and a helper opening their job link (?helper=) is never given one either', () => {
+    // Helper link, 11/15/2026: same page shape as the brief, same reason — a
+    // helper opens one texted link once and is not using the app.
+    const src = readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
+    const flag = src.indexOf("get('helper')");
+    const register = src.indexOf('registerOfflineShell(');
+    expect(flag).toBeGreaterThan(-1);
+    expect(register).toBeGreaterThan(flag);
+    expect(src.slice(register - 400, register)).toMatch(/if \(typeof window !== 'undefined' && !vendorToken && !helperCode\)/);
   });
 });
 

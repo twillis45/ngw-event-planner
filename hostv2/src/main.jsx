@@ -30,6 +30,12 @@ import { registerOfflineShell } from './offline/register';
 const vendorToken = (() => {
   try { const t = new URLSearchParams(window.location.search).get('vendor'); return t && t.trim() ? t : null; } catch { return null; }
 })();
+// ?helper=CODE is a host's helper opening their job (helper link, 11/15/2026):
+// a public page in its own chunk, exactly like ?vendor=, and given no worker
+// for the same reason.
+const helperCode = (() => {
+  try { const t = new URLSearchParams(window.location.search).get('helper'); return t && t.trim() ? t.trim() : null; } catch { return null; }
+})();
 
 // ERROR REPORTING ON THE SHELL THAT ACTUALLY SHIPS (2026-08-07).
 // Sentry was wired in src/index.js — the FROZEN CRA host — and never here, so
@@ -87,6 +93,8 @@ const rsvpCode = (() => {
   })();
   const load = vendorToken
     ? import('./VendorBriefV2.jsx').then(m => <m.default token={vendorToken} />)
+    : helperCode
+    ? import('./HelperLinkV2.jsx').then(m => <m.default code={helperCode} />)
     : rsvpCode
     ? import('./InviteV2.jsx').then(m => <m.default code={rsvpCode} />)
     : demo === 'lodging'
@@ -95,14 +103,14 @@ const rsvpCode = (() => {
   load.then(mount).catch((err) => {
     // A chunk that fails to load must say so, not hang on a blank frame — and
     // it must be reported, because a host who sees this sees a dead app.
-    captureError(err, { where: 'main.chunkLoad', rsvp: Boolean(rsvpCode), vendor: Boolean(vendorToken), demo });
+    captureError(err, { where: 'main.chunkLoad', rsvp: Boolean(rsvpCode), vendor: Boolean(vendorToken), helper: Boolean(helperCode), demo });
     mount(<div style={{ padding: 24, fontFamily: 'system-ui', color: '#9aa7b2' }}>Couldn’t load — please refresh.</div>);
   });
 }
 
 // After mount, and never awaited: a failed or slow registration must not be
 // able to delay or break the app the host already has.
-if (typeof window !== 'undefined' && !vendorToken) {
+if (typeof window !== 'undefined' && !vendorToken && !helperCode) {
   window.addEventListener('load', () => {
     registerOfflineShell(
       new URL('sw.js', document.baseURI).href,

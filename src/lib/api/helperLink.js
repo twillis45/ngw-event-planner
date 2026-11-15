@@ -4,7 +4,7 @@
 // the UI except submitHelperAnswer, which throws ON PURPOSE so the helper's
 // page shows an honest retry instead of a fake "sent".
 //
-// Planner endpoints (Supabase session / dev token):
+// Planner endpoints (the signed-in Supabase session):
 //   POST /api/events/{id}/helper-links          → mint-or-reuse a helper's code
 //   GET  /api/events/{id}/helper-confirmations  → the answers, newest first
 // Public endpoints (the unguessable code is the only credential):
@@ -13,25 +13,15 @@
 //
 // NEVER PASS-GATED. The server never answers 402 here; if it ever did, it
 // reads as a plain failure, not as a reason to open the pass sheet.
-import { supabase, isSupabaseConfigured } from '../supabaseClient';
+//
+// The ONE planner identity (lib/apiAuth): the signed-in Supabase session. No
+// dev-token fallback of its own — authHeadersDoesNotGrowAgain.test.js holds the
+// line at nine copies, and this is not a tenth.
+import { authHeaders } from '../apiAuth';
 
-const BASE  = process.env.REACT_APP_API_BASE_URL;
-const TOKEN = process.env.REACT_APP_PLANNER_TOKEN; // transition fallback only
+const BASE = process.env.REACT_APP_API_BASE_URL;
 
 export const isHelperLinkApiConfigured = () => Boolean(BASE);
-
-async function authHeaders() {
-  const headers = {};
-  if (isSupabaseConfigured() && supabase) {
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token;
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-    } catch { /* fall through to token */ }
-  }
-  if (TOKEN) headers['X-Planner-Token'] = TOKEN;
-  return headers;
-}
 
 // ── Planner: mint-or-reuse THE link for one helper ────────────────────────────
 //   { ok: true,  code, helperKey }
@@ -48,7 +38,7 @@ export async function mintHelperLinkResult(eventId, helperName) {
     try {
       res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/helper-links`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        headers: await authHeaders(),
         body:    JSON.stringify({ helper_name: helperName }),
       });
     } catch {

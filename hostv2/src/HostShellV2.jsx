@@ -278,6 +278,8 @@ import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, 
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
+import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations } from '@app/lib/api/helperLink';
+import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
@@ -7651,6 +7653,84 @@ export default function HostShellV2() {
     for (const c of vendorConfirmations) { const vid = String(c && c.vendor_id); if (vid && !m[vid]) m[vid] = c; }
     return m;
   }, [vendorConfirmations]);
+
+  // ── HELPER LINK (owner-approved 11/15/2026, FREE — never pass-gated) ──────
+  // "Send Jordan their job": mint Jordan's link (lib/api/helperLink, the vendor
+  // brief's pattern), write the ask (lib/helperAsk), and open the HOST'S OWN
+  // phone with it — sms: when Jordan has a number, else mail, else the share
+  // sheet, else the clipboard. The phone sends it; nothing here says it was
+  // sent. Jordan's answer comes back through the read-back below and replaces
+  // the hand-tapped confirm for that helper. `helperLinkIds` records which
+  // helpers have a link, so the read-back only runs for an event that has one
+  // (a mint needed the same credential, so it is never a request bound to 401).
+  const [helperAnswers, setHelperAnswers] = useState([]);
+  const [helperSend, setHelperSend] = useState(null);   // { taskId, href, first, body, busy, error }
+  useEffect(() => { setHelperSend(null); }, [eventId]);
+  const helperLinked = Array.isArray(event.helperLinkIds) && event.helperLinkIds.length > 0;
+  useEffect(() => {
+    if (!isHelperLinkApiConfigured() || !ownsEvent || !helperLinked) { setHelperAnswers([]); return undefined; }
+    let dead = false;
+    const pull = async () => {
+      const rows = await fetchHelperConfirmations(event.id);
+      if (!dead) setHelperAnswers(Array.isArray(rows) ? rows : []);
+    };
+    pull();
+    // A helper answers on their own phone, later; coming back to the app is
+    // when the host looks, so that is when it is read again.
+    const onFocus = () => { pull(); };
+    window.addEventListener('focus', onFocus);
+    return () => { dead = true; window.removeEventListener('focus', onFocus); };
+  }, [event.id, ownsEvent, helperLinked]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Latest answer per helper (server returns newest first, so first wins).
+  const helperAnswerByKey = useMemo(() => {
+    const m = {};
+    for (const a of helperAnswers) { const k = String(a && a.helper_key); if (k && !m[k]) m[k] = a; }
+    return m;
+  }, [helperAnswers]);
+  // The helper who holds a checklist row, as the helper engine names them.
+  const helperForTask = (taskId) => (helperData.responsibilities || []).find(r => r.itemType === 'task' && r.itemId === taskId) || null;
+  const sendHelperJob = async (taskId) => {
+    const resp = helperForTask(taskId);
+    if (!resp) return;
+    const first = String(resp.helperName || 'them').split(/\s+/)[0];
+    let appUrl;
+    try { appUrl = publicAppUrl(); }
+    catch { toast(`The public link address is missing, so ${first}'s link can't be made. Nothing was sent.`); return; }
+    setHelperSend({ taskId, busy: true });
+    const r = await mintHelperLinkResult(event.id, resp.helperName);
+    if (!r.ok) {
+      const why = r.kind === 'signed-out' ? `Sign in to make ${first}'s link.`
+        : r.kind === 'not-found' ? `Your saved plan doesn't have ${first}'s job yet — give it a moment to save, then try again.`
+          : `Couldn't make ${first}'s link just now.`;
+      setHelperSend({ taskId, error: `${why} Nothing was sent.` });
+      return;
+    }
+    const url = appUrl + '?helper=' + encodeURIComponent(r.code);
+    const mine = (helperData.responsibilities || []).filter(x => x.helperId === resp.helperId);
+    const body = buildHelperAsk({
+      event, hostName: (profile && profile.name) || event.hostName || '', helperName: resp.helperName,
+      jobs: mine.map(x => ({ kind: x.itemType, label: x.label })), url,
+    });
+    const guest = resp.guestId ? (event.guests || []).find(g => g && g.id === resp.guestId) : null;
+    const digits = String((guest && guest.phone) || '').replace(/[^+\d]/g, '');
+    const email = String((guest && guest.email) || '').trim();
+    const href = digits ? 'sms:' + digits + '?&body=' + encodeURIComponent(body)
+      : email ? 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(`Your job for ${event.name || 'the party'}`) + '&body=' + encodeURIComponent(body)
+        : null;
+    setHelperSend({ taskId, href, first, body, channel: digits ? 'text' : email ? 'email' : 'share' });
+    // The ledger: which helpers have a link. Silent, deduped, and true whether
+    // or not the host goes on to send — a link exists either way.
+    try {
+      const cur = Array.isArray(event.helperLinkIds) ? event.helperLinkIds : [];
+      if (resp.helperId && !cur.includes(resp.helperId)) patchEvent({ helperLinkIds: [...cur, resp.helperId] });
+    } catch { /* best-effort; the link itself already exists */ }
+    if (href) { try { window.location.href = href; } catch { /* the visible link below still works */ } return; }
+    try {
+      if (navigator.share) { await navigator.share({ text: body }); return; }
+    } catch { /* cancelled or unsupported — fall through to copy */ }
+    try { await navigator.clipboard.writeText(body); toast(`Copied — paste it to ${first} however you reach them. Nothing was sent from here.`); }
+    catch { /* the message is on screen to copy by hand */ }
+  };
 
   // DEFINED HERE, AFTER `confirmationByVendor`, AND THAT PLACEMENT IS THE FIX.
   // It first sat with the other refs near the top and the app would not boot:
@@ -20101,9 +20181,17 @@ export default function HostShellV2() {
                     // fragment appended to a due date.
                     const owner = String((t && t.owner) || '').trim();
                     const lead2 = String(t.task || 'this').slice(0, 40);
+                    // A helper's OWN answer (helper link) replaces the
+                    // hand-tapped confirm; without one, the manual path stands.
+                    const tHelper = owner ? helperForTask(t.id) : null;
+                    const tAnswer = tHelper ? helperAnswerByKey[String(tHelper.helperId)] || null : null;
                     const rStatus = owner
-                      ? (t.done ? 'done' : ((event.helperConfirmed || {})[t.id] ? 'confirmed' : 'not told yet'))
+                      ? (t.done ? 'done'
+                        : tAnswer ? (tAnswer.state === 'confirmed' ? 'said yes' : 'can’t do it')
+                          : ((event.helperConfirmed || {})[t.id] ? 'confirmed' : 'not told yet'))
                       : null;
+                    const tFirst = owner.split(/\s+/)[0];
+                    const tSend = helperSend && helperSend.taskId === t.id ? helperSend : null;
                     const assignEl = assignablePeople.length ? (
                       <div className="row-assign" key={(t.id || i) + '-assign'}>
                         <button className="mini rowlink assign-btn"
@@ -20115,7 +20203,32 @@ export default function HostShellV2() {
                             ? <span aria-hidden="true">{owner} — {rStatus}</span>
                             : <span aria-hidden="true">Give this to someone</span>}
                         </button>
-                        {owner && !t.done && (
+                        {owner && !t.done && tHelper && isHelperLinkApiConfigured() && (
+                          <button className="mini rowlink helper-send"
+                            disabled={!!(tSend && tSend.busy)}
+                            onClick={(e) => { e.stopPropagation(); sendHelperJob(t.id); }}>
+                            {tSend && tSend.busy ? 'Making the link…' : `Send ${tFirst} their job`}
+                          </button>
+                        )}
+                        {owner && !t.done && tAnswer && tAnswer.state !== 'confirmed' && (
+                          <span className="v-meta helper-answer" data-answer="declined">
+                            {`${tFirst} can’t do it${tAnswer.note ? ` — “${tAnswer.note}”` : '.'} It’s back on you to cover.`}
+                          </span>
+                        )}
+                        {tSend && tSend.error && (
+                          <span className="v-meta helper-send-error" role="alert">{tSend.error}</span>
+                        )}
+                        {tSend && !tSend.busy && !tSend.error && (
+                          // UX_07 deep handoff: the phone's own app opens with
+                          // the message in it. The link stays here in case it
+                          // did not, and the line says who sends it: the host.
+                          <span className="v-meta helper-handoff">
+                            {tSend.href
+                              ? <>{tSend.first}’s job is written — send it from your {tSend.channel === 'text' ? 'Messages' : 'mail'} app. Nothing is sent from here. <a className="mini" style={{ textDecoration: 'none' }} href={tSend.href}>{tSend.channel === 'text' ? `Text ${tSend.first}` : `Email ${tSend.first}`}</a></>
+                              : <>No number or email for {tSend.first} — share or paste it yourself. Nothing is sent from here.</>}
+                          </span>
+                        )}
+                        {owner && !t.done && !tAnswer && (
                           // The engine's own sentence, routed into the EXISTING
                           // draft path. This is where a send state can be
                           // written -- by the message flow, never by assigning.

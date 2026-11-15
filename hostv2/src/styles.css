@@ -3204,6 +3204,14 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .assign-opt.on{ background:var(--steel-tint); font-weight:650; }
 .assign-who{ font-size:var(--t-row); font-weight:600; }
 .assign-why{ font-size:var(--t-row-sub); color:var(--faint); }
+/* HELPER LINK (11/15/2026). "Send Jordan their job" stays at the row's link
+   weight: the host's phone sends, so it is a handoff, never a primary "send".
+   The lines under it span the row so a long note wraps instead of squeezing
+   the buttons beside it. */
+.helper-send:disabled{ opacity:.6; cursor:progress; }
+.helper-answer, .helper-handoff, .helper-send-error{ flex:0 0 100%; display:block; white-space:normal; }
+.helper-answer[data-answer="declined"], .helper-send-error{ color:var(--warn); }
+.helper-handoff .mini{ margin-left:var(--sp-2); }
 /* A retired row is a record, not a control — no checkbox, no press state, no
    cursor. It is there so the host can see what their answer removed and be
    sure nothing was lost, which is the whole reason retiring beats deleting. */

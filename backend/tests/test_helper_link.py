@@ -361,3 +361,19 @@ def test_readback_returns_the_answers_own_fields_only(monkeypatch):
     data = r.json()
     assert len(data) == 1
     assert set(data[0]) == {"helper_key", "state", "note", "submitted_at", "updated_at"}
+
+
+def test_an_hour_the_app_guessed_never_reaches_the_helper():
+    # doItForMe.timePhrase's rule, server-side: a derived start time is the
+    # app's guess, not the host's word, so it is withheld.
+    p = hl_mod.build_helper_payload({**EVENT, "startTimeSource": "derived"}, "g1")
+    assert p["startTime"] == ""
+    assert hl_mod.build_helper_payload({**EVENT, "startTimeSource": "host"}, "g1")["startTime"] == "16:00"
+
+
+def test_the_phantom_address_field_is_not_read():
+    # venueFor.js: event.address is whitelisted elsewhere but never written;
+    # venueAddress is the truth.
+    data = {k: v for k, v in EVENT.items() if k != "venueAddress"}
+    data["address"] = "999 Phantom Road"
+    assert hl_mod.build_helper_payload(data, "g1")["venueAddress"] == ""
