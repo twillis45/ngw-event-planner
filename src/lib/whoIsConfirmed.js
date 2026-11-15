@@ -5,8 +5,8 @@
 // second source, it only reads them side by side:
 //   vendors  — the vendor's OWN answer through the brief link
 //              (fetchVendorConfirmations, latest row per vendor id). The host's own
-//              "Locked in" is deliberately NOT read as confirmed: the shell reserves
-//              "confirmed" for the vendor's word (VENDOR_STATUS_LABEL).
+//              The host's own "Locked in" also counts (owner ruling 11/15/2026);
+//              a problem the vendor flagged still wins, being newer.
 //   helpers  — deriveHelperResponsibilities, whose status comes from the single
 //              seam helperStatusFor (helperResponsibility.js). A helper link that
 //              lets a helper answer for themselves plugs in THERE, not here.
@@ -16,6 +16,7 @@
 // Nothing is shown as confirmed without one of the sources above saying so.
 // PURE: no I/O, no clock, no storage.
 import { deriveHelperResponsibilities } from './helperResponsibility';
+import { isVendorConfirmed } from './workstreams';
 
 const clean = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 const vendorLabel = (v) => clean(v && v.name) || clean(v && v.category) || 'A vendor';
@@ -37,8 +38,11 @@ export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswe
     for (const v of paid) {
       const row = byVendor[String(v.id)];
       const state = row && clean(row.state);
+      // The vendor's own answer first: a flagged problem is newer than any mark.
+      // Then the host's own "Locked in" (owner ruling 11/15/2026).
       if (state === 'confirmed') confirmed.push(vendorLabel(v));
       else if (state) flagged.push(vendorLabel(v));
+      else if (isVendorConfirmed(v)) confirmed.push(vendorLabel(v));
       else waiting.push(vendorLabel(v));
     }
     vendors = { total: paid.length, confirmed: confirmed.length, flagged, waiting };

@@ -88,9 +88,12 @@ describe('missing data is omitted cleanly', () => {
     expect(body).toContain('at Fort Ward Park. You’re doing the catering.');
   });
 
-  test('a DJ is not told the headcount — the brief page does not show it to them either', () => {
+  // Owner ruling 11/15/2026: every vendor's text carries the guest count the
+  // host gave. Diet counts stay with the vendors who feed guests.
+  test('a DJ is told the headcount, but not the diet counts', () => {
     const { body } = buildVendorDetailsMessage({ vendor: { name: 'Spin Cycle', category: 'DJ' }, event: FULL, link: LINK });
-    expect(body).not.toMatch(/guests|vegetarian/);
+    expect(body).toContain('40 guests.');
+    expect(body).not.toMatch(/vegetarian|nut allergy/);
     expect(body).toContain('You’re doing the DJ.');
   });
 

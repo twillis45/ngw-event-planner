@@ -38,10 +38,11 @@ describe('summarizeWhoIsConfirmed', () => {
     expect(s.vendors).toEqual({ total: 3, confirmed: 1, flagged: ['Petal Row'], waiting: ['Bakery'] });
   });
 
-  test('the host’s own "Locked in" is not the vendor’s word', () => {
+  // Reversed by owner ruling 11/15/2026: the host's own "Locked in" now counts.
+  test('the host’s own "Locked in" counts as confirmed (owner ruling 11/15/2026)', () => {
     const s = summarizeWhoIsConfirmed(EV, {});
-    expect(s.vendors.confirmed).toBe(0);
-    expect(s.vendors.waiting).toEqual(['Harbor Rotisserie', 'Bakery', 'Petal Row']);
+    expect(s.vendors.confirmed).toBe(1);   // Harbor Rotisserie, status Confirmed
+    expect(s.vendors.waiting).toEqual(['Bakery', 'Petal Row']);
   });
 
   test('helpers: the Helpers panel’s rows; done or confirmed counts, retired and host rows do not exist', () => {
@@ -110,5 +111,22 @@ describe('helpers who answered through their link', () => {
   });
   test('without link answers, nothing changes', () => {
     expect(summarizeWhoIsConfirmed(EV, CONFIRMS)).toEqual(summarizeWhoIsConfirmed(EV, CONFIRMS, {}));
+  });
+});
+
+// Owner ruling 11/15/2026: a vendor the HOST locked in (status Confirmed, or the
+// legacy Booked/Paid — workstreams isVendorConfirmed) counts as confirmed, the
+// same as the vendor's own answer. A problem the vendor flagged still shows:
+// it is newer than the host's mark.
+describe('a vendor the host locked in', () => {
+  test('counts as confirmed without the vendor answering', () => {
+    const ev = { ...EV, vendors: [{ id: 'v-x', name: 'Oak Hall', category: 'Venue', status: 'Confirmed' }] };
+    expect(summarizeWhoIsConfirmed(ev, {}).vendors).toEqual({ total: 1, confirmed: 1, flagged: [], waiting: [] });
+  });
+  test('a problem the vendor flagged still shows', () => {
+    const ev = { ...EV, vendors: [{ id: 'v-x', name: 'Oak Hall', category: 'Venue', status: 'Confirmed' }] };
+    const s = summarizeWhoIsConfirmed(ev, { 'v-x': { vendor_id: 'v-x', state: 'issue' } });
+    expect(s.vendors.flagged).toEqual(['Oak Hall']);
+    expect(s.vendors.confirmed).toBe(0);
   });
 });

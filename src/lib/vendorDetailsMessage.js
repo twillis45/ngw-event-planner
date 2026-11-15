@@ -14,9 +14,8 @@
 // EVERY CLAUSE IS OPTIONAL. A clause whose data is missing is left out whole —
 // never "undefined", never "TBD", never a number the app made up:
 //   - headcount: only a count the HOST gave (briefGuestCount — the same outward
-//     gate as the brief), and only to a vendor the brief page shows it to
-//     (food, drink, rentals: briefShowsHeadcount). A DJ is not told it there,
-//     so the text does not tell them either.
+//     gate as the brief), to EVERY vendor (owner ruling 11/15/2026: a DJ and a
+//     photographer plan around the size of the room too).
 //   - diet counts: only the fixed-vocabulary aggregate the brief already ships
 //     (briefDietCounts), and only to a vendor who feeds guests.
 //   - the hour: only one the host set (startTimeIsConfirmed); our derived
@@ -28,7 +27,7 @@
 import { venueFor } from './venueFor';
 import { fmtLongDate } from './doItForMe';
 import { startTimeIsConfirmed, parseClock } from './startTime';
-import { briefGuestCount, briefDietCounts, briefFeedsGuests, briefShowsHeadcount } from './vendorBrief';
+import { briefGuestCount, briefDietCounts, briefFeedsGuests } from './vendorBrief';
 import { DIET_TAGS } from './dietRows';
 
 const HOMEISH = /^(backyard|back\s?yard|home|house|my place|host'?s home|our (place|home|backyard))$/i;
@@ -119,7 +118,9 @@ export function buildVendorDetailsMessage({ vendor, event, profile, link } = {})
   if (!what && hosting) hosting = ['I’m hosting', 'an event', when, where].filter(Boolean).join(' ');
 
   const cat = v.category;
-  const count = briefShowsHeadcount(cat) ? briefGuestCount(e) : null;
+  // Every vendor gets the host's guest count (owner ruling 11/15/2026); diet
+  // counts stay with vendors who feed guests.
+  const count = briefGuestCount(e);
   let guests = '';
   if (count && count > 0) {
     const diet = briefFeedsGuests(cat) ? dietPhrase(briefDietCounts(e)) : '';
