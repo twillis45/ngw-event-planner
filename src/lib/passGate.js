@@ -224,3 +224,25 @@ export function creationDisclosure(verdict) {
   }
   return 'Planning this event is free, including sharing one vendor brief (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the $39 One-Event Pass.';
 }
+
+/**
+ * The pass sheet's words for THIS event (consumer panel, 11/15/2026: hosts of
+ * a dinner were sold "trip tools" and "the full destination toolkit"). The
+ * toolkit is only locked — so only part of what $39 buys — on an event stamped
+ * destination/multi-day (`lockingReasons`). Anywhere else it is already open,
+ * and naming it as a perk would sell something the host has for free.
+ */
+export function passSheetCopy(ev) {
+  const trip = lockingReasons(ev).length > 0;
+  const perks = [
+    ['Every vendor, one brief each', 'Plan every event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
+    ...(trip ? [['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.']] : []),
+    ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
+  ];
+  return {
+    beforePaying: 'Planning stays free. Pay $39 once so all your vendors can say yes to you' + (trip ? ', and get trip tools.' : '.'),
+    perks,
+    heldLine: (trip ? 'Every vendor brief and the full destination toolkit are unlocked here.' : 'Every vendor brief is unlocked here.')
+      + ' Nothing more to pay on this event — the pass covers it.',
+  };
+}

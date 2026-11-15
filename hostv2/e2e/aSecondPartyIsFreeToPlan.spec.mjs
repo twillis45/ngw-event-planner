@@ -25,7 +25,10 @@ import { previewUrl } from '../deployBase.mjs';
 const API = 'https://passgate-mock.invalid';
 const BASE = previewUrl(Number(process.env.PW_PASSGATE_PORT || 5266));
 const CODE = 'abcdefghij1234567890xy';
-const BEFORE_PAYING = 'Planning stays free. Pay $39 once so all your vendors can say yes to you, and get trip tools.';
+// 11/15/2026 (consumer panel): trip wording only on a trip. A party's sheet
+// drops "and get trip tools" and the destination-toolkit perk; a trip keeps both.
+const BEFORE_PAYING = 'Planning stays free. Pay $39 once so all your vendors can say yes to you.';
+const BEFORE_PAYING_TRIP = 'Planning stays free. Pay $39 once so all your vendors can say yes to you, and get trip tools.';
 
 const ev = (id, name, over = {}) => ({ id, name, type: 'Birthday Party', date: dateIn(60),
   guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
@@ -120,7 +123,19 @@ test('the pass sheet leads with the before-paying line, and sells no "next event
   await expect(page.getByText(/first event/i)).toHaveCount(0);
   // The perks the ruling keeps, and the standing no-vendor-fees commitment.
   await expect(page.getByText('Every vendor, one brief each', { exact: true })).toBeVisible();
-  await expect(page.getByText('The full destination toolkit', { exact: true })).toBeVisible();
   await expect(page.getByText('One event, one price', { exact: true })).toBeVisible();
   await expect(page.getByText(/Your vendors pay us nothing/)).toBeVisible();
+  // A backyard party is not a trip: nothing on the sheet sells trip tools.
+  await expect(page.getByText('The full destination toolkit', { exact: true })).toHaveCount(0);
+  expect(await page.locator('.sheet').innerText()).not.toMatch(/\btrips?\b|destination/i);
+});
+
+test('on a trip, the pass sheet still sells the destination toolkit', async ({ page }) => {
+  const TRIP = ev('cust-trip-party', 'Lake House Weekend', { isDestination: true, passRequired: true, passReasons: ['destination'] });
+  await boot(page, [FIRST, TRIP], TRIP.id);
+  await openJumpTo(page);
+  await page.locator('.nav-pass').click();
+  await expect(page.locator('#sheet-title')).toHaveText('The One-Event Pass');
+  await expect(page.locator('[data-before-paying]')).toHaveText(BEFORE_PAYING_TRIP);
+  await expect(page.getByText('The full destination toolkit', { exact: true })).toBeVisible();
 });
