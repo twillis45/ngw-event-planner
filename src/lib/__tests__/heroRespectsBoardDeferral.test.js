@@ -17,8 +17,11 @@ import { deriveEventPhaseProgress } from '../phaseProgress';
 
 const AS_OF = new Date('2026-08-07T12:00:00Z');
 const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
+// 11/15/2026: type was lowercase 'birthday', which missed the 'Birthday' table
+// row (91d) and only matched it via the 91d 'Other' default; it now resolves to
+// the playbook's own 21d lead. 'Birthday' is the type real events carry.
 const eventAt = (days, extra) => ({
-  id: 'ev-defer', type: 'birthday', name: 'Deferral probe',
+  id: 'ev-defer', type: 'Birthday', name: 'Deferral probe',
   date: iso(AS_OF.getTime() + days * 864e5),
   venue: 'The Hall', guestCount: 30, foodChoices: {},
   ...(extra || null),
