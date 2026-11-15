@@ -7,7 +7,10 @@ test('the line states the ruled terms: 14 days, all of it back, unless a new bri
   expect(REFUND_WINDOW_DAYS).toBe(14);
   expect(REFUND_LINE).toMatch(/\b14 days\b/);
   expect(REFUND_LINE).toMatch(/\ball \$\d+ back\b/);
-  expect(REFUND_LINE).toMatch(/not sent a new vendor brief/);
+  // Reworded 11/15/2026: the AI consumer panel read the old line ("...if you
+  // have not sent a new vendor brief") as "use it and lose your refund" (9 of
+  // 44 asked). Same rule; the condition now leads, as a change of mind before use.
+  expect(REFUND_LINE).toMatch(/^Changed your mind before sending a new vendor brief\?/);
 });
 
 test('it reads in one breath: 20 words or fewer, no fine-print words', () => {

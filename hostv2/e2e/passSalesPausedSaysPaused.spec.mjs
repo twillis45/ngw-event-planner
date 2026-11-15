@@ -74,7 +74,7 @@ test('on sale: the refund rule sits above the buy button', async ({ page }) => {
   await boot(page, { stripe_configured: true, stripe_can_honour_purchases: true, pass_sales_paused: false });
   const rule = page.locator('[data-refund-rule]');
   const buy = page.getByRole('button', { name: 'Get the pass — $39', exact: true });
-  await expect(rule).toHaveText('Changed your mind? Get all $39 back within 14 days if you have not sent a new vendor brief.');
+  await expect(rule).toHaveText('Changed your mind before sending a new vendor brief? Get all $39 back within 14 days.');
   await rule.scrollIntoViewIfNeeded();
   await expect(rule).toBeVisible();
   const [r, b] = [await rule.boundingBox(), await buy.boundingBox()];
