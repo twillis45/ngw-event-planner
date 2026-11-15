@@ -92,7 +92,7 @@ describe('THE DEFECT ITSELF, re-proved against the live corpus', () => {
       // verbatim, `lastVerified` included, so the row COUNT moved and the two
       // facts this test actually guards — the earliest date, and that nothing
       // predates the old constant — did not.
-      .toBe(`540 dated rows, earliest 2026-08-14, older than 2026-01: 0`);
+      .toBe(`543 dated rows, earliest 2026-08-14, older than 2026-01: 0`); // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
   });
 
   test('EVERY playbook now derives a stamp its own rows can stand behind', () => {
@@ -108,7 +108,8 @@ describe('THE DEFECT ITSELF, re-proved against the live corpus', () => {
       if (!(v.asOf > constantIso)) notNewer.push(`${pb.type} (${v.asOf})`);
     }
     expect(notNewer).toEqual([]);
-    expect(labels).toEqual({ 'Aug 2026': 43 });
+    // Friendsgiving's rows were verified 11/15/2026, so it stamps its own month.
+    expect(labels).toEqual({ 'Aug 2026': 43, 'Nov 2026': 1 });
     // Two playbooks have no researched price row at all. They previously showed
     // a confident "Jan 2026" over nothing; they now show no stamp. Named, so
     // that if one gains a priced row this count moves WITH a reason.

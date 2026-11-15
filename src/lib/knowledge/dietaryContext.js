@@ -15,6 +15,15 @@ export const DIETARY_SOURCES = {
     fetched: '2026-07-16',
     claim: 'The FDA recognizes NINE major food allergens — milk, eggs, fish, crustacean shellfish, tree nuts, peanuts, wheat, soybeans, and sesame (added January 2023 by the FASTER Act) — which account for most severe reactions. Collect guests\' allergies and dietary/religious needs (kosher, halal, vegan) BEFORE the menu locks, and keep an allergen-safe plate physically separated from the allergen through prep and service.',
   },
+  // Registered 11/15/2026 with the Friendsgiving playbook — the shared-table
+  // practice the FDA list does not cover (who serves first, labels, utensils).
+  // FARE is a nonprofit patient-advocacy organization. Fetched and read verbatim.
+  'fare-teal-thanksgiving': {
+    org: 'FARE (Food Allergy Research & Education) — Tips and Takeaways for Your Teal Thanksgiving',
+    url: 'https://www.foodallergy.org/resources/tips-and-takeaways-your-teal-thanksgiving',
+    fetched: '2026-11-15',
+    claim: 'For a shared holiday meal: "Consider creating ingredient labels so that everyone can see what\'s in each dish"; "Hang on to packaging, or snap a photo of the ingredients label"; "Let individuals with food allergies serve themselves first to limit the risk of cross-contact"; and a separate container and serving utensil for the person with the allergy.',
+  },
 };
 
 const DIETARY_CATEGORIES = [

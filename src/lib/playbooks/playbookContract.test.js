@@ -79,7 +79,11 @@ const BASELINE = {
   // multiplier shape (the 25 playbooks below use it); a whenChoice-gated
   // decision is a second, equally real pattern it doesn't yet have a name
   // for. Documented here rather than mislabeled to satisfy the linter.
-  costFactorGaps: 1,  // COMPLETE 2026-07-02 — all 25 playbooks wired; remainder is empty-stub or noCostEffect
+  // 2026-11-15: +1 for Friendsgiving's `hosting_model`, the same second pattern:
+  // its cost effect is which lines appear (the host's main only when the host
+  // buys it, potluck sides vs grocery sides, ordered-in as the caterer path), so a
+  // multiplier would scale lines that are not shown. Documented in the playbook.
+  costFactorGaps: 2,  // COMPLETE 2026-07-02 — all 25 playbooks wired; remainder is empty-stub or noCostEffect
   idPrefixGaps: 0,    // FIXED 2026-07-02 — reunion + sundayDinner renamed p- → p_
   categoryGaps: 0,    // clean — keep it: no vendor names in purchases.category
   qtyMixGaps: 0,      // clean — keep it: no purchase mixes qtyPerGuest + qtyFlat

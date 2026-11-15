@@ -41,8 +41,9 @@ describe('(premise) the mismatch was real and this is its size', () => {
     const k = keyed();
     const all = uses();
     const raw = all.filter((b) => k.includes(b)).length;
-    expect(all.length).toBe(472);
-    expect(raw).toBe(92);                       // 19%
+    // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+    expect(all.length).toBe(479);
+    expect(raw).toBe(94);                       // 19%
   });
 });
 

@@ -67,6 +67,7 @@ import teamRetreat from './data/teamRetreat';
 import clientDinner from './data/clientDinner';
 import fundraiserGala from './data/fundraiserGala';
 import thanksgivingHosting from './data/thanksgivingHosting';
+import friendsgiving from './data/friendsgiving';
 import halloweenParty from './data/halloweenParty';
 import newYearsEveParty from './data/newYearsEveParty';
 import ptaBoosterFundraiser from './data/ptaBoosterFundraiser';
@@ -283,7 +284,7 @@ export function injectedDecisionsFor(event, pb) {
 // playbooks. backyardBbq is registered under the canonical 'Get-Together' type
 // (BBQ / cookout / backyard all resolve there via the taxonomy).
 const norm = (s) => String(s || '').trim().toLowerCase();
-export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat, clientDinner, fundraiserGala, thanksgivingHosting, halloweenParty, newYearsEveParty, ptaBoosterFundraiser];
+export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat, clientDinner, fundraiserGala, thanksgivingHosting, friendsgiving, halloweenParty, newYearsEveParty, ptaBoosterFundraiser];
 const REGISTRY = {};
 for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 
@@ -2889,6 +2890,10 @@ export function playbookDayOfChecklist(event) {
     try { return event.isDestination === true && lodgingKitchen(event) === false; } catch (_e) { return false; }
   })();
   const source = (authored && authored.length ? authored : DEFAULT_DAYOF_CHECKLIST)
+    // The same whenChoice gate tasks and purchases use (11/15/2026): "the turkey
+    // is fully thawed" has no business on the morning of a Friendsgiving where a
+    // friend is bringing the ham. Ungated items are unaffected.
+    .filter((it) => !it || choiceShown(event, it.whenChoice))
     .map((it) => (noKitchen && it && it.id === 'food' ? DAYOF_NO_KITCHEN_FOOD : it));
   const items = normalizeDayOfItems(source);
   if (!items.length) return null;
@@ -2951,7 +2956,9 @@ export function playbookMilestones(event, asOf) {
     && m.offsetDays > 0                                   // pre-event only, never a follow-up
     && /\binvit|save.the.date/i.test(String(m.name || ''));
   return pb.milestones
-    .filter((m) => m && m.category !== 'event' && typeof m.offsetDays === 'number')
+    // whenChoice (11/15/2026), the gate tasks, purchases and the day-of list
+    // use: "Start thawing the turkey" is not a milestone when a friend brings it.
+    .filter((m) => m && m.category !== 'event' && typeof m.offsetDays === 'number' && choiceShown(event, m.whenChoice))
     .map((m0) => {
       const m = (_airFloor && _isInviteish(m0) && m0.offsetDays < _airFloor.floorDays)
         ? { ...m0, offsetDays: _airFloor.floorDays, _airFloorApplied: true }

@@ -658,8 +658,11 @@ export function parseSmartEventText(text, opts = {}) {
   // singular branches below already do it.
   const COUPLE_JOIN = '\\s*(?:and|&)\\s*';
   // A vendor role before a possessive is evidence of a supplier, not an honoree.
+  // So is "at" (11/15/2026): "Friendsgiving at Vida's" is dinner at her place,
+  // not a party for her — atSomeonesIsAPlace.test.js.
   const matchPerson = (pattern) => [...t.matchAll(new RegExp(pattern.source, pattern.flags + 'g'))]
     .find((m) => !/\b(?:caterer|vendor|photographer|DJ)\s*$/i.test(t.slice(0, m.index))
+      && !/\bat\s+(?:my\s+|our\s+)?$/i.test(t.slice(0, m.index))
       && !/^(?:caterer|vendor|photographer|DJ)\s/i.test(m[1])) || null;
   const hm = (() => {
     const rel = matchPerson(new RegExp('\\b(?:my\\s+|our\\s+)?(' + REL_WORDS + COUPLE_JOIN
@@ -787,6 +790,17 @@ export function parseSmartEventText(text, opts = {}) {
     || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:church|fellowship|banquet|fire|legion|social|event|reception|dining|great)\s+(?:hall|room|space|center|centre))\b/i)
     || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:vfw|elks?\s*lodge|masonic\s*(?:temple|lodge)|rec(?:reation)?\s*center|senior\s*center|banquet\s*facility|ballroom|event\s*space|country\s*club))\b/i);
   const venuePhrase = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1) : '';
+  // "at Vida's" with no place noun after it still names a place (11/15/2026,
+  // atSomeonesIsAPlace.test.js). Kept verbatim and NOT claimed as a home: it
+  // may be her apartment or a restaurant called Vida's, and only the host knows.
+  const atPossessive = (() => {
+    // It must END there: "Anderson's Farm" and "Miller's Barn" are business
+    // names (oneListOfRelations.test.js), so a following capitalized word stops
+    // it — unless that word is a weekday, a month, or a sentence word.
+    const m = t.match(/\bat\s+([A-Z][a-zA-Z]+['’]s)(?=\s*$|\s*[,.;!?\-–—]|\s+(?:[a-z]|(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day\b|(?:January|February|March|April|May|June|July|August|September|October|November|December)\b|(?:This|Next|On|For|At|In|With)\b))/);
+    if (!m) return '';
+    return /^\s+(?:house|place|home|apartment|condo|yard|backyard|cabin|farm|garden|lake house)\b/i.test(t.slice(m.index + m[0].length)) ? '' : m[1];
+  })();
 
   // ── Milestone number ("80th birthday", "50th anniversary") ──────────────
   // A real signal that used to be silently discarded — carried into the event
@@ -1428,6 +1442,11 @@ export function parseSmartEventText(text, opts = {}) {
     // A plain "weekend" is two nights by near-universal use. "Long weekend" is
     // ambiguous and is left alone rather than guessed.
     if (/\blong\s+weekend\b/i.test(t)) return null;
+    // "THIS/NEXT WEEKEND" NAMES A DATE (11/15/2026, nextWeekendIsWhenNotHowLong
+    // .test.js): "Friendsgiving next weekend Saturday" saved two nights and the
+    // $39 pass for a one-evening dinner. With no trip or stay wording it is when,
+    // not how long; "girls trip next weekend" keeps its two nights.
+    if (/\b(?:this|next|coming|following)\s+weekend\b/i.test(t) && !travelSaid && !saidOvernight && !/\b(?:trip|getaway|away)\b/i.test(t)) return null;
     if (/\bweekend\b/i.test(t)) return 2;
     return null;
   })();
@@ -1824,8 +1843,8 @@ export function parseSmartEventText(text, opts = {}) {
     // kept treating a booked hall as "no venue yet" — the exact lane this field
     // exists to switch. A phrase carrying my/our is still a home.
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home'
-      : (lodging || venueAt || venuePhrase ? 'venue' : ''),
-    venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),
+      : (lodging || venueAt || venuePhrase || atPossessive ? 'venue' : ''),
+    venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (atPossessive || (area ? area.label : ''))),
     // Order is strongest-first: a said "City, ST" or ZIP, then a curated
     // vacation area's real hub town, then a named landmark's published city
     // (it carries a real state, so it outranks the next one), then the bare

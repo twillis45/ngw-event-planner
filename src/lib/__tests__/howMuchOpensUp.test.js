@@ -132,7 +132,7 @@ describe('THE POPULATION — small, and that is the finding', () => {
         if (decisionBlastRadius(pb, d, g).allDecisions > 0) withDownstream++;
       }
     }
-    expect(total).toBe(261);
+    expect(total).toBe(267);
     expect(withDownstream).toBe(42);
   });
 });
@@ -222,7 +222,7 @@ describe('the inversion that is already shipping', () => {
         if (asBlocker(b.surfaces + b.allDecisions) > MAX_LATE) wired++;
       }
     }
-    expect(total).toBe(261);
+    expect(total).toBe(267);
     expect(already).toBe(64);
     expect(wired).toBe(77);
   });
@@ -236,6 +236,7 @@ describe('the inversion that is already shipping', () => {
         dist[n] = (dist[n] || 0) + 1;
       }
     }
-    expect(dist).toEqual({ 0: 219, 1: 28, 2: 5, 3: 4, 5: 4, 6: 1 });
+    // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+    expect(dist).toEqual({ 0: 225, 1: 28, 2: 5, 3: 4, 5: 4, 6: 1 });
   });
 });

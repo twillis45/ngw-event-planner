@@ -2341,6 +2341,26 @@ export const COST_SOURCES = {
     limitations: ['commercial_interest_disclosed'],
     claim: 'Prepared vegetable lasagna at retail 2026, mainstream against organic. Stouffers Vegetable Lasagna Family Size 37.5oz is $10.79 at Lowes Foods ($0.29/oz, about $4.60/lb) and $11.49 at Price Chopper for the same 2.344lb tray ($4.90/lb). Amys Kitchen Vegetable Lasagna Family Size 32.5oz is $16.49 at Kroger ($0.507/oz, about $8.12/lb) — organic runs roughly 1.7x the mainstream tray. SERVING COUNT, which no earlier source published: the Stouffers label states about 4 servings at a 1-cup portion, so a 37.5oz tray is about 9.4oz a serving and $2.70 a serving at the Lowes price. Cut into party-sized bites rather than dinner portions a tray yields roughly 12, putting a bite near $0.90 mainstream and $1.37 organic. These are single-retailer shelf prices, not a national average.',
   },
+  // -- FRIENDSGIVING (registered 11/15/2026 with the Friendsgiving playbook) --
+  // Both pages fetched and their figures read verbatim the same day. Wells Fargo
+  // is a bank's agri-food desk reported by a news outlet; the Chime survey is
+  // commercial (Talker Research for Chime). Used as observed spend, never as a
+  // universal claim.
+  'wellsfargo-thanksgiving-2025': {
+    org: 'Wells Fargo Agri-Food Institute 2025 Thanksgiving dinner estimate, as reported by The National News Desk (WJLA), November 2025',
+    url: 'https://wjla.com/news/nation-world/thanksgiving-dinner-costs-drop-as-wells-fargo-finds-grocery-prices-lower-than-last-year-holiday-thursday-november-27-mashed-potatoes-gracy-frozen-vegetables-turkey-stuffing-pumpkin-pie',
+    fetched: '2026-11-15',
+    sourceClass: 'commercial_practitioner',
+    claim: 'Groceries for a 10-person Thanksgiving dinner in 2025: around $80 with store brands, around $95 with name brands, about 2% to 3% less than the year before — roughly $8.00 to $9.50 a person for the classic grocery basket (that division is ours).',
+  },
+  'chime-talker-thanksgiving-2025': {
+    org: 'Talker Research for Chime — survey of 2,000 US adults who celebrate Thanksgiving, October 17-23, 2025 (commercial; published November 2025)',
+    url: 'https://talkerresearch.com/how-the-holidays-stretch-americans-budgets/',
+    fetched: '2026-11-15',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'Average Thanksgiving spend $952 including $175 on food and $110 on drinks; each plate averages $21.88; the average host has eight guests. One in three baby boomers say the host should pay for everything; 33% of Gen Z say costs should be split evenly; 28% of those cutting back will have guests bring some dishes.',
+  },
 };
 
 // A costFactorProvenance is GROUNDED only when it is tier:'researched' AND cites >=1 real

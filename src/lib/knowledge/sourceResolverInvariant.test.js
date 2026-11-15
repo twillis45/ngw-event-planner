@@ -185,8 +185,12 @@ describe('1 — the source universe is what we think it is', () => {
   test('20 axes, 418 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(418);
-    expect(unionIds().size).toBe(418);        // therefore every id is globally unique
+    // (423 since 11/15/2026 registered the Friendsgiving playbook's five fetched
+    // sources: `wellsfargo-thanksgiving-2025` and `chime-talker-thanksgiving-2025`
+    // in COST_SOURCES, `evite-friendsgiving` and `foodnetwork-friendsgiving` in
+    // TIMING_SOURCES, `fare-teal-thanksgiving` in DIETARY_SOURCES.)
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(423);
+    expect(unionIds().size).toBe(423);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

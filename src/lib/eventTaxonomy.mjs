@@ -103,6 +103,9 @@ const EVENT_TAXONOMY = {
   // Thanksgiving is the most-hosted US occasion, Halloween the largest fall event
   // by spending, NYE the midnight-anchored night — all home_hosted).
   'Thanksgiving Hosting':   { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  // Friendsgiving (11/15/2026, owner decision): its own type, split out of
+  // Thanksgiving Hosting's potluck answer — see data/friendsgiving.js.
+  'Friendsgiving':          { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Halloween Party':        { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   "New Year's Eve Party":   { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
 };
@@ -144,7 +147,6 @@ const TYPE_ALIASES = {
   // Seasonal hosted holidays (2026-08-21): common short forms of the new canonical types.
   'Thanksgiving': 'Thanksgiving Hosting',
   'Thanksgiving Dinner': 'Thanksgiving Hosting',
-  'Friendsgiving': 'Thanksgiving Hosting',
   'Halloween': 'Halloween Party',
   // PTA / Booster (2026-08-21, W1.4): common host phrasings for the school
   // fundraiser. None collide with the gala aliases above ('Gala', 'Fundraiser',
@@ -228,6 +230,10 @@ const KEYWORDS = [
   // Seasonal hosted holidays (2026-08-21) resolve BEFORE the generic dinner-party
   // rule — "friendsgiving" used to land on Dinner Party and now belongs to the
   // authored Thanksgiving Hosting playbook (potluck model inside it).
+  // Friendsgiving first (11/15/2026): it is its own type now, and the word
+  // contains no "thanksgiving", but order it ahead anyway so a phrase naming both
+  // ("Friendsgiving the Saturday before Thanksgiving") lands on the one the host named.
+  [/friends-?\s*giving/, 'Friendsgiving'],
   [/thanksgiving|friendsgiving|turkey\s*day/, 'Thanksgiving Hosting'],
   [/halloween|trunk.?or.?treat/, 'Halloween Party'],
   [/new\s*year'?s?\s*(eve|party)|\bnye\b/, "New Year's Eve Party"],

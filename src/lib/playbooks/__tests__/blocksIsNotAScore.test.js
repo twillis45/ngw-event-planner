@@ -134,8 +134,12 @@ describe('blocks: measured, and deliberately not a ranking signal', () => {
       if (m > 0) boardsChanged += 1;
     }
     expect(boards).toBeGreaterThanOrEqual(40);
-    expect(rows).toBeGreaterThan(200);
-    // near-constant ⇒ near-zero information. Measured 8/249 rows, 4/45 boards.
+    // 11/15/2026: types now use their own playbook runway, so at 45 days out the
+    // short-lead types read 'standard' and park far windows: open rows 250 → 195,
+    // deferred 11 → 66 (261 either way; nothing lost, 55 rows parked).
+    expect(rows).toBeGreaterThan(180);
+    // near-constant ⇒ near-zero information. Measured 8/249 rows, 4/45 boards;
+    // 11/15/2026: 4/195 rows, 2/46 boards.
     expect(moved / rows).toBeLessThan(0.1);
     expect(boardsChanged / boards).toBeLessThan(0.2);
     // and where it WOULD move things, it mostly promotes rows nothing depends on

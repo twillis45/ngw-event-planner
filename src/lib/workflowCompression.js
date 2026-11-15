@@ -1,5 +1,9 @@
 // demo/src/lib/workflowCompression.js
 import { taskLeadDays } from './taskLead';
+// For the playbook's own lead when the table below has no row. A cycle in name
+// only: playbooks/index reads this module inside functions, never at load, and
+// this module reads getPlaybook only when a lead is asked for.
+import { getPlaybook } from './playbooks';
 // Sprint 57f · Compressed Workflow Intelligence
 //
 // PROBLEM
@@ -64,6 +68,7 @@ export const STANDARD_LEAD_DAYS = {
   'Award Ceremony':     91, // 3 months
   'Client Dinner':      21, // 3 weeks
   'Crab Feast':         42, // 6 weeks — casual backyard gathering (see provenance)
+  Friendsgiving:        21, // 3 weeks — the casual-dinner invite window (see provenance)
   Other:                91, // 3 months default
 };
 
@@ -104,6 +109,10 @@ export const STANDARD_LEAD_PROVENANCE = {
   'Sweet 16':         { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Large milestone party; 50–100 guests = 8–10 weeks, budgeted to 13 for decor sourcing.' },
   'Engagement Party': { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Medium–large party, 8–12 weeks; 91d.' },
   'Crab Feast':       { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Casual backyard gathering (20–50 guests) = 4–6 weeks; 42d = 6 weeks (the crab order itself is a T-5/T-7d call).' },
+  // 11/15/2026: Friendsgiving's runway is its invite window — a potluck is
+  // planned the day the What to Bring list goes out. Without this row it fell
+  // to the 91-day default and a host six days out read as 85 days behind.
+  Friendsgiving:      { tier: 'researched', sources: ['paperlesspost-invites'], verificationStatus: 'researched', claim: 'Casual dinner invitations go out 2–4 weeks ahead; 21d = 3 weeks, the middle of the sourced range.' },
   Reunion:            { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Large multi-household gathering, travel coordination; ~6 months.' },
   // synthesized — trade heuristic, not yet sourced per-type (the corporate/formal set)
   Corporate:          { tier: 'synthesized', sources: [], verificationStatus: 'synthesized', claim: '6-month heuristic for corporate events; not sourced per-type.' },
@@ -119,11 +128,41 @@ export const isGroundedLead = (eventType) => {
   const p = STANDARD_LEAD_PROVENANCE[eventType];
   return !!(p && p.tier === 'researched' && Array.isArray(p.sources) && p.sources.length > 0);
 };
-export const getStandardLeadProvenance = (eventType) =>
-  STANDARD_LEAD_PROVENANCE[eventType] || STANDARD_LEAD_PROVENANCE._default;
+// THE PLAYBOOK'S OWN RUNWAY (11/15/2026, everyTypeHasItsOwnRunway.test.js).
+// 26 of 46 authored types had no row in STANDARD_LEAD_DAYS and fell to the
+// 91-day 'Other' default, so a Game Night two weeks out was called a rush. A
+// type without a row now uses its playbook's authored `meta.leadTimeDays`
+// (aliases resolve through getPlaybook). A table row still wins: it may be
+// cited. The playbook's number is the author's judgment, so its provenance is
+// synthesized and isGroundedLead stays false for it.
+// The table is keyed by canonical type ('Birthday'); a host-typed or imported
+// 'birthday' or 'Thanksgiving' reaches the same row through the playbook's type.
+const canonicalOf = (eventType) => {
+  try { return getPlaybook(eventType)?.type || eventType; } catch (_e) { return eventType; }
+};
+const tableRow = (map, eventType) => map[eventType] ?? map[canonicalOf(eventType)];
+
+const playbookLeadDays = (eventType) => {
+  if (!eventType) return null;
+  try {
+    const n = Number(getPlaybook(eventType)?.meta?.leadTimeDays);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch (_e) { return null; }
+};
+
+export const getStandardLeadProvenance = (eventType) => {
+  const row = eventType ? tableRow(STANDARD_LEAD_PROVENANCE, eventType) : null;
+  if (row) return row;
+  const own = tableRow(STANDARD_LEAD_DAYS, eventType) == null ? playbookLeadDays(eventType) : null;
+  if (own) {
+    const type = getPlaybook(eventType).type;
+    return { tier: 'synthesized', sources: [], verificationStatus: 'synthesized', claim: `The ${type} playbook's own planning lead (${own} days); not sourced per-type.` };
+  }
+  return STANDARD_LEAD_PROVENANCE._default;
+};
 
 export const getStandardLeadDays = (eventType) =>
-  STANDARD_LEAD_DAYS[eventType] ?? STANDARD_LEAD_DAYS.Other;
+  (eventType ? tableRow(STANDARD_LEAD_DAYS, eventType) : null) ?? playbookLeadDays(eventType) ?? STANDARD_LEAD_DAYS.Other;
 
 // Compression ratio = days_until / standard_lead.
 // 1.0 = on standard timeline.  0.5 = half the usual lead time.  0.1 = very rushed.

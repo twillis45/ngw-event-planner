@@ -61,8 +61,9 @@ describe('(premise) the gap is real and has a real denominator', () => {
       candidates++;
       if (!d.costFactors || !Object.keys(d.costFactors).length) without++;
     }
-    expect(candidates).toBe(153);
-    expect(without).toBe(102);
+    // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+    expect(candidates).toBe(158);
+    expect(without).toBe(106);
   });
 });
 
@@ -70,7 +71,7 @@ describe('the picker can now aim at them', () => {
   test('it offers 153 targets where it offered 51', () => {
     let offered = 0;
     for (const pb of ALL_PLAYBOOKS) offered += getFieldPaths(pb).filter((p) => p.kind === 'cost-factor').length;
-    expect(offered).toBe(153);
+    expect(offered).toBe(158);
   });
 
   test('and a target with nothing yet says so in its label', () => {

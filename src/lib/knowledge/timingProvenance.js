@@ -108,6 +108,21 @@ export const TIMING_SOURCES = {
     claimType: 'planning_guidance',
     claim: 'A GAS grill preheats in 5-10 minutes; all three publishers give the same figure. CHARCOAL lit in a chimney starter needs 15-20 minutes (Outdoor Cooking Lab) or 15-25 (Grill Theory) for the coals to ash over and reach cooking temperature, and Serious Eats puts the whole charcoal setup at about 30 minutes end to end because handling lit coals is part of it. The chimney is what makes that number achievable - the same sources note lighter fluid is faster but leaves off-flavours in the food. So the two fuels differ by roughly 15 minutes of unavoidable lead.',
   },
+  // Registered 11/15/2026 with the Friendsgiving playbook. Both fetched and read
+  // verbatim the same day. Evite is a commercial invitation service; Food Network
+  // is editorial. Neither is a survey: they ground practice, not prevalence.
+  'evite-friendsgiving': {
+    url: 'https://www.evite.com/blog/planning-budget/stress-less-with-this-friendsgiving-to-do-checklist/',
+    fetched: '2026-11-15',
+    sourceClass: 'commercial_practitioner',
+    claim: 'Friendsgiving checklist: invite friends three weeks ahead with a "What to Bring" list right on the invitation; buy drinks (wine, beer, cider) one week ahead; if it is not on Thanksgiving itself, "the weekend before Thanksgiving may be a good bet."',
+  },
+  'foodnetwork-friendsgiving': {
+    url: 'https://www.foodnetwork.com/thanksgiving/thanksgiving-how-tos/how-to-host-an-amazing-friendsgiving',
+    fetched: '2026-11-15',
+    sourceClass: 'independent',
+    claim: 'The host makes the turkey and gravy, because "nobody wants to transport 20-odd pounds of piping-hot poultry anywhere"; assign each guest a general category (potatoes, cranberries, stuffing, dessert); hold it earlier in the month as a trial run or the same weekend as Thanksgiving; guests who ask what to bring can bring ice, wine or napkins.',
+  },
 };
 
 // Category → grounding. `pattern` matches the decision's id + label; `antiPattern`
