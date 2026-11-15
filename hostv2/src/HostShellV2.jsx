@@ -278,6 +278,7 @@ import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, 
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref } from '@app/lib/vendorDetailsMessage';
+import { summarizeWhoIsConfirmed, whoIsConfirmedLines } from '@app/lib/whoIsConfirmed';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations } from '@app/lib/api/helperLink';
 import { buildHelperAsk } from '@app/lib/helperAsk';
@@ -12904,6 +12905,37 @@ export default function HostShellV2() {
                   <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setSheet({ kind: 'sweep' })}>See the sweep</button>
                 </div>
               )}
+
+              {/* ── WHO'S CONFIRMED (host board, 11/15/2026) ─────────────────────
+                  One compact read, in the command header's readiness zone (UX_04
+                  zone 1), of answers that already live in three sections — it
+                  adds no state and no second source (lib/whoIsConfirmed.js).
+                  Each part taps into the section that owns it. A vendor counts
+                  as confirmed only by their own answer through the link; a
+                  helper only through helperStatusFor. Not on a finished event:
+                  "still waiting" is a dead ask there. */}
+              {!isPast && (() => {
+                let l = null;
+                try { l = whoIsConfirmedLines(summarizeWhoIsConfirmed(event, confirmationByVendor)); } catch { l = null; }
+                if (!l || !l.parts.length) return null;
+                const go = { vendors: () => setSheet({ kind: 'vendors' }), helpers: () => setSheet({ kind: 'space' }), guests: () => setSheet({ kind: 'guests' }) };
+                return (
+                  <section data-who-confirmed aria-label="Who’s confirmed" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
+                    <h2 className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Who’s confirmed</h2>
+                    <div className="actions-row" style={{ flexWrap: 'wrap', marginTop: 0 }}>
+                      {l.parts.map(p => (
+                        <button key={p.key} className="mini" data-who-part={p.key} onClick={go[p.key]}>{p.text}</button>
+                      ))}
+                    </div>
+                    {l.flagged && (
+                      <button className="mini rowlink" data-who-flagged style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }} onClick={go.vendors}>{l.flagged}</button>
+                    )}
+                    {l.waiting && (
+                      <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>
+                    )}
+                  </section>
+                );
+              })()}
 
               {/* Slide-down readouts: hidden until the "what's counted" caret is
                   tapped — never-dense doctrine. Pills = the 4 readiness pillars;
