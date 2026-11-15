@@ -225,7 +225,13 @@ jobs:
         # the denominator is `strategy.job-total`, the blobs upload as
         # `blob-${{ matrix.shard }}` and the merge downloads `blob-*` with
         # merge-multiple. Nothing else states the count.
-        shard: [1, 2, 3, 4]
+        # ── EIGHT, OWNER RULING 2026-11-15 ───────────────────────────────
+        # Four shards had drifted back to 28-31 min (PR #125: 28m26s to
+        # 30m50s against the 40 ceiling), and each change waits on this matrix
+        # twice — on the PR and again on main before Pages deploys. Eight
+        # halves the wall per run; same mechanism as 2 → 3 → 4, `workers: 2`
+        # per shard unchanged, so the flake posture is untouched.
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
