@@ -88,7 +88,8 @@ describe('angle 2 — the Saturday before Thanksgiving, 15 guests, six days out'
     const ros = playbookRunOfShow(e);
     const at = (re) => ros.find((c) => re.test(c.segment)).time;
     expect(at(/^Turkey into the oven/)).toBe('14:00');
-    expect(at(/^Main out to rest/)).toBe('18:15');
+    expect(at(/^Thermometer check/)).toBe('18:05');
+    expect(at(/^Turkey out to rest/)).toBe('18:15');
     expect(at(/^Dinner:/)).toBe('19:00');
   });
   test('the day-of list carries the turkey and food-safety checks', () => {
@@ -97,13 +98,14 @@ describe('angle 2 — the Saturday before Thanksgiving, 15 guests, six days out'
 });
 
 describe('angle 3 — who cooks what', () => {
-  test('default potluck: the host buys the turkey; the sides are on the bringing list, not the shopping list', () => {
+  test('default potluck: the host buys the turkey; the friends\' dishes are assigned, not bought or charged to the host', () => {
     const e = ev();
     expect(foodApproach(e)).toEqual(expect.objectContaining({ usesCaterer: false, cooking: true }));
-    const sides = playbookFoodPlan(e).list.find((i) => i.id === 'p_sides');
-    expect(sides.where[0]).toBe('Guests bring');
-    expect(foodIds(e)).toEqual(expect.arrayContaining(['p_turkey', 'p_gravy', 'p_sides', 'p_desserts', 'p_labels']));
-    expect(foodIds(e)).not.toContain('p_sides_host');
+    expect(foodIds(e)).toEqual(expect.arrayContaining(['p_turkey', 'p_gravy', 'p_labels']));
+    // Review finding 11/15/2026: a "Guests bring" line was still a host buy-task
+    // and a host cost. The dishes friends carry live in the assignment task.
+    expect(foodIds(e)).not.toContain('p_sides');
+    expect(foodIds(e)).not.toContain('p_desserts');
     expect(taskIds(e)).toEqual(expect.arrayContaining(['t_assign', 't_buy_bird', 't_thaw', 't_transport_note', 't_oven_slots']));
   });
   test('full potluck: a friend brings the main, so nothing about a turkey lands on the host', () => {
@@ -116,11 +118,15 @@ describe('angle 3 — who cooks what', () => {
     expect(taskIds(e)).not.toContain('t_bird_in');
     expect(dayOfIds(e)).not.toContain('thaw');
     expect(dayOfIds(e)).not.toContain('thermometer');
+    // Milestones and the run of show follow the same gate (review 11/15/2026).
+    expect(playbookMilestones(e, AS_OF).map((m) => m.id)).not.toEqual(expect.arrayContaining(['fg_thaw']));
+    expect(playbookMilestones(e, AS_OF).map((m) => m.id)).not.toContain('fg_main');
+    expect(playbookRunOfShow(e).some((c) => /^(Turkey|Baste|Thermometer)/.test(c.segment))).toBe(false);
   });
   test('host cooks most of it: the sides move to the grocery list, and friends are asked for drinks and dessert', () => {
     const e = ev({ hosting_model: HOST_COOKS });
-    expect(foodIds(e)).toContain('p_sides_host');
-    expect(foodIds(e)).not.toContain('p_sides');
+    expect(foodIds(e)).toContain('p_sides');
+    expect(playbookFoodPlan(e).list.find((i) => i.id === 'p_sides').where[0]).toBe('Grocery');
     expect(taskIds(e)).toContain('t_assign_light');
     expect(taskIds(e)).not.toContain('t_assign');
   });
@@ -128,8 +134,12 @@ describe('angle 3 — who cooks what', () => {
     const e = ev({ hosting_model: ORDERED });
     expect(foodApproach(e).usesCaterer).toBe(true);
     expect(foodIds(e)).not.toContain('p_turkey');
-    expect(taskIds(e)).toContain('t_order');
-    expect(taskIds(e)).not.toContain('t_transport_note');
+    expect(taskIds(e)).toEqual(expect.arrayContaining(['t_order', 't_confirm_order', 't_shop_basics']));
+    // Nothing a cook does: no dish intake, no transport note, no gap-fill run, no main to shop for.
+    for (const id of ['t_transport_note', 't_arrivals', 't_confirm', 't_fill_gaps', 't_shop', 't_buy_bird', 't_thaw']) expect(taskIds(e)).not.toContain(id);
+    expect(playbookMilestones(e, AS_OF).map((m) => m.id)).not.toContain('fg_thaw');
+    expect(dayOfIds(e)).not.toContain('every_dish');
+    expect(playbookRunOfShow(e).some((c) => /^(Turkey|Baste|Thermometer)/.test(c.segment))).toBe(false);
   });
 });
 
@@ -139,15 +149,25 @@ describe('angle 4 — the main is not always a turkey', () => {
     expect(foodIds(e)).toContain('p_main_alt');
     expect(foodIds(e)).not.toContain('p_turkey');
     expect(taskIds(e)).not.toContain('t_thaw');
+    expect(taskIds(e)).toContain('t_main_in');
     expect(dayOfIds(e)).not.toContain('thaw');
     expect(dayOfIds(e)).toContain('thermometer');
+    expect(playbookRunOfShow(e).some((c) => /out to rest/.test(c.segment))).toBe(false);   // only a bird rests 45 minutes
   });
   test('no single main: no bird, no thermometer, no resting beat', () => {
     const e = ev({ main_dish: 'No single main — a table of shareable dishes' });
     expect(foodIds(e)).not.toContain('p_turkey');
     expect(foodIds(e)).not.toContain('p_main_alt');
     expect(foodIds(e)).not.toContain('p_thermometer');
-    expect(playbookRunOfShow(e).some((c) => /^Main out to rest/.test(c.segment))).toBe(false);
+    expect(playbookRunOfShow(e).some((c) => /out to rest/.test(c.segment))).toBe(false);
+  });
+});
+
+describe('angle 4b — a turkey breast for a small table', () => {
+  test('it gets its own oven start and still thaws', () => {
+    const e = ev({ main_dish: 'A turkey breast or a smaller bird' }, { guestCount: 6 });
+    expect(taskIds(e)).toEqual(expect.arrayContaining(['t_breast_in', 't_thaw']));
+    expect(taskIds(e)).not.toContain('t_bird_in');
   });
 });
 
@@ -173,6 +193,9 @@ describe('angle 6 — money and drinks', () => {
     const base = line(ev());
     const all = line(ev({ drinks: 'Host covers all the drinks' }));
     expect(all.high).toBeGreaterThan(base.high);
+    // The default's "alcohol-free" must not trip the engine's dry-party discount
+    // (it once said "zero-proof", which the beverage rule reads as x0.6).
+    expect(all.high / base.high).toBeCloseTo(3, 0);
   });
 });
 

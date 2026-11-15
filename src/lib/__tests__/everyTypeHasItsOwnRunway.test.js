@@ -32,6 +32,11 @@ describe('what the host is told', () => {
     expect(getStandardLeadDays('Thanksgiving')).toBe(getStandardLeadDays('Thanksgiving Hosting'));
     expect(getStandardLeadDays('Thanksgiving Hosting')).not.toBe(STANDARD_LEAD_DAYS.Other);
   });
+  test('case does not change the runway: "birthday" reads the Birthday row, not the playbook', () => {
+    expect(getStandardLeadDays('birthday')).toBe(getStandardLeadDays('Birthday'));
+    expect(getStandardLeadDays('crab feast')).toBe(STANDARD_LEAD_DAYS['Crab Feast']);
+    expect(getStandardLeadProvenance('crab feast').sources).toEqual(['partyguides-2026']);
+  });
   test('a type with no playbook at all still gets the honest 91-day default', () => {
     expect(getStandardLeadDays('Totally Unknown Thing')).toBe(STANDARD_LEAD_DAYS.Other);
   });

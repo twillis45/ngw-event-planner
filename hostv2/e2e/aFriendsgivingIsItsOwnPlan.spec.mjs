@@ -38,7 +38,8 @@ test('typed in one sentence, a Friendsgiving becomes a potluck plan, not a famil
   await expect(calls).toContainText('How are drinks handled');
   await expect(calls).not.toContainText('Is anyone staying overnight');   // Thanksgiving Hosting's guest-room question
 
-  // The shopping list: the host's turkey, and the sides on the bringing side.
+  // The shopping list: the host's turkey and the basics. Friends' dishes are
+  // assigned, so they are not the host's buys.
   await openSectionByName(page, 'The spread & shopping');
   const spread = page.locator('.sheet').last();
   const shopTab = spread.locator('.fmode', { hasText: /^Shop$/ }).first();
@@ -51,7 +52,7 @@ test('typed in one sentence, a Friendsgiving becomes a potluck plan, not a famil
     await settled(page);
   }
   await expect(spread).toContainText(/Turkey/);
-  await expect(spread).toContainText(/Sides friends bring/);
+  await expect(spread).not.toContainText(/Sides you cook/);
   await expect(spread).toContainText(/Dish labels/);
 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);

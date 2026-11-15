@@ -135,6 +135,13 @@ export const isGroundedLead = (eventType) => {
 // (aliases resolve through getPlaybook). A table row still wins: it may be
 // cited. The playbook's number is the author's judgment, so its provenance is
 // synthesized and isGroundedLead stays false for it.
+// The table is keyed by canonical type ('Birthday'); a host-typed or imported
+// 'birthday' or 'Thanksgiving' reaches the same row through the playbook's type.
+const canonicalOf = (eventType) => {
+  try { return getPlaybook(eventType)?.type || eventType; } catch (_e) { return eventType; }
+};
+const tableRow = (map, eventType) => map[eventType] ?? map[canonicalOf(eventType)];
+
 const playbookLeadDays = (eventType) => {
   if (!eventType) return null;
   try {
@@ -144,8 +151,9 @@ const playbookLeadDays = (eventType) => {
 };
 
 export const getStandardLeadProvenance = (eventType) => {
-  if (STANDARD_LEAD_PROVENANCE[eventType]) return STANDARD_LEAD_PROVENANCE[eventType];
-  const own = STANDARD_LEAD_DAYS[eventType] == null ? playbookLeadDays(eventType) : null;
+  const row = eventType ? tableRow(STANDARD_LEAD_PROVENANCE, eventType) : null;
+  if (row) return row;
+  const own = tableRow(STANDARD_LEAD_DAYS, eventType) == null ? playbookLeadDays(eventType) : null;
   if (own) {
     const type = getPlaybook(eventType).type;
     return { tier: 'synthesized', sources: [], verificationStatus: 'synthesized', claim: `The ${type} playbook's own planning lead (${own} days); not sourced per-type.` };
@@ -154,7 +162,7 @@ export const getStandardLeadProvenance = (eventType) => {
 };
 
 export const getStandardLeadDays = (eventType) =>
-  STANDARD_LEAD_DAYS[eventType] ?? playbookLeadDays(eventType) ?? STANDARD_LEAD_DAYS.Other;
+  (eventType ? tableRow(STANDARD_LEAD_DAYS, eventType) : null) ?? playbookLeadDays(eventType) ?? STANDARD_LEAD_DAYS.Other;
 
 // Compression ratio = days_until / standard_lead.
 // 1.0 = on standard timeline.  0.5 = half the usual lead time.  0.1 = very rushed.

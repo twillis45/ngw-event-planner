@@ -1442,6 +1442,11 @@ export function parseSmartEventText(text, opts = {}) {
     // A plain "weekend" is two nights by near-universal use. "Long weekend" is
     // ambiguous and is left alone rather than guessed.
     if (/\blong\s+weekend\b/i.test(t)) return null;
+    // "THIS/NEXT WEEKEND" NAMES A DATE (11/15/2026, nextWeekendIsWhenNotHowLong
+    // .test.js): "Friendsgiving next weekend Saturday" saved two nights and the
+    // $39 pass for a one-evening dinner. With no trip or stay wording it is when,
+    // not how long; "girls trip next weekend" keeps its two nights.
+    if (/\b(?:this|next|coming|following)\s+weekend\b/i.test(t) && !travelSaid && !saidOvernight && !/\b(?:trip|getaway|away)\b/i.test(t)) return null;
     if (/\bweekend\b/i.test(t)) return 2;
     return null;
   })();

@@ -2956,7 +2956,9 @@ export function playbookMilestones(event, asOf) {
     && m.offsetDays > 0                                   // pre-event only, never a follow-up
     && /\binvit|save.the.date/i.test(String(m.name || ''));
   return pb.milestones
-    .filter((m) => m && m.category !== 'event' && typeof m.offsetDays === 'number')
+    // whenChoice (11/15/2026), the gate tasks, purchases and the day-of list
+    // use: "Start thawing the turkey" is not a milestone when a friend brings it.
+    .filter((m) => m && m.category !== 'event' && typeof m.offsetDays === 'number' && choiceShown(event, m.whenChoice))
     .map((m0) => {
       const m = (_airFloor && _isInviteish(m0) && m0.offsetDays < _airFloor.floorDays)
         ? { ...m0, offsetDays: _airFloor.floorDays, _airFloorApplied: true }
