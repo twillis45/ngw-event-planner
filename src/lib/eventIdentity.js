@@ -56,7 +56,13 @@ const TYPE_ESSENCE = {
   'bridal shower': 'a celebration before the wedding',
   'dinner party': 'a gathering of friends',
   'board meeting': 'a working session',
-  'get-together': 'a gathering',
+  // 11/15/2026 (everyTypeSaysWhatItIs.test.js): these five read "This is a
+  // gathering." — the floor below — on the live site.
+  'get-together': 'a get-together',
+  'friendsgiving': 'Thanksgiving with friends',
+  'thanksgiving hosting': 'Thanksgiving dinner',
+  'pupusa gathering': 'a pupusa gathering',
+  'client dinner': 'a dinner with clients',
   // Type families / free-text fallbacks (soft contains-match below).
   graduation: 'a celebration of an achievement',
   retirement: 'recognition of a career and a new chapter',
