@@ -97,7 +97,10 @@ const isThanksgivingWeekend = (d) => {
   if (d.getMonth() !== 10) return false; // November
   const day = d.getDay();
   // Wed (3) thru Sun (0) of Thanksgiving week.
-  if (day < 4 && day !== 0) return false; // exclude Mon/Tue
+  // Mon (1) and Tue (2) only. This read `day < 4 && day !== 0`, which also
+  // dropped Wednesday (3) — the night-before-Thanksgiving Friendsgiving — despite
+  // the line above. Found 11/15/2026 by friendsgivingAngles.test.js.
+  if (day === 1 || day === 2) return false;
   // Find the 4th Thursday
   let thursday = null;
   for (let i = 1; i <= 30; i++) {

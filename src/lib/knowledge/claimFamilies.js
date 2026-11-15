@@ -19,7 +19,7 @@
 // ─── food.ice.event_supply ───────────────────────────────────────────────────
 //
 // SEMANTIC AUDIT (all `p_ice` lines, measured not assumed — 29 at the audit,
-// 30 since 2026-09-23; the added line is noted at its entry below):
+// 30 since 2026-09-23, 31 since 2026-11-15; each added line is noted at its entry below):
 //   unit         'lb'      — all of them, no exceptions
 //   category     'beverage'— all of them
 //   essential    true      — all of them
@@ -35,7 +35,7 @@
 // Quinceanera notes the venue MAY supply it — a sourcing caveat on the same claim,
 // not a different claim.
 //
-// So: one family, 30 members, five authored variants preserved — the variants
+// So: one family, 31 members, five authored variants preserved — the variants
 // have NOT changed since the audit; the new line reuses 1.5.
 export const ICE_FAMILY = Object.freeze({
   id: 'food.ice.event_supply',
@@ -71,6 +71,10 @@ export const CONDITION_EVIDENCE = Object.freeze({
 export const ICE_MEMBERS = Object.freeze([
   // ── 1 lb ──
   { assetId: 'Game Night', value: 1, condition: 'indoor, roughly 3 hours', evidence: 'authored_condition' },
+  // ADDED 2026-11-15 — the 31st member, on the family's own boundary rule (lb,
+  // beverage, essential, day-of, per guest, chilling drinks). Takes an EXISTING
+  // variant: an indoor late-November dinner whose cooler holds drinks only.
+  { assetId: 'Friendsgiving', value: 1, condition: 'indoor late-November dinner; the cooler holds drinks so the refrigerator stays free for carried-in dishes', evidence: 'authored_condition' },
   { assetId: 'Gender Reveal', value: 1, condition: 'baseline; author states 2 lb if hot or outdoor', evidence: 'authored_rule' },
   { assetId: 'Repast', value: 1, condition: null, evidence: 'none' },
   // ── 1.25 lb ──

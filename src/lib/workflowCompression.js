@@ -64,6 +64,7 @@ export const STANDARD_LEAD_DAYS = {
   'Award Ceremony':     91, // 3 months
   'Client Dinner':      21, // 3 weeks
   'Crab Feast':         42, // 6 weeks — casual backyard gathering (see provenance)
+  Friendsgiving:        21, // 3 weeks — the casual-dinner invite window (see provenance)
   Other:                91, // 3 months default
 };
 
@@ -104,6 +105,10 @@ export const STANDARD_LEAD_PROVENANCE = {
   'Sweet 16':         { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Large milestone party; 50–100 guests = 8–10 weeks, budgeted to 13 for decor sourcing.' },
   'Engagement Party': { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Medium–large party, 8–12 weeks; 91d.' },
   'Crab Feast':       { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Casual backyard gathering (20–50 guests) = 4–6 weeks; 42d = 6 weeks (the crab order itself is a T-5/T-7d call).' },
+  // 11/15/2026: Friendsgiving's runway is its invite window — a potluck is
+  // planned the day the What to Bring list goes out. Without this row it fell
+  // to the 91-day default and a host six days out read as 85 days behind.
+  Friendsgiving:      { tier: 'researched', sources: ['paperlesspost-invites'], verificationStatus: 'researched', claim: 'Casual dinner invitations go out 2–4 weeks ahead; 21d = 3 weeks, the middle of the sourced range.' },
   Reunion:            { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Large multi-household gathering, travel coordination; ~6 months.' },
   // synthesized — trade heuristic, not yet sourced per-type (the corporate/formal set)
   Corporate:          { tier: 'synthesized', sources: [], verificationStatus: 'synthesized', claim: '6-month heuristic for corporate events; not sourced per-type.' },

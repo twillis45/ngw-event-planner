@@ -23,7 +23,7 @@ describe('the family is complete and semantically coherent', () => {
     // 29 at the 5G-C1 audit; 30 since 2026-09-23, when PTA / Booster Fundraiser
     // gained the ice line it had always lacked. Raise this ONLY alongside a new
     // member entry that states its condition.
-    expect(members.length).toBe(30);
+    expect(members.length).toBe(31); // 31 since 11/15/2026 (Friendsgiving)
   });
 
   test('all of them share unit, category, essentiality and buy timing', () => {

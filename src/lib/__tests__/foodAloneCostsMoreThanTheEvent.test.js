@@ -115,7 +115,8 @@ describe('food is never priced above the whole event it is part of', () => {
       if (!b || !Number.isFinite(b.high)) continue;
       try { if (Number.isFinite(playbookFoodPlan(EV(pb.type)).perGuestHigh)) paired += 1; } catch (_e) { /* skip */ }
     }
-    expect(paired).toBe(45);
+    // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+    expect(paired).toBe(46);
   });
 
   test('THE INVARIANT: no playbook prices food above its own whole-event ceiling', () => {

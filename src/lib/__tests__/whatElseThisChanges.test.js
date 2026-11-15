@@ -105,8 +105,9 @@ describe('COVERAGE — measured, not targeted', () => {
       total++;
       if (decisionImpacts(d).length) withImpacts++;
     }
-    expect(total).toBe(261);
-    expect(withImpacts).toBe(228);
+    // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+    expect(total).toBe(267);
+    expect(withImpacts).toBe(234);  // all six Friendsgiving decisions have an impact
   });
 
   test('81% of block uses are placed, and 77 targets are deliberately not', () => {
@@ -117,8 +118,8 @@ describe('COVERAGE — measured, not targeted', () => {
         if (MAPPED_BLOCKS.includes(b)) placed++; else unmapped.add(b);
       }
     }
-    expect(uses).toBe(472);
-    expect(placed).toBe(381);
+    expect(uses).toBe(479);
+    expect(placed).toBe(387);
     expect(unmapped.size).toBe(77);
   });
 });

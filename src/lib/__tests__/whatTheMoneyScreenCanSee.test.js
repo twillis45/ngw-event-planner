@@ -119,7 +119,8 @@ describe('what the money screen can and cannot see', () => {
     // price a menu the host did not pick, which is the same error as pricing a
     // caterer for a host who is cooking.
     const { gated } = census();
-    expect(gated.length).toBe(36);
+    // +2 on 11/15/2026: Friendsgiving's main and potluck-vs-host sides are gated on who cooks.
+    expect(gated.length).toBe(38);
   });
 
   test('THE RED-PROOF, IN THE TEST: perturbing decor moves nothing, food moves a lot', () => {

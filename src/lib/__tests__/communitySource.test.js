@@ -76,8 +76,12 @@ describe('a person is not a shop', () => {
     // dish per line so the Bringing panel could name a different person against
     // the greens, the mac and the potato salad. Eleven is the same four dishes'
     // worth of food; no playbook and no `where` value changed.
-    expect(caught).toHaveLength(11);
-    expect(caught.every((s) => /repast/i.test(s))).toBe(true);
+    // +2 on 11/15/2026, and deliberately: Friendsgiving's potluck sides and
+    // desserts list "Guests bring" first because in a potluck that is who brings
+    // them. The host-cooks sides are a separate line (p_sides_host) that leads
+    // with a store, so this predicate never catches a line the host buys.
+    expect(caught).toHaveLength(13);
+    expect(caught.filter((s) => !/repast/i.test(s))).toEqual(['Friendsgiving:p_sides', 'Friendsgiving:p_desserts']);
   });
 });
 
