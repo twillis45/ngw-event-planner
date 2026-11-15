@@ -73,6 +73,10 @@ PUBLIC = {
     # unguessable code in the path IS the credential.
     "GET /api/public/vendor-brief/{code}": "brief code in path is the credential",
     "POST /api/public/vendor-brief/{code}/confirm": "brief code is the credential",
+    # Helper link (11/15/2026): a host's helper has no account BY DESIGN; the
+    # unguessable code in the path is the credential, same as the brief.
+    "GET /api/public/helper/{code}": "helper code in path is the credential",
+    "POST /api/public/helper/{code}/answer": "helper code is the credential",
     # Guest RSVP: guests never have accounts; the rsvp code is the credential.
     "GET /api/public/invite/{rsvp_code}": "guest-facing; code is the credential",
     "POST /api/public/rsvp/{rsvp_code}": "guest-facing; code is the credential",

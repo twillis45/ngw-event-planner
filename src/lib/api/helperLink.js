@@ -1,0 +1,132 @@
+// ─── Helper link API client (owner-approved 11/15/2026, free) ─────────────────
+// Talks to the FastAPI service at REACT_APP_API_BASE_URL. Mirrors
+// api/vendorBrief.js: results name their failure, and nothing here throws into
+// the UI except submitHelperAnswer, which throws ON PURPOSE so the helper's
+// page shows an honest retry instead of a fake "sent".
+//
+// Planner endpoints (Supabase session / dev token):
+//   POST /api/events/{id}/helper-links          → mint-or-reuse a helper's code
+//   GET  /api/events/{id}/helper-confirmations  → the answers, newest first
+// Public endpoints (the unguessable code is the only credential):
+//   GET  /api/public/helper/{code}              → this helper's jobs
+//   POST /api/public/helper/{code}/answer       → "I've got it" / "I can't"
+//
+// NEVER PASS-GATED. The server never answers 402 here; if it ever did, it
+// reads as a plain failure, not as a reason to open the pass sheet.
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
+
+const BASE  = process.env.REACT_APP_API_BASE_URL;
+const TOKEN = process.env.REACT_APP_PLANNER_TOKEN; // transition fallback only
+
+export const isHelperLinkApiConfigured = () => Boolean(BASE);
+
+async function authHeaders() {
+  const headers = {};
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    } catch { /* fall through to token */ }
+  }
+  if (TOKEN) headers['X-Planner-Token'] = TOKEN;
+  return headers;
+}
+
+// ── Planner: mint-or-reuse THE link for one helper ────────────────────────────
+//   { ok: true,  code, helperKey }
+//   { ok: false, kind: 'not-configured', status: null }
+//   { ok: false, kind: 'signed-out',     status: 401 }
+//   { ok: false, kind: 'not-found',      status: 404 } — the server's copy of the
+//                                                       event has no job for them
+//   { ok: false, kind: 'failed',         status }
+//   { ok: false, kind: 'network',        status: null } — after ONE retry
+export async function mintHelperLinkResult(eventId, helperName) {
+  if (!BASE || !eventId || !helperName) return { ok: false, kind: 'not-configured', status: null };
+  for (let attempt = 0; ; attempt++) {
+    let res;
+    try {
+      res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/helper-links`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body:    JSON.stringify({ helper_name: helperName }),
+      });
+    } catch {
+      if (attempt < 1) continue;
+      return { ok: false, kind: 'network', status: null };
+    }
+    const status = res.status;
+    if (!res.ok) {
+      if (status === 401) return { ok: false, kind: 'signed-out', status };
+      if (status === 404) return { ok: false, kind: 'not-found', status };
+      return { ok: false, kind: 'failed', status };
+    }
+    try {
+      const data = await res.json();
+      if (data && data.ok && data.code) return { ok: true, code: data.code, helperKey: data.helper_key || null };
+    } catch { /* unreadable 2xx is still not a code */ }
+    return { ok: false, kind: 'failed', status };
+  }
+}
+
+// ── Public: this helper's jobs, or null (not configured / not found / error) ──
+export async function fetchPublicHelperLink(code) {
+  if (!BASE || !code) return null;
+  try {
+    const res = await fetch(`${BASE}/api/public/helper/${encodeURIComponent(code)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data.ok && data.helper ? data.helper : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Public: the helper's answer. THROWS on failure (mirrors submitRsvp). ──────
+export async function submitHelperAnswer(code, payload) {
+  if (!BASE) throw new Error('Helper link API not configured');
+  const res = await fetch(`${BASE}/api/public/helper/${encodeURIComponent(code)}/answer`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const e = new Error((err && typeof err.detail === 'string' && err.detail) || `submitHelperAnswer ${res.status}`);
+    e.status = res.status;
+    throw e;
+  }
+  return res.json();
+}
+
+// ── Planner: the answers (newest first), or [] on any failure ────────────────
+// No hasPlannerAuth() pre-check, unlike the vendor read-back: the shell calls
+// this only for an event that has minted a helper link, and a mint needed the
+// same credential — so this is never a request known in advance to 401.
+export async function fetchHelperConfirmations(eventId) {
+  if (!BASE || !eventId) return [];
+  try {
+    const res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/helper-confirmations`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+// ── Idempotency key: stable per helper code (mirrors vendorBriefIdempotencyKey)
+export function helperIdempotencyKey(code) {
+  const storeKey = `ngw-helper-idemp-${code}`;
+  try {
+    const existing = localStorage.getItem(storeKey);
+    if (existing) return existing;
+  } catch {}
+  let key;
+  try { key = (crypto && crypto.randomUUID) ? crypto.randomUUID() : null; } catch { key = null; }
+  if (!key) key = `idk-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  try { localStorage.setItem(storeKey, key); } catch {}
+  return key;
+}

@@ -88,4 +88,15 @@ describe('coverage', () => {
       "to_regclass('supabase_migrations.schema_migrations')", 'current_database()', 'now()',
     ]) expect(sql).toContain(name);
   });
+
+  // 023 (helper links, 11/15/2026) replaced cleanup_deleted_account() to purge
+  // its two tables. A function that exists is not a function that deletes
+  // them, so the pack reads the body and the migration record reaches 023.
+  test('it proves account deletion covers the helper tables, and expects 023 recorded', () => {
+    for (const name of [
+      "to_regprocedure('public.cleanup_deleted_account()')",
+      "'%helper_links%'", "'%helper_confirmations%'",
+      'generate_series(1, 23)',
+    ]) expect(sql).toContain(name);
+  });
 });
