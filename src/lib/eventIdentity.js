@@ -56,7 +56,13 @@ const TYPE_ESSENCE = {
   'bridal shower': 'a celebration before the wedding',
   'dinner party': 'a gathering of friends',
   'board meeting': 'a working session',
-  'get-together': 'a gathering',
+  // 11/15/2026 (everyTypeSaysWhatItIs.test.js): these five read "This is a
+  // gathering." — the floor below — on the live site.
+  'get-together': 'a get-together',
+  'friendsgiving': 'Thanksgiving with friends',
+  'thanksgiving hosting': 'Thanksgiving dinner',
+  'pupusa gathering': 'a pupusa gathering',
+  'client dinner': 'a dinner with clients',
   // Type families / free-text fallbacks (soft contains-match below).
   graduation: 'a celebration of an achievement',
   retirement: 'recognition of a career and a new chapter',
@@ -113,6 +119,20 @@ function essenceOf(type) {
 
 // identityStatement(event) → one factual sentence. e.g.
 // "This is a celebration of an achievement for Wanda." (assembled, not generated.)
+// NOT EVERY PARTY HONORS SOMEONE (11/15/2026, notEveryPartyHonorsSomeone
+// .test.js). A Friendsgiving, a game night or a board meeting has no honoree, so
+// the create screen stops asking "Who's it for?" and the reveal stops saying
+// "Honoree not named". A host who names one anyway keeps it. Canonical type
+// names; anything not listed keeps asking, which is the old behavior.
+const NO_HONOREE_TYPES = new Set([
+  'friendsgiving', 'thanksgiving hosting', 'halloween party', "new year's eve party",
+  'game night', 'watch party', 'card party', 'holiday party',
+  'board meeting', 'conference', 'team retreat', 'pta / booster fundraiser',
+]);
+export function honoreeApplies(type) {
+  return !NO_HONOREE_TYPES.has(norm(type));
+}
+
 export function identityStatement(event) {
   if (!event) return '';
   const essence = essenceOf(event.type);

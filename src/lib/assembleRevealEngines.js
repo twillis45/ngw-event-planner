@@ -4,6 +4,7 @@
 // Outputs: Array of cards matching the unified contract
 
 import { occasionNoun } from './occasionWords';
+import { honoreeApplies } from './eventIdentity';
 import { playbookFoodPlan, effectiveRos } from './playbooks';
 // Was: Math.floor((eventMidnight - new Date()) / 86400000) — a floor over a diff whose
 // right side still carried the wall clock, so for most of every day it reported one day
@@ -84,7 +85,7 @@ function buildIdentityStage(event, eventIdentity, persona) {
     ? ` Guests span ${participants.join(' and ')}.`
     : '';
 
-  const confidenceWord = !String((event && event.honoree) || '').trim()
+  const confidenceWord = !String((event && event.honoree) || '').trim() && honoreeApplies(primaryEventType)
     ? 'Honoree not named' : (confidence >= 0.85 ? 'High confidence' : 'Fairly confident');
 
   return {

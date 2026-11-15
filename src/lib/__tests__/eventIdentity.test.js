@@ -29,7 +29,9 @@ describe('60B identityStatement — one factual sentence (no poetry)', () => {
     expect(identityStatement({ type: 'Birthday Party', honoree: 'Lee' })).toBe('This is a celebration for Lee.');
   });
   test('no honoree ⇒ no "for X"', () => {
-    expect(identityStatement({ type: 'Get-Together' })).toBe('This is a gathering.');
+    expect(identityStatement({ type: 'Get-Together' })).toBe('This is a get-together.');
+    // An unknown type still gets the warm floor, never "an event".
+    expect(identityStatement({ type: 'Something Unlisted' })).toBe('This is a gathering.');
   });
 });
 

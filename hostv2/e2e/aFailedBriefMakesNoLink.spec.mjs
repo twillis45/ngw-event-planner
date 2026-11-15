@@ -45,7 +45,9 @@ const boot = async (page, mint) => {
   await settled(page);
   // The share button lives inside the card's fold; open the card first.
   await page.locator('.vcard', { hasText: 'Spin Cycle' }).first().evaluate((c) => c.click());
-  await page.getByRole('button', { name: 'Share the vendor brief', exact: true }).click();
+  // 11/15/2026: the button's words changed to "Send {name} the details" (owner + host
+  // board ruling); it is the same gated mint, so only the selector moved.
+  await page.getByRole('button', { name: 'Send Spin Cycle the details', exact: true }).click();
   return calls;
 };
 
@@ -61,7 +63,9 @@ const noLinkMade = async (page) => {
 test('(control) a mint that succeeds shows a live short link, not the snapshot', async ({ page }) => {
   const calls = await boot(page, { status: 200, json: { ok: true, code: CODE } });
   await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toBeVisible();
-  await expect(page.getByText('?vendor=' + CODE)).toBeVisible();
+  // 11/15/2026: the link now also appears inside the pre-written message, so
+  // the link line is addressed by its own marker; the assertion is unchanged.
+  await expect(page.locator('[data-brief-url]')).toContainText('?vendor=' + CODE);
   expect(calls.mint).toBe(1);
   expect(await track(page, 'brief_mint_failed')).toEqual([]);
 });

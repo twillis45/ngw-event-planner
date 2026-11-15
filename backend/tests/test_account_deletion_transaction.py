@@ -13,7 +13,8 @@ import pytest
 
 DSN = os.environ.get('NGW_ACCOUNT_DELETION_TEST_DATABASE_URL')
 pytestmark = pytest.mark.skipif(not DSN, reason='requires explicit empty disposable PostgreSQL database')
-MIGRATION = Path(__file__).resolve().parents[2] / 'supabase/migrations/021_account_deletion.sql'
+MIGRATIONS = [Path(__file__).resolve().parents[2] / 'supabase/migrations' / name
+              for name in ('021_account_deletion.sql', '023_helper_links.sql')]
 OWNER='11111111-1111-4111-8111-111111111111'
 OTHER='22222222-2222-4222-8222-222222222222'
 STUDIO='33333333-3333-4333-8333-333333333333'
@@ -49,7 +50,8 @@ async def fixture(scenario):
         for role in ('anon','authenticated'):
             if not await conn.fetchval('select 1 from pg_roles where rolname=$1',role):
                 await conn.execute('create role '+role)
-        await conn.execute(MIGRATION.read_text())
+        for migration in MIGRATIONS:
+            await conn.execute(migration.read_text())
         await conn.execute('insert into auth.users values ($1,$2),($3,$4)',OWNER,'owner@example.test',OTHER,'other@example.test')
         await conn.execute('insert into public.studios values ($1,$2)',STUDIO,OWNER)
         await conn.execute("insert into public.studio_members values ($1,$2,'owner')",STUDIO,OWNER)
@@ -57,6 +59,9 @@ async def fixture(scenario):
         for table in ('event_channels','rsvp_submissions','vendor_brief_links','vendor_brief_confirmations'):
             await conn.execute('insert into public.'+table+" values ('event')")
         await conn.execute("insert into public.event_passes values ('event',$1)",OWNER)
+        # 023's tables are created by 023 itself (helper links, 11/15/2026).
+        await conn.execute("insert into public.helper_links(code,event_id,helper_key) values ('helper-code-0000000001','event','g1')")
+        await conn.execute("insert into public.helper_confirmations(code,event_id,helper_key,idempotency_key,state) values ('helper-code-0000000001','event','g1','k1','confirmed')")
         await scenario(conn)
     finally:
         await tx.rollback(); await conn.close()
@@ -65,7 +70,7 @@ async def fixture(scenario):
 def test_auth_delete_atomically_removes_solo_data_and_retains_receipt():
     async def scenario(conn):
         await conn.execute('delete from auth.users where id=$1',OWNER)
-        for table in ('studios','studio_members','events','event_channels','rsvp_submissions','vendor_brief_links','vendor_brief_confirmations'):
+        for table in ('studios','studio_members','events','event_channels','rsvp_submissions','vendor_brief_links','vendor_brief_confirmations','helper_links','helper_confirmations'):
             assert await conn.fetchval('select count(*) from public.'+table)==0
         assert await conn.fetchval('select count(*) from public.event_passes')==1
         assert await conn.fetchval('select purchased_by from public.event_passes') is None

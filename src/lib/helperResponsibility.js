@@ -61,11 +61,20 @@ function resolveHelper(name, guests) {
 
 const confirmMap = (ev) => (ev && ev.helperConfirmed && typeof ev.helperConfirmed === 'object') ? ev.helperConfirmed : {};
 
-function statusFor(ev, itemId, done) {
+// ── THE HELPER-ANSWER SEAM (11/15/2026) ─────────────────────────────────────
+// The ONE function that decides whether a helper has answered. Today the only
+// source is the host's own word, `event.helperConfirmed[itemId] === true`
+// (written by the Helpers panel and the task row). When a helper link lets the
+// helper answer for themselves, that answer is read HERE and nowhere else —
+// every reader (the Helpers panel, the task rows, the "Who's confirmed"
+// summary on the event home) goes through deriveHelperResponsibilities, which
+// calls this. Returns 'handled' | 'confirmed' | 'assigned'.
+export function helperStatusFor(ev, itemId, done) {
   if (done) return 'handled';
   if (confirmMap(ev)[itemId] === true) return 'confirmed';
   return 'assigned';
 }
+const statusFor = helperStatusFor;
 
 function nextActionFor(status, name, itemType) {
   if (status === 'assigned') return `Confirm with ${name}`;

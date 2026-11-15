@@ -15,7 +15,7 @@
 -- header row is INFO). The summary row near the top counts the FAILs.
 --
 -- WHERE EACH EXPECTATION COMES FROM (so a FAIL can be traced to a file):
---   tables + policies  supabase/migrations/001–021 (applied by the Supabase
+--   tables + policies  supabase/migrations/001–023 (applied by the Supabase
 --                      integration, 017–021 by hand on 11/7), backend/migrations
 --                      and src/lib/knowledge/kaw1-migration.sql (hand-applied;
 --                      a table from those two that is ABSENT here passes, since
@@ -32,6 +32,9 @@
 --                      authenticated, grants service_role, drops rsvp_anon_insert.
 --   017–021 objects    named in each file; the same probes as the RUNBOOK's
 --                      "Record the hand-applied migrations" query c, extended.
+--   helper links       023: helper_links + helper_confirmations, RLS on with no
+--                      policy (server-only, as 013/014), and the account
+--                      deletion function's body names both tables.
 --   event files        022: storage.objects policies for the event-files bucket
 --                      grant nothing to anon/public and all check auth.uid();
 --                      the bucket is private with the app's 10 MB / type limits.
@@ -65,6 +68,8 @@ expected_tables (source, tbl, policies, alt_policies) as (values
   ('supabase/migrations', 'research_queue_jobs',    array[]::text[], null),
   ('supabase/migrations', 'vendor_brief_links',         array[]::text[], null),
   ('supabase/migrations', 'vendor_brief_confirmations', array[]::text[], null),
+  ('supabase/migrations', 'helper_links',               array[]::text[], null),
+  ('supabase/migrations', 'helper_confirmations',       array[]::text[], null),
   ('supabase/migrations', 'event_passes',               array[]::text[], null),
   ('supabase/migrations', 'pass_payment_blocks',        array[]::text[], null),
   -- backend/migrations (frozen legacy, hand-applied)
@@ -186,7 +191,14 @@ migration_objects (migration, object, present) as (values
   ('021', 'enabled trigger cleanup_deleted_account on auth.users',
      exists (select 1 from pg_trigger t
              where t.tgrelid = to_regclass('auth.users') and t.tgname = 'cleanup_deleted_account'
-               and t.tgenabled <> 'D'))
+               and t.tgenabled <> 'D')),
+  ('023', 'table helper_links',
+     to_regclass('public.helper_links') is not null),
+  ('023', 'table helper_confirmations',
+     to_regclass('public.helper_confirmations') is not null),
+  ('023', 'cleanup_deleted_account() purges helper_links and helper_confirmations',
+     coalesce((select p.prosrc like '%helper_links%' and p.prosrc like '%helper_confirmations%'
+               from pg_proc p where p.oid = to_regprocedure('public.cleanup_deleted_account()')), false))
 ),
 
 -- supabase_migrations.schema_migrations may not exist; read it only through
@@ -203,7 +215,7 @@ recorded as (
 ),
 
 expected_versions as (
-  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 22) g
+  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 23) g
 ),
 
 all_rows (ord, k, "check", subject, expected, actual, verdict) as (
@@ -344,7 +356,7 @@ all_rows (ord, k, "check", subject, expected, actual, verdict) as (
                              and b.file_size_limit = 10485760 and b.allowed_mime_types is not null)
               then 'PASS' else 'FAIL' end
 
-  -- (e) objects that prove 015–021 are in this database
+  -- (e) objects that prove 015–023 are in this database
   union all
   select 40, m.migration || ' ' || m.object, 'migration_object', m.migration || ': ' || m.object, 'present',
          case when m.present then 'present' else 'missing' end,
@@ -353,14 +365,14 @@ all_rows (ord, k, "check", subject, expected, actual, verdict) as (
 
   -- (f) what supabase_migrations.schema_migrations records
   union all
-  select 50, 'a', 'migrations_recorded', 'supabase_migrations.schema_migrations', '001 … 022',
+  select 50, 'a', 'migrations_recorded', 'supabase_migrations.schema_migrations', '001 … 023',
          case when not rc.present then 'table absent'
               else coalesce(nullif(array_to_string(rc.versions, ','), ''), '(no rows)') end,
          case when rc.present and rc.versions @> ev.versions then 'PASS' else 'FAIL' end
   from recorded rc cross join expected_versions ev
 
   union all
-  select 51, 'b', 'migrations_missing', 'versions 001–022 not recorded', '(none)',
+  select 51, 'b', 'migrations_missing', 'versions 001–023 not recorded', '(none)',
          case when not rc.present then 'table absent'
               else coalesce(nullif(array_to_string(array(select x from unnest(ev.versions) x
                                                           where not (x = any (rc.versions)) order by x), ','), ''),

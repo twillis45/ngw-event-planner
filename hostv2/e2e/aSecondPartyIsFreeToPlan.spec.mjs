@@ -91,7 +91,9 @@ test('an event stamped under door 3 alone is free: no pill, and its first vendor
   await openSectionByName(page, 'People you’re hiring');
   await settled(page);
   await page.locator('.vcard', { hasText: 'Spin Cycle' }).first().evaluate((c) => c.click());
-  await page.getByRole('button', { name: 'Share the vendor brief', exact: true }).click();
+  // 11/15/2026: the button's words changed to "Send {name} the details" (owner + host
+  // board ruling); it is the same gated mint, so only the selector moved.
+  await page.getByRole('button', { name: 'Send Spin Cycle the details', exact: true }).click();
   // The live link was minted; the pass sheet did not open in its place.
   await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toBeVisible();
   expect(calls.mint).toBe(1);

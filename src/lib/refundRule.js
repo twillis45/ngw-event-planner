@@ -14,5 +14,9 @@
 // held to the server's price by thePassPriceIsTheServersPrice.
 export const REFUND_WINDOW_DAYS = 14;
 
+// REWORDED 11/15/2026, same rule. The first wording put the condition last
+// ("...if you have not sent a new vendor brief") and read as a trap: use what
+// you bought and lose the refund. The condition now leads, framed as what it
+// is — a change of mind before the pass is used.
 export const REFUND_LINE =
-  `Changed your mind? Get all $39 back within ${REFUND_WINDOW_DAYS} days if you have not sent a new vendor brief.`;
+  `Changed your mind before sending a new vendor brief? Get all $39 back within ${REFUND_WINDOW_DAYS} days.`;

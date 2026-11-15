@@ -110,7 +110,7 @@ import { runOrchestration } from '@app/lib/orchestrator';
 import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
-import { identityStatement } from '@app/lib/eventIdentity';
+import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
@@ -277,7 +277,11 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
+import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref } from '@app/lib/vendorDetailsMessage';
+import { summarizeWhoIsConfirmed, whoIsConfirmedLines } from '@app/lib/whoIsConfirmed';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
+import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations } from '@app/lib/api/helperLink';
+import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
@@ -3815,8 +3819,12 @@ export default function HostShellV2() {
   // already turned it off (shouldShowAnalyticsNotice). Its one action opens
   // the Settings toggle. Copy: docs/legal/CONSENT_AND_TRACKING_COPY_DRAFT.md §4;
   // the Privacy link joins it when the policy is published, not before.
+  // NOT ON THE CREATE SCREEN (11/15/2026, live screenshot at 390px): the
+  // notice sat over "Planning this event is free…", the line that tells a new
+  // host what costs money. It waits until the host is past creating, and is
+  // still shown once.
   useEffect(() => {
-    if (splash !== 'gone') return undefined;
+    if (splash !== 'gone' || stage === 'create') return undefined;
     let t;
     try {
       if (shouldShowAnalyticsNotice()) {
@@ -3829,7 +3837,7 @@ export default function HostShellV2() {
     } catch { /* a notice must never break boot */ }
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [splash]);
+  }, [splash, stage]);
 
 
   // ── Real lib functions, one per element ──
@@ -7652,6 +7660,84 @@ export default function HostShellV2() {
     return m;
   }, [vendorConfirmations]);
 
+  // ── HELPER LINK (owner-approved 11/15/2026, FREE — never pass-gated) ──────
+  // "Send Jordan their job": mint Jordan's link (lib/api/helperLink, the vendor
+  // brief's pattern), write the ask (lib/helperAsk), and open the HOST'S OWN
+  // phone with it — sms: when Jordan has a number, else mail, else the share
+  // sheet, else the clipboard. The phone sends it; nothing here says it was
+  // sent. Jordan's answer comes back through the read-back below and replaces
+  // the hand-tapped confirm for that helper. `helperLinkIds` records which
+  // helpers have a link, so the read-back only runs for an event that has one
+  // (a mint needed the same credential, so it is never a request bound to 401).
+  const [helperAnswers, setHelperAnswers] = useState([]);
+  const [helperSend, setHelperSend] = useState(null);   // { taskId, href, first, body, busy, error }
+  useEffect(() => { setHelperSend(null); }, [eventId]);
+  const helperLinked = Array.isArray(event.helperLinkIds) && event.helperLinkIds.length > 0;
+  useEffect(() => {
+    if (!isHelperLinkApiConfigured() || !ownsEvent || !helperLinked) { setHelperAnswers([]); return undefined; }
+    let dead = false;
+    const pull = async () => {
+      const rows = await fetchHelperConfirmations(event.id);
+      if (!dead) setHelperAnswers(Array.isArray(rows) ? rows : []);
+    };
+    pull();
+    // A helper answers on their own phone, later; coming back to the app is
+    // when the host looks, so that is when it is read again.
+    const onFocus = () => { pull(); };
+    window.addEventListener('focus', onFocus);
+    return () => { dead = true; window.removeEventListener('focus', onFocus); };
+  }, [event.id, ownsEvent, helperLinked]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Latest answer per helper (server returns newest first, so first wins).
+  const helperAnswerByKey = useMemo(() => {
+    const m = {};
+    for (const a of helperAnswers) { const k = String(a && a.helper_key); if (k && !m[k]) m[k] = a; }
+    return m;
+  }, [helperAnswers]);
+  // The helper who holds a checklist row, as the helper engine names them.
+  const helperForTask = (taskId) => (helperData.responsibilities || []).find(r => r.itemType === 'task' && r.itemId === taskId) || null;
+  const sendHelperJob = async (taskId) => {
+    const resp = helperForTask(taskId);
+    if (!resp) return;
+    const first = String(resp.helperName || 'them').split(/\s+/)[0];
+    let appUrl;
+    try { appUrl = publicAppUrl(); }
+    catch { toast(`The public link address is missing, so ${first}'s link can't be made. Nothing was sent.`); return; }
+    setHelperSend({ taskId, busy: true });
+    const r = await mintHelperLinkResult(event.id, resp.helperName);
+    if (!r.ok) {
+      const why = r.kind === 'signed-out' ? `Sign in to make ${first}'s link.`
+        : r.kind === 'not-found' ? `Your saved plan doesn't have ${first}'s job yet — give it a moment to save, then try again.`
+          : `Couldn't make ${first}'s link just now.`;
+      setHelperSend({ taskId, error: `${why} Nothing was sent.` });
+      return;
+    }
+    const url = appUrl + '?helper=' + encodeURIComponent(r.code);
+    const mine = (helperData.responsibilities || []).filter(x => x.helperId === resp.helperId);
+    const body = buildHelperAsk({
+      event, hostName: (profile && profile.name) || event.hostName || '', helperName: resp.helperName,
+      jobs: mine.map(x => ({ kind: x.itemType, label: x.label })), url,
+    });
+    const guest = resp.guestId ? (event.guests || []).find(g => g && g.id === resp.guestId) : null;
+    const digits = String((guest && guest.phone) || '').replace(/[^+\d]/g, '');
+    const email = String((guest && guest.email) || '').trim();
+    const href = digits ? 'sms:' + digits + '?&body=' + encodeURIComponent(body)
+      : email ? 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(`Your job for ${event.name || 'the party'}`) + '&body=' + encodeURIComponent(body)
+        : null;
+    setHelperSend({ taskId, href, first, body, channel: digits ? 'text' : email ? 'email' : 'share' });
+    // The ledger: which helpers have a link. Silent, deduped, and true whether
+    // or not the host goes on to send — a link exists either way.
+    try {
+      const cur = Array.isArray(event.helperLinkIds) ? event.helperLinkIds : [];
+      if (resp.helperId && !cur.includes(resp.helperId)) patchEvent({ helperLinkIds: [...cur, resp.helperId] });
+    } catch { /* best-effort; the link itself already exists */ }
+    if (href) { try { window.location.href = href; } catch { /* the visible link below still works */ } return; }
+    try {
+      if (navigator.share) { await navigator.share({ text: body }); return; }
+    } catch { /* cancelled or unsupported — fall through to copy */ }
+    try { await navigator.clipboard.writeText(body); toast(`Copied — paste it to ${first} however you reach them. Nothing was sent from here.`); }
+    catch { /* the message is on screen to copy by hand */ }
+  };
+
   // DEFINED HERE, AFTER `confirmationByVendor`, AND THAT PLACEMENT IS THE FIX.
   // It first sat with the other refs near the top and the app would not boot:
   // "Cannot access 'confirmationByVendor' before initialization". A
@@ -9991,9 +10077,14 @@ export default function HostShellV2() {
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'date' ? null : 'date')}>
                           {effDate ? new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (effEndDate ? ' – ' + new Date(effEndDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') : (parsed.monthYear ? parsed.monthYear.label + ' · pick a day' : 'No date yet')}
                         </button>
+                        {/* No "Who's it for?" ask where the occasion honors nobody
+                            (Friendsgiving, game night — lib/eventIdentity
+                            honoreeApplies); a name the host typed still shows. */}
+                        {(effName || honoreeApplies(effType)) && (
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'name' ? null : 'name')}>
                           {effName ? 'For ' + effName : 'Who’s it for?'}
                         </button>
+                        )}
                         {/* ONE PLACE, ONE CHIP (sim drive 2026-08-04). "family reunion
                             in Deep Creek Lake, MD" produced BOTH a venue chip reading
                             "Deep Creek Lake" and a town chip reading "Deep Creek Lake,
@@ -12823,6 +12914,40 @@ export default function HostShellV2() {
                   <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setSheet({ kind: 'sweep' })}>See the sweep</button>
                 </div>
               )}
+
+              {/* ── WHO'S CONFIRMED (host board, 11/15/2026) ─────────────────────
+                  One compact read, in the command header's readiness zone (UX_04
+                  zone 1), of answers that already live in three sections — it
+                  adds no state and no second source (lib/whoIsConfirmed.js).
+                  Each part taps into the section that owns it. A vendor counts
+                  as confirmed only by their own answer through the link; a
+                  helper only through helperStatusFor. Not on a finished event:
+                  "still waiting" is a dead ask there. */}
+              {!isPast && (() => {
+                let l = null;
+                try { l = whoIsConfirmedLines(summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey)); } catch { l = null; }
+                if (!l || !l.parts.length) return null;
+                const go = { vendors: () => setSheet({ kind: 'vendors' }), helpers: () => setSheet({ kind: 'space' }), guests: () => setSheet({ kind: 'guests' }) };
+                return (
+                  <section data-who-confirmed aria-label="Who’s confirmed" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
+                    <h2 className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Who’s confirmed</h2>
+                    <div className="actions-row" style={{ flexWrap: 'wrap', marginTop: 0 }}>
+                      {l.parts.map(p => (
+                        <button key={p.key} className="mini" data-who-part={p.key} onClick={go[p.key]}>{p.text}</button>
+                      ))}
+                    </div>
+                    {l.flagged && (
+                      <button className="mini rowlink" data-who-flagged style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }} onClick={go.vendors}>{l.flagged}</button>
+                    )}
+                    {l.cantDo && (
+                      <p className="vc-detail" data-who-cant style={{ margin: 'var(--sp-2) 0 0', color: 'var(--warn)', overflowWrap: 'anywhere' }}>{l.cantDo}</p>
+                    )}
+                    {l.waiting && (
+                      <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>
+                    )}
+                  </section>
+                );
+              })()}
 
               {/* Slide-down readouts: hidden until the "what's counted" caret is
                   tapped — never-dense doctrine. Pills = the 4 readiness pillars;
@@ -20101,9 +20226,17 @@ export default function HostShellV2() {
                     // fragment appended to a due date.
                     const owner = String((t && t.owner) || '').trim();
                     const lead2 = String(t.task || 'this').slice(0, 40);
+                    // A helper's OWN answer (helper link) replaces the
+                    // hand-tapped confirm; without one, the manual path stands.
+                    const tHelper = owner ? helperForTask(t.id) : null;
+                    const tAnswer = tHelper ? helperAnswerByKey[String(tHelper.helperId)] || null : null;
                     const rStatus = owner
-                      ? (t.done ? 'done' : ((event.helperConfirmed || {})[t.id] ? 'confirmed' : 'not told yet'))
+                      ? (t.done ? 'done'
+                        : tAnswer ? (tAnswer.state === 'confirmed' ? 'said yes' : 'can’t do it')
+                          : ((event.helperConfirmed || {})[t.id] ? 'confirmed' : 'not told yet'))
                       : null;
+                    const tFirst = owner.split(/\s+/)[0];
+                    const tSend = helperSend && helperSend.taskId === t.id ? helperSend : null;
                     const assignEl = assignablePeople.length ? (
                       <div className="row-assign" key={(t.id || i) + '-assign'}>
                         <button className="mini rowlink assign-btn"
@@ -20115,7 +20248,32 @@ export default function HostShellV2() {
                             ? <span aria-hidden="true">{owner} — {rStatus}</span>
                             : <span aria-hidden="true">Give this to someone</span>}
                         </button>
-                        {owner && !t.done && (
+                        {owner && !t.done && tHelper && isHelperLinkApiConfigured() && (
+                          <button className="mini rowlink helper-send"
+                            disabled={!!(tSend && tSend.busy)}
+                            onClick={(e) => { e.stopPropagation(); sendHelperJob(t.id); }}>
+                            {tSend && tSend.busy ? 'Making the link…' : `Send ${tFirst} their job`}
+                          </button>
+                        )}
+                        {owner && !t.done && tAnswer && tAnswer.state !== 'confirmed' && (
+                          <span className="v-meta helper-answer" data-answer="declined">
+                            {`${tFirst} can’t do it${tAnswer.note ? ` — “${tAnswer.note}”` : '.'} It’s back on you to cover.`}
+                          </span>
+                        )}
+                        {tSend && tSend.error && (
+                          <span className="v-meta helper-send-error" role="alert">{tSend.error}</span>
+                        )}
+                        {tSend && !tSend.busy && !tSend.error && (
+                          // UX_07 deep handoff: the phone's own app opens with
+                          // the message in it. The link stays here in case it
+                          // did not, and the line says who sends it: the host.
+                          <span className="v-meta helper-handoff">
+                            {tSend.href
+                              ? <>{tSend.first}’s job is written — send it from your {tSend.channel === 'text' ? 'Messages' : 'mail'} app. Nothing is sent from here. <a className="mini" style={{ textDecoration: 'none' }} href={tSend.href}>{tSend.channel === 'text' ? `Text ${tSend.first}` : `Email ${tSend.first}`}</a></>
+                              : <>No number or email for {tSend.first} — share or paste it yourself. Nothing is sent from here.</>}
+                          </span>
+                        )}
+                        {owner && !t.done && !tAnswer && (
                           // The engine's own sentence, routed into the EXISTING
                           // draft path. This is where a send state can be
                           // written -- by the message flow, never by assigning.
@@ -23957,7 +24115,14 @@ export default function HostShellV2() {
                             {String(v.dayOfPhone || v.phone || '').trim() && (
                               <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(v.dayOfPhone || v.phone).replace(/[^+\d]/g, '')}>Call</a>
                             )}
-                            <button className="mini" onClick={() => shareVendorBrief(v)}>Share the vendor brief</button>
+                            {/* SEND THE DETAILS (owner + host board, 11/15/2026): the same
+                                gated mint as before (shareVendorBrief — first vendor free,
+                                the pass after), now handed back as a pre-written text the
+                                host sends from their OWN phone. Only this button's words
+                                changed; "vendor brief" stays everywhere else for now. */}
+                            <button className="mini" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
+                              {vendorGreetingName(v) ? `Send ${vendorGreetingName(v)} the details` : 'Send the details'}
+                            </button>
                           </div>
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
@@ -23988,7 +24153,46 @@ export default function HostShellV2() {
                                 </div>
                               ) : (
                                 <>
-                                  <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)', wordBreak: 'break-all' }}>{vendorBrief.url}</p>
+                                  {(() => {
+                                    // The words are the host's to send. Every exit below is
+                                    // a handoff to the phone's own app: an sms:/mailto: tap
+                                    // proves the composer opened, never that it went, so the
+                                    // record is the host's word ('host-logged' — the same
+                                    // logVendorContact the draft sheet writes), and a Copy is
+                                    // only 'drafted' until they say it's gone.
+                                    const msg = buildVendorDetailsMessage({ vendor: v, event, profile, link: vendorBrief.url });
+                                    const who = vendorGreetingName(v) || 'them';
+                                    const sms = detailsSmsHref(v.phone || v.dayOfPhone, msg.body);
+                                    const mail = sms ? null : detailsMailtoHref(v.email, msg.subject, msg.body);
+                                    const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+                                    return (
+                                      <div data-send-details={v.id}>
+                                        <p className="vc-detail" style={{ margin: '0 0 var(--sp-1)', fontWeight: 600 }}>Your message to {who}</p>
+                                        <p className="vc-detail" data-send-details-body style={{ margin: '0 0 var(--sp-2)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{msg.body}</p>
+                                        <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                                          {sms && <a className="mini" style={{ textDecoration: 'none' }} href={sms} onClick={() => logVendorContact(v.id, 'host-logged')}>Text {who}</a>}
+                                          {mail && <a className="mini" style={{ textDecoration: 'none' }} href={mail} onClick={() => logVendorContact(v.id, 'host-logged')}>Email {who}</a>}
+                                          {canShare && (
+                                            <button className="mini" onClick={() => {
+                                              navigator.share({ title: msg.subject, text: msg.body })
+                                                .then(() => logVendorContact(v.id, 'host-logged'))
+                                                .catch(() => { /* declined — records nothing */ });
+                                            }}>Share…</button>
+                                          )}
+                                          <button className="mini" onClick={() => {
+                                            navigator.clipboard?.writeText(msg.body)
+                                              .then(() => logVendorContact(v.id, 'drafted'))
+                                              .catch(() => toast('Couldn’t copy on this browser — long-press the message to select it.'));
+                                          }}>Copy message</button>
+                                          <button className="mini" onClick={() => logVendorContact(v.id, 'host-logged')}>Mark it sent</button>
+                                        </div>
+                                        {!sms && !mail && (
+                                          <p className="vc-detail" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }}>Add {who === 'them' ? 'their' : who + '’s'} phone or email on this card to send it in one tap.</p>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  <p className="vc-detail" data-brief-url style={{ margin: 'var(--sp-3) 0 var(--sp-2)', wordBreak: 'break-all' }}>{vendorBrief.url}</p>
                                   <div className="actions-row">
                                     <button className="mini" onClick={copyVendorBriefLink}>{vendorBrief.copied ? 'Copied' : 'Copy link'}</button>
                                     {vendorBrief.qrDataUrl && (

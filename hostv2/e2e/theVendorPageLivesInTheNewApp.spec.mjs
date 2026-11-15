@@ -203,8 +203,12 @@ test('the host names a day-of contact in the share panel, and it is saved on the
   await openSectionByName(page, 'People you’re hiring');
   await settled(page);
   await page.locator('.vcard', { hasText: 'Capital Rotisserie' }).first().evaluate((c) => c.click());
-  await page.getByRole('button', { name: 'Share the vendor brief', exact: true }).click();
-  await expect(page.getByText('?vendor=' + CODE)).toBeVisible();
+  // 11/15/2026: the button's words changed to "Send {name} the details" (owner + host
+  // board ruling); it is the same gated mint, so only the selector moved.
+  await page.getByRole('button', { name: 'Send Capital Rotisserie the details', exact: true }).click();
+  // 11/15/2026: the link now also appears inside the pre-written message, so
+  // the link line is addressed by its own marker; the assertion is unchanged.
+  await expect(page.locator('[data-brief-url]')).toContainText('?vendor=' + CODE);
   await page.getByLabel('Day-of contact name for vendor briefs').fill('Sam Ortiz');
   await page.getByLabel('Day-of contact phone for vendor briefs').fill('5550103000');
   await expect.poll(async () => {
