@@ -256,7 +256,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 // still uses it for that) and wrong for a fixed-price product. hostv2 sells one
 // thing, and `createPassSession` is the route that prices it server-side.
 import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases, passSalesPaused } from '@app/lib/stripeApi';
-import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus } from '@app/lib/passGate';
+import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus, passSheetCopy } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
@@ -18402,17 +18402,17 @@ export default function HostShellV2() {
               //    free to plan, so "Your next events" is gone — there is no
               //    event-count door left to sell — and the sheet leads with the
               //    board's before-paying line, word for word.
-              const perks = [
-                ['Every vendor, one brief each', 'Plan every event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
-                ['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.'],
-                ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
-              ];
+              //  · Trip wording only on a trip (consumer panel, 11/15/2026): the
+              //    toolkit perk and "trip tools" show only where the toolkit is
+              //    locked, so only where $39 actually buys it (lib/passGate).
+              const sheetCopy = passSheetCopy(event);
+              const perks = sheetCopy.perks;
               return (
                 <>
                   <div style={{ padding: '2px 0 8px' }}>
                     <div className="eyebrow">One event · one price</div>
                     <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 4px', color: 'var(--ink)' }}>$39</div>
-                    <p className="grounding" data-before-paying style={{ margin: 0 }}>Planning stays free. Pay $39 once so all your vendors can say yes to you, and get trip tools.</p>
+                    <p className="grounding" data-before-paying style={{ margin: 0 }}>{sheetCopy.beforePaying}</p>
                     <p className="grounding" style={{ margin: '6px 0 0' }}>Your vendors pay us nothing — no lead fees, no pay-to-play placement, nothing baked into their quotes. That’s why the pass exists.</p>
                   </div>
                   {perks.map(([t, d], i) => (
@@ -18428,7 +18428,7 @@ export default function HostShellV2() {
                           gates are open. Deliberately does NOT say "confirmed
                           with Stripe" — when only the event's own record claims
                           it, that sentence would be inventing a confirmation. */}
-                      <p className="grounding" style={{ margin: 0 }}>Every vendor brief and the full destination toolkit are unlocked here. Nothing more to pay on this event — the pass covers it.</p>
+                      <p className="grounding" style={{ margin: 0 }}>{sheetCopy.heldLine}</p>
                     </div>
                   ) : salesPaused ? (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--steel-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>

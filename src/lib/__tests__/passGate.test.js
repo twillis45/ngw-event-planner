@@ -6,7 +6,7 @@
 // just breaking a test.
 import {
   isBillingLive, isUserCreatedEvent, passVerdictAtCreation, briefAllowed,
-  destinationLocked, creationDisclosure, passStatus, lockingReasons,
+  destinationLocked, creationDisclosure, passStatus, lockingReasons, passSheetCopy,
 } from '../passGate';
 
 const OLD_ENV = { ...process.env };
@@ -199,5 +199,38 @@ describe('passStatus — the command board line', () => {
     billingOn();
     expect(passStatus(local({ passRequired: true, passReasons: ['destination'], passPurchased: true }))).toEqual({ state: 'held' });
     expect(passStatus(local({ passPurchased: true }))).toEqual({ state: 'held' });
+  });
+});
+
+// ─── THE PASS SHEET SELLS TRIP TOOLS ONLY ON A TRIP (consumer panel, 11/15/2026) ─
+// The AI consumer panel (simulated, directional) flagged "get trip tools" and
+// "the full destination toolkit" 31 times out of 100 — hosts of a dinner or a
+// kid's party were being sold lodging and group travel. It was also not true
+// for them: on an event not stamped destination/multi-day the toolkit is never
+// locked, so the pass adds nothing there. Trip wording now appears only where
+// the toolkit is actually part of what the $39 buys.
+describe('the pass sheet names trip tools only where they are what the pass buys', () => {
+  const party = local();
+  const trip = local({ passRequired: true, passReasons: ['destination'] });
+  const longWeekend = local({ passRequired: true, passReasons: ['multi-day'] });
+  const door3 = local({ passRequired: true, passReasons: ['additional-event'] });
+  const TRIPPY = /\btrips?\b|destination|lodging|travel|multi-day/i;
+  const all = (c) => [c.beforePaying, c.heldLine, ...c.perks.flat()].join(' ');
+
+  test('a party: no trip wording anywhere on the sheet', () => {
+    for (const ev of [party, door3]) {
+      const c = passSheetCopy(ev);
+      expect(c.beforePaying).toBe('Planning stays free. Pay $39 once so all your vendors can say yes to you.');
+      expect(all(c)).not.toMatch(TRIPPY);
+      expect(c.perks.map(([t]) => t)).toEqual(['Every vendor, one brief each', 'One event, one price']);
+    }
+  });
+  test('a trip or multi-day event: the toolkit is sold, as before', () => {
+    for (const ev of [trip, longWeekend]) {
+      const c = passSheetCopy(ev);
+      expect(c.beforePaying).toBe('Planning stays free. Pay $39 once so all your vendors can say yes to you, and get trip tools.');
+      expect(c.perks.map(([t]) => t)).toEqual(['Every vendor, one brief each', 'The full destination toolkit', 'One event, one price']);
+      expect(c.heldLine).toMatch(/full destination toolkit/);
+    }
   });
 });
