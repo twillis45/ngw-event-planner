@@ -119,6 +119,20 @@ function essenceOf(type) {
 
 // identityStatement(event) → one factual sentence. e.g.
 // "This is a celebration of an achievement for Wanda." (assembled, not generated.)
+// NOT EVERY PARTY HONORS SOMEONE (11/15/2026, notEveryPartyHonorsSomeone
+// .test.js). A Friendsgiving, a game night or a board meeting has no honoree, so
+// the create screen stops asking "Who's it for?" and the reveal stops saying
+// "Honoree not named". A host who names one anyway keeps it. Canonical type
+// names; anything not listed keeps asking, which is the old behavior.
+const NO_HONOREE_TYPES = new Set([
+  'friendsgiving', 'thanksgiving hosting', 'halloween party', "new year's eve party",
+  'game night', 'watch party', 'card party', 'holiday party',
+  'board meeting', 'conference', 'team retreat', 'pta / booster fundraiser',
+]);
+export function honoreeApplies(type) {
+  return !NO_HONOREE_TYPES.has(norm(type));
+}
+
 export function identityStatement(event) {
   if (!event) return '';
   const essence = essenceOf(event.type);

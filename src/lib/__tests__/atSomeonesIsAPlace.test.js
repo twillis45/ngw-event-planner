@@ -49,3 +49,17 @@ describe('negative controls — a real honoree is still found', () => {
     expect(r.venue).toMatch(/^Vida's/);
   });
 });
+
+// The place's NAME does not carry its street (11/15/2026, live screenshot): the
+// chip read "Vida's - 271 Whitaker Rd" while the street was already parsed into
+// its own field. The name is the name; the street stays in venueAddress.
+describe('a place name and its street are separate', () => {
+  test.each([
+    ["Friendsgiving this Saturday at Vida's - 120 Maple Ave, Pasadena, MD for 15", "Vida's"],
+    ["Friendsgiving this Saturday at Vida's, 120 Maple Ave, Pasadena, MD for 15", "Vida's"],
+  ])('%s → venue %s, street kept separately', (s, name) => {
+    const r = p(s);
+    expect(r.venue).toBe(name);
+    expect(r.venueAddress).toBe('120 Maple Ave');
+  });
+});

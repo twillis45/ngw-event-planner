@@ -110,7 +110,7 @@ import { runOrchestration } from '@app/lib/orchestrator';
 import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
-import { identityStatement } from '@app/lib/eventIdentity';
+import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
@@ -3819,8 +3819,12 @@ export default function HostShellV2() {
   // already turned it off (shouldShowAnalyticsNotice). Its one action opens
   // the Settings toggle. Copy: docs/legal/CONSENT_AND_TRACKING_COPY_DRAFT.md §4;
   // the Privacy link joins it when the policy is published, not before.
+  // NOT ON THE CREATE SCREEN (11/15/2026, live screenshot at 390px): the
+  // notice sat over "Planning this event is free…", the line that tells a new
+  // host what costs money. It waits until the host is past creating, and is
+  // still shown once.
   useEffect(() => {
-    if (splash !== 'gone') return undefined;
+    if (splash !== 'gone' || stage === 'create') return undefined;
     let t;
     try {
       if (shouldShowAnalyticsNotice()) {
@@ -3833,7 +3837,7 @@ export default function HostShellV2() {
     } catch { /* a notice must never break boot */ }
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [splash]);
+  }, [splash, stage]);
 
 
   // ── Real lib functions, one per element ──
@@ -10073,9 +10077,14 @@ export default function HostShellV2() {
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'date' ? null : 'date')}>
                           {effDate ? new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (effEndDate ? ' – ' + new Date(effEndDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') : (parsed.monthYear ? parsed.monthYear.label + ' · pick a day' : 'No date yet')}
                         </button>
+                        {/* No "Who's it for?" ask where the occasion honors nobody
+                            (Friendsgiving, game night — lib/eventIdentity
+                            honoreeApplies); a name the host typed still shows. */}
+                        {(effName || honoreeApplies(effType)) && (
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'name' ? null : 'name')}>
                           {effName ? 'For ' + effName : 'Who’s it for?'}
                         </button>
+                        )}
                         {/* ONE PLACE, ONE CHIP (sim drive 2026-08-04). "family reunion
                             in Deep Creek Lake, MD" produced BOTH a venue chip reading
                             "Deep Creek Lake" and a town chip reading "Deep Creek Lake,
@@ -12916,7 +12925,7 @@ export default function HostShellV2() {
                   "still waiting" is a dead ask there. */}
               {!isPast && (() => {
                 let l = null;
-                try { l = whoIsConfirmedLines(summarizeWhoIsConfirmed(event, confirmationByVendor)); } catch { l = null; }
+                try { l = whoIsConfirmedLines(summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey)); } catch { l = null; }
                 if (!l || !l.parts.length) return null;
                 const go = { vendors: () => setSheet({ kind: 'vendors' }), helpers: () => setSheet({ kind: 'space' }), guests: () => setSheet({ kind: 'guests' }) };
                 return (
@@ -12929,6 +12938,9 @@ export default function HostShellV2() {
                     </div>
                     {l.flagged && (
                       <button className="mini rowlink" data-who-flagged style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }} onClick={go.vendors}>{l.flagged}</button>
+                    )}
+                    {l.cantDo && (
+                      <p className="vc-detail" data-who-cant style={{ margin: 'var(--sp-2) 0 0', color: 'var(--warn)', overflowWrap: 'anywhere' }}>{l.cantDo}</p>
                     )}
                     {l.waiting && (
                       <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>

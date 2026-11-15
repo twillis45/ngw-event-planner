@@ -24,7 +24,7 @@ const vendorLabel = (v) => clean(v && v.name) || clean(v && v.category) || 'A ve
  * @param {object} event
  * @param {Object<string, {state: string}>} confirmationByVendor latest confirm-back row per vendor id
  */
-export function summarizeWhoIsConfirmed(event, confirmationByVendor) {
+export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey) {
   const ev = event || {};
   const byVendor = (confirmationByVendor && typeof confirmationByVendor === 'object') ? confirmationByVendor : {};
 
@@ -49,10 +49,20 @@ export function summarizeWhoIsConfirmed(event, confirmationByVendor) {
   let resp = [];
   try { resp = (deriveHelperResponsibilities(ev) || {}).responsibilities || []; } catch { resp = []; }
   if (resp.length) {
-    const waiting = resp
-      .filter((r) => r.status === 'assigned')
-      .map((r) => ({ label: clean(r.label), name: clean(r.helperName) }));
-    helpers = { total: resp.length, confirmed: resp.length - waiting.length, waiting };
+    // A helper's own answer through their link (11/15/2026) outranks the
+    // hand-tapped state, as a vendor's does: "confirmed" counts, "declined"
+    // means the job needs someone else. No answer → the engine's own status.
+    const answers = (helperAnswerByKey && typeof helperAnswerByKey === 'object') ? helperAnswerByKey : {};
+    const answerOf = (r) => (r.status === 'handled' ? null : answers[String(r.helperId)] || null);
+    const row = (r) => ({ label: clean(r.label), name: clean(r.helperName) });
+    const waiting = []; const cantDo = []; let confirmed = 0;
+    for (const r of resp) {
+      const a = answerOf(r);
+      if (a && a.state === 'declined') cantDo.push(row(r));
+      else if ((a && a.state === 'confirmed') || r.status !== 'assigned') confirmed += 1;
+      else waiting.push(row(r));
+    }
+    helpers = { total: resp.length, confirmed, waiting, ...(cantDo.length ? { cantDo } : {}) };
   }
 
   // Guests — the replies on the roster.
@@ -84,8 +94,10 @@ export function whoIsConfirmedLines(summary) {
     ...((s.helpers && s.helpers.waiting) || []).map((w) => (w.name ? `${w.label} (${w.name})` : w.label)),
   ].filter(Boolean);
   const flaggedNames = (s.vendors && s.vendors.flagged) || [];
+  const cantDo = ((s.helpers && s.helpers.cantDo) || []).map((w) => (w.name ? `${w.label} (${w.name} can’t)` : w.label));
   return {
     parts,
+    cantDo: cantDo.length ? `Needs someone else: ${cantDo.join(', ')}` : '',
     waiting: waitingNames.length ? `Still waiting: ${waitingNames.join(', ')}` : '',
     flagged: flaggedNames.length ? `Flagged a problem: ${flaggedNames.join(', ')}` : '',
   };

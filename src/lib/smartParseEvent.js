@@ -1844,7 +1844,12 @@ export function parseSmartEventText(text, opts = {}) {
     // exists to switch. A phrase carrying my/our is still a home.
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home'
       : (lodging || venueAt || venuePhrase || atPossessive ? 'venue' : ''),
-    venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (atPossessive || (area ? area.label : ''))),
+    // The NAME does not carry its street (11/15/2026, atSomeonesIsAPlace): "at
+    // Vida's - 120 Maple Ave, Pasadena" kept "Vida's - 120 Maple Ave" while the
+    // street was already in venueAddress. Strip only that exact street.
+    venue: venuePhrase || (venueAt && venueAddress
+      ? (venueAt.replace(new RegExp('\\s*[-–—,]\\s*' + venueAddress.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '').trim() || venueAt)
+      : venueAt) || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (atPossessive || (area ? area.label : ''))),
     // Order is strongest-first: a said "City, ST" or ZIP, then a curated
     // vacation area's real hub town, then a named landmark's published city
     // (it carries a real state, so it outranks the next one), then the bare

@@ -89,3 +89,26 @@ describe('the helper-answer seam', () => {
     expect(helperStatusFor({ helperConfirmed: { a: 'yes' } }, 'a', false)).toBe('assigned');   // only a real true
   });
 });
+
+// Joined 11/15/2026: a helper who answered through their own link counts on
+// their word, the same way a vendor does. "I can't" is not "waiting" — the host
+// needs someone else for that job, so it is named on its own line.
+describe('helpers who answered through their link', () => {
+  const helperIdOf = (name) => `helper-${name.toLowerCase()}`;
+  test('"I\'ve got it" counts as confirmed; "I can\'t" is named as needing someone else', () => {
+    const answers = {
+      [helperIdOf('Jordan')]: { helper_key: helperIdOf('Jordan'), state: 'confirmed' },
+      [helperIdOf('Avery')]: { helper_key: helperIdOf('Avery'), state: 'declined', note: 'Out of town' },
+    };
+    const s = summarizeWhoIsConfirmed(EV, CONFIRMS, answers);
+    // Cousin Remy (an informal vendor, counted as a helper) has not answered.
+    expect(s.helpers.waiting).toEqual([{ label: 'Photography', name: 'Cousin Remy' }]);
+    expect(s.helpers.cantDo).toEqual([{ label: 'Folding chairs', name: 'Avery' }]);
+    expect(s.helpers.confirmed).toBe(2);   // Jordan by link, Quinn done; Avery can't
+    const l = whoIsConfirmedLines(s);
+    expect(l.cantDo).toBe('Needs someone else: Folding chairs (Avery can’t)');
+  });
+  test('without link answers, nothing changes', () => {
+    expect(summarizeWhoIsConfirmed(EV, CONFIRMS)).toEqual(summarizeWhoIsConfirmed(EV, CONFIRMS, {}));
+  });
+});
