@@ -277,6 +277,7 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
+import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref } from '@app/lib/vendorDetailsMessage';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations } from '@app/lib/api/helperLink';
 import { buildHelperAsk } from '@app/lib/helperAsk';
@@ -24070,7 +24071,14 @@ export default function HostShellV2() {
                             {String(v.dayOfPhone || v.phone || '').trim() && (
                               <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(v.dayOfPhone || v.phone).replace(/[^+\d]/g, '')}>Call</a>
                             )}
-                            <button className="mini" onClick={() => shareVendorBrief(v)}>Share the vendor brief</button>
+                            {/* SEND THE DETAILS (owner + host board, 11/15/2026): the same
+                                gated mint as before (shareVendorBrief — first vendor free,
+                                the pass after), now handed back as a pre-written text the
+                                host sends from their OWN phone. Only this button's words
+                                changed; "vendor brief" stays everywhere else for now. */}
+                            <button className="mini" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
+                              {vendorGreetingName(v) ? `Send ${vendorGreetingName(v)} the details` : 'Send the details'}
+                            </button>
                           </div>
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
@@ -24101,7 +24109,46 @@ export default function HostShellV2() {
                                 </div>
                               ) : (
                                 <>
-                                  <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)', wordBreak: 'break-all' }}>{vendorBrief.url}</p>
+                                  {(() => {
+                                    // The words are the host's to send. Every exit below is
+                                    // a handoff to the phone's own app: an sms:/mailto: tap
+                                    // proves the composer opened, never that it went, so the
+                                    // record is the host's word ('host-logged' — the same
+                                    // logVendorContact the draft sheet writes), and a Copy is
+                                    // only 'drafted' until they say it's gone.
+                                    const msg = buildVendorDetailsMessage({ vendor: v, event, profile, link: vendorBrief.url });
+                                    const who = vendorGreetingName(v) || 'them';
+                                    const sms = detailsSmsHref(v.phone || v.dayOfPhone, msg.body);
+                                    const mail = sms ? null : detailsMailtoHref(v.email, msg.subject, msg.body);
+                                    const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+                                    return (
+                                      <div data-send-details={v.id}>
+                                        <p className="vc-detail" style={{ margin: '0 0 var(--sp-1)', fontWeight: 600 }}>Your message to {who}</p>
+                                        <p className="vc-detail" data-send-details-body style={{ margin: '0 0 var(--sp-2)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{msg.body}</p>
+                                        <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                                          {sms && <a className="mini" style={{ textDecoration: 'none' }} href={sms} onClick={() => logVendorContact(v.id, 'host-logged')}>Text {who}</a>}
+                                          {mail && <a className="mini" style={{ textDecoration: 'none' }} href={mail} onClick={() => logVendorContact(v.id, 'host-logged')}>Email {who}</a>}
+                                          {canShare && (
+                                            <button className="mini" onClick={() => {
+                                              navigator.share({ title: msg.subject, text: msg.body })
+                                                .then(() => logVendorContact(v.id, 'host-logged'))
+                                                .catch(() => { /* declined — records nothing */ });
+                                            }}>Share…</button>
+                                          )}
+                                          <button className="mini" onClick={() => {
+                                            navigator.clipboard?.writeText(msg.body)
+                                              .then(() => logVendorContact(v.id, 'drafted'))
+                                              .catch(() => toast('Couldn’t copy on this browser — long-press the message to select it.'));
+                                          }}>Copy message</button>
+                                          <button className="mini" onClick={() => logVendorContact(v.id, 'host-logged')}>Mark it sent</button>
+                                        </div>
+                                        {!sms && !mail && (
+                                          <p className="vc-detail" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }}>Add {who === 'them' ? 'their' : who + '’s'} phone or email on this card to send it in one tap.</p>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  <p className="vc-detail" data-brief-url style={{ margin: 'var(--sp-3) 0 var(--sp-2)', wordBreak: 'break-all' }}>{vendorBrief.url}</p>
                                   <div className="actions-row">
                                     <button className="mini" onClick={copyVendorBriefLink}>{vendorBrief.copied ? 'Copied' : 'Copy link'}</button>
                                     {vendorBrief.qrDataUrl && (
