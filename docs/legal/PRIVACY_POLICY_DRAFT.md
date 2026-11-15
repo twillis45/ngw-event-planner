@@ -119,6 +119,19 @@ vendor-safe fields. Guest names and guest dietary details are not in that list.
 If you confirm back through that link, we store your confirmation.
 ⟶ `supabase/migrations/014_vendor_brief_confirmations.sql` ⟵
 
+### Helpers (a friend or relative the host gives a party job)
+
+If a host sends you your job by link ("you're bringing the stuffing"), the
+link shows who is asking, the event's name, date, start time and place, and
+only the jobs assigned to you, built from the host's current plan through a
+fixed list of fields. It shows no other guest's details. The host's message
+itself is sent from the host's own phone or email, not by us.
+⟶ `supabase/migrations/023_helper_links.sql`, `backend/app/routers/helper_link.py` ⟵
+
+If you answer through that link ("I've got it" or "I can't", with an optional
+note), we store your answer and show it to the host.
+⟶ `supabase/migrations/023_helper_links.sql` ⟵
+
 ---
 
 ## 2. Where your data lives
@@ -226,9 +239,11 @@ at once and cannot be undone. It removes:
 - your sign-in identity; ⟶ `account.py:88-92` ⟵
 - every event that belongs only to you — the events in studios where you are
   the only member, and events you own outside any studio — with their guests'
-  replies, vendor-brief links and vendors' confirmations, and event messages,
+  replies, vendor-brief links and vendors' confirmations, helper links and
+  helpers' answers, and event messages,
   so those invitation and brief links stop working; ⟶ `account.py:62-70`;
-  `supabase/migrations/021_account_deletion.sql:30-59`; events go with their
+  `supabase/migrations/021_account_deletion.sql:30-59`,
+  `023_helper_links.sql` (helper tables); events go with their
   studio, `001_initial_schema.sql:46` (`on delete cascade`) ⟵
 - studios where you are the only member, your studio memberships, and studio
   invitations you sent or received; ⟶ `021_account_deletion.sql:76-79` ⟵
