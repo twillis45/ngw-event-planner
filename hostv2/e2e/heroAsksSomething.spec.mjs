@@ -41,7 +41,12 @@ const isoIn = (d) => dateIn(d);
 // a placeholder, and it still does.
 const CASES = [
   ['a wedding four months out', { type: 'Wedding', date: isoIn(120) }, /Agree total budget/i],
-  ['a retirement party a month out', { type: 'Retirement Party', date: isoIn(30) }, /at home, a restaurant, or the workplace/i],
+  // 11/16/2026 (owner's live hunt, item 4): this fixture books a venue, and a
+  // booked venue now SETTLES the venue call — asking "at home, a restaurant, or
+  // the workplace?" over a booked venue was a decision that could never
+  // unblock. To keep guarding what this case is for (the 40-character authored
+  // question surviving to the hero), the case runs with no vendors booked.
+  ['a retirement party a month out', { type: 'Retirement Party', date: isoIn(30), vendors: [] }, /at home, a restaurant, or the workplace/i],
   ['a birthday two weeks out', { type: 'Birthday Party', date: isoIn(14) }, /is there a theme/i],
 ];
 
@@ -73,6 +78,16 @@ for (const [name, patch, expected] of CASES) {
     expect(hero).not.toMatch(/your next step/i);
   });
 }
+
+// The other half of item 4: with the venue booked, the settled venue call is
+// not asked; the hero asks the next real thing instead.
+test('a retirement party with its venue booked is not asked where it is', async ({ page }) => {
+  await boot(page, { type: 'Retirement Party', date: isoIn(30) });
+  const hero = await heroText(page);
+  expect(hero.length).toBeGreaterThan(20);
+  expect(hero).not.toMatch(/at home, a restaurant, or the workplace/i);
+  expect(hero).not.toMatch(/your next step/i);
+});
 
 test('the placeholder is absent from the whole screen', async ({ page }) => {
   await boot(page, { type: 'Wedding', date: isoIn(120) });
