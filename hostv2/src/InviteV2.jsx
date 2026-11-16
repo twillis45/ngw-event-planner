@@ -27,6 +27,7 @@ import { inviteTone, invitePalette } from '@app/lib/inviteTone';
 // the host's call/text/email affordances.
 import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
 import { detectCoupleNames } from '@app/lib/guestSplit';
+import { hashtagLine } from '@app/lib/eventHashtag';
 import { venueFor } from '@app/lib/venueFor';
 import { useBreakpoint } from '@app/lib/viewport';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
@@ -859,10 +860,13 @@ export default function InviteV2({ code }) {
   // Calendar location: name + GATED city from the constitution (a polluted
   // venueCity no longer rides into guests' calendars).
   const vfLoc = venueFor(event);
+  // The host's photo tag rides into the guest's calendar entry (11/16/2026).
+  const calNote = hashtagLine(event);
   const gcalUrl = event.date
     ? 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(event.name || 'Event')
       + '&dates=' + calDate + '/' + calEnd
       + (vfLoc.name ? '&location=' + encodeURIComponent(vfLoc.name + (vfLoc.city ? ', ' + vfLoc.city : '')) : '')
+      + (calNote ? '&details=' + encodeURIComponent(calNote) : '')
     : null;
   const icsHref = event.date
     ? 'data:text/calendar;charset=utf-8,' + encodeURIComponent([
@@ -871,6 +875,7 @@ export default function InviteV2({ code }) {
       `DTSTART;VALUE=DATE:${calDate}`, `DTEND;VALUE=DATE:${calEnd}`,
       `SUMMARY:${String(event.name || 'Event').replace(/[,;]/g, ' ')}`,
       ...(vfLoc.name ? [`LOCATION:${vfLoc.name.replace(/[,;]/g, ' ')}`] : []),
+      ...(calNote ? [`DESCRIPTION:${calNote.replace(/[,;\\]/g, ' ')}`] : []),
       'END:VEVENT', 'END:VCALENDAR'].join('\r\n'))
     : null;
 

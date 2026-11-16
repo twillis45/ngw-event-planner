@@ -716,3 +716,13 @@ def test_the_thread_model_holds_a_host_first_message():
          "email_opt_in": True, "created_at": _now(), "last_guest_at": None,
          "last_host_at": _now(), "blocked_at": None}
     assert gm_mod._host_view(t)["unanswered"] is False
+
+
+def test_a_question_tells_the_host_by_name_only(monkeypatch):
+    # G8 (11/16/2026): the alert carries the guest's name — never the question.
+    calls = []
+    async def fake_alert(*a): calls.append(a)
+    monkeypatch.setattr(gm_mod, "alert_host", fake_alert)
+    c = _client(monkeypatch, _Conn())
+    assert _ask(c, body="Secret question text").status_code == 200
+    assert calls == [("e1", "question", "Jordan Avery")]

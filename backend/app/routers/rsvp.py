@@ -28,10 +28,11 @@ See supabase/migrations/009_rsvp_submissions.sql for the table + RLS.
 import time
 from typing import Optional, Literal
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
 from ..db import get_pool
+from ..host_alerts import alert_host
 from ..auth import require_planner
 
 router = APIRouter(tags=["rsvp"])
@@ -317,7 +318,7 @@ async def public_invite(rsvp_code: str, request: Request):
 
 # ── 2. POST /api/public/rsvp/{rsvp_code} — PUBLIC guest submit (idempotent) ────
 @router.post("/api/public/rsvp/{rsvp_code}")
-async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
+async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request, background: BackgroundTasks):
     """Upsert a guest RSVP. No auth — the rsvp_code is the only credential, and the
     event_id is resolved from it server-side (a client event_id is never trusted).
 
@@ -409,6 +410,7 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
             _clip(payload.mailing_address, MAX_ADDR),
             _clip(payload.lodging_pick, MAX_KEY),
         )
+    background.add_task(alert_host, event_id, "rsvp", _clip(payload.name, MAX_NAME), payload.rsvp)
     return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
 
 

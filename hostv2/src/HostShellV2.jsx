@@ -19929,8 +19929,13 @@ export default function HostShellV2() {
                       Guests scan it and RSVP themselves — no app, no account. Screenshot it for the group chat, print it for the paper invite, tape it by the door.
                     </p>
                     {qrDataUrl && (
-                      <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <img src={qrDataUrl} alt={'QR code for the ' + (event.name || 'event') + ' RSVP link'} style={{ width: '100%', maxWidth: 300, display: 'block' }} />
+                        {/* The host's tag, when on (11/16/2026): inside the white
+                            card, so a screenshot or a printout carries it. */}
+                        {String(event.hashtag || '').trim() && (
+                          <div data-qr-hashtag style={{ marginTop: 8, color: '#1a1a1a', fontSize: 20, fontWeight: 700, letterSpacing: '-.01em', textAlign: 'center' }}>{String(event.hashtag).trim()}</div>
+                        )}
                       </div>
                     )}
                     <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
@@ -26381,6 +26386,21 @@ export default function HostShellV2() {
                       <div id="guests-invites-anchor" className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)', scrollMarginTop: 12 }}>Share &amp; invite</div>
                       {inviteTools}
                     </>
+                  )}
+                  {/* G8 HOST ALERTS (11/16/2026): a signed-in host's synced event
+                      emails them when a guest replies or asks, or a vendor
+                      confirms — at most once an hour per event (the server's
+                      throttle). The switch is per event, stored in its own data. */}
+                  {session && !isPast && (
+                    <p className="grounding" data-host-alerts style={{ margin: 'var(--sp-2) 0 0' }}>
+                      {event.hostAlerts === false
+                        ? 'Reply emails are off for this event. '
+                        : 'We email you when a guest replies or asks a question — at most once an hour. '}
+                      <button className="mini" onClick={() => patchEvent({ hostAlerts: event.hostAlerts === false ? null : false },
+                        event.hostAlerts === false ? 'Reply emails are on.' : 'Reply emails are off for this event.')}>
+                        {event.hostAlerts === false ? 'Turn on' : 'Turn off'}
+                      </button>
+                    </p>
                   )}
                   {/* ONE quiet line, only when chasing is on, someone is silent, and not a
                       single silent guest left a way to reach them — pointing at where a

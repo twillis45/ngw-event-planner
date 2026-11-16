@@ -25,6 +25,8 @@ import {
 } from '@app/lib/api/guestPhotos';
 import { sortThreads, questionsWaiting, openedLine, openDayLine } from '@app/lib/guestInbox';
 import { PhotoShareControls } from './GuestPhotosV2.jsx';
+import PhotoViewer from './PhotoViewer.jsx';
+import { instagramTagUrl } from '@app/lib/photoShare';
 
 const first = (n) => String(n || '').trim().split(/\s+/)[0] || 'this guest';
 const why = (reason, what) => (reason === 'signed-out'
@@ -180,6 +182,7 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
   const [state, setState] = useState(undefined);   // undefined · { photos } · { failed }
   const [busy, setBusy] = useState('');
   const [confirmDel, setConfirmDel] = useState('');
+  const [view, setView] = useState(null);           // index into photos | null
   const [line, setLine] = useState('');
   const [err, setErr] = useState('');
   const load = async () => {
@@ -205,6 +208,14 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
   return (
     <section id="guests-photos-anchor" data-host-photos aria-label="Guest photos" style={{ marginTop: 'var(--sp-4)', scrollMarginTop: 12 }}>
       <div className="shelf-label" style={{ marginBottom: 6 }}>Guest photos</div>
+      {/* The host's tag, when on (11/16/2026), with the way to see what's
+          been posted publicly with it. */}
+      {String((event && event.hashtag) || '').trim() && (
+        <p className="grounding" data-host-photos-tag style={{ margin: '0 0 8px' }}>
+          {String(event.hashtag).trim()}
+          {instagramTagUrl(event.hashtag) && <> · <a href={instagramTagUrl(event.hashtag)} target="_blank" rel="noopener noreferrer" className="tap-44" style={{ color: 'inherit' }}>See posts with this tag on Instagram</a></>}
+        </p>
+      )}
       {state === undefined ? <p className="grounding" style={{ margin: 0 }}>Loading guests’ photos…</p>
         : state.failed ? <p className="grounding" style={{ margin: 0 }}>{why(state.failed, 'guests’ photos')}</p>
         : !photos.length ? <p className="grounding" style={{ margin: 0 }}>No photos yet. Guests can add photos from their invite link after the event; you approve each one before other guests see it.</p>
@@ -216,7 +227,11 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
             <ul className="photo-grid">
               {photos.map((p, i) => (
                 <li key={p.id} className="photo-cell" data-photo={p.id} data-status={p.status}>
-                  {p.url ? <img src={p.url} alt={`Photo from ${p.guest_name}`} loading="lazy" /> : <div className="photo-missing">Photo</div>}
+                  {(p.thumb || p.url)
+                    ? <button type="button" className="photo-tile-btn" data-host-photo-open aria-label={`Open the photo from ${p.guest_name}`} onClick={() => setView(i)}>
+                        <img src={p.thumb || p.url} alt="" loading="lazy" decoding="async" />
+                      </button>
+                    : <div className="photo-missing">Photo</div>}
                   <div className="photo-meta">
                     From {p.guest_name} · {p.status === 'pending' ? 'Waiting for your approval' : p.status === 'approved' ? 'Guests can see it' : 'Hidden from guests'}
                     {p.status === 'approved' && p.uploader_private ? ' · Kept private by the guest — no sharing' : ''}
@@ -248,6 +263,17 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
         )}
       {err && <p className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>{err}</p>}
       {line && <p className="grounding" role="status" data-photos-status style={{ margin: '6px 0 0' }}>{line}</p>}
+      {view != null && photos[view] && (
+        <PhotoViewer photos={photos} index={view} onIndex={setView} onClose={() => setView(null)} onExpired={load}
+          label={(i, n) => `Photo ${i + 1} of ${n}, from ${photos[i].guest_name}`}
+          actions={(p) => (
+            <>
+              <span className="pv-note">From {p.guest_name} · {p.status === 'pending' ? 'Waiting for your approval' : p.status === 'approved' ? 'Guests can see it' : 'Hidden from guests'}</span>
+              {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id), 'Approved — guests can see it now.')}>Approve</button>}
+              {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.')}>Hide</button>}
+            </>
+          )} />
+      )}
     </section>
   );
 }
