@@ -99,3 +99,30 @@ services:
       #   value: https?://(localhost|192\.168(?:\.\d{1,3}){2})(?::\d+)?
       - key: APP_BASE_URL
         value: https://twillis45.github.io/ngw-event-planner
+
+  # ── Guest photo retention, nightly (owner ruling 11/16/2026) ──────────────
+  # SQL cannot delete a Storage file, so this is the server's job: photos 90
+  # days past their event, and every photo of an event the host deleted
+  # (migration 025's guest_photos_due_for_purge names them; the script removes
+  # files, then rows). A NEW service: the owner approves it in Render on the
+  # next Blueprint sync. 08:17 UTC is 3:17 AM Eastern (EST), off the hour.
+  # Exits non-zero when Storage refuses a delete, so a failed run shows red in
+  # Render and the rows stay for the next night.
+  - type: cron
+    name: ngw-guest-photo-purge
+    runtime: python
+    rootDir: backend
+    plan: starter
+    schedule: "17 8 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/purge_guest_photos.py
+    envVars:
+      # Read from the API service, so there is one copy of each secret.
+      - key: DATABASE_URL
+        fromService: { type: web, name: ngw-events-api, envVarKey: DATABASE_URL }
+      - key: SUPABASE_URL
+        fromService: { type: web, name: ngw-events-api, envVarKey: SUPABASE_URL }
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        fromService: { type: web, name: ngw-events-api, envVarKey: SUPABASE_SERVICE_ROLE_KEY }
+      - key: PYTHON_VERSION
+        value: 3.12.7

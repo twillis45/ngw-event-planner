@@ -7,3 +7,8 @@ python-dotenv==1.0.1
 stripe==16.1.0
 # Backend 500s caught by main._error_capture go to Sentry (stage 7 board condition C2); inert without SENTRY_DSN.
 sentry-sdk==2.73.0
+# Guest photo upload (routers/guest_photos.py): decode every upload and re-encode it
+# from the pixels alone, so EXIF/GPS and all other metadata never reach storage.
+# Nothing already installed decodes images. HEIC is refused rather than adding
+# pillow-heif (a native libheif build).
+pillow==12.3.0

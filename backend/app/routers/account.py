@@ -76,6 +76,12 @@ async def delete_account(body: DeleteAccountRequest, authorization: Optional[str
                     if obj["bucket_id"] != "event-files" or len(parts) < 4 or parts[1] not in ids:
                         refusal("storage_transfer_required", "Transfer or remove your uploaded files in shared events before deleting your account. Shared event files have not been removed.")
                     by_bucket[obj["bucket_id"]].append(obj["name"])
+                # Guest photos (025) on these events: uploaded by this server,
+                # so they have no owner and the select above cannot see them.
+                # Their rows go in cleanup_deleted_account(); their files here.
+                if ids and await conn.fetchval("select to_regclass('public.guest_photos') is not null"):
+                    for photo in await conn.fetch("select storage_path from public.guest_photos where event_id = any($1::text[])", ids):
+                        by_bucket["guest-photos"].append(photo["storage_path"])
                 for bucket, names in by_bucket.items():
                     for start in range(0, len(names), 100):
                         try:

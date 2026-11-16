@@ -77,6 +77,14 @@ PUBLIC = {
     # unguessable code in the path is the credential, same as the brief.
     "GET /api/public/helper/{code}": "helper code in path is the credential",
     "POST /api/public/helper/{code}/answer": "helper code is the credential",
+    # Guest questions (11/16/2026): the same credential as a guest's own RSVP —
+    # the invite code plus the device key, matched in the WHERE clause
+    # (test_guest_messages).
+    "POST /api/public/questions/{rsvp_code}/mine": "guest's own thread; code + device key in body",
+    "POST /api/public/questions/{rsvp_code}/ask": "guest's own thread; code + device key in body",
+    "POST /api/public/questions/{rsvp_code}/email": "guest's own thread; code + device key in body",
+    "POST /api/public/questions/{rsvp_code}/delete": "guest's own thread; code + device key in body",
+    "POST /api/public/invite/{rsvp_code}/opened": "invite code; records an open only for a device key already identified by a reply or a question",
     # Guest RSVP: guests never have accounts; the rsvp code is the credential.
     "GET /api/public/invite/{rsvp_code}": "guest-facing; code is the credential",
     "POST /api/public/rsvp/{rsvp_code}": "guest-facing; code is the credential",
@@ -84,6 +92,14 @@ PUBLIC = {
     # the credential, matched in the WHERE clause (test_rsvp_guest_owns_reply).
     "POST /api/public/rsvp/{rsvp_code}/mine": "guest's own reply; code + device key in body",
     "POST /api/public/rsvp/{rsvp_code}/withdraw": "guest's own reply; code + device key in body",
+    # Guest photos (11/16/2026): the invite code, plus the guest's device key
+    # (header on upload, body otherwise) matched in the WHERE clause. The
+    # approved list needs only the code, and returns no name or key.
+    "POST /api/public/photos/{rsvp_code}": "guest upload; code + device key header; after the event only",
+    "POST /api/public/photos/{rsvp_code}/mine": "guest's own photos; code + device key in body",
+    "POST /api/public/photos/{rsvp_code}/{photo_id}/delete": "guest's own photo; code + device key in body",
+    "POST /api/public/photos/{rsvp_code}/privacy": "guest's own photos' share switch; code + device key in body",
+    "GET /api/public/photos/{rsvp_code}": "host-APPROVED photos only, for invite holders; no names",
     # portal-respond: the portal_token in the BODY is the credential, matched
     # against metadata.portal_token stamped on the approval_request message.
     "POST /api/events/{event_id}/communication/messages/{message_id}/portal-respond":

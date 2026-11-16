@@ -47,6 +47,13 @@ import { geocodeVenue } from '@app/lib/weather';
 // small things live in inviteShared (free); the pool is dynamic-imported inside
 // findInviteEvent, off the critical path. Same pool, same patch layers, same truth.
 import { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS, toneVarsFor } from './inviteShared.js';
+// Guest questions + "opened" (ruling A) and guest photos (rulings B–D),
+// 11/16/2026. Both are server-backed: rendered only for an invite the server
+// resolved, never for a same-device preview (localEvent).
+import GuestAskV2 from './GuestAskV2.jsx';
+import GuestPhotosV2 from './GuestPhotosV2.jsx';
+import { isGuestMessagesApiConfigured, recordInviteOpened, inviteDeviceId } from '@app/lib/api/guestMessages';
+import { isGuestPhotosApiConfigured } from '@app/lib/api/guestPhotos';
 
 // Identity crest — the SAME registry the app's glyph system reads (real PD
 // artwork; artwork doctrine), and the HOST'S call whether it appears:
@@ -380,6 +387,20 @@ export default function InviteV2({ code }) {
     // every invite render. event_type carries the useful cut anyway.
     try { trackInvite(INVITE_EVENTS.INVITE_VIEWED, { event_type: ev.type }); } catch (_e) { /* a counter never blocks a guest */ }
   }, [resolved, code]);
+  // "OPENED YOUR INVITE" (owner ruling A, 11/16/2026): once per load, for an
+  // invite the server resolved. Fire-and-forget; the server throttles it and
+  // names a guest only when this device already replied or asked (her existing
+  // key). Never sent for a same-device preview. The page says so in the foot.
+  const openedRef = useRef(null);
+  useEffect(() => {
+    const ev = resolved && resolved.event;
+    if (!ev || localEvent || openedRef.current === code || !isGuestMessagesApiConfigured()) return;
+    openedRef.current = code;
+    recordInviteOpened(code, { deviceId: inviteDeviceId(), guestKey: existingRsvpKey(ev.id + ':' + code) || undefined });
+  }, [resolved, code, localEvent]);
+  // Whether the server says photo uploads are open (GuestPhotosV2 reports it);
+  // the recap's photo line reads it rather than promising anything itself.
+  const [photosOpen, setPhotosOpen] = useState(null);
 
   useEffect(() => () => clearTimeout(shareTimer.current), []);
   // ── Arrival assist (event day): guest-initiated, entirely client-side —
@@ -549,6 +570,10 @@ export default function InviteV2({ code }) {
   // event.date − 7d guess; printing it as "replies by" puts words in the host's mouth.
   const rsvpByIsReal = !!(rsvpBy && rsvpBy.iso && rsvpBy.source === 'override');
   const somber = tone === 'muted';
+  // Guest photos are offered on the event day and after, for an invite the
+  // server resolved; the server decides when uploads actually open.
+  const photosOffered = !localEvent && isGuestPhotosApiConfigured() && days != null && days <= 0;
+  const asksOffered = !localEvent && isGuestMessagesApiConfigured();
   const allowPlusOne = event.plusOnePolicy !== 'no_plus_ones';
   const allowKids = event.kidsPolicy !== 'adults_only';
 
@@ -935,6 +960,11 @@ export default function InviteV2({ code }) {
                 crest would sit on the title. The space stays; only the duplicate words go. */}
             <h1 {...rv('inv2-name lp-display')} style={(isPast || somber) ? undefined : { marginTop: mark ? 18 : 26 }}>{event.name}</h1>
             <p {...rv('inv2-deck lp')}>{deck}</p>
+            {/* THE HOST'S HASHTAG (owner ruling E, 11/16/2026): shown quietly,
+                only when the host turned one on. No call to post (board 8–2). */}
+            {String(event.hashtag || '').trim() && (
+              <p className="inv2-fine" data-invite-hashtag style={{ margin: '2px 0 0' }}>{String(event.hashtag).trim()}</p>
+            )}
             <div {...rv()}>
               <hr className="inv2-rule" />
               {/* WHEN — F1 of the invite audit (CRITICAL). This formatted
@@ -1095,11 +1125,24 @@ export default function InviteV2({ code }) {
                   {recapAttendance ? recapAttendance + ' — thank you for celebrating.' : 'Thank you for celebrating.'}
                   {myPriorRsvp === 'Yes' ? ' You were in.' : ''}
                 </p>
+                {/* "Got photos? Share them so everyone can relive it." promised a
+                    feature this page didn't have (owner ruling B, 11/16/2026).
+                    Now only a true line: the host's album when linked; the
+                    upload button when the server says uploads are open; before
+                    that, when they open; and nothing when photos aren't offered. */}
                 {albumUrl
                   ? <p className="grounding" style={{ margin: '2px 0 0', textAlign: 'center', opacity: .8 }}>The photos from the day are up — take a look.</p>
-                  : <p className="grounding" style={{ margin: '2px 0 0', textAlign: 'center', opacity: .8 }}>Got photos? Share them so everyone can relive it.</p>}
+                  : (photosOffered && photosOpen === false)
+                    ? <p className="grounding" data-recap-photos-closed style={{ margin: '2px 0 0', textAlign: 'center', opacity: .8 }}>Photos open after the event.</p>
+                    : null}
                 <div className="actions-row" style={{ marginTop: 12, justifyContent: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
                   {albumUrl && <a className="mini" href={albumUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>See the photos</a>}
+                  {photosOffered && photosOpen === true && (
+                    <button className="mini" data-recap-add-photos onClick={() => {
+                      const el = document.getElementById('invite-photos');
+                      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}>Add your photos</button>
+                  )}
                   <button className="mini" onClick={() => shareForward(false)}>{shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'Share the memory'}</button>
                 </div>
                 {shareError && <p className="grounding" role="alert">{shareError}</p>}
@@ -1458,6 +1501,17 @@ export default function InviteV2({ code }) {
             )}
           </div>
 
+          {/* ── Photos (rulings B–D) and "Ask your host" (ruling A), 11/16/2026.
+              Outside the stationery sheet on purpose: the reply form's geometry
+              (G28, theReplyFormHoldsStill) is not touched by either. ── */}
+          {photosOffered && (
+            <GuestPhotosV2 code={code} event={event} eventKey={event.id + ':' + code} guestName={guestName.trim()}
+              anchorId="invite-photos" onOpenChange={setPhotosOpen} />
+          )}
+          {asksOffered && (
+            <GuestAskV2 code={code} eventKey={event.id + ':' + code} hostName={event.hostName || event.hostNames} guestName={guestName.trim()} />
+          )}
+
           {/* ── Getting there — event day only; unchanged mechanics. ── */}
           {days != null && days <= 0 && !isPast && venueFor(event).isSet && (
             <div className="card no-hover" style={{ marginTop: 14 }}><div className="card-head" style={{ cursor: 'default', padding: '14px 18px' }}>
@@ -1516,6 +1570,11 @@ export default function InviteV2({ code }) {
               touches. Tuned to the stationery's own palette, not the app steel. */}
           {/* Guests hand over dietary and access needs without ever signing in,
               so the privacy policy belongs on their door too, once published. */}
+          {/* The plain disclosure for "opened" (owner ruling A): only where the
+              open was actually recorded. Never "read" or "seen". */}
+          {asksOffered && (
+            <p className="inv2-fine" data-opened-disclosure style={{ marginTop: 12 }}>Your host can see when you last opened this invite.</p>
+          )}
           <PolicyLinks prefix="How your answer is used:" style={{ marginTop: 8, textAlign: 'center' }} />
           <div {...rv('inv2-wordmark')}>{BRAND.full}<span className="inv2-wm-dot" aria-hidden="true" /></div>
           </div>

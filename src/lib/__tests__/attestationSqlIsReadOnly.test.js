@@ -96,7 +96,38 @@ describe('coverage', () => {
     for (const name of [
       "to_regprocedure('public.cleanup_deleted_account()')",
       "'%helper_links%'", "'%helper_confirmations%'",
-      'generate_series(1, 23)',
     ]) expect(sql).toContain(name);
+  });
+
+  // 024 (guest questions + invite opens, 11/16/2026): five server-only
+  // tables, the deletion body names all five, and the retention purge is a
+  // SECURITY DEFINER that no browser role may run (the S9-1 lesson). The
+  // record now reaches 024.
+  test('it proves the guest-question and invite-open tables, their deletion, and a server-only purge, and expects 024 recorded', () => {
+    for (const name of [
+      "'guest_threads'", "'guest_messages'", "'invite_opens'", "'invite_open_days'", "'invite_open_devices'",
+      "'%guest_threads%'", "'%guest_messages%'", "'%invite_opens%'", "'%invite_open_days%'", "'%invite_open_devices%'",
+      "'purge_old_guest_activity(integer)'",
+      "to_regprocedure('public.purge_old_guest_activity(integer)')",
+    ]) expect(sql).toContain(name);
+  });
+
+  // 025 (guest photos, 11/16/2026): a server-only table, the deletion body
+  // names it, the purge lister is a SECURITY DEFINER no browser role may run,
+  // and the bucket is private with no storage policy naming it. The record
+  // now reaches 025 (024, guest questions, is expected recorded first).
+  test('it proves the guest photo table, its deletion, a server-only purge and a policy-free private bucket, and expects 025 recorded', () => {
+    for (const name of [
+      "'guest_photos'", "'%guest_photos%'",
+      "to_regprocedure('public.guest_photos_due_for_purge(integer)')",
+      "b.id = 'guest-photos' and not b.public", "'%guest-photos%'",
+      'generate_series(1, 25)',
+    ]) expect(sql).toContain(name);
+  });
+
+  // 025's consent switches (board 11/16/2026, option C): a database without
+  // them would 500 every upload, so the pack proves both columns exist.
+  test('it proves the two consent columns on guest_photos', () => {
+    for (const name of ["'uploader_private'", "'share_blocked'"]) expect(sql).toContain(name);
   });
 });
