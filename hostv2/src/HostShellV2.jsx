@@ -1383,6 +1383,12 @@ export default function HostShellV2() {
   // color so "you did it" reads green everywhere from ONE place, instead of per-call
   // styling. 'ok' ⇒ green success; null/undefined ⇒ the neutral pill (errors keep it).
   const [toastTone, setToastTone] = useState(null);
+  // ATTENTION, SCALED TO THE MESSAGE (owner, 11/16/2026: "combo of all 3 where
+  // appropriate"). Every toast gets the lit steel edge (CSS). opts.title adds an
+  // eyebrow naming what kind of note it is. opts.spotlight dims the page behind
+  // it, kept for one-time notices a host must actually read, never a routine
+  // "Saved." Reset on every toast() call, so a stale title never carries over.
+  const [toastMeta, setToastMeta] = useState({});
   const [handledOpen, setHandledOpen] = useState(false);
   // ── THE ONLY OPENER WAS HIDDEN ON THE PHONE (2026-09-17) ──────────────────
   // The "what's counted" panel (~:9740) carries the four readiness pillar
@@ -3886,6 +3892,7 @@ export default function HostShellV2() {
     setToastMsg(msg);
     setToastAction(action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null));
     setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
+    setToastMeta({ title: (opts && opts.title) || null, spotlight: !!(opts && opts.spotlight) });
     clearTimeout(toastTimer.current);
     if (opts && opts.sticky) return;
     // An actionable toast lingers a little longer — the host needs a beat to
@@ -3914,7 +3921,7 @@ export default function HostShellV2() {
             analyticsNoticeAction(() => {
               setAnalyticsOff(true); patchProfile({ analyticsOff: true });
               setTimeout(() => toast('Analytics off — change it anytime in Settings.'), 0);
-            }));
+            }), null, { title: 'A note about privacy', spotlight: true });
         }, 1200);
       }
     } catch { /* a notice must never break boot */ }
@@ -26726,9 +26733,11 @@ export default function HostShellV2() {
         <button data-demo-bar="closed" onClick={() => setDemoBarOpen(true)} aria-label="Show demo tools"
           style={{ position: 'fixed', left: 0, top: '42%', zIndex: 90, width: 14, height: 44, padding: 0, background: 'rgba(20,20,20,0.6)', border: 'none', borderRadius: '0 6px 6px 0', color: '#bbb', fontSize: 9 }}>D</button>
       ))}
+      {toastMsg && toastMeta.spotlight && <div className="toast-dim" aria-hidden="true" data-toast-dim />}
       {toastMsg && (
-        <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '')} role="status" aria-live="polite">
-          {toastMsg}
+        <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '') + (toastMeta.spotlight ? ' spot' : '')} role="status" aria-live="polite">
+          {toastMeta.title && <div className="toast-eye" data-toast-title>{toastMeta.title}</div>}
+          {toastMeta.title ? <div>{toastMsg}</div> : toastMsg}
           {toastAction && (
             <button className="toast-undo" onClick={() => {
               const fn = toastAction.fn;

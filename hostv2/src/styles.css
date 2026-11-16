@@ -1487,12 +1487,15 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      stays reserved for "needs you"), text reads left like every other card, and
      the shadow is UX_01's one overlay level plus a ring that separates it from a
      card beneath. */
-  background:color-mix(in srgb, var(--steel) 22%, var(--card)); color:var(--ink);
-  border:1px solid color-mix(in srgb, var(--steel-soft) 55%, transparent);
-  border-left:3px solid var(--steel-soft);
+  background:color-mix(in srgb, var(--steel) 30%, var(--card)); color:var(--ink);
+  border:1px solid var(--steel-soft);
+  border-left:4px solid var(--steel-soft);
   font-size:var(--t-toast); font-weight:550;
   padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4); border-radius:var(--r-lg); width:max-content; max-width:min(88vw,400px); text-align:left; line-height:1.45;
-  box-shadow:0 8px 32px rgba(0,0,0,.5), 0 0 0 4px color-mix(in srgb, var(--bg, #0e1013) 70%, transparent);
+  /* A — LIT EDGE (owner pick, 11/16/2026): the steel glow the green "ok" toast
+     already wears, so every note reads as lit rather than as one more card. */
+  box-shadow:0 8px 32px rgba(0,0,0,.55), 0 0 0 1px color-mix(in srgb, var(--steel-soft) 40%, transparent),
+             0 0 28px -4px color-mix(in srgb, var(--steel-soft) 60%, transparent);
   animation:toastin var(--ms-escalation) var(--ease-out) both;
 }
 /* CONFIRM-GREEN (2026-07-16): a success confirmation reads green from ONE place —
@@ -1501,6 +1504,23 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .toast.ok{ background:var(--ok); color:var(--on-ok); border-color:var(--ok); box-shadow:0 12px 40px rgba(47,107,70,.34); }
 /* The action sits on its own line under the message, right-aligned, so a long
    notice reads as a sentence and then a choice — not a button mid-paragraph. */
+/* B — LABELED (opts.title): an eyebrow with a steel dot names the kind of note
+   before the sentence. Only where a toast is given a title. */
+.toast-eye{ display:flex; align-items:center; gap:8px; font-size:var(--t-overline, 11px); font-weight:700;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--steel-soft); margin-bottom:4px; }
+.toast-eye::before{ content:''; width:7px; height:7px; border-radius:50%; background:var(--steel-soft);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--steel-soft) 25%, transparent); }
+.toast.ok .toast-eye{ color:inherit; }
+.toast.ok .toast-eye::before{ background:currentColor; }
+/* C — SPOTLIGHT (opts.spotlight): the page dims behind a one-time notice so it
+   is the brightest thing on screen. Same containing block as the toast, so on
+   desktop it covers the rail too. It never takes a tap: the page stays usable. */
+/* z: above the rail (60, kept above overlays so navigation never dies) so the
+   rail dims too; pointer-events:none means it still takes every tap. */
+.toast-dim{ position:absolute; inset:0; z-index:61; background:rgba(8,9,11,.42); pointer-events:none;
+  animation:toastdim var(--ms-escalation) var(--ease-out) both; }
+@keyframes toastdim{ from{ opacity:0; } to{ opacity:1; } }
+.toast.spot{ z-index:62; }
 .toast:has(.toast-undo){ display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-2); }
 .toast:has(.toast-undo) .toast-undo{ margin-left:0; align-self:flex-end; }
 /* `@keyframes toastin` USED TO BE DEFINED HERE and was dead: an identical name
@@ -7603,7 +7623,7 @@ button.vc-pill::after{
   .toast{ left:auto; right:var(--sp-5); bottom:var(--sp-5); transform:none; animation-name:toastin-corner; }
 }
 @keyframes toastin-corner{ from{ opacity:0; transform:translateY(26px); } 60%{ transform:translateY(-4px); } to{ opacity:1; transform:none; } }
-@media (prefers-reduced-motion:reduce){ .toast{ animation:none; } }
+@media (prefers-reduced-motion:reduce){ .toast, .toast-dim{ animation:none; } }
 
 /* ── Guest questions and guest photos (owner rulings A–D, 11/16/2026) ───────
    Shared by the invite (GuestAskV2, GuestPhotosV2) and the host's Guest list
