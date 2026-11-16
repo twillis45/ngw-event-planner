@@ -118,7 +118,10 @@ describe('vendorIntelligence reads the canonical sets', () => {
   it.each(CONFIRMED)('%s gets the confirmed-but-no-contract reading, not the unknown-word fallback', (status) => {
     const cs = getVendorChallengeSummary(vendorAt(status), EVENT);
     expect(cs.booking.level).toBe('attention');
-    expect(cs.booking.note).toBe('Confirmed but no contract on file.');
+    // #133 (owner's live demo 11/15/2026): "Confirmed" here meant the host's own
+    // Locked in, while Home's "Who's confirmed" counts vendors' answers. Same
+    // word, two senses. The note now uses the card chip's word.
+    expect(cs.booking.note).toBe('Locked in, but no contract on file.');
     expect(cs.booking.note).not.toMatch(/^Status: /);
     expect(getVendorNextAction(vendorAt(status), EVENT).title).toBe('Get the signed contract from Acme.');
     expect(contractOf(status)).toBe('missing');

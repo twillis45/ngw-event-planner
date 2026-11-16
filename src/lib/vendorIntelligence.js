@@ -340,7 +340,7 @@ export function getVendorChallengeSummary(vendor, event) {
   // ── Booking ──
   let booking;
   if (isConfirmed && contractSigned) booking = { level: 'safe', note: 'Booked and contract signed.' };
-  else if (isConfirmed && !contractSigned) booking = { level: 'attention', note: 'Confirmed but no contract on file.' };
+  else if (isConfirmed && !contractSigned) booking = { level: 'attention', note: 'Locked in, but no contract on file.' };
   // Reached only when NOT confirmed (the two branches above), so "booked but not
   // confirmed" is exactly isCommitted here — the canonical middle rung, rather
   // than a third private spelling of {Deposit Paid, Contracted}.
@@ -696,7 +696,7 @@ export function getVendorNextAction(vendor, event) {
   if (isConfirmed && !contractSigned) {
     return {
       title: `Get the signed contract from ${vname}.`,
-      consequence: 'Vendor is confirmed but no contract is on file — booking record is incomplete and protection is thin.',
+      consequence: 'You marked them locked in, but no contract is on file — the booking record is incomplete and protection is thin.',
       ctaCopy: 'Mark contract signed',
       sourceCategory: 'documents',
     };

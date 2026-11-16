@@ -8768,7 +8768,7 @@ export default function HostShellV2() {
                   word. Glued to what follows, the whole marker moves down
                   together. */}
               {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range · est.' : 'Mid‑range'}`}
+              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range\u00A0·\u00A0est.' : 'Mid‑range'}`}
             </>
           )}>{fmt(typical)}</BigValue>
           <Grounding>
@@ -14353,7 +14353,7 @@ export default function HostShellV2() {
                               aria-label={'Time for ' + (cur.segment || 'this moment')} />
                           ) : (<>
                             <span aria-hidden="true" style={{ color: 'var(--faint)' }}>·</span>
-                            {cur.rel && <span style={{ color: 'var(--steel-soft)' }}>~ {cur.rel}</span>}
+                            {cur.rel && <span style={{ color: 'var(--steel-soft)' }}>~{cur.rel}</span>}
                             <button onClick={() => setTimeEditIds(s => { const n = new Set(s); n.add(cur.id); return n; })}
                               style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' }}>Set a time ›</button>
                           </>)) : null}
@@ -14579,7 +14579,10 @@ export default function HostShellV2() {
                   ? (money.committed <= money.planned
                     ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`
                     : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`)
-                  : 'No budget yet — nothing to settle up when it’s over.'}
+                  // Booked vendors with no price are not "nothing to settle" (live hunt item 5).
+                  : ((spend.unpricedBooked || []).length
+                    ? 'No budget yet — ' + spend.unpricedBooked.map(x => x.name).join(', ') + ' ' + (spend.unpricedBooked.length === 1 ? 'has' : 'have') + ' no price on record, so there’s nothing to total yet.'
+                    : 'No budget yet — nothing to settle up when it’s over.')}
               </p>
 
               {/* HOST MODEL (Rule 4): the money reads as ONE number plus where
@@ -14626,7 +14629,7 @@ export default function HostShellV2() {
 
               <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · every budget line above stays saved. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
               </div>
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
@@ -20497,7 +20500,7 @@ export default function HostShellV2() {
                 </>
               ) : (
                 <>
-                  <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No checklist yet — that’s exactly why the plan flagged “catch up.” Draft the real one:</div>
+                  <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No checklist yet. Draft one from the playbook:</div>
                   <button className="cta" onClick={draftTimeline}>Draft my checklist from the playbook</button>
                 </>
               )}
@@ -20916,7 +20919,7 @@ export default function HostShellV2() {
                           {un} meal{un === 1 ? '' : 's'} unanswered
                         </button>
                       )}
-                      <button type="button" onClick={() => setEstOpen(o => !o)}
+                      <button type="button" className="tap-44" onClick={() => setEstOpen(o => !o)}
                         aria-expanded={estOpen}
                         style={{ font: 'inherit', fontSize: 'var(--t-caption-min)', fontWeight: 600,
                           color: 'var(--steel-soft)', background: 'none', border: 'none', padding: 0,
@@ -20992,7 +20995,7 @@ export default function HostShellV2() {
                         return (
                           <>
                             {note.slice(0, at)}
-                            <button type="button" onClick={() => setSheet({ kind: 'venue' })}
+                            <button type="button" className="tap-44" onClick={() => setSheet({ kind: 'venue' })}
                               style={{ font: 'inherit', color: 'var(--steel-soft)', background: 'none',
                                 border: 'none', padding: 0, cursor: 'pointer',
                                 textDecoration: 'underline', textUnderlineOffset: '2px' }}>
@@ -23657,8 +23660,8 @@ export default function HostShellV2() {
                                       aria-label={'Go to the control for: ' + na.title}>
                                       {/* Names where it goes (owner's demo, 11/16/2026: "Take me
                                           there" breaks the rule that a button says what it does). */}
-                                      {({ booking: 'Set the status', coi: 'Go to insurance', contract: 'Go to the contract',
-                                        money: 'Go to payment', arrival: 'Set the arrival time', contact: 'Go to their contact' }[anchor] || 'Go to it')} →
+                                      {({ booking: 'Set the status', coi: 'See the insurance row', contract: 'See the contract',
+                                        money: 'See the payment', arrival: 'Set the arrival time', contact: 'See their contact' }[anchor] || 'See the control')} →
                                     </span>
                                   </p>
                                 );
@@ -23914,7 +23917,7 @@ export default function HostShellV2() {
                                 );
                               })()}
                               <button data-vaction="money" className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
-                                {v.balancePaid ? 'Paid in full' : 'mark paid in full'}
+                                {v.balancePaid ? 'Paid in full' : 'Mark paid in full'}
                               </button>
                               {/* WHEN THE MONEY IS DUE (2026-07-14). `payDueDate` is a real field in
                                   the data model — vendorIntelligence escalates on it (payOverdue →
@@ -24574,7 +24577,7 @@ export default function HostShellV2() {
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'vendor record' : r.source === 'budget' ? 'budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'your price' : 'estimated'}</span></span>
+                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
                               </div>
                               {/* The 4% floor keeps a small-but-real category findable. It must
                                   not apply to a category costing nothing: while the fill was
@@ -26273,7 +26276,7 @@ export default function HostShellV2() {
                   {peopleZone}
                   {guestHero}
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
-                    No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
+                    No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and checking the count with your caterer.
                   </div>
                   <div id="guests-entry-anchor" style={{ display: peopleMode && !peopleAdjust ? 'none' : 'flex', gap: 'var(--sp-2)', alignItems: 'center', margin: '0 0 10px', scrollMarginTop: 12 }}>
                     <button className="mini" onClick={() => { setGuestDraft(null); setGuests(Math.max(1, (Number(guests) || 0) - 1)); }} aria-label="Fewer guests">−</button>

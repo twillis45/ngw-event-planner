@@ -17,6 +17,38 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 16, 2026 (late night) — the live-hunt batch (#130–#139 and the owner's 22-item list)
+
+- **An open card held still for no one.**
+  - The cause: 12 inline callback refs called `scrollIntoView` on every render, so every tap or keystroke in an open vendor card re-centered it. Measured 979–1,058px on the demo seed.
+  - The fix: `scrollIntoViewOnOpen` scrolls once when a card opens and re-arms when it closes.
+  - The test: `anOpenCardHoldsStill` fails on the old code and passes on the new.
+- **Owner calls:**
+  - A (11/16): signed-out "Send <name> the details" opens sign-in first and resumes the send after sign-in.
+  - B: "Turn this off" opts out of analytics (`analyticsNoticeAction`). The notice can't run in e2e, so it is pinned in jest.
+  - C and D were done in #129.
+- **#139:** reading a vendor reply signed out says "Sign in to have it read the message" before any typing, or on a 401, and keeps the pasted text.
+- **Item 8:** arrival times read "2:30 PM" in four places.
+- **Item 20:** "What's in the estimate" and "add your state" are 44px to a finger (`.tap-44`). "‹ Sections" and Menu already had ::after expanders: 45px and 66px measured.
+- **#131:** the CTA gate now reads `role="button"` elements and drops `{/* */}` comments, which hid a label from both scans. Red-proofed against the original "Take me there" line.
+- **#133:** "Confirmed but no contract" → "Locked in, but no contract on file."
+- **Engine fixes for the VFW demo:**
+  - A booked venue and caterer answer their calls (items 4 and 13).
+  - The surprise risk waits for a surprise and says "they're here" (15).
+  - The cleaning cue only says "at home" when the event is at home (12).
+  - The Army ceremony reaches The Day (16).
+  - The venue's state is read from "Name — City, ST" (11).
+  - Money says "estimate", not "vendor record" (7).
+  - "No budget yet" names unpriced booked vendors (5).
+  - One saved copy per change (17).
+  - Vendor names drop their " — City, ST" in lists (22).
+  - #138: the draft note greets the contact and fits the vendor's status.
+- **Not done:**
+  - Item 21: the analytics notice can't render in e2e, so it is unmeasured.
+  - "Which market" still reads "National baseline" for Alexandria; no city-to-metro table exists.
+  - The buffet-vs-plated call stays open; a contract doesn't say which style was booked.
+- 🔴 **Trap: `ctaNamesTheAct` bans any label starting "Go".** "Go to insurance" would have failed it, so the vendor next-action links say "See the insurance row" etc.
+
 ## November 16, 2026 (night) — G28 root-caused; G27; $39 sheet wording C
 
 - **G28 root cause.** The intermittent WebKit `rsvpLocalReply` test is a real tap loss, not a flake. The reply form (`.inv2-more`) opens by growing `max-height` with `overflow:hidden`, which script can scroll. Bringing Send into view scrolled the half-open form, and each frame of the opening slid it back, about 100–165px per frame. A press and a release a frame apart landed on different elements, so `submit()` never ran.

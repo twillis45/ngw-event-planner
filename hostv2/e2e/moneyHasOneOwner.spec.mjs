@@ -82,7 +82,7 @@ test('the audited default sample keeps its contract total when the caterer is pa
   await page.getByRole('button', { name: 'Review vendor payments' }).click();
   const card = page.locator('.vcard').filter({ hasText: 'Hearthstone Catering Co.' });
   await card.locator('.vc-head').click();
-  await card.getByRole('button', { name: 'mark paid in full', exact: true }).click();
+  await card.getByRole('button', { name: 'Mark paid in full', exact: true }).click();
   await openSectionByName(page, 'Your money');
   await expect(page.locator('.sheet').last()).toContainText('$10,210 spoken for');
   await expect(page.locator('.sheet').last()).toContainText('$7,810 actually spent');

@@ -386,6 +386,12 @@ button{font-family:inherit}
    area is an absolutely-positioned ::after centred on it. Same technique as
    .ev-eyebrow, and for the same reason: it costs zero layout. The element below
    it is a non-interactive heading, so the overlap steals no taps. */
+/* Inline text buttons inside a sentence (live hunt item 20, 11/16/2026): the
+   same zero-layout 44px expander, so the line keeps its look and a finger can
+   still land on it. Measured by smallLinksAreTappable. */
+.tap-44{ position:relative; }
+.tap-44::after{ content:''; position:absolute; left:0; right:0; top:50%;
+  transform:translateY(-50%); height:44px; }
 .sheet-back{ position:relative; }
 .sheet-back::after{ content:''; position:absolute; left:0; right:0; top:50%;
   transform:translateY(-50%); height:44px; }
