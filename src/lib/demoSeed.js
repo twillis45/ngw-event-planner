@@ -61,7 +61,12 @@ export function buildDemoEvent(now = Date.now()) {
     guestEstimate: 120,
     guests: [],
     budget: [],           // budget deliberately UNSET → the "Set your budget" beat
-    timeline: [],
+    // One helper with one job (owner's demo, 11/16/2026: "No helpers yet", so
+    // the helper link — "Send Renee their job" / "Mark Renee Carter confirmed" —
+    // had nothing to show). Synthetic name.
+    timeline: [
+      { id: vid('t-shadowbox'), task: 'Bring the shadow box and flag case', owner: 'Renee Carter', week: 'Week of' },
+    ],
     vendors: [
       {
         id: vid('venue'), name: 'VFW Post 3150 — Alexandria, VA', category: 'Venue',

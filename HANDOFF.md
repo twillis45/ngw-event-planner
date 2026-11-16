@@ -17,6 +17,26 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 16, 2026 — the owner's iOS Simulator demo, fixed in one batch
+
+The owner ran `?demo=1` → Seed / reset on an iPhone 17 Pro simulator (iOS 26.3) against the live site at `ca6bf200`. #127 went live at 8:27 PM EST, after one allowed re-run of the WebKit `rsvpLocalReply` test (G28, its third red on a main merge). Fixed in one PR:
+
+- **"Send Dana the details" looked dead.** The result panel rendered off screen while the page jumped to the empty phone and email fields. It now scrolls into view once it settles.
+- **Vendor counts.** Home said "Vendors 1 of 6 confirmed" while hiring said "Booked so far 3 of 6". Home now reads "Vendors 1 of 6 confirmed · 3 booked".
+- **No helper in the seed.** One job was added: Renee Carter brings the shadow box. The helper link can now be demoed.
+- **Insurance asked twice on one card.** The second row is gone; its expiry field and expired-proof handling moved into the remaining row. The label is no longer repeated (`coiLine`).
+- **Wording:**
+  - "Take me there →" now names where it goes.
+  - A contact entered as a title ("Post Quartermaster") is greeted whole, not as "Post".
+  - The DJ playbook no longer says "wedding party", "first dance" or "ceremony" to every party.
+- **The demo bar** closes to a 14px edge tab after Seed / Remove, so it covers nothing.
+- **Checklist buttons line up (owner: "make sure the CTAs are balanced").**
+  - The row's "Open the … →" link now has its own line instead of floating beside the due date.
+  - The helper and assign buttons moved 10px right, to the title's edge.
+  - Every gap is 12px. `theChecklistButtonsLineUp.spec.mjs` measures it; the old inset fails it with 24 buttons off by 10px.
+- **Tests:** `theDemoReadsTrue.test.js` (15) and `theDemoShowsWhatItSays.spec.mjs` (6). All six e2e cases fail on the old code.
+- 🔴 **Trap: G28 is now a deploy blocker in practice.** It has failed three main merges and cost a re-run each time. Root-cause it next. Never skip it.
+
 ## November 15–16, 2026 — #125 and #126 live; eight e2e shards; batching rule; checklist buttons justified
 
 - **Live:** #125 at 6:11 PM EST 11/15 and #126 (trip wording only on a trip) at 6:29 PM EST 11/15.
