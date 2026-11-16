@@ -1475,16 +1475,30 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      dark-only app, and it carried 84 of the 86 toast call sites. Studio Matte
      has one surface family: a raised carbon card on a hairline. Confirmations
      stay green via .toast.ok below. */
-  background:var(--card); color:var(--ink); border:1px solid var(--line-soft);
+  /* IT BLENDED IN (owner, 11/16/2026, screenshot at 1440): a --card toast on a
+     --card page, centered text, one hairline — it read as part of the page it
+     covered. Now an OVERLAY that announces itself without a new colour: a steel
+     tint lifts it one step off any surface, a steel hairline draws its edge, the
+     3px steel rule is UX_05's attention-card mark (steel = informational; amber
+     stays reserved for "needs you"), text reads left like every other card, and
+     the shadow is UX_01's one overlay level plus a ring that separates it from a
+     card beneath. */
+  background:color-mix(in srgb, var(--steel) 22%, var(--card)); color:var(--ink);
+  border:1px solid color-mix(in srgb, var(--steel-soft) 55%, transparent);
+  border-left:3px solid var(--steel-soft);
   font-size:var(--t-toast); font-weight:550;
-  padding:var(--sp-3) var(--sp-5); border-radius:var(--r-lg); width:max-content; max-width:min(88vw,356px); text-align:center; line-height:1.45;
-  box-shadow:0 12px 40px rgba(0,0,0,.45);
+  padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4); border-radius:var(--r-lg); width:max-content; max-width:min(88vw,400px); text-align:left; line-height:1.45;
+  box-shadow:0 8px 32px rgba(0,0,0,.5), 0 0 0 4px color-mix(in srgb, var(--bg, #0e1013) 70%, transparent);
   animation:toastin var(--ms-escalation) var(--ease-out) both;
 }
 /* CONFIRM-GREEN (2026-07-16): a success confirmation reads green from ONE place —
    the same --ok / --on-ok pair the "all set" tile uses. Driven by toastTone==='ok'
    (every patchEvent write); error/neutral toasts keep the default carbon pill. */
 .toast.ok{ background:var(--ok); color:var(--on-ok); border-color:var(--ok); box-shadow:0 12px 40px rgba(47,107,70,.34); }
+/* The action sits on its own line under the message, right-aligned, so a long
+   notice reads as a sentence and then a choice — not a button mid-paragraph. */
+.toast:has(.toast-undo){ display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-2); }
+.toast:has(.toast-undo) .toast-undo{ margin-left:0; align-self:flex-end; }
 /* `@keyframes toastin` USED TO BE DEFINED HERE and was dead: an identical name
    at :3373 wins on source order, so this one had never run since the Motion
    System block landed. Deleted rather than left as a decoy (motion audit,
