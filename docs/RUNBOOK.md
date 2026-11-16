@@ -318,6 +318,17 @@ happens when the done line and the open line are updated separately.
 - **Backend 500s → Sentry:** a route crash the API turns into a 500 goes to Sentry
   (beside `admin_error_log`) only when `SENTRY_DSN` is set on Render; you must set it
   in the Render dashboard (Environment → `SENTRY_DSN`), since the Blueprint holds no secret.
+  **Recorded 11/15/2026, 10:59 PM EST:** owner set `SENTRY_DSN` on Render and sent a
+  test message from the Render Shell. It arrived as issue `NGW-EVENT-PLANNER-2F`,
+  "NGW backend Sentry test", platform `python`, project `ngw-event-planner` (read
+  from Sentry's share API). This proves the backend DSN delivers. It does not prove
+  a real 500 reaches Sentry, and it does not close the browser half above.
+  **Alert route recorded 11/15/2026, 11:14 PM EST:** a Sentry issue alert for this
+  project emailed its test notification to the owner (a Sentry sample event, not a
+  real error). One alert route now exists.
+  **Browser half recorded 11/15/2026, 11:26 PM EST:** a headless browser on the live
+  hostv2 site threw "NGW browser Sentry test"; Sentry's ingest answered HTTP 200 for
+  the same project. Accepted by Sentry; not yet seen in Issues by the owner.
 - **PostHog:** Activity → Live events, filtered to the production host. Load
   the live site once; one `$pageview` from that host closes the PostHog half
   (the gated funnel events — `invite_shared` and the three beside it in
