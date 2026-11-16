@@ -83,6 +83,10 @@ test('the audited default sample keeps its contract total when the caterer is pa
   const card = page.locator('.vcard').filter({ hasText: 'Hearthstone Catering Co.' });
   await card.locator('.vc-head').click();
   await card.getByRole('button', { name: 'Mark paid in full', exact: true }).click();
+  // The app's own receipt before moving on (CI #150, 11/16/2026: switching
+  // sheets the instant the tap landed read the old total twice on one shard).
+  // A tap that misses still fails here, at the step that missed.
+  await expect(page.getByText('Hearthstone Catering Co. marked paid in full')).toBeVisible();
   await openSectionByName(page, 'Your money');
   await expect(page.locator('.sheet').last()).toContainText('$10,210 spoken for');
   await expect(page.locator('.sheet').last()).toContainText('$7,810 actually spent');

@@ -56,6 +56,12 @@ class FakeDB:
             return 1 if (args[0], args[1]) in self.members else None
         if "from public.events" in s:
             return self.events.get(args[0])
+        # Co-host lookup (026, 11/16/2026): the table is there and this caller
+        # co-hosts nothing, so the cross-studio refusal still has to hold.
+        if "to_regclass('public.event_cohosts')" in sql:
+            return True
+        if "from public.event_cohosts" in sql:
+            return None
         raise AssertionError(f"unexpected fetchval: {sql}")
 
     async def fetchrow(self, sql, *args):

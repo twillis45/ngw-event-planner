@@ -77,6 +77,9 @@ export function sectionGroups(state) {
       ...(spanNights(ev) >= 1 ? [{ k: 'days', label: 'Your days', sub: 'The plan, day by day' }] : []),
       { k: 'seating', label: 'Who sits where', sub: 'The floor plan' },
       { k: 'tasks', label: 'Your checklist', sub: 'Every step, in the order it matters' },
+      // CALENDAR (owner, 11/16/2026: week and month toggle): the checklist and
+      // vendor dates by date — a view, nothing typed in twice.
+      { k: 'calendar', label: 'Calendar', sub: 'Your steps and vendor dates, by week or month' },
       { k: 'decisions', label: 'Calls to make', sub: 'Open choices the plan is waiting on' },
     ] },
     { title: 'Keep it on track', rows: [
@@ -140,6 +143,8 @@ export function sectionGroups(state) {
       { k: 'meaning', label: 'Make it yours', sub: 'The moments that make it personal' },
       // FAMILY LINK (owner, 11/16/2026): a view-only link to the plan.
       { k: 'family', label: 'Share with family', sub: 'A view-only link to the plan' },
+      // PER-EVENT CO-HOST (owner, 11/16/2026): plan this one event with someone.
+      { k: 'cohosts', label: 'Co-hosts', sub: ev._cohostOf ? 'You’re co-hosting this event' : 'Plan this event with someone' },
       { k: 'ask', label: ASK_LABEL, sub: 'A question, answered from your numbers' },
       { k: 'pass', label: 'The One-Event Pass', sub: '$39 · one event, no subscription' },
       // ONE NAME FOR THIS DESTINATION (host ruling, 2026-08-15). It read

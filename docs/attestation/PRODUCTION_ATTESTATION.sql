@@ -15,7 +15,7 @@
 -- header row is INFO). The summary row near the top counts the FAILs.
 --
 -- WHERE EACH EXPECTATION COMES FROM (so a FAIL can be traced to a file):
---   tables + policies  supabase/migrations/001–025 (applied by the Supabase
+--   tables + policies  supabase/migrations/001–026 (applied by the Supabase
 --                      integration, 017–021 by hand on 11/7), backend/migrations
 --                      and src/lib/knowledge/kaw1-migration.sql (hand-applied;
 --                      a table from those two that is ABSENT here passes, since
@@ -67,7 +67,7 @@ expected_tables (source, tbl, policies, alt_policies) as (values
                                                 array['studios: member select', 'studios_insert', 'studios_select', 'studios_update']),
   ('supabase/migrations', 'studio_members',     array['members: member select'],
                                                 array['members: member select', 'members_manage', 'members_select']),
-  ('supabase/migrations', 'events',             array['events: studio delete', 'events: studio insert', 'events: studio select', 'events: studio update'], null::text[]),
+  ('supabase/migrations', 'events',             array['events: cohost select', 'events: cohost update', 'events: studio delete', 'events: studio insert', 'events: studio select', 'events: studio update'], null::text[]),
   ('supabase/migrations', 'clients',            array['clients: studio delete', 'clients: studio insert', 'clients: studio select', 'clients: studio update'], null),
   ('supabase/migrations', 'studio_invitations', array['invitations: member select', 'invitations: owner write'], null),
   ('supabase/migrations', 'preferred_vendors',  array['preferred_vendors: studio delete', 'preferred_vendors: studio insert', 'preferred_vendors: studio select', 'preferred_vendors: studio update'], null),
@@ -89,6 +89,7 @@ expected_tables (source, tbl, policies, alt_policies) as (values
   ('supabase/migrations', 'invite_open_days',           array[]::text[], null),
   ('supabase/migrations', 'invite_open_devices',        array[]::text[], null),
   ('supabase/migrations', 'guest_photos',               array[]::text[], null),
+  ('supabase/migrations', 'event_cohosts',              array['event_cohosts: own rows'], null),
   ('supabase/migrations', 'event_passes',               array[]::text[], null),
   ('supabase/migrations', 'pass_payment_blocks',        array[]::text[], null),
   -- backend/migrations (frozen legacy, hand-applied)
@@ -135,7 +136,9 @@ expected_definers (sig, authenticated_execute) as (values
   ('purge_old_rsvp_submissions(integer)', false),
   ('cleanup_deleted_account()',           false),
   ('purge_old_guest_activity(integer)',   false),
-  ('guest_photos_due_for_purge(integer)', false)
+  ('guest_photos_due_for_purge(integer)', false),
+  ('is_event_cohost(text)',               true),
+  ('events_studio_locked()',              false)
 ),
 
 public_functions as (
@@ -257,7 +260,21 @@ migration_objects (migration, object, present) as (values
   ('025', 'guest_photos has the consent columns uploader_private and share_blocked',
      (select count(*) from information_schema.columns
        where table_schema = 'public' and table_name = 'guest_photos'
-         and column_name in ('uploader_private', 'share_blocked')) = 2)
+         and column_name in ('uploader_private', 'share_blocked')) = 2),
+  ('026', 'table event_cohosts',
+     to_regclass('public.event_cohosts') is not null),
+  ('026', 'event_cohosts rows go when their event or their account goes (both foreign keys cascade)',
+     (select count(*) from pg_constraint c
+       where c.conrelid = to_regclass('public.event_cohosts') and c.contype = 'f' and c.confdeltype = 'c') = 2),
+  ('026', 'the browser can only read event_cohosts: authenticated has no insert, update or delete',
+     coalesce((select case when r.authenticated then
+                 not has_table_privilege('authenticated', 'public.event_cohosts', 'insert')
+                 and not has_table_privilege('authenticated', 'public.event_cohosts', 'update')
+                 and not has_table_privilege('authenticated', 'public.event_cohosts', 'delete') end
+               from role_present r), false)),
+  ('026', 'enabled trigger events_studio_locked on public.events',
+     exists (select 1 from pg_trigger t where t.tgname = 'events_studio_locked'
+               and t.tgrelid = to_regclass('public.events') and t.tgenabled = 'O'))
 ),
 
 -- supabase_migrations.schema_migrations may not exist; read it only through
@@ -274,7 +291,7 @@ recorded as (
 ),
 
 expected_versions as (
-  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 25) g
+  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 26) g
 ),
 
 all_rows (ord, k, "check", subject, expected, actual, verdict) as (
@@ -424,14 +441,14 @@ all_rows (ord, k, "check", subject, expected, actual, verdict) as (
 
   -- (f) what supabase_migrations.schema_migrations records
   union all
-  select 50, 'a', 'migrations_recorded', 'supabase_migrations.schema_migrations', '001 … 025',
+  select 50, 'a', 'migrations_recorded', 'supabase_migrations.schema_migrations', '001 … ' || ev.versions[array_length(ev.versions, 1)],
          case when not rc.present then 'table absent'
               else coalesce(nullif(array_to_string(rc.versions, ','), ''), '(no rows)') end,
          case when rc.present and rc.versions @> ev.versions then 'PASS' else 'FAIL' end
   from recorded rc cross join expected_versions ev
 
   union all
-  select 51, 'b', 'migrations_missing', 'versions 001–025 not recorded', '(none)',
+  select 51, 'b', 'migrations_missing', 'versions 001–' || ev.versions[array_length(ev.versions, 1)] || ' not recorded', '(none)',
          case when not rc.present then 'table absent'
               else coalesce(nullif(array_to_string(array(select x from unnest(ev.versions) x
                                                           where not (x = any (rc.versions)) order by x), ','), ''),

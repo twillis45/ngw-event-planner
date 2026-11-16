@@ -10,6 +10,7 @@
 //   ngw-events           — canonical local copy
 //   ngw-cache-last-sync  — ISO timestamp of the last successful cloud pull
 //   ngw-cache-pending    — JSON array of mutations not yet flushed to Supabase
+import { withCalendarFeed } from '../planCalendar';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { currentStudioId, isCloudStudioId } from './studio';
 import { captureError } from '../sentry';
@@ -211,7 +212,15 @@ function writeGuarded(sid, event, base) {
 }
 
 async function writeGuardedNow(sid, event, base) {
-  const { _cloudUpdatedAt: _carried, ...data } = event;
+  const { _cloudUpdatedAt: _carried, _cohostOf: cohostOf, ...raw } = event;
+  // The calendar subscription feed's list rides every save while the feed is
+  // on (lib/planCalendar.withCalendarFeed), so the server never derives a date.
+  const data = withCalendarFeed(raw);
+  // PER-EVENT CO-HOST (026, 11/16/2026): a co-hosted event is written in its
+  // HOST'S studio, never the co-host's own — `_cohostOf` is that studio, set
+  // on load and never saved. And it is never upserted: an upsert could create
+  // or re-home the row (the database refuses both; this never asks).
+  const owner = cohostOf || sid;
   // A held conflict outranks everything (resolveConflict writes through it);
   // then the version the caller or the queue says the edit was made on.
   const held = readHolds()[event.id];
@@ -220,7 +229,7 @@ async function writeGuardedNow(sid, event, base) {
     const { data: rows, error } = await supabase
       .from('events')
       .update({ data })
-      .eq('id', event.id).eq('studio_id', sid)
+      .eq('id', event.id).eq('studio_id', owner)
       .lte('updated_at', loadedAt)
       .select('id, updated_at');
     if (error) throw error;
@@ -231,10 +240,18 @@ async function writeGuardedNow(sid, event, base) {
     }
     // Zero rows: newer write, or gone. One cheap read tells the host which.
     const { data: cur, error: e2 } = await supabase
-      .from('events').select('updated_at').eq('id', event.id).eq('studio_id', sid).maybeSingle();
+      .from('events').select('updated_at').eq('id', event.id).eq('studio_id', owner).maybeSingle();
     if (e2) throw e2;
     setHold(event.id, loadedAt);
     return { ok: false, queued: false, reason: 'conflict', loadedAt, serverUpdatedAt: cur ? cur.updated_at : null };
+  }
+  if (cohostOf) {
+    const { data: rows, error } = await supabase
+      .from('events').update({ data }).eq('id', event.id).eq('studio_id', owner).select('updated_at');
+    if (error) throw error;
+    if (!rows || !rows.length) return { ok: false, queued: false, reason: 'cohost-gone' };
+    noteStamp(event.id, rows[0].updated_at);
+    return { ok: true, updatedAt: rows[0].updated_at };
   }
   const { data: rows, error } = await supabase
     .from('events')
@@ -252,6 +269,13 @@ async function writeGuardedNow(sid, event, base) {
 async function readCloudRow(sid, id) {
   const { data: row, error } = await supabase
     .from('events').select('id, data, updated_at').eq('id', id).eq('studio_id', sid).maybeSingle();
+  if (!row && !error) {
+    // A co-hosted event lives in its host's studio; the rules show it to its co-host only.
+    const { data: co, error: e2 } = await supabase
+      .from('events').select('id, data, updated_at, studio_id').eq('id', id).neq('studio_id', sid).maybeSingle();
+    if (e2) throw e2;
+    return co ? { ...co, data: { ...co.data, _cohostOf: co.studio_id } } : null;
+  }
   if (error) throw error;
   return row || null;
 }
@@ -327,6 +351,19 @@ export async function loadEvents() {
   // Sprint 58E-B: no real (uuid) studio ⇒ local-only (dev-bypass 'dev-studio' is
   // not a uuid and would 400). Avoids a doomed cloud round-trip on hydration.
   if (!sid || !isCloudStudioId(sid)) return readLocal();
+  // PER-EVENT CO-HOST (026): the events this person co-hosts live in their
+  // host's studio; the database rules return only those to this query. It is
+  // started NOW, beside the host's own query, never after it: one more round
+  // trip on this path delayed the sign-in upload enough to lose its "your
+  // event is on your account" toast (CI, tryFirstSignInToKeep, 11/16/2026).
+  const cohosted = (async () => {
+    try {
+      const { data: co, error: coErr } = await supabase
+        .from('events').select('id, data, updated_at, studio_id').neq('studio_id', sid);
+      if (coErr) throw coErr;
+      return co || [];
+    } catch (coE) { captureError(coE, { where: 'events.loadEvents.cohosted' }); return []; }
+  })();
   try {
     const { data, error } = await supabase
       .from('events')
@@ -341,6 +378,9 @@ export async function loadEvents() {
     // overwritten. Stripped from `data` on every write, so the blob never
     // carries a stale copy of its own column.
     const events = (data || []).map((row) => ({ ...row.data, id: row.id, _cloudUpdatedAt: row.updated_at }));
+    // Tagged with the studio they belong to (`_cohostOf`, never saved). A
+    // failure there costs only the co-hosted list, never the host's own events.
+    (await cohosted).forEach((row) => events.push({ ...row.data, id: row.id, _cloudUpdatedAt: row.updated_at, _cohostOf: row.studio_id }));
     events.forEach((e) => noteStamp(e.id, e._cloudUpdatedAt));   // seen — see writeGuarded
     writeLocal(events);
     localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
@@ -414,7 +454,7 @@ export function sameEventContent(a, b) {
   const canon = (v) => (Array.isArray(v) ? v.map(canon)
     : v && typeof v === 'object' ? Object.keys(v).sort().reduce((o, k) => { o[k] = canon(v[k]); return o; }, {})
       : v);
-  const strip = (e) => { if (!e || typeof e !== 'object') return e; const { _cloudUpdatedAt, ...rest } = e; return rest; };
+  const strip = (e) => { if (!e || typeof e !== 'object') return e; const { _cloudUpdatedAt, _cohostOf, ...rest } = e; return rest; };
   return JSON.stringify(canon(strip(a))) === JSON.stringify(canon(strip(b)));
 }
 

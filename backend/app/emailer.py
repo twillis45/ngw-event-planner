@@ -20,6 +20,37 @@ def is_email_configured() -> bool:
     return bool(RESEND_API_KEY and COMMUNICATION_EMAIL_FROM)
 
 
+class ResendRejected(Exception):
+    """Resend refused the email. str() is the status and Resend's own reason —
+    never the recipient, so it is safe to log."""
+    def __init__(self, status: int, reason: str):
+        self.status = status
+        super().__init__(f"{status} {reason}".strip())
+
+
+def _resend_reason(resp) -> str:
+    try:
+        body = resp.json()
+    except Exception:  # noqa: BLE001
+        return ""
+    if not isinstance(body, dict):
+        return ""
+    return " ".join(str(body.get(k) or "") for k in ("name", "message")).strip()[:300]
+
+
+def format_from(name: str, address: str) -> str:
+    """The From header Resend accepts: `Name <addr>`.
+
+    COMMUNICATION_EMAIL_FROM may already be a full `Name <addr>` (that value
+    produced `Name <Name <addr>>` and a 422 on 11/16/2026): then it is used
+    as is. Characters that break the header are dropped from the name."""
+    addr = (address or "").strip()
+    if "<" in addr and addr.endswith(">"):
+        return addr
+    clean = "".join(ch for ch in (name or "") if ch not in '<>",;\r\n').strip() or "NGW Events"
+    return f"{clean} <{addr}>"
+
+
 async def _send_via_resend(
     to: str,
     subject: str,
@@ -29,8 +60,7 @@ async def _send_via_resend(
 ) -> dict:
     """Low-level Resend POST. Returns the Resend response JSON on success,
     raises on failure so callers can decide fail-soft vs. raise."""
-    from_label = from_name or RESEND_FROM_NAME or "NGW Events"
-    from_addr = f"{from_label} <{COMMUNICATION_EMAIL_FROM}>"
+    from_addr = format_from(from_name or RESEND_FROM_NAME or "NGW Events", COMMUNICATION_EMAIL_FROM)
     payload = {
         "from": from_addr,
         "to": [to],
@@ -45,7 +75,8 @@ async def _send_via_resend(
             headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
             json=payload,
         )
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            raise ResendRejected(resp.status_code, _resend_reason(resp))
         return resp.json()
 
 

@@ -176,6 +176,9 @@ import { marketFor } from '@app/lib/marketFor';
 import { metroForPlace } from '@app/lib/metroForPlace';
 import CostSplitSheet, { splitRowSub } from './CostSplitSheet.jsx';
 import FamilyLinkSheet from './FamilyLinkSheet.jsx';
+import CalendarSheet from './CalendarSheet.jsx';
+import CohostsSheet from './CohostsSheet.jsx';
+import { claimCohostInvites } from '@app/lib/api/cohosts';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
@@ -1969,6 +1972,7 @@ export default function HostShellV2() {
   // Assigned every render below; called from the auth listener, whose closure
   // is from the first render.
   const keepDraftOnSignIn = useRef(() => {});
+  const cohostRepull = useRef(false);   // the co-host claim's one extra sync per session
   // In-app account deletion (issue #100, D-12; Apple 5.1.1(v), Google Play).
   const [acctDelete, setAcctDelete] = useState(null);   // null | { text, busy, error }
   useEffect(() => {
@@ -2002,6 +2006,16 @@ export default function HostShellV2() {
             }
           } catch { /* best-effort — worst case this device just replays once more */ }
         }
+      }).catch(() => {});
+      // PER-EVENT CO-HOST (026): make any invite to this person's confirmed
+      // email theirs. It runs BESIDE the pull, never in front of it (a slow
+      // claim must not delay a host's own events — CI caught exactly that):
+      // when it reports a co-hosted event, the sync runs once more so that
+      // event arrives. Once per session, so it can never loop.
+      claimCohostInvites().then((r) => {
+        if (dead || !r || !r.ok || !(r.events || []).length || cohostRepull.current) return;
+        cohostRepull.current = true;
+        hydrate();
       }).catch(() => {});
       // Pull cloud events into ngw-events; if any are new to this device, nudge.
       cloudLoadEvents().then(evs => {
@@ -14941,7 +14955,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -16019,6 +16033,14 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing to set up or borrow for this one.</div>
                 )}
               </>
+            )}
+            {sheet.kind === 'cohosts' && (
+              <CohostsSheet event={event} signedIn={Boolean(session)} onLine={(l) => toast(l)}
+                onLeft={() => { try { window.location.reload(); } catch { /* the next load drops it */ } }} />
+            )}
+            {sheet.kind === 'calendar' && (
+              <CalendarSheet event={event} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
+                signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
             {sheet.kind === 'family' && (
               <FamilyLinkSheet event={event} signedIn={Boolean(session)} appUrl={publicAppUrl()}
@@ -19077,7 +19099,10 @@ export default function HostShellV2() {
                             host's own only, still two steps, and still NAMING the
                             event: "Delete?" with a bare Yes is how the wrong plan
                             goes from a list where four rows look alike. */}
-                        {e._custom && (confirmDelete === e.id ? (
+                        {/* A co-hosted event (026) is the host's: it is labeled, and
+                            there is no Delete — the database refuses it anyway. */}
+                        {e._cohostOf && <span className="of" data-cohosting>Co-hosting</span>}
+                        {e._custom && !e._cohostOf && (confirmDelete === e.id ? (
                           <span className="frow-confirm">
                             <span className="v-meta">Delete “{e.name || 'this event'}” for good?</span>
                             <button className="mini danger" onClick={() => deleteThisEvent(e)}
@@ -26765,11 +26790,13 @@ export default function HostShellV2() {
           { label: 'Your money', sub: 'budget', go: () => setSheet({ kind: 'budget' }) },
           { label: 'Split the costs', sub: 'who paid, who owes whom', go: () => setSheet({ kind: 'split' }) },
           { label: 'Share with family', sub: 'a view-only link to the plan', go: () => setSheet({ kind: 'family' }) },
+          { label: 'Co-hosts', sub: 'plan this event with someone', go: () => setSheet({ kind: 'cohosts' }) },
           { label: 'The spread & shopping', sub: 'food', go: () => setSheet({ kind: 'food' }) },
           { label: 'People you’re hiring', sub: 'vendors', go: () => setSheet({ kind: 'vendors' }) },
           { label: 'Who sits where', sub: 'seating', go: () => setSheet({ kind: 'seating' }) },
           { label: 'Guest list', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
           { label: 'Your checklist', sub: 'tasks', go: () => setSheet({ kind: 'tasks' }) },
+          { label: 'Calendar', sub: 'the plan by week or month', go: () => setSheet({ kind: 'calendar' }) },
           { label: 'Calls to make', sub: 'decisions', go: () => setSheet({ kind: 'decisions' }) },
           { label: 'What could go wrong', sub: 'risks', go: () => setSheet({ kind: 'risks' }) },
           { label: 'Make it yours', sub: 'the meaning', go: () => setSheet({ kind: 'meaning' }) },

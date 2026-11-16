@@ -160,6 +160,12 @@ class _Conn:
     async def fetchval(self, q, *a):
         if "from studio_members" in q:
             return 1 if a[1] in self.db.members else None
+        # Co-host lookup (026, 11/16/2026): the table is there and this caller
+        # co-hosts nothing, so the cross-studio refusal still has to hold.
+        if "to_regclass('public.event_cohosts')" in q:
+            return True
+        if "from public.event_cohosts" in q:
+            return None
         raise AssertionError("unexpected fetchval: " + q)
 
     async def fetch(self, q, *a):

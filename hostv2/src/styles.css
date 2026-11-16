@@ -7667,6 +7667,48 @@ button.vc-pill::after{
 .photo-acts{ margin-top:0; flex-wrap:wrap; }
 /* THE PHOTO WALL + VIEWER (11/16/2026): a tight grid of small thumbnails, made
    to be looked at; tapping one opens the full-screen viewer (PhotoViewer.jsx). */
+/* CALENDAR (11/16/2026): week list + month grid */
+.cal-bar, .cal-nav{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); }
+.cal-nav{ margin:var(--sp-3) 0 var(--sp-3); }
+.cal-toggle{ display:inline-flex; gap:4px; padding:4px; border:1px solid var(--line-soft); border-radius:999px; }
+.cal-toggle .mini{ border:0; min-height:40px; }
+.cal-toggle .mini{ background:transparent; color:var(--muted); }
+.cal-toggle .mini.on{ background:var(--card); color:var(--ink); box-shadow:inset 0 0 0 1px var(--line); }
+.cal-bar .mini, .cal-nav .mini{ min-height:44px; min-width:44px; }
+.cal-range{ font-size:var(--t-body); font-weight:700; color:var(--ink); text-align:center; }
+.cal-week{ list-style:none; margin:0; padding:0; }
+.cal-day{ padding:var(--sp-3) 0; border-top:1px solid var(--line-soft); }
+.cal-day-head{ display:flex; align-items:baseline; gap:var(--sp-2); font-size:var(--t-meta); font-weight:750; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.cal-day-num{ color:var(--ink); }
+.cal-day.is-today .cal-day-head{ color:var(--ink); }   /* the "Today" pill marks it; steel failed 4.5:1 (a11yFloor) */
+.cal-today{ margin-left:auto; padding:2px 8px; border-radius:999px; background:var(--steel-tint); color:var(--ink); text-transform:none; letter-spacing:0; }
+.cal-items{ list-style:none; margin:var(--sp-2) 0 0; padding:0; display:flex; flex-direction:column; gap:var(--sp-2); }
+.cal-item{ display:flex; align-items:baseline; gap:var(--sp-2); font-size:var(--t-body-s); color:var(--ink); overflow-wrap:anywhere; }
+.cal-dot{ flex:0 0 8px; height:8px; border-radius:50%; background:var(--muted); transform:translateY(-1px); }
+.cal-event .cal-dot{ background:var(--steel, #4a6b7c); }
+.cal-event .cal-text{ font-weight:750; }
+.cal-vendor .cal-dot{ background:var(--hue-deep, #9a6a3a); }
+.cal-item.is-done .cal-text{ color:var(--muted); text-decoration:line-through; }
+.cal-tag{ margin-left:auto; flex:0 0 auto; font-size:var(--t-meta); font-weight:700; color:var(--muted); }
+.cal-item.is-late .cal-tag{ color:var(--danger); }
+.cal-empty{ margin:var(--sp-1) 0 0; font-size:var(--t-meta); color:var(--muted); }
+.cal-month{ display:flex; flex-direction:column; gap:4px; }
+.cal-row{ display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px; }
+.cal-dow span{ text-align:center; font-size:var(--t-meta); font-weight:750; color:var(--muted); }
+.cal-cell{ position:relative; min-height:48px; padding:4px; border:1px solid var(--line-soft); border-radius:var(--r-md);
+  background:transparent; color:var(--ink); font:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.cal-cell.is-out{ border-style:dashed; }   /* muted text, not opacity: stays above 4.5:1 */
+.cal-cell.is-out .cal-num{ color:var(--muted); font-weight:500; }
+.cal-cell.is-today{ border-color:var(--steel, #4a6b7c); }
+.cal-cell.is-picked{ background:var(--steel-tint); }
+.cal-cell.has-event{ border-width:2px; border-color:var(--steel, #4a6b7c); }
+.cal-num{ font-size:var(--t-meta); font-weight:700; }
+.cal-count{ min-width:20px; padding:0 4px; border-radius:999px; background:var(--bg-band); font-size:11px; font-weight:750; }
+.cal-count.is-late{ color:var(--danger); }
+.cal-sub{ width:100%; padding:var(--sp-4); border:1px solid var(--line-soft); border-radius:var(--r-md); }
+.cal-sub .mini{ min-height:44px; }
+.cal-foot{ margin-top:var(--sp-5); display:flex; flex-direction:column; gap:var(--sp-2); align-items:flex-start; }
+.cal-foot .mini{ min-height:44px; }
 /* SPLIT THE COSTS (11/16/2026) */
 .split-people, .split-expenses, .split-transfers{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--sp-2); }
 .split-people li, .split-expenses li{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);
