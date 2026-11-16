@@ -63,6 +63,18 @@ Live: `main` @ `3a14c3e9` (PR #119, merged 11/11 1:12 PM UTC), `release_profile=
 
 **Trap:** on the owner's machine the app repo is `~/Code/ngw-event-planner`; the workspace gate records live only on the workspace branch `main-2utz0n`, so the poster was run from a scratch copy.
 
+## November 11, 2026 — host-shell competitive and commercial reset research
+
+Owner requested a fresh deep dive on leaders, Bl!nk, and actual host-shell capabilities for occasional hosts. Read fetched app `origin/main` at `3a14c3e9` in isolated `/private/tmp/ngw-strategy-20261111`; preserved the dirty local checkout (362 commits behind). Official-source research includes Partiful, Evite, Paperless Post, Greenvelope, Apple Invites, Joy, Luma, Blink ExperienceOS, and adjacent substitutes. Joy's current consumer Events positioning materially overlaps conversational occasion planning. Prior vendor-brief pricing analogies establish packaging precedent, not consumer willingness to pay.
+
+Verification: hostv2 parity/build passed; 196 focused engine tests across 11 suites; 21 browser cases (12 phone, 6 creation phone/desktop, 3 weather desktop) passed. Weather harness initially omitted required preview servers; corrected the review harness and reran successfully, no product fix. Public production statuses: weather and Kroger configured, BLS keyed, Instacart unconfigured. Configuration is not end-to-end fulfillment proof. Forty-five playbooks; host adaptation and shopping/attention/day-of capabilities traced into hostv2. Attendance is the active numeric memory read-forward; helper confirmations are host-recorded; CSV imports are not live synchronization.
+
+Report: `/Users/toddwillis/.codex/visualizations/2026/11/09/01a1be4d-eb1a-7461-8f48-ce7c1481439e/host-launch-strategy/research-and-recommendation.md`, with `verification.json` and two fixture screenshots. Proposals only: test a practical host-companion offer through an already-invited/self-hosted occasion, treat partner funding and human review as separate hypotheses, and decide explicitly whether to retain all-planning-free or replace it for future cohorts before implementation. No runtime, billing, policy, customer-data, publication, ads, or media-credit changes. Existing vendor-brief test protocol was not changed. No willingness-to-pay or launch-readiness claim.
+
+## November 11, 2026 — One-Event Pass pricing and refunds review
+
+Reviewed the supplied seven-question brief against fetched app `origin/main` at `3a14c3e9` and official competitor pricing. The current kit accepts a verbal yes, while the supplied brief calls for retained purchases. Keep those measures distinct and settle the primary outcome before the first ask. The repo refund draft also conditions eligibility on destination tool use, which the brief says is unobservable. Recommendations only: keep $39 during the initial test, choose a 14-day full refund with clear post-refund access, and consider one free vendor brief per event after the test. No policy, billing, or runtime changes. No checkout or product tests run for this review.
+
 ## November 10–11, 2026 — support contact, Resend verified, the guest invite redesigned (#113–#115)
 
 Merged and deployed. The live build is `61cb1324` with `release_profile=live` (`RELEASE_SHA.txt`, built 05:22 UTC on 11/11 by the automatic deploy). So `DEFAULT_RELEASE_PROFILE` now resolves to `live`, and the November 7 warning about merges rebuilding as `services` no longer holds.
@@ -107,6 +119,12 @@ Merged and deployed. The live build is `61cb1324` with `release_profile=live` (`
 - 🔴 **Trap: `.inv2-face` is `display:contents` below 1024.** It has no box there, so measuring `sheet.children` skips the whole invitation. Measure the face's children, as `theInviteSitsBalanced` does.
 - 🔴 **Trap: same-specificity theme rules.** `.inv2-dark .inv2-sheet .chip` and `.inv2-sheet .chip[aria-checked="true"]` are both (0,3,0), so the later one wins. A dark override placed after a state rule erases the state. Restate the state after it.
 
+## November 9, 2026 — promotional cut rejected; production direction reset
+
+Owner rejected the entire 30-second cut (story, slideshow approach, pacing, performance, and product depiction) and requested a redo. The prior review MP4 is superseded, not approved or ready for promotion. No additional generation credits spent in this reset. Rebuilt a nine-shot/30-second interactive production storyboard and director brief at `/Users/toddwillis/.codex/visualizations/2026/11/09/01a1be4d-eb1a-7461-8f48-ce7c1481439e/ngw-spot/redo-2026-11-09/`. This is direction for review, not a finished ad. It requires fresh on-camera host dialogue, motivated phone close-ups, verified action/result captures, and coherent time transitions. Existing media is marked as composition reference only.
+
+Explicit corrections: local fixtures are not proof of online RSVP delivery; recording a custom dish does not by itself prove the original shopping estimate fell; the next day-of cue must actually match the spoken line; recorded turnout and recalled host-written lessons must not imply broad automatic learning. Retained the mother/daughter photograph, predominantly African American family with mixed guests, dark host UI, complete invitation, inception, RSVP, cost/shopping, risk/backup/message, mobile day-of actions, and post-event memory. No runtime source changes, production writes, publication, or new Runway generations. Next: review replacement direction before further billable production.
+
 ## November 8–10, 2026 — the live smoke test, end to end; ten fixes merged (#103–#112)
 
 Measured on the live site (`twillis45.github.io/ngw-event-planner/hostv2/`, Supabase `ewoggzxarpcwesqxsdoz`, Render `ngw-events-api`) by the owner on a Galaxy S25 (Chrome) and a laptop (Chrome Incognito), against the "NGW Launch Smoke Test" checklist (owner's claude.ai artifact, version 12).
@@ -136,6 +154,18 @@ Measured on the live site (`twillis45.github.io/ngw-event-planner/hostv2/`, Supa
 
 - 🔴 **Trap: a stub that returns dicts hid three live failures.** Every Stripe webhook test stubbed `construct_event` and `Session.list` with plain dicts, so the path a live purchase takes never ran. Stripe tests now use real library objects (`construct_from`, `ListObject`) and a real HMAC signature. The library is pinned to `stripe==16.1.0`, the version proven on live.
 - 🔴 **Trap: the error middleware hides tracebacks.** A crash in a route becomes a 500 with nothing in the Render log. The message is in `admin_error_log`: `select created_at, message from admin_error_log order by created_at desc limit 5;`.
+
+## November 8, 2026 — approved 30-second promotional spot, dark product close-ups
+
+Produced a local review cut from the user-approved inception → RSVP → food/supply estimates → shopping → risks/rain backup/guest draft → mobile day-of actions → celebration → actual turnout/lesson → later lesson recall story. Source app: isolated `origin/main` worktree at `f564d6bb`; no runtime code changes, production mutations, invitations sent, or publication. Cast direction: African American daughter and mother; predominantly African American family with other ethnic groups among guests. Replaced an ambiguous daughter-only framed photo with a close-up of mother and daughter together. Recaptured the invitation fully rendered with fictional example venue/host details. Host app inserts use actual dark UI; public invitation retains its actual cream design. Full-width product inserts dominate; actual day-of cue and lesson-save recordings included.
+
+Review artifact: `/Users/toddwillis/.codex/visualizations/2026/11/09/01a1be4d-eb1a-7461-8f48-ce7c1481439e/ngw-spot/dark/NGW-30-second-spot-dark-review.mp4`; source media, capture/render scripts, and `production-record.json` beside it. Checked export: 30.000 seconds, 900 frames, 720×1280, 30fps, H.264/AAC. Actual creation retained 40 guests/$2,500; rain choice led to editable guest note; day-of completion advanced the schedule; lesson saved and recalled in later same-type event. Data/weather are staged examples; online RSVP delivery and live production were not tested. No full product suite needed/run for media work. Runway used 410 credits including superseded first casting batch. User review of the latest cut is next.
+
+## November 8, 2026 — entry-pricing strategy review
+
+Read-only product/pricing review against fetched app `origin/main` at `f564d6bb`, plus current official competitor pricing. The workspace root is a separate repository; `demo/` is the app repository and its preserved local checkout is 287 commits behind fetched app main. Current source retains Model D ($39 per event, free inward planning, one free first-event vendor brief, paid destination toolkit); server fixes pass price at 3,900 cents and reads server-backed entitlement. November 7 records say production billing is enabled; live checkout and buyer conversion were not tested this session. Subscription client helper has no matching Stripe router endpoint.
+
+Recommendations only, not adopted: retain $39 as the initial control; test $29 for qualified price objections; consider a prepaid repeat-host bundle before consumer subscriptions; defer professional subscriptions until repeat workflow and costs are measured. Current pass copy "Your next events" risks suggesting multiple-event coverage; second-event wording also overstates the actual boundary because inward planning remains free. No runtime, billing, policy, or pricing changes. No test suite run for this research review. Updated both session records without replacing existing local edits.
 
 ## November 7, 2026 — production went `live`; smoke-test fixes on `main-2utz0n`
 
@@ -1276,6 +1306,32 @@ copy is updated to match and says the server is behind it.
   abandoned; its register work is the part worth resuming from.
 
 ---
+
+## October 22, 2026 — creation rendered from locked board
+
+Produced `docs/redesign/creation-locked-direction-v1.png` using built-in image generation with the supplied locked Food & Drink board as reference. Paired desktop blank state and phone recognition; current code capabilities mapped at `docs/redesign/creation-locked-render-map.md`. Removed unapproved decorative sparkles with a targeted edit. No runtime changes. New proposal is NOT approved; canonical baseline remains the user-supplied board. Tablet, browser geometry, and exact vector glyph fidelity are not certified by this raster. Date-reset leak still open.
+
+
+## October 22, 2026 — locked visual baseline recovered from user
+
+The user rejected the runtime-styled creation review: redesign must continue the locked renders. User supplied the locked Food & Drink board, saved verbatim at `docs/redesign/references/locked-food-and-drink-baseline.png`. Read `docs/redesign/CURRENT_BASELINE.md` before any rendering. Ivory/charcoal, bronze navigation, antique gold, exact approved glyph family, photographic headers, and theme/responsive parity govern appearance. Code audit governs capability, not replacement appearance. `hostv2/creation-review.html` is superseded/rejected, not the baseline. Event creation remains the next requested surface. Do not transplant sample Food/People metrics into intake.
+
+
+### Creation review continuation — October 22, 2026
+
+Added a local review HTML entry and CSS that import the actual host; canonical component/parser/save paths are untouched. No new dependencies. First rendering is explicitly proposed, uses current theme tokens and source glyphs, and does not claim exact People-board fidelity. Evidence map expanded with every review-only element and unchanged section rail.
+
+`docs/redesign/creation-review-check.mjs` passed 12 empty/recognized combinations (390/768/1440, both themes), contained panels/no document overflow, ≥44px creation controls, 5.16:1 primary CTA contrast, theme-switch text survival, guided intake, and canonical local assembly in both themes. Screenshots/measurements in `docs/redesign/creation-review-shots/`. No release/deploy/full suite claimed. Date-reset leak remains open. Review server on port 5207; page `creation-review.html?theme=light`.
+
+
+## October 22, 2026 — creation redesign grounding (no runtime changes)
+
+Inspected HEAD `53afb07ec3fac7c470a19b0d9e8b8d885313f643`. Recovered the prior chat's marked People reference and traced current hostv2 creation, canonical parse/persistence/reveal, and theme implementation. Durable inventory and proposed creation composition: `demo/docs/redesign/2026-10-22-creation-grounding.md` (relative from repository root).
+
+Local isolated Chromium drive reproduced a new-event defect: after correcting the first event to June 19, 2027, a new `birthday for 10` draft inherits June 19. Recorded as BROKEN/CONTRADICTORY; not fixed. Both themes measured at six viewport sizes: no document overflow in blank/recognized creation; recognition chip heights 46px on phone, 32px at tablet/desktop (tablet touch-floor gap). Guided Birthday/25 reaches the same recognition pipeline in both themes. Source server only; no release/full-suite/cloud/microphone proof claimed.
+
+No new UI rendering; baseline glyph assets and palette migration remain unverified. Next: reconcile canonical approved assets/tokens, then make a truth-labeled creation design pass; treat fresh-event reset and tablet targets as build work. Older test totals below are historical, not rerun this session.
+
 
 ## BUILT 2026-10-19 (fifty-ninth entry) — two sprints that mostly falsified their own planning package
 
