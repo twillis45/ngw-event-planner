@@ -83,9 +83,15 @@ function categoryWord(cat) {
 }
 
 // Who the text greets: the vendor's contact person's first name, else the business.
+// A contact entered as a role ("Post Quartermaster", "Events Manager") is not a
+// person: its first word is not a first name (owner's demo, 11/16/2026: "Send
+// Post the details"). Greet the role whole.
+const ROLE_WORD = /\b(?:quartermaster|manager|coordinator|director|office|desk|team|staff|sales|events?|booking|bookings|reservations?|front|catering|admin|reception|commander|secretary|steward|host)\b/i;
 export function vendorGreetingName(vendor) {
   const v = vendor || {};
-  const first = clean(v.contactName).split(' ')[0];
+  const contact = clean(v.contactName);
+  if (contact && ROLE_WORD.test(contact)) return contact;
+  const first = contact.split(' ')[0];
   return first || clean(v.name);
 }
 

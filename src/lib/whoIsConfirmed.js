@@ -16,7 +16,7 @@
 // Nothing is shown as confirmed without one of the sources above saying so.
 // PURE: no I/O, no clock, no storage.
 import { deriveHelperResponsibilities } from './helperResponsibility';
-import { isVendorConfirmed } from './workstreams';
+import { isVendorConfirmed, isVendorBooked } from './workstreams';
 
 const clean = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 const vendorLabel = (v) => clean(v && v.name) || clean(v && v.category) || 'A vendor';
@@ -45,7 +45,11 @@ export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswe
       else if (isVendorConfirmed(v)) confirmed.push(vendorLabel(v));
       else waiting.push(vendorLabel(v));
     }
-    vendors = { total: paid.length, confirmed: confirmed.length, flagged, waiting };
+    // Booked (contract or deposit) is a wider bar than confirmed. The hiring
+    // screen leads with it ("Booked so far 3 of 6"), so home names it too —
+    // the owner's demo read 1-of-6 here against 3-of-6 there as a contradiction.
+    const booked = paid.filter((v) => isVendorBooked(v)).length;
+    vendors = { total: paid.length, confirmed: confirmed.length, booked, flagged, waiting };
   }
 
   // Helpers — one row per responsibility ("stuffing (Jordan)"), the Helpers panel's own rows.
@@ -89,7 +93,7 @@ export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswe
 export function whoIsConfirmedLines(summary) {
   const s = summary || {};
   const parts = [];
-  if (s.vendors) parts.push({ key: 'vendors', text: `Vendors ${s.vendors.confirmed} of ${s.vendors.total} confirmed` });
+  if (s.vendors) parts.push({ key: 'vendors', text: `Vendors ${s.vendors.confirmed} of ${s.vendors.total} confirmed` + (s.vendors.booked > s.vendors.confirmed ? ` · ${s.vendors.booked} booked` : '') });
   if (s.helpers) parts.push({ key: 'helpers', text: `Helpers ${s.helpers.confirmed} of ${s.helpers.total}` });
   if (s.guests) parts.push({ key: 'guests', text: `Guests ${s.guests.yes} yes${s.guests.maybe ? `, ${s.guests.maybe} maybe` : ''}` });
 

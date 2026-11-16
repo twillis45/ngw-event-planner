@@ -1343,3 +1343,16 @@ export function getVendorPortfolioSummary(vendors = [], event) {
   }
   return summary;
 }
+
+/**
+ * The insurance line as the host reads it: label, then the engine's copy —
+ * unless the copy already starts with the label (owner's demo, 11/16/2026:
+ * "Ask about insurance — Ask about insurance. This vendor…").
+ */
+export function coiLine(coi) {
+  const label = String((coi && coi.label) || '').trim();
+  const copy = String((coi && coi.hostCopy) || '').trim();
+  if (!copy) return label;
+  if (!label || copy.toLowerCase().startsWith(label.toLowerCase())) return copy;
+  return label + ' — ' + copy;
+}

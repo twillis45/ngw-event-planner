@@ -61,6 +61,12 @@ const demoIds = async (page) =>
     .filter((id) => id.startsWith(DEMO_PREFIX));
 
 const bar = (page) => page.locator('button', { hasText: /^Seed \/ reset$/ });
+// The bar closes to an edge tab after Seed / Remove (owner's demo, 11/16/2026:
+// open, it covered real buttons). Reopen it before the next action.
+const openBar = async (page) => {
+  const tab = page.locator('[data-demo-bar="closed"]');
+  if (await tab.count()) await tab.click();
+};
 const heroText = (page) => page.evaluate(() => {
   const h = document.querySelector('.hero-card, .hero');
   return (h && h.innerText) || '';
@@ -106,7 +112,7 @@ test.describe('the demo account the runbook describes', () => {
     // measuring the button rather than a leftover fixture.
     expect(await demoIds(page)).toEqual([]);
 
-    await bar(page).click();
+    await openBar(page); await bar(page).click();
 
     // The event is stored, and it is exactly one — reset is delete+reseed, not
     // accumulate. A second demo row is how a demo opens on the wrong plan.
@@ -129,11 +135,11 @@ test.describe('the demo account the runbook describes', () => {
   test('a second tap mints a fresh id — the brief-code promise, end to end', async ({ page }) => {
     await boot(page, '?demo=1&elegant=1');
 
-    await bar(page).click();
+    await openBar(page); await bar(page).click();
     await expect.poll(() => demoIds(page)).toHaveLength(1);
     const [first] = await demoIds(page);
 
-    await bar(page).click();
+    await openBar(page); await bar(page).click();
     // Still exactly one, and NOT the same one. Both halves matter: the count
     // proves the old row was deleted, the inequality proves the new row is a
     // new identity — which is what makes the vendor-brief code fresh and the
@@ -152,11 +158,11 @@ test.describe('the demo account the runbook describes', () => {
   // ── AFTER A DEMO ─────────────────────────────────────────────────────────
   test('Remove clears the demo data and tombstones it against a hydrate', async ({ page }) => {
     await boot(page, '?demo=1&elegant=1');
-    await bar(page).click();
+    await openBar(page); await bar(page).click();
     await expect.poll(() => demoIds(page)).toHaveLength(1);
     const [id] = await demoIds(page);
 
-    await page.locator('button', { hasText: /^Remove$/ }).click();
+    await openBar(page); await page.locator('button', { hasText: /^Remove$/ }).click();
     await expect.poll(() => demoIds(page)).toEqual([]);
 
     // The tombstone is the half that is invisible when it breaks: without it a
@@ -168,7 +174,7 @@ test.describe('the demo account the runbook describes', () => {
   test('Remove with nothing to remove says so instead of acting', async ({ page }) => {
     await boot(page, '?demo=1&elegant=1');
     expect(await demoIds(page)).toEqual([]);
-    await page.locator('button', { hasText: /^Remove$/ }).click();
+    await openBar(page); await page.locator('button', { hasText: /^Remove$/ }).click();
     await expect(page.locator('.toast')).toContainText(/no demo data/i);
   });
 
@@ -179,7 +185,7 @@ test.describe('the demo account the runbook describes', () => {
     // Asserted on the shape rather than through the gate, because what actually
     // has to hold is that the PREFIX does not drift — the gate reads the id.
     await boot(page, '?demo=1&elegant=1');
-    await bar(page).click();
+    await openBar(page); await bar(page).click();
     await expect.poll(() => demoIds(page)).toHaveLength(1);
     const [id] = await demoIds(page);
     expect(id.startsWith('demoqa-')).toBe(true);

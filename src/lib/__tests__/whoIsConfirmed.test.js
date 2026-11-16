@@ -35,7 +35,7 @@ const CONFIRMS = {
 describe('summarizeWhoIsConfirmed', () => {
   test('vendors: only the vendor’s own answer confirms; an answer that is not "confirmed" is a flagged problem', () => {
     const s = summarizeWhoIsConfirmed(EV, CONFIRMS);
-    expect(s.vendors).toEqual({ total: 3, confirmed: 1, flagged: ['Petal Row'], waiting: ['Bakery'] });
+    expect(s.vendors).toEqual({ total: 3, confirmed: 1, booked: 1, flagged: ['Petal Row'], waiting: ['Bakery'] });
   });
 
   // Reversed by owner ruling 11/15/2026: the host's own "Locked in" now counts.
@@ -121,7 +121,7 @@ describe('helpers who answered through their link', () => {
 describe('a vendor the host locked in', () => {
   test('counts as confirmed without the vendor answering', () => {
     const ev = { ...EV, vendors: [{ id: 'v-x', name: 'Oak Hall', category: 'Venue', status: 'Confirmed' }] };
-    expect(summarizeWhoIsConfirmed(ev, {}).vendors).toEqual({ total: 1, confirmed: 1, flagged: [], waiting: [] });
+    expect(summarizeWhoIsConfirmed(ev, {}).vendors).toEqual({ total: 1, confirmed: 1, booked: 1, flagged: [], waiting: [] });
   });
   test('a problem the vendor flagged still shows', () => {
     const ev = { ...EV, vendors: [{ id: 'v-x', name: 'Oak Hall', category: 'Venue', status: 'Confirmed' }] };

@@ -202,7 +202,7 @@ import { riskSeverityLabel, riskSeverityTone } from '@app/lib/riskSeverity';
 // 1,568 combinations found 208 where the nine-axis verdict cited an axis this
 // shell does not show. See src/lib/__tests__/theVerdictNamesAVisibleChip.test.js.
 import {
-  getVendorCOIState, coiNextAction,
+  getVendorCOIState, coiNextAction, coiLine,
   getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
   getHostHighestRiskVendor,
 } from '@app/lib/vendorIntelligence';
@@ -3674,6 +3674,7 @@ export default function HostShellV2() {
         .catch(() => { /* queued by events.js; the tombstone holds until it flushes */ });
     }
   };
+  const [demoBarOpen, setDemoBarOpen] = useState(true);   // opens on arrival; closes to an edge tab after Seed / Remove
   const demoSeed = () => {
     const { events: next, removed } = withDemoSeeded(customs || []);
     const res = saveCustomEvents(next, { reason: 'hostshell:demo-seed', allowRemovingUserEvents: true });
@@ -4130,6 +4131,24 @@ export default function HostShellV2() {
   // resulting ?vendor=TOKEN link on THIS origin is routed by main.jsx to the
   // public brief page (VendorBriefV2.jsx, its own chunk) — never this shell.
   const [vendorBrief, setVendorBrief] = useState(null); // { vendorId, url, qrDataUrl, minting, copied }
+  // BRING THE ANSWER TO THE HOST (owner's demo, 11/16/2026). Tapping "Send Dana
+  // the details" scrolled the page UP to the card's empty phone and email
+  // fields, and the result — the message, or the reason no link was made —
+  // rendered off screen, so the tap looked like it did nothing. Once the result
+  // settles, scroll it into view. Keyed on the settled state, not on minting,
+  // so it fires once per answer.
+  const vbSettledKey = vendorBrief && !vendorBrief.minting ? vendorBrief.vendorId + '|' + (vendorBrief.url || vendorBrief.error || '') : '';
+  useEffect(() => {
+    if (!vbSettledKey) return;
+    const id = vbSettledKey.split('|')[0];
+    const t = setTimeout(() => {
+      try {
+        const el = document.querySelector('[data-vbrief-panel="' + CSS.escape(String(id)) + '"]');
+        if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } catch { /* nothing to scroll to */ }
+    }, 60);
+    return () => clearTimeout(t);
+  }, [vbSettledKey]);
   useEffect(() => { setVendorBrief(null); }, [eventId]); // never carry a stale link across an event switch
   const shareVendorBrief = async (v) => {
     // MODEL D — door 1, at the only honest gate point: GENERATING a brief for
@@ -20203,14 +20222,21 @@ export default function HostShellV2() {
                               role=button span (same pattern as the food row's tune
                               control), stopPropagation so it launches instead of
                               toggling the check. */}
-                          {action ? (
-                            <span role="button" tabIndex={0} className="mini rowlink"
+                        </span>
+                        {/* ON ITS OWN LINE, UNDER THE DUE DATE (owner, 11/16/2026: "make
+                            sure the CTAs are balanced"). Inline it floated beside the
+                            due text — "Map the spread →" landed at the right edge while
+                            the row's other buttons started at the left — so every row's
+                            buttons now share one left edge, the text column's. */}
+                        {action ? (
+                          <span style={{ display: 'flex', marginTop: 'var(--sp-3)' }}>
+                            <span role="button" tabIndex={0} className="mini rowlink" data-row-action
                               onClick={e => { e.stopPropagation(); action.go(); }}
                               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); action.go(); } }}>
                               {action.label} →
                             </span>
-                          ) : null}
-                        </span>
+                          </span>
+                        ) : null}
                       </span>
                     </button>
                     );
@@ -23567,7 +23593,10 @@ export default function HostShellV2() {
                                       onClick={ev => { ev.stopPropagation(); goToVendorControl(v.id, anchor); }}
                                       onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); goToVendorControl(v.id, anchor); } }}
                                       aria-label={'Go to the control for: ' + na.title}>
-                                      Take me there →
+                                      {/* Names where it goes (owner's demo, 11/16/2026: "Take me
+                                          there" breaks the rule that a button says what it does). */}
+                                      {({ booking: 'Set the status', coi: 'Go to insurance', contract: 'Go to the contract',
+                                        money: 'Go to payment', arrival: 'Set the arrival time', contact: 'Go to their contact' }[anchor] || 'Go to it')} →
                                     </span>
                                   </p>
                                 );
@@ -23921,15 +23950,30 @@ export default function HostShellV2() {
                               <div id={'v-coi-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6, scrollMarginTop: 12 }}>
                                 <span className="of" style={{ flexShrink: 0, color: tone }}>insurance</span>
                                 <span className="vc-detail" style={{ margin: 0, flex: 1, minWidth: 120 }}>
-                                  {coi.label}{coi.hostCopy ? ' — ' + coi.hostCopy : ''}
+                                  {coiLine(coi)}
                                 </span>
+                                {/* Optional expiry while marking verified — getVendorCOIState
+                                    reads coiExpiryDate to catch coverage that lapses before
+                                    the event. Moved here from the second insurance row this
+                                    card used to carry (owner's demo, 11/16/2026: the same ask
+                                    and "Mark asked" appeared twice on one card). */}
+                                {coi.status === 'received' && (
+                                  <label className="of" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                    covered through
+                                    <input className="field" type="date" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }}
+                                      value={v.coiExpiryDate || ''}
+                                      onChange={e => writeVendor(v.id, { coiExpiryDate: e.target.value || null }, null)}
+                                      aria-label="Insurance covered through — optional" />
+                                  </label>
+                                )}
                                 {next && (
-                                  <button className="mini" onClick={() => {
-                                    // The engine names the step; the write matches it exactly.
-                                    const patch = coi.status === 'requested' ? { coiStatus: 'received' }
-                                      : coi.status === 'received' ? { coiVerified: true }
-                                      : { coiStatus: 'requested' };
-                                    writeVendor(v.id, patch, next.ctaCopy + ' — noted.');
+                                  <button data-vaction="coi" className="mini" onClick={() => {
+                                    // The engine names the step; the write matches it exactly:
+                                    // requested → received → verified, and an expired one is asked for again.
+                                    if (coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, next.ctaCopy + ' — noted.');
+                                    else if (coi.status === 'received') writeVendor(v.id, { coiVerified: true }, v.coiExpiryDate ? 'Insurance checked — covered through ' + v.coiExpiryDate + '.' : 'Insurance checked.');
+                                    else if (coi.status === 'expired') writeVendor(v.id, { coiStatus: 'requested', coiVerified: false, coiExpiryDate: null }, 'Asked for current insurance proof.');
+                                    else writeVendor(v.id, { coiStatus: 'requested' }, next.ctaCopy + ' — noted.');
                                   }}>{next.ctaCopy}</button>
                                 )}
                                 {/* The waive is only offered while the certificate is still
@@ -24078,34 +24122,8 @@ export default function HostShellV2() {
                               </div>
                             );
                           })()}
-                          {coiAct && (() => {
-                            let coi = null; try { coi = getVendorCOIState(v, event); } catch { coi = null; }
-                            return (
-                            <div id={'v-coi-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6 }}>
-                              <span className="vc-detail" style={{ margin: 0, flex: '1 1 100%' }}>{coiAct.title} {coiAct.consequence}</span>
-                              {/* WAVE-B (d): optional expiry while marking verified —
-                                  getVendorCOIState reads coiExpiryDate to catch coverage
-                                  that lapses before the event. Blank is honest: verified
-                                  with no date on file. */}
-                              {coi && coi.status === 'received' && (
-                                <label className="of" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                  covered through
-                                  <input className="field" type="date" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }}
-                                    value={v.coiExpiryDate || ''}
-                                    onChange={e => writeVendor(v.id, { coiExpiryDate: e.target.value || null }, null)}
-                                    aria-label="Insurance covered through — optional" />
-                                </label>
-                              )}
-                              <button data-vaction="coi" className="mini" style={{ flexShrink: 0, marginLeft: 'auto' }} onClick={() => {
-                                // The same status ladder coiNextAction reads: requested → received → verified.
-                                if (coi && coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, 'Insurance proof marked received.');
-                                else if (coi && coi.status === 'received') writeVendor(v.id, { coiVerified: true }, v.coiExpiryDate ? 'Insurance checked — covered through ' + v.coiExpiryDate + '.' : 'Insurance checked.');
-                                else if (coi && coi.status === 'expired') writeVendor(v.id, { coiStatus: 'requested', coiVerified: false, coiExpiryDate: null }, 'Asked for current insurance proof.');
-                                else writeVendor(v.id, { coiStatus: 'requested' }, 'Marked as asked.');
-                              }}>{coiAct.ctaCopy || 'Mark asked'}</button>
-                            </div>
-                            );
-                          })()}
+                          {/* The second insurance row that sat here is gone (owner's demo,
+                              11/16/2026): the insurance row above is the one place for it. */}
                           {memLine && <p className="vc-detail">{memLine}</p>}
                           <div className="pill-grid" style={{ marginTop: 'var(--sp-3)' }}>
                             <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft note</button>
@@ -24132,7 +24150,7 @@ export default function HostShellV2() {
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
                           {vendorBrief && vendorBrief.vendorId === v.id && (
-                            <div style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+                            <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
                               {vendorBrief.minting ? (
                                 <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
                               ) : vendorBrief.error ? (
@@ -26518,13 +26536,21 @@ export default function HostShellV2() {
           operator armed it with ?demo=1 (disarm: ?demo=0). Plain inline style
           on purpose: this bar must never be mistaken for, or drift into, the
           Studio Matte system. */}
-      {DEMO_TOOLS_ARMED && (
-        <div style={{ position: 'fixed', bottom: 8, left: 8, zIndex: 90, display: 'flex', gap: 6, alignItems: 'center', background: 'rgba(20,20,20,0.85)', color: '#eee', borderRadius: 8, padding: '6px 8px', fontSize: 12 }}>
+      {/* COLLAPSES TO AN EDGE TAB (owner's demo, 11/16/2026): open at the bottom
+          it sat over "The rest of your plan" and the "Next" bar, hiding real
+          buttons mid-demo. Closed, it is a 14px tab in the left gutter, where it
+          covers nothing; it opens on tap and closes after Seed / Remove. */}
+      {DEMO_TOOLS_ARMED && (demoBarOpen ? (
+        <div data-demo-bar="open" style={{ position: 'fixed', bottom: 8, left: 8, zIndex: 90, display: 'flex', gap: 6, alignItems: 'center', background: 'rgba(20,20,20,0.85)', color: '#eee', borderRadius: 8, padding: '6px 8px', fontSize: 12 }}>
           <span style={{ opacity: 0.7 }}>Demo</span>
-          <button onClick={demoSeed} style={{ background: '#333', color: '#eee', border: '1px solid #555', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>Seed / reset</button>
-          <button onClick={demoRemove} style={{ background: 'none', color: '#aaa', border: '1px solid #444', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>Remove</button>
+          <button onClick={() => { setDemoBarOpen(false); demoSeed(); }} style={{ background: '#333', color: '#eee', border: '1px solid #555', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>Seed / reset</button>
+          <button onClick={() => { setDemoBarOpen(false); demoRemove(); }} style={{ background: 'none', color: '#aaa', border: '1px solid #444', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>Remove</button>
+          <button onClick={() => setDemoBarOpen(false)} aria-label="Hide demo tools" style={{ background: 'none', color: '#aaa', border: 'none', padding: '4px 6px', fontSize: 12 }}>✕</button>
         </div>
-      )}
+      ) : (
+        <button data-demo-bar="closed" onClick={() => setDemoBarOpen(true)} aria-label="Show demo tools"
+          style={{ position: 'fixed', left: 0, top: '42%', zIndex: 90, width: 14, height: 44, padding: 0, background: 'rgba(20,20,20,0.6)', border: 'none', borderRadius: '0 6px 6px 0', color: '#bbb', fontSize: 9 }}>D</button>
+      ))}
       {toastMsg && (
         <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '')} role="status" aria-live="polite">
           {toastMsg}
