@@ -289,7 +289,7 @@ import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
-import { warmClosing } from '@app/lib/warmClosing';
+import { warmerBody } from '@app/lib/warmClosing';
 import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
@@ -6457,8 +6457,9 @@ export default function HostShellV2() {
     if (tone === 'warmer') {
       // The closing fits who the note is for (lib/warmClosing, 11/16/2026): a
       // vendor still quoting is thanked, not told they are part of it.
-      const warm = warmClosing(ctx || {});
-      return b.includes(warm) ? b : b + '\n\n' + warm;
+      // …and it takes the place of a bare "Thanks so much!" rather than
+      // following it (live check 11/16: two thank-yous in a row).
+      return warmerBody(b, ctx || {});
     }
     if (tone === 'playful') {
       const lines = b.split('\n');
@@ -23381,7 +23382,7 @@ export default function HostShellV2() {
                       <button className="mini" onClick={() => setSheet(s => ({ ...s, marketOpen: false }))}>Done</button>
                     </label>
                     {metroSuggest && (
-                      <button className="mini" style={{ display: 'block', margin: '0 0 var(--sp-2)' }}
+                      <button className="mini" style={{ display: 'block', width: '100%', whiteSpace: 'normal', textAlign: 'left', margin: '0 0 var(--sp-2)' }}
                         onClick={() => patchEvent({ market: metroSuggest.market.id, metroMarket: null }, `Estimates now use ${metroSuggest.market.label} typical rates.`)}>
                         Use {metroSuggest.market.label} — from {metroSuggest.from}
                       </button>
