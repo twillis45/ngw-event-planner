@@ -35,6 +35,11 @@ INTENTIONALLY_PUBLIC = {
     ("POST", "/api/public/vendor-brief/{code}/confirm"): "same brief code",
     ("GET", "/api/public/helper/{code}"): "per-helper code is the credential; entropy floor enforced",
     ("POST", "/api/public/helper/{code}/answer"): "same helper code",
+    ("POST", "/api/public/questions/{rsvp_code}/mine"): "rsvpCode + the guest's own device key",
+    ("POST", "/api/public/questions/{rsvp_code}/ask"): "rsvpCode + the guest's own device key",
+    ("POST", "/api/public/questions/{rsvp_code}/email"): "rsvpCode + the guest's own device key",
+    ("POST", "/api/public/questions/{rsvp_code}/delete"): "rsvpCode + the guest's own device key",
+    ("POST", "/api/public/invite/{rsvp_code}/opened"): "rsvpCode; never creates an identity, answers the same for any key",
     ("POST", "/messages/{message_id}/portal-respond"): "per-message portal_token is checked",
     # Client-portal reads — list_messages gates INTERNAL_TEAM only, deliberately
     ("GET", "/channels"): "portal lists channels without a planner session; RECORDED as a finding, not endorsed",

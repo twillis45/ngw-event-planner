@@ -96,7 +96,20 @@ describe('coverage', () => {
     for (const name of [
       "to_regprocedure('public.cleanup_deleted_account()')",
       "'%helper_links%'", "'%helper_confirmations%'",
-      'generate_series(1, 23)',
+    ]) expect(sql).toContain(name);
+  });
+
+  // 024 (guest questions + invite opens, 11/16/2026): five server-only
+  // tables, the deletion body names all five, and the retention purge is a
+  // SECURITY DEFINER that no browser role may run (the S9-1 lesson). The
+  // record now reaches 024.
+  test('it proves the guest-question and invite-open tables, their deletion, and a server-only purge, and expects 024 recorded', () => {
+    for (const name of [
+      "'guest_threads'", "'guest_messages'", "'invite_opens'", "'invite_open_days'", "'invite_open_devices'",
+      "'%guest_threads%'", "'%guest_messages%'", "'%invite_opens%'", "'%invite_open_days%'", "'%invite_open_devices%'",
+      "'purge_old_guest_activity(integer)'",
+      "to_regprocedure('public.purge_old_guest_activity(integer)')",
+      'generate_series(1, 24)',
     ]) expect(sql).toContain(name);
   });
 });

@@ -132,6 +132,32 @@ If you answer through that link ("I've got it" or "I can't", with an optional
 note), we store your answer and show it to the host.
 ⟶ `supabase/migrations/023_helper_links.sql` ⟵
 
+### Guests who ask the host a question
+
+From your invitation you can ask the host a question, and the host can reply.
+We store your name, your questions, and the host's replies, as plain text.
+If you choose, we also store an email address you type and whether you ticked
+the box to be emailed; that box starts unticked, and nothing is emailed yet.
+⟶ `supabase/migrations/024_guest_messages.sql`,
+`backend/app/routers/guest_messages.py` ⟵
+
+**Who sees it.** The host of the event, and anyone the host shares the event's
+studio with (section 2). Other guests never see your questions or your name.
+The host does not see your email address, only whether you asked to be
+emailed. You never see the host's email address. ⟶ `guest_messages.py`
+(`_guest_view`, `_host_view`: fixed lists of fields) ⟵
+
+**Your host can see when you last opened your invite**, but only once you have
+replied or asked a question from that device. Every other open is only
+counted: how many times the invitation was opened each day, and on how many
+devices. To count devices we keep a scrambled code (a salted hash) of a random
+number your browser makes, never your IP address. ⟶ `024_guest_messages.sql`
+(`invite_opens`, `invite_open_days`, `invite_open_devices`) ⟵
+
+**Deleting it yourself.** From the same device you asked from, you can delete
+your questions and the host's replies at once. ⟶ `POST
+/api/public/questions/{code}/delete` ⟵
+
 ---
 
 ## 2. Where your data lives
@@ -209,6 +235,12 @@ receives. We do not send them more than the row says.
   date. The routine that does this exists and is run by hand today; it is not
   yet automatic, and this sentence will change when it is.
   ⟶ `purge_old_rsvp_submissions`, `009:101-130`; not scheduled as of 2026-11-02 ⟵
+- **Guest questions, replies, and invitation opens:** deleted 90 days after
+  the event's date (or, without a date, 90 days after the last activity). The
+  routine runs nightly where the database's scheduler is turned on; until the
+  owner confirms it is running there, it is run by hand. The scrambled device
+  codes are kept only for one day's count and deleted after two days.
+  ⟶ `purge_old_guest_activity`, `024_guest_messages.sql` ⟵
 - **Pass purchases:** kept as a record of what you bought; required for
   refunds and disputes. The receipt survives account deletion, with the link
   to your account removed (section 6). ⟶ `021_account_deletion.sql:71-75` ⟵
@@ -240,10 +272,12 @@ at once and cannot be undone. It removes:
 - every event that belongs only to you — the events in studios where you are
   the only member, and events you own outside any studio — with their guests'
   replies, vendor-brief links and vendors' confirmations, helper links and
-  helpers' answers, and event messages,
+  helpers' answers, guests' questions and your replies, invitation-open
+  records, and event messages,
   so those invitation and brief links stop working; ⟶ `account.py:62-70`;
   `supabase/migrations/021_account_deletion.sql:30-59`,
-  `023_helper_links.sql` (helper tables); events go with their
+  `023_helper_links.sql` (helper tables), `024_guest_messages.sql` (guest
+  questions and invitation opens); events go with their
   studio, `001_initial_schema.sql:46` (`on delete cascade`) ⟵
 - studios where you are the only member, your studio memberships, and studio
   invitations you sent or received; ⟶ `021_account_deletion.sql:76-79` ⟵
