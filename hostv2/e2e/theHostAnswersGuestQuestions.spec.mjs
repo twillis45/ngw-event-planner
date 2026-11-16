@@ -103,7 +103,7 @@ test('no line at all when nothing is waiting', async ({ page }) => {
   await expect(page.locator('[data-who-questions]')).toHaveCount(0);
 });
 
-test('the host replies and can block; the page claims no email', async ({ page }) => {
+test('the host replies and can block; with no opt-in the page claims no email', async ({ page }) => {
   await boot(page);
   const calls = await mock(page);
   await home(page);
@@ -112,7 +112,7 @@ test('the host replies and can block; the page claims no email', async ({ page }
   const section = page.locator('[data-host-questions]');
   await section.getByRole('button', { name: 'Answer Ana' }).click();
   await expect(section.locator('.guest-msg')).toContainText('Is there parking nearby?');
-  await expect(section).toContainText('Nothing is emailed yet.');
+  await expect(section.locator('[data-reply-email]')).toHaveText('It shows on Ana’s invite. Ana didn’t ask for email.');
   const box = section.getByRole('textbox', { name: 'Your reply to Ana Ruiz' });
   await box.fill('Street parking on Pine — the lot fills up by 4.');
   await section.getByRole('button', { name: 'Send reply' }).click();
@@ -144,4 +144,21 @@ test('"Ana last opened the invite Nov 16, 8:42 PM" and the anonymous daily total
   await expect(opens.locator('[data-opened-day]')).toHaveText(['Nov 16: opened 5 times on 3 devices', 'Nov 15: opened once on 1 device']);
   await expect(opens).not.toContainText(/\bread\b(?! )|\bseen\b/);
   await expect(opens).toContainText('Opening isn’t reading.');
+});
+
+
+// Reply notices (#151, 11/16/2026): a guest who ticked "email me" gets the
+// reply by email, and the host is told so, before and after sending.
+test('when the guest asked for email, the host is told the reply is emailed', async ({ page }) => {
+  await boot(page);
+  await mock(page, ROWS.map((r) => (r.id === T1 ? { ...r, email_notices: true } : r)));
+  await home(page);
+  await page.locator('[data-who-questions]').click();
+  await sheetSettled(page);
+  const section = page.locator('[data-host-questions]');
+  await section.getByRole('button', { name: 'Answer Ana' }).click();
+  await expect(section.locator('[data-reply-email]')).toHaveText('It shows on Ana’s invite, and Ana gets it by email.');
+  await section.getByRole('textbox', { name: 'Your reply to Ana Ruiz' }).fill('See you at 4.');
+  await section.getByRole('button', { name: 'Send reply' }).click();
+  await expect(section.locator('[data-reply-status]')).toHaveText('Sent — it shows on Ana’s invite, and Ana gets it by email.');
 });

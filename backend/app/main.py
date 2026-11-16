@@ -33,6 +33,7 @@ from .routers import guest_photos
 from .routers import family_view
 from .routers import calendar_feed
 from .routers import cohosts
+from .routers import announcements
 from .routers import research
 from .routers import account
 from .emailer import is_email_configured
@@ -280,6 +281,7 @@ app.include_router(guest_photos.router)
 app.include_router(family_view.router)
 app.include_router(calendar_feed.router)
 app.include_router(cohosts.router)
+app.include_router(announcements.router)
 app.include_router(research.router)
 app.include_router(lodging.router)
 

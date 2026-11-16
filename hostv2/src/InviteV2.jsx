@@ -52,6 +52,7 @@ import { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS, toneVarsFor } from '.
 // 11/16/2026. Both are server-backed: rendered only for an invite the server
 // resolved, never for a same-device preview (localEvent).
 import GuestAskV2 from './GuestAskV2.jsx';
+import GuestUpdatesV2 from './GuestUpdatesV2.jsx';
 import GuestPhotosV2 from './GuestPhotosV2.jsx';
 import { isGuestMessagesApiConfigured, recordInviteOpened, inviteDeviceId } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured } from '@app/lib/api/guestPhotos';
@@ -1513,6 +1514,7 @@ export default function InviteV2({ code }) {
             <GuestPhotosV2 code={code} event={event} eventKey={event.id + ':' + code} guestName={guestName.trim()}
               anchorId="invite-photos" onOpenChange={setPhotosOpen} />
           )}
+          {code && <GuestUpdatesV2 code={code} hostName={event.hostName || event.hostNames} />}
           {asksOffered && (
             <GuestAskV2 code={code} eventKey={event.id + ':' + code} hostName={event.hostName || event.hostNames} guestName={guestName.trim()} />
           )}

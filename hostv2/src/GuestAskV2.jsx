@@ -3,9 +3,8 @@
 // Narrow, not chat: a guest asks the host a question from the invite link and
 // sees her own thread, with the host's answers labeled "From your host". The
 // host replies from the Guest list sheet. A guest who ticks the box gets one
-// email per host reply (backend/app/guest_notices.py, 11/16/2026), with a stop
-// link. Announcements are not built yet, so the box promises replies only
-// (UX_07: never a live claim for a planned feature).
+// email per host reply and per host update (backend/app/guest_notices.py,
+// 11/16/2026), each with a stop link (UX_07: the box promises only what is sent).
 //
 // The credential is the pair a guest's own RSVP uses: the invite code plus the
 // device key this browser minted (rsvpIdempotencyKey), so the same phone sees
@@ -144,10 +143,10 @@ export default function GuestAskV2({ code, eventKey, hostName, guestName }) {
               type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
               aria-label="Email for answers — optional" aria-invalid={emailBad || undefined} />
             {/* PROMINENT, directly under the email, unchecked by default (owner).
-                Ticked: one email per host reply, never anything else yet. */}
+                Ticked: one email per host reply and per host update. */}
             <label className="guest-optin" data-email-optin>
               <input type="checkbox" checked={optIn} onChange={(e) => setOptIn(e.target.checked)} />
-              <span>Email me when {hostWord} replies.</span>
+              <span>Email me when {hostWord} replies or posts an update.</span>
             </label>
             {err && <p className="grounding" role="alert" style={{ margin: '8px 0 0', color: 'var(--danger)' }}>{err}</p>}
             <div className="actions-row" style={{ marginTop: 10 }}>

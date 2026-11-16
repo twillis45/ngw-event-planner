@@ -15,7 +15,7 @@
 -- header row is INFO). The summary row near the top counts the FAILs.
 --
 -- WHERE EACH EXPECTATION COMES FROM (so a FAIL can be traced to a file):
---   tables + policies  supabase/migrations/001–026 (applied by the Supabase
+--   tables + policies  supabase/migrations/001–027 (applied by the Supabase
 --                      integration, 017–021 by hand on 11/7), backend/migrations
 --                      and src/lib/knowledge/kaw1-migration.sql (hand-applied;
 --                      a table from those two that is ABSENT here passes, since
@@ -90,6 +90,7 @@ expected_tables (source, tbl, policies, alt_policies) as (values
   ('supabase/migrations', 'invite_open_devices',        array[]::text[], null),
   ('supabase/migrations', 'guest_photos',               array[]::text[], null),
   ('supabase/migrations', 'event_cohosts',              array['event_cohosts: own rows'], null),
+  ('supabase/migrations', 'event_announcements',        array[]::text[], null),
   ('supabase/migrations', 'event_passes',               array[]::text[], null),
   ('supabase/migrations', 'pass_payment_blocks',        array[]::text[], null),
   -- backend/migrations (frozen legacy, hand-applied)
@@ -274,7 +275,17 @@ migration_objects (migration, object, present) as (values
                from role_present r), false)),
   ('026', 'enabled trigger events_studio_locked on public.events',
      exists (select 1 from pg_trigger t where t.tgname = 'events_studio_locked'
-               and t.tgrelid = to_regclass('public.events') and t.tgenabled = 'O'))
+               and t.tgrelid = to_regclass('public.events') and t.tgenabled = 'O')),
+  ('027', 'table event_announcements',
+     to_regclass('public.event_announcements') is not null),
+  ('027', 'event_announcements rows go when their event goes (the foreign key cascades)',
+     (select count(*) from pg_constraint c
+       where c.conrelid = to_regclass('public.event_announcements') and c.contype = 'f' and c.confdeltype = 'c') = 1),
+  ('027', 'the browser cannot touch event_announcements: anon and authenticated have no select, insert, update or delete',
+     coalesce((select not bool_or(has_table_privilege(r.rolname, 'public.event_announcements', p))
+                 from pg_roles r, unnest(array['select','insert','update','delete']) p
+                where r.rolname in ('anon','authenticated')
+                  and to_regclass('public.event_announcements') is not null), false))
 ),
 
 -- supabase_migrations.schema_migrations may not exist; read it only through
@@ -291,7 +302,7 @@ recorded as (
 ),
 
 expected_versions as (
-  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 26) g
+  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 27) g
 ),
 
 all_rows (ord, k, "check", subject, expected, actual, verdict) as (
