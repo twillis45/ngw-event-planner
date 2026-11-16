@@ -362,6 +362,14 @@ const readDeletedIds = () => {
 // lazy-load this host shell while the public invite (InviteV2) pulls only the
 // pool, not the whole shell. Re-imported here; the invite imports from eventPool.
 import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, mintRsvpToken, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile, AVA_TINTS } from './eventPool.js';
+// Guest questions, invite opens, guest photos and the event hashtag (owner
+// rulings A–E, 11/16/2026): sections of the existing Guest list and Make it
+// yours sheets, never a new tab.
+import { HostQuestions, HostInviteOpens, HostGuestPhotos } from './GuestInboxHost.jsx';
+import EventHashtag from './EventHashtag.jsx';
+import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
+import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
+import { questionsWaiting, questionsWaitingLine, photosWaitingLine } from '@app/lib/guestInbox';
 
 
 const fmt = formatCurrency;
@@ -5148,6 +5156,8 @@ export default function HostShellV2() {
     if (sheet && sheet.kind === 'guests' && sheet.focus) {
       const targets = sheet.focus === 'entry'
         ? ['guests-entry-anchor', 'guests-counting-anchor']
+        : sheet.focus === 'questions' ? ['guests-questions-anchor']
+        : sheet.focus === 'photos' ? ['guests-photos-anchor']
         : ['guests-invites-anchor'];
       // `guests-counting-anchor` is inside the §25 fold on the redesigned
       // surface, so the scroll below would land on a collapsed section. Open it
@@ -7774,8 +7784,36 @@ export default function HostShellV2() {
     for (const a of helperAnswers) { const k = String(a && a.helper_key); if (k && !m[k]) m[k] = a; }
     return m;
   }, [helperAnswers]);
+  // ── GUEST QUESTIONS AND GUEST PHOTOS WAITING (owner rulings A and B, 11/16) ─
+  // Counts only, for one triage line each at L3 ("Who's confirmed" and the
+  // After section); the work itself is in the Guest list sheet, whose sections
+  // read the same routes and report fresh counts back. A refused read is 0,
+  // so the line simply doesn't show — it never claims "none waiting".
+  const [guestQuestionsWaiting, setGuestQuestionsWaiting] = useState(0);
+  const [guestPhotoList, setGuestPhotoList] = useState([]);
+  useEffect(() => {
+    setGuestQuestionsWaiting(0);
+    if (!isGuestMessagesApiConfigured() || !ownsEvent) return undefined;
+    let dead = false;
+    const pull = async () => {
+      const r = await fetchGuestThreads(event.id);
+      if (!dead) setGuestQuestionsWaiting(r.ok ? questionsWaiting(r.rows) : 0);
+    };
+    pull();
+    const onFocus = () => { pull(); };
+    window.addEventListener('focus', onFocus);
+    return () => { dead = true; window.removeEventListener('focus', onFocus); };
+  }, [event.id, ownsEvent]); // eslint-disable-line react-hooks/exhaustive-deps
+  const photosInPlay = days != null && days <= 0;        // the event day and after
+  useEffect(() => {
+    setGuestPhotoList([]);
+    if (!isGuestPhotosApiConfigured() || !ownsEvent || !photosInPlay) return undefined;
+    let dead = false;
+    fetchEventGuestPhotos(event.id).then((r) => { if (!dead) setGuestPhotoList(r.ok ? r.photos : []); });
+    return () => { dead = true; };
+  }, [event.id, ownsEvent, photosInPlay]); // eslint-disable-line react-hooks/exhaustive-deps
   // The helper who holds a checklist row, as the helper engine names them.
-  const helperForTask = (taskId) => (helperData.responsibilities || []).find(r => r.itemType === 'task' && r.itemId === taskId) || null;
+  const helperForTask =(taskId) => (helperData.responsibilities || []).find(r => r.itemType === 'task' && r.itemId === taskId) || null;
   const sendHelperJob = async (taskId) => {
     const resp = helperForTask(taskId);
     if (!resp) return;
@@ -13007,7 +13045,11 @@ export default function HostShellV2() {
               {!isPast && (() => {
                 let l = null;
                 try { l = whoIsConfirmedLines(summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey)); } catch { l = null; }
-                if (!l || !l.parts.length) return null;
+                // Guest questions waiting (owner ruling A, 11/16/2026): one line,
+                // only when there is one, opening the Guest list's section.
+                const qLine = questionsWaitingLine(guestQuestionsWaiting);
+                if ((!l || !l.parts.length) && !qLine) return null;
+                if (!l) l = { parts: [] };
                 const go = { vendors: () => setSheet({ kind: 'vendors' }), helpers: () => setSheet({ kind: 'space' }), guests: () => setSheet({ kind: 'guests' }) };
                 return (
                   <section data-who-confirmed aria-label="Who’s confirmed" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
@@ -13026,9 +13068,30 @@ export default function HostShellV2() {
                     {l.waiting && (
                       <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>
                     )}
+                    {qLine && (
+                      <button className="mini rowlink" data-who-questions style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                        onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{qLine}</button>
+                    )}
                   </section>
                 );
               })()}
+
+              {/* AFTER THE EVENT, guests' photos and questions still wait on the
+                  host (owner rulings A and B, 11/16/2026). "Who's confirmed" is
+                  done once the day is past, so these get their own line each, on
+                  the same home, only when one waits, into the Guest list sheet. */}
+              {isPast && (photosWaitingLine(guestPhotoList) || questionsWaitingLine(guestQuestionsWaiting)) && (
+                <section data-after-guest-lines aria-label="Waiting on you from guests" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
+                  {photosWaitingLine(guestPhotoList) && (
+                    <button className="mini rowlink" data-after-photos style={{ display: 'block', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                      onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosWaitingLine(guestPhotoList)}</button>
+                  )}
+                  {questionsWaitingLine(guestQuestionsWaiting) && (
+                    <button className="mini rowlink" data-after-questions style={{ display: 'block', marginTop: photosWaitingLine(guestPhotoList) ? 'var(--sp-2)' : 0, color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                      onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{questionsWaitingLine(guestQuestionsWaiting)}</button>
+                  )}
+                </section>
+              )}
 
               {/* Slide-down readouts: hidden until the "what's counted" caret is
                   tapped — never-dense doctrine. Pills = the 4 readiness pillars;
@@ -18272,6 +18335,12 @@ export default function HostShellV2() {
                       Draft the toast
                     </button>
                   )}
+                </div>
+                {/* EVENT HASHTAG (owner ruling E, 11/16/2026): in the identity
+                    sheet beside the invite's own words, saved on its own tap
+                    (not by "Save it"), off until the host turns it on. */}
+                <div style={{ marginTop: 'var(--sp-5)', paddingTop: 'var(--sp-4)', borderTop: '1px solid var(--line-soft)' }}>
+                  <EventHashtag event={{ ...event, ...meaningDraft }} onSet={(tag, msg) => patchEvent({ hashtag: tag }, msg)} />
                 </div>
               </>
             )}
@@ -26375,20 +26444,32 @@ export default function HostShellV2() {
               // mobile body read as one long stack on bare ground. The wrapper
               // is the same element at every width; only the second column is
               // conditional.
+              // ── QUESTIONS & UPDATES, INVITE OPENS, GUEST PHOTOS (owner rulings
+              // A–D, 11/16/2026). Sections of THIS sheet, under the roster work:
+              // the guest list is where guest work lives (no new tab). Server-
+              // backed, so only for an event saved to the account; each section
+              // names its own failure (signed out, offline) rather than look empty.
+              const guestComms = ownsEvent ? (
+                <div data-guest-comms>
+                  <HostQuestions eventId={event.id} onWaiting={setGuestQuestionsWaiting} />
+                  {photosInPlay && <HostGuestPhotos eventId={event.id} event={event} onPhotos={setGuestPhotoList} />}
+                  <HostInviteOpens eventId={event.id} />
+                </div>
+              ) : null;
               if (!peopleRailUp) {
                 return peopleMode ? (
                   <>
                     {peoplePlate}
-                    <div className="people-grid"><div className="people-main">{peopleBody}</div></div>
+                    <div className="people-grid"><div className="people-main">{peopleBody}{guestComms}</div></div>
                   </>
-                ) : peopleBody;
+                ) : <>{peopleBody}{guestComms}</>;
               }
               const sel = guestOpen != null ? (event.guests || [])[guestOpen] : null;
               return (
                 <>
                   {peoplePlate}
                   <div className="people-grid">
-                    <div className="people-main">{peopleBody}</div>
+                    <div className="people-main">{peopleBody}{guestComms}</div>
                     <div className="people-aside">
                       {sel ? guestDetail(sel, guestOpen) : peopleRail}
                     </div>
@@ -26643,6 +26724,8 @@ export default function HostShellV2() {
             {event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
             {vf.name ? ` · ${vf.name}` : ''}{vf.city ? `, ${vf.city}` : ''}
             {event.rainPlan ? ` · If it rains: ${event.rainPlan}` : ''}
+            {/* The host's hashtag, when on (owner ruling E). */}
+            {String(event.hashtag || '').trim() ? ` · ${String(event.hashtag).trim()}` : ''}
           </p>
           <div className="p-head">Run of show</div>
           {ros.map((r, i) => (
