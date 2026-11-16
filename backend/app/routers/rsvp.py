@@ -542,6 +542,14 @@ async def _assert_event_studio_read(conn, event_id: str, principal: dict) -> Non
         )
         if member:
             return
+        # A CLAIMED per-event co-host (026, owner ruling 11/16/2026) reads this
+        # one event like its studio does. Guarded: before 026 is applied the
+        # table is absent and this grants nothing.
+        if await conn.fetchval("select to_regclass('public.event_cohosts') is not null") and await conn.fetchval(
+            "select 1 from public.event_cohosts where event_id=$1 and user_id=$2::uuid and accepted_at is not null",
+            event_id, uid,
+        ):
+            return
         # The event has a tenant key and the caller is not in it. Do NOT fall
         # through to event_owners: that row could have been created by the
         # caller's own first touch in comms (the cross-studio claim, closed in
