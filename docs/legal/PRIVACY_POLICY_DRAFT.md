@@ -108,6 +108,36 @@ You do not create an account, and we do not set an identity on you. Your
 reply is tied to the invitation code and an idempotency key your browser
 generates so a double-tap does not double-submit. ⟶ `009:23-24` ⟵
 
+### Guests sharing photos after the event
+
+After the event, a guest can share photos from the invitation link.
+⟶ `supabase/migrations/025_guest_photos.sql`, `backend/app/routers/guest_photos.py` ⟵
+
+- **What we store:** the photo, the name you give with it, and the time you
+  shared it, tied to the invitation code and your browser's key (the same key
+  as your reply). Photos are accepted only after the event's last day.
+  ⟶ `guest_photos.py` (`_refuse_outside_window`, the owner's defaults at the top) ⟵
+- **Location and other hidden details are removed.** Phone photos usually
+  carry hidden details: where the photo was taken (GPS), the camera or phone
+  model, and the time. Our server removes all of it before the photo is
+  stored, by keeping only the picture itself and saving it as a new JPEG. The
+  file you sent is never stored. ⟶ `guest_photos.py` (`clean_photo`);
+  `backend/tests/test_guest_photos.py` (a photo with GPS goes in, none comes
+  out) ⟵
+- **Who sees it:** the host (and anyone the host shares the event's studio
+  with) sees every photo with the name you gave. Other guests see a photo only
+  after the host approves it, and they see the photo alone, without your name.
+  The host can hide or delete any photo. ⟶ `guest_photos.py` (`guest_approved_photos`
+  returns id, link and time only) ⟵
+- **Where it is kept:** in a private storage area at Supabase that no browser
+  can open directly. Each time a photo is shown, our server makes a link that
+  stops working after five minutes. ⟶ `025` (private bucket, no storage
+  policy); `SIGNED_URL_TTL_SECONDS` ⟵
+- **Deleting it:** you can delete your own photos from the same device you
+  shared them from. From another device, write to us (section 6).
+- **HEIC photos** (an iPhone format) are not accepted; the app asks for a JPEG
+  instead. This is a technical limit, not a privacy choice.
+
 ### Vendors (a caterer, photographer, venue the host shares a brief with)
 
 If a host shares a vendor brief with you, you receive a link that shows the
@@ -241,6 +271,11 @@ receives. We do not send them more than the row says.
   owner confirms it is running there, it is run by hand. The scrambled device
   codes are kept only for one day's count and deleted after two days.
   ⟶ `purge_old_guest_activity`, `024_guest_messages.sql` ⟵
+- **Guest photos:** we intend to delete photos, and the record of who shared
+  them, 90 days after the event's last day. The routine that does this exists
+  and is run by hand today; it is not yet automatic, and this sentence will
+  change when it is. ⟶ `backend/scripts/purge_guest_photos.py`;
+  `guest_photos_due_for_purge`, `025` ⟵
 - **Pass purchases:** kept as a record of what you bought; required for
   refunds and disputes. The receipt survives account deletion, with the link
   to your account removed (section 6). ⟶ `021_account_deletion.sql:71-75` ⟵
@@ -273,11 +308,13 @@ at once and cannot be undone. It removes:
   the only member, and events you own outside any studio — with their guests'
   replies, vendor-brief links and vendors' confirmations, helper links and
   helpers' answers, guests' questions and your replies, invitation-open
-  records, and event messages,
+  records, guests' shared photos (the files too), and event messages,
   so those invitation and brief links stop working; ⟶ `account.py:62-70`;
   `supabase/migrations/021_account_deletion.sql:30-59`,
   `023_helper_links.sql` (helper tables), `024_guest_messages.sql` (guest
-  questions and invitation opens); events go with their
+  questions and invitation opens); `025_guest_photos.sql` and
+  `account.py` (photo rows, and their files through the storage service);
+  events go with their
   studio, `001_initial_schema.sql:46` (`on delete cascade`) ⟵
 - studios where you are the only member, your studio memberships, and studio
   invitations you sent or received; ⟶ `021_account_deletion.sql:76-79` ⟵
@@ -346,6 +383,8 @@ change takes effect.
 - Hosts: we keep your email and your plans so the app works; signed-out plans
   never leave your device.
 - Guests: your name, reply, meal and any dietary needs go only to the host.
+  Photos you share have their location and other hidden details removed, and
+  other guests see one only after the host approves it.
 - Vendors see a fixed, limited slice of the plan — never guests' details.
 - Payment happens on Stripe; we never see card numbers.
 - Analytics are minimal and opt-out; error reports carry no personal data.

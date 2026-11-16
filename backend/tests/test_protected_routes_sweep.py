@@ -92,6 +92,13 @@ PUBLIC = {
     # the credential, matched in the WHERE clause (test_rsvp_guest_owns_reply).
     "POST /api/public/rsvp/{rsvp_code}/mine": "guest's own reply; code + device key in body",
     "POST /api/public/rsvp/{rsvp_code}/withdraw": "guest's own reply; code + device key in body",
+    # Guest photos (11/16/2026): the invite code, plus the guest's device key
+    # (header on upload, body otherwise) matched in the WHERE clause. The
+    # approved list needs only the code, and returns no name or key.
+    "POST /api/public/photos/{rsvp_code}": "guest upload; code + device key header; after the event only",
+    "POST /api/public/photos/{rsvp_code}/mine": "guest's own photos; code + device key in body",
+    "POST /api/public/photos/{rsvp_code}/{photo_id}/delete": "guest's own photo; code + device key in body",
+    "GET /api/public/photos/{rsvp_code}": "host-APPROVED photos only, for invite holders; no names",
     # portal-respond: the portal_token in the BODY is the credential, matched
     # against metadata.portal_token stamped on the approval_request message.
     "POST /api/events/{event_id}/communication/messages/{message_id}/portal-respond":

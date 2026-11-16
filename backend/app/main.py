@@ -29,6 +29,7 @@ from .routers import rsvp
 from .routers import vendor_brief
 from .routers import helper_link
 from .routers import guest_messages
+from .routers import guest_photos
 from .routers import research
 from .routers import account
 from .emailer import is_email_configured
@@ -272,6 +273,7 @@ app.include_router(rsvp.router)
 app.include_router(vendor_brief.router)
 app.include_router(helper_link.router)
 app.include_router(guest_messages.router)
+app.include_router(guest_photos.router)
 app.include_router(research.router)
 app.include_router(lodging.router)
 

@@ -109,7 +109,19 @@ describe('coverage', () => {
       "'%guest_threads%'", "'%guest_messages%'", "'%invite_opens%'", "'%invite_open_days%'", "'%invite_open_devices%'",
       "'purge_old_guest_activity(integer)'",
       "to_regprocedure('public.purge_old_guest_activity(integer)')",
-      'generate_series(1, 24)',
+    ]) expect(sql).toContain(name);
+  });
+
+  // 025 (guest photos, 11/16/2026): a server-only table, the deletion body
+  // names it, the purge lister is a SECURITY DEFINER no browser role may run,
+  // and the bucket is private with no storage policy naming it. The record
+  // now reaches 025 (024, guest questions, is expected recorded first).
+  test('it proves the guest photo table, its deletion, a server-only purge and a policy-free private bucket, and expects 025 recorded', () => {
+    for (const name of [
+      "'guest_photos'", "'%guest_photos%'",
+      "to_regprocedure('public.guest_photos_due_for_purge(integer)')",
+      "b.id = 'guest-photos' and not b.public", "'%guest-photos%'",
+      'generate_series(1, 25)',
     ]) expect(sql).toContain(name);
   });
 });
