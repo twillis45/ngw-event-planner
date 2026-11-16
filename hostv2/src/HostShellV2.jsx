@@ -25113,7 +25113,10 @@ export default function HostShellV2() {
                     // Says the plan's size when it is bigger than the list (round 2,
                     // 11/16/2026): "Your people 4" beside a plan for 12 everywhere else
                     // read as a contradiction.
-                    ? 'on the list — counted, never chased' + (planLbl ? ' · planning for ' + planLbl : '')
+                    // planLbl covers a LIST host; a headcount host's plan is `guests`
+                    // (live demo-account check, 11/16/2026: "4" with no plan beside it).
+                    ? 'on the list — counted, never chased' + (planLbl ? ' · planning for ' + planLbl
+                      : Number(guests) > (event.guests || []).length ? ' · planning for ' + Number(guests) : '')
                     // FIX (host report): "said yes" must track the uncheck — never claim yeses
                     // when the count is 0.
                     : yes.length === 0
