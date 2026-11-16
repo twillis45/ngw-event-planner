@@ -26382,6 +26382,21 @@ export default function HostShellV2() {
                       {inviteTools}
                     </>
                   )}
+                  {/* G8 HOST ALERTS (11/16/2026): a signed-in host's synced event
+                      emails them when a guest replies or asks, or a vendor
+                      confirms — at most once an hour per event (the server's
+                      throttle). The switch is per event, stored in its own data. */}
+                  {session && !isPast && (
+                    <p className="grounding" data-host-alerts style={{ margin: 'var(--sp-2) 0 0' }}>
+                      {event.hostAlerts === false
+                        ? 'Reply emails are off for this event. '
+                        : 'We email you when a guest replies or asks a question — at most once an hour. '}
+                      <button className="mini" onClick={() => patchEvent({ hostAlerts: event.hostAlerts === false ? null : false },
+                        event.hostAlerts === false ? 'Reply emails are on.' : 'Reply emails are off for this event.')}>
+                        {event.hostAlerts === false ? 'Turn on' : 'Turn off'}
+                      </button>
+                    </p>
+                  )}
                   {/* ONE quiet line, only when chasing is on, someone is silent, and not a
                       single silent guest left a way to reach them — pointing at where a
                       number or email gets captured. Never a per-row nag (restraint). */}

@@ -36,10 +36,11 @@ import secrets
 import time
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..db import get_pool
+from ..host_alerts import alert_host
 from ..auth import require_planner
 from .. import config
 from .rsvp import _assert_event_studio_read, _client_ip
@@ -420,7 +421,7 @@ async def public_vendor_brief(code: str, request: Request):
 
 # ── 3. POST /api/public/vendor-brief/{code}/confirm — PUBLIC confirm-back ──────
 @router.post("/api/public/vendor-brief/{code}/confirm")
-async def public_vendor_brief_confirm(code: str, payload: ConfirmSubmit, request: Request):
+async def public_vendor_brief_confirm(code: str, payload: ConfirmSubmit, request: Request, background: BackgroundTasks):
     """Vendor confirm-back (Phase 2A). No auth — the unguessable code is the only
     credential; event/vendor identity comes from the SERVER's link row, never the
     client. Idempotent on (code, idempotency_key): a retry / double-tap / changed
@@ -485,6 +486,7 @@ async def public_vendor_brief_confirm(code: str, payload: ConfirmSubmit, request
             _clip(payload.on_site_phone, MAX_PHONE),
             _clip(payload.note, MAX_NOTE),
         )
+    background.add_task(alert_host, link["event_id"], "vendor", link["vendor_id"])
     return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
 
 

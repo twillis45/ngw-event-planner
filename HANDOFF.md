@@ -80,6 +80,7 @@ Before that, 2026-11-02 (sixtieth entry:
 - **Not done:**
   - Item 21: the analytics notice can't render in e2e, so it is unmeasured.
   - "Which market" now PROPOSES the market from the venue's town (`lib/metroForPlace`, state-checked: Alexandria, VA → DC; Alexandria, LA → nothing). The row reads "Suggested: …"; prices change only when the host taps "Use …". Towns not in the table still read "National baseline".
+  - G8 HOST ALERTS: a guest's reply, a guest's question, or a vendor's confirm-back emails the event's studio owner (`backend/app/host_alerts.py`, via Resend, as a background task after the response). At most one per event per hour (in-process throttle; a restart can cost one extra email). The email names who answered and the kind of answer, never its body. Per-event off switch on the guests sheet (`hostAlerts: false`), shown only when signed in. No migration. Tests: `test_host_alerts.py` plus wiring tests in the RSVP, question and vendor-brief suites (red-proofed). Verify live: reply to the demo event's invite and check the demo inbox.
   - The Warmer tone's closing fits the reader (`lib/warmClosing`): a vendor still quoting is thanked for their time, a booked vendor gets "So glad to be working with you", a payment note thanks them; only guests hear "So glad you'll be part of it".
   - The buffet-vs-plated call stays open; a contract doesn't say which style was booked.
 - 🔴 **Trap: `ctaNamesTheAct` bans any label starting "Go".** "Go to insurance" would have failed it, so the vendor next-action links say "See the insurance row" etc.

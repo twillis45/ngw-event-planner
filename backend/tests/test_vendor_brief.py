@@ -433,3 +433,16 @@ def test_resolve_includes_own_confirm_state_only(monkeypatch):
     # and still no private fields alongside it
     for k in ("notes", "cost", "depositAmt"):
         assert k not in brief
+
+
+def test_confirm_tells_the_host_with_the_servers_ids(monkeypatch):
+    # G8 (11/16/2026): a confirm-back schedules the host alert with the LINK's
+    # event and vendor, never anything the vendor sent.
+    import app.routers.vendor_brief as vb
+    calls = []
+    async def fake_alert(*a): calls.append(a)
+    monkeypatch.setattr(vb, "alert_host", fake_alert)
+    conn = _ConfirmConn(link_row={"event_id": "e1", "vendor_id": "v1"})
+    c = _client(monkeypatch, conn)
+    assert c.post(f"/api/public/vendor-brief/{GOOD_CODE}/confirm", json=_confirm_body()).status_code == 200
+    assert calls == [("e1", "vendor", "v1")]

@@ -60,10 +60,11 @@ import secrets
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..db import get_pool
+from ..host_alerts import alert_host
 from ..auth import require_planner
 from .rsvp import _assert_event_studio_read, _client_ip, _rate_check, _resolve_event
 
@@ -268,7 +269,7 @@ async def guest_thread_mine(rsvp_code: str, payload: GuestKey, request: Request)
 
 
 @router.post("/api/public/questions/{rsvp_code}/ask")
-async def guest_ask(rsvp_code: str, payload: GuestAsk, request: Request):
+async def guest_ask(rsvp_code: str, payload: GuestAsk, request: Request, background: BackgroundTasks):
     """Ask the host. Opens the caller's thread on the first question. The
     name is the guest's own; a later question keeps the first name."""
     code = (rsvp_code or "")[:MAX_CODE]
@@ -311,6 +312,7 @@ async def guest_ask(rsvp_code: str, payload: GuestAsk, request: Request):
                 raise HTTPException(429, "You've sent several questions this hour — try again later.")
             await _post(conn, t["id"], event_id, "guest", payload.body)
         t = await _own_thread(conn, code, payload.guest_key)
+        background.add_task(alert_host, event_id, "question", t["guest_name"])
         return {"ok": True, "thread": await _guest_view(conn, t)}
 
 
