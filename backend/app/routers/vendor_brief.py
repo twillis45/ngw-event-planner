@@ -120,10 +120,24 @@ def _vendor_ros_slice(ros, vendor_name: str):
     ]
     cues.sort(key=lambda r: r.get("time") or "")
     return [
-        {"time": r.get("time"), "segment": r.get("segment"),
+        {"time": r.get("time"), "rel": r.get("rel") or None, "segment": r.get("segment"),
          "location": r.get("location"), "notes": r.get("notes")}
         for r in cues
     ]
+
+
+# THE OUTWARD START-TIME GATE (G27, 11/13/2026) — mirrors the `ros:` line of
+# src/lib/vendorBrief.js buildVendorBriefPayload. startTimeSource == 'derived'
+# is precisely "the app picked this hour and the host has not said it's right"
+# (startTime.js startTimeIsConfirmed). Until then every cue clock may descend
+# from our guess, so the brief names no hour and keeps the relative `rel`
+# ("4h before guests arrive"). Only 'derived' is withheld: an absent source is
+# a host-set or pre-provenance time, and hiding it would hide a real decision.
+def _brief_ros(data: dict, vendor_name: str):
+    rows = _vendor_ros_slice(data.get("ros"), vendor_name)
+    if str(data.get("startTimeSource") or "") == "derived":
+        return [{**r, "time": None} for r in rows]
+    return rows
 
 
 # ── Board 2026-11-12, follow-up 1: headcount, host name, day-of contact ───────
@@ -194,7 +208,7 @@ def build_vendor_brief_payload(vendor: dict, event_id: str, data: dict) -> dict:
         "eventDate": data.get("date"),
         "venue":     data.get("venue"),
         # this vendor's run-of-show slice only
-        "ros": _vendor_ros_slice(data.get("ros"), v.get("name") or ""),
+        "ros": _brief_ros(data, v.get("name") or ""),
         # the host's own name on their own brief (same rationale as the invite's
         # hostNames) — so the page never says "your event planner" to a host
         "hostName": data.get("hostName") or data.get("hostNames") or "",
