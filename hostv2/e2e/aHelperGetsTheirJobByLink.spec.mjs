@@ -147,7 +147,10 @@ test.describe('the helper answers', () => {
     await openChecklist(page);
     await expect(page.locator('.assign-btn', { hasText: 'Jordan Avery — said yes' })).toBeVisible();
     // the hand-tapped confirm steps aside once Jordan has answered
-    await expect(page.getByRole('button', { name: /Confirm with Jordan Avery/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Jordan Avery confirmed/ })).toHaveCount(0);
+    // ...and so does "Send Jordan their job": Jordan already has it and said yes
+    // (owner, 11/16/2026: "make sure CTAs on your checklist are justified").
+    await expect(page.getByRole('button', { name: 'Send Jordan their job', exact: true })).toHaveCount(0);
   });
 
   test('"I can’t" with a note posts it, and the host sees it with the note', async ({ page }) => {
@@ -169,6 +172,10 @@ test.describe('the helper answers', () => {
     await openChecklist(page);
     await expect(page.locator('.assign-btn', { hasText: 'Jordan Avery — can’t do it' })).toBeVisible();
     await expect(page.locator('.helper-answer')).toContainText('Out of town that week');
+    // Jordan said no: sending Jordan the same job again is not the next step —
+    // giving it to someone else is, and that button stays.
+    await expect(page.getByRole('button', { name: 'Send Jordan their job', exact: true })).toHaveCount(0);
+    await expect(page.locator('.assign-btn', { hasText: 'Jordan Avery — can’t do it' })).toBeVisible();
   });
 
   test('a failed answer says so and keeps the note — never a fake success', async ({ page }) => {
@@ -187,5 +194,54 @@ test.describe('the helper answers', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('?helper=' + CODE);
     await expect(page.getByRole('heading', { name: 'This link isn’t live anymore' })).toBeVisible();
+  });
+});
+
+// ─── EVERY CHECKLIST BUTTON EARNS ITS PLACE (owner, 11/16/2026) ──────────────
+// "Make sure CTAs on your checklist are justified." Found on the 11/15 live
+// screenshots: a row the plan had already handled still offered "Give this to
+// someone" and wore "Do now" / "past its window"; and the record-only confirm
+// read "Confirm with Jordan", which sounds like the app contacts Jordan. It
+// only records the host's word (UX_07 level 4: say "Mark").
+test.describe('checklist buttons are justified', () => {
+  const withRows = (rows) => async (page) => {
+    await page.addInitScript(([ev, iso, tl]) => {
+      localStorage.setItem('ngw-events', JSON.stringify([{ ...ev, date: iso, timeline: tl }]));
+      localStorage.setItem('ngw-hostv2-last-event', ev.id);
+      localStorage.setItem('ngw-v2-splash-seen', '1');
+      localStorage.setItem('ngw-welcomed', '1');
+      localStorage.setItem('ngw-v2-welcomed', '1');
+      localStorage.setItem('ngw-profile', JSON.stringify({ name: 'Casey Morgan' }));
+    }, [EVENT, dateIn(20), rows]);
+  };
+
+  test('a row your plan already handled offers no assignment and no urgency', async ({ page }) => {
+    await withRows([
+      { id: 't-date', task: 'Set the date', offsetDays: 60 },
+      { id: 't-open', task: 'Bring folding chairs', offsetDays: 60 },
+    ])(page);
+    await mockHost(page);
+    await openChecklist(page);
+    const handled = page.locator('.frow', { hasText: 'Set the date' });
+    await expect(handled.getByText('done by your plan — tap to confirm')).toBeVisible();
+    await expect(handled).not.toContainText(/Do now|due now|past its window/);
+    await expect(page.locator('.row-assign').filter({ has: page.locator('[aria-label*="Set the date"]') })).toHaveCount(0);
+    // control: the open row keeps both, so the absence above is the fix
+    const open = page.locator('.frow', { hasText: 'Bring folding chairs' });
+    await expect(open).toContainText(/Do now|due now|past its window/);
+    await expect(page.getByRole('button', { name: 'Assign Bring folding chairs to someone' })).toBeVisible();
+  });
+
+  test('the record-only confirm says it records: "Mark Jordan Avery confirmed"', async ({ page }) => {
+    await boot(page);
+    await mockHost(page);
+    await openChecklist(page);
+    const mark = page.getByRole('button', { name: 'Mark Jordan Avery confirmed for Bring folding chairs', exact: true });
+    await expect(mark).toBeVisible();
+    await expect(mark).toHaveText('Mark Jordan Avery confirmed');
+    await expect(page.getByText(/^Confirm with Jordan/)).toHaveCount(0);
+    await mark.click();
+    await expect(page.locator('.assign-btn', { hasText: 'Jordan Avery — confirmed' })).toBeVisible();
+    await expect(page.getByText('Not confirmed after all', { exact: true })).toBeVisible();
   });
 });
