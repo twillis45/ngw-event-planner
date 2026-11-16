@@ -17,7 +17,21 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 16, 2026 (latest, afternoon) — #146–#149 live; G11; calendar + subscription; per-event co-hosts (026); the host-alert 422
+## November 16, 2026 (latest, evening) — email works; reply notices; announcements (027); axe on live
+
+- **Email from the app works** (first time on production). Two causes, fixed by the owner with the logs that named them:
+  1. 5:02 PM EST: Resend 422 "Invalid `from` field" — the From setting held something invisible. Owner corrected it; PR #151 now EXTRACTS the address (`emailer.format_from`) and a from-field 422 logs the exact From sent.
+  2. 5:14 PM: 403 — Render's `RESEND_API_KEY` was not the key in the Resend team that verifies the domain (Resend showed the owner's key "last used 7 hours ago": that one serves Supabase's sign-in mail). Owner replaced Render's key at 5:55 PM.
+  Verified in the demo inbox: co-host invite 5:55, host alert 5:56 (3 s after the reply), reply notice 5:57 (1 s), its stop link GET shows a button and POST stops them.
+- **#151 (live 5:57 PM):** robust From, `failure_reason()` everywhere, no log line carries a recipient (two old paths did), reply notices (`guest_notices.py`, stop link keyed by 024's `guest_token`), PostHog `before_send`.
+- **#152 (merged 6:39 PM):** announcements — migration 027 `event_announcements` (server-only, FK cascade; owner applied + recorded, **0 FAIL / 198 PASS**), `routers/announcements.py` (3/24 h, 20/event, counted in the DB under an advisory lock; removed posts count), host "Updates to everyone" (second tap before anyone is emailed), guest "Updates from Vida" on the invite. Also fixed the live false line "Nothing is emailed yet." under the host's reply box.
+- **#153 (open):** axe WCAG 2.1 AA on LIVE, both themes, phone + desktop: no contrast failure anywhere; `nested-interactive` fixed in checklist rows (action moved to `.row-assign`) and the desktop `.tile-a`. Plus the 027 record.
+- **PostHog verified:** the live site sends `host_home_viewed`; PostHog's bot filter drops headless/webdriver browsers — a test must hide `navigator.webdriver` and `userAgentData` to see a send.
+- 🔴 **Trap: the e2e fixture answers every unmocked `e2e-mock.invalid` route with `200 {ok:true}`.** A component that trusts `r.ok` and reads a field crashes the whole sheet ("This screen stopped working") — it happened on desktop only. Validate the shape, not just `ok`.
+- 🔴 **Trap: `?nosw=1` leaves a cache behind about half the time** (an unregistered worker still serves the open page and re-creates it; a `caches.has` guard is not enough — check-then-act). Pre-existing on main; `theShellOpensWithoutSignal` kill-switch test is flaky because of it. Filed as a task; needs a page→worker handshake.
+- 🔴 **Trap: the host alert is one email per event per hour, in process memory**, and a FAILED send still uses the hour's slot. A retest within the hour needs a restart (an env change does it) or the co-host invite path, which has no throttle.
+
+## November 16, 2026 (afternoon) — #146–#149 live; G11; calendar + subscription; per-event co-hosts (026); the host-alert 422
 
 - **Live and checked on the demo account (times EST):** #146 at 1:44 PM (market suggestion, closing that fits the reader); #147 at 2:19 PM (gallery wall and viewer, hashtag placements, G8 host alerts); #148 (warmer note); #149 about 3:00 PM (G11: free cost split "Sam pays Jordan $30.00", read-only family link with no names and no $).
 - **PR #150 (open at writing):**
