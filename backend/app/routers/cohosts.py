@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from ..auth import require_planner
 from ..config import APP_BASE_URL
 from ..db import get_pool
-from ..emailer import _send_via_resend, is_email_configured
+from ..emailer import _send_via_resend, failure_reason, is_email_configured
 
 router = APIRouter(tags=["cohosts"])
 log = logging.getLogger("ngw.cohosts")
@@ -110,7 +110,7 @@ async def invite_cohost(event_id: str, payload: CohostInvite, authorization: Opt
             )
             emailed = True
         except Exception as e:  # noqa: BLE001 — the invite stands; the host can tell them directly
-            log.error("cohost invite email failed event=%s error=%s", event_id, type(e).__name__)
+            log.error("cohost invite email failed event=%s error=%s", event_id, failure_reason(e))
     return {"ok": True, "cohosts": cohosts, "emailed": emailed, "already_invited": not created}
 
 

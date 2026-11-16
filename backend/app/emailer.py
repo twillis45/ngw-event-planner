@@ -28,6 +28,14 @@ class ResendRejected(Exception):
         super().__init__(f"{status} {reason}".strip())
 
 
+def failure_reason(e: Exception) -> str:
+    """For a log line: Resend's own reason when it refused, else the error's
+    type. Never an address (ResendRejected never carries one)."""
+    if isinstance(e, ResendRejected):
+        return f"ResendRejected {e}"
+    return type(e).__name__
+
+
 def _resend_reason(resp) -> str:
     try:
         body = resp.json()
@@ -113,10 +121,10 @@ async def send_approval_email(to: str | None, event_name: str, context: str, lin
             ),
         )
         resend_id = result.get("id") if isinstance(result, dict) else None
-        log.info("approval email sent to=%s resend_id=%s", to, resend_id)
+        log.info("approval email sent resend_id=%s", resend_id)
         return {"ok": True, "resend_id": resend_id, "provider": "resend"}
     except Exception as e:  # noqa: BLE001 — fail-soft by design
-        log.error("approval email failed to=%s error=%s", to, e)
+        log.error("approval email failed error=%s", failure_reason(e))
         return {"ok": False, "error": str(e), "provider": "resend"}
 
 
@@ -151,8 +159,8 @@ async def send_thread_email(
             from_name=sender_name,
         )
         resend_id = result.get("id") if isinstance(result, dict) else None
-        log.info("thread email sent to=%s resend_id=%s", to, resend_id)
+        log.info("thread email sent resend_id=%s", resend_id)
         return {"ok": True, "resend_id": resend_id, "provider": "resend"}
     except Exception as e:  # noqa: BLE001 — fail-soft
-        log.error("thread email failed to=%s error=%s", to, e)
+        log.error("thread email failed error=%s", failure_reason(e))
         return {"ok": False, "error": str(e), "provider": "resend"}

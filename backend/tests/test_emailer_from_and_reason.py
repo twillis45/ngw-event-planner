@@ -36,3 +36,18 @@ def test_a_rejection_carries_resends_reason_not_the_recipient(monkeypatch):
     assert str(e.value) == "422 validation_error Invalid `from` field."
     assert "guest@example.org" not in str(e.value)
     assert json.loads(sent["body"])["from"] == "X <events@example.com>"
+
+
+def test_a_failure_log_names_resends_reason_and_never_an_address():
+    assert emailer.failure_reason(emailer.ResendRejected(422, "validation_error Invalid `to` field.")) \
+        == "ResendRejected 422 validation_error Invalid `to` field."
+    assert emailer.failure_reason(RuntimeError("guest@example.org")) == "RuntimeError"   # type only
+
+
+def test_no_email_log_line_carries_the_recipient():
+    import inspect, re
+    import app.routers.cohosts as cohosts
+    for mod in (emailer, cohosts):
+        for line in inspect.getsource(mod).splitlines():
+            if re.search(r"log\.(info|error|warning)\(", line):
+                assert "to=%s" not in line, line
