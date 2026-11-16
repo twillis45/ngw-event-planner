@@ -7568,6 +7568,20 @@ button.vc-pill::after{
 .vb2-ros{ list-style:none; margin:var(--sp-2) 0 0; padding:0; text-align:left; }
 .vb2-ros li{ display:flex; gap:var(--sp-3); padding:var(--sp-2) 0; border-top:1px solid rgba(196,178,148,.45); }
 .vb2-ros li:first-child{ border-top:none; }
+/* FAMILY LINK (11/16/2026): the read-only plan's lists, in the invite paper's tone. */
+.fam-two{ display:grid; gap:var(--sp-3); grid-template-columns:1fr; }
+@media (min-width:600px){ .fam-two{ grid-template-columns:1fr 1fr; } }
+.fam-url{ margin:0; padding:var(--sp-2) var(--sp-3); border:1px solid var(--line-soft); border-radius:var(--r-md);
+  font-size:var(--t-meta); color:var(--ink); overflow-wrap:anywhere; user-select:all; }
+.fam-list{ list-style:none; margin:var(--sp-2) 0 0; padding:0; text-align:left; }
+.fam-list li{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); padding:var(--sp-2) 0;
+  border-top:1px solid rgba(196,178,148,.45); overflow-wrap:anywhere; }
+.fam-list li:first-child{ border-top:none; }
+.fam-list li[data-done]{ justify-content:flex-start; }
+.fam-tick{ flex:0 0 auto; width:16px; color:inherit; opacity:.7; }
+.fam-done{ opacity:.6; text-decoration:line-through; }
+.fam-sub{ opacity:.7; font-weight:500; white-space:nowrap; }
+.sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .vb2-ros-when{ flex:0 0 80px; font-size:var(--t-meta); font-weight:800; color:var(--hue-deep);
   font-variant-numeric:tabular-nums; }
 .vb2-ros-seg{ display:block; font-size:var(--t-body-s); font-weight:700; }

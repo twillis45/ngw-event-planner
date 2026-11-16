@@ -36,6 +36,11 @@ const vendorToken = (() => {
 const helperCode = (() => {
   try { const t = new URLSearchParams(window.location.search).get('helper'); return t && t.trim() ? t.trim() : null; } catch { return null; }
 })();
+// ?family=CODE is the READ-ONLY family link (owner, 11/16/2026): the plan to
+// look at, never to change. Its own chunk and no worker, like ?helper=.
+const familyCode = (() => {
+  try { const t = new URLSearchParams(window.location.search).get('family'); return t && t.trim() ? t.trim() : null; } catch { return null; }
+})();
 
 // ERROR REPORTING ON THE SHELL THAT ACTUALLY SHIPS (2026-08-07).
 // Sentry was wired in src/index.js — the FROZEN CRA host — and never here, so
@@ -95,6 +100,8 @@ const rsvpCode = (() => {
     ? import('./VendorBriefV2.jsx').then(m => <m.default token={vendorToken} />)
     : helperCode
     ? import('./HelperLinkV2.jsx').then(m => <m.default code={helperCode} />)
+    : familyCode
+    ? import('./FamilyViewV2.jsx').then(m => <m.default code={familyCode} />)
     : rsvpCode
     ? import('./InviteV2.jsx').then(m => <m.default code={rsvpCode} />)
     : demo === 'lodging'
@@ -103,14 +110,14 @@ const rsvpCode = (() => {
   load.then(mount).catch((err) => {
     // A chunk that fails to load must say so, not hang on a blank frame — and
     // it must be reported, because a host who sees this sees a dead app.
-    captureError(err, { where: 'main.chunkLoad', rsvp: Boolean(rsvpCode), vendor: Boolean(vendorToken), helper: Boolean(helperCode), demo });
+    captureError(err, { where: 'main.chunkLoad', rsvp: Boolean(rsvpCode), vendor: Boolean(vendorToken), helper: Boolean(helperCode), family: Boolean(familyCode), demo });
     mount(<div style={{ padding: 24, fontFamily: 'system-ui', color: '#9aa7b2' }}>Couldn’t load — please refresh.</div>);
   });
 }
 
 // After mount, and never awaited: a failed or slow registration must not be
 // able to delay or break the app the host already has.
-if (typeof window !== 'undefined' && !vendorToken && !helperCode) {
+if (typeof window !== 'undefined' && !vendorToken && !helperCode && !familyCode) {
   window.addEventListener('load', () => {
     registerOfflineShell(
       new URL('sw.js', document.baseURI).href,
