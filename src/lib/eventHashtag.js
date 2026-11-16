@@ -56,3 +56,16 @@ export function normalizeHashtag(input) {
   const body = words(input).map(cap).join('');
   return body ? '#' + body.slice(0, MAX) : '';
 }
+
+/**
+ * The one line every guest-facing draft uses for the host's tag (11/16/2026):
+ * the guest brief, the "Update everyone" note, and the thank-you. '' when the
+ * host has not turned a tag on. An offer, never a call to post publicly
+ * (board 11/16).
+ * @param {object} event  { hashtag }
+ */
+export function hashtagLine(event) {
+  // Exactly as stored, so it reads the same as on the invite.
+  const tag = String((event && event.hashtag) || '').trim();
+  return /^#[A-Za-z][A-Za-z0-9]+$/.test(tag) ? `Sharing photos from the day? Tag them ${tag}.` : '';
+}

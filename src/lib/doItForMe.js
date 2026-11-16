@@ -17,6 +17,7 @@ import { incidentPlanFor } from './knowledge/incidentContext';
 // other at run time, so the cycle resolves (ES live bindings).
 import { vendorGreetingName } from './vendorDetailsMessage';
 import { vendorDisplayName } from './vendorDisplayName';
+import { hashtagLine } from './eventHashtag';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
 const SOMBRE_RE = /funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast/i;
@@ -261,6 +262,10 @@ export function draftGuestBrief(event, profile, opts = {}) {
   if ((gb.rainPlan || '').trim()) lines.push(`Rain plan: ${gb.rainPlan.trim()}`);
   if ((gb.accessibility || '').trim()) lines.push(`Accessibility: ${gb.accessibility.trim()}`);
 
+  // The host's photo tag, when on (11/16/2026).
+  const tagLine = hashtagLine(event);
+  if (tagLine) { lines.push(''); lines.push(tagLine); }
+
   // Day-of contact — override, else point them to the host by name.
   const contact = (gb.contact || '').trim() || (host ? `Text ${host} if you’re running late or can’t find us.` : '');
   if (contact) { lines.push(''); lines.push(contact); }
@@ -355,6 +360,8 @@ export function draftThankYou(event, profile) {
     `Thank you so much for celebrating ${thing} with us.`,
     'It meant the world to have you there — we’re so grateful for you.',
   ];
+  const tagLine = hashtagLine(event);
+  if (tagLine) lines.push('', tagLine);
   if (host) lines.push('', `With love,\n${host}`);
   return { subject: `Thank you — ${thing}`, body: lines.join('\n').trim() };
 }
@@ -1020,6 +1027,9 @@ export function draftGuestUpdate(event, opts = {}, profile = null) {
     subject = `Event update${forName}`;
     lines = [`Hi everyone — a quick event update${forName}. Please review the details below before you head out.`, '', '[Add the update here]', '', outro];
   }
+  // The host's photo tag on the notes guests read on the way or on the day.
+  const tagLine = (type === 'general' || type === 'arrival') ? hashtagLine(ev) : '';
+  if (tagLine) lines.push('', tagLine);
   const host = hostName(profile);
   if (host) lines.push('', `— ${host}`);
   return { subject, body: lines.join('\n').trim() };

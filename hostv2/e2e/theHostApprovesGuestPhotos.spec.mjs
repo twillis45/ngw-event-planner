@@ -134,6 +134,10 @@ test('the host taps a photo to see it full screen, and can approve it there', as
   const line = await openFromHome(page);
   await line.click();
   await sheetSettled(page);
+  // The host's tag heads the section, with the way to see public posts.
+  const tag = page.locator('[data-host-photos-tag]');
+  await expect(tag).toContainText('#VidasFriendsgiving2026');
+  await expect(tag.getByRole('link', { name: 'See posts with this tag on Instagram' })).toHaveAttribute('href', /instagram\.com\/explore\/tags\/vidasfriendsgiving2026/i);
   await page.locator('[data-host-photos] [data-host-photo-open]').first().click();
   const viewer = page.locator('[data-photo-viewer]');
   await expect(viewer).toBeVisible();

@@ -19929,8 +19929,13 @@ export default function HostShellV2() {
                       Guests scan it and RSVP themselves — no app, no account. Screenshot it for the group chat, print it for the paper invite, tape it by the door.
                     </p>
                     {qrDataUrl && (
-                      <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <img src={qrDataUrl} alt={'QR code for the ' + (event.name || 'event') + ' RSVP link'} style={{ width: '100%', maxWidth: 300, display: 'block' }} />
+                        {/* The host's tag, when on (11/16/2026): inside the white
+                            card, so a screenshot or a printout carries it. */}
+                        {String(event.hashtag || '').trim() && (
+                          <div data-qr-hashtag style={{ marginTop: 8, color: '#1a1a1a', fontSize: 20, fontWeight: 700, letterSpacing: '-.01em', textAlign: 'center' }}>{String(event.hashtag).trim()}</div>
+                        )}
                       </div>
                     )}
                     <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
