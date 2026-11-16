@@ -9022,7 +9022,7 @@ export default function HostShellV2() {
           </div>
         )}
         <CtaRow gap={ASK_COMPACT.whyToCta}>
-          <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field)' }}
+          <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field-pad)' }}
             type="number" inputMode="numeric" min="0" placeholder="Your own number"
             value={customBudget} onChange={e => setCustomBudget(e.target.value)}
             aria-label="Custom budget amount" />
@@ -19260,7 +19260,7 @@ export default function HostShellV2() {
                   ))}
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Who’s actually picking?</div>
                   <div className={sheet.focus === 'pickers' ? 'rowfocus' : ''} style={{ display: 'flex', gap: 10, alignItems: 'center', borderRadius: 'var(--r-md)', padding: '6px var(--sp-1)' }}>
-                    <input id="crab-headcount" className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="0"
+                    <input id="crab-headcount" className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: 'var(--field-pad)' }} type="number" min="0"
                       placeholder={String(guests || '')} aria-label="Serious crab pickers"
                       value={cp.crabEatingHeadcount || ''}
                       onChange={e => { const n = parseInt(e.target.value, 10) || 0; writeCp({ crabEatingHeadcount: n || undefined }, n ? 'Sizing crabs to ' + n + ' pickers — kids and light eaters don’t drive the count.' : 'Back to the full headcount.'); }} />
@@ -19279,9 +19279,9 @@ export default function HostShellV2() {
                     options={['dozen', 'half_bushel', 'bushel'].map(u => ({ label: UNIT_LABEL[u], value: u }))}
                     value={crabAdd.unit} onPick={u => setCrabAdd(a => ({ ...a, unit: u }))} />
                   <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10, alignItems: 'center' }}>
-                    <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="1" aria-label="How many"
+                    <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: 'var(--field-pad)' }} type="number" min="1" aria-label="How many"
                       value={crabAdd.qty} onChange={e => setCrabAdd(a => ({ ...a, qty: Math.max(1, parseInt(e.target.value, 10) || 1) }))} />
-                    <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
+                    <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field-pad)' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
                       value={crabAdd.price} onChange={e => setCrabAdd(a => ({ ...a, price: e.target.value }))} />
                     <button className="cta" onClick={() => {
                       const l = { id: 'cl-' + lines.length + '-' + crabAdd.size + '-' + crabAdd.unit, size: crabAdd.size, unit: crabAdd.unit, quantity: crabAdd.qty, pricePerUnit: parseFloat(crabAdd.price) || undefined, estimatedCountPerUnit: defaultCountPerUnit(crabAdd.size, crabAdd.unit) || undefined };
@@ -24310,7 +24310,7 @@ export default function HostShellV2() {
                           </div>
                           {briefSignIn === v.id && (
                             <div data-send-signin={v.id} ref={scrollIntoViewOnOpen(true)} role="group" aria-label={`Sign in to send ${vendorGreetingName(v) || 'them'} the details`}
-                              style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+                              style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
                               <p className="vc-detail" style={{ margin: '0 0 var(--sp-1)', color: 'var(--ink)', fontWeight: 600 }}>Sign in to send {vendorGreetingName(v) || 'them'} the details</p>
                               <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>Their answer comes back to your account. Nothing was sent yet — once you’re in, it goes on its own.</p>
                               {isSupabaseConfigured() ? signInFields() : <p className="vc-detail" style={{ margin: 0 }}>Accounts aren’t turned on in this build.</p>}
@@ -24322,7 +24322,7 @@ export default function HostShellV2() {
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
                           {vendorBrief && vendorBrief.vendorId === v.id && (
-                            <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
+                            <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
                               {vendorBrief.minting ? (
                                 <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
                               ) : vendorBrief.error ? (
