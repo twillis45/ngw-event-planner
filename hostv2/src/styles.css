@@ -7653,6 +7653,16 @@ button.vc-pill::after{
 .photo-acts{ margin-top:0; flex-wrap:wrap; }
 /* THE PHOTO WALL + VIEWER (11/16/2026): a tight grid of small thumbnails, made
    to be looked at; tapping one opens the full-screen viewer (PhotoViewer.jsx). */
+/* SPLIT THE COSTS (11/16/2026) */
+.split-people, .split-expenses, .split-transfers{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--sp-2); }
+.split-people li, .split-expenses li{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);
+  padding:var(--sp-2) 0; border-bottom:1px solid var(--line-soft); min-width:0; overflow-wrap:anywhere; }
+.split-people .mini, .split-expenses .mini, .split-add .mini, .split-result .mini{ min-height:44px; }
+.split-add{ display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2); margin-top:var(--sp-2); }
+.split-add .field{ max-width:none; font-size:var(--t-input); min-width:0; }
+.split-add select{ grid-column:1 / -1; }
+.split-result{ padding:var(--sp-4); border:1px solid var(--line-soft); border-radius:var(--r-md); }
+.split-transfers li{ font-size:var(--t-body); font-weight:650; color:var(--ink); }
 .photo-cell .photo-tile-btn{ border-radius:var(--r-md); border:1px solid var(--line-soft); }
 .photo-wall{ list-style:none; margin:0; padding:0; display:grid; gap:4px;
   grid-template-columns:repeat(3, minmax(0, 1fr)); border-radius:var(--r-md); overflow:hidden; }
