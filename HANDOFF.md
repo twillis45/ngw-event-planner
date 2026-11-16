@@ -17,7 +17,19 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 16, 2026 (latest) — guest questions, guest photos, the event hashtag (one batch, local commits)
+## November 16, 2026 (latest, afternoon) — #146–#149 live; G11; calendar + subscription; per-event co-hosts (026); the host-alert 422
+
+- **Live and checked on the demo account (times EST):** #146 at 1:44 PM (market suggestion, closing that fits the reader); #147 at 2:19 PM (gallery wall and viewer, hashtag placements, G8 host alerts); #148 (warmer note); #149 about 3:00 PM (G11: free cost split "Sam pays Jordan $30.00", read-only family link with no names and no $).
+- **PR #150 (open at writing):**
+  - Calendar: `src/lib/planCalendar.js` + `hostv2/src/CalendarSheet.jsx`. Week/Month (remembered), "Add to my calendar" (.ics, RFC 5545 folded, `;` `,` `\n` escaped), subscription feed `GET /api/public/calendar/{code}.ics` (`calendar_feed.py`) formatting the `calendarFeed` the client saves while `calendarCode` is set.
+  - Co-hosts: migration 026 (`event_cohosts`, `is_event_cohost`, cohost select/update policies, `events_studio_locked` trigger), `backend/app/routers/cohosts.py` (invite, claim by verified email, remove, leave; 503 until 026), `hostv2/src/CohostsSheet.jsx`. Saves for a co-hosted event go to the host's studio, update only (`_cohostOf` is provenance, never saved). 15 RLS checks on real Postgres (`test_event_cohosts_rls.py`).
+  - Email: `emailer.format_from` (an already formatted `Name <addr>` is used as is; header-breaking characters leave the name; the address is trimmed) and `ResendRejected` carrying Resend's name/message, never the recipient; `host_alerts` logs it.
+- **026 applied by the owner 11/16 (3:37 PM EST):** attestation 191 PASS, 2 FAIL, both "026 not recorded" (insert sent to the owner). The two migration labels still read 025: fixed by deriving them from the expected list (48ebca18).
+- **Host alert 422 (open).** The 2:27 PM live test reached Resend and got 422; the old log said only `HTTPStatusError`. Owner confirmed `COMMUNICATION_EMAIL_FROM` is the bare address and `RESEND_FROM_NAME` is "No Guesswork Events", both set before 2:27, so the cause is not known yet. Next live test after #150 logs Resend's reason.
+- 🔴 **Trap: an awaited extra query in `loadEvents` broke the first-sign-in toast** (`tryFirstSignInToKeep`). The co-hosted query now runs in parallel with the main one. Bisect on the 5244 sync harness, and start that server first.
+- 🔴 **Trap: shell heredocs collapse `\\;`.** Edit files containing backslash escapes with Python, not heredoc strings; the CRA no-useless-escape warning caught a real unescaped `;` in the .ics writer.
+
+## November 16, 2026 — guest questions, guest photos, the event hashtag (one batch, local commits)
 
 - **Base.** `next-batch` (the held live-hunt batch and the hashtag lib, 040a3340), then cherry-picks of 207e7c2f (guest questions, 024) and 41bb720e (guest photos, 025).
   - Conflicts resolved in main.py, the attestation SQL and its test, and the privacy draft.
