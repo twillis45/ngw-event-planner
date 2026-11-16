@@ -70,6 +70,10 @@ test('week and month: the steps on their days, the event marked, the view rememb
   expect(ics).not.toContain('Send invites');                // done steps stay out
   await expect(page.locator('[data-calendar]')).toContainText('one-time copy');
 
+  // Subscribe: a signed-out host is told to keep the plan first, and gets no address.
+  await expect(page.locator('[data-cal-sub-signed-out]')).toBeVisible();
+  await expect(page.locator('[data-cal-sub-on], [data-cal-sub-url]')).toHaveCount(0);
+
   // Phone: finger-sized controls, nothing off the side.
   const small = await page.evaluate(() => [...document.querySelectorAll('[data-calendar] button')]
     .map((n) => n.getBoundingClientRect()).filter((r) => r.width && r.height < 40).length);

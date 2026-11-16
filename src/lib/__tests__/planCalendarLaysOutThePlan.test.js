@@ -82,3 +82,18 @@ test('commas, semicolons and newlines in a step are escaped, not broken', () => 
   const ics = calendarIcs({ ...EV, timeline: [{ id: 'x', task: 'Buy plates, cups; napkins\nand ice', week: 'day before' }] }, NOW);
   expect(ics).toContain('SUMMARY:To do: Buy plates\\, cups\; napkins\\nand ice');
 });
+
+// ── The subscription feed's data ─────────────────────────────────────────────
+import { withCalendarFeed } from '../planCalendar';
+
+test('feed on: the save carries the open dated items; feed off: the list is dropped', () => {
+  const on = withCalendarFeed({ ...EV, calendarCode: 'cal-' + 'x'.repeat(28) }, NOW);
+  expect(on.calendarFeed.map((i) => i.label)).toEqual(['Order the turkey', 'Buy the wine', 'Vida’s Friendsgiving'].sort((a, b) => {
+    const d = { 'Order the turkey': '2026-11-11', 'Buy the wine': '2026-11-20', 'Vida’s Friendsgiving': '2026-11-21' }; return d[a] < d[b] ? -1 : 1;
+  }));
+  expect(on.calendarFeed.every((i) => Object.keys(i).sort().join() === 'date,id,kind,label')).toBe(true);
+  expect(on.calendarFeed.some((i) => i.label === 'Send invites')).toBe(false);   // done: not in the feed
+  const off = withCalendarFeed({ ...on, calendarCode: null });
+  expect('calendarFeed' in off).toBe(false);
+  expect(withCalendarFeed(EV)).toBe(EV);                                          // untouched when never on
+});

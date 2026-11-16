@@ -16022,7 +16022,8 @@ export default function HostShellV2() {
               </>
             )}
             {sheet.kind === 'calendar' && (
-              <CalendarSheet event={event} onOpenChecklist={() => setSheet({ kind: 'tasks' })} />
+              <CalendarSheet event={event} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
+                signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
             {sheet.kind === 'family' && (
               <FamilyLinkSheet event={event} signedIn={Boolean(session)} appUrl={publicAppUrl()}

@@ -127,7 +127,8 @@ export function calendarIcs(event, now) {
   const name = String(ev.name || 'The event').trim();
   const stamp = new Date(now || Date.now()).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//No Guesswork//Plan Calendar//EN', 'CALSCALE:GREGORIAN',
-    'X-WR-CALNAME:' + icsText(name + ' — plan')];
+    // Non-standard, and apps disagree on unescaping it: drop , and ; instead.
+    'X-WR-CALNAME:' + name.replace(/[,;\\]/g, ' ').split(/\s+/).filter(Boolean).join(' ') + ' — plan'];
   for (const it of items) {
     if (it.done) continue;
     const day = DAY(it.date);
@@ -145,4 +146,27 @@ export function calendarIcs(event, now) {
   }
   lines.push('END:VCALENDAR');
   return lines.map(fold).join('\r\n') + '\r\n';
+}
+
+// ─── THE SUBSCRIPTION FEED'S DATA (owner, 11/16/2026: "need subscription
+// calendar") ─────────────────────────────────────────────────────────────────
+// While the host's feed is on (`calendarCode` set), every save carries the
+// dated items the Calendar view shows, so the server's .ics route only
+// formats them and never re-derives a date (backend/app/routers/calendar_feed.py).
+// Feed off: the list is dropped from the saved plan.
+export function calendarFeedItems(event, now) {
+  return calendarItems(event, now).items
+    .filter((it) => !it.done)
+    .map((it) => ({ id: it.id, date: it.date, kind: it.kind, label: it.label }));
+}
+
+/** The plan as it should be saved: with the feed list while the feed is on, without it otherwise. */
+export function withCalendarFeed(data, now) {
+  if (!data || typeof data !== 'object') return data;
+  if (!String(data.calendarCode || '').trim()) {
+    if (!('calendarFeed' in data)) return data;
+    const { calendarFeed: _drop, ...rest } = data;
+    return rest;
+  }
+  try { return { ...data, calendarFeed: calendarFeedItems(data, now) }; } catch { return data; }
 }

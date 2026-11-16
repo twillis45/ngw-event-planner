@@ -7704,6 +7704,8 @@ button.vc-pill::after{
 .cal-num{ font-size:var(--t-meta); font-weight:700; }
 .cal-count{ min-width:20px; padding:0 4px; border-radius:999px; background:var(--bg-band); font-size:11px; font-weight:750; }
 .cal-count.is-late{ color:var(--danger); }
+.cal-sub{ width:100%; padding:var(--sp-4); border:1px solid var(--line-soft); border-radius:var(--r-md); }
+.cal-sub .mini{ min-height:44px; }
 .cal-foot{ margin-top:var(--sp-5); display:flex; flex-direction:column; gap:var(--sp-2); align-items:flex-start; }
 .cal-foot .mini{ min-height:44px; }
 /* SPLIT THE COSTS (11/16/2026) */

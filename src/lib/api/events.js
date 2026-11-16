@@ -10,6 +10,7 @@
 //   ngw-events           — canonical local copy
 //   ngw-cache-last-sync  — ISO timestamp of the last successful cloud pull
 //   ngw-cache-pending    — JSON array of mutations not yet flushed to Supabase
+import { withCalendarFeed } from '../planCalendar';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { currentStudioId, isCloudStudioId } from './studio';
 import { captureError } from '../sentry';
@@ -211,7 +212,10 @@ function writeGuarded(sid, event, base) {
 }
 
 async function writeGuardedNow(sid, event, base) {
-  const { _cloudUpdatedAt: _carried, ...data } = event;
+  const { _cloudUpdatedAt: _carried, ...raw } = event;
+  // The calendar subscription feed's list rides every save while the feed is
+  // on (lib/planCalendar.withCalendarFeed), so the server never derives a date.
+  const data = withCalendarFeed(raw);
   // A held conflict outranks everything (resolveConflict writes through it);
   // then the version the caller or the queue says the edit was made on.
   const held = readHolds()[event.id];

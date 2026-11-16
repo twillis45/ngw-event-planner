@@ -9,6 +9,7 @@
 import { useMemo, useState } from 'react';
 import { calendarItems, weekDays, monthWeeks, shiftAnchor, rangeLabel, calendarIcs } from '@app/lib/planCalendar';
 import { localISO, getToday } from '@app/lib/dates';
+import { calendarFeedUrl, calendarWebcalUrl, newCalendarCode, isCalendarFeedConfigured } from '@app/lib/api/calendarFeed';
 
 const VIEW_KEY = 'ngw-calendar-view';
 const readView = () => { try { return localStorage.getItem(VIEW_KEY) === 'month' ? 'month' : 'week'; } catch { return 'week'; } };
@@ -37,7 +38,54 @@ function addToCalendar(event) {
   setTimeout(() => URL.revokeObjectURL(href), 4000);
 }
 
-export default function CalendarSheet({ event, onOpenChecklist }) {
+// SUBSCRIBE (owner, 11/16/2026: "need subscription calendar"): one private
+// link the host's calendar app re-reads by itself. Needs a saved plan (the
+// feed reads it), so a signed-out host is told so and gets no link.
+function Subscribe({ event, signedIn, onSave, onLine }) {
+  const [confirmOff, setConfirmOff] = useState(false);
+  const code = String(event.calendarCode || '').trim();
+  if (!isCalendarFeedConfigured()) return null;
+  const https = calendarFeedUrl(code);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(https); onLine('Calendar address copied.'); }
+    catch { onLine('Copy didn’t work here — press and hold the address to copy it.'); }
+  };
+  return (
+    <div className="cal-sub" data-cal-subscribe>
+      <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Keep it in your calendar</div>
+      {!signedIn ? (
+        <p className="grounding" data-cal-sub-signed-out style={{ margin: 0 }}>Sign in and keep this plan first — your calendar app reads the saved plan.</p>
+      ) : !code ? (
+        <>
+          <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Subscribe once and your calendar app keeps these dates up to date as the plan changes.</p>
+          <button className="mini" data-cal-sub-on onClick={() => onSave({ calendarCode: newCalendarCode() }, 'Calendar subscription is on.')}>Subscribe in my calendar app</button>
+        </>
+      ) : (
+        <>
+          <div className="actions-row" style={{ flexWrap: 'wrap', margin: '0 0 var(--sp-2)' }}>
+            <a className="mini" data-cal-sub-apple href={calendarWebcalUrl(code)} style={{ textDecoration: 'none' }}>Subscribe on iPhone or Mac</a>
+            <button className="mini" data-cal-sub-copy onClick={copy}>Copy the address</button>
+          </div>
+          <p className="fam-url" data-cal-sub-url>{https}</p>
+          <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>
+            Google Calendar: Other calendars → From URL, then paste the address. Outlook: Add calendar → Subscribe from web.
+            Calendar apps check for changes on their own schedule — Apple every few hours, Google can take up to a day.
+          </p>
+          {confirmOff ? (
+            <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+              <button className="mini danger" data-cal-sub-off onClick={() => { setConfirmOff(false); onSave({ calendarCode: null }, 'Calendar subscription is off — the address won’t work anymore.'); }}>Turn it off</button>
+              <button className="mini" onClick={() => setConfirmOff(false)}>Keep it on</button>
+            </div>
+          ) : (
+            <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => setConfirmOff(true)}>Turn off the subscription</button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function CalendarSheet({ event, onOpenChecklist, signedIn = false, onSave, onLine = () => {} }) {
   const today = localISO(getToday());
   const { items, undated } = useMemo(() => calendarItems(event), [event]);
   const byDate = useMemo(() => {
@@ -129,6 +177,7 @@ export default function CalendarSheet({ event, onOpenChecklist }) {
             </p>
           </>
         )}
+        {onSave && <Subscribe event={event} signedIn={signedIn} onSave={onSave} onLine={onLine} />}
         {onOpenChecklist && <button className="mini" onClick={onOpenChecklist}>Open the checklist</button>}
       </div>
     </div>
