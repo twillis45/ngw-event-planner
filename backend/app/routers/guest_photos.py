@@ -91,6 +91,14 @@ PHOTO_CODE_MAX = 30                         # uploads + deletes per invite per w
 BUCKET = "guest-photos"
 MAX_PIXELS = 40_000_000                     # decompression-bomb guard (40 MP)
 JPEG_QUALITY = 85
+# GALLERY SIZES (11/16/2026). A phone photo is 12 MP and 3–5 MB; a gallery of
+# 30 at full size was too heavy to scroll. The stored photo is capped at 2560 px
+# on its longest side (sharper than any phone screen, and above every social
+# app's upload size), and a 480 px THUMBNAIL is stored beside it for the grid.
+# The grid loads only thumbnails; the full photo loads in the viewer.
+MAX_EDGE = 2560
+THUMB_EDGE = 480
+THUMB_QUALITY = 78
 MAX_CODE = 80
 MAX_NAME = 120
 MIN_KEY = 16
@@ -268,6 +276,8 @@ def clean_photo(raw: bytes):
         # the original file (EXIF, XMP, ICC, comment, text) can ride along
         # into the save below.
         clean = Image.frombytes("RGB", img.size, img.tobytes())
+        if max(clean.size) > MAX_EDGE:
+            clean.thumbnail((MAX_EDGE, MAX_EDGE), Image.LANCZOS)
     except PhotoRefused:
         raise
     except Image.DecompressionBombError:
@@ -277,6 +287,16 @@ def clean_photo(raw: bytes):
     out = io.BytesIO()
     clean.save(out, "JPEG", quality=JPEG_QUALITY, optimize=True)
     return out.getvalue(), clean.width, clean.height
+
+
+def make_thumb(clean_jpeg: bytes) -> bytes:
+    """A small JPEG of an already-cleaned photo, from its pixels alone."""
+    img = Image.open(io.BytesIO(clean_jpeg)).convert("RGB")
+    img.thumbnail((THUMB_EDGE, THUMB_EDGE), Image.LANCZOS)
+    small = Image.frombytes("RGB", img.size, img.tobytes())
+    out = io.BytesIO()
+    small.save(out, "JPEG", quality=THUMB_QUALITY, optimize=True)
+    return out.getvalue()
 
 
 # ── Supabase Storage, with the service role key, from this server only ────────
@@ -339,6 +359,23 @@ def _path_for(event_id: str, photo_id: uuid.UUID) -> str:
     # The event segment only groups files; the database row is the record.
     seg = re.sub(r"[^A-Za-z0-9_-]", "_", str(event_id))[:80] or "event"
     return f"{seg}/{photo_id}.jpg"
+
+
+def _thumb_path(path: str) -> str:
+    return path[:-4] + ".t.jpg" if path.endswith(".jpg") else path + ".t.jpg"
+
+
+def _files(paths) -> list:
+    """Every Storage file behind these photos: the photo and its thumbnail.
+    A photo stored before thumbnails existed has none; removing a name that
+    isn't there is harmless."""
+    return [f for p in paths for f in (p, _thumb_path(p))]
+
+
+async def _sign_photos(paths: list) -> dict:
+    """{storage_path: (url, thumb_url)}. thumb_url falls back to the photo."""
+    urls = await _storage_sign(_files(paths), SIGNED_URL_TTL_SECONDS)
+    return {p: (urls.get(p), urls.get(_thumb_path(p)) or urls.get(p)) for p in paths}
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────────
@@ -452,9 +489,10 @@ _HOST_COLS = ("id, guest_name, status, storage_path, created_at, reviewed_at, wi
 
 def _host_view(p, urls: dict) -> dict:
     """The host's whitelist: no device key, invite code or storage path."""
+    url, thumb = urls.get(p["storage_path"], (None, None))
     return {"id": str(p["id"]), "guest_name": p["guest_name"], "status": p["status"],
             "created_at": _iso(p["created_at"]), "reviewed_at": _iso(p["reviewed_at"]),
-            "width": p["width"], "height": p["height"], "url": urls.get(p["storage_path"]),
+            "width": p["width"], "height": p["height"], "url": url, "thumb": thumb,
             "uploader_private": bool(p["uploader_private"]), "share_blocked": bool(p["share_blocked"]),
             "shareable": _shareable(p)}
 
@@ -496,6 +534,11 @@ async def guest_upload_photo(
         path = _path_for(event_id, photo_id)
         if not await _storage_put(path, data, "image/jpeg"):
             raise HTTPException(502, "The photo didn't upload. Try again.")
+        # The thumbnail is a convenience: if it fails, the grid shows the photo.
+        try:
+            await _storage_put(_thumb_path(path), await run_in_threadpool(make_thumb, data), "image/jpeg")
+        except Exception:  # noqa: BLE001
+            pass
         try:
             async with conn.transaction():
                 # Counted again under one lock per event: two uploads racing
@@ -512,11 +555,12 @@ async def guest_upload_photo(
                     _truthy(x_guest_private),
                 )
         except BaseException:
-            await _storage_remove([path])     # never leave a file with no row
+            await _storage_remove(_files([path]))     # never leave a file with no row
             raise
-    urls = await _storage_sign([path], SIGNED_URL_TTL_SECONDS)
+    url, thumb = (await _sign_photos([path])).get(path, (None, None))
     return {"ok": True, "photo": {"id": str(row["id"]), "status": row["status"],
-                                  "created_at": _iso(row["created_at"]), "url": urls.get(path)}}
+                                  "created_at": _iso(row["created_at"]), "url": url, "thumb": thumb,
+                                  "width": width, "height": height}}
 
 
 @router.post("/api/public/photos/{rsvp_code}/mine")
@@ -530,16 +574,17 @@ async def guest_my_photos(rsvp_code: str, payload: GuestMine, request: Request):
     async with pool.acquire() as conn:
         _event_id, public = await _resolve(conn, code)
         rows = await conn.fetch(
-            """select id, status, storage_path, created_at, uploader_private, share_blocked
+            """select id, status, storage_path, created_at, uploader_private, share_blocked, width, height
                  from public.guest_photos
                where rsvp_code = $1 and guest_key = $2 order by created_at desc""",
             code, payload.guest_key,
         )
-    urls = await _storage_sign([r["storage_path"] for r in rows], SIGNED_URL_TTL_SECONDS)
+    urls = await _sign_photos([r["storage_path"] for r in rows])
     return {
         "ok": True,
         "photos": [{"id": str(r["id"]), "status": r["status"], "created_at": _iso(r["created_at"]),
-                    "url": urls.get(r["storage_path"]), "shareable": _shareable(r)} for r in rows],
+                    "url": urls[r["storage_path"]][0], "thumb": urls[r["storage_path"]][1],
+                    "width": r["width"], "height": r["height"], "shareable": _shareable(r)} for r in rows],
         "remaining": max(0, PHOTOS_PER_GUEST_MAX - len(rows)),
         "uploads_open": _uploads_open(public, tz_offset(payload.tz_offset_min)),
         "keep_private": bool(rows) and all(r["uploader_private"] for r in rows),
@@ -581,7 +626,7 @@ async def guest_delete_photo(rsvp_code: str, photo_id: str, payload: GuestKey, r
         )
         if not row:
             raise HTTPException(404, NOT_FOUND)
-        if not await _storage_remove([row["storage_path"]]):
+        if not await _storage_remove(_files([row["storage_path"]])):
             raise HTTPException(502, "The photo wasn't deleted. Try again.")
         await conn.execute("delete from public.guest_photos where id = $1", pid)
     return {"ok": True, "deleted": True}
@@ -597,13 +642,15 @@ async def guest_approved_photos(rsvp_code: str, request: Request):
     async with pool.acquire() as conn:
         event_id, _public = await _resolve(conn, code)
         rows = await conn.fetch(
-            """select id, status, storage_path, created_at, uploader_private, share_blocked
+            """select id, status, storage_path, created_at, uploader_private, share_blocked, width, height
                  from public.guest_photos
                where event_id = $1 and status = 'approved' order by created_at desc""",
             event_id,
         )
-    urls = await _storage_sign([r["storage_path"] for r in rows], SIGNED_URL_TTL_SECONDS)
-    return {"ok": True, "photos": [{"id": str(r["id"]), "url": urls.get(r["storage_path"]),
+    urls = await _sign_photos([r["storage_path"] for r in rows])
+    return {"ok": True, "photos": [{"id": str(r["id"]), "url": urls[r["storage_path"]][0],
+                                    "thumb": urls[r["storage_path"]][1],
+                                    "width": r["width"], "height": r["height"],
                                     "created_at": _iso(r["created_at"]), "shareable": _shareable(r)}
                                    for r in rows]}
 
@@ -625,7 +672,7 @@ async def host_list_photos(
             f"select {_HOST_COLS} from public.guest_photos where event_id = $1 order by created_at desc",
             event_id,
         )
-    urls = await _storage_sign([r["storage_path"] for r in rows], SIGNED_URL_TTL_SECONDS)
+    urls = await _sign_photos([r["storage_path"] for r in rows])
     return {"ok": True, "photos": [_host_view(r, urls) for r in rows],
             "event_max": PHOTOS_PER_EVENT_MAX}
 
@@ -642,7 +689,7 @@ async def _set_status(event_id: str, photo_id: str, status: str, principal: dict
         )
     if not row:
         raise HTTPException(404, NOT_FOUND)
-    urls = await _storage_sign([row["storage_path"]], SIGNED_URL_TTL_SECONDS)
+    urls = await _sign_photos([row["storage_path"]])
     return {"ok": True, "photo": _host_view(row, urls)}
 
 
@@ -688,7 +735,7 @@ async def host_photo_sharing(
         )
     if not row:
         raise HTTPException(404, NOT_FOUND)
-    urls = await _storage_sign([row["storage_path"]], SIGNED_URL_TTL_SECONDS)
+    urls = await _sign_photos([row["storage_path"]])
     return {"ok": True, "photo": _host_view(row, urls)}
 
 
@@ -710,7 +757,7 @@ async def host_delete_photo(
         )
         if not row:
             raise HTTPException(404, NOT_FOUND)
-        if not await _storage_remove([row["storage_path"]]):
+        if not await _storage_remove(_files([row["storage_path"]])):
             raise HTTPException(502, "The photo wasn't deleted. Try again.")
         await conn.execute("delete from public.guest_photos where id = $1", pid)
     return {"ok": True, "deleted": True}
@@ -728,7 +775,7 @@ async def purge_old_guest_photos(older_than_days: int = RETENTION_DAYS_AFTER_EVE
             "select id, storage_path from public.guest_photos_due_for_purge($1)", older_than_days)
         for start in range(0, len(due), 100):
             batch = due[start:start + 100]
-            if not await _storage_remove([r["storage_path"] for r in batch]):
+            if not await _storage_remove(_files([r["storage_path"] for r in batch])):
                 raise RuntimeError(f"Storage refused the purge after {removed} photos; rows kept for retry.")
             await conn.execute("delete from public.guest_photos where id = any($1::uuid[])",
                                [r["id"] for r in batch])

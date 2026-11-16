@@ -7651,6 +7651,43 @@ button.vc-pill::after{
 .photo-meta{ font-size:var(--t-meta); color:var(--muted); font-weight:600; overflow-wrap:anywhere; }
 .photo-cell .mini, .photo-acts .mini{ white-space:normal; min-height:44px; }
 .photo-acts{ margin-top:0; flex-wrap:wrap; }
+/* THE PHOTO WALL + VIEWER (11/16/2026): a tight grid of small thumbnails, made
+   to be looked at; tapping one opens the full-screen viewer (PhotoViewer.jsx). */
+.photo-cell .photo-tile-btn{ border-radius:var(--r-md); border:1px solid var(--line-soft); }
+.photo-wall{ list-style:none; margin:0; padding:0; display:grid; gap:4px;
+  grid-template-columns:repeat(3, minmax(0, 1fr)); border-radius:var(--r-md); overflow:hidden; }
+@media (min-width:600px){ .photo-wall{ grid-template-columns:repeat(4, minmax(0, 1fr)); } }
+@media (min-width:960px){ .photo-wall{ grid-template-columns:repeat(5, minmax(0, 1fr)); } }
+.photo-tile{ min-width:0; }
+.photo-tile-btn{ position:relative; display:block; width:100%; aspect-ratio:1 / 1; padding:0; border:0;
+  background:var(--bg-band); cursor:zoom-in; overflow:hidden; }
+.photo-tile-btn img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform .25s ease; }
+@media (hover:hover){ .photo-tile-btn:hover img{ transform:scale(1.03); } }
+.photo-tile-btn:focus-visible{ outline:3px solid var(--steel, #4a6b7c); outline-offset:-3px; }
+.photo-badge{ position:absolute; left:8px; bottom:8px; padding:2px 8px; border-radius:999px;
+  background:rgba(20,20,22,.72); color:#fff; font-size:11px; font-weight:700; letter-spacing:.01em; }
+.pv{ position:fixed; inset:0; z-index:10000; background:#0b0b0c; color:#f4f2ee;
+  display:flex; flex-direction:column; touch-action:pan-y pinch-zoom; }
+.pv-top{ display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:max(12px, env(safe-area-inset-top)) 16px 8px; }
+.pv-count{ font-size:14px; font-weight:650; color:rgba(244,242,238,.75); font-variant-numeric:tabular-nums; }
+.pv-btn{ min-height:44px; min-width:44px; padding:0 16px; border-radius:999px; border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.08); color:#f4f2ee; font:inherit; font-size:15px; font-weight:650; cursor:pointer; }
+.pv-btn:focus-visible{ outline:3px solid #fff; outline-offset:2px; }
+.pv-stage{ position:relative; flex:1; min-height:0; margin:0 8px; user-select:none; -webkit-user-select:none; }
+.pv-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.pv-thumb{ filter:blur(6px); transform:scale(1.01); }
+.pv-full{ opacity:0; transition:opacity .2s ease; }
+.pv-full.is-in{ opacity:1; }
+.pv-missing{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(244,242,238,.7); }
+.pv-nav{ position:absolute; top:50%; transform:translateY(-50%); font-size:26px; line-height:1; padding:0; width:44px; }
+.pv-prev{ left:12px; } .pv-next{ right:12px; }
+@media (hover:none){ .pv-nav{ display:none; } }
+.pv-acts{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
+  padding:12px 16px max(16px, env(safe-area-inset-bottom)); }
+.pv-acts .mini{ min-height:44px; background:rgba(255,255,255,.1); color:#f4f2ee; border-color:rgba(255,255,255,.22); }
+.pv-acts .pv-note{ font-size:14px; color:rgba(244,242,238,.8); }
+@media (prefers-reduced-motion:reduce){ .pv-full, .photo-tile-btn img{ transition:none; } }
 .guest-photo-pick{ position:relative; cursor:pointer; }
 .guest-photo-pick[aria-disabled="true"]{ opacity:.6; cursor:default; }
 .guest-photo-pick input[type="file"]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }

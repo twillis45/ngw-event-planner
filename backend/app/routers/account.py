@@ -82,6 +82,8 @@ async def delete_account(body: DeleteAccountRequest, authorization: Optional[str
                 if ids and await conn.fetchval("select to_regclass('public.guest_photos') is not null"):
                     for photo in await conn.fetch("select storage_path from public.guest_photos where event_id = any($1::text[])", ids):
                         by_bucket["guest-photos"].append(photo["storage_path"])
+                        # …and its gallery thumbnail (guest_photos._thumb_path).
+                        by_bucket["guest-photos"].append(photo["storage_path"][:-4] + ".t.jpg")
                 for bucket, names in by_bucket.items():
                     for start in range(0, len(names), 100):
                         try:

@@ -217,6 +217,16 @@ class _Storage:
         return True
 
 
+def photos_only(env):
+    """The stored photos, without their gallery thumbnails (`<id>.t.jpg`)."""
+    return [v for k, v in env.store.objects.items() if not k.endswith(".t.jpg")]
+
+
+def both(path):
+    """A photo's two Storage files: the photo, then its thumbnail."""
+    return [path, path[:-4] + ".t.jpg"]
+
+
 @pytest.fixture
 def env(monkeypatch):
     db = _DB()
@@ -297,7 +307,7 @@ def test_exif_gps_comment_and_xmp_are_stripped_and_orientation_is_kept(env):
 
     r = upload(env, raw)
     assert r.status_code == 200, r.text
-    (stored, ctype), = env.store.objects.values()
+    (stored, ctype), = photos_only(env)
     assert ctype == "image/jpeg"
     out = Image.open(io.BytesIO(stored))
     assert out.format == "JPEG"
@@ -312,6 +322,12 @@ def test_exif_gps_comment_and_xmp_are_stripped_and_orientation_is_kept(env):
     row, = env.db.photos
     assert (row["width"], row["height"]) == (20, 40)
     assert row["byte_size"] == len(stored)
+    # THE THUMBNAIL (11/16/2026) is made from the cleaned pixels: it carries
+    # none of the original's metadata either.
+    thumb, _t = env.store.objects[row["storage_path"][:-4] + ".t.jpg"]
+    for needle in (b"Exif", b"SecretCam", b"secret comment", b"secret-xmp", b"xmpmeta"):
+        assert needle not in thumb, needle
+    assert dict(Image.open(io.BytesIO(thumb)).getexif()) == {}
 
 
 def test_png_text_chunks_are_stripped_and_png_and_webp_are_reencoded_as_jpeg(env):
@@ -320,7 +336,7 @@ def test_png_text_chunks_are_stripped_and_png_and_webp_are_reencoded_as_jpeg(env
     assert upload(env, raw, ctype="image/png").status_code == 200
     assert upload(env, webp(), ctype="image/webp").status_code == 200
     stored = [d for d, _t in env.store.objects.values()]
-    assert len(stored) == 2
+    assert len(stored) == 4            # two photos and their two thumbnails
     for data in stored:
         assert data[:3] == b"\xff\xd8\xff"
         assert b"Secret Person" not in data and b"Author" not in data
@@ -413,7 +429,7 @@ def test_caps_are_counted_again_under_the_lock_and_a_losing_upload_removes_its_o
     r = upload(env, webp(), ctype="image/webp")
     assert r.status_code == 429
     assert env.db.locks, "the recount must run under the per-event advisory lock"
-    assert len(env.store.removed) == 1 and env.store.objects == {}
+    assert len(env.store.removed) == 2 and env.store.objects == {}   # the photo and its thumbnail
     assert all(p["guest_key"] == KEY_A and p["storage_path"] not in env.store.removed
                for p in env.db.photos)
 
@@ -485,7 +501,9 @@ def test_an_unapproved_photo_is_invisible_to_other_guests(env):
     # Whitelist: no uploader name, key, code, path or status reaches other guests.
     # "shareable" is the one consent flag (board 11/16): it says whether a Share
     # button may appear, and nothing about who took the photo.
-    assert set(shown[0]) == {"id", "url", "created_at", "shareable"}
+    # thumb/width/height (11/16/2026) are the gallery's sizes: still nothing
+    # about who took it.
+    assert set(shown[0]) == {"id", "url", "thumb", "width", "height", "created_at", "shareable"}
 
     assert env.client.post(f"/api/events/e1/guest-photos/{pid}/hide").status_code == 200
     assert env.client.get(f"/api/public/photos/{CODE}").json()["photos"] == []
@@ -496,7 +514,7 @@ def test_signed_urls_are_server_minted_with_a_short_ttl(env):
     env.client.get(f"/api/public/photos/{CODE}")
     paths, ttl = env.store.sign_calls[-1]
     assert ttl == gp.SIGNED_URL_TTL_SECONDS <= 900
-    assert paths == [env.db.photos[0]["storage_path"]]
+    assert paths == both(env.db.photos[0]["storage_path"])
 
 
 # ── Deleting ───────────────────────────────────────────────────────────────────
@@ -505,7 +523,7 @@ def test_a_guest_deletes_her_own_photo_and_its_object(env):
     row = env.db.photos[0]
     r = env.client.post(f"/api/public/photos/{CODE}/{row['id']}/delete", json={"guest_key": KEY_A})
     assert r.status_code == 200 and r.json() == {"ok": True, "deleted": True}
-    assert env.db.photos == [] and env.store.removed == [row["storage_path"]]
+    assert env.db.photos == [] and env.store.removed == both(row["storage_path"])
 
 
 def test_another_guests_key_cannot_delete_it(env):
@@ -545,7 +563,7 @@ def test_host_deletes_a_photo_and_its_object(env):
     row = env.db.add()
     r = env.client.delete(f"/api/events/e1/guest-photos/{row['id']}")
     assert r.status_code == 200 and env.db.photos == []
-    assert env.store.removed == [row["storage_path"]]
+    assert env.store.removed == both(row["storage_path"])
 
 
 def test_a_photo_is_reached_only_through_its_own_event(env):
@@ -600,7 +618,7 @@ def test_purge_removes_objects_first_then_rows(env):
     gone["due"] = True
     n = asyncio.run(gp.purge_old_guest_photos())
     assert n == 1
-    assert env.store.removed == [gone["storage_path"]]
+    assert env.store.removed == both(gone["storage_path"])
     assert env.db.photos == [keep]
 
 
@@ -672,7 +690,7 @@ def test_a_wide_gamut_photo_is_converted_to_srgb_so_it_does_not_look_washed_out(
     assert max(abs(a - b) for a, b in zip(expect, src_color)) > 15
 
     assert upload(env, _jpeg(src_color, p3)).status_code == 200
-    (stored, _t), = env.store.objects.values()
+    (stored, _t), = photos_only(env)
     out = Image.open(io.BytesIO(stored))
     assert "icc_profile" not in out.info          # stored as plain sRGB: no profile rides along
     got = out.convert("RGB").getpixel((8, 8))
@@ -685,7 +703,7 @@ def test_an_srgb_or_untagged_photo_keeps_its_colors(env):
     for icc in (None, srgb):
         env.store.objects.clear()
         assert upload(env, _jpeg((60, 180, 60), icc)).status_code == 200
-        (stored, _t), = env.store.objects.values()
+        (stored, _t), = photos_only(env)
         got = Image.open(io.BytesIO(stored)).convert("RGB").getpixel((8, 8))
         assert max(abs(a - b) for a, b in zip(got, (60, 180, 60))) <= 6, (icc is None, got)
 
@@ -693,7 +711,7 @@ def test_an_srgb_or_untagged_photo_keeps_its_colors(env):
 def test_a_broken_color_profile_never_refuses_the_photo(env):
     r = upload(env, _jpeg((60, 180, 60), b"not an icc profile at all" * 8))
     assert r.status_code == 200, r.text
-    (stored, _t), = env.store.objects.values()
+    (stored, _t), = photos_only(env)
     assert b"not an icc profile" not in stored
 
 
@@ -901,5 +919,37 @@ def test_account_deletion_removes_guest_photo_objects_before_the_auth_delete(mon
     monkeypatch.setattr(A.httpx, "AsyncClient", http)
     asyncio.run(A.delete_account(A.DeleteAccountRequest(confirmation="DELETE"), "Bearer token"))
     assert calls[0][1].endswith("/storage/v1/object/guest-photos")
-    assert calls[0][2]["json"] == {"prefixes": ["event-solo/p1.jpg", "event-solo/p2.jpg"]}
+    assert calls[0][2]["json"] == {"prefixes": ["event-solo/p1.jpg", "event-solo/p1.t.jpg",
+                                                "event-solo/p2.jpg", "event-solo/p2.t.jpg"]}
     assert calls[-1][1].endswith("/auth/v1/admin/users/" + uid)
+
+
+# ── Gallery sizes (11/16/2026) ─────────────────────────────────────────────────
+def test_a_big_photo_is_stored_at_2560_and_its_thumbnail_at_480(env):
+    big = io.BytesIO(); Image.new("RGB", (4032, 3024), (180, 120, 60)).save(big, "JPEG", quality=90)
+    r = upload(env, big.getvalue())
+    assert r.status_code == 200, r.text
+    row, = env.db.photos
+    (stored, _t), = photos_only(env)
+    assert Image.open(io.BytesIO(stored)).size == (2560, 1920) == (row["width"], row["height"])
+    thumb, _t = env.store.objects[row["storage_path"][:-4] + ".t.jpg"]
+    assert Image.open(io.BytesIO(thumb)).size == (480, 360)
+    assert len(thumb) < len(stored) / 5
+    p = r.json()["photo"]
+    assert p["thumb"].endswith(".t.jpg?token=t") and (p["width"], p["height"]) == (2560, 1920)
+
+
+def test_a_small_photo_is_never_enlarged(env):
+    upload(env, webp(), ctype="image/webp")
+    row, = env.db.photos
+    assert max(row["width"], row["height"]) <= gp.THUMB_EDGE
+
+
+def test_a_photo_stored_before_thumbnails_falls_back_to_itself_in_the_grid(env):
+    env.db.add(status="approved")
+    real = env.store.sign
+    async def no_thumbs(paths, ttl):
+        return {k: v for k, v in (await real(paths, ttl)).items() if not k.endswith(".t.jpg")}
+    env.mp.setattr(gp, "_storage_sign", no_thumbs)
+    p, = env.client.get(f"/api/public/photos/{CODE}").json()["photos"]
+    assert p["thumb"] == p["url"] and p["url"]

@@ -111,8 +111,12 @@ test('the upload screen says what sharing means; "keep private" starts off; an u
   expect(calls.upload[0].tz).toMatch(/^-?\d+$/);
   expect(calls.upload[0].key.length).toBeGreaterThanOrEqual(16);
   expect(calls.upload[0].bytes).toBe(JPEG.length);
-  // Her photo, with what it is waiting for — never a bare "pending".
-  await expect(card.locator('[data-my-photos] .photo-meta')).toHaveText(['Waiting for your host to approve it']);
+  // Her photo, with what it is waiting for — never a bare "pending": a
+  // "Waiting" badge on the tile, and the full sentence in its name and viewer.
+  const tile = card.locator('[data-my-photos] .photo-tile-btn');
+  await expect(tile).toHaveCount(1);
+  await expect(tile).toHaveAttribute('aria-label', 'Your photo 1: Waiting for your host to approve it');
+  await expect(tile.locator('.photo-badge')).toHaveText('Waiting');
   await expect(card).not.toContainText(/\bpending\b/i);
 
   // The switch, with a photo already there, goes to the server.
@@ -124,16 +128,21 @@ test('the upload screen says what sharing means; "keep private" starts off; an u
 test('Share copies the caption, then hands the photo FILE to the share sheet; a kept-back photo has no Share button', async ({ page }) => {
   await phoneShare(page);
   await serve(page, { approved: [
-    { id: 'a1', url: IMG('a1'), created_at: '2026-11-16T23:00:00Z', shareable: true },
-    { id: 'a2', url: IMG('a2'), created_at: '2026-11-16T23:05:00Z', shareable: false },
+    { id: 'a1', url: IMG('a1'), thumb: IMG('a1t'), created_at: '2026-11-16T23:00:00Z', shareable: true },
+    { id: 'a2', url: IMG('a2'), thumb: IMG('a2t'), created_at: '2026-11-16T23:05:00Z', shareable: false },
   ] });
   await open(page);
   const gallery = page.locator('[data-approved-photos]');
-  await expect(gallery.locator('.photo-cell')).toHaveCount(2);
-  await expect(gallery.locator('[data-photo-share]')).toHaveCount(1);
-  await expect(gallery.locator('.photo-cell').nth(1).getByRole('button')).toHaveCount(0);
-  await gallery.locator('[data-photo-share]').click();
-  await expect(page.locator('[data-photos-status]')).toHaveText('Caption copied — paste it in Instagram.');
+  // THE GRID IS PICTURES ONLY (11/16/2026): small thumbnails, no buttons under them.
+  await expect(gallery.locator('.photo-tile')).toHaveCount(2);
+  await expect(gallery.locator('img').first()).toHaveAttribute('src', IMG('a1t'));
+  await expect(gallery.locator('[data-photo-share]')).toHaveCount(0);
+  await gallery.locator('.photo-tile-btn').first().click();
+  const viewer = page.locator('[data-photo-viewer]');
+  await expect(viewer).toBeVisible();
+  await expect(viewer.locator('img.pv-full')).toHaveAttribute('src', IMG('a1'));   // the full photo, not the thumbnail
+  await viewer.locator('[data-photo-share]').click();
+  await expect(viewer.locator('[data-viewer-status]')).toHaveText('Caption copied — paste it in Instagram.');
   const shared = await page.evaluate(() => window.__shared);
   const clip = await page.evaluate(() => window.__clip);
   expect(clip).toEqual(['Vida’s Friendsgiving #VidasFriendsgiving2026']);
@@ -142,6 +151,11 @@ test('Share copies the caption, then hands the photo FILE to the share sheet; a 
   expect(shared[0].files).toHaveLength(1);
   expect(shared[0].files[0].type).toBe('image/jpeg');
   expect(shared[0].files[0].size).toBe(JPEG.length);
+  // The next photo was kept back: no Share, and the viewer says why.
+  await page.keyboard.press('ArrowRight');
+  await expect(viewer.locator('[data-pv-count]')).toHaveText('2 of 2');
+  await expect(viewer.locator('[data-photo-share]')).toHaveCount(0);
+  await expect(viewer).toContainText('Kept to this event — no sharing.');
   await expect(page.locator('body')).not.toContainText(/\bposted\b/i);
 });
 
@@ -149,33 +163,52 @@ test('where a browser can’t hand over a file: "Download photo" and "Copy capti
   await desktopShare(page);
   await serve(page, { approved: [{ id: 'a1', url: IMG('a1'), created_at: '2026-11-16T23:00:00Z', shareable: true }] });
   await open(page);
-  const cell = page.locator('[data-approved-photos] .photo-cell').first();
-  await expect(cell.locator('[data-photo-share]')).toHaveCount(0);
-  await expect(cell.getByRole('button', { name: 'Download photo' })).toBeVisible();
-  await cell.getByRole('button', { name: 'Copy caption' }).click();
-  await expect(page.locator('[data-photos-status]')).toHaveText('Caption copied.');
+  await page.locator('[data-approved-photos] .photo-tile-btn').first().click();
+  const viewer = page.locator('[data-photo-viewer]');
+  await expect(viewer.locator('[data-photo-share]')).toHaveCount(0);
+  await expect(viewer.getByRole('button', { name: 'Download photo' })).toBeVisible();
+  await viewer.getByRole('button', { name: 'Copy caption' }).click();
+  await expect(viewer.locator('[data-viewer-status]')).toHaveText('Caption copied.');
   expect(await page.evaluate(() => window.__clip)).toEqual(['Vida’s Friendsgiving #VidasFriendsgiving2026']);
 });
 
-test('at 390px the photo grid is two-up, every control is finger-sized, and nothing runs off the side', async ({ page }) => {
+test('at 390px the wall is three-up, the viewer fills the screen and swipes, and nothing runs off the side', async ({ page }) => {
   await phoneShare(page);
   await serve(page, {
     mine: [{ id: 'm1', status: 'approved', created_at: '2026-11-16T23:00:00Z', url: IMG('m1'), shareable: true }],
-    approved: [
-      { id: 'a1', url: IMG('a1'), created_at: '2026-11-16T23:00:00Z', shareable: true },
-      { id: 'a2', url: IMG('a2'), created_at: '2026-11-16T23:05:00Z', shareable: true },
-    ],
+    approved: ['a1', 'a2', 'a3', 'a4'].map((id, i) => ({ id, url: IMG(id), thumb: IMG(id + 't'), created_at: `2026-11-16T23:0${i}:00Z`, shareable: true })),
   });
   await open(page);
-  const cells = page.locator('[data-approved-photos] .photo-cell');
-  const a = await cells.nth(0).boundingBox();
-  const b = await cells.nth(1).boundingBox();
-  expect(Math.abs(a.y - b.y)).toBeLessThan(1);          // same row
+  const tiles = page.locator('[data-approved-photos] .photo-tile-btn');
+  const [a, b, c, d] = await Promise.all([0, 1, 2, 3].map((n) => tiles.nth(n).boundingBox()));
+  expect(Math.abs(a.y - c.y)).toBeLessThan(1);           // three on the first row…
+  expect(d.y).toBeGreaterThan(a.y + a.height - 1);       // …and the fourth wraps
+  expect(Math.abs(a.width - a.height)).toBeLessThan(1);  // square tiles
   expect(b.x).toBeGreaterThan(a.x + a.width - 1);
+  await expect(page.locator('[data-approved-photos]').locator('..')).toContainText('From everyone · 4');
   const small = await page.evaluate(() => [...document.querySelectorAll('[data-guest-photos] button, [data-guest-photos] label.cta, [data-guest-photos] label.guest-optin')]
     .map((n) => n.getBoundingClientRect()).filter((r) => r.width && (r.height < 44 || r.width < 44)).length);
   expect(small).toBe(0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
-  await expect(page.locator('[data-my-photos] .photo-meta')).toHaveText(['Approved — other guests can see it']);
+  await expect(page.locator('[data-my-photos] .photo-tile-btn')).toHaveAttribute('aria-label', 'Your photo 1: Approved — other guests can see it');
+
+  // The viewer: the whole screen, a count, swipe to the next, Escape back.
+  await tiles.nth(0).click();
+  const viewer = page.locator('[data-photo-viewer]');
+  const box = await viewer.boundingBox();
+  expect(box.width).toBeGreaterThanOrEqual(389); expect(box.height).toBeGreaterThanOrEqual(843);
+  await expect(viewer.locator('[data-pv-count]')).toHaveText('1 of 4');
+  const stage = await viewer.locator('.pv-stage').boundingBox();
+  const y = stage.y + stage.height / 2;
+  await page.mouse.move(stage.x + stage.width * 0.8, y); await page.mouse.down();
+  await page.mouse.move(stage.x + stage.width * 0.2, y, { steps: 6 }); await page.mouse.up();
+  await expect(viewer.locator('[data-pv-count]')).toHaveText('2 of 4');
+  await expect(viewer.locator('img.pv-full')).toHaveAttribute('src', IMG('a2'));
+  const acts = await page.evaluate(() => [...document.querySelectorAll('[data-photo-viewer] button')]
+    .filter((n) => n.offsetParent).map((n) => n.getBoundingClientRect()).filter((r) => r.height < 44 || r.width < 44).length);
+  expect(acts).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(viewer).toHaveCount(0);
+  await expect(tiles.nth(0)).toBeFocused();               // focus returns to where she was
 });

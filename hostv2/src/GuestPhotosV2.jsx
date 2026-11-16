@@ -21,6 +21,7 @@ import {
 } from '@app/lib/api/guestPhotos';
 import { rsvpIdempotencyKey, existingRsvpKey } from '@app/lib/api/rsvp';
 import { photoStatusLabel } from '@app/lib/guestInbox';
+import PhotoViewer, { PhotoWall } from './PhotoViewer.jsx';
 import { shareCaption, sharePhoto, canShareFiles, shareToast, copyCaption, instagramTagUrl, photoFileName } from '@app/lib/photoShare';
 
 export const CONSENT_LINE = 'Approved photos can be shared by your host and other guests. Once someone shares a photo to Instagram or Facebook, deleting it here doesn’t remove that post.';
@@ -76,6 +77,8 @@ export default function GuestPhotosV2({ code, event, eventKey, guestName, anchor
   const [line, setLine] = useState('');
   const [err, setErr] = useState('');
   const fileRef = useRef(null);
+  const [view, setView] = useState(null);          // { list: 'mine' | 'all', i } | null
+  const refreshed = useRef(0);
 
   const load = async () => {
     // A key is minted only here, on a page that offers photos: listing her own
@@ -143,6 +146,10 @@ export default function GuestPhotosV2({ code, event, eventKey, guestName, anchor
   };
 
   const myPhotos = mine.photos || [];
+  // A signed URL lasts minutes; a viewer left open longer asks for fresh ones
+  // (at most once every 20 seconds, so a broken photo can't loop).
+  const onExpired = () => { const t = Date.now(); if (t - refreshed.current > 20000) { refreshed.current = t; load(); } };
+  const viewList = view ? (view.list === 'mine' ? myPhotos : approved) : [];
   return (
     <div className="card no-hover guest-photos" id={anchorId} data-guest-photos style={{ marginTop: 14 }}>
       <div className="card-head" style={{ cursor: 'default', padding: '14px 18px' }}>
@@ -187,32 +194,40 @@ export default function GuestPhotosV2({ code, event, eventKey, guestName, anchor
         {myPhotos.length > 0 && (
           <>
             <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Your photos</div>
-            <ul className="photo-grid" data-my-photos>
-              {myPhotos.map((p) => (
-                <li key={p.id} className="photo-cell" data-status={p.status}>
-                  {p.url ? <img src={p.url} alt="A photo you added" loading="lazy" /> : <div className="photo-missing">Photo</div>}
-                  <div className="photo-meta">{photoStatusLabel(p.status)}</div>
-                  <button className="mini" onClick={() => removeMine(p.id)} disabled={busy === p.id}>{busy === p.id ? 'Deleting…' : 'Delete this photo'}</button>
-                </li>
-              ))}
-            </ul>
+            <PhotoWall photos={myPhotos} data-my-photos onOpen={(i) => setView({ list: 'mine', i })}
+              badge={(p) => (p.status === 'approved' ? '' : p.status === 'pending' ? 'Waiting' : 'Hidden')}
+              label={(i, p) => `Your photo ${i + 1}: ${photoStatusLabel(p.status)}`} />
           </>
         )}
 
         {approved.length > 0 && (
           <>
-            <div className="shelf-label" style={{ margin: '14px 0 6px' }}>From everyone</div>
-            <ul className="photo-grid" data-approved-photos>
-              {approved.map((p, i) => (
-                <li key={p.id} className="photo-cell">
-                  {p.url ? <img src={p.url} alt={`Photo ${i + 1} from the day`} loading="lazy" /> : <div className="photo-missing">Photo</div>}
-                  {p.shareable && <div className="actions-row photo-acts"><PhotoShareControls photo={p} event={event} index={i + 1} onLine={(l) => setLine(l || '')} /></div>}
-                </li>
-              ))}
-            </ul>
+            <div className="shelf-label" style={{ margin: '14px 0 6px' }}>From everyone · {approved.length}</div>
+            <PhotoWall photos={approved} data-approved-photos onOpen={(i) => setView({ list: 'all', i })}
+              label={(i) => `Open photo ${i + 1} of ${approved.length} from the day`} />
           </>
         )}
       </div>
+      {view && viewList[view.i] && (
+        <PhotoViewer photos={viewList} index={view.i} onIndex={(i) => { setLine(''); setView({ ...view, i }); }}
+          onClose={() => setView(null)} onExpired={onExpired}
+          label={(i, n) => (view.list === 'mine' ? `Your photo ${i + 1} of ${n}` : `Photo ${i + 1} of ${n} from the day`)}
+          actions={(p, i) => (view.list === 'mine' ? (
+            <>
+              <span className="pv-note">{photoStatusLabel(p.status)}</span>
+              <button className="mini" onClick={async () => { await removeMine(p.id); setView(null); }} disabled={busy === p.id}>
+                {busy === p.id ? 'Deleting…' : 'Delete this photo'}
+              </button>
+            </>
+          ) : (
+            <>
+              {p.shareable
+                ? <PhotoShareControls photo={p} event={event} index={i + 1} onLine={(l) => setLine(l || '')} />
+                : <span className="pv-note">Kept to this event — no sharing.</span>}
+              {line && <span className="pv-note" role="status" data-viewer-status>{line}</span>}
+            </>
+          ))} />
+      )}
     </div>
   );
 }
