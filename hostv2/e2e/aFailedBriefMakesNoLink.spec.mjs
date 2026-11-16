@@ -101,11 +101,11 @@ test('a 402 says the brief takes the pass and opens the pass sheet — no link',
 
 test('a 401 says to sign in and leads there — no link', async ({ page }) => {
   await boot(page, { status: 401, json: { detail: 'Planner authentication required' } });
-  const alert = page.getByRole('alert').filter({ hasText: 'not signed in on this browser' });
-  await expect(alert).toBeVisible();
   await noLinkMade(page);
   await expect.poll(async () => (await track(page, 'brief_mint_failed')).length).toBe(1);
   expect((await track(page, 'brief_mint_failed'))[0]).toMatchObject({ reason: 'signed-out', status_class: '4xx' });
-  await alert.getByRole('button', { name: 'Sign in', exact: true }).click();
+  // Owner call A (11/16/2026): ask to sign in FIRST, then send. The tap opens
+  // sign-in straight away and says why; nothing was sent and no link was made.
   await expect(page.locator('#sheet-title')).toHaveText('You & settings');
+  await expect(page.locator('.toast')).toContainText('Sign in to send');
 });

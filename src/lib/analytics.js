@@ -55,6 +55,15 @@ export function setAnalyticsOptOut(off) {
   try { if (_ph) { if (off) _ph.opt_out_capturing(); else _ph.opt_in_capturing(); } } catch { /* best-effort */ }
 }
 
+/**
+ * The notice's one action (owner call B, 11/16/2026): "Turn this off" turns
+ * analytics off — it used to only open Settings. `after` lets the shell sync
+ * its own state and say so.
+ */
+export function analyticsNoticeAction(after) {
+  return { label: 'Turn this off', fn: () => { setAnalyticsOptOut(true); if (after) after(); } };
+}
+
 /** The one-time first-open line: only where analytics would actually run, and only once. */
 export function shouldShowAnalyticsNotice() {
   if (!isAnalyticsConfigured() || analyticsOptedOut()) return false;

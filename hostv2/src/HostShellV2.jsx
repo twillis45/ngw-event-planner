@@ -142,7 +142,7 @@ import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuest
 
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
-import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen } from '@app/lib/analytics';
+import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen, analyticsNoticeAction } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
 import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
@@ -3845,7 +3845,11 @@ export default function HostShellV2() {
         t = setTimeout(() => {
           markAnalyticsNoticeSeen();
           toast('We count which parts of the app get used so we can make them better. No ads, nothing sold, and your guests’ details never leave your plan.',
-            { label: 'Turn this off', fn: () => setSheet({ kind: 'settings' }) });
+            // Owner call B (11/16/2026): the action does what it says.
+            analyticsNoticeAction(() => {
+              setAnalyticsOff(true); patchProfile({ analyticsOff: true });
+              setTimeout(() => toast('Analytics off — change it anytime in Settings.'), 0);
+            }));
         }, 1200);
       }
     } catch { /* a notice must never break boot */ }
@@ -4163,6 +4167,13 @@ export default function HostShellV2() {
     return () => clearTimeout(t);
   }, [vbSettledKey]);
   useEffect(() => { setVendorBrief(null); }, [eventId]); // never carry a stale link across an event switch
+  const pendingBriefRef = useRef(null);   // the vendor whose details wait on sign-in
+  const askSignInToSend = (v) => {
+    pendingBriefRef.current = v && v.id;
+    const who = vendorGreetingName(v);
+    toast(`Sign in to send ${who || 'them'} the details — their answer comes back to your account. Nothing was sent.`, null, null, { sticky: true });
+    setSheet({ kind: 'settings' });
+  };
   const shareVendorBrief = async (v) => {
     // MODEL D — door 1, at the only honest gate point: GENERATING a brief for
     // a new vendor (board 2026-08-18: "never mid-conversation" — an
@@ -4179,6 +4190,11 @@ export default function HostShellV2() {
         return;
       }
     } catch { /* gate engine absent — never block sharing on an internal error */ }
+    // SIGN IN FIRST, THEN SEND (owner call A, 11/16/2026). The live link needs
+    // an account: it is where the vendor's answer comes back to. A host we
+    // already know is signed out is asked before anything is attempted; the
+    // send resumes on its own once she is in (pendingBriefRef, below).
+    if (isVendorBriefApiConfigured() && isSupabaseConfigured() && !session) { askSignInToSend(v); return; }
     let appUrl;
     try { appUrl = publicAppUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return; }
@@ -4200,6 +4216,9 @@ export default function HostShellV2() {
       if (!r.ok) {
         reportFailure('brief_mint', { where: 'hostv2.vendor-brief', reason: r.kind, statusClass: mintStatusClass(r), eventId: event.id });
         setVendorBrief(b => (b && b.vendorId === v.id) ? { vendorId: v.id, url: null, qrDataUrl: null, minting: false, copied: false, error: r.kind } : b);
+        // The server says signed out (a session that lapsed, or no auth on this
+        // browser): same rule as above — straight to sign-in, then resume.
+        if (r.kind === 'signed-out') askSignInToSend(v);
         return;
       }
       code = r.code;
@@ -4219,6 +4238,16 @@ export default function HostShellV2() {
       if (v.id && !cur.includes(v.id)) patchEvent({ briefSharedVendorIds: [...cur, v.id] });
     } catch { /* ledger write is best-effort; the share itself already happened */ }
   };
+  // Signed in with a send waiting: go back to that vendor and send it.
+  useEffect(() => {
+    if (!session || !pendingBriefRef.current) return;
+    const v = (event.vendors || []).find(x => x && x.id === pendingBriefRef.current);
+    pendingBriefRef.current = null;
+    if (!v) return;
+    setSheet({ kind: 'vendors', focus: v.id });
+    shareVendorBrief(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
   const copyVendorBriefLink = () => {
     if (!vendorBrief || !vendorBrief.url) return;
     navigator.clipboard?.writeText(vendorBrief.url).then(() => {
