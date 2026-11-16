@@ -4237,6 +4237,10 @@ const CSS = `
   .lc-step{border-bottom:none;border-left:2px solid var(--line);padding:10px 0 10px 12px;width:100%;text-align:left;font-size:var(--t-overline);letter-spacing:.02em;}
   .lc-step.is-done{border-left-color:var(--steel-soft);}
   .lc-step.is-on{border-left-color:var(--ok);}
+  /* A rail-less state (no event, not a destination) has ONE child; the two-column
+     track put it in the 190px rail column and wrapped the headline a word per
+     line, with the two buttons overlapping (owner, 11/16/2026, desktop + wide). */
+  .lc-grid.lc-grid--solo{grid-template-columns:minmax(0,1fr);}
 }
 @media (prefers-reduced-motion:reduce){.lc-wrap *{animation:none!important;transition:none!important;}}
 `;
@@ -4258,5 +4262,5 @@ const Frame = ({ children }) => (
 // The simple states (no event, not a destination) have no rail, so they get the
 // single-column body directly.
 const Solo = ({ children }) => (
-  <div className="lc-grid"><div className="lc-main">{children}</div></div>
+  <div className="lc-grid lc-grid--solo"><div className="lc-main">{children}</div></div>
 );

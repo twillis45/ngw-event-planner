@@ -104,8 +104,19 @@ test('a 401 says to sign in and leads there — no link', async ({ page }) => {
   await noLinkMade(page);
   await expect.poll(async () => (await track(page, 'brief_mint_failed')).length).toBe(1);
   expect((await track(page, 'brief_mint_failed'))[0]).toMatchObject({ reason: 'signed-out', status_class: '4xx' });
-  // Owner call A (11/16/2026): ask to sign in FIRST, then send. The tap opens
-  // sign-in straight away and says why; nothing was sent and no link was made.
-  await expect(page.locator('#sheet-title')).toHaveText('You & settings');
-  await expect(page.locator('.toast')).toContainText('Sign in to send');
+  // Owner call A (11/16/2026): ask to sign in FIRST, then send. Owner, later the
+  // same day: ask ON THE CARD, not with a toast over the account sheet (the
+  // toast hid the form it pointed at). The panel sits under the button, in
+  // view, says nothing was sent, and "Not now" puts everything back.
+  const card = page.locator('.vcard', { hasText: 'Spin Cycle' }).first();
+  const panel = card.locator('[data-send-signin]');
+  await expect(panel).toBeVisible();
+  await expect(panel).toBeInViewport({ ratio: 0.5 });
+  await expect(panel).toContainText('Sign in to send Spin Cycle the details');
+  await expect(panel).toContainText('Nothing was sent yet');
+  await expect(page.locator('.toast', { hasText: 'Sign in to send' })).toHaveCount(0);
+  await expect(page.locator('#sheet-title')).not.toHaveText('You & settings');
+  await expect(card.locator('[data-vbrief-panel]')).toHaveCount(0);   // one message, not two
+  await panel.getByRole('button', { name: 'Not now', exact: true }).click();
+  await expect(card.locator('[data-send-signin]')).toHaveCount(0);
 });

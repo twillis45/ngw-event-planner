@@ -2282,6 +2282,34 @@ export default function HostShellV2() {
   // session — no resend, no "wrong address, try again," no way out short of
   // reloading the app. This is the only place authSent is ever reset.
   const resetAuthSent = () => { setAuthSent(false); setAuthCode(''); };
+  // ONE SIGN-IN FORM, TWO PLACES (owner, 11/16/2026): the account sheet and the
+  // inline "sign in to send" panel on a vendor card share this exact form and
+  // its state, so a host never meets two different sign-ins.
+  const signInFields = () => (authSent ? (
+                    <>
+                      <p className="grounding" style={{ margin: 0 }}>Check your email. Type the code from it here to sign in on this browser, where this plan is. A link tapped in a mail app can open a different browser that doesn’t have your plan.</p>
+                      <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email"
+                        value={authCode} onChange={e => setAuthCode(e.target.value)} aria-label="Sign-in code from the email"
+                        onKeyDown={e => { if (e.key === 'Enter') signInWithCode(); }} />
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="cta" disabled={authBusy || !signInCode(authCode)} onClick={signInWithCode}>{authBusy ? 'Signing in…' : 'Sign in with the code'}</button>
+                      </div>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="mini" onClick={resetAuthSent}>Use a different email</button>
+                        <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
+                        onChange={e => setAuthEmail(e.target.value)} aria-label="Email for sign-in link" />
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
+                      </div>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
+                      <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
+                    </>
+                  ));
   // THE CODE KEEPS YOU HERE (live smoke test, 11/7/2026). A link tapped in a
   // mail app opens that app's own browser, which has none of this plan, so the
   // host's event seemed to vanish. The same email carries a code; typing it
@@ -3707,7 +3735,16 @@ export default function HostShellV2() {
         .catch(() => { /* queued by events.js; the tombstone holds until it flushes */ });
     }
   };
-  const [demoBarOpen, setDemoBarOpen] = useState(true);   // opens on arrival; closes to an edge tab after Seed / Remove
+  // Opens on a tab's first arrival; closes to an edge tab after Seed / Remove / ✕.
+  // The choice is remembered for the tab (sessionStorage): a reload used to
+  // reopen the bar over the page's own buttons (owner's live shots, 11/16/2026).
+  const [demoBarOpen, setDemoBarOpenRaw] = useState(() => {
+    try { return sessionStorage.getItem('ngw-demo-bar') !== 'closed'; } catch { return true; }
+  });
+  const setDemoBarOpen = (open) => {
+    setDemoBarOpenRaw(open);
+    try { sessionStorage.setItem('ngw-demo-bar', open ? 'open' : 'closed'); } catch { /* private mode: the bar just reopens */ }
+  };
   const demoSeed = () => {
     const { events: next, removed } = withDemoSeeded(customs || []);
     const res = saveCustomEvents(next, { reason: 'hostshell:demo-seed', allowRemovingUserEvents: true });
@@ -4188,12 +4225,16 @@ export default function HostShellV2() {
   }, [vbSettledKey]);
   useEffect(() => { setVendorBrief(null); }, [eventId]); // never carry a stale link across an event switch
   const pendingBriefRef = useRef(null);   // the vendor whose details wait on sign-in
+  // SIGN IN WHERE YOU TAPPED (owner, 11/16/2026): the ask used to be a toast
+  // over the account sheet, which hid the form it pointed at and moved the host
+  // off the vendor. Now the card itself opens a sign-in panel under the button.
+  const [briefSignIn, setBriefSignIn] = useState(null);   // vendor id whose card shows it
   const askSignInToSend = (v) => {
     pendingBriefRef.current = v && v.id;
-    const who = vendorGreetingName(v);
-    toast(`Sign in to send ${who || 'them'} the details — their answer comes back to your account. Nothing was sent.`, null, null, { sticky: true });
-    setSheet({ kind: 'settings' });
+    setVendorBrief(null);   // one message, not a failed-link panel beside it
+    setBriefSignIn(v && v.id);
   };
+  const cancelSignInToSend = () => { pendingBriefRef.current = null; setBriefSignIn(null); };
   const shareVendorBrief = async (v) => {
     // MODEL D — door 1, at the only honest gate point: GENERATING a brief for
     // a new vendor (board 2026-08-18: "never mid-conversation" — an
@@ -4263,6 +4304,7 @@ export default function HostShellV2() {
     if (!session || !pendingBriefRef.current) return;
     const v = (event.vendors || []).find(x => x && x.id === pendingBriefRef.current);
     pendingBriefRef.current = null;
+    setBriefSignIn(null);
     if (!v) return;
     setSheet({ kind: 'vendors', focus: v.id });
     shareVendorBrief(v);
@@ -19624,31 +19666,7 @@ export default function HostShellV2() {
                         </form>
                       )}
                     </>
-                  ) : authSent ? (
-                    <>
-                      <p className="grounding" style={{ margin: 0 }}>Check your email. Type the code from it here to sign in on this browser, where this plan is. A link tapped in a mail app can open a different browser that doesn’t have your plan.</p>
-                      <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email"
-                        value={authCode} onChange={e => setAuthCode(e.target.value)} aria-label="Sign-in code from the email"
-                        onKeyDown={e => { if (e.key === 'Enter') signInWithCode(); }} />
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        <button className="cta" disabled={authBusy || !signInCode(authCode)} onClick={signInWithCode}>{authBusy ? 'Signing in…' : 'Sign in with the code'}</button>
-                      </div>
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        <button className="mini" onClick={resetAuthSent}>Use a different email</button>
-                        <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
-                        onChange={e => setAuthEmail(e.target.value)} aria-label="Email for sign-in link" />
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
-                      </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
-                      <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
-                    </>
-                  )}
+                  ) : signInFields()}
 
                   {/* SYNC-HONESTY-1: an honest per-event sync status, backed
                       entirely by the syncState reader — no status is ever
@@ -24212,6 +24230,17 @@ export default function HostShellV2() {
                               {vendorGreetingName(v) ? `Send ${vendorGreetingName(v)} the details` : 'Send the details'}
                             </button>
                           </div>
+                          {briefSignIn === v.id && (
+                            <div data-send-signin={v.id} ref={scrollIntoViewOnOpen(true)} role="group" aria-label={`Sign in to send ${vendorGreetingName(v) || 'them'} the details`}
+                              style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+                              <p className="vc-detail" style={{ margin: '0 0 var(--sp-1)', color: 'var(--ink)', fontWeight: 600 }}>Sign in to send {vendorGreetingName(v) || 'them'} the details</p>
+                              <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>Their answer comes back to your account. Nothing was sent yet — once you’re in, it goes on its own.</p>
+                              {isSupabaseConfigured() ? signInFields() : <p className="vc-detail" style={{ margin: 0 }}>Accounts aren’t turned on in this build.</p>}
+                              <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                                <button className="mini" onClick={cancelSignInToSend}>Not now</button>
+                              </div>
+                            </div>
+                          )}
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
                           {vendorBrief && vendorBrief.vendorId === v.id && (
