@@ -7,7 +7,7 @@
 // checklist. Week is a day-by-day list (made for a phone); Month is a grid
 // whose days open their list below it.
 import { useMemo, useState } from 'react';
-import { calendarItems, weekDays, monthWeeks, shiftAnchor, rangeLabel } from '@app/lib/planCalendar';
+import { calendarItems, weekDays, monthWeeks, shiftAnchor, rangeLabel, calendarIcs } from '@app/lib/planCalendar';
 import { localISO, getToday } from '@app/lib/dates';
 
 const VIEW_KEY = 'ngw-calendar-view';
@@ -22,6 +22,19 @@ function Item({ it }) {
       {it.done ? <span className="cal-tag">Done</span> : it.overdue ? <span className="cal-tag">Overdue</span> : null}
     </li>
   );
+}
+
+// "Add to my calendar" (11/16/2026): the dated plan as one .ics file. On a
+// phone it opens the calendar app's own "Add all" screen; on a computer it
+// downloads, and the calendar app opens it.
+function addToCalendar(event) {
+  const blob = new Blob([calendarIcs(event)], { type: 'text/calendar;charset=utf-8' });
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = (String(event.name || 'plan').replace(/[’']/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'plan') + '-plan.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 4000);
 }
 
 export default function CalendarSheet({ event, onOpenChecklist }) {
@@ -108,6 +121,14 @@ export default function CalendarSheet({ event, onOpenChecklist }) {
           From your checklist and your vendors — change a step there and it moves here.
           {undated > 0 ? ` ${undated} step${undated === 1 ? ' has' : 's have'} no date and ${undated === 1 ? 'is' : 'are'} only in the checklist.` : ''}
         </p>
+        {items.length > 0 && (
+          <>
+            <button className="mini" data-cal-ics onClick={() => addToCalendar(event)}>Add to my calendar</button>
+            <p className="grounding" style={{ margin: 0 }}>
+              Puts the event day and every open step into Apple, Google or Outlook Calendar. It’s a one-time copy — if the plan changes, add it again.
+            </p>
+          </>
+        )}
         {onOpenChecklist && <button className="mini" onClick={onOpenChecklist}>Open the checklist</button>}
       </div>
     </div>

@@ -61,3 +61,24 @@ test('moving and naming the range', () => {
   expect(rangeLabel('2026-11-18', 'week')).toBe('Nov 15 – 21, 2026');
   expect(rangeLabel('2026-11-30', 'week')).toBe('Nov 29 – Dec 5, 2026');
 });
+
+// ── Add to my calendar (.ics) ────────────────────────────────────────────────
+import { calendarIcs } from '../planCalendar';
+
+test('the calendar file: the event and every open step, all-day, nothing already done', () => {
+  const ics = calendarIcs(EV, NOW);
+  expect(ics.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n')).toBe(true);
+  expect(ics.trimEnd().endsWith('END:VCALENDAR')).toBe(true);
+  expect((ics.match(/BEGIN:VEVENT/g) || []).length).toBe(3);            // event + 2 open steps (invites are done)
+  expect(ics).toContain('DTSTART;VALUE=DATE:20261121\r\nDTEND;VALUE=DATE:20261122');
+  expect(ics).toContain('SUMMARY:To do: Order the turkey');
+  expect(ics).toContain('SUMMARY:Vida’s Friendsgiving');
+  expect(ics).not.toContain('Send invites');
+  expect(ics).toContain('UID:e1-task-t2@ngw-plan');                      // stable: re-adding can update, not copy
+  expect(ics.split('\r\n').every((l) => l.length <= 75)).toBe(true);     // folded per RFC 5545
+});
+
+test('commas, semicolons and newlines in a step are escaped, not broken', () => {
+  const ics = calendarIcs({ ...EV, timeline: [{ id: 'x', task: 'Buy plates, cups; napkins\nand ice', week: 'day before' }] }, NOW);
+  expect(ics).toContain('SUMMARY:To do: Buy plates\\, cups\; napkins\\nand ice');
+});

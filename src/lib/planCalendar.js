@@ -103,3 +103,46 @@ export function rangeLabel(anchor, view) {
   const right = sameMonth ? String(b.getDate()) : b.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return `${left} – ${right}, ${b.getFullYear()}`;
 }
+
+// ─── ADD TO MY CALENDAR (owner, 11/16/2026: "calendar needs likely app
+// integration") ──────────────────────────────────────────────────────────────
+// A standard .ics file (RFC 5545) the host opens in Apple, Google or Outlook
+// Calendar: the event day(s), every dated step not yet done, and vendors' open
+// promises, each an all-day entry. A ONE-TIME COPY: the words on the button say
+// so, because a calendar file cannot update itself when the plan changes.
+// Stable UIDs, so an app that recognizes them updates rather than duplicates.
+const icsText = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const fold = (line) => {
+  // Lines longer than 75 octets are folded (RFC 5545 §3.1).
+  const out = []; let rest = line;
+  while (rest.length > 74) { out.push(rest.slice(0, 74)); rest = ' ' + rest.slice(74); }
+  out.push(rest);
+  return out.join('\r\n');
+};
+const compact = (iso) => String(iso).slice(0, 10).replace(/-/g, '');
+
+export function calendarIcs(event, now) {
+  const ev = event || {};
+  const { items } = calendarItems(ev, now);
+  const name = String(ev.name || 'The event').trim();
+  const stamp = new Date(now || Date.now()).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//No Guesswork//Plan Calendar//EN', 'CALSCALE:GREGORIAN',
+    'X-WR-CALNAME:' + icsText(name + ' — plan')];
+  for (const it of items) {
+    if (it.done) continue;
+    const day = DAY(it.date);
+    if (!day) continue;
+    const next = localISO(plus(day, 1));
+    lines.push('BEGIN:VEVENT',
+      'UID:' + icsText(`${ev.id || 'event'}-${it.id}@ngw-plan`),
+      'DTSTAMP:' + stamp,
+      'DTSTART;VALUE=DATE:' + compact(it.date),
+      'DTEND;VALUE=DATE:' + compact(next),
+      'SUMMARY:' + icsText(it.kind === 'event' ? it.label : (it.kind === 'vendor' ? 'Vendor: ' : 'To do: ') + it.label),
+      'DESCRIPTION:' + icsText(`From your plan for ${name}.`),
+      'TRANSP:TRANSPARENT',
+      'END:VEVENT');
+  }
+  lines.push('END:VCALENDAR');
+  return lines.map(fold).join('\r\n') + '\r\n';
+}

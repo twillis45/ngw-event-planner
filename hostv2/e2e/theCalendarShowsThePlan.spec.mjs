@@ -61,6 +61,15 @@ test('week and month: the steps on their days, the event marked, the view rememb
   await openSectionByName(page, 'Calendar');
   await expect(page.locator('[data-cal-month]')).toBeVisible();
 
+  // Add to my calendar: one .ics file with the event and every open step.
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('[data-cal-ics]').click()]);
+  expect(dl.suggestedFilename()).toBe('Vidas-Friendsgiving-plan.ics');
+  const ics = await (await import('node:fs')).promises.readFile(await dl.path(), 'utf8');
+  expect(ics).toContain('BEGIN:VCALENDAR');
+  expect(ics).toContain('SUMMARY:To do: Buy the wine');
+  expect(ics).not.toContain('Send invites');                // done steps stay out
+  await expect(page.locator('[data-calendar]')).toContainText('one-time copy');
+
   // Phone: finger-sized controls, nothing off the side.
   const small = await page.evaluate(() => [...document.querySelectorAll('[data-calendar] button')]
     .map((n) => n.getBoundingClientRect()).filter((r) => r.width && r.height < 40).length);
