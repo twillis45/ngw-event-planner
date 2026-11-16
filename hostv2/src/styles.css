@@ -1469,7 +1469,11 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .dock button[aria-current="true"]{background:var(--steel); color:var(--on-steel)}
 
 .toast{
-  position:absolute; left:50%; bottom:calc(84px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,0); z-index:60;
+  /* OFF THE PROGRESS ROW (owner, 11/16/2026). At 84px it sat on the home's
+     progress row and "The rest of your plan" bar, which take the bottom 111px
+     at every phone and tablet size measured (390, 430, 768, 1024 wide). 124px
+     clears them with a 12px gap. Desktop moves to the corner, below. */
+  position:absolute; left:50%; bottom:calc(124px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,0); z-index:60;
   /* NO WHITE SURFACES (host ruling 2026-07-28): the neutral toast was an
      INVERTED pill — background:var(--ink) is #eef0f4, i.e. a white card in a
      dark-only app, and it carried 84 of the 86 toast call sites. Studio Matte
@@ -7589,3 +7593,14 @@ button.vc-pill::after{
     border-radius:0; box-shadow:none; height:100%; min-height:0;
   }
 }
+
+/* ── THE TOAST TAKES THE CORNER ON DESKTOP (owner, 11/16/2026) ───────────────
+   Centered at 1440 it covered the "Who's confirmed" card in the middle of the
+   plan. With the rail up, the bottom-right corner is quiet ground beside the
+   "Where you stand" column, so the toast lands there and covers no work. Its
+   own entrance, since toastin's keyframes carry the centering translate. */
+@media (min-width:1280px){
+  .toast{ left:auto; right:var(--sp-5); bottom:var(--sp-5); transform:none; animation-name:toastin-corner; }
+}
+@keyframes toastin-corner{ from{ opacity:0; transform:translateY(26px); } 60%{ transform:translateY(-4px); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce){ .toast{ animation:none; } }
