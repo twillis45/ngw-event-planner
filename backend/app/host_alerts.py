@@ -24,7 +24,7 @@ import time
 
 from .config import APP_BASE_URL
 from .db import get_pool
-from .emailer import _send_via_resend, is_email_configured
+from .emailer import _send_via_resend, failure_reason, is_email_configured
 
 log = logging.getLogger("ngw.host_alerts")
 
@@ -96,5 +96,4 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
         await _send_via_resend(to=to, subject=subject, html=body)
         log.info("host alert sent event=%s kind=%s", event_id, kind)
     except Exception as e:  # noqa: BLE001 — fail-soft by design
-        log.error("host alert failed event=%s kind=%s error=%s %s", event_id, kind, type(e).__name__,
-                  str(e)[:300] if type(e).__name__ == "ResendRejected" else "")
+        log.error("host alert failed event=%s kind=%s error=%s", event_id, kind, failure_reason(e))

@@ -3,8 +3,8 @@
 // Owner ruling A: narrow, not chat. From the invite link a guest asks the host
 // a question, sees her own thread with the host's answers labeled "From your
 // host", and may leave an email with a PROMINENT checkbox directly under it,
-// unchecked by default — stored now, so the label says email updates are
-// coming soon. Loading the invite tells the server it was opened (throttled
+// unchecked by default; ticked, it promises an email when the host replies
+// and nothing more (announcements aren't built). Loading the invite tells the server it was opened (throttled
 // there), and the page says so in plain words: never "read" or "seen".
 //
 // The guest is a stranger: empty storage, the invite from the (mocked) backend
@@ -101,8 +101,8 @@ test('the email checkbox is prominent, directly under the email, unchecked, and 
   const box = ask.locator('[data-email-optin]');
   const check = box.getByRole('checkbox');
   await expect(check).not.toBeChecked();
-  await expect(box).toContainText('Email me when Vida replies or posts an update.');
-  await expect(box).toContainText('(email updates are coming soon)');
+  await expect(box).toContainText('Email me when Vida replies.');
+  await expect(box).not.toContainText('posts an update');   // announcements aren't built: never promised
 
   // Measured: directly under the email field, full width, a finger-sized target.
   const e = await email.boundingBox();

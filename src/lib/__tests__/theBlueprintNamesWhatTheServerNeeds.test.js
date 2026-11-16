@@ -60,6 +60,13 @@ const NOT_IN_BLUEPRINT = {
     + '`DATABASE_URL or SUPABASE_DB_URL`. DATABASE_URL is declared, and naming '
     + 'both would prompt an operator twice for one connection string — the kind '
     + 'of duplicate that gets half-filled.',
+  API_PUBLIC_BASE_URL:
+    'Optional override for the API\'s own public address (the stop link in a '
+    + 'reply notice). Unset, config.py uses RENDER_EXTERNAL_URL, which Render sets '
+    + 'on every web service, then the known onrender.com address.',
+  RENDER_EXTERNAL_URL:
+    'Set BY RENDER on every web service, never by an operator: declaring it in '
+    + 'the Blueprint would invite someone to type over the value Render provides.',
   RESEND_FROM_NAME:
     'Non-secret display string with a working default ("NGW Events"). Nothing '
     + 'breaks unset, and a Blueprint prompt for a brand word is noise in a list '

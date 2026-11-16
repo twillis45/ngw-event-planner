@@ -16,6 +16,9 @@ RESEND_FROM_NAME         = os.environ.get("RESEND_FROM_NAME", "NGW Events")
 # If unset, verification is skipped (dev/testing only — set this in production).
 RESEND_WEBHOOK_SECRET    = os.environ.get("RESEND_WEBHOOK_SECRET")
 APP_BASE_URL             = os.environ.get("APP_BASE_URL", "https://twillis45.github.io/ngw-event-planner")
+# This API's own public address, for links in emails (an unsubscribe link).
+# Render sets RENDER_EXTERNAL_URL on every web service.
+API_PUBLIC_BASE_URL      = os.environ.get("API_PUBLIC_BASE_URL") or os.environ.get("RENDER_EXTERNAL_URL") or "https://ngw-events-api.onrender.com"
 
 # CORS — the frontends allowed to call this API.
 #   ALLOWED_ORIGINS: comma-separated exact origins (your production domains).

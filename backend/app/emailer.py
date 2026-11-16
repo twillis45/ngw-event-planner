@@ -8,6 +8,7 @@ Both are fail-soft: a failed email must never block message creation. The messag
 is always persisted to Postgres first; email delivery is a best-effort sidecar.
 """
 import logging
+import re
 from typing import Optional
 import httpx
 from .config import RESEND_API_KEY, COMMUNICATION_EMAIL_FROM, RESEND_FROM_NAME
@@ -28,6 +29,14 @@ class ResendRejected(Exception):
         super().__init__(f"{status} {reason}".strip())
 
 
+def failure_reason(e: Exception) -> str:
+    """For a log line: Resend's own reason when it refused, else the error's
+    type. Never an address (ResendRejected never carries one)."""
+    if isinstance(e, (ResendRejected, SenderMisconfigured)):
+        return f"{type(e).__name__} {e}"
+    return type(e).__name__
+
+
 def _resend_reason(resp) -> str:
     try:
         body = resp.json()
@@ -38,17 +47,36 @@ def _resend_reason(resp) -> str:
     return " ".join(str(body.get(k) or "") for k in ("name", "message")).strip()[:300]
 
 
+class SenderMisconfigured(ValueError):
+    """COMMUNICATION_EMAIL_FROM holds no usable address. The message shows the
+    setting's exact characters (it is our own sender, not anyone's data)."""
+
+
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u2060\ufeff"), None)
+_ADDR = re.compile(r"[A-Za-z0-9.!#$%&*+/=?^_{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+
+
+def _plain(s) -> str:
+    """Invisible characters out, non-breaking spaces to spaces, whitespace collapsed."""
+    return " ".join(str(s or "").translate(_INVISIBLE).replace("\u00a0", " ").split())
+
+
 def format_from(name: str, address: str) -> str:
     """The From header Resend accepts: `Name <addr>`.
 
-    COMMUNICATION_EMAIL_FROM may already be a full `Name <addr>` (that value
-    produced `Name <Name <addr>>` and a 422 on 11/16/2026): then it is used
-    as is. Characters that break the header are dropped from the name."""
-    addr = (address or "").strip()
-    if "<" in addr and addr.endswith(">"):
-        return addr
-    clean = "".join(ch for ch in (name or "") if ch not in '<>",;\r\n').strip() or "NGW Events"
-    return f"{clean} <{addr}>"
+    Built from whatever COMMUNICATION_EMAIL_FROM holds. On 11/16/2026 Resend
+    refused the From twice (422 "Invalid `from` field") while the setting looked
+    like a bare events@ address, so the address is now EXTRACTED: quotes,
+    invisible and non-breaking characters, `mailto:` and angle brackets are
+    shed. A setting that is already `Name <addr>` keeps its own name. No address
+    at all raises SenderMisconfigured showing the setting's exact characters."""
+    raw = _plain(address)
+    m = _ADDR.search(raw)
+    if not m:
+        raise SenderMisconfigured(f"COMMUNICATION_EMAIL_FROM holds no email address: {address!r}")
+    given = raw.split("<", 1)[0] if "<" in raw else ""
+    label = "".join(ch for ch in _plain(given or name) if ch not in '<>",;\'\u201c\u201d\u2018\u2019')
+    return f"{_plain(label) or 'NGW Events'} <{m.group(0)}>"
 
 
 async def _send_via_resend(
@@ -57,6 +85,7 @@ async def _send_via_resend(
     html: str,
     reply_to: Optional[str] = None,
     from_name: Optional[str] = None,
+    headers: Optional[dict] = None,
 ) -> dict:
     """Low-level Resend POST. Returns the Resend response JSON on success,
     raises on failure so callers can decide fail-soft vs. raise."""
@@ -69,6 +98,8 @@ async def _send_via_resend(
     }
     if reply_to:
         payload["reply_to"] = reply_to
+    if headers:
+        payload["headers"] = headers
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             "https://api.resend.com/emails",
@@ -76,7 +107,10 @@ async def _send_via_resend(
             json=payload,
         )
         if resp.status_code >= 400:
-            raise ResendRejected(resp.status_code, _resend_reason(resp))
+            reason = _resend_reason(resp)
+            if "`from`" in reason:          # our own sender, exact characters: never a guest's data
+                reason = f"{reason} sent_from={from_addr!r}"
+            raise ResendRejected(resp.status_code, reason)
         return resp.json()
 
 
@@ -110,10 +144,10 @@ async def send_approval_email(to: str | None, event_name: str, context: str, lin
             ),
         )
         resend_id = result.get("id") if isinstance(result, dict) else None
-        log.info("approval email sent to=%s resend_id=%s", to, resend_id)
+        log.info("approval email sent resend_id=%s", resend_id)
         return {"ok": True, "resend_id": resend_id, "provider": "resend"}
     except Exception as e:  # noqa: BLE001 — fail-soft by design
-        log.error("approval email failed to=%s error=%s", to, e)
+        log.error("approval email failed error=%s", failure_reason(e))
         return {"ok": False, "error": str(e), "provider": "resend"}
 
 
@@ -148,8 +182,8 @@ async def send_thread_email(
             from_name=sender_name,
         )
         resend_id = result.get("id") if isinstance(result, dict) else None
-        log.info("thread email sent to=%s resend_id=%s", to, resend_id)
+        log.info("thread email sent resend_id=%s", resend_id)
         return {"ok": True, "resend_id": resend_id, "provider": "resend"}
     except Exception as e:  # noqa: BLE001 — fail-soft
-        log.error("thread email failed to=%s error=%s", to, e)
+        log.error("thread email failed error=%s", failure_reason(e))
         return {"ok": False, "error": str(e), "provider": "resend"}

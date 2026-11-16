@@ -7650,7 +7650,6 @@ button.vc-pill::after{
   min-height:48px; padding:12px; border:1px solid var(--line); border-radius:var(--r-md);
   background:var(--card); font-size:var(--t-body-s); font-weight:650; color:var(--ink); cursor:pointer; line-height:1.4; }
 .guest-optin input[type="checkbox"]{ width:22px; height:22px; flex:0 0 22px; margin:1px 0 0; accent-color:var(--steel); cursor:pointer; }
-.guest-optin-soon{ font-weight:500; color:var(--muted); }
 .guest-thread{ list-style:none; margin:0 0 var(--sp-2); padding:0; display:flex; flex-direction:column; gap:var(--sp-2); }
 .guest-msg{ padding:8px 12px; border-radius:var(--r-md); border:1px solid var(--line-soft); min-width:0; }
 .guest-msg.from-host{ background:var(--steel-tint); border-color:var(--steel-soft); }

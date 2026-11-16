@@ -84,6 +84,8 @@ PUBLIC = {
     "POST /api/public/questions/{rsvp_code}/ask": "guest's own thread; code + device key in body",
     "POST /api/public/questions/{rsvp_code}/email": "guest's own thread; code + device key in body",
     "POST /api/public/questions/{rsvp_code}/delete": "guest's own thread; code + device key in body",
+    "GET /api/public/questions/unsubscribe/{token}": "shows a button only; no state change",
+    "POST /api/public/questions/unsubscribe/{token}": "stop reply emails; the thread's emailed-link token (024 guest_token)",
     "POST /api/public/invite/{rsvp_code}/opened": "invite code; records an open only for a device key already identified by a reply or a question",
     # Guest RSVP: guests never have accounts; the rsvp code is the credential.
     "GET /api/public/invite/{rsvp_code}": "guest-facing; code is the credential",
