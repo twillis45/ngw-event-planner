@@ -1972,6 +1972,7 @@ export default function HostShellV2() {
   // Assigned every render below; called from the auth listener, whose closure
   // is from the first render.
   const keepDraftOnSignIn = useRef(() => {});
+  const cohostRepull = useRef(false);   // the co-host claim's one extra sync per session
   // In-app account deletion (issue #100, D-12; Apple 5.1.1(v), Google Play).
   const [acctDelete, setAcctDelete] = useState(null);   // null | { text, busy, error }
   useEffect(() => {
@@ -2006,11 +2007,18 @@ export default function HostShellV2() {
           } catch { /* best-effort — worst case this device just replays once more */ }
         }
       }).catch(() => {});
+      // PER-EVENT CO-HOST (026): make any invite to this person's confirmed
+      // email theirs. It runs BESIDE the pull, never in front of it (a slow
+      // claim must not delay a host's own events — CI caught exactly that):
+      // when it reports a co-hosted event, the sync runs once more so that
+      // event arrives. Once per session, so it can never loop.
+      claimCohostInvites().then((r) => {
+        if (dead || !r || !r.ok || !(r.events || []).length || cohostRepull.current) return;
+        cohostRepull.current = true;
+        hydrate();
+      }).catch(() => {});
       // Pull cloud events into ngw-events; if any are new to this device, nudge.
-      // PER-EVENT CO-HOST (026): first make any invite to this person's
-      // confirmed email theirs, so an event they were invited to co-host is
-      // in this same pull. A failed claim never blocks the pull.
-      claimCohostInvites().catch(() => null).then(() => cloudLoadEvents()).then(evs => {
+      cloudLoadEvents().then(evs => {
         if (dead || !Array.isArray(evs)) return;
         // SYNC-HONESTY-1: a successful cloud pull is real evidence every
         // returned event is in the cloud — stamp them synced. Sign-in is also

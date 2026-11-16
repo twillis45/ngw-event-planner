@@ -351,6 +351,19 @@ export async function loadEvents() {
   // Sprint 58E-B: no real (uuid) studio ⇒ local-only (dev-bypass 'dev-studio' is
   // not a uuid and would 400). Avoids a doomed cloud round-trip on hydration.
   if (!sid || !isCloudStudioId(sid)) return readLocal();
+  // PER-EVENT CO-HOST (026): the events this person co-hosts live in their
+  // host's studio; the database rules return only those to this query. It is
+  // started NOW, beside the host's own query, never after it: one more round
+  // trip on this path delayed the sign-in upload enough to lose its "your
+  // event is on your account" toast (CI, tryFirstSignInToKeep, 11/16/2026).
+  const cohosted = (async () => {
+    try {
+      const { data: co, error: coErr } = await supabase
+        .from('events').select('id, data, updated_at, studio_id').neq('studio_id', sid);
+      if (coErr) throw coErr;
+      return co || [];
+    } catch (coE) { captureError(coE, { where: 'events.loadEvents.cohosted' }); return []; }
+  })();
   try {
     const { data, error } = await supabase
       .from('events')
@@ -365,16 +378,9 @@ export async function loadEvents() {
     // overwritten. Stripped from `data` on every write, so the blob never
     // carries a stale copy of its own column.
     const events = (data || []).map((row) => ({ ...row.data, id: row.id, _cloudUpdatedAt: row.updated_at }));
-    // PER-EVENT CO-HOST (026): events this person co-hosts live in their
-    // host's studio. The database rules return only those here, tagged with
-    // the studio they belong to (`_cohostOf`, never saved). A failure here
-    // costs only the co-hosted list, never the host's own events.
-    try {
-      const { data: co, error: coErr } = await supabase
-        .from('events').select('id, data, updated_at, studio_id').neq('studio_id', sid);
-      if (coErr) throw coErr;
-      (co || []).forEach((row) => events.push({ ...row.data, id: row.id, _cloudUpdatedAt: row.updated_at, _cohostOf: row.studio_id }));
-    } catch (coE) { captureError(coE, { where: 'events.loadEvents.cohosted' }); }
+    // Tagged with the studio they belong to (`_cohostOf`, never saved). A
+    // failure there costs only the co-hosted list, never the host's own events.
+    (await cohosted).forEach((row) => events.push({ ...row.data, id: row.id, _cloudUpdatedAt: row.updated_at, _cohostOf: row.studio_id }));
     events.forEach((e) => noteStamp(e.id, e._cloudUpdatedAt));   // seen — see writeGuarded
     writeLocal(events);
     localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
