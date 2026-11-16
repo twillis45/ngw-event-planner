@@ -56,9 +56,12 @@ describe('sectionGroups', () => {
       expect(keysOf(sectionGroups({ event: {}, crab: { relevant: true } }))).toContain('crabs');
     });
 
-    test('costshare only when the event shares cost', () => {
+    test('costshare when the event shares cost, or is a trip where it gets set up', () => {
       expect(keysOf(sectionGroups({ event: {} }))).not.toContain('costshare');
       expect(keysOf(sectionGroups({ event: { costSharing: true } }))).toContain('costshare');
+      // Round 2 (11/16/2026): a trip could not reach the sheet that turns it on.
+      expect(keysOf(sectionGroups({ event: {}, travel: { relevant: true } }))).toContain('costshare');
+      expect(keysOf(sectionGroups({ event: {}, travel: { relevant: false } }))).not.toContain('costshare');
     });
 
     test('air and ground need travel.relevant AND that leg', () => {

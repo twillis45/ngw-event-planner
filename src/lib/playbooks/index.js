@@ -21,6 +21,8 @@ import { geoItemForPurchase } from '../knowledge/geoItemMap';
 // is a leaf (no imports of its own), so this cannot create a cycle.
 import { answerText, answerList } from '../decisionType';
 import { marketFor } from '../marketFor';
+// A real price keeps its cents ($42.50, not $43): round to the cent, not the dollar.
+import { roundCurrency } from '../currency';
 // No cycle: lodgingIntel reads destLodgingOptions, never this module — that
 // split exists precisely so the two can refer to one option list safely.
 import { lodgingKitchen } from '../lodgingIntel';
@@ -2652,7 +2654,7 @@ export function playbookCapacity(event) {
   //    ($0 wins — you wouldn't price something you already have).
   const skip = (event.capacitySkip && typeof event.capacitySkip === 'object') ? event.capacitySkip : {};
   const lockedMap = (event.capacityLocked && typeof event.capacityLocked === 'object') ? event.capacityLocked : {};
-  const lockOf = (key, isOwned) => (!isOwned && (key in lockedMap)) ? Math.max(0, Math.round(Number(lockedMap[key]) || 0)) : null;
+  const lockOf = (key, isOwned) => (!isOwned && (key in lockedMap)) ? Math.max(0, roundCurrency(Number(lockedMap[key]) || 0)) : null;
   const costOf = (name, q, isOwned) => {
     const intel = supplyIntel(name);
     if (isOwned) return { costLow: 0, costHigh: 0, kind: intel ? intel.kind : null, label: intel ? intel.label : null };
@@ -5154,7 +5156,7 @@ export function playbookFoodPlan(event, opts = {}) {
         // lib/priceLayers.js, which is the only place that knows it.
         geoBasis: _geo.basis,
         skipped: !!skip[p.id],
-        locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
+        locked: (p.id in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap[p.id]) || 0)) : null,
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),
         // alternatives: playbook-authored swap suggestions (cheaper/unavailable/dietary).
         // Only present when the purchase carries them; undefined otherwise (no empty array noise).
@@ -5230,7 +5232,7 @@ export function playbookFoodPlan(event, opts = {}) {
       qtyOverridden: false, baseQty: vegN, perGuest: null,
       low: Math.round(vegN * 6 * pf), high: Math.round(vegN * 12 * pf), units: vegN, unitBase: 'servings',
       perUnitLow: Math.round(6 * pf), perUnitHigh: Math.round(12 * pf),
-      skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, Math.round(Number(lockedMap['diet-veg']) || 0)) : null,
+      skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['diet-veg']) || 0)) : null,
       note: 'So your vegetarian/vegan guests have a real main, not just sides.', forgotten: false, dietDerived: true,
     });
   }
@@ -5342,7 +5344,7 @@ export function playbookFoodPlan(event, opts = {}) {
       // audit) — the caterer line couldn't be skipped OR have a real price
       // locked in, unlike every other row in this list.
       skipped: !!skip['fa-catering'],
-      locked: ('fa-catering' in lockedMap) ? Math.max(0, Math.round(Number(lockedMap['fa-catering']) || 0)) : null,
+      locked: ('fa-catering' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['fa-catering']) || 0)) : null,
     });
   }
 
@@ -5421,7 +5423,7 @@ export function playbookFoodPlan(event, opts = {}) {
       qtyOverridden: qOver != null, baseQty,
       low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
       units, unitBase: p.unit || '', perUnitLow: Math.round(uLow * pf * 100) / 100, perUnitHigh: Math.round(uHigh * pf * 100) / 100,
-      skipped: !!skip[p.id], locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
+      skipped: !!skip[p.id], locked: (p.id in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap[p.id]) || 0)) : null,
       note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''), supply: true,
       ...(Array.isArray(p.alternatives) && p.alternatives.length > 0 ? { alternatives: p.alternatives } : {}),
       // Same three governance fields the food rows carry, for the same reason: a

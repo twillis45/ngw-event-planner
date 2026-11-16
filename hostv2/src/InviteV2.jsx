@@ -1560,7 +1560,7 @@ export default function InviteV2({ code }) {
               <a
                 href={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '/'}
                 onClick={() => { try { trackInvite(INVITE_EVENTS.PLAN_YOURS_TAPPED, { event_type: event && event.type, surface: 'invite_footer_v2' }); } catch (_e) { /* a counter never blocks a guest */ } }}
-                style={{ color: 'inherit', fontWeight: 650, textDecoration: 'none' }}>
+                className="tap-44" style={{ color: 'inherit', fontWeight: 650, textDecoration: 'none' }}>
                 Planning something of your own? Make it with {BRAND.full} →
               </a>
             </p>

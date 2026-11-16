@@ -48,3 +48,33 @@ describe("a friend's loft is a place", () => {
     expect(p(text).honoree).toBe(null);
   });
 });
+
+// Round 2 (11/16/2026): trips written with weekday names saved a one-day event.
+describe('a stay written with weekday names keeps its last day', () => {
+  test.each([
+    ['Friendsgiving weekend at a cabin in the Shenandoah, Fri Nov 27 to Sun Nov 29, 12 friends staying over', '2026-11-27', '2026-11-29'],
+    ['Friendsgiving Thursday Nov 26 through Sunday Nov 29 in Vermont, 10 of us renting a house', '2026-11-26', '2026-11-29'],
+    ['Friendsgiving Sat Nov 21 and Sun Nov 22 at Joshua Tree, 8 friends camping', '2026-11-21', '2026-11-22'],
+  ])('%s', (text, date, end) => {
+    const r = p(text);
+    expect(r.date).toBe(date);
+    expect(r.endDate).toBe(end);
+  });
+  test('(control) "and" between two far-apart dates is two dates, not a span', () => {
+    expect(p('Friendsgiving Nov 21 and Nov 28, pick one').endDate).toBe(null);
+  });
+  test('(control) "and" before a count is not a day', () => {
+    expect(p('Friendsgiving Nov 21 and 25 guests').endDate).toBe(null);
+  });
+});
+
+// Round 2 (11/16/2026): the "didn't make it into the plan" list showed the
+// fragment "saturday at my". "at my backyard" WAS used; only "saturday" was not.
+import { clausesNotUsed } from '../heardClauses';
+describe('an unused word is reported without the used words around it', () => {
+  test('"saturday", not "saturday at my"', () => {
+    const out = clausesNotUsed('friends giving dinner 10 people saturday at my backyard');
+    expect(out).toContain('saturday');
+    out.forEach((c) => expect(c).not.toMatch(/\b(?:at|my)\s*$/i));
+  });
+});

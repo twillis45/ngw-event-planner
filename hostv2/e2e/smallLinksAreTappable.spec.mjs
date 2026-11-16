@@ -66,5 +66,8 @@ test('the "Use $…" link and the Space rows are big enough to tap', async ({ pa
   await settled(page);
   const row = page.getByRole('button', { name: /^Add note for / }).first();
   await row.scrollIntoViewIfNeeded();
+  // A one-line row is only as tall as its text plus the BUTTON's own padding
+  // (a wrapping row is tall either way), so the padding is what is checked.
+  expect(await row.evaluate((b) => parseFloat(getComputedStyle(b).paddingTop)), 'Space row padding').toBeGreaterThanOrEqual(6);
   expect(await hitHeight(row), 'Space row').toBeGreaterThanOrEqual(32);
 });

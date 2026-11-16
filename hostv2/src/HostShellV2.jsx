@@ -287,6 +287,7 @@ import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGu
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
+import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
 import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
@@ -5100,6 +5101,10 @@ export default function HostShellV2() {
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
   const [sheet, setSheet] = useState(() => (OPEN_ON_LOAD ? { kind: OPEN_ON_LOAD } : null));   // deep-link landing: {kind, focus}
+  // The dietary panel closes when the sheet changes (round 2, 11/16/2026): opened
+  // on the food Plan tab, it stayed open on Shop and on every later visit,
+  // covering "The list". Plan, Shop and Bringing are separate sheet kinds.
+  useEffect(() => { setFoodSect((m) => (m && m.diet ? { ...m, diet: false } : m)); }, [sheet && sheet.kind]);
   useEffect(() => {
     if (sheet && sheet.kind === 'pass') recordPassFunnel('sheet_viewed', eventId);
   }, [sheet && sheet.kind, eventId]);
@@ -6534,7 +6539,11 @@ export default function HostShellV2() {
     // never un-buys (asymmetric on purpose).
     let extra = {};
     let boughtNote = '';
-    if (tl[i].done && /\b(buy|shop)\b|shopping/i.test(String(tl[i].task || ''))) {
+    // ONLY WHAT IT NAMES (50-host run, 11/16/2026): "Buy the turkey" used to mark
+    // the whole list bought. lib/shopTaskItems decides: named items, the whole
+    // list for a general shopping step, or nothing.
+    const buys = tl[i].done ? itemsBoughtByTask(tl[i].task, foodPlan && foodPlan.list) : { scope: 'none', ids: [] };
+    if (buys.scope !== 'none') {
       // UNGATED (matches toggleGot, 555e770): checking the shop step asserts
       // every open food line was bought. Price stays optional — an unpriced line
       // is marked bought at its honest estimate, never withheld. We surface how
@@ -6545,7 +6554,7 @@ export default function HostShellV2() {
       const real = (event.foodReal && typeof event.foodReal === 'object') ? event.foodReal : {};
       let n = 0, firm = 0;
       ((foodPlan && foodPlan.list) || []).forEach(it => {
-        if (!it || it.skipped || got[it.id]) return;
+        if (!it || it.skipped || got[it.id] || !buys.ids.includes(it.id)) return;
         got[it.id] = true; n += 1;
         if (it.added || (it.locked != null && real[it.id])) firm += 1;
       });
@@ -9136,7 +9145,10 @@ export default function HostShellV2() {
         // be in any state"); creation was the one door that swallowed it.
         // `_cityDropped` is read just after the write to say the same sentence.
         const p = effCityText.trim() ? parseVenueLocation(effCityText.trim()) : null;
-        if (!p) return { venueCity: '' };
+        // The town the host typed is KEPT as heard (round 2, 11/16/2026), so the
+        // lodging step proposes "Asheville" instead of asking from scratch. It is
+        // never treated as a confirmed location.
+        if (!p) return { venueCity: '', ...(effCityText.trim() ? { cityHeard: effCityText.trim() } : {}) };
         return p.zip ? { venueCity: p.zip } : { venueCity: p.city, venueState: p.state };
       })()),
       guestMode: 'count',
@@ -14466,7 +14478,7 @@ export default function HostShellV2() {
                           ) : (<>
                             <span aria-hidden="true" style={{ color: 'var(--faint)' }}>·</span>
                             {cur.rel && <span style={{ color: 'var(--steel-soft)' }}>~{cur.rel}</span>}
-                            <button onClick={() => setTimeEditIds(s => { const n = new Set(s); n.add(cur.id); return n; })}
+                            <button className="tap-44" onClick={() => setTimeEditIds(s => { const n = new Set(s); n.add(cur.id); return n; })}
                               style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' }}>Set a time ›</button>
                           </>)) : null}
                         </p>
@@ -21261,7 +21273,7 @@ export default function HostShellV2() {
                         </>
                       )}
                       {rest.length > 0 && (
-                        <button className="mini" style={{ marginTop: 6 }} onClick={() => setShowMoreDiets(true)}>
+                        <button className="mini" style={{ marginTop: 6, whiteSpace: 'normal', textAlign: 'left', maxWidth: '100%' }} onClick={() => setShowMoreDiets(true)}>
                           + {rest.length} more — {rest.slice(0, 4).join(' · ')}{rest.length > 4 ? ' …' : ''}
                         </button>
                       )}
@@ -25098,7 +25110,10 @@ export default function HostShellV2() {
                   n = chase ? heads : (event.guests || []).length;
                   const tail = planLbl ? ' — planning for ' + planLbl : bandLbl ? ' — likely ' + bandLbl + ' on the day' : '';
                   sub = !chase
-                    ? 'on the list — counted, never chased'
+                    // Says the plan's size when it is bigger than the list (round 2,
+                    // 11/16/2026): "Your people 4" beside a plan for 12 everywhere else
+                    // read as a contradiction.
+                    ? 'on the list — counted, never chased' + (planLbl ? ' · planning for ' + planLbl : '')
                     // FIX (host report): "said yes" must track the uncheck — never claim yeses
                     // when the count is 0.
                     : yes.length === 0
@@ -26043,7 +26058,7 @@ export default function HostShellV2() {
                       <div className="rrow" key={i}>
                         <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
                           <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
-                          <button style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}
+                          <button className="tap-44" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}
                             onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
                             {peopleMode ? (() => {
                               /* ── §7 · RELATIONSHIP GRAMMAR ───────────────────
