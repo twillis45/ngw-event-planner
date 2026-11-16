@@ -29,7 +29,7 @@ Before that, 2026-11-02 (sixtieth entry:
 - **PostHog verified:** the live site sends `host_home_viewed`; PostHog's bot filter drops headless/webdriver browsers — a test must hide `navigator.webdriver` and `userAgentData` to see a send.
 - 🔴 **Trap: the e2e fixture answers every unmocked `e2e-mock.invalid` route with `200 {ok:true}`.** A component that trusts `r.ok` and reads a field crashes the whole sheet ("This screen stopped working") — it happened on desktop only. Validate the shape, not just `ok`.
 - 🔴 **Trap: `?nosw=1` leaves a cache behind about half the time** (an unregistered worker still serves the open page and re-creates it; a `caches.has` guard is not enough — check-then-act). Pre-existing on main; `theShellOpensWithoutSignal` kill-switch test is flaky because of it. Filed as a task; needs a page→worker handshake.
-- 🔴 **Trap: the host alert is one email per event per hour, in process memory**, and a FAILED send still uses the hour's slot. A retest within the hour needs a restart (an env change does it) or the co-host invite path, which has no throttle.
+- 🔴 **Trap: the host alert is one email per event per hour, in process memory.** A retest within the hour needs a restart (an env change does it) or the co-host invite path, which has no throttle. (A FAILED send used to use up the hour too; fixed in #153, `test_a_failed_send_gives_the_hour_back`.)
 
 ## November 16, 2026 (afternoon) — #146–#149 live; G11; calendar + subscription; per-event co-hosts (026); the host-alert 422
 

@@ -93,7 +93,13 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
         if not to or not _claim(event_id):
             return
         subject, body = compose(kind, who, row["name"], answer)
-        await _send_via_resend(to=to, subject=subject, html=body)
+        try:
+            await _send_via_resend(to=to, subject=subject, html=body)
+        except Exception:
+            # A send that did not happen must not use up the hour (11/16/2026:
+            # two hours of refused sends would each have blocked the next).
+            _last_sent.pop(event_id, None)
+            raise
         log.info("host alert sent event=%s kind=%s", event_id, kind)
     except Exception as e:  # noqa: BLE001 — fail-soft by design
         log.error("host alert failed event=%s kind=%s error=%s", event_id, kind, failure_reason(e))
