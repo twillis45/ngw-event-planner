@@ -115,8 +115,12 @@ After the event, a guest can share photos from the invitation link.
 
 - **What we store:** the photo, the name you give with it, and the time you
   shared it, tied to the invitation code and your browser's key (the same key
-  as your reply). Photos are accepted only after the event's last day.
-  ⟶ `guest_photos.py` (`_refuse_outside_window`, the owner's defaults at the top) ⟵
+  as your reply), and whether you chose to keep your photos private to the
+  event. Photos are accepted only once the event has ended, by the host's end
+  (or start) time in your phone's time zone, which your browser tells our
+  server; the zone is used for that check and not stored.
+  ⟶ `guest_photos.py` (`_opens_at`, `_refuse_outside_window`, the owner's
+  defaults at the top) ⟵
 - **Location and other hidden details are removed.** Phone photos usually
   carry hidden details: where the photo was taken (GPS), the camera or phone
   model, and the time. Our server removes all of it before the photo is
@@ -128,7 +132,27 @@ After the event, a guest can share photos from the invitation link.
   with) sees every photo with the name you gave. Other guests see a photo only
   after the host approves it, and they see the photo alone, without your name.
   The host can hide or delete any photo. ⟶ `guest_photos.py` (`guest_approved_photos`
-  returns id, link and time only) ⟵
+  returns id, link, time and whether it may be shared, only) ⟵
+- **Sharing a photo, and what can't be undone.** The upload screen says:
+  "Approved photos can be shared by your host and other guests. Once someone
+  shares a photo to Instagram or Facebook, deleting it here doesn't remove that
+  post." Sharing means the app hands the photo to the person's own phone (its
+  share sheet) and copies a caption with the event's name and, if the host
+  turned one on, the event's hashtag; that person posts it from their own
+  account, or doesn't. We never post anything, link any social account, or send
+  photos to Instagram or Facebook ourselves. **A photo someone has posted is
+  outside this app:** deleting it here, your own delete, the host's delete, and
+  the 90-day deletion below do not remove that post. ⟶ `src/lib/photoShare.js` ⟵
+- **Stopping sharing.** You can switch on "Keep my photos private to this
+  event": then no one gets a Share button on your photos, though guests can
+  still see the ones the host approved. The host can also turn sharing off for
+  any one photo, because the person in a picture isn't always the one who took
+  it. Neither switch can pull back a post someone already made.
+  ⟶ `guest_photos.py` (`_shareable`, `/privacy`, `/sharing`);
+  `025` (`uploader_private`, `share_blocked`) ⟵
+- **Colors.** A phone photo's color profile is converted to standard colors
+  (sRGB) and then removed with the rest of the hidden details, so the stored
+  photo looks like the one you took. ⟶ `guest_photos.py` (`_to_srgb`) ⟵
 - **Where it is kept:** in a private storage area at Supabase that no browser
   can open directly. Each time a photo is shown, our server makes a link that
   stops working after five minutes. ⟶ `025` (private bucket, no storage
@@ -272,10 +296,14 @@ receives. We do not send them more than the row says.
   codes are kept only for one day's count and deleted after two days.
   ⟶ `purge_old_guest_activity`, `024_guest_messages.sql` ⟵
 - **Guest photos:** we intend to delete photos, and the record of who shared
-  them, 90 days after the event's last day. The routine that does this exists
-  and is run by hand today; it is not yet automatic, and this sentence will
-  change when it is. ⟶ `backend/scripts/purge_guest_photos.py`;
-  `guest_photos_due_for_purge`, `025` ⟵
+  them, 90 days after the event's last day, and **when the host deletes the
+  event, its photos go within a day** (they can't be opened from the moment
+  the event is gone). A nightly job does this; it is written into the hosting
+  setup but not yet switched on, and this sentence will change when the owner
+  confirms it is running. Posts someone made on Instagram or Facebook are not
+  ours to delete (section 1). ⟶ `backend/scripts/purge_guest_photos.py`;
+  `guest_photos_due_for_purge`, `025`; the `ngw-guest-photo-purge` cron service
+  in `render.yaml` ⟵
 - **Pass purchases:** kept as a record of what you bought; required for
   refunds and disputes. The receipt survives account deletion, with the link
   to your account removed (section 6). ⟶ `021_account_deletion.sql:71-75` ⟵

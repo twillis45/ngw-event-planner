@@ -1,5 +1,16 @@
 # Where We Are -- live status board
 
+## November 16, 2026 (late) — guest questions, guest photos, the event hashtag (built, not pushed)
+
+- **Built in one batch, on top of the held live-hunt batch, local commits only.** Owner rulings A–E and the photo board's consent option C.
+- **A. Questions & updates.** A guest asks the host from the invite ("Ask your host") and sees her own thread, the host's answers labeled "From your host". The host answers inside the Guest list sheet (unanswered first, reply, block). The event home's "Who's confirmed" shows "N guest questions waiting" only when N > 0. Email and opt-in are stored, and the checkbox says "(email updates are coming soon)". Nothing is emailed, and there are no announcements.
+- **A. Opened.** Each invite load records an open (the server throttles it). The host sees "Ana last opened the invite …" for guests who replied or asked, plus anonymous daily totals. The invite says "Your host can see when you last opened this invite."
+- **B. Photos.** Free, host-approved. Uploads open at the event's end, local time (they opened at midnight UTC before). Colors are converted to sRGB. Deleting an event purges its photos the next night. A nightly Render cron is declared.
+- **C. Consent.** The upload screen says sharing can't be undone. "Keep my photos private to this event" and the host's "Don't allow sharing" both remove the Share button.
+- **D. Share.** The caption is copied, then the photo file goes to the phone's share sheet. On desktop it's "Download photo" + "Copy caption".
+- **E. Hashtag.** Off until the host turns it on in Make it yours. It shows on the invite, the printed day sheet, and captions.
+- **Owner steps before it can ship:** run 024 and 025 in the SQL editor, then the attestation pack; approve the new Render cron service.
+
 ## November 15–16, 2026 — Friendsgiving; helpers by link; the owner's iOS demo, fixed
 
 - **Live, in order:**

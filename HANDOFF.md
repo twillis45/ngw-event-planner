@@ -17,6 +17,40 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 16, 2026 (latest) — guest questions, guest photos, the event hashtag (one batch, local commits)
+
+- **Base.** `next-batch` (the held live-hunt batch and the hashtag lib, 040a3340), then cherry-picks of 207e7c2f (guest questions, 024) and 41bb720e (guest photos, 025).
+  - Conflicts resolved in main.py, the attestation SQL and its test, and the privacy draft.
+  - 025's `cleanup_deleted_account()` is 024's body verbatim plus one `guest_photos` delete (diffed).
+- **A. Questions & updates (free, narrow, not chat).**
+  - Guest: "Ask your host" on the invite (`hostv2/src/GuestAskV2.jsx`), with her own thread and "From your host" answers.
+  - Email field with a prominent checkbox, unchecked: "Email me when Vida replies or posts an update. (email updates are coming soon)". It is stored; nothing is emailed.
+  - Host: a "Questions & updates" section in the Guest list sheet (`GuestInboxHost.jsx`), unanswered first, with reply and block.
+  - "Who's confirmed" shows "N guest questions waiting" only when N > 0.
+  - Opens: the invite calls `/opened` once per load. The host sees "Ana last opened the invite Nov 16, 8:42 PM" plus daily totals, and the invite discloses it. No "her": the app doesn't know.
+- **B. Photos.**
+  - Uploads open at the event's end, local time: endTime, else startTime (owner's "end/start"), else local midnight. The phone sends its offset; a missing offset waits for UTC-12.
+  - ICC profiles are converted to sRGB.
+  - A photo whose event row is gone is due to the nightly purge at once.
+  - render.yaml declares the `ngw-guest-photo-purge` cron (08:17 UTC).
+  - Guest UI on the invite (`GuestPhotosV2.jsx`); host "Guest photos" in the Guest list sheet. Past events get a home line, "N guest photos waiting for you to approve".
+  - The false recap line is gone.
+- **C. Consent.** The consent line is on the upload screen. "Keep my photos private to this event" (POST `/privacy`) and the host's "Don't allow sharing" (POST `/sharing`) set `shareable`, the only permission for a Share button. Migration 025 gained 2 columns; the attestation proves them.
+- **D. Share.** `src/lib/photoShare.js`: copy the caption, then `navigator.share({ files, text })`. Toast: "Caption copied — paste it in Instagram." Desktop: "Download photo" + "Copy caption".
+- **E. Hashtag.** `EventHashtag.jsx` in Make it yours: 3 suggestions, your own tag, Remove; `event.hashtag`.
+  - Shown on the invite and the printed day sheet, and used in captions.
+  - `hashtag` joins `PUBLIC_EVENT_FIELDS`.
+- **Tests:** backend 647 passed, 7 skipped. The disposable-Postgres file passes 7/7 with 025 applied.
+  - 11 photo guards red-proofed in pytest; the purge rule red-proofed on Postgres.
+  - New jest: `photoShare`, `guestInbox`, `theGuestPhotoPurgeRunsNightly`.
+  - 5 new e2e specs (22 tests), 8 UI guards red-proofed by mutation.
+- **Owner steps:**
+  - Run 024, then 025, in the Supabase SQL editor, then the attestation pack.
+  - Approve the new Render cron service on the next Blueprint sync.
+  - Resend isn't needed yet.
+- 🔴 **Trap: `openThread` cleared the status line on refresh**, so "Ana can't send more questions." never showed after Block. The e2e caught it; refreshes now pass `keep`.
+- 🔴 **Trap: the After stage isn't the event home.** A past event lands on Plan, so the photo line lives on the home, not under After.
+
 ## November 16, 2026 (late night) — the live-hunt batch (#130–#139 and the owner's 22-item list)
 
 - **An open card held still for no one.**
