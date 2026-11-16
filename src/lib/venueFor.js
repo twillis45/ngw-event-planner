@@ -12,7 +12,7 @@
 // raw field reads outside this module are the bug class venueSourceProof exists
 // to catch. (App.js is freeze-exempt until CRA deletion — its raw reads are
 // grandfathered, not sanctioned.)
-import { isPlausibleCityText, parseVenueLocation } from './cityText';
+import { isPlausibleCityText, parseVenueLocation, splitTrailingPlace } from './cityText';
 
 // Home-ish venue labels: real to the host ("Backyard") but useless as a maps
 // destination — the city carries the location for those.
@@ -66,11 +66,22 @@ export function venueFor(event) {
   //   "Casa Alegria, Santa Fe NM"       → unchanged, still asks
   //     (no comma before the state; the parser requires one and stays strict)
   //   "Casa Alegria"                    → unchanged, still asks
+  //
   const tailIsPlace = (() => {
     if (nameIsPlace || !rawName) return null;
     const parts = rawName.split(',').map((p) => p.trim()).filter(Boolean);
     if (parts.length < 3) return null;
     try { return parseVenueLocation(parts.slice(-2).join(', ')) || null; } catch { return null; }
+  })();
+  // "VENUE — CITY, ST" TOO (owner's demo, 11/15/2026): the seeded "VFW Post
+  // 3150 — Alexandria, VA" separates the town with a dash, not a comma, so no
+  // state was recovered and the price note asked the host to "add your state".
+  // Unlike the comma form, the NAME is kept whole: vendor briefs, rain plans and
+  // parking notes print it, and the town in it is what a vendor reads. Only the
+  // city and state are lifted, and the display line does not repeat the town.
+  const dashTail = (() => {
+    if (nameIsPlace || tailIsPlace || !rawName || !/\s[—–-]\s/.test(rawName)) return null;
+    try { return splitTrailingPlace(rawName); } catch { return null; }
   })();
   // The venue keeps its own name; only the trailing town is lifted out of it.
   const name = nameIsPlace ? ''
@@ -85,7 +96,7 @@ export function venueFor(event) {
   // CITY-LEAK-1 gate rides INSIDE the accessor: a polluted venueCity ("VFW
   // Post 3150 — Alexandria, VA") never escapes as a city again.
   // An explicit venueCity still wins; the parsed one only fills a gap.
-  const placeFromName = nameIsPlace || tailIsPlace;
+  const placeFromName = nameIsPlace || tailIsPlace || dashTail;
   const city = [ev.venueCity, ev.city].map((x) => String(x || '').trim()).find(isPlausibleCityText)
     || (placeFromName ? String(placeFromName.city || '').trim() : '') || '';
   const state = String(ev.venueState || ev.state || '').trim()
@@ -154,10 +165,10 @@ export function venueFor(event) {
   // nothing to show for itself but its town. Show the street the host typed —
   // it is the most specific thing known about where this is.
   const displayLine = name
-    ? [name, city].filter(Boolean).join(', ')
+    ? (dashTail ? name : [name, city].filter(Boolean).join(', '))
     : (isHome && city ? `At home in ${city}` : (address || city));
   const mapsQuery = address
-    || [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', ');
+    || (dashTail ? name : [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', '));
   // ── THE ZIP, PUBLISHED (2026-09-23) ──────────────────────────────────────
   // `setVenue` below stores a bare ZIP in **venueCity**, because the city gate
   // rejects digits by design. So the ZIP a host typed sits on the record under

@@ -23,7 +23,8 @@ import { roundCurrency } from './currency';
 import { guestCountIsConfirmed } from './guestCountFor';
 import { playbookFoodPlan, playbookCapacity } from './playbooks';
 import { buildCrabPlan } from './crabPlan';
-import { vendorOutstanding, moneyCategories } from './vendorMoney';
+import { vendorOutstanding, moneyCategories, vendorIsCommitted } from './vendorMoney';
+import { vendorDisplayName } from './vendorDisplayName';
 import { lodgingCommitted } from './lodgingIntel';
 import { foodSpanNote } from './foodSpan';
 
@@ -220,6 +221,13 @@ export function hostSpending(event, priceFactor, itemFactors) {
 
   // Outstanding vendor balances are disclosed, not added over category totals.
   const vendorOwed = (() => { try { return Math.max(0, roundCurrency(vendorOutstanding(ev))); } catch (_e) { return 0; } })();
+  // BOOKED, WITH NO PRICE ON RECORD (owner's demo, 11/15/2026). Two contracted
+  // vendors and no cost on either: every money term above is honestly zero, and
+  // the After screen read that as "nothing to settle up". Reported, never priced —
+  // a surface can name who still needs a price instead of claiming there is none.
+  const unpricedBooked = (Array.isArray(ev.vendors) ? ev.vendors : [])
+    .filter((v) => v && !v.isInformal && vendorIsCommitted(v) && !(num(v.cost) > 0))
+    .map((v) => ({ id: v.id, name: vendorDisplayName(v) }));
 
   // ── THE RENTAL HOUSE (review board 2026-07-28) ─────────────────────────────
   // The board's grep: `lodgingOptions` was read by NOTHING. A host could pick a
@@ -310,7 +318,7 @@ export function hostSpending(event, priceFactor, itemFactors) {
   const foodUnpriced = listWithheld && hasRealCount
     && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
 
-  return { expected, categories, moneyDiscrepancies, optionalLow, optionalHigh, optionalEstimate, optionalLines, priceBasis, total: roundCurrency(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  return { expected, categories, moneyDiscrepancies, optionalLow, optionalHigh, optionalEstimate, optionalLines, priceBasis, total: roundCurrency(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, unpricedBooked, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;

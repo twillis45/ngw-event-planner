@@ -89,7 +89,9 @@ import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../
 // else. Values, quantities, costs, decisions and ranking are untouched.
 import { effectiveValue } from '../knowledge/knowledgeOverride';
 import { isGroundedCulture } from '../knowledge/culturalContext';
-import { militaryDecisionsFor, isGroundedMilitary } from '../knowledge/militaryRetirement';
+import { militaryDecisionsFor, isGroundedMilitary, militaryRetirementContext } from '../knowledge/militaryRetirement';
+import { normalizeCategory } from '../vendorAccountability/playbooks.js';
+import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
 import { venueFor } from '../venueFor';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
@@ -852,6 +854,37 @@ function purchaseGate(p, playbook, gc, di) {
 // items always show; an unknown pick shows the item (never hide on missing data).
 // The effective pick falls back to the decision's authored default so the plan is
 // right on first render before the host has touched anything.
+// ── A CALL THE EVENT'S OWN RECORDS ALREADY ANSWER (owner's demo, 11/15/2026) ──
+// The seeded VFW retirement asked "At home, a restaurant, or the workplace?"
+// beside a BOOKED VFW post and "How is the food handled?" beside a CONTRACTED
+// caterer. Neither answer is a guess: it is a vendor record the host keeps.
+//   food handling — a booked catering vendor answers it, as the decision's own
+//                   caterer option (the first whose text names catering).
+//   venue         — a booked venue vendor plus a named, non-home venue answers
+//                   it. No option is picked: which of "restaurant / hall /
+//                   workplace" the place is would be our guess, so `pick` is null
+//                   and only the board treats the call as settled.
+// A host's own answer always wins (callers check picks first). Booked means
+// isVendorBooked — Contracted / Deposit Paid / Confirmed / Booked / Paid — so a
+// vendor still Considering or Quoted settles nothing.
+const FOOD_HANDLING_DECISION_IDS = new Set(['sourcing', 'food_style', 'food_source', 'food', 'food-model', 'food_model', 'hosting_model']);
+const bookedVendorIn = (event, key) => ((event && Array.isArray(event.vendors)) ? event.vendors : [])
+  .find((v) => v && !v.isInformal && isVendorBooked(v) && normalizeCategory(String(v.category || '')) === key) || null;
+const vendorStatusWord = (v) => String((v && v.status) || 'booked').trim().toLowerCase();
+export function decisionSettledByData(event, decision) {
+  if (!event || !decision || !Array.isArray(decision.options) || !decision.options.length) return null;
+  if (FOOD_HANDLING_DECISION_IDS.has(decision.id)) {
+    const opt = decision.options.find((o) => /\bcater/i.test(String(o)));
+    const caterer = opt ? bookedVendorIn(event, 'catering') : null;
+    if (caterer) return { pick: opt, because: `${vendorDisplayName(caterer) || 'Your caterer'} — ${vendorStatusWord(caterer)}`, vendorId: caterer.id };
+  }
+  if (decision.id === 'venue') {
+    const vf = (() => { try { return venueFor(event); } catch (_e) { return null; } })();
+    const place = vf && vf.isSet && !vf.isHome && !/^(tbd|tba)$/i.test(vf.name) ? bookedVendorIn(event, 'venue') : null;
+    if (place) return { pick: null, because: `${vf.displayLine} — ${vendorStatusWord(place)}`, vendorId: place.id };
+  }
+  return null;
+}
 export function choicePickFor(event, id) {
   if (!event || !id) return null;
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
@@ -859,6 +892,9 @@ export function choicePickFor(event, id) {
   const pb = getPlaybook(event.type);
   const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d.id === id) : null;
   if (dec) {
+    // A booked vendor's answer outranks a recommendation (see decisionSettledByData).
+    const settled = decisionSettledByData(event, dec);
+    if (settled && settled.pick) return settled.pick;
     // A RECOMMENDATION OUTRANKS THE AUTHORED LITERAL (2026-09-18). This used to
     // return `dec.default` flat, which is why difmCapable:'can-derive' derived
     // nothing: the same string on a 4-guest event and a 400-guest one.
@@ -2224,7 +2260,23 @@ export function playbookRunOfShow(event) {
   // UP NEXT block rendered its header over nothing (a ghost zone). Accept both
   // spellings so an authoring choice can never blank a cue again; the schedule
   // gate in __tests__/rosWhenUnits proves no entry resolves empty.
-  const cueText = (entry) => (entry && (entry.what != null ? entry.what : entry.do)) || '';
+  // THE CEREMONY THE PLAN ALREADY HOLDS (owner's demo, 11/15/2026). "Make it
+  // yours" showed the Army retirement ceremony, grounded to Army references, while
+  // The Day's program beat read the civilian "the boss, the oldest friend, the
+  // family". A beat marked `militaryCeremonyBeat` prints the authored sequence
+  // when militaryRetirementContext has one; otherwise the authored text stands.
+  const ceremony = (() => {
+    try {
+      const m = militaryRetirementContext(event);
+      return m && m.authored && Array.isArray(m.ceremonySequence) && m.ceremonySequence.length ? m : null;
+    } catch (_e) { return null; }
+  })();
+  const cueText = (entry) => {
+    if (entry && entry.militaryCeremonyBeat && ceremony) {
+      return `The ${ceremony.label} retirement ceremony: ${ceremony.ceremonySequence.join(' → ')}`;
+    }
+    return (entry && (entry.what != null ? entry.what : entry.do)) || '';
+  };
 
   // Food-approach lever — drop "caterer arrives / load-in" day-of cues when the host cooks.
   const dropCatererCue = foodApproach(event).usesCaterer === false;
@@ -2794,6 +2846,11 @@ export function playbookRisks(event, domain) {
     // choiceShown(). No existing playbook authored whenChoice on a risk
     // before this, so it is a no-op everywhere else.
     .filter((r) => choiceShown(event, r.whenChoice))
+    // `whenAnswered` — ANSWERED picks only, never the authored default (owner's
+    // demo, 11/15/2026): "have a lookout text …" printed while "Surprise or
+    // announced?" was still open. A risk that only exists for one answer waits
+    // for the host to give it. Same read as standsDown.
+    .filter((r) => !r.whenAnswered || standsDown(event, r.whenAnswered))
     .filter((r) => !dre || dre.test(`${r.id || ''} ${r.trigger}`)) // match the trigger/id, not the fix (mitigations mention "guest" generically)
     .map((r) => {
       const sev = String(r.severity || 'med').toLowerCase();
@@ -2895,12 +2952,27 @@ export function playbookDayOfChecklist(event) {
     // friend is bringing the ham. Ungated items are unaffected.
     .filter((it) => !it || choiceShown(event, it.whenChoice))
     .map((it) => (noKitchen && it && it.id === 'food' ? DAYOF_NO_KITCHEN_FOOD : it));
-  const items = normalizeDayOfItems(source);
+  // THE CEREMONY'S OWN DAY-OF CHECKS (owner's demo, 11/15/2026). A military
+  // retirement whose branch protocol is authored already knows what must be in
+  // hand on the day — the folded flag, the Retirement Order, the uniform — with
+  // sources on every element. The Day showed only the generic safety floor and
+  // said "we have no day-of list written". Only elements the protocol marks as a
+  // days-lead item are added, in its own words.
+  const mil = (() => {
+    try { const m = militaryRetirementContext(event); return m && m.authored && Array.isArray(m.protocol) ? m : null; } catch (_e) { return null; }
+  })();
+  const milItems = mil
+    ? mil.protocol.filter((p) => p && p.id && p.label && p.lead === 'days').map((p) => ({ id: `mil_${p.id}`, label: p.label, detail: p.note || '', severity: 'med' }))
+    : [];
+  const items = normalizeDayOfItems([...source, ...milItems]);
   if (!items.length) return null;
-  const isDefault = !(authored && authored.length);
+  const isDefault = !(authored && authored.length) && !milItems.length;
+  const typeWord = String(event.type || 'event').toLowerCase();
   const because = isDefault
-    ? `standard ${String(event.type || 'event').toLowerCase()} safety basics`
-    : `the things that actually matter for a ${String(event.type || 'event').toLowerCase()}`;
+    ? `standard ${typeWord} safety basics`
+    : !(authored && authored.length)
+      ? `the ${mil.label} ceremony checks and standard ${typeWord} safety basics`
+      : `the things that actually matter for a ${typeWord}`;
   return { items, count: items.length, isDefault, because };
 }
 
@@ -3047,11 +3119,16 @@ const DECISION_DEP_NOUN = {
   format: 'the format', menu: 'the menu', dietary: 'dietary needs',
   alcohol: 'the drinks plan', seating: 'seating', help: 'whether you bring in help',
   theme: 'the theme', headcount: 'the headcount', count: 'the headcount',
+  venue: 'the venue',
 };
 function decisionDepNoun(id, decisions) {
   if (DECISION_DEP_NOUN[id]) return DECISION_DEP_NOUN[id];
   const d = (decisions || []).find((x) => x && x.id === id);
-  return d ? decisionShortLabel(d.label) : String(id);
+  // Mid-sentence after "Waiting on", so a capitalized label reads as a title
+  // ("Waiting on At home, …" — owner's demo, 11/15/2026). Lowercase the first
+  // letter unless the word is an acronym ("DJ", "RSVP").
+  const s = d ? decisionShortLabel(d.label) : String(id);
+  return /^[A-Z][a-z]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s;
 }
 // "Seated dinner or buffet / family-style?" → trimmed, no trailing '?', capped.
 function decisionShortLabel(label) {
@@ -3500,7 +3577,8 @@ export function playbookDecisionBoard(event, asOf, profile) {
   const isDietaryDecision = (d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || '');
   // A decision is locked when the host picked it (foodChoices[id]) OR the underlying
   // fact is settled — dietary uses the SAME predicate the food gate / next-step use.
-  const isLocked = (d) => !!picks[d.id] || (isDietaryDecision(d) && di.resolved);
+  // …OR a booked vendor already answers it (decisionSettledByData, 11/16/2026).
+  const isLocked = (d) => !!picks[d.id] || (isDietaryDecision(d) && di.resolved) || !!decisionSettledByData(event, d);
   const lockedIds = new Set(decisions.filter(isLocked).map((d) => d.id));
   // A prerequisite (dependsOn) is met when it's a locked decision, dietary collected,
   // or the headcount resolved. Anything else is treated as still-pending (honest: we
@@ -3717,7 +3795,11 @@ export function playbookDecisionBoard(event, asOf, profile) {
     const childcareGrounded = isGroundedChildcare(childcareContext);
     const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, timingDisagreement, _dependedOnCount, culturalContext, culturalGrounded, militaryContext, militaryGrounded, destinationContext, destinationGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
-      const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
+      const settled = !picks[d.id] && !(isDietaryDecision(d) && di.resolved) ? decisionSettledByData(event, d) : null;
+      // The venue's settled row would only restate the f-venue foundation fact
+      // above it, so it locks (nothing waits on it) without a second row.
+      if (settled && !settled.pick && d.id === 'venue' && hasVenue) continue;
+      const val = picks[d.id] || (settled ? settled.because : null) || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       // `d.ask ||` — the open branch below has always honoured an authored ask
       // and this one did not, so a decision that authored its own question lost
       // it the moment it locked. Found while correcting the schema spec against
@@ -5614,7 +5696,7 @@ export function playbookOpenDecisionAffects(event) {
   const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
   const m = {};
   (pb.decisions || []).forEach((d) => {
-    if (d && Array.isArray(d.affects) && !(d.id in picks)) d.affects.forEach((id) => { m[id] = d.label; });
+    if (d && Array.isArray(d.affects) && !(d.id in picks) && !decisionSettledByData(event, d)) d.affects.forEach((id) => { m[id] = d.label; });
   });
   return m;
 }

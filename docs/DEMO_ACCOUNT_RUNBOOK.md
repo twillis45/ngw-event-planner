@@ -27,6 +27,15 @@ cross-device half — the plan following you to another phone, and the cloud
 delete that backs up the tombstone. That half is NOT covered by the spec (it
 needs real credentials) and remains unverified.
 
+**EXCEPT THE VENDOR COMMUNICATION STEPS (owner's live demo, 11/15/2026; #134,
+#139).** On production, "Send <name> the details" and "Log what the vendor
+said → Read the message" both run on the account: the vendor's link is where
+their answer comes back to, and reading a reply uses the AI service. Signed
+out, both now say so up front and lead to sign-in (owner call A, 11/16), so a
+signed-out demo shows the honest sign-in step, not the pre-written message.
+**To demo the message itself, sign in as the demo account first (step 2).**
+Draft note and Mark it sent work either way.
+
 ## One-time setup (only for a cross-device demo — Todd does this)
 
 1. Create the demo account in Supabase: any dedicated email (e.g.

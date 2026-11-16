@@ -1,5 +1,23 @@
 # Where We Are -- live status board
 
+## November 15–16, 2026 — Friendsgiving; helpers by link; the owner's iOS demo, fixed
+
+- **Live, in order:**
+  - #124 (Friendsgiving playbook; every type on its own runway)
+  - #125 (helper link, "Send the details", "Who's confirmed")
+  - #126 (trip wording only on a trip; eight e2e shards)
+  - #127 (checklist buttons justified)
+  - #129 (the owner's iOS Simulator demo fixes; buttons line up)
+  - #137 (G28 root-caused, G27, $39 sheet wording C)
+- **CI:** eight e2e shards; a change goes live about 40 minutes after its PR opens, down from 70.
+- **Owner rule:** batch small fixes into one PR.
+- **G28 was a real lost tap, not a flake.** The reply form scrolled under the finger while it opened; `overflow:clip` fixed it.
+- **Next batch: the live-hunt PR.**
+  - An open card no longer re-scrolls on every change (12 places).
+  - Owner calls A (sign in first, then send) and B ("Turn this off" turns it off).
+  - Engine fixes for the VFW demo, and #130–#139.
+- **Then:** guest↔host "Questions & updates". The server half is built and held; it needs migration 024.
+
 ## November 10–11, 2026 — the last smoke-test gaps closed; the guest invite redesigned
 
 Three PRs merged and deployed (#113–#115). The live build is `61cb1324`, and the automatic deploy now builds `live`.

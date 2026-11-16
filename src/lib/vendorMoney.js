@@ -129,7 +129,15 @@ export function moneyCategories(event, estimates = []) {
     const paid = g.vendors.reduce((s, v) => s + vendorPaid(v), 0);
     const bought = g.estimates.reduce((s, e) => s + num(e.spent), 0);
     const estimate = g.estimates.reduce((s, e) => s + num(e.expected), 0);
-    const source = contract > 0 || (!g.rows.length && g.vendors.length) ? 'vendor' : g.rows.length ? 'budget' : 'estimate';
+    // A booked vendor with NO price does not make the plan's estimate a vendor
+    // record (owner's demo, 11/15/2026: "catering $3,300 vendor record" while the
+    // caterer card read "agreed to pay $0" — the $3,300 was the food plan's
+    // estimate). With an estimate in the group, the figure is that estimate and
+    // is labeled one; the vendor still rides on `vendorIds`.
+    const source = contract > 0 || (!g.rows.length && g.vendors.length && !g.estimates.length) ? 'vendor' : g.rows.length ? 'budget' : 'estimate';
+    // The group's key is a normalized category ("catering") when a vendor opened
+    // it; an estimate's display label ("Catering") is the one a host reads.
+    const label = !g.rows.length && g.estimates.length && g.label === normalizeCategory(g.label) ? g.estimates[0].label : g.label;
     // An allocation owns the forecast, not the shopping receipt. Unpriced
     // bookings cannot replace known payments with an invented zero.
     const spent = Math.max(0, source === 'vendor' && contract > 0 ? paid : actual, bought, paid);
@@ -139,7 +147,7 @@ export function moneyCategories(event, estimates = []) {
     // $62.48 grocery payment under Food set expected to $62.48 and the rest of
     // the food estimate vanished. Allocation owns expected only when one was set.
     const expected = Math.max(committed, contract > 0 ? contract : allocated > 0 ? allocated : g.rows.length && !g.estimates.length ? allocated : estimate);
-    return { label: g.label, source, expected: roundCurrency(expected), committed: roundCurrency(committed), spent: roundCurrency(spent),
+    return { label, source, expected: roundCurrency(expected), committed: roundCurrency(committed), spent: roundCurrency(spent),
       spentEstimated: bought > Math.max(contract > 0 ? paid : actual, paid)
         ? Math.min(spent, Math.max(0, g.estimates.reduce((s, e) => s + num(e.spentEstimated), 0))) : 0,
       budgetRowIds: g.rows.map(r => r.id), vendorIds: g.vendors.map(v => v.id),

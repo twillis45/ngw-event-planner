@@ -66,6 +66,30 @@ export function parseVenueLocation(v) {
   return null;
 }
 
+// ─── splitTrailingPlace — "Name — City, ST" / "Name, City, ST" (11/16/2026) ──
+// Vendor and venue names arrive carrying their town: "VFW Post 3150 —
+// Alexandria, VA", "Capital Rotisserie Catering — Silver Spring, MD". The owner's
+// live demo (11/15/2026) read "National average · add your state" under a venue
+// whose state was in its own name, and "Still waiting: …, Arlington, VA, …" lists.
+// Only the TRAILING "City, ST" is tried, through parseVenueLocation's strict gate
+// (a real state is required), and only when a name remains in front of it.
+// → { name, city, state } | null
+export function splitTrailingPlace(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  const dash = s.match(/^(.*\S)\s+[—–-]\s+([^—–]+)$/);
+  if (dash) {
+    const place = parseVenueLocation(dash[2]);
+    if (place && place.state) return { name: dash[1].trim(), city: place.city, state: place.state };
+  }
+  const parts = s.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    const place = parseVenueLocation(parts.slice(-2).join(', '));
+    if (place && place.state) return { name: parts.slice(0, -2).join(', '), city: place.city, state: place.state };
+  }
+  return null;
+}
+
 // ─── resolveSpokenCity — the TOWN SHE NAMED, WITHOUT A STATE (2026-09-18) ────
 //
 // THIS DOES NOT LOOSEN parseVenueLocation. That gate is untouched and still

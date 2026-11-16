@@ -152,7 +152,9 @@ describe('no CTA describes a trip instead of the work', () => {
     for (const f of ['hostv2/src/HostShellV2.jsx', 'hostv2/src/InviteV2.jsx']) {
       const full = path.join(ROOT, f);
       if (!fs.existsSync(full)) continue;
-      const src = stripComments(fs.readFileSync(full, 'utf8'));
+      // A JSX comment `{/* … */}` in front of a label left an empty `{}` that
+      // stopped the text match (#131 red-proof, 11/16/2026): drop it.
+      const src = stripComments(fs.readFileSync(full, 'utf8')).replace(/\{\s*\}/g, '');
       // Literal text between a <button …> and its </button>, plus the ternary
       // string literals inside a button's children.
       // `(?:=>|[^>])` — the arrow alternative must come FIRST, or the lazy
@@ -181,6 +183,35 @@ describe('no CTA describes a trip instead of the work', () => {
       // Ternary/expression labels — isBannedRaw, see above.
       const INLINE = /<button\b(?:=>|[^>])*?>\{[^}]*?'([^']{2,60})'/g;
       while ((m = INLINE.exec(src))) {
+        const label = m[1];
+        if (label.trim() !== 'Go' && isBannedRaw(label) && !ALLOWED_FEATURE_NAMES.has(label.trim())) bad.push(`${f} → "${label.trim()}"`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  // ── A SPAN WITH role="button" IS A BUTTON (#131, owner's live demo 11/15) ──
+  // "Take me there →" shipped on the vendor card's "Next:" line as a
+  // <span role="button">, so the <button>-only scan above never read it — the
+  // same label the 7/28 click-through audit had already removed elsewhere.
+  // Anything a host can tap is held to the same list.
+  test('no banned label is hard-typed on a role="button" element', () => {
+    const bad = [];
+    for (const f of ['hostv2/src/HostShellV2.jsx', 'hostv2/src/InviteV2.jsx']) {
+      const full = path.join(ROOT, f);
+      if (!fs.existsSync(full)) continue;
+      // A JSX comment `{/* … */}` in front of a label left an empty `{}` that
+      // stopped the text match (#131 red-proof, 11/16/2026): drop it.
+      const src = stripComments(fs.readFileSync(full, 'utf8')).replace(/\{\s*\}/g, '');
+      const ROLE_TEXT = /<[a-z][\w.]*\b(?=(?:=>|[^>])*?\brole="button")(?:=>|[^>])*?>([^<{]{2,400})</g;
+      let m;
+      while ((m = ROLE_TEXT.exec(src))) {
+        const label = m[1].replace(/→/g, '').trim();
+        if (!label || label.length > 60) continue;
+        if (isBanned(label) && !ALLOWED_FEATURE_NAMES.has(label)) bad.push(`${f} → "${label}"`);
+      }
+      const ROLE_INLINE = /<[a-z][\w.]*\b(?=(?:=>|[^>])*?\brole="button")(?:=>|[^>])*?>\s*\{[^}]*?'([^']{2,60})'/g;
+      while ((m = ROLE_INLINE.exec(src))) {
         const label = m[1];
         if (label.trim() !== 'Go' && isBannedRaw(label) && !ALLOWED_FEATURE_NAMES.has(label.trim())) bad.push(`${f} → "${label.trim()}"`);
       }

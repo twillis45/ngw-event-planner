@@ -17,9 +17,12 @@
 // PURE: no I/O, no clock, no storage.
 import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed, isVendorBooked } from './workstreams';
+import { vendorDisplayName } from './vendorDisplayName';
 
 const clean = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
-const vendorLabel = (v) => clean(v && v.name) || clean(v && v.category) || 'A vendor';
+// Display name, not the stored one: "Still waiting: Beltway Sound Collective"
+// rather than "…Collective — Arlington, VA" (owner's demo, 11/15/2026).
+const vendorLabel = (v) => vendorDisplayName(v) || 'A vendor';
 
 /**
  * @param {object} event

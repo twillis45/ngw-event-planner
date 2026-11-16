@@ -142,7 +142,7 @@ import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuest
 
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
-import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen } from '@app/lib/analytics';
+import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen, analyticsNoticeAction } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
 import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
@@ -374,7 +374,7 @@ const REDUCE_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-
 // honest log in one call). Reuses the SAME shared core (@app/lib/vendorReplyParse)
 // and backend endpoint as the planner cockpit; only the chrome is hostv2's.
 // "Apply reviewed extraction" (06_AI_GROUNDING) — it proposes, never auto-writes.
-function VendorReplyParserV2({ vendor, event, writeVendor }) {
+function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn }) {
   const [replyText, setReplyText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -393,7 +393,12 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
       // evidence is a verbatim quote of THIS text — omit it and every row
       // arrives unverified/unchecked (safe, but wrong for evidenced rows).
       setResult({ rows: buildReplyDiff(data.fields, vendor, replyText), truncated: data.truncated === true, disclaimer: data.disclaimer });
-    } catch (e) { setErr(e.message || 'Could not read that message — try again.'); }
+    } catch (e) {
+      // A 401 from the AI service (#139): say it in the button's own words and
+      // lead to sign-in; the pasted text stays (owner call A's rule, 11/16).
+      const m = (e && e.message) || '';
+      setErr(/sign in/i.test(m) ? 'signed-out' : (m || 'Could not read that message — try again.'));
+    }
     finally { setBusy(false); }
   };
   const toggleRow = (i) => setResult(r => ({ ...r, rows: r.rows.map((row, j) => j === i ? { ...row, accepted: !row.accepted } : row) }));
@@ -409,6 +414,14 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
   return (
     <div style={{ margin: '10px 0', padding: 'var(--sp-2) 12px', borderRadius: 10, background: 'var(--steel-tint)', border: '1px solid var(--steel-soft)' }}>
       <div className="of" style={{ marginBottom: 6 }}>Log what the vendor said</div>
+      {/* SIGNED OUT, SAID BEFORE ANY TYPING (#139): reading a reply runs on the
+          account, so a host we know is signed out is told first, not after. */}
+      {isSupabaseConfigured() && !signedIn ? (
+        <div data-reply-signin style={{ fontSize: 12, color: 'var(--carbon-muted)', lineHeight: 1.5 }}>
+          Sign in to have it read the message — it pulls out times, contacts, counts and payment status for you to review.{' '}
+          {onSignIn && <button className="mini" onClick={onSignIn}>Sign in</button>}
+        </div>
+      ) : (<>
       <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
         Paste their email or text — we’ll pull out times, contacts, counts and payment status for you to review. Nothing saves until you apply it.
       </div>
@@ -418,8 +431,14 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
         value={replyText} onChange={e => setReplyText(e.target.value)} aria-label="Paste the vendor's message" />
       <div className="actions-row" style={{ marginTop: 8, alignItems: 'center', gap: 8 }}>
         <button className="mini" onClick={analyze} disabled={busy || !replyText.trim()}>{busy ? 'Reading…' : 'Read the message'}</button>
-        {err && <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span>}
+        {err && err !== 'signed-out' && <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span>}
       </div>
+      {err === 'signed-out' && (
+        <div data-reply-signin style={{ fontSize: 12, color: 'var(--carbon-muted)', marginTop: 8, lineHeight: 1.5 }}>
+          Sign in to have it read the message. Nothing was saved, and your pasted text is still here.{' '}
+          {onSignIn && <button className="mini" onClick={onSignIn}>Sign in</button>}
+        </div>
+      )}
       {result && result.rows.length === 0 && (
         <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginTop: 8 }}>Nothing new to apply — this doesn’t change anything already on record.</div>
       )}
@@ -458,6 +477,7 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
           {result.disclaimer && <div style={{ fontSize: 12, color: 'var(--carbon-muted)', fontStyle: 'italic', marginTop: 8 }}>{result.disclaimer}</div>}
         </div>
       )}
+      </>)}
     </div>
   );
 }
@@ -921,6 +941,19 @@ const OPEN_ON_LOAD = (() => {
 // The seeded event's id is 'demoqa-*' — neither 'cust-' nor 'ev-copy-', so
 // passGate treats it as a sample: it never consumes the free tier and never
 // gets gated, which is exactly right for a demo walkthrough.
+// SCROLL WHEN IT OPENS, NOT ON EVERY RENDER (owner's live hunt 11/15/2026, #134).
+// An inline `ref={el => { if (el && open) el.scrollIntoView(...) }}` runs on
+// EVERY render, so each tap or keystroke inside an open card re-centered it —
+// measured up to 1,150px on the live demo, which put the tap's result off
+// screen. This scrolls once when `active` turns true, and re-arms when it turns
+// false, so the next opening scrolls again. Pinned by anOpenCardHoldsStill.
+const scrollIntoViewOnOpen = (active) => (el) => {
+  if (!el) return;
+  if (!active) { delete el.dataset.scrolledOpen; return; }
+  if (el.dataset.scrolledOpen) return;
+  el.dataset.scrolledOpen = '1';
+  el.scrollIntoView({ block: 'center' });
+};
 const DEMO_TOOLS_ARMED = (() => {
   try {
     const p = new URLSearchParams(window.location.search).get('demo');
@@ -3832,7 +3865,11 @@ export default function HostShellV2() {
         t = setTimeout(() => {
           markAnalyticsNoticeSeen();
           toast('We count which parts of the app get used so we can make them better. No ads, nothing sold, and your guests’ details never leave your plan.',
-            { label: 'Turn this off', fn: () => setSheet({ kind: 'settings' }) });
+            // Owner call B (11/16/2026): the action does what it says.
+            analyticsNoticeAction(() => {
+              setAnalyticsOff(true); patchProfile({ analyticsOff: true });
+              setTimeout(() => toast('Analytics off — change it anytime in Settings.'), 0);
+            }));
         }, 1200);
       }
     } catch { /* a notice must never break boot */ }
@@ -4150,6 +4187,13 @@ export default function HostShellV2() {
     return () => clearTimeout(t);
   }, [vbSettledKey]);
   useEffect(() => { setVendorBrief(null); }, [eventId]); // never carry a stale link across an event switch
+  const pendingBriefRef = useRef(null);   // the vendor whose details wait on sign-in
+  const askSignInToSend = (v) => {
+    pendingBriefRef.current = v && v.id;
+    const who = vendorGreetingName(v);
+    toast(`Sign in to send ${who || 'them'} the details — their answer comes back to your account. Nothing was sent.`, null, null, { sticky: true });
+    setSheet({ kind: 'settings' });
+  };
   const shareVendorBrief = async (v) => {
     // MODEL D — door 1, at the only honest gate point: GENERATING a brief for
     // a new vendor (board 2026-08-18: "never mid-conversation" — an
@@ -4166,6 +4210,11 @@ export default function HostShellV2() {
         return;
       }
     } catch { /* gate engine absent — never block sharing on an internal error */ }
+    // SIGN IN FIRST, THEN SEND (owner call A, 11/16/2026). The live link needs
+    // an account: it is where the vendor's answer comes back to. A host we
+    // already know is signed out is asked before anything is attempted; the
+    // send resumes on its own once she is in (pendingBriefRef, below).
+    if (isVendorBriefApiConfigured() && isSupabaseConfigured() && !session) { askSignInToSend(v); return; }
     let appUrl;
     try { appUrl = publicAppUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return; }
@@ -4187,6 +4236,9 @@ export default function HostShellV2() {
       if (!r.ok) {
         reportFailure('brief_mint', { where: 'hostv2.vendor-brief', reason: r.kind, statusClass: mintStatusClass(r), eventId: event.id });
         setVendorBrief(b => (b && b.vendorId === v.id) ? { vendorId: v.id, url: null, qrDataUrl: null, minting: false, copied: false, error: r.kind } : b);
+        // The server says signed out (a session that lapsed, or no auth on this
+        // browser): same rule as above — straight to sign-in, then resume.
+        if (r.kind === 'signed-out') askSignInToSend(v);
         return;
       }
       code = r.code;
@@ -4206,6 +4258,16 @@ export default function HostShellV2() {
       if (v.id && !cur.includes(v.id)) patchEvent({ briefSharedVendorIds: [...cur, v.id] });
     } catch { /* ledger write is best-effort; the share itself already happened */ }
   };
+  // Signed in with a send waiting: go back to that vendor and send it.
+  useEffect(() => {
+    if (!session || !pendingBriefRef.current) return;
+    const v = (event.vendors || []).find(x => x && x.id === pendingBriefRef.current);
+    pendingBriefRef.current = null;
+    if (!v) return;
+    setSheet({ kind: 'vendors', focus: v.id });
+    shareVendorBrief(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
   const copyVendorBriefLink = () => {
     if (!vendorBrief || !vendorBrief.url) return;
     navigator.clipboard?.writeText(vendorBrief.url).then(() => {
@@ -8706,7 +8768,7 @@ export default function HostShellV2() {
                   word. Glued to what follows, the whole marker moves down
                   together. */}
               {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range · est.' : 'Mid‑range'}`}
+              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range\u00A0·\u00A0est.' : 'Mid‑range'}`}
             </>
           )}>{fmt(typical)}</BigValue>
           <Grounding>
@@ -13809,7 +13871,7 @@ export default function HostShellV2() {
                     if (!phone && !v.arrivalTime) return null;
                     return (
                       <p className="meta" style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
-                        {[v.arrivalTime ? 'arrives ' + v.arrivalTime : null, who && who !== v.name ? 'on-site: ' + who : null].filter(Boolean).join(' · ')}
+                        {[v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null, who && who !== v.name ? 'on-site: ' + who : null].filter(Boolean).join(' · ')}
                         {phone ? <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(phone).replace(/[^+\d]/g, '')}>Call {String(who).split(/\s+/)[0]}</a> : null}
                       </p>
                     );
@@ -13856,7 +13918,7 @@ export default function HostShellV2() {
                         </span>
                         <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{(() => {
                           const v = (event.vendors || []).find(x => x && (x.id === r.vendorId || (r.vendorName && x.name === r.vendorName)));
-                          return v && v.arrivalTime ? <span style={{ color: 'var(--carbon-muted)' }}> · arrives {v.arrivalTime}</span> : null;
+                          return v && v.arrivalTime ? <span style={{ color: 'var(--carbon-muted)' }}> · arrives {fmt12h(v.arrivalTime)}</span> : null;
                         })()}</span>
                       </button>
                     );
@@ -14291,7 +14353,7 @@ export default function HostShellV2() {
                               aria-label={'Time for ' + (cur.segment || 'this moment')} />
                           ) : (<>
                             <span aria-hidden="true" style={{ color: 'var(--faint)' }}>·</span>
-                            {cur.rel && <span style={{ color: 'var(--steel-soft)' }}>~ {cur.rel}</span>}
+                            {cur.rel && <span style={{ color: 'var(--steel-soft)' }}>~{cur.rel}</span>}
                             <button onClick={() => setTimeEditIds(s => { const n = new Set(s); n.add(cur.id); return n; })}
                               style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' }}>Set a time ›</button>
                           </>)) : null}
@@ -14517,7 +14579,10 @@ export default function HostShellV2() {
                   ? (money.committed <= money.planned
                     ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`
                     : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`)
-                  : 'No budget yet — nothing to settle up when it’s over.'}
+                  // Booked vendors with no price are not "nothing to settle" (live hunt item 5).
+                  : ((spend.unpricedBooked || []).length
+                    ? 'No budget yet — ' + spend.unpricedBooked.map(x => x.name).join(', ') + ' ' + (spend.unpricedBooked.length === 1 ? 'has' : 'have') + ' no price on record, so there’s nothing to total yet.'
+                    : 'No budget yet — nothing to settle up when it’s over.')}
               </p>
 
               {/* HOST MODEL (Rule 4): the money reads as ONE number plus where
@@ -14564,7 +14629,7 @@ export default function HostShellV2() {
 
               <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · every budget line above stays saved. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
               </div>
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
@@ -15077,7 +15142,7 @@ export default function HostShellV2() {
                     }
                     return (
                       <div key={r.id || i} data-flip={String(r.id || i)} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), cursor: 'default', ...heartStyle }}
-                        ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
+                        ref={scrollIntoViewOnOpen(focused)}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
                             {lateChip}
@@ -15145,7 +15210,7 @@ export default function HostShellV2() {
                     return (
                       <div key={r.id || i} data-flip={String(r.id || i)} style={{ ...heartStyle }}>
                         <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
-                          ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
+                          ref={scrollIntoViewOnOpen(focused)}>
                           <span className="f-main">
                             <span className="f-name">{r.label}
                               {lateChip}
@@ -15167,7 +15232,7 @@ export default function HostShellV2() {
                   return (
                     <div key={r.id || i} data-flip={String(r.id || i)} style={{ ...heartStyle }}>
                       <button className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
-                        ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                        ref={scrollIntoViewOnOpen(focused)}
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
@@ -15256,7 +15321,7 @@ export default function HostShellV2() {
                         // ground sheet's "Change the call") — same rowfocus
                         // landing as everywhere else, exact row, no hunting.
                         <div key={r.id || i} className={sheet.focus && sheet.focus === r.id ? 'rowfocus' : undefined}
-                          ref={el => { if (el && sheet.focus && sheet.focus === r.id) el.scrollIntoView({ block: 'center' }); }}>
+                          ref={scrollIntoViewOnOpen(sheet.focus && sheet.focus === r.id)}>
                           {/* FOLD-BEHIND-CHANGE (host, 2026-08-19: "ctas have random
                               horizontal placement — best placement vs leaders"). Two
                               hand-drawn attempts at this layout both left Change/Note-why
@@ -17195,7 +17260,7 @@ export default function HostShellV2() {
                           <div key={r.guestId != null ? r.guestId : 'g' + i}>
                             <button
                               className={'frow' + (sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId) ? ' rowfocus' : '')}
-                              ref={el => { if (el && sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId)) el.scrollIntoView({ block: 'center' }); }}
+                              ref={scrollIntoViewOnOpen(sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId))}
                               style={{ animation: rowEnter(i) }}
                               onClick={() => setLodgePickFor(lodgePickFor === rk ? null : rk)}
                               aria-expanded={lodgePickFor === rk} aria-haspopup="true"
@@ -17366,7 +17431,7 @@ export default function HostShellV2() {
                           return (
                             <div key={r.guestId != null ? r.guestId : 'g' + i}>
                               <button className={'frow' + (isFocus ? ' rowfocus' : '')}
-                                ref={el => { if (el && scrollHere) el.scrollIntoView({ block: 'center' }); }}
+                                ref={scrollIntoViewOnOpen(scrollHere)}
                                 style={{ animation: rowEnter(i) }}
                                 onClick={() => setRidePickFor(ridePickFor === rk ? null : rk)}
                                 aria-expanded={ridePickFor === rk} aria-haspopup="true"
@@ -17603,7 +17668,7 @@ export default function HostShellV2() {
                               return (
                                 <div key={r.guestId != null ? r.guestId : 'g' + (cl.day || 'u') + i}>
                                   <button className={'frow' + (isFocus ? ' rowfocus' : '')}
-                                    ref={el => { if (el && isFocus) el.scrollIntoView({ block: 'center' }); }}
+                                    ref={scrollIntoViewOnOpen(isFocus)}
                                     style={{ animation: rowEnter(i) }}
                                     onClick={() => (editing ? setFlightEdit(null) : openFlightEdit(r))}
                                     aria-label={r.name + ' — ' + (r.hasFlightInfo ? 'flight info on the board' : 'no flight info yet') + '. Tap to enter flights.'}>
@@ -17699,7 +17764,7 @@ export default function HostShellV2() {
                 const isPicked = seatPick != null && String(g.id) === String(seatPick);
                 return (
                   <div key={g.id} className={'frow' + (isFocus || isPicked ? ' rowfocus' : '') + (guestDrag && guestDrag.id === g.id ? ' dragging' : '')}
-                    ref={el => { if (el && isFocus) el.scrollIntoView({ block: 'center' }); }}
+                    ref={scrollIntoViewOnOpen(isFocus)}
                     style={{ cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} role="button" tabIndex={0}
                     onPointerDown={startGuestDrag(g)}
                     onClick={() => { if (guestDraggedRef.current) return; setSeatPick(isPicked ? null : g.id); }}
@@ -18048,7 +18113,7 @@ export default function HostShellV2() {
                   const focused = sheet.focus != null && String(sheet.focus) === String(r.type);
                   return (
                   <div key={'ctx-' + (r.type || i)} className={'brow' + (focused ? ' rowfocus' : '')}
-                    ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                    ref={scrollIntoViewOnOpen(focused)}
                     style={{ animation: rowEnter(i) }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
@@ -18084,7 +18149,7 @@ export default function HostShellV2() {
                   const focused = sheet.focus != null && String(sheet.focus) === String(r.id);
                   return (
                   <div key={r.id || i} className={'brow' + (focused ? ' rowfocus' : '')}
-                    ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                    ref={scrollIntoViewOnOpen(focused)}
                     style={{ animation: rowEnter(i) }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
@@ -19168,7 +19233,7 @@ export default function HostShellV2() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'flex-start' }}>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div className="f-name">{v.name}</div>
-                            <div className="sv-meta">{[v.category, arrival ? 'arrives ' + arrival : null, v.cost ? '$' + Number(v.cost).toLocaleString() : null].filter(Boolean).join(' · ')}</div>
+                            <div className="sv-meta">{[v.category, arrival ? 'arrives ' + fmt12h(arrival) : null, v.cost ? '$' + Number(v.cost).toLocaleString() : null].filter(Boolean).join(' · ')}</div>
                           </div>
                           <span className="sweep-state">{st === 'waiting' ? 'no reply yet' : st === 'drafting' ? 'drafting…' : st === 'ready' ? 'draft ready' : 'they answered'}</span>
                         </div>
@@ -20151,7 +20216,7 @@ export default function HostShellV2() {
                     const isCvbRow = /visitors bureau|convention .{0,3}visitors|\bcvb\b/i.test(String(t.task || ''));
                     const rowBtn = (
                     <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
-                      ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
+                      ref={scrollIntoViewOnOpen(sheet.focus && t.id === sheet.focus)}
                       style={{ animation: rowEnter(i) }}
                       onClick={() => toggleTask(i)}>
                       <span className="fcheck" aria-hidden="true" />
@@ -20435,7 +20500,7 @@ export default function HostShellV2() {
                 </>
               ) : (
                 <>
-                  <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No checklist yet — that’s exactly why the plan flagged “catch up.” Draft the real one:</div>
+                  <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No checklist yet. Draft one from the playbook:</div>
                   <button className="cta" onClick={draftTimeline}>Draft my checklist from the playbook</button>
                 </>
               )}
@@ -20854,7 +20919,7 @@ export default function HostShellV2() {
                           {un} meal{un === 1 ? '' : 's'} unanswered
                         </button>
                       )}
-                      <button type="button" onClick={() => setEstOpen(o => !o)}
+                      <button type="button" className="tap-44" onClick={() => setEstOpen(o => !o)}
                         aria-expanded={estOpen}
                         style={{ font: 'inherit', fontSize: 'var(--t-caption-min)', fontWeight: 600,
                           color: 'var(--steel-soft)', background: 'none', border: 'none', padding: 0,
@@ -20930,7 +20995,7 @@ export default function HostShellV2() {
                         return (
                           <>
                             {note.slice(0, at)}
-                            <button type="button" onClick={() => setSheet({ kind: 'venue' })}
+                            <button type="button" className="tap-44" onClick={() => setSheet({ kind: 'venue' })}
                               style={{ font: 'inherit', color: 'var(--steel-soft)', background: 'none',
                                 border: 'none', padding: 0, cursor: 'pointer',
                                 textDecoration: 'underline', textUnderlineOffset: '2px' }}>
@@ -23371,7 +23436,7 @@ export default function HostShellV2() {
                     const vConfirm = confirmationByVendor[String(v.id)] || null;
                     return (
                       <div key={v.id} data-vid={v.id} className={'vcard' + (isOpen ? ' open' : '')}
-                        ref={el => { if (el && isOpen) el.scrollIntoView({ block: 'center' }); }}
+                        ref={scrollIntoViewOnOpen(isOpen)}
                         onClick={() => setSheet(s => ({ ...s, focus: isOpen ? null : v.id }))}>
                         <div className="vc-head">
                           <div className="vc-avatar" aria-hidden>{String(v.name || '?').trim().charAt(0).toUpperCase()}</div>
@@ -23388,7 +23453,7 @@ export default function HostShellV2() {
                                 a proportional face where 1 is narrower than 8. The
                                 sub keeps what describes the vendor; the number goes
                                 right, in `.amt`, where a column of them lines up. */}
-                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + v.arrivalTime : null,
+                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
                               // How this vendor prices (host report): a per-head figure for a caterer/bar
                               // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
                               Number(v.cost) > 0 ? vendorPricingHint(v, Number(event.guestCount) || Number(event.guestEstimate) || 0) : null].filter(Boolean).join(' · ')}</div>
@@ -23595,8 +23660,8 @@ export default function HostShellV2() {
                                       aria-label={'Go to the control for: ' + na.title}>
                                       {/* Names where it goes (owner's demo, 11/16/2026: "Take me
                                           there" breaks the rule that a button says what it does). */}
-                                      {({ booking: 'Set the status', coi: 'Go to insurance', contract: 'Go to the contract',
-                                        money: 'Go to payment', arrival: 'Set the arrival time', contact: 'Go to their contact' }[anchor] || 'Go to it')} →
+                                      {({ booking: 'Set the status', coi: 'See the insurance row', contract: 'See the contract',
+                                        money: 'See the payment', arrival: 'Set the arrival time', contact: 'See their contact' }[anchor] || 'See the control')} →
                                     </span>
                                   </p>
                                 );
@@ -23747,7 +23812,7 @@ export default function HostShellV2() {
                             value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note shared with this vendor in their brief" />
                           {/* Agent Opportunity Audit P0 — paste the vendor's reply, review
                               the extracted fields, apply through writeVendor. */}
-                          <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} />
+                          <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
                           {/* WAVE-B write paths (b) + (c): arrival time (the day-of
                               roster, NOW card, and print sheet all read v.arrivalTime;
                               nothing wrote it) and money — the payment-note button
@@ -23852,7 +23917,7 @@ export default function HostShellV2() {
                                 );
                               })()}
                               <button data-vaction="money" className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
-                                {v.balancePaid ? 'Paid in full' : 'mark paid in full'}
+                                {v.balancePaid ? 'Paid in full' : 'Mark paid in full'}
                               </button>
                               {/* WHEN THE MONEY IS DUE (2026-07-14). `payDueDate` is a real field in
                                   the data model — vendorIntelligence escalates on it (payOverdue →
@@ -24512,7 +24577,7 @@ export default function HostShellV2() {
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'vendor record' : r.source === 'budget' ? 'budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'your price' : 'estimated'}</span></span>
+                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
                               </div>
                               {/* The 4% floor keeps a small-but-real category findable. It must
                                   not apply to a category costing nothing: while the fill was
@@ -26211,7 +26276,7 @@ export default function HostShellV2() {
                   {peopleZone}
                   {guestHero}
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
-                    No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
+                    No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and checking the count with your caterer.
                   </div>
                   <div id="guests-entry-anchor" style={{ display: peopleMode && !peopleAdjust ? 'none' : 'flex', gap: 'var(--sp-2)', alignItems: 'center', margin: '0 0 10px', scrollMarginTop: 12 }}>
                     <button className="mini" onClick={() => { setGuestDraft(null); setGuests(Math.max(1, (Number(guests) || 0) - 1)); }} aria-label="Fewer guests">−</button>
