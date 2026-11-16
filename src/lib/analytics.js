@@ -100,13 +100,13 @@ async function getPostHog() {
       capture_pageleave: false,
       disable_session_recording: true,
       persistence: 'localStorage',
-      loaded: (ph) => {
-        // Mask all text input values in session recordings if ever enabled
-        ph.set_config({ sanitize_properties: (props) => {
-          const safe = { ...props };
-          ['email', 'name', 'phone', '$email', '$name'].forEach(k => delete safe[k]);
-          return safe;
-        }});
+      // Contact details never leave. Was `sanitize_properties` in a `loaded`
+      // callback; posthog-js deprecated it for before_send (11/16/2026).
+      before_send: (ev) => {
+        if (!ev || !ev.properties) return ev;
+        const properties = { ...ev.properties };
+        ['email', 'name', 'phone', '$email', '$name'].forEach(k => delete properties[k]);
+        return { ...ev, properties };
       },
     });
     _ph = posthog;
