@@ -100,6 +100,7 @@ PUBLIC = {
     "POST /api/public/photos/{rsvp_code}/{photo_id}/delete": "guest's own photo; code + device key in body",
     "POST /api/public/photos/{rsvp_code}/privacy": "guest's own photos' share switch; code + device key in body",
     "GET /api/public/photos/{rsvp_code}": "host-APPROVED photos only, for invite holders; no names",
+    "GET /api/public/family/{code}": "read-only family link; long host-minted code is the credential; allow-listed plan (no guest names, money, contacts or codes)",
     # portal-respond: the portal_token in the BODY is the credential, matched
     # against metadata.portal_token stamped on the approval_request message.
     "POST /api/events/{event_id}/communication/messages/{message_id}/portal-respond":

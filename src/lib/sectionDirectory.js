@@ -132,9 +132,14 @@ export function sectionGroups(state) {
       // it was already on, and the only other way in is missing from the
       // default layout, so no trip host could reach it.
       ...(ev.costSharing || (travel && travel.relevant) ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
+      // SPLIT THE COSTS (owner, 11/16/2026: "free, just the math"): every
+      // event that isn't a trip gets the friends' split; a trip keeps its own.
+      ...(!(ev.costSharing || (travel && travel.relevant)) ? [{ k: 'split', label: 'Split the costs', sub: 'Who paid for what, and who owes whom' }] : []),
     ] },
     { title: 'More', rows: [
       { k: 'meaning', label: 'Make it yours', sub: 'The moments that make it personal' },
+      // FAMILY LINK (owner, 11/16/2026): a view-only link to the plan.
+      { k: 'family', label: 'Share with family', sub: 'A view-only link to the plan' },
       { k: 'ask', label: ASK_LABEL, sub: 'A question, answered from your numbers' },
       { k: 'pass', label: 'The One-Event Pass', sub: '$39 · one event, no subscription' },
       // ONE NAME FOR THIS DESTINATION (host ruling, 2026-08-15). It read

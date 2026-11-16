@@ -118,8 +118,10 @@ describe('sectionGroups', () => {
         outdoor: true,
       });
       expect(busy).toBeGreaterThan(calm);
-      // 3 conditional doors added: rain, crabs, costshare.
-      expect(busy - calm).toBe(3);
+      // 2 conditional doors added: rain and crabs. Costshare does not add a
+      // door: on a trip it takes the place of "Split the costs" (11/16/2026),
+      // which every other event has.
+      expect(busy - calm).toBe(2);
     });
 
     test('agrees with the rows actually rendered', () => {

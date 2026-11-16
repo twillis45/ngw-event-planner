@@ -174,6 +174,8 @@ import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
 import { metroForPlace } from '@app/lib/metroForPlace';
+import CostSplitSheet, { splitRowSub } from './CostSplitSheet.jsx';
+import FamilyLinkSheet from './FamilyLinkSheet.jsx';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
@@ -13847,7 +13849,10 @@ export default function HostShellV2() {
                           go: () => setSheet({ kind: 'costshare' }),
                         };
                       })()
-                    : null,
+                    // SPLIT THE COSTS (owner 11/16/2026, free, math only): a
+                    // local event splits what friends paid; a destination
+                    // event keeps its pass-unlocked "Who pays for what".
+                    : { key: 'split', label: 'Split the costs', sub: splitRowSub(event), go: () => setSheet({ kind: 'split' }) },
                   riskCount > 0
                     // WAVE-5: the row tints only when the registry actually raises a
                     // high risk — "N to know about" alone is information, not an ask.
@@ -14936,7 +14941,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -16014,6 +16019,13 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing to set up or borrow for this one.</div>
                 )}
               </>
+            )}
+            {sheet.kind === 'family' && (
+              <FamilyLinkSheet event={event} signedIn={Boolean(session)} appUrl={publicAppUrl()}
+                onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
+            )}
+            {sheet.kind === 'split' && (
+              <CostSplitSheet event={event} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
             {sheet.kind === 'costshare' && (() => {
               // ── DESTINATION-3 — Who pays for what ──
@@ -26751,6 +26763,8 @@ export default function HostShellV2() {
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
           { label: 'New event', sub: 'start another', go: startNewEvent },
           { label: 'Your money', sub: 'budget', go: () => setSheet({ kind: 'budget' }) },
+          { label: 'Split the costs', sub: 'who paid, who owes whom', go: () => setSheet({ kind: 'split' }) },
+          { label: 'Share with family', sub: 'a view-only link to the plan', go: () => setSheet({ kind: 'family' }) },
           { label: 'The spread & shopping', sub: 'food', go: () => setSheet({ kind: 'food' }) },
           { label: 'People you’re hiring', sub: 'vendors', go: () => setSheet({ kind: 'vendors' }) },
           { label: 'Who sits where', sub: 'seating', go: () => setSheet({ kind: 'seating' }) },

@@ -294,7 +294,7 @@ describe('A VENDOR OPENING A BRIEF LINK IS NEVER GIVEN A WORKER', () => {
     expect(register).toBeGreaterThan(flag);
     const tail = src.slice(register - 400, register);
     // (11/15/2026: the same guard now also names ?helper=, pinned below.)
-    expect(tail).toMatch(/if \(typeof window !== 'undefined' && !vendorToken(?: && !helperCode)?\)/);
+    expect(tail).toMatch(/if \(typeof window !== 'undefined' && !vendorToken(?: && !helperCode)?(?: && !familyCode)?\)/);
     expect(tail).toMatch(/addEventListener\('load'/);
   });
 
@@ -306,7 +306,18 @@ describe('A VENDOR OPENING A BRIEF LINK IS NEVER GIVEN A WORKER', () => {
     const register = src.indexOf('registerOfflineShell(');
     expect(flag).toBeGreaterThan(-1);
     expect(register).toBeGreaterThan(flag);
-    expect(src.slice(register - 400, register)).toMatch(/if \(typeof window !== 'undefined' && !vendorToken && !helperCode\)/);
+    expect(src.slice(register - 400, register)).toMatch(/if \(typeof window !== 'undefined' && !vendorToken && !helperCode(?: && !familyCode)?\)/);
+  });
+
+  test('…and family opening the read-only plan (?family=) is never given one either', () => {
+    // Family link, 11/16/2026: a relative opens one shared link to look at the
+    // plan; they are not using the app, so no worker installs for them.
+    const src = readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
+    const flag = src.indexOf("get('family')");
+    const register = src.indexOf('registerOfflineShell(');
+    expect(flag).toBeGreaterThan(-1);
+    expect(register).toBeGreaterThan(flag);
+    expect(src.slice(register - 400, register)).toMatch(/if \(typeof window !== 'undefined' && !vendorToken && !helperCode && !familyCode\)/);
   });
 });
 
