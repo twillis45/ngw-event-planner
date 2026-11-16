@@ -20140,6 +20140,9 @@ export default function HostShellV2() {
                         <span className="f-name">{lead}
                           {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done by your plan — tap to confirm</span> : null}
                           {(() => { // compressed-timeline urgency, the engine's word (never for standard)
+                            // A row the plan already handled is not urgent: "Do now" beside
+                            // "done by your plan" contradicts itself (owner, 11/16/2026).
+                            if (inferred) return null;
                             try {
                               // WAS: /T-(\d+)d/.exec(t.week) — and `week` is PROSE ('Week of'),
                               // never 'T-5d'. It matched NOTHING, so `po` was always null, so
@@ -20189,7 +20192,7 @@ export default function HostShellV2() {
                               "today", so a closed window stops masquerading as a deadline. */}
                           {(() => {
                             let due = null;
-                            try { due = t.done ? null : (taskDueLabel(t, event) || null); } catch (_e) { due = null; }
+                            try { due = (t.done || inferred) ? null : (taskDueLabel(t, event) || null); } catch (_e) { due = null; }
                             // Once there is a REAL due label, the prose bucket is noise —
                             // "7 days past its window · Week of" says the same thing twice and
                             // the second half is the vaguer one. `week` stays only as the
@@ -20237,7 +20240,9 @@ export default function HostShellV2() {
                       : null;
                     const tFirst = owner.split(/\s+/)[0];
                     const tSend = helperSend && helperSend.taskId === t.id ? helperSend : null;
-                    const assignEl = assignablePeople.length ? (
+                    // Nothing to hand off on a row the plan already handled, unless someone
+                    // already holds it (owner, 11/16/2026: every CTA justified).
+                    const assignEl = assignablePeople.length && !(inferred && !owner) ? (
                       <div className="row-assign" key={(t.id || i) + '-assign'}>
                         <button className="mini rowlink assign-btn"
                           aria-label={owner
@@ -20248,7 +20253,7 @@ export default function HostShellV2() {
                             ? <span aria-hidden="true">{owner} — {rStatus}</span>
                             : <span aria-hidden="true">Give this to someone</span>}
                         </button>
-                        {owner && !t.done && tHelper && isHelperLinkApiConfigured() && (
+                        {owner && !t.done && !tAnswer && tHelper && isHelperLinkApiConfigured() && (
                           <button className="mini rowlink helper-send"
                             disabled={!!(tSend && tSend.busy)}
                             onClick={(e) => { e.stopPropagation(); sendHelperJob(t.id); }}>
@@ -20274,13 +20279,13 @@ export default function HostShellV2() {
                           </span>
                         )}
                         {owner && !t.done && !tAnswer && (
-                          // The engine's own sentence, routed into the EXISTING
-                          // draft path. This is where a send state can be
-                          // written -- by the message flow, never by assigning.
+                          // RECORD-ONLY (UX_07 level 4): it stores the host's word
+                          // that the helper agreed and contacts no one, so the
+                          // label says "Mark", never "Confirm with" (11/16/2026).
                           <button className="mini rowlink"
-                            aria-label={(event.helperConfirmed || {})[t.id] ? `Reopen ${owner}'s confirmation for ${lead2}` : `Confirm with ${owner} about ${lead2}`}
+                            aria-label={(event.helperConfirmed || {})[t.id] ? `Reopen ${owner}'s confirmation for ${lead2}` : `Mark ${owner} confirmed for ${lead2}`}
                             onClick={(e) => { e.stopPropagation(); confirmHelper(t.id, owner); }}>
-                            <span aria-hidden="true">{(event.helperConfirmed || {})[t.id] ? 'Not confirmed after all' : `Confirm with ${owner}`}</span>
+                            <span aria-hidden="true">{(event.helperConfirmed || {})[t.id] ? 'Not confirmed after all' : `Mark ${owner} confirmed`}</span>
                           </button>
                         )}
                         {assignFor === t.id && (
