@@ -374,7 +374,7 @@ const REDUCE_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-
 // honest log in one call). Reuses the SAME shared core (@app/lib/vendorReplyParse)
 // and backend endpoint as the planner cockpit; only the chrome is hostv2's.
 // "Apply reviewed extraction" (06_AI_GROUNDING) — it proposes, never auto-writes.
-function VendorReplyParserV2({ vendor, event, writeVendor }) {
+function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn }) {
   const [replyText, setReplyText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -393,7 +393,12 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
       // evidence is a verbatim quote of THIS text — omit it and every row
       // arrives unverified/unchecked (safe, but wrong for evidenced rows).
       setResult({ rows: buildReplyDiff(data.fields, vendor, replyText), truncated: data.truncated === true, disclaimer: data.disclaimer });
-    } catch (e) { setErr(e.message || 'Could not read that message — try again.'); }
+    } catch (e) {
+      // A 401 from the AI service (#139): say it in the button's own words and
+      // lead to sign-in; the pasted text stays (owner call A's rule, 11/16).
+      const m = (e && e.message) || '';
+      setErr(/sign in/i.test(m) ? 'signed-out' : (m || 'Could not read that message — try again.'));
+    }
     finally { setBusy(false); }
   };
   const toggleRow = (i) => setResult(r => ({ ...r, rows: r.rows.map((row, j) => j === i ? { ...row, accepted: !row.accepted } : row) }));
@@ -409,6 +414,14 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
   return (
     <div style={{ margin: '10px 0', padding: 'var(--sp-2) 12px', borderRadius: 10, background: 'var(--steel-tint)', border: '1px solid var(--steel-soft)' }}>
       <div className="of" style={{ marginBottom: 6 }}>Log what the vendor said</div>
+      {/* SIGNED OUT, SAID BEFORE ANY TYPING (#139): reading a reply runs on the
+          account, so a host we know is signed out is told first, not after. */}
+      {isSupabaseConfigured() && !signedIn ? (
+        <div data-reply-signin style={{ fontSize: 12, color: 'var(--carbon-muted)', lineHeight: 1.5 }}>
+          Sign in to have it read the message — it pulls out times, contacts, counts and payment status for you to review.{' '}
+          {onSignIn && <button className="mini" onClick={onSignIn}>Sign in</button>}
+        </div>
+      ) : (<>
       <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
         Paste their email or text — we’ll pull out times, contacts, counts and payment status for you to review. Nothing saves until you apply it.
       </div>
@@ -418,8 +431,14 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
         value={replyText} onChange={e => setReplyText(e.target.value)} aria-label="Paste the vendor's message" />
       <div className="actions-row" style={{ marginTop: 8, alignItems: 'center', gap: 8 }}>
         <button className="mini" onClick={analyze} disabled={busy || !replyText.trim()}>{busy ? 'Reading…' : 'Read the message'}</button>
-        {err && <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span>}
+        {err && err !== 'signed-out' && <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span>}
       </div>
+      {err === 'signed-out' && (
+        <div data-reply-signin style={{ fontSize: 12, color: 'var(--carbon-muted)', marginTop: 8, lineHeight: 1.5 }}>
+          Sign in to have it read the message. Nothing was saved, and your pasted text is still here.{' '}
+          {onSignIn && <button className="mini" onClick={onSignIn}>Sign in</button>}
+        </div>
+      )}
       {result && result.rows.length === 0 && (
         <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginTop: 8 }}>Nothing new to apply — this doesn’t change anything already on record.</div>
       )}
@@ -458,6 +477,7 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
           {result.disclaimer && <div style={{ fontSize: 12, color: 'var(--carbon-muted)', fontStyle: 'italic', marginTop: 8 }}>{result.disclaimer}</div>}
         </div>
       )}
+      </>)}
     </div>
   );
 }
@@ -13851,7 +13871,7 @@ export default function HostShellV2() {
                     if (!phone && !v.arrivalTime) return null;
                     return (
                       <p className="meta" style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
-                        {[v.arrivalTime ? 'arrives ' + v.arrivalTime : null, who && who !== v.name ? 'on-site: ' + who : null].filter(Boolean).join(' · ')}
+                        {[v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null, who && who !== v.name ? 'on-site: ' + who : null].filter(Boolean).join(' · ')}
                         {phone ? <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(phone).replace(/[^+\d]/g, '')}>Call {String(who).split(/\s+/)[0]}</a> : null}
                       </p>
                     );
@@ -13898,7 +13918,7 @@ export default function HostShellV2() {
                         </span>
                         <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{(() => {
                           const v = (event.vendors || []).find(x => x && (x.id === r.vendorId || (r.vendorName && x.name === r.vendorName)));
-                          return v && v.arrivalTime ? <span style={{ color: 'var(--carbon-muted)' }}> · arrives {v.arrivalTime}</span> : null;
+                          return v && v.arrivalTime ? <span style={{ color: 'var(--carbon-muted)' }}> · arrives {fmt12h(v.arrivalTime)}</span> : null;
                         })()}</span>
                       </button>
                     );
@@ -19210,7 +19230,7 @@ export default function HostShellV2() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'flex-start' }}>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div className="f-name">{v.name}</div>
-                            <div className="sv-meta">{[v.category, arrival ? 'arrives ' + arrival : null, v.cost ? '$' + Number(v.cost).toLocaleString() : null].filter(Boolean).join(' · ')}</div>
+                            <div className="sv-meta">{[v.category, arrival ? 'arrives ' + fmt12h(arrival) : null, v.cost ? '$' + Number(v.cost).toLocaleString() : null].filter(Boolean).join(' · ')}</div>
                           </div>
                           <span className="sweep-state">{st === 'waiting' ? 'no reply yet' : st === 'drafting' ? 'drafting…' : st === 'ready' ? 'draft ready' : 'they answered'}</span>
                         </div>
@@ -23430,7 +23450,7 @@ export default function HostShellV2() {
                                 a proportional face where 1 is narrower than 8. The
                                 sub keeps what describes the vendor; the number goes
                                 right, in `.amt`, where a column of them lines up. */}
-                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + v.arrivalTime : null,
+                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
                               // How this vendor prices (host report): a per-head figure for a caterer/bar
                               // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
                               Number(v.cost) > 0 ? vendorPricingHint(v, Number(event.guestCount) || Number(event.guestEstimate) || 0) : null].filter(Boolean).join(' · ')}</div>
@@ -23789,7 +23809,7 @@ export default function HostShellV2() {
                             value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note shared with this vendor in their brief" />
                           {/* Agent Opportunity Audit P0 — paste the vendor's reply, review
                               the extracted fields, apply through writeVendor. */}
-                          <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} />
+                          <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
                           {/* WAVE-B write paths (b) + (c): arrival time (the day-of
                               roster, NOW card, and print sheet all read v.arrivalTime;
                               nothing wrote it) and money — the payment-note button

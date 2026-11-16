@@ -91,3 +91,23 @@ test('no wedding words on a retirement party’s DJ', async ({ page }) => {
   await openCard(page, 'Beltway Sound');
   expect(await card(page, 'Beltway Sound').innerText()).not.toMatch(/wedding|first dance/i);
 });
+
+// Live hunt item 8: the card face read the stored 24-hour clock, "arrives 14:30".
+test('arrival times read as a clock a host uses: "arrives 2:30 PM"', async ({ page }) => {
+  await seeded(page);
+  await openSectionByName(page, 'People you’re hiring');
+  await settled(page);
+  const cat = card(page, 'Capital Rotisserie');
+  await expect(cat.locator('.vc-cat')).toContainText('arrives 2:30 PM');
+  expect(await page.locator('.sheet').innerText()).not.toMatch(/arrives 1\d:\d\d\b/);
+});
+
+// #130: the insurance ask once, with exactly one "Mark asked" on the card.
+test('the caterer card asks about insurance once, with one "Mark asked"', async ({ page }) => {
+  await seeded(page);
+  await openCard(page, 'Capital Rotisserie');
+  const cat = card(page, 'Capital Rotisserie');
+  await expect(cat.getByRole('button', { name: /^Mark asked$/ })).toHaveCount(1);
+  const t = await cat.innerText();
+  expect((t.match(/Ask about insurance/g) || []).length).toBeLessThanOrEqual(1);
+});
