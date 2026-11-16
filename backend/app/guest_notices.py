@@ -19,7 +19,7 @@ import logging
 
 from .config import APP_BASE_URL, API_PUBLIC_BASE_URL
 from .db import get_pool
-from .emailer import _send_via_resend, is_email_configured
+from .emailer import _send_via_resend, failure_reason, is_email_configured
 
 log = logging.getLogger("ngw.guest_notices")
 
@@ -80,5 +80,4 @@ async def notify_guest_of_reply(thread_id, reply: str) -> None:
                                from_name=from_name, headers=headers)
         log.info("reply notice sent thread=%s", thread_id)
     except Exception as e:  # noqa: BLE001 — fail-soft by design
-        log.error("reply notice failed thread=%s error=%s %s", thread_id, type(e).__name__,
-                  str(e)[:300] if type(e).__name__ == "ResendRejected" else "")
+        log.error("reply notice failed thread=%s error=%s", thread_id, failure_reason(e))
