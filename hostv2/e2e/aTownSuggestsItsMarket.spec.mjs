@@ -37,7 +37,12 @@ test('the venue town proposes its market, and only a tap stores it', async ({ pa
 
   await row.click();
   await settled(page);
-  await sheet.getByRole('button', { name: /Use Washington DC \/ NoVA — from Alexandria, VA/ }).click();
+  const use = sheet.getByRole('button', { name: /Use Washington DC \/ NoVA — from Alexandria, VA/ });
+  // Never past the select's right edge (live check 11/16: it ran off the side at 390px).
+  const [u, sel] = await Promise.all([use.boundingBox(), page.locator('#metro-market-pick').boundingBox()]);
+  expect(u.x + u.width).toBeLessThanOrEqual(Math.max(sel.x + sel.width, 390 - 16) + 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  await use.click();
   await settled(page);
   expect(await stored(page)).toBe('dc');
   await expect(page.locator('#metro-market-pick')).toHaveValue('dc');

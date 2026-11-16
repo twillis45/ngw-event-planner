@@ -28,4 +28,6 @@ test('Warmer on a note to a vendor still quoting thanks them, and never says the
   const text = await draft.evaluate((n) => n.innerText + '\n' + [...n.querySelectorAll('textarea')].map((t) => t.value).join('\n'));
   expect(text).toContain('Thank you for your time — I’d love to work with you on this.');
   expect(text).not.toContain('So glad you’ll be part of it.');
+  // One thank-you, not two in a row (live check 11/16, 1:50 PM EST).
+  expect(text).not.toContain('Thanks so much!');
 });

@@ -14,3 +14,27 @@ export function warmClosing({ title, vendor } = {}) {
   }
   return 'So glad you’ll be part of it.';
 }
+
+// A bare thanks line ("Thanks so much!", "Thank you!") — the sign-off the
+// Warmer closing stands in for.
+const BARE_THANKS = /^(many\s+)?thanks?(\s+you)?(\s+(so|very)\s+much|\s+again|\s+a\s+lot)?\s*[!.]?$/i;
+
+/**
+ * The Warmer tone (11/16/2026): the closing that fits the reader, in place of a
+ * bare "Thanks so much!" when the note ends with one — never two thank-yous in
+ * a row. A signature after it stays where it is. Otherwise it is added at the
+ * end. Applying it twice changes nothing.
+ */
+export function warmerBody(body, ctx = {}) {
+  const b = String(body == null ? '' : body);
+  const warm = warmClosing(ctx);
+  if (b.includes(warm)) return b;
+  const paras = b.split('\n\n');
+  for (let i = paras.length - 1; i >= Math.max(0, paras.length - 2); i -= 1) {
+    if (BARE_THANKS.test(paras[i].trim())) {
+      paras[i] = warm;
+      return paras.join('\n\n');
+    }
+  }
+  return b + '\n\n' + warm;
+}
