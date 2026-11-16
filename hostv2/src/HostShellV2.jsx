@@ -173,6 +173,7 @@ import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
+import { metroForPlace } from '@app/lib/metroForPlace';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
@@ -288,6 +289,7 @@ import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
+import { warmClosing } from '@app/lib/warmClosing';
 import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
@@ -2568,6 +2570,16 @@ export default function HostShellV2() {
   // market the host had already picked in the other.
   const metroId = marketFor(event);
   const metroMkt = metroId ? METRO_MARKETS.find(m => m.id === metroId) : null;
+  // A PROPOSAL from the venue's town (11/16/2026): with no market set, the row
+  // names the market the town is in and one tap accepts it. Prices stay on the
+  // national baseline until the host taps — nothing changes silently.
+  const metroSuggest = useMemo(() => {
+    if (metroId) return null;
+    const town = venueFor(event);
+    const id = metroForPlace({ city: town.city, state: town.state });
+    const m = id ? METRO_MARKETS.find(x => x.id === id) : null;
+    return m ? { market: m, from: `${town.city}, ${String(town.state).toUpperCase()}` } : null;
+  }, [event, metroId]);
   const vendorPlan = useMemo(() => {
     try {
       return buildVendorPlan(event, {
@@ -6434,7 +6446,7 @@ export default function HostShellV2() {
   };
   // Tone variants are DETERMINISTIC rewrites of the same facts — mechanical
   // tightening/warming, never invented content (no fake AI doctrine).
-  const toneBody = (body, tone) => {
+  const toneBody = (body, tone, ctx) => {
     let b = String(body);
     if (tone === 'tighter') {
       const ps = b.split('\n\n');
@@ -6443,7 +6455,9 @@ export default function HostShellV2() {
       return [ps[0], ...mid, ps[ps.length - 1]].join('\n\n');
     }
     if (tone === 'warmer') {
-      const warm = 'So glad you’ll be part of it.';
+      // The closing fits who the note is for (lib/warmClosing, 11/16/2026): a
+      // vendor still quoting is thanked, not told they are part of it.
+      const warm = warmClosing(ctx || {});
       return b.includes(warm) ? b : b + '\n\n' + warm;
     }
     if (tone === 'playful') {
@@ -6465,7 +6479,10 @@ export default function HostShellV2() {
     }
     return b;
   };
-  const shownDraft = () => draftBody != null ? draftBody : toneBody(sheet && sheet.body, draftTone);
+  const shownDraft = () => draftBody != null ? draftBody : toneBody(sheet && sheet.body, draftTone, {
+    title: sheet && sheet.title,
+    vendor: (sheet && sheet.vendorId && (event.vendors || []).find(v => v && v.id === sheet.vendorId)) || null,
+  });
   const copyDraft = async (body) => {
     try { await navigator.clipboard.writeText(body); toast('Copied — paste it anywhere.'); feedback('act'); }
     catch { toast('Couldn’t copy on this browser — long-press to select it.'); }
@@ -23349,7 +23366,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <span className="fstat-v">{metroMkt ? metroMkt.label : 'National baseline'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+                      <span className="fstat-v">{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}<span className="fstat-chev" aria-hidden="true">›</span></span>
                     </button>
                   </div>
                 ) : (
@@ -23358,6 +23375,12 @@ export default function HostShellV2() {
                       <span>Which market are you in?</span>
                       <button className="mini" onClick={() => setSheet(s => ({ ...s, marketOpen: false }))}>Done</button>
                     </label>
+                    {metroSuggest && (
+                      <button className="mini" style={{ display: 'block', margin: '0 0 var(--sp-2)' }}
+                        onClick={() => patchEvent({ market: metroSuggest.market.id, metroMarket: null }, `Estimates now use ${metroSuggest.market.label} typical rates.`)}>
+                        Use {metroSuggest.market.label} — from {metroSuggest.from}
+                      </button>
+                    )}
                     <select id="metro-market-pick" className="field" value={marketFor(event)}
                       onChange={e => {
                         const id = e.target.value;

@@ -79,7 +79,8 @@ Before that, 2026-11-02 (sixtieth entry:
   - #138: the draft note greets the contact and fits the vendor's status.
 - **Not done:**
   - Item 21: the analytics notice can't render in e2e, so it is unmeasured.
-  - "Which market" still reads "National baseline" for Alexandria; no city-to-metro table exists.
+  - "Which market" now PROPOSES the market from the venue's town (`lib/metroForPlace`, state-checked: Alexandria, VA → DC; Alexandria, LA → nothing). The row reads "Suggested: …"; prices change only when the host taps "Use …". Towns not in the table still read "National baseline".
+  - The Warmer tone's closing fits the reader (`lib/warmClosing`): a vendor still quoting is thanked for their time, a booked vendor gets "So glad to be working with you", a payment note thanks them; only guests hear "So glad you'll be part of it".
   - The buffet-vs-plated call stays open; a contract doesn't say which style was booked.
 - 🔴 **Trap: `ctaNamesTheAct` bans any label starting "Go".** "Go to insurance" would have failed it, so the vendor next-action links say "See the insurance row" etc.
 
