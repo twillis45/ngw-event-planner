@@ -121,7 +121,20 @@ describe('coverage', () => {
       "'guest_photos'", "'%guest_photos%'",
       "to_regprocedure('public.guest_photos_due_for_purge(integer)')",
       "b.id = 'guest-photos' and not b.public", "'%guest-photos%'",
-      'generate_series(1, 25)',
+    ]) expect(sql).toContain(name);
+  });
+
+  // 026 (per-event co-hosts, 11/16/2026): the table, its cascades, a browser
+  // that can only read its own rows, the two co-host rules on events, the
+  // definer that answers "is this person a co-host here", and the trigger
+  // that stops anyone outside a studio moving its event. The record now
+  // reaches 026.
+  test('it proves the co-host table, its read-only browser access, the event rules and the studio lock, and expects 026 recorded', () => {
+    for (const name of [
+      "'event_cohosts'", "'event_cohosts: own rows'", "'events: cohost select'", "'events: cohost update'",
+      "'is_event_cohost(text)'", "'events_studio_locked()'", "t.tgname = 'events_studio_locked'",
+      "has_table_privilege('authenticated', 'public.event_cohosts', 'insert')",
+      'generate_series(1, 26)',
     ]) expect(sql).toContain(name);
   });
 
