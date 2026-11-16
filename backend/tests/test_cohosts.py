@@ -56,6 +56,10 @@ class Conn:
     async def fetchrow(self, q, *a):
         if "from public.events where id=$1" in q:
             e = self.db.events.get(a[0]); return {"studio_id": e["studio_id"], "name": e["name"]} if e else None
+        if "where user_id=$1::uuid and event_id=$2" in q:
+            for r in self.db.rows:
+                if r["user_id"] == a[0] and r["event_id"] == a[1]: return r
+            return None
         if "select id, user_id from public.event_cohosts" in q:
             for r in self.db.rows:
                 if str(r["id"]) == a[0] and r["event_id"] == a[1]: return r
@@ -164,3 +168,11 @@ def test_the_shared_read_check_lets_a_claimed_cohost_in_and_an_invited_one_not(e
     asyncio.run(rsvp_mod._assert_event_studio_read(conn, "ev1", {"id": COHOST, "via": "supabase"}))   # no raise
     with pytest.raises(HTTPException):
         asyncio.run(rsvp_mod._assert_event_studio_read(conn, "ev1", {"id": STRANGER, "via": "supabase"}))
+
+
+def test_a_cohost_leaves_by_saying_me(env):
+    invite(env, "cohost@example.test")
+    env.who["id"] = COHOST; env.c.post("/api/cohosts/claim")
+    assert env.c.delete("/api/events/ev1/cohosts/me").status_code == 200 and env.db.rows == []
+    env.who["id"] = STRANGER
+    assert env.c.delete("/api/events/ev1/cohosts/me").status_code == 404

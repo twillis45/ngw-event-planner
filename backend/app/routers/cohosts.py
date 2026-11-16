@@ -122,8 +122,13 @@ async def remove_cohost(event_id: str, cohost_id: str, authorization: Optional[s
     async with pool.acquire() as conn:
         if not await _table_ready(conn):
             raise HTTPException(503, "Co-hosts aren't switched on yet.")
-        row = await conn.fetchrow(
-            "select id, user_id from public.event_cohosts where id::text=$1 and event_id=$2", cohost_id, event_id)
+        if cohost_id == "me":   # a co-host leaving: their own row, found by who they are
+            row = await conn.fetchrow(
+                "select id, user_id from public.event_cohosts where user_id=$1::uuid and event_id=$2",
+                principal.get("id"), event_id)
+        else:
+            row = await conn.fetchrow(
+                "select id, user_id from public.event_cohosts where id::text=$1 and event_id=$2", cohost_id, event_id)
         if not row:
             raise HTTPException(404, "not found")
         is_self = row["user_id"] is not None and str(row["user_id"]) == str(principal.get("id"))
