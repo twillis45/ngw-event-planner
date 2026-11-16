@@ -27,8 +27,8 @@ const BASE = previewUrl(Number(process.env.PW_PASSGATE_PORT || 5266));
 const CODE = 'abcdefghij1234567890xy';
 // 11/15/2026 (consumer panel): trip wording only on a trip. A party's sheet
 // drops "and get trip tools" and the destination-toolkit perk; a trip keeps both.
-const BEFORE_PAYING = 'Planning stays free. Pay $39 once so all your vendors can say yes to you.';
-const BEFORE_PAYING_TRIP = 'Planning stays free. Pay $39 once so all your vendors can say yes to you, and get trip tools.';
+const BEFORE_PAYING = 'Planning stays free. Pay $39 once to send the details to all your vendors, not just the first.';
+const BEFORE_PAYING_TRIP = 'Planning stays free. Pay $39 once to send the details to all your vendors, not just the first, and get trip tools.';
 
 const ev = (id, name, over = {}) => ({ id, name, type: 'Birthday Party', date: dateIn(60),
   guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
@@ -122,7 +122,7 @@ test('the pass sheet leads with the before-paying line, and sells no "next event
   await expect(page.getByText('Your next events')).toHaveCount(0);
   await expect(page.getByText(/first event/i)).toHaveCount(0);
   // The perks the ruling keeps, and the standing no-vendor-fees commitment.
-  await expect(page.getByText('Every vendor, one brief each', { exact: true })).toBeVisible();
+  await expect(page.getByText('Send every vendor the details', { exact: true })).toBeVisible();
   await expect(page.getByText('One event, one price', { exact: true })).toBeVisible();
   await expect(page.getByText(/Your vendors pay us nothing/)).toBeVisible();
   // A backyard party is not a trip: nothing on the sheet sells trip tools.

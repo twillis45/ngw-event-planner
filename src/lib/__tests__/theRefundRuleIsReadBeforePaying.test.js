@@ -10,7 +10,11 @@ test('the line states the ruled terms: 14 days, all of it back, unless a new bri
   // Reworded 11/15/2026: the AI consumer panel read the old line ("...if you
   // have not sent a new vendor brief") as "use it and lose your refund" (9 of
   // 44 asked). Same rule; the condition now leads, as a change of mind before use.
-  expect(REFUND_LINE).toMatch(/^Changed your mind before sending a new vendor brief\?/);
+  // Reworded again 11/16/2026 (owner chose wording C from consumer panel round
+  // 3): "brief" was the second-most confusing word on the sheet; the button now
+  // says "Send <name> the details", so the rule says the same words. Same rule.
+  expect(REFUND_LINE).toBe('Changed your mind? If you haven’t sent the details to another vendor yet, get all $39 back within 14 days.');
+  expect(REFUND_LINE).not.toMatch(/brief/i);
 });
 
 test('it reads in one breath: 20 words or fewer, no fine-print words', () => {

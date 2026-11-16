@@ -163,7 +163,7 @@ def test_public_resolve_returns_current_whitelisted_brief(monkeypatch):
     assert brief["venue"] == "VFW Post 1503 — Dale City, VA"
     # ros slice: only this vendor's cues, cue-level fields only
     assert [x["segment"] for x in brief["ros"]] == ["Caterer load-in"]
-    assert set(brief["ros"][0]) == {"time", "segment", "location", "notes"}
+    assert set(brief["ros"][0]) == {"time", "rel", "segment", "location", "notes"}
 
 
 def test_public_resolve_reflects_latest_event_edit(monkeypatch):
@@ -241,6 +241,45 @@ def test_headcount_the_app_invented_is_withheld():
     # an event with no host name / no day-of contact reads as empty, not missing
     brief = vb_mod.build_vendor_brief_payload({"id": "v1", "name": "X"}, "e1", {})
     assert brief["hostName"] == "" and brief["briefContactName"] == "" and brief["dietCounts"] == {}
+
+
+# ── G27 (11/13/2026): the outward start-time gate ──────────────────────────────
+# Mirrors src/lib/vendorBrief.js buildVendorBriefPayload and startTime.js
+# startTimeIsConfirmed: startTimeSource === 'derived' is "the app picked this
+# hour and the host has not said it's right". Such an hour — and every cue clock
+# computed from it — must not reach the vendor. Only 'derived' is withheld: an
+# absent source is a host-set (or pre-provenance) time, exactly as the client.
+
+def _guessed_start_data(source):
+    data = dict(EVENT_DATA)
+    data["startTime"] = "15:00"
+    if source is not None:
+        data["startTimeSource"] = source
+    data["ros"] = [
+        {"time": "11:00", "rel": "4h before guests arrive", "segment": "Caterer load-in",
+         "vendorName": PRIVATE_VENDOR["name"]},
+        {"time": "15:00", "segment": "Buffet open", "vendorName": PRIVATE_VENDOR["name"]},
+    ]
+    return data
+
+
+def test_brief_withholds_a_derived_start_and_its_cue_clocks(monkeypatch):
+    c = _client(monkeypatch, _resolving_conn(_guessed_start_data("derived")))
+    brief = c.get(f"/api/public/vendor-brief/{GOOD_CODE}").json()["brief"]
+    assert [r["time"] for r in brief["ros"]] == [None, None]
+    # the relative label is what we genuinely know, so it still travels
+    assert [r["rel"] for r in brief["ros"]] == ["4h before guests arrive", None]
+    # no clock derived from the guess anywhere in the payload
+    assert "15:00" not in str(brief) and "11:00" not in str(brief)
+    # the vendor's own arrival time is host-typed per vendor, never derived
+    assert brief["arrivalTime"] == PRIVATE_VENDOR["arrivalTime"]
+
+
+@pytest.mark.parametrize("source", ["host", None])
+def test_brief_keeps_a_host_start_and_its_cue_clocks(monkeypatch, source):
+    c = _client(monkeypatch, _resolving_conn(_guessed_start_data(source)))
+    brief = c.get(f"/api/public/vendor-brief/{GOOD_CODE}").json()["brief"]
+    assert [r["time"] for r in brief["ros"]] == ["11:00", "15:00"]
 
 
 # ═══ Phase 2A — vendor confirm-back ════════════════════════════════════════════

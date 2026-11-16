@@ -235,14 +235,17 @@ export function creationDisclosure(verdict) {
 export function passSheetCopy(ev) {
   const trip = lockingReasons(ev).length > 0;
   const perks = [
-    ['Every vendor, one brief each', 'Plan every event free, including sharing one vendor brief with a free account. The pass unlocks sharing with every vendor on this event — each gets the same clean, honest brief.'],
+    // Wording C (owner, 11/16/2026): the button says "Send <name> the details",
+    // so the sheet does too — "brief" and "say yes to you" confused 25 of 44
+    // panel hosts who saw the old sheet (consumer panel round 3, simulated).
+    ['Send every vendor the details', 'Plan every event free, including sending one vendor the details with a free account. The pass lets you send the details to every vendor on this event — each gets the same clean, honest text and link.'],
     ...(trip ? [['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.']] : []),
     ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
   ];
   return {
-    beforePaying: 'Planning stays free. Pay $39 once so all your vendors can say yes to you' + (trip ? ', and get trip tools.' : '.'),
+    beforePaying: 'Planning stays free. Pay $39 once to send the details to all your vendors, not just the first' + (trip ? ', and get trip tools.' : '.'),
     perks,
-    heldLine: (trip ? 'Every vendor brief and the full destination toolkit are unlocked here.' : 'Every vendor brief is unlocked here.')
+    heldLine: (trip ? 'Sending the details to every vendor and the full destination toolkit are unlocked here.' : 'Sending the details to every vendor is unlocked here.')
       + ' Nothing more to pay on this event — the pass covers it.',
   };
 }

@@ -17,6 +17,23 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 16, 2026 (night) — G28 root-caused; G27; $39 sheet wording C
+
+- **G28 root cause.** The intermittent WebKit `rsvpLocalReply` test is a real tap loss, not a flake. The reply form (`.inv2-more`) opens by growing `max-height` with `overflow:hidden`, which script can scroll. Bringing Send into view scrolled the half-open form, and each frame of the opening slid it back, about 100–165px per frame. A press and a release a frame apart landed on different elements, so `submit()` never ran.
+  - Evidence: the CI trace from run 43781764852 (Send clicked 114ms after Yes, mid-opening).
+  - Fix: `overflow:clip` in `styles.css`.
+  - Test: `theReplyFormHoldsStill.spec.mjs` fails 10/10 without the fix and passes 10/10 with it. Whether WebKit CI is now stable is confirmed only on the next main merge.
+- **G27.** The vendor brief no longer shows run-of-show times computed from a start time the app guessed (`startTimeSource === 'derived'`, the client's own rule). It shows the relative label instead. Fixed in `backend/app/routers/vendor_brief.py` with two new pytest cases.
+- **$39 sheet, wording C** (owner, from consumer panel round 3, simulated):
+  - "Pay $39 once to send the details to all your vendors, not just the first."
+  - The perk is now "Send every vendor the details".
+  - The refund line now reads "Changed your mind? If you haven't sent the details to another vendor yet, get all $39 back within 14 days." Same rule.
+  - No "brief" or "say yes" is left on the sheet.
+- **Owner rulings on the guest–host messages plan** (the plan is in the session scratchpad, `comms-plan/`):
+  - Email goes only to guests who opt in, and the "email me" choice must be prominent.
+  - Questions, replies and announcements on the invite are free. The first emailed announcement per event is free; the rest take the pass.
+  - Open: where the line between "narrow" messages and chat falls.
+
 ## November 16, 2026 — the owner's iOS Simulator demo, fixed in one batch
 
 The owner ran `?demo=1` → Seed / reset on an iPhone 17 Pro simulator (iOS 26.3) against the live site at `ca6bf200`. #127 went live at 8:27 PM EST, after one allowed re-run of the WebKit `rsvpLocalReply` test (G28, its third red on a main merge). Fixed in one PR:

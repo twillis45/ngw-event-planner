@@ -220,17 +220,30 @@ describe('the pass sheet names trip tools only where they are what the pass buys
   test('a party: no trip wording anywhere on the sheet', () => {
     for (const ev of [party, door3]) {
       const c = passSheetCopy(ev);
-      expect(c.beforePaying).toBe('Planning stays free. Pay $39 once so all your vendors can say yes to you.');
+      expect(c.beforePaying).toBe('Planning stays free. Pay $39 once to send the details to all your vendors, not just the first.');
       expect(all(c)).not.toMatch(TRIPPY);
-      expect(c.perks.map(([t]) => t)).toEqual(['Every vendor, one brief each', 'One event, one price']);
+      expect(c.perks.map(([t]) => t)).toEqual(['Send every vendor the details', 'One event, one price']);
     }
   });
   test('a trip or multi-day event: the toolkit is sold, as before', () => {
     for (const ev of [trip, longWeekend]) {
       const c = passSheetCopy(ev);
-      expect(c.beforePaying).toBe('Planning stays free. Pay $39 once so all your vendors can say yes to you, and get trip tools.');
-      expect(c.perks.map(([t]) => t)).toEqual(['Every vendor, one brief each', 'The full destination toolkit', 'One event, one price']);
+      expect(c.beforePaying).toBe('Planning stays free. Pay $39 once to send the details to all your vendors, not just the first, and get trip tools.');
+      expect(c.perks.map(([t]) => t)).toEqual(['Send every vendor the details', 'The full destination toolkit', 'One event, one price']);
       expect(c.heldLine).toMatch(/full destination toolkit/);
+    }
+  });
+});
+
+// Wording C (owner, 11/16/2026, consumer panel round 3): "say yes to you" and
+// "brief" drew 25 of 28 wording complaints; C drew none for either.
+describe('the pass sheet speaks the button’s words', () => {
+  test('no "say yes", no "brief", on a party or a trip', () => {
+    for (const ev of [local(), local({ passRequired: true, passReasons: ['destination'] })]) {
+      const c = passSheetCopy(ev);
+      const all = [c.beforePaying, c.heldLine, ...c.perks.flat()].join(' ');
+      expect(all).not.toMatch(/say yes|brief/i);
+      expect(all).toMatch(/send the details/i);
     }
   });
 });
