@@ -111,7 +111,7 @@ export function rangeLabel(anchor, view) {
 // promises, each an all-day entry. A ONE-TIME COPY: the words on the button say
 // so, because a calendar file cannot update itself when the plan changes.
 // Stable UIDs, so an app that recognizes them updates rather than duplicates.
-const icsText = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const icsText = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const fold = (line) => {
   // Lines longer than 75 octets are folded (RFC 5545 §3.1).
   const out = []; let rest = line;

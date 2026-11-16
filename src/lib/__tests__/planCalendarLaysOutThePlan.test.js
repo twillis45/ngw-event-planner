@@ -80,7 +80,7 @@ test('the calendar file: the event and every open step, all-day, nothing already
 
 test('commas, semicolons and newlines in a step are escaped, not broken', () => {
   const ics = calendarIcs({ ...EV, timeline: [{ id: 'x', task: 'Buy plates, cups; napkins\nand ice', week: 'day before' }] }, NOW);
-  expect(ics).toContain('SUMMARY:To do: Buy plates\\, cups\; napkins\\nand ice');
+  expect(ics).toContain('SUMMARY:To do: Buy plates\\, cups\\; napkins\\nand ice');
 });
 
 // ── The subscription feed's data ─────────────────────────────────────────────
