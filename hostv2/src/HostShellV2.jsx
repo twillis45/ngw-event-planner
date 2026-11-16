@@ -256,7 +256,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 // still uses it for that) and wrong for a fixed-price product. hostv2 sells one
 // thing, and `createPassSession` is the route that prices it server-side.
 import { isStripeApiConfigured, createPassSession, verifySession, stripeCanHonourPurchases, passSalesPaused } from '@app/lib/stripeApi';
-import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus, passSheetCopy } from '@app/lib/passGate';
+import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, creationDisclosure, isUserCreatedEvent, passHeld, passStatus, passSheetCopy, lockingReasons } from '@app/lib/passGate';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
@@ -3954,7 +3954,12 @@ export default function HostShellV2() {
       // manufacture the claim that `passGate` falls back to.
       setCustoms(list => list.map(c => (c && c.id === paidEventId) ? { ...c, passPurchased: true } : c));
       recordPassFunnel('purchase_confirmed', paidEventId);
-      toast('The One-Event Pass is yours for this event — every vendor brief and the destination toolkit are unlocked.');
+      // Host words, and trip tools only on a trip (owner, 11/16/2026) — the same
+      // rule the pass sheet uses (passSheetCopy), so a dinner is never told it
+      // bought a "destination toolkit".
+      const paidEv = (customs || []).find(c => c && c.id === paidEventId);
+      let trip = false; try { trip = !!(paidEv && lockingReasons(paidEv).length > 0); } catch { trip = false; }
+      toast('The One-Event Pass is yours for this event — you can send every vendor the details' + (trip ? ', and the trip tools are unlocked.' : '.'));
     };
 
     (async () => {
@@ -6513,7 +6518,7 @@ export default function HostShellV2() {
       try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'clipboard', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
       // A copy is not a send, so the host says when it went out — one tap, and
       // only then is "Send the invite" credited (issue #100, D-10).
-      toast('Invite link copied — the public invite is available for guests to RSVP.',
+      toast('Invite link copied — guests can open it and reply.',
         event.invitesSentAt ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
       feedback('act');
     } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
@@ -7196,7 +7201,11 @@ export default function HostShellV2() {
     const twiceNote = twice.length
       ? ' ' + twice.join(', ') + (twice.length === 1 ? ' is' : ' are') + ' on the list twice — remove one if it’s the same person.' : '';
     patchEvent({ guests: [...existing, ...add] },
-      names.length + ' name' + (names.length === 1 ? '' : 's') + ' on the list — ' + (existing.length + add.length) + ' total. RSVPs start blank.' + splitNote + twiceNote);
+      // Host words, not app words (owner, 11/16/2026): "RSVPs start blank" said
+      // nothing a host could act on. The list itself shows "No reply".
+      'Added ' + names.length + (names.length === 1 ? ' person' : ' people')
+        + (existing.length ? ' — ' + (existing.length + add.length) + ' on the list' : '')
+        + '. Each shows “No reply” until they answer your invite, or you mark it yourself.' + splitNote + twiceNote);
     setRosterText('');
   };
 
@@ -18571,7 +18580,7 @@ export default function HostShellV2() {
                     return;
                   }
                   if (/synced/i.test(why)) {
-                    toast('This event hasn’t finished syncing to your account yet — give it a moment and try again.');
+                    toast('This event hasn’t finished saving to your account yet — give it a moment and try again.');
                     return;
                   }
                   // SIGNED OUT (live smoke test, 11/9/2026): the pass belongs to the
@@ -21290,7 +21299,7 @@ export default function HostShellV2() {
                       {pending.length > 0 && (
                         <button className="later-row" style={{ marginTop: 10, width: '100%', textAlign: 'left', background: 'var(--steel-tint)', border: 'none', borderRadius: 'var(--r-md)', padding: '9px var(--sp-3)', cursor: 'pointer' }}
                           onClick={pullFromGuests}>
-                          <span className="t" style={{ color: 'var(--ink)' }}>From your RSVPs</span>
+                          <span className="t" style={{ color: 'var(--ink)' }}>From your guests’ replies</span>
                           <span className="v-meta" style={{ flex: 1 }}>{pending.map(([d, n]) => d + ' ×' + n).join(' · ')}</span>
                           <span style={{ color: 'var(--steel-soft)', fontWeight: 700, flexShrink: 0 }}>Add</span>
                         </button>
@@ -21909,7 +21918,7 @@ export default function HostShellV2() {
                       });
                     })()}
                     </div>
-                    <GuideLine gap={0} style={{ margin: '8px 0 10px' }}>The tier re-prices the proteins and changes where each line says to buy.</GuideLine>
+                    <GuideLine gap={0} style={{ margin: '8px 0 10px' }}>Changing this re-prices the meat and fish and changes which store each item says to buy from.</GuideLine>
                   </>
                 )}
                 {/* The list drill-in (port of Figma 391:60) — the shopping list, the
@@ -22758,13 +22767,13 @@ export default function HostShellV2() {
                                       <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
                                         const n = Math.max(0, Math.round(Number(it.low) || 0));
                                         patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
-                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the value estimate for your sourcing pick.');
+                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the value estimate for the store you picked.');
                                         setTuneCost(''); setTuneEdited(false); setFoodTune(null);
                                       }}>Value {fmt(Math.round(Number(it.low) || 0))}</button>
                                       <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
                                         const n = Math.max(0, Math.round(Number(it.high) || 0));
                                         patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
-                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the premium estimate for your sourcing pick.');
+                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the premium estimate for the store you picked.');
                                         setTuneCost(''); setTuneEdited(false); setFoodTune(null);
                                       }}>Premium {fmt(Math.round(Number(it.high) || 0))}</button>
                                     </>
@@ -24636,7 +24645,7 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
-                  <p className="grounding"><b>{fmt(spend.expected || 0)}</b> expected in total. Allocations and unbought estimates are not spoken for. The amount left above is against commitments, not the final bill.</p>
+                  <p className="grounding"><b>{fmt(spend.expected || 0)}</b> expected in total, including estimates for things not bought or booked yet. “Spoken for” counts only what you’ve committed to, so the final bill can still change.</p>
                   {(spend.moneyDiscrepancies || []).length > 0 && (
                     <div className="card" role="note">
                       <p className="grounding">Payment records overlap or differ. Each category is counted once; review the records before relying on spent.</p>
@@ -26701,7 +26710,7 @@ export default function HostShellV2() {
           { label: 'The spread & shopping', sub: 'food', go: () => setSheet({ kind: 'food' }) },
           { label: 'People you’re hiring', sub: 'vendors', go: () => setSheet({ kind: 'vendors' }) },
           { label: 'Who sits where', sub: 'seating', go: () => setSheet({ kind: 'seating' }) },
-          { label: 'Guest list', sub: 'guests & RSVPs', go: () => setSheet({ kind: 'guests' }) },
+          { label: 'Guest list', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
           { label: 'Your checklist', sub: 'tasks', go: () => setSheet({ kind: 'tasks' }) },
           { label: 'Calls to make', sub: 'decisions', go: () => setSheet({ kind: 'decisions' }) },
           { label: 'What could go wrong', sub: 'risks', go: () => setSheet({ kind: 'risks' }) },
