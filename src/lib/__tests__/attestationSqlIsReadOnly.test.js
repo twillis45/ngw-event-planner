@@ -124,4 +124,10 @@ describe('coverage', () => {
       'generate_series(1, 25)',
     ]) expect(sql).toContain(name);
   });
+
+  // 025's consent switches (board 11/16/2026, option C): a database without
+  // them would 500 every upload, so the pack proves both columns exist.
+  test('it proves the two consent columns on guest_photos', () => {
+    for (const name of ["'uploader_private'", "'share_blocked'"]) expect(sql).toContain(name);
+  });
 });

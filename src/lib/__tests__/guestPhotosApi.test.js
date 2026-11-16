@@ -66,10 +66,12 @@ describe('guest photos client — configured', () => {
   test('her own photos come back with status, remaining and whether sharing is open', async () => {
     global.fetch = jest.fn(async () => reply(200, { ok: true, photos: [{ id: PID, status: 'pending' }], remaining: 9, uploads_open: true }));
     await expect(mod.fetchMyGuestPhotos(CODE, KEY)).resolves.toEqual({
-      ok: true, photos: [{ id: PID, status: 'pending' }], remaining: 9, uploadsOpen: true });
+      ok: true, photos: [{ id: PID, status: 'pending' }], remaining: 9, uploadsOpen: true, keepPrivate: false });
     const [url, init] = global.fetch.mock.calls[0];
     expect(url).toBe(API + '/api/public/photos/' + CODE + '/mine');
-    expect(JSON.parse(init.body)).toEqual({ guest_key: KEY });
+    const sent = JSON.parse(init.body);
+    expect(sent.guest_key).toBe(KEY);
+    expect(Number.isInteger(sent.tz_offset_min)).toBe(true);   // this machine's own zone by default
   });
 
   test('reads name their failures instead of looking empty', async () => {
@@ -110,5 +112,41 @@ describe('guest photos client — configured', () => {
     ]);
     global.fetch = jest.fn(async () => reply(403, {}));
     await expect(mod.approveGuestPhoto('e1', PID)).rejects.toMatchObject({ status: 403 });
+  });
+
+  // ── Owner rulings 11/16/2026: the window opens at the event's end in the
+  // guest's zone, and the board's consent switches (option C). ──
+  test('upload and her own list carry this phone’s zone, and the private switch rides the upload', async () => {
+    global.fetch = jest.fn(async () => reply(200, { ok: true, photo: { id: PID } }));
+    await mod.uploadGuestPhoto(CODE, { guestKey: KEY, name: 'J', file: new Blob(['x'], { type: 'image/jpeg' }), tzOffsetMin: 300, keepPrivate: true });
+    expect(global.fetch.mock.calls[0][1].headers['X-Guest-Tz-Offset']).toBe('300');
+    expect(global.fetch.mock.calls[0][1].headers['X-Guest-Private']).toBe('1');
+    global.fetch = jest.fn(async () => reply(200, { ok: true, photo: { id: PID } }));
+    await mod.uploadGuestPhoto(CODE, { guestKey: KEY, name: 'J', file: new Blob(['x'], { type: 'image/jpeg' }) });
+    expect(global.fetch.mock.calls[0][1].headers['X-Guest-Private']).toBe('0');
+    expect(global.fetch.mock.calls[0][1].headers['X-Guest-Tz-Offset']).toMatch(/^-?\d+$/);   // this machine's own
+
+    global.fetch = jest.fn(async () => reply(200, { ok: true, photos: [{ id: PID, shareable: true }], remaining: 9, uploads_open: false, keep_private: true }));
+    await expect(mod.fetchMyGuestPhotos(CODE, KEY, { tzOffsetMin: 480 })).resolves.toEqual({
+      ok: true, photos: [{ id: PID, shareable: true }], remaining: 9, uploadsOpen: false, keepPrivate: true });
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual({ guest_key: KEY, tz_offset_min: 480 });
+  });
+
+  test('"Keep my photos private" and the host’s "Don’t allow sharing" hit their routes and throw on refusal', async () => {
+    global.fetch = jest.fn(async () => reply(200, { ok: true, private: true }));
+    await expect(mod.setMyPhotosPrivate(CODE, KEY, true)).resolves.toEqual({ ok: true, private: true });
+    expect(global.fetch.mock.calls[0][0]).toBe(API + '/api/public/photos/' + CODE + '/privacy');
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual({ guest_key: KEY, private: true });
+
+    global.fetch = jest.fn(async () => reply(200, { ok: true, photo: { id: PID, share_blocked: true } }));
+    await mod.setGuestPhotoSharing('e1', PID, false);
+    const [url, init] = global.fetch.mock.calls[0];
+    expect(`${init.method} ${url.replace(API, '')}`).toBe(`POST /api/events/e1/guest-photos/${PID}/sharing`);
+    expect(JSON.parse(init.body)).toEqual({ allowed: false });
+    expect(init.headers.Authorization).toBe('Bearer t');
+
+    global.fetch = jest.fn(async () => reply(404, {}));
+    await expect(mod.setMyPhotosPrivate(CODE, KEY, true)).rejects.toMatchObject({ status: 404 });
+    await expect(mod.setGuestPhotoSharing('e1', PID, true)).rejects.toMatchObject({ status: 404 });
   });
 });

@@ -52,6 +52,7 @@ OTHER_CODE = "zzzzzzzzzz1234567890xy"
 KEY_A = "11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 KEY_B = "22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 TODAY = _dt.date(2026, 11, 16)
+NOW = _dt.datetime(2026, 11, 16, 12, 0, tzinfo=_dt.timezone.utc)
 STUDIO = "33333333-3333-4333-8333-333333333333"
 
 
@@ -70,7 +71,7 @@ class _DB:
                "guest_name": name, "storage_path": f"{event_id}/{pid}.jpg", "status": status,
                "created_at": _dt.datetime(2026, 11, 10, tzinfo=_dt.timezone.utc),
                "reviewed_at": None, "width": 10, "height": 10, "byte_size": 100,
-               "content_type": "image/jpeg"}
+               "content_type": "image/jpeg", "uploader_private": False, "share_blocked": False}
         self.photos.append(row)
         return row
 
@@ -94,6 +95,15 @@ class _Conn:
         if "delete from public.guest_photos where id = $1" in q:
             self.db.photos = [p for p in self.db.photos if p["id"] != a[0]]
             return "DELETE"
+        if "update public.guest_photos set uploader_private" in q:
+            assert "where rsvp_code = $1 and guest_key = $2" in q, q
+            code, key, private = a
+            n = 0
+            for p in self.db.photos:
+                if p["rsvp_code"] == code and p["guest_key"] == key:
+                    p["uploader_private"] = private
+                    n += 1
+            return f"UPDATE {n}"
         raise AssertionError("unexpected execute: " + q)
 
     async def fetchrow(self, q, *a):
@@ -110,10 +120,11 @@ class _Conn:
             return {"mine": sum(1 for p in rows if p["rsvp_code"] == code and p["guest_key"] == key),
                     "total": len(rows)}
         if "insert into public.guest_photos" in q:
-            (pid, event_id, code, key, name, path, ctype, size, w, h) = a
+            (pid, event_id, code, key, name, path, ctype, size, w, h, private) = a
             row = {"id": pid, "event_id": event_id, "rsvp_code": code, "guest_key": key,
                    "guest_name": name, "storage_path": path, "content_type": ctype,
                    "byte_size": size, "width": w, "height": h, "status": "pending",
+                   "uploader_private": private, "share_blocked": False,
                    "created_at": _dt.datetime(2026, 11, 16, 12, tzinfo=_dt.timezone.utc),
                    "reviewed_at": None}
             db.photos.append(row)
@@ -127,6 +138,14 @@ class _Conn:
                 if p["id"] == pid and p["event_id"] == event_id:
                     p["status"] = status
                     p["reviewed_at"] = _dt.datetime(2026, 11, 16, 13, tzinfo=_dt.timezone.utc)
+                    return p
+            return None
+        if "update public.guest_photos set share_blocked" in q:
+            assert "where id = $1 and event_id = $2" in q, q
+            pid, event_id, blocked = a
+            for p in db.photos:
+                if p["id"] == pid and p["event_id"] == event_id:
+                    p["share_blocked"] = blocked
                     return p
             return None
         if "where id = $1 and rsvp_code = $2 and guest_key = $3" in q:
@@ -216,7 +235,7 @@ def env(monkeypatch):
     monkeypatch.setattr(gp, "_storage_put", store.put)
     monkeypatch.setattr(gp, "_storage_sign", store.sign)
     monkeypatch.setattr(gp, "_storage_remove", store.remove)
-    monkeypatch.setattr(gp, "_today", lambda: TODAY)
+    monkeypatch.setattr(gp, "_now", lambda: NOW)
     rsvp_mod._rate.clear()
     app = FastAPI()
     app.include_router(gp.router)
@@ -251,8 +270,12 @@ def webp():
     return buf.getvalue()
 
 
-def headers(key=KEY_A, name="Jordan Avery", ctype="image/jpeg"):
+def headers(key=KEY_A, name="Jordan Avery", ctype="image/jpeg", tz=None, private=None):
     h = {"Content-Type": ctype}
+    if tz is not None:
+        h["X-Guest-Tz-Offset"] = str(tz)
+    if private is not None:
+        h["X-Guest-Private"] = private
     if key is not None:
         h["X-Guest-Key"] = key
     if name is not None:
@@ -460,7 +483,9 @@ def test_an_unapproved_photo_is_invisible_to_other_guests(env):
     shown = env.client.get(f"/api/public/photos/{CODE}").json()["photos"]
     assert [p["id"] for p in shown] == [pid]
     # Whitelist: no uploader name, key, code, path or status reaches other guests.
-    assert set(shown[0]) == {"id", "url", "created_at"}
+    # "shareable" is the one consent flag (board 11/16): it says whether a Share
+    # button may appear, and nothing about who took the photo.
+    assert set(shown[0]) == {"id", "url", "created_at", "shareable"}
 
     assert env.client.post(f"/api/events/e1/guest-photos/{pid}/hide").status_code == 200
     assert env.client.get(f"/api/public/photos/{CODE}").json()["photos"] == []
@@ -586,6 +611,235 @@ def test_purge_keeps_rows_when_storage_refuses(env):
     with pytest.raises(RuntimeError):
         asyncio.run(gp.purge_old_guest_photos())
     assert env.db.photos == [row]
+
+
+# ── Color: a wide-gamut photo is converted to sRGB, not flattened (11/16) ──────
+def _p3_icc() -> bytes:
+    """A minimal ICC v2 RGB matrix profile with Display P3 primaries (D50-adapted)
+    and a 2.2 gamma: what an iPhone photo carries. Hand-built so the test needs
+    no profile file on disk."""
+    import struct
+
+    def s15(x):
+        return struct.pack(">i", int(round(x * 65536)))
+
+    def xyz(x, y, z):
+        return b"XYZ " + b"\0" * 4 + s15(x) + s15(y) + s15(z)
+
+    curv = b"curv" + b"\0" * 4 + struct.pack(">I", 1) + struct.pack(">H", int(2.2 * 256)) + b"\0\0"
+    text = b"Display P3 (test)\0"
+    desc = (b"desc" + b"\0" * 4 + struct.pack(">I", len(text)) + text
+            + struct.pack(">II", 0, 0) + struct.pack(">HB", 0, 0) + b"\0" * 67)
+    cprt = b"text" + b"\0" * 4 + b"none\0"
+    tags = [(b"desc", desc), (b"cprt", cprt), (b"wtpt", xyz(0.9642, 1.0, 0.8249)),
+            (b"rXYZ", xyz(0.5151, 0.2412, -0.0011)), (b"gXYZ", xyz(0.2919, 0.6922, 0.0419)),
+            (b"bXYZ", xyz(0.1572, 0.0666, 0.7841)),
+            (b"rTRC", curv), (b"gTRC", curv), (b"bTRC", curv)]
+    table_len = 4 + 12 * len(tags)
+    offset = 128 + table_len
+    table, data = struct.pack(">I", len(tags)), b""
+    for sig, body in tags:
+        while (offset + len(data)) % 4:
+            data += b"\0"
+        table += sig + struct.pack(">II", offset + len(data), len(body))
+        data += body
+    while (128 + table_len + len(data)) % 4:
+        data += b"\0"
+    size = 128 + table_len + len(data)
+    header = (struct.pack(">I", size) + b"lcms" + struct.pack(">I", 0x02100000) + b"mntrRGB XYZ "
+              + struct.pack(">6H", 2026, 11, 16, 0, 0, 0) + b"acsp" + b"\0" * 24
+              + struct.pack(">I", 0) + s15(0.9642) + s15(1.0) + s15(0.8249) + b"\0" * 48)
+    assert len(header) == 128
+    return header + table + data
+
+
+def _jpeg(color, icc=None):
+    buf = io.BytesIO()
+    kw = {"icc_profile": icc} if icc else {}
+    Image.new("RGB", (16, 16), color).save(buf, "JPEG", quality=100, **kw)
+    return buf.getvalue()
+
+
+def test_a_wide_gamut_photo_is_converted_to_srgb_so_it_does_not_look_washed_out(env):
+    from PIL import ImageCms
+    p3 = _p3_icc()
+    src_color = (60, 180, 60)
+    # What the photo SHOULD look like in sRGB, computed independently.
+    expect = ImageCms.profileToProfile(Image.new("RGB", (1, 1), src_color),
+                                       ImageCms.ImageCmsProfile(io.BytesIO(p3)),
+                                       ImageCms.createProfile("sRGB")).getpixel((0, 0))
+    # Premise: dropping the profile (the old behavior) would visibly change it.
+    assert max(abs(a - b) for a, b in zip(expect, src_color)) > 15
+
+    assert upload(env, _jpeg(src_color, p3)).status_code == 200
+    (stored, _t), = env.store.objects.values()
+    out = Image.open(io.BytesIO(stored))
+    assert "icc_profile" not in out.info          # stored as plain sRGB: no profile rides along
+    got = out.convert("RGB").getpixel((8, 8))
+    assert max(abs(a - b) for a, b in zip(got, expect)) <= 6, (got, expect)
+
+
+def test_an_srgb_or_untagged_photo_keeps_its_colors(env):
+    from PIL import ImageCms
+    srgb = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    for icc in (None, srgb):
+        env.store.objects.clear()
+        assert upload(env, _jpeg((60, 180, 60), icc)).status_code == 200
+        (stored, _t), = env.store.objects.values()
+        got = Image.open(io.BytesIO(stored)).convert("RGB").getpixel((8, 8))
+        assert max(abs(a - b) for a, b in zip(got, (60, 180, 60))) <= 6, (icc is None, got)
+
+
+def test_a_broken_color_profile_never_refuses_the_photo(env):
+    r = upload(env, _jpeg((60, 180, 60), b"not an icc profile at all" * 8))
+    assert r.status_code == 200, r.text
+    (stored, _t), = env.store.objects.values()
+    assert b"not an icc profile" not in stored
+
+
+# ── The upload window opens at the event's END, local time (owner 11/16) ───────
+def _at(env, y, mo, d, h, mi=0):
+    env.mp.setattr(gp, "_now", lambda: _dt.datetime(y, mo, d, h, mi, tzinfo=_dt.timezone.utc))
+
+
+def test_uploads_open_at_the_events_end_time_in_the_guests_zone(env):
+    # 6:00 PM in New York (UTC-5 in November; JS getTimezoneOffset says 300).
+    env.db.event = {"name": "Friendsgiving", "date": "2026-11-16", "startTime": "15:00", "endTime": "18:00"}
+    _at(env, 2026, 11, 16, 22, 59)
+    r = upload(env, webp(), ctype="image/webp", tz=300)
+    assert r.status_code == 403 and "after the event" in r.json()["detail"]
+    _at(env, 2026, 11, 16, 23, 0)
+    assert upload(env, webp(), ctype="image/webp", tz=300).status_code == 200
+
+
+def test_an_end_time_past_midnight_lands_on_the_next_day(env):
+    # 8 PM to 1 AM: the party ends at 1 AM on the 17th, not on the 16th.
+    env.db.event = {"name": "Late one", "date": "2026-11-16", "startTime": "20:00", "endTime": "01:00"}
+    _at(env, 2026, 11, 17, 5, 59)
+    assert upload(env, webp(), ctype="image/webp", tz=300).status_code == 403
+    _at(env, 2026, 11, 17, 6, 0)
+    assert upload(env, webp(), ctype="image/webp", tz=300).status_code == 200
+
+
+def test_with_no_end_time_the_start_time_opens_them(env):
+    env.db.event = {"name": "Cookout", "date": "2026-11-16", "startTime": "16:00"}
+    _at(env, 2026, 11, 16, 20, 59)
+    assert upload(env, webp(), ctype="image/webp", tz=300).status_code == 403
+    _at(env, 2026, 11, 16, 21, 0)
+    assert upload(env, webp(), ctype="image/webp", tz=300).status_code == 200
+
+
+def test_with_no_time_at_all_they_open_at_local_midnight_after_the_last_day(env):
+    env.db.event = {"name": "Span", "date": "2026-11-14", "endDate": "2026-11-16"}
+    _at(env, 2026, 11, 17, 4, 59)
+    assert upload(env, webp(), ctype="image/webp", tz=300).status_code == 403
+    _at(env, 2026, 11, 17, 5, 0)
+    assert upload(env, webp(), ctype="image/webp", tz=300).status_code == 200
+
+
+@pytest.mark.parametrize("tz", [None, "abc", "5000", "-5000"])
+def test_a_missing_or_impossible_zone_waits_for_the_last_zone_on_earth(env, tz):
+    # Never early: with no usable offset the window opens when the event has
+    # ended everywhere (UTC-12), so 6:00 PM local is 6:00 AM UTC the next day.
+    env.db.event = {"name": "Friendsgiving", "date": "2026-11-16", "endTime": "18:00"}
+    _at(env, 2026, 11, 17, 5, 59)
+    assert upload(env, webp(), ctype="image/webp", tz=tz).status_code == 403
+    _at(env, 2026, 11, 17, 6, 0)
+    assert upload(env, webp(), ctype="image/webp", tz=tz).status_code == 200
+
+
+def test_a_derived_start_time_never_opens_them_early(env):
+    # The app's own guess is popped before this router sees the event (R2-23),
+    # so a derived hour falls back to the end of the day.
+    env.db.event = {"name": "Cookout", "date": "2026-11-16", "startTime": "16:00", "startTimeSource": "derived"}
+    _at(env, 2026, 11, 16, 21, 0)
+    assert upload(env, webp(), ctype="image/webp", tz=300).status_code == 403
+
+
+def test_mine_says_whether_uploads_are_open_in_the_guests_zone(env):
+    env.db.event = {"name": "Friendsgiving", "date": "2026-11-16", "endTime": "18:00"}
+    _at(env, 2026, 11, 16, 23, 30)
+    body = {"guest_key": KEY_A, "tz_offset_min": 300}
+    assert env.client.post(f"/api/public/photos/{CODE}/mine", json=body).json()["uploads_open"] is True
+    body["tz_offset_min"] = 480           # Los Angeles: still 3:30 PM there
+    assert env.client.post(f"/api/public/photos/{CODE}/mine", json=body).json()["uploads_open"] is False
+
+
+# ── Consent (board 11/16, option C) ─────────────────────────────────────────────
+def test_keep_my_photos_private_takes_the_share_flag_off_all_her_photos(env):
+    a1 = env.db.add(key=KEY_A, status="approved")
+    b1 = env.db.add(key=KEY_B, status="approved")
+    shown = {p["id"]: p for p in env.client.get(f"/api/public/photos/{CODE}").json()["photos"]}
+    assert shown[str(a1["id"])]["shareable"] is True
+
+    r = env.client.post(f"/api/public/photos/{CODE}/privacy", json={"guest_key": KEY_A, "private": True})
+    assert r.status_code == 200 and r.json()["private"] is True
+    shown = {p["id"]: p for p in env.client.get(f"/api/public/photos/{CODE}").json()["photos"]}
+    assert shown[str(a1["id"])]["shareable"] is False
+    assert shown[str(b1["id"])]["shareable"] is True       # another guest's photo is untouched
+    mine = env.client.post(f"/api/public/photos/{CODE}/mine", json={"guest_key": KEY_A}).json()
+    assert mine["keep_private"] is True and mine["photos"][0]["shareable"] is False
+
+    # Switched back off: shareable again.
+    env.client.post(f"/api/public/photos/{CODE}/privacy", json={"guest_key": KEY_A, "private": False})
+    shown = {p["id"]: p for p in env.client.get(f"/api/public/photos/{CODE}").json()["photos"]}
+    assert shown[str(a1["id"])]["shareable"] is True
+
+
+def test_the_switch_set_at_upload_rides_on_the_new_photo(env):
+    assert upload(env, webp(), ctype="image/webp", private="1").status_code == 200
+    assert env.db.photos[0]["uploader_private"] is True
+    assert upload(env, webp(), ctype="image/webp").status_code == 200
+    assert env.db.photos[1]["uploader_private"] is False
+
+
+def test_the_private_switch_needs_her_own_key(env):
+    row = env.db.add(key=KEY_A, status="approved")
+    r = env.client.post(f"/api/public/photos/{OTHER_CODE}/privacy", json={"guest_key": KEY_A, "private": True})
+    assert r.status_code == 404
+    env.client.post(f"/api/public/photos/{CODE}/privacy", json={"guest_key": KEY_B, "private": True})
+    assert row["uploader_private"] is False
+
+
+def test_the_host_can_stop_sharing_one_photo(env):
+    row = env.db.add(status="approved")
+    other = env.db.add(status="approved", key=KEY_B)
+    r = env.client.post(f"/api/events/e1/guest-photos/{row['id']}/sharing", json={"allowed": False})
+    assert r.status_code == 200
+    assert r.json()["photo"]["share_blocked"] is True and r.json()["photo"]["shareable"] is False
+    shown = {p["id"]: p for p in env.client.get(f"/api/public/photos/{CODE}").json()["photos"]}
+    assert shown[str(row["id"])]["shareable"] is False and shown[str(other["id"])]["shareable"] is True
+    # Allowed again.
+    env.client.post(f"/api/events/e1/guest-photos/{row['id']}/sharing", json={"allowed": True})
+    shown = {p["id"]: p for p in env.client.get(f"/api/public/photos/{CODE}").json()["photos"]}
+    assert shown[str(row["id"])]["shareable"] is True
+
+
+def test_the_host_sees_both_consent_flags(env):
+    env.db.add(status="approved")["uploader_private"] = True
+    p, = env.client.get("/api/events/e1/guest-photos").json()["photos"]
+    assert p["uploader_private"] is True and p["share_blocked"] is False and p["shareable"] is False
+
+
+def test_an_unapproved_photo_is_never_shareable(env):
+    env.db.add(status="pending")
+    mine = env.client.post(f"/api/public/photos/{CODE}/mine", json={"guest_key": KEY_A}).json()
+    assert mine["photos"][0]["shareable"] is False
+    p, = env.client.get("/api/events/e1/guest-photos").json()["photos"]
+    assert p["shareable"] is False
+
+
+def test_the_sharing_route_is_gated_and_scoped_like_the_others(env):
+    row = env.db.add(event_id="e2", status="approved")
+    assert env.client.post(f"/api/events/e1/guest-photos/{row['id']}/sharing", json={"allowed": False}).status_code == 404
+    assert row["share_blocked"] is False
+
+    async def outsider(*a, **k):
+        return {"id": "outsider-9", "via": "supabase"}
+    env.mp.setattr(gp, "require_planner", outsider)
+    mine = env.db.add(status="approved")
+    assert env.client.post(f"/api/events/e1/guest-photos/{mine['id']}/sharing", json={"allowed": False}).status_code == 403
+    assert mine["share_blocked"] is False
 
 
 # ── Account deletion removes the stored photos too ─────────────────────────────

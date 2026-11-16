@@ -46,6 +46,8 @@
 --                      the guest-photos bucket is private and NO storage
 --                      policy names it (only the server's service role reads
 --                      or writes its files). 024 is expected recorded too.
+--                      The two consent columns (uploader_private,
+--                      share_blocked; board 11/16) exist.
 --   event files        022: storage.objects policies for the event-files bucket
 --                      grant nothing to anon/public and all check auth.uid();
 --                      the bucket is private with the app's 10 MB / type limits.
@@ -251,7 +253,11 @@ migration_objects (migration, object, present) as (values
   ('025', 'no storage.objects policy names the guest-photos bucket',
      not exists (select 1 from pg_policies p
                  where p.schemaname = 'storage' and p.tablename = 'objects'
-                   and coalesce(p.qual, '') || coalesce(p.with_check, '') like '%guest-photos%'))
+                   and coalesce(p.qual, '') || coalesce(p.with_check, '') like '%guest-photos%')),
+  ('025', 'guest_photos has the consent columns uploader_private and share_blocked',
+     (select count(*) from information_schema.columns
+       where table_schema = 'public' and table_name = 'guest_photos'
+         and column_name in ('uploader_private', 'share_blocked')) = 2)
 ),
 
 -- supabase_migrations.schema_migrations may not exist; read it only through

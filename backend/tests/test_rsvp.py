@@ -316,3 +316,10 @@ def test_going_count_survives_a_failed_read():
         async def fetchval(self, *a):
             raise RuntimeError("db down")
     assert asyncio.run(R._going_count(Boom(), "ev-1", 3)) == 3
+
+
+def test_the_hosts_hashtag_reaches_the_invite_and_an_unset_one_stays_absent():
+    # Owner ruling 11/16/2026: the host turns a hashtag on; the invite shows it
+    # quietly. Off is absent, never an empty or invented tag.
+    assert _resolved_public({"name": "n", "hashtag": "#VidasFriendsgiving2026"})["hashtag"] == "#VidasFriendsgiving2026"
+    assert "hashtag" not in _resolved_public({"name": "n"})

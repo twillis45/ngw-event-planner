@@ -9,17 +9,22 @@
 //   POST /api/public/photos/{code}/mine               → her own photos + status
 //   POST /api/public/photos/{code}/{photoId}/delete   → delete one of her own
 //   GET  /api/public/photos/{code}                    → host-APPROVED photos only
+//   POST /api/public/photos/{code}/privacy            → "Keep my photos private to this event"
 // Host endpoints (the signed-in Supabase session):
 //   GET    /api/events/{id}/guest-photos              → every photo, with status
 //   POST   /api/events/{id}/guest-photos/{pid}/approve
 //   POST   /api/events/{id}/guest-photos/{pid}/hide
+//   POST   /api/events/{id}/guest-photos/{pid}/sharing → "Don't allow sharing" (allowed: false)
 //   DELETE /api/events/{id}/guest-photos/{pid}
 //
-// WHAT THE SERVER DECIDES, so a page never claims otherwise: uploads open the
-// day after the event's last day and close 90 days later (uploadsOpen on
-// fetchMyGuestPhotos says which); every photo starts "pending" and only the
-// host's approval shows it to other guests; the stored copy is a re-encoded
-// JPEG with all metadata (location included) removed. HEIC is refused (415).
+// WHAT THE SERVER DECIDES, so a page never claims otherwise: uploads open at
+// the event's end in the guest's local time (this phone's offset rides every
+// call) and close 90 days after the last day (uploadsOpen on fetchMyGuestPhotos
+// says which); every photo starts "pending" and only the host's approval shows
+// it to other guests; the stored copy is a re-encoded sRGB JPEG with all
+// metadata (location included) removed. HEIC is refused (415). `shareable` on
+// a photo is the only permission for a Share button: approved, and neither the
+// uploader nor the host kept it back (board 11/16, option C).
 //
 // Photo URLs are signed and last about five minutes: refetch the list to
 // refresh them; never store one.
@@ -34,6 +39,10 @@ const enc = encodeURIComponent;
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 export const isGuestPhotosApiConfigured = () => Boolean(BASE);
+
+// This phone's offset in minutes west of UTC (JS's own sign). The server uses
+// it to open uploads at the event's end, local time.
+const localOffset = () => { try { return new Date().getTimezoneOffset(); } catch { return null; } };
 
 async function throwing(url, init) {
   if (!BASE) throw new Error('Guest photos API not configured');
@@ -52,7 +61,8 @@ async function throwing(url, init) {
 // Throws: 403 not open (before the event / closed), 404 bad code, 413 over 10 MB,
 // 415 not a JPEG/PNG/WEBP (HEIC included), 422 no name, 429 a cap or too fast,
 // 503 photo sharing not switched on.
-export function uploadGuestPhoto(code, { guestKey, name, file }) {
+// keepPrivate: "Keep my photos private to this event" as she set it.
+export function uploadGuestPhoto(code, { guestKey, name, file, tzOffsetMin = localOffset(), keepPrivate = false }) {
   return throwing(`${BASE}/api/public/photos/${enc(code)}`, {
     method: 'POST',
     headers: {
@@ -60,18 +70,21 @@ export function uploadGuestPhoto(code, { guestKey, name, file }) {
       'Content-Type': (file && file.type) || 'image/jpeg',
       'X-Guest-Key': guestKey || '',
       'X-Guest-Name': enc(name || ''),
+      'X-Guest-Tz-Offset': String(tzOffsetMin == null ? '' : tzOffsetMin),
+      'X-Guest-Private': keepPrivate ? '1' : '0',
     },
     body: file,
   });
 }
 
-//   { ok: true, photos: [{ id, status, created_at, url }], remaining, uploadsOpen }
+//   { ok: true, photos: [{ id, status, created_at, url, shareable }], remaining, uploadsOpen, keepPrivate }
 //   { ok: false, reason: 'not-configured' | 'not-found' | 'unavailable' }
-export async function fetchMyGuestPhotos(code, guestKey) {
+export async function fetchMyGuestPhotos(code, guestKey, { tzOffsetMin = localOffset() } = {}) {
   if (!BASE || !code || !guestKey) return { ok: false, reason: 'not-configured' };
   try {
+    const body = Number.isInteger(tzOffsetMin) ? { guest_key: guestKey, tz_offset_min: tzOffsetMin } : { guest_key: guestKey };
     const res = await fetch(`${BASE}/api/public/photos/${enc(code)}/mine`, {
-      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ guest_key: guestKey }),
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body),
     });
     if (res.status === 404) return { ok: false, reason: 'not-found' };
     if (!res.ok) return { ok: false, reason: 'unavailable' };
@@ -81,6 +94,7 @@ export async function fetchMyGuestPhotos(code, guestKey) {
       photos: Array.isArray(data && data.photos) ? data.photos : [],
       remaining: data && typeof data.remaining === 'number' ? data.remaining : 0,
       uploadsOpen: Boolean(data && data.uploads_open),
+      keepPrivate: Boolean(data && data.keep_private),
     };
   } catch {
     return { ok: false, reason: 'unavailable' };
@@ -100,7 +114,7 @@ export async function deleteMyGuestPhoto(code, guestKey, photoId) {
   }
 }
 
-//   { ok: true, photos: [{ id, url, created_at }] }   — approved only, no names
+//   { ok: true, photos: [{ id, url, created_at, shareable }] }   — approved only, no names
 //   { ok: false, reason: 'not-configured' | 'not-found' | 'unavailable' }
 export async function fetchApprovedGuestPhotos(code) {
   if (!BASE || !code) return { ok: false, reason: 'not-configured' };
@@ -115,8 +129,17 @@ export async function fetchApprovedGuestPhotos(code) {
   }
 }
 
+// "Keep my photos private to this event": on, no Share button on any of her
+// photos, anywhere. → { ok, private }. Throws (404: wrong code).
+export function setMyPhotosPrivate(code, guestKey, isPrivate) {
+  return throwing(`${BASE}/api/public/photos/${enc(code)}/privacy`, {
+    method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ guest_key: guestKey, private: Boolean(isPrivate) }),
+  });
+}
+
 // ── Host ───────────────────────────────────────────────────────────────────────
-//   { ok: true, photos: [{ id, guest_name, status, created_at, reviewed_at, width, height, url }], eventMax }
+//   { ok: true, photos: [{ id, guest_name, status, created_at, reviewed_at, width, height, url,
+//                          uploader_private, share_blocked, shareable }], eventMax }
 //   { ok: false, reason: 'not-configured' | 'signed-out' | 'forbidden' | 'unavailable' }
 export async function fetchEventGuestPhotos(eventId) {
   if (!BASE || !eventId) return { ok: false, reason: 'not-configured' };
@@ -144,6 +167,14 @@ export async function hideGuestPhoto(eventId, photoId) {
   if (!BASE) throw new Error('Guest photos API not configured');
   return throwing(`${BASE}/api/events/${enc(eventId)}/guest-photos/${enc(photoId)}/hide`,
     { method: 'POST', headers: await authHeaders() });
+}
+
+// "Don't allow sharing" on one photo (allowed: false), or allow it again.
+// It never changes who can SEE it. → { ok, photo }. Throws: 401, 403, 404.
+export async function setGuestPhotoSharing(eventId, photoId, allowed) {
+  if (!BASE) throw new Error('Guest photos API not configured');
+  return throwing(`${BASE}/api/events/${enc(eventId)}/guest-photos/${enc(photoId)}/sharing`,
+    { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ allowed: Boolean(allowed) }) });
 }
 
 // → { ok, deleted: true }. Throws: 401, 403, 404, 502 (the file was not removed; retry).

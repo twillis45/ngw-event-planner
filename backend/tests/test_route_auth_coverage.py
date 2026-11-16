@@ -34,6 +34,7 @@ INTENTIONALLY_PUBLIC = {
     ("POST", "/api/public/photos/{rsvp_code}"): "rsvpCode + the guest's device key header; after the event only",
     ("POST", "/api/public/photos/{rsvp_code}/mine"): "rsvpCode + the guest's own device key",
     ("POST", "/api/public/photos/{rsvp_code}/{photo_id}/delete"): "rsvpCode + the guest's own device key",
+    ("POST", "/api/public/photos/{rsvp_code}/privacy"): "rsvpCode + the guest's own device key; her photos only",
     ("GET", "/api/public/photos/{rsvp_code}"): "rsvpCode; host-approved photos only, no names",
     ("GET", "/api/public/vendor-brief/{code}"): "per-brief code is the credential",
     ("POST", "/api/public/vendor-brief/{code}/confirm"): "same brief code",

@@ -14,7 +14,8 @@ import pytest
 DSN = os.environ.get('NGW_ACCOUNT_DELETION_TEST_DATABASE_URL')
 pytestmark = pytest.mark.skipif(not DSN, reason='requires explicit empty disposable PostgreSQL database')
 MIGRATIONS = [Path(__file__).resolve().parents[2] / 'supabase/migrations' / name
-              for name in ('021_account_deletion.sql', '023_helper_links.sql', '024_guest_messages.sql')]
+              for name in ('021_account_deletion.sql', '023_helper_links.sql', '024_guest_messages.sql',
+                           '025_guest_photos.sql')]
 OWNER='11111111-1111-4111-8111-111111111111'
 OTHER='22222222-2222-4222-8222-222222222222'
 STUDIO='33333333-3333-4333-8333-333333333333'
@@ -24,6 +25,7 @@ create schema if not exists auth;
 create schema if not exists storage;
 create table auth.users(id uuid primary key, email text);
 create table storage.objects(owner uuid, owner_id text);
+create table storage.buckets(id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
 create table public.studios(id uuid primary key, created_by uuid);
 create table public.studio_members(studio_id uuid references public.studios on delete cascade, user_id uuid, role text);
 create table public.events(id text primary key, studio_id uuid references public.studios on delete cascade, data jsonb);
@@ -68,6 +70,8 @@ async def fixture(scenario):
         await conn.execute("insert into public.invite_opens(rsvp_code,guest_key,event_id) values ('rsvp-code-000000000001','device-key-000000000001','event')")
         await conn.execute("insert into public.invite_open_days(event_id,day,opens,distinct_devices) values ('event',current_date,1,1)")
         await conn.execute("insert into public.invite_open_devices(event_id,day,device_hash) values ('event',current_date,repeat('a',64))")
+        # 025's table is created by 025 itself (guest photos, 11/16/2026).
+        await conn.execute("insert into public.guest_photos(id,event_id,rsvp_code,guest_key,guest_name,storage_path,content_type,byte_size,width,height) values (gen_random_uuid(),'event','rsvp-code-000000000001','device-key-000000000001','Jordan Avery','event/p1.jpg','image/jpeg',100,10,10)")
         await scenario(conn)
     finally:
         await tx.rollback(); await conn.close()
@@ -76,7 +80,7 @@ async def fixture(scenario):
 def test_auth_delete_atomically_removes_solo_data_and_retains_receipt():
     async def scenario(conn):
         await conn.execute('delete from auth.users where id=$1',OWNER)
-        for table in ('studios','studio_members','events','event_channels','rsvp_submissions','vendor_brief_links','vendor_brief_confirmations','helper_links','helper_confirmations','guest_threads','guest_messages','invite_opens','invite_open_days','invite_open_devices'):
+        for table in ('studios','studio_members','events','event_channels','rsvp_submissions','vendor_brief_links','vendor_brief_confirmations','helper_links','helper_confirmations','guest_threads','guest_messages','invite_opens','invite_open_days','invite_open_devices','guest_photos'):
             assert await conn.fetchval('select count(*) from public.'+table)==0
         assert await conn.fetchval('select count(*) from public.event_passes')==1
         assert await conn.fetchval('select purchased_by from public.event_passes') is None
@@ -169,4 +173,24 @@ def test_guest_activity_purge_is_server_only_and_keeps_live_events():
         assert await conn.fetchval("select count(*) from public.guest_threads where event_id='past-event'")==0
         assert await conn.fetchval("select count(*) from public.guest_messages where event_id='past-event'")==0
         assert await conn.fetchval("select count(*) from public.guest_threads where event_id='event'")==1
+    asyncio.run(fixture(scenario))
+
+
+def test_a_deleted_events_photos_are_due_at_once_and_live_ones_wait():
+    async def scenario(conn):
+        # 025's lister is SECURITY DEFINER: the S9-1 lesson, again.
+        for role in ('anon','authenticated'):
+            assert not await conn.fetchval("select has_function_privilege($1,'public.guest_photos_due_for_purge(integer)','execute')",role)
+        # The fixture's photo belongs to a live event with no date and a new upload: not due.
+        assert await conn.fetchval('select count(*) from public.guest_photos_due_for_purge(90)')==0
+        await conn.execute("""insert into public.events values ('gone-event',$1,'{"date":"2026-11-14"}')""",STUDIO)
+        await conn.execute("insert into public.guest_photos(id,event_id,rsvp_code,guest_key,guest_name,storage_path,content_type,byte_size,width,height) values (gen_random_uuid(),'gone-event','rsvp-code-000000000009','device-key-000000000009','Sam Lee','gone-event/p2.jpg','image/jpeg',100,10,10)")
+        assert await conn.fetchval('select count(*) from public.guest_photos_due_for_purge(90)')==0
+        # The host deletes the event from the browser (lib/api/events.deleteEvent).
+        await conn.execute("delete from public.events where id='gone-event'")
+        due = await conn.fetch('select storage_path from public.guest_photos_due_for_purge(90)')
+        assert [r['storage_path'] for r in due]==['gone-event/p2.jpg']
+        # The consent columns default to sharing allowed: both switches start off.
+        flags = await conn.fetchrow("select uploader_private, share_blocked from public.guest_photos where event_id='event'")
+        assert flags['uploader_private'] is False and flags['share_blocked'] is False
     asyncio.run(fixture(scenario))

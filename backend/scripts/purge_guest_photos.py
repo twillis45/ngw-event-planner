@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Nightly retention for guest photos: remove photos 90 days after their event.
+"""Nightly retention for guest photos: remove photos 90 days after their event,
+and every photo of an event the host deleted.
 
 SQL cannot delete a Supabase Storage file, so pg_cron cannot do this job the
 way it purges RSVPs (009) and guest questions (024). The database names the
 photos that are due (guest_photos_due_for_purge, migration 025); this removes
 their files through the Storage API, then their rows.
 
-NOT SCHEDULED YET. Run it once a day, for example as a Render cron job with
-the API service's DATABASE_URL, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+Scheduled nightly by the `ngw-guest-photo-purge` cron service in render.yaml
+(08:17 UTC), with the API service's DATABASE_URL, SUPABASE_URL and
+SUPABASE_SERVICE_ROLE_KEY. The owner approves that service in Render. By hand:
 
     cd backend && python scripts/purge_guest_photos.py
 

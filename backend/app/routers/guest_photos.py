@@ -6,9 +6,11 @@ recap page; the host approves which ones the other guests see (owner request
   POST   /api/public/photos/{rsvp_code}/mine             — public; the caller's own photos.
   POST   /api/public/photos/{rsvp_code}/{photo_id}/delete — public; delete one of her own.
   GET    /api/public/photos/{rsvp_code}                  — public; APPROVED photos only.
+  POST   /api/public/photos/{rsvp_code}/privacy          — public; "Keep my photos private".
   GET    /api/events/{event_id}/guest-photos             — host; every photo, with status.
   POST   /api/events/{event_id}/guest-photos/{id}/approve — host; guests can see it.
   POST   /api/events/{event_id}/guest-photos/{id}/hide    — host; guests cannot.
+  POST   /api/events/{event_id}/guest-photos/{id}/sharing — host; "Don't allow sharing".
   DELETE /api/events/{event_id}/guest-photos/{id}         — host; photo and file gone.
 
 THE UPLOAD is the raw image as the request body (Content-Type image/jpeg,
@@ -26,14 +28,18 @@ Security model:
     from the code (rsvp._resolve_event). A client never supplies an event id or
     a date.
   - Every photo is PENDING until the host approves it. Other guests see only
-    approved photos, as {id, url, created_at}: never the uploader's name, key
-    or the storage path. The guest sees her own photos with their status.
+    approved photos, as {id, url, created_at, shareable}: never the uploader's
+    name, key or the storage path. The guest sees her own photos with their
+    status. `shareable` is false when the uploader keeps her photos private or
+    the host turned sharing off for that photo (board 11/16, option C).
   - Host routes: require_planner + _assert_event_studio_read, as the helper
     link's host reads; a photo is reached only through its own event.
   - The file is checked by its magic bytes, decoded, and RE-ENCODED as a new
     JPEG built from the pixels alone, so no EXIF (GPS, camera, time), XMP, ICC
     profile, comment or PNG text chunk survives. The orientation tag is applied
-    to the pixels first, so stripping it never turns a photo sideways.
+    to the pixels first, so stripping it never turns a photo sideways, and the
+    colors are converted from the photo's own profile to sRGB first, so
+    dropping a Display P3 profile never makes an iPhone photo look washed out.
   - Storage: a PRIVATE Supabase bucket (migration 025) with no storage policy,
     written and read only with the service role key, from this server. Photos
     are served only through signed URLs this server mints, valid for
@@ -61,7 +67,7 @@ from urllib.parse import unquote
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
-from PIL import Image, ImageOps
+from PIL import Image, ImageCms, ImageOps
 from pydantic import BaseModel, Field
 
 from ..auth import require_planner
@@ -75,7 +81,7 @@ router = APIRouter(tags=["guest-photos"])
 PHOTOS_PER_GUEST_MAX = 10
 PHOTOS_PER_EVENT_MAX = 300
 PHOTO_MAX_BYTES = 10 * 1024 * 1024          # per upload, before re-encoding
-UPLOAD_OPENS_DAYS_AFTER_EVENT = 1           # the day after the event's last day (UTC)
+# Uploads open at the event's end, local time: _opens_at below.
 RETENTION_DAYS_AFTER_EVENT = 90             # purge; uploads also close then
 SIGNED_URL_TTL_SECONDS = 300                # every photo URL a client ever sees
 PHOTO_IP_MAX = 30                           # public calls per IP per 60 s window
@@ -102,11 +108,24 @@ _HEIF_BRANDS = {b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm", b
                 b"mif1", b"msf1", b"avif"}
 
 
-def _today() -> _dt.date:
-    return _dt.datetime.now(_dt.timezone.utc).date()
+def _now() -> _dt.datetime:
+    return _dt.datetime.now(_dt.timezone.utc)
 
 
 # ── The upload window, from the server's event ─────────────────────────────────
+# OPENS AT THE EVENT'S END, LOCAL TIME (owner ruling 11/16/2026). It used to
+# open at midnight UTC the day after the last day, which in New York is 7 PM on
+# the day itself for a party that is still going, and the next evening for one
+# that ended at 6. The event stores no time zone, so the guest's phone supplies
+# its offset (JS getTimezoneOffset: minutes WEST of UTC, so UTC = local +
+# offset). With no usable offset the window waits for the latest zone on earth
+# (UTC-12): it can open late, never early. A spoofed offset can open it at most
+# a day early, and every photo still waits for the host's approval.
+LATEST_ZONE_OFFSET_MIN = 720               # UTC-12
+EARLIEST_ZONE_OFFSET_MIN = -840            # UTC+14
+_HHMM = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)")
+
+
 def _last_day(public: dict) -> Optional[_dt.date]:
     """The event's last day: endDate, else date, when it is a real YYYY-MM-DD."""
     for k in ("endDate", "date"):
@@ -119,27 +138,63 @@ def _last_day(public: dict) -> Optional[_dt.date]:
     return None
 
 
-def _window(public: dict):
-    """(opens_on, closes_on) or None when the event has no usable date."""
+def _clock(v) -> Optional[_dt.time]:
+    m = _HHMM.match(str(v or "").strip())
+    return _dt.time(int(m.group(1)), int(m.group(2))) if m else None
+
+
+def tz_offset(raw) -> int:
+    """The guest's offset in minutes, or the latest zone's when it is missing or impossible."""
+    try:
+        v = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return LATEST_ZONE_OFFSET_MIN
+    return v if EARLIEST_ZONE_OFFSET_MIN <= v <= LATEST_ZONE_OFFSET_MIN else LATEST_ZONE_OFFSET_MIN
+
+
+def _opens_at(public: dict, offset_min: int) -> Optional[_dt.datetime]:
+    """When uploads open, in UTC: the last day at the host's end time, else at
+    the start time (the owner's words: "end/start time"), else local midnight
+    after the last day. A start time the app derived never reaches here
+    (rsvp._resolve_event pops it). An end time before the start time is past
+    midnight, so it lands on the next day."""
     last = _last_day(public)
     if last is None:
         return None
-    return (last + _dt.timedelta(days=UPLOAD_OPENS_DAYS_AFTER_EVENT),
-            last + _dt.timedelta(days=RETENTION_DAYS_AFTER_EVENT))
+    end, start = _clock(public.get("endTime")), _clock(public.get("startTime"))
+    if end:
+        local = _dt.datetime.combine(last, end)
+        if start and end <= start:
+            local += _dt.timedelta(days=1)
+    elif start:
+        local = _dt.datetime.combine(last, start)
+    else:
+        local = _dt.datetime.combine(last + _dt.timedelta(days=1), _dt.time(0, 0))
+    return (local + _dt.timedelta(minutes=offset_min)).replace(tzinfo=_dt.timezone.utc)
 
 
-def _uploads_open(public: dict) -> bool:
-    w = _window(public)
-    return bool(w) and w[0] <= _today() <= w[1]
+def _window(public: dict, offset_min: int):
+    """(opens_at UTC, closes_on date) or None when the event has no usable date."""
+    last = _last_day(public)
+    if last is None:
+        return None
+    return _opens_at(public, offset_min), last + _dt.timedelta(days=RETENTION_DAYS_AFTER_EVENT)
 
 
-def _refuse_outside_window(public: dict):
-    w = _window(public)
+def _uploads_open(public: dict, offset_min: int) -> bool:
+    w = _window(public, offset_min)
+    now = _now()
+    return bool(w) and w[0] <= now and now.date() <= w[1]
+
+
+def _refuse_outside_window(public: dict, offset_min: int):
+    w = _window(public, offset_min)
     if w is None:
         raise HTTPException(403, "Photo sharing isn't open for this invite.")
-    if _today() < w[0]:
+    now = _now()
+    if now < w[0]:
         raise HTTPException(403, "Photos can be shared after the event.")
-    if _today() > w[1]:
+    if now.date() > w[1]:
         raise HTTPException(403, "Photo sharing for this event has closed.")
 
 
@@ -163,6 +218,28 @@ def sniff(raw: bytes) -> Optional[str]:
     return None
 
 
+_SRGB = ImageCms.createProfile("sRGB")
+
+
+def _to_srgb(img, icc: Optional[bytes]):
+    """Convert the pixels from the photo's own color profile to sRGB (owner,
+    11/16/2026). An iPhone photo is Display P3: dropping its profile without
+    converting made it look washed out. The stored JPEG carries no profile,
+    and a browser reads an untagged image as sRGB, so the colors must already
+    BE sRGB. A profile that can't be read leaves the pixels as they are; it
+    never refuses the photo."""
+    if not icc:
+        return img
+    try:
+        src = ImageCms.ImageCmsProfile(io.BytesIO(icc))
+        out_mode = "RGBA" if "A" in img.getbands() else "RGB"
+        if img.mode not in ("RGB", "RGBA", "CMYK", "L"):
+            img = img.convert(out_mode)
+        return ImageCms.profileToProfile(img, src, _SRGB, outputMode=out_mode)
+    except Exception:
+        return img
+
+
 def clean_photo(raw: bytes):
     """Return (jpeg bytes, width, height) holding the pixels and nothing else.
     Raises PhotoRefused."""
@@ -177,7 +254,9 @@ def clean_photo(raw: bytes):
         if img.width * img.height > MAX_PIXELS:
             raise PhotoRefused(413, "That photo is too large to share.")
         img.load()
+        icc = img.info.get("icc_profile")
         img = ImageOps.exif_transpose(img)   # orientation into the pixels
+        img = _to_srgb(img, icc)             # colors into the pixels, before the profile is dropped
         if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
             rgba = img.convert("RGBA")
             flat = Image.new("RGB", rgba.size, (255, 255, 255))
@@ -267,6 +346,30 @@ class GuestKey(BaseModel):
     guest_key: str = Field(..., min_length=MIN_KEY, max_length=MAX_KEY)
 
 
+class GuestMine(GuestKey):
+    # The guest's phone's offset (JS getTimezoneOffset), for the upload window.
+    tz_offset_min: Optional[int] = None
+
+
+class GuestPrivacy(GuestKey):
+    private: bool
+
+
+class HostSharing(BaseModel):
+    allowed: bool
+
+
+def _truthy(raw: Optional[str]) -> bool:
+    return str(raw or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _shareable(p) -> bool:
+    """A Share button may appear only on an approved photo that neither its
+    uploader ("Keep my photos private to this event") nor the host ("Don't
+    allow sharing") kept back. Board 11/16, option C."""
+    return p["status"] == "approved" and not p["uploader_private"] and not p["share_blocked"]
+
+
 def _limit(request: Request, code: str, *, write: bool):
     ok, retry = _rate_check(f"gp-ip:{_client_ip(request)}", PHOTO_IP_MAX)
     if not ok:
@@ -343,14 +446,17 @@ def _refuse_over_cap(c):
         raise HTTPException(429, "This event has all the photos it can hold.")
 
 
-_HOST_COLS = "id, guest_name, status, storage_path, created_at, reviewed_at, width, height"
+_HOST_COLS = ("id, guest_name, status, storage_path, created_at, reviewed_at, width, height, "
+              "uploader_private, share_blocked")
 
 
 def _host_view(p, urls: dict) -> dict:
     """The host's whitelist: no device key, invite code or storage path."""
     return {"id": str(p["id"]), "guest_name": p["guest_name"], "status": p["status"],
             "created_at": _iso(p["created_at"]), "reviewed_at": _iso(p["reviewed_at"]),
-            "width": p["width"], "height": p["height"], "url": urls.get(p["storage_path"])}
+            "width": p["width"], "height": p["height"], "url": urls.get(p["storage_path"]),
+            "uploader_private": bool(p["uploader_private"]), "share_blocked": bool(p["share_blocked"]),
+            "shareable": _shareable(p)}
 
 
 # ── Guest routes ────────────────────────────────────────────────────────────────
@@ -361,9 +467,13 @@ async def guest_upload_photo(
     content_type: Optional[str] = Header(default=None),
     x_guest_key: Optional[str] = Header(default=None),
     x_guest_name: Optional[str] = Header(default=None),
+    x_guest_tz_offset: Optional[str] = Header(default=None),
+    x_guest_private: Optional[str] = Header(default=None),
 ):
     """One photo, as the raw request body. Stored PENDING; the host decides
-    whether other guests see it. Returns { ok, photo: {id, status, created_at, url} }."""
+    whether other guests see it. X-Guest-Tz-Offset is the phone's offset, for
+    the window; X-Guest-Private carries "Keep my photos private to this event".
+    Returns { ok, photo: {id, status, created_at, url} }."""
     code = (rsvp_code or "")[:MAX_CODE]
     _limit(request, code, write=True)
     pool = await get_pool()
@@ -371,7 +481,7 @@ async def guest_upload_photo(
         event_id, public = await _resolve(conn, code)
         key = _guest_key(x_guest_key)
         name = _guest_name(x_guest_name)
-        _refuse_outside_window(public)
+        _refuse_outside_window(public, tz_offset(x_guest_tz_offset))
         if not _storage_configured():
             raise HTTPException(503, "Photo sharing isn't available right now.")
         _refuse_over_cap(await _counts(conn, code, key, event_id))
@@ -395,10 +505,11 @@ async def guest_upload_photo(
                 row = await conn.fetchrow(
                     """insert into public.guest_photos
                          (id, event_id, rsvp_code, guest_key, guest_name, storage_path,
-                          content_type, byte_size, width, height)
-                       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                          content_type, byte_size, width, height, uploader_private)
+                       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                        returning id, status, created_at, storage_path""",
                     photo_id, event_id, code, key, name, path, "image/jpeg", len(data), width, height,
+                    _truthy(x_guest_private),
                 )
         except BaseException:
             await _storage_remove([path])     # never leave a file with no row
@@ -409,16 +520,18 @@ async def guest_upload_photo(
 
 
 @router.post("/api/public/photos/{rsvp_code}/mine")
-async def guest_my_photos(rsvp_code: str, payload: GuestKey, request: Request):
-    """The caller's own photos, each with its status, plus how many more she
-    can share and whether sharing is open now."""
+async def guest_my_photos(rsvp_code: str, payload: GuestMine, request: Request):
+    """The caller's own photos, each with its status and whether a Share button
+    may show on it, plus how many more she can share, whether sharing is open
+    now in her zone, and whether she keeps her photos private."""
     code = (rsvp_code or "")[:MAX_CODE]
     _limit(request, code, write=False)
     pool = await get_pool()
     async with pool.acquire() as conn:
         _event_id, public = await _resolve(conn, code)
         rows = await conn.fetch(
-            """select id, status, storage_path, created_at from public.guest_photos
+            """select id, status, storage_path, created_at, uploader_private, share_blocked
+                 from public.guest_photos
                where rsvp_code = $1 and guest_key = $2 order by created_at desc""",
             code, payload.guest_key,
         )
@@ -426,10 +539,29 @@ async def guest_my_photos(rsvp_code: str, payload: GuestKey, request: Request):
     return {
         "ok": True,
         "photos": [{"id": str(r["id"]), "status": r["status"], "created_at": _iso(r["created_at"]),
-                    "url": urls.get(r["storage_path"])} for r in rows],
+                    "url": urls.get(r["storage_path"]), "shareable": _shareable(r)} for r in rows],
         "remaining": max(0, PHOTOS_PER_GUEST_MAX - len(rows)),
-        "uploads_open": _uploads_open(public),
+        "uploads_open": _uploads_open(public, tz_offset(payload.tz_offset_min)),
+        "keep_private": bool(rows) and all(r["uploader_private"] for r in rows),
     }
+
+
+@router.post("/api/public/photos/{rsvp_code}/privacy")
+async def guest_set_privacy(rsvp_code: str, payload: GuestPrivacy, request: Request):
+    """"Keep my photos private to this event": on, no Share button appears on
+    any of her photos, anywhere; off, her approved photos may be shared. Her
+    own key only, as every guest route."""
+    code = (rsvp_code or "")[:MAX_CODE]
+    _limit(request, code, write=True)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await _resolve(conn, code)
+        await conn.execute(
+            """update public.guest_photos set uploader_private = $3
+               where rsvp_code = $1 and guest_key = $2""",
+            code, payload.guest_key, payload.private,
+        )
+    return {"ok": True, "private": payload.private}
 
 
 @router.post("/api/public/photos/{rsvp_code}/{photo_id}/delete")
@@ -458,20 +590,22 @@ async def guest_delete_photo(rsvp_code: str, photo_id: str, payload: GuestKey, r
 @router.get("/api/public/photos/{rsvp_code}")
 async def guest_approved_photos(rsvp_code: str, request: Request):
     """Photos the host APPROVED, for anyone holding the invite code. No name,
-    key, status or path: {id, url, created_at} only."""
+    key, status or path: {id, url, created_at, shareable} only."""
     code = (rsvp_code or "")[:MAX_CODE]
     _limit(request, code, write=False)
     pool = await get_pool()
     async with pool.acquire() as conn:
         event_id, _public = await _resolve(conn, code)
         rows = await conn.fetch(
-            """select id, storage_path, created_at from public.guest_photos
+            """select id, status, storage_path, created_at, uploader_private, share_blocked
+                 from public.guest_photos
                where event_id = $1 and status = 'approved' order by created_at desc""",
             event_id,
         )
     urls = await _storage_sign([r["storage_path"] for r in rows], SIGNED_URL_TTL_SECONDS)
     return {"ok": True, "photos": [{"id": str(r["id"]), "url": urls.get(r["storage_path"]),
-                                    "created_at": _iso(r["created_at"])} for r in rows]}
+                                    "created_at": _iso(r["created_at"]), "shareable": _shareable(r)}
+                                   for r in rows]}
 
 
 # ── Host routes ─────────────────────────────────────────────────────────────────
@@ -532,6 +666,30 @@ async def host_hide_photo(
     """Other guests can no longer see it; the uploader still can, as hidden."""
     principal = await require_planner(authorization, x_planner_token)
     return await _set_status(event_id, photo_id, "hidden", principal)
+
+
+@router.post("/api/events/{event_id}/guest-photos/{photo_id}/sharing")
+async def host_photo_sharing(
+    event_id: str, photo_id: str, payload: HostSharing,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """"Don't allow sharing" on one photo: the person in a picture is not
+    always the one who took it (board 11/16). It never changes who can SEE it."""
+    principal = await require_planner(authorization, x_planner_token)
+    pid = _photo_uuid(photo_id)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await _assert_event_studio_read(conn, event_id, principal)
+        row = await conn.fetchrow(
+            f"""update public.guest_photos set share_blocked = $3
+                where id = $1 and event_id = $2 returning {_HOST_COLS}""",
+            pid, event_id, not payload.allowed,
+        )
+    if not row:
+        raise HTTPException(404, NOT_FOUND)
+    urls = await _storage_sign([row["storage_path"]], SIGNED_URL_TTL_SECONDS)
+    return {"ok": True, "photo": _host_view(row, urls)}
 
 
 @router.delete("/api/events/{event_id}/guest-photos/{photo_id}")

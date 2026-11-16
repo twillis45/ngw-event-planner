@@ -8,7 +8,10 @@
 --   guests holding that invite code. The host can approve, hide or delete; the
 --   guest can delete her own. Routes: backend/app/routers/guest_photos.py, where
 --   the owner's defaults live as constants (10 per guest, 300 per event, 10 MB,
---   uploads only after the event's last day, 90-day retention).
+--   uploads open at the event's end in the guest's local time, 90-day
+--   retention). Consent (board 11/16): the uploader can keep her photos
+--   private to the event and the host can stop sharing on any one photo; both
+--   only remove the Share button, never the photo.
 --
 -- THE GUEST CREDENTIAL is (rsvp_code, guest_key): the invite code plus the
 -- random key minted in the guest's browser, the same pair a guest's own RSVP
@@ -54,7 +57,11 @@ create table if not exists public.guest_photos (
   status        text not null default 'pending'
                   check (status in ('pending', 'approved', 'hidden')),
   created_at    timestamptz not null default now(),
-  reviewed_at   timestamptz null                      -- the host's last approve / hide
+  reviewed_at   timestamptz null,                     -- the host's last approve / hide
+  -- CONSENT (board 11/16/2026, option C). Neither changes who can SEE a photo;
+  -- both decide whether a Share button may appear on it anywhere.
+  uploader_private boolean not null default false,    -- "Keep my photos private to this event"
+  share_blocked    boolean not null default false     -- the host's "Don't allow sharing"
 );
 
 -- Host list, approved list, and the per-event cap.
@@ -84,7 +91,13 @@ on conflict (id) do update
 -- A photo is due 90 days after its event's last day (endDate, else date, used
 -- only when it looks like YYYY-MM-DD, and built by arithmetic so even
 -- "2026-02-30" cannot make the cast throw and stop the purge — 024's rule).
--- With no usable date, or no event row, it is due 90 days after its upload.
+-- With no usable date it is due 90 days after its upload.
+-- DELETING AN EVENT DELETES ITS PHOTOS (owner, 11/16/2026). hostv2 deletes an
+-- event straight from the browser (lib/api/events.deleteEvent), so no server
+-- route sees it happen. A photo whose event row is GONE is therefore due at
+-- once: the next nightly run removes its file, then its row. Until then it is
+-- unreachable, since every route resolves the event first. (Every photo had an
+-- event row when it was stored: the upload resolves the event by its code.)
 -- This only NAMES them; the server removes files, then rows.
 create or replace function public.guest_photos_due_for_purge(older_than_days int default 90)
 returns table (id uuid, storage_path text)
@@ -97,7 +110,8 @@ as $$
   cross join lateral (
     select coalesce(nullif(e.data->>'endDate', ''), nullif(e.data->>'date', '')) as d
   ) ev
-  where coalesce(
+  where e.id is null
+     or coalesce(
           case when ev.d ~ '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])' then ((left(ev.d, 7) || '-01')::date + (substr(ev.d, 9, 2)::int - 1))::timestamptz end,
           p.created_at
         ) < now() - make_interval(days => older_than_days)

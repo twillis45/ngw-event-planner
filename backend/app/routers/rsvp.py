@@ -105,6 +105,10 @@ PUBLIC_EVENT_FIELDS = (
     # (sleeps/beds/price/tier) published so guests can weigh in from the
     # invite. Host-curated display data; no PII, no money ledger.
     "lodgingOptions",
+    # hashtag (owner ruling 11/16/2026): the tag the HOST turned on for the
+    # event, shown quietly on the invite and in share captions. Host-chosen
+    # display text, no PII; absent until the host sets one.
+    "hashtag",
 )
 
 # ── In-memory sliding-window rate limiter (mirrors routers/ai.py) ──────────────
