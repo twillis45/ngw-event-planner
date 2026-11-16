@@ -94,9 +94,16 @@ export function backupCustomEvents(now = Date.now()) {
   if (raw == null) return null;             // nothing to lose yet
   const key = `${BACKUP_PREFIX}${now}`;
   try {
-    ls.setItem(key, raw);
     const index = readJSON(ls, LS_BACKUP_INDEX, []);
-    const next = [...(Array.isArray(index) ? index : []), key];
+    const prior = Array.isArray(index) ? index : [];
+    // ONE COPY PER STATE (owner's demo, 11/15/2026: Settings listed two "saved
+    // copies" with the same time). A write that changes nothing would snapshot
+    // the same data again; the newest copy already holds it, so it is reused.
+    const newest = prior[prior.length - 1];
+    if (newest && ls.getItem(newest) === raw) return newest;
+    ls.setItem(key, raw);
+    // Same millisecond, same key: index it once (the copy above is the newer data).
+    const next = [...prior.filter((k) => k !== key), key];
     // Oldest-first eviction, so the newest MAX_BACKUPS always survive.
     while (next.length > MAX_BACKUPS) {
       const drop = next.shift();
