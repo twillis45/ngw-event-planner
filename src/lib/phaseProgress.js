@@ -20,7 +20,7 @@
 // Thin composition over existing single sources (guestCountResolved, weather
 // readers, dayBefore-style vendor gaps, playbook plans) — not a new engine.
 
-import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard, decisionSettledByData } from './playbooks';
 import { rainPlanStatus, isLikelyOutdoor } from './weather';
 import { spanNights } from './dates';
 import { eventLocationStatus } from './locationAssist';
@@ -200,7 +200,9 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
   // does owe this answer is still asked for it.
   const dietaryChoice = (c) => c.id === 'dietary' || /dietary|allerg/i.test(c.label || '');
   const openChoices = plan
-    ? (plan.choices || []).filter(c => c && !(dietaryDone && dietaryChoice(c)) && foodPicks[c.id] == null)
+    // A booked vendor that answers the choice (a contracted caterer answers "how
+    // is the food handled?") closes it here too, as on the board (11/16/2026).
+    ? (plan.choices || []).filter(c => c && !(dietaryDone && dietaryChoice(c)) && foodPicks[c.id] == null && !decisionSettledByData(ev, c))
     : [];
   // THE HERO NAGGED FOR DECISIONS THE BOARD HAD PARKED (2026-08-07).
   // Reproduced on a birthday 90 days out: playbookDecisionBoard put `food_style`

@@ -202,13 +202,18 @@ const retirementParty = {
     { category: 'Photographer', required: false, altToDIY: 'A 1-2h photographer captures the honoree\'s reaction, group shots, and portraits; a designated phone-photographer friend is the free alt', copyByAnswer: { surprise: { 'Full surprise': 'A 1-2h photographer captures the surprise reaction + group + honoree portraits; a designated phone-photographer friend is the free alt', 'Soft surprise (honoree knows, not the details)': 'A 1-2h photographer captures the honoree\'s arrival reaction + group + honoree portraits; a designated phone-photographer friend is the free alt' } }, when: 'T-14d', costRange: [200, 600], costUnit: 'flat' },
     { category: 'Venue / Private Room', required: false, altToDIY: 'A restaurant private room or hall covers tables, staff, and cleanup but costs a room/F&B minimum; home/office is free but more host work', when: 'T-32d', costRange: [200, 1500], costUnit: 'flat' },
     { category: 'AV / Slideshow Tech', required: false, altToDIY: 'Some venues rent a mic + screen (~$75-200); a borrowed Bluetooth speaker + a wheeled-in TV is the DIY alt', when: 'T-14d', costRange: [75, 250], costUnit: 'flat' },
-    { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet at home', when: 'T-7d', costRange: [120, 180], costUnit: 'flat' },
+    // "at home" only when the host answered home (owner's demo, 11/15/2026: a VFW
+    // event was told "after a bar + buffet at home").
+    { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet', copyByAnswer: { venue: { 'Host home': 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet at home', 'Backyard / outdoor': 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet at home' } }, when: 'T-7d', costRange: [120, 180], costUnit: 'flat' },
     { category: 'DJ / Music', required: false, altToDIY: 'A DJ (~$300-600) reads the room, MCs, and cues the tribute\'s music beats; a curated playlist through a real Bluetooth speaker is the free DIY alt', when: 'T-14d', costRange: [300, 600], costUnit: 'flat' },
   ],
 
   risks: [
     { id: 'r_headcount', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, food ~10-15%, not 30%.' },
-    { id: 'r_surprise_leak', trigger: 'The surprise leaks, or the honoree arrives before guests are set', severity: 'med', mitigation: 'Mark every invite SURPRISE with a guests-arrive-by time 15-30 min early; pick one co-conspirator to control the honoree\'s arrival; have a lookout text "she\'s here".' },
+    // whenAnswered + "they’re here" (owner's demo, 11/15/2026): this printed "she's
+    // here" while "Surprise or announced?" was unanswered — a surprise and a gender
+    // the host never gave. It waits for a surprise answer and names no one.
+    { id: 'r_surprise_leak', whenAnswered: { id: 'surprise', in: ['Full surprise', 'Soft surprise (honoree knows, not the details)'] }, trigger: 'The surprise leaks, or the honoree arrives before guests are set', severity: 'med', mitigation: 'Mark every invite SURPRISE with a guests-arrive-by time 15-30 min early; pick one co-conspirator to control the honoree\'s arrival; have a lookout text “they’re here”.' },
     { id: 'r_speeches', trigger: 'Speeches run long / no mic / open-mic rambles / audience can\'t hear', severity: 'high', mitigation: 'Pre-assign 3-5 speakers at ~2-3 min, ALWAYS have a tested mic + speaker, seat the older crowd up front, lower the music before the toast.' },
     { id: 'r_slideshow_fail', trigger: 'Slideshow/video won\'t play day-of (wrong cable, dead device, no internet)', severity: 'med', mitigation: 'Export the slideshow to a local file, test it on the actual screen at setup, charge the device, and have a phone backup of the same file.' },
     { id: 'r_accessibility', trigger: 'Too few chairs, stairs-only entrance, or a buffet hard for older guests to navigate', severity: 'high', mitigation: 'Confirm a no-stairs accessible room + parking at booking; seat-per-guest plus extras; keep walkways clear; station a helper at the buffet to plate for anyone who needs it.' },
@@ -236,7 +241,7 @@ const retirementParty = {
     ],
     setup: [
       { when: 'T0 -3:55', what: 'Start chilling bottles; set up the ice tubs (chilling vs drink ice, separate)' },
-      { when: 'T0 -3h', what: 'Set the room: ample accessible seating, clear walkways, buffet table (≤36" reach), bar, cake/display tables; reserve front-row seats near the speakers' },
+      { when: 'T0 -3h', what: 'Set the room: ample accessible seating, clear walkways, a buffet table low enough to reach from a chair (36 inches or lower), bar, cake/display tables; reserve front-row seats near the speakers' },
       { when: 'T0 -2h', what: 'Stage the memory/photo display, the signing card + pens, and the slideshow screen; place coffee/tea station, decor, centerpieces' },
       { when: 'T0 -55m', what: 'Test the mic + speaker and the slideshow on the actual screen; set music volume; pre-clean — empty dishwasher, stage bus tub + recycling bin' },
       { when: 'T0 -30m', what: 'Final setup check: greet early arrivals, confirm the buffet/bar and seating are ready, first appetizers out', copyByAnswer: { surprise: { 'Full surprise': 'SURPRISE prep: get guests in and quiet, brief the co-conspirator and the lookout, position the surprise guest out of sight, first appetizers out', 'Soft surprise (honoree knows, not the details)': 'Get guests settled in and greeted, quietly confirm arrival timing with your co-conspirator for the honoree, first appetizers out' } } },
@@ -245,7 +250,9 @@ const retirementParty = {
       { when: 'T0 +5m', what: 'Doors: guests in and settled, drinks out, sign the card on the way in' },
       { when: 'T0 +20m', what: 'The honoree arrives — or the room quiets for the surprise' },
       { when: 'T0 +45m', what: 'Dinner served; blessing first if that’s your family' },
-      { when: 'T0 +1:30', what: 'The program: the boss, the oldest friend, the family — two minutes each' },
+      // militaryCeremonyBeat: on a military retirement whose branch protocol is
+      // authored, the engine prints the ceremony sequence here instead.
+      { when: 'T0 +1:30', what: 'The program: the boss, the oldest friend, the family — two minutes each', militaryCeremonyBeat: true },
       { when: 'T0 +2h', what: 'The gift and the honoree’s own words' },
       { when: 'T0 +2:30', what: 'Cake, then open floor for the people who couldn’t get to them earlier' },
       { when: 'T0 +4h', what: 'Send-off; make sure the honoree leaves with the card and every gift' },
