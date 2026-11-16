@@ -15,7 +15,7 @@
 -- header row is INFO). The summary row near the top counts the FAILs.
 --
 -- WHERE EACH EXPECTATION COMES FROM (so a FAIL can be traced to a file):
---   tables + policies  supabase/migrations/001–025 (applied by the Supabase
+--   tables + policies  supabase/migrations/001–026 (applied by the Supabase
 --                      integration, 017–021 by hand on 11/7), backend/migrations
 --                      and src/lib/knowledge/kaw1-migration.sql (hand-applied;
 --                      a table from those two that is ABSENT here passes, since
@@ -441,14 +441,14 @@ all_rows (ord, k, "check", subject, expected, actual, verdict) as (
 
   -- (f) what supabase_migrations.schema_migrations records
   union all
-  select 50, 'a', 'migrations_recorded', 'supabase_migrations.schema_migrations', '001 … 025',
+  select 50, 'a', 'migrations_recorded', 'supabase_migrations.schema_migrations', '001 … ' || ev.versions[array_length(ev.versions, 1)],
          case when not rc.present then 'table absent'
               else coalesce(nullif(array_to_string(rc.versions, ','), ''), '(no rows)') end,
          case when rc.present and rc.versions @> ev.versions then 'PASS' else 'FAIL' end
   from recorded rc cross join expected_versions ev
 
   union all
-  select 51, 'b', 'migrations_missing', 'versions 001–025 not recorded', '(none)',
+  select 51, 'b', 'migrations_missing', 'versions 001–' || ev.versions[array_length(ev.versions, 1)] || ' not recorded', '(none)',
          case when not rc.present then 'table absent'
               else coalesce(nullif(array_to_string(array(select x from unnest(ev.versions) x
                                                           where not (x = any (rc.versions)) order by x), ','), ''),
