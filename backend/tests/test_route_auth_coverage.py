@@ -47,6 +47,7 @@ INTENTIONALLY_PUBLIC = {
     ("POST", "/api/public/questions/{rsvp_code}/email"): "rsvpCode + the guest's own device key",
     ("POST", "/api/public/questions/{rsvp_code}/delete"): "rsvpCode + the guest's own device key",
     ("GET", "/api/public/questions/unsubscribe/{token}"): "read-only confirm page; the token is the credential",
+    ("GET", "/api/public/announcements/{rsvp_code}"): "rsvpCode; read-only, body and time of each update, nothing else",
     ("POST", "/api/public/questions/unsubscribe/{token}"): "the thread's emailed-link guest_token, 22+ chars, exact match",
     ("POST", "/api/public/invite/{rsvp_code}/opened"): "rsvpCode; never creates an identity, answers the same for any key",
     ("POST", "/messages/{message_id}/portal-respond"): "per-message portal_token is checked",

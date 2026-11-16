@@ -14,6 +14,7 @@ announcements next).
   · Fail-soft: a failed send never fails the host's reply. The log names the
     event and the reason, never an address.
 """
+import asyncio
 import html
 import logging
 
@@ -81,3 +82,66 @@ async def notify_guest_of_reply(thread_id, reply: str) -> None:
         log.info("reply notice sent thread=%s", thread_id)
     except Exception as e:  # noqa: BLE001 — fail-soft by design
         log.error("reply notice failed thread=%s error=%s", thread_id, failure_reason(e))
+
+
+# ── Announcements (027): one post, emailed once to every opted-in guest ──────
+def compose_announcement(host_first: str, event_name: str, body: str, rsvp_code: str, guest_token: str):
+    """(from_name, subject, html, headers). Pure."""
+    host = _one_line(host_first, 40) or "Your host"
+    name = _one_line(event_name) or "the event"
+    stop = unsubscribe_url(guest_token)
+    subject = f"Update from {host} — {name}"
+    html_body = (
+        f"<p><strong>{html.escape(host)}</strong> posted an update about <strong>{html.escape(name)}</strong>:</p>"
+        f"<blockquote style=\"margin:0 0 16px;padding:8px 12px;border-left:3px solid #ccc\">"
+        f"{html.escape(str(body or ''))[:1000].replace(chr(10), '<br>')}</blockquote>"
+        f"<p><a href=\"{html.escape(invite_url(rsvp_code))}\">Open your invite</a> — "
+        f"replies to this email don't reach {html.escape(host)}.</p>"
+        f"<p style=\"color:#666\">You get this because you asked for email when {html.escape(host)} replies or posts an update. "
+        f"<a href=\"{html.escape(stop)}\">Stop these emails</a>.</p>"
+    )
+    headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
+    return f"{host} via No Guesswork", subject, html_body, headers
+
+
+SEND_GAP_SECONDS = 0.6   # Resend's default limit is 2 requests a second
+
+
+async def notify_guests_of_announcement(announcement_id) -> None:
+    """Background task after a post. One email per opted-in address (deduped,
+    case-insensitive), never to a blocked thread. Never raises."""
+    try:
+        if not is_email_configured():
+            return
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            a = await conn.fetchrow(
+                """select a.event_id, a.body, a.removed_at, e.data->>'name' as event_name,
+                          e.data->>'rsvpCode' as rsvp_code,
+                          coalesce(e.data->>'hostName', e.data->>'hostNames') as host_name
+                     from public.event_announcements a join public.events e on e.id = a.event_id
+                    where a.id = $1""", announcement_id)
+            if not a or a["removed_at"] is not None or not a["rsvp_code"]:
+                return
+            rows = await conn.fetch(
+                """select distinct on (lower(guest_email)) guest_email, guest_token
+                     from public.guest_threads
+                    where event_id = $1 and email_opt_in and guest_email is not null and blocked_at is null
+                    order by lower(guest_email), created_at""", a["event_id"])
+        host_first = (str(a["host_name"] or "").split() or [""])[0]
+        sent = failed = 0
+        for i, r in enumerate(rows):
+            if i:
+                await asyncio.sleep(SEND_GAP_SECONDS)
+            from_name, subject, body, headers = compose_announcement(
+                host_first, a["event_name"], a["body"], a["rsvp_code"], r["guest_token"])
+            try:
+                await _send_via_resend(to=r["guest_email"], subject=subject, html=body,
+                                       from_name=from_name, headers=headers)
+                sent += 1
+            except Exception as e:  # noqa: BLE001 — one guest's failure never stops the rest
+                failed += 1
+                log.error("announcement email failed announcement=%s error=%s", announcement_id, failure_reason(e))
+        log.info("announcement emails announcement=%s sent=%s failed=%s", announcement_id, sent, failed)
+    except Exception as e:  # noqa: BLE001 — fail-soft by design
+        log.error("announcement emails failed announcement=%s error=%s", announcement_id, failure_reason(e))

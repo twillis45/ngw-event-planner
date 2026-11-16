@@ -129,12 +129,20 @@ describe('coverage', () => {
   // definer that answers "is this person a co-host here", and the trigger
   // that stops anyone outside a studio moving its event. The record now
   // reaches 026.
-  test('it proves the co-host table, its read-only browser access, the event rules and the studio lock, and expects 026 recorded', () => {
+  test('it proves the co-host table, its read-only browser access, the event rules and the studio lock', () => {
     for (const name of [
       "'event_cohosts'", "'event_cohosts: own rows'", "'events: cohost select'", "'events: cohost update'",
       "'is_event_cohost(text)'", "'events_studio_locked()'", "t.tgname = 'events_studio_locked'",
       "has_table_privilege('authenticated', 'public.event_cohosts', 'insert')",
-      'generate_series(1, 26)',
+    ]) expect(sql).toContain(name);
+  });
+
+  // 027 (announcements, 11/16/2026): server-only, gone with its event.
+  test('it proves the announcements table is server-only and cascades, and expects 027 recorded', () => {
+    for (const name of [
+      "'event_announcements'", "to_regclass('public.event_announcements')", "confdeltype = 'c') = 1",
+      "has_table_privilege(r.rolname, 'public.event_announcements', p)",
+      'generate_series(1, 27)',
     ]) expect(sql).toContain(name);
   });
 

@@ -3,9 +3,10 @@
 // No new tab, no new sheet: L4 work for guests lives with the guest list.
 //
 //   HostQuestions   "Questions & updates": unanswered first; open one, reply,
-//                   block or unblock. A reply is stored and shows on that
-//                   guest's invite; nothing is emailed in this release, and
-//                   nothing here says it was.
+//                   block or unblock. A reply shows on that guest's invite and
+//                   is emailed ONLY to a guest who ticked "email me"
+//                   (thread.email_notices, backend/app/guest_notices.py); the
+//                   line under the box says which, per guest.
 //   HostInviteOpens "Ana last opened the invite Nov 16, 8:42 PM" for guests
 //                   the server can name, and anonymous daily totals. "Opened",
 //                   never "read" or "seen".
@@ -66,7 +67,9 @@ export function HostQuestions({ eventId, onWaiting }) {
     try {
       await replyToGuestThread(eventId, open.id, body);
       setDraft('');
-      setLine(`Sent — it shows on ${first(open.thread.guest_name)}’s invite.`);
+      setLine(open.thread.email_notices
+        ? `Sent — it shows on ${first(open.thread.guest_name)}’s invite, and ${first(open.thread.guest_name)} gets it by email.`
+        : `Sent — it shows on ${first(open.thread.guest_name)}’s invite.`);
       await openThread(open.id, true);
       await load();
     } catch (e) {
@@ -119,7 +122,9 @@ export function HostQuestions({ eventId, onWaiting }) {
                         <textarea className="field" style={{ maxWidth: 'none', minHeight: 64, resize: 'vertical', fontSize: 'var(--t-input)' }}
                           maxLength={1000} value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={`Your reply to ${t.guest_name}`}
                           placeholder="Street parking on Pine — the lot fills up by 4." />
-                        <p className="of" style={{ margin: '4px 0 0' }}>It shows on {first(t.guest_name)}’s invite. Nothing is emailed yet.</p>
+                        <p className="of" data-reply-email style={{ margin: '4px 0 0' }}>{open.thread.email_notices
+                          ? `It shows on ${first(t.guest_name)}’s invite, and ${first(t.guest_name)} gets it by email.`
+                          : `It shows on ${first(t.guest_name)}’s invite. ${first(t.guest_name)} didn’t ask for email.`}</p>
                       </>
                     )}
                     <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>

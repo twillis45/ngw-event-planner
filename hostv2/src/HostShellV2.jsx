@@ -374,6 +374,7 @@ import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, mintRsvpT
 // rulings A–E, 11/16/2026): sections of the existing Guest list and Make it
 // yours sheets, never a new tab.
 import { HostQuestions, HostInviteOpens, HostGuestPhotos } from './GuestInboxHost.jsx';
+import HostUpdates from './HostUpdates.jsx';
 import EventHashtag from './EventHashtag.jsx';
 import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
@@ -26600,6 +26601,7 @@ export default function HostShellV2() {
               // names its own failure (signed out, offline) rather than look empty.
               const guestComms = ownsEvent ? (
                 <div data-guest-comms>
+                  <HostUpdates eventId={event.id} />
                   <HostQuestions eventId={event.id} onWaiting={setGuestQuestionsWaiting} />
                   {photosInPlay && <HostGuestPhotos eventId={event.id} event={event} onPhotos={setGuestPhotoList} />}
                   <HostInviteOpens eventId={event.id} />
