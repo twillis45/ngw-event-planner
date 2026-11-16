@@ -11,6 +11,13 @@ import { previewUrl } from './deployBase.mjs';
 const SELF_PINNED = [
   // Pins 390x844 (helper link, 11/15/2026): the host's phone and the helper's.
   '**/aHelperGetsTheirJobByLink.spec.mjs',
+  // Pin 390x844 (guest questions, guest photos, hashtag; 11/16/2026): the
+  // guest's phone and the host's, measured where layout matters.
+  '**/aGuestAsksTheHost.spec.mjs',
+  '**/theHostAnswersGuestQuestions.spec.mjs',
+  '**/guestPhotosAfterTheEvent.spec.mjs',
+  '**/theHostApprovesGuestPhotos.spec.mjs',
+  '**/theHostTurnsOnAHashtag.spec.mjs',
   // Pins 390x844 in both tests (stage-4 N1, 11/11/2026): one geometry, run once.
   '**/aPlannedCountOutranksAShortRoster.spec.mjs',
   // Pins 390x844 (stage-4 N2, 11/11/2026).

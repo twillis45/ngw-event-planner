@@ -362,6 +362,14 @@ const readDeletedIds = () => {
 // lazy-load this host shell while the public invite (InviteV2) pulls only the
 // pool, not the whole shell. Re-imported here; the invite imports from eventPool.
 import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, mintRsvpToken, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile, AVA_TINTS } from './eventPool.js';
+// Guest questions, invite opens, guest photos and the event hashtag (owner
+// rulings A–E, 11/16/2026): sections of the existing Guest list and Make it
+// yours sheets, never a new tab.
+import { HostQuestions, HostInviteOpens, HostGuestPhotos } from './GuestInboxHost.jsx';
+import EventHashtag from './EventHashtag.jsx';
+import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
+import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
+import { questionsWaiting, questionsWaitingLine, photosWaitingLine } from '@app/lib/guestInbox';
 
 
 const fmt = formatCurrency;
@@ -1375,6 +1383,12 @@ export default function HostShellV2() {
   // color so "you did it" reads green everywhere from ONE place, instead of per-call
   // styling. 'ok' ⇒ green success; null/undefined ⇒ the neutral pill (errors keep it).
   const [toastTone, setToastTone] = useState(null);
+  // ATTENTION, SCALED TO THE MESSAGE (owner, 11/16/2026: "combo of all 3 where
+  // appropriate"). Every toast gets the lit steel edge (CSS). opts.title adds an
+  // eyebrow naming what kind of note it is. opts.spotlight dims the page behind
+  // it, kept for one-time notices a host must actually read, never a routine
+  // "Saved." Reset on every toast() call, so a stale title never carries over.
+  const [toastMeta, setToastMeta] = useState({});
   const [handledOpen, setHandledOpen] = useState(false);
   // ── THE ONLY OPENER WAS HIDDEN ON THE PHONE (2026-09-17) ──────────────────
   // The "what's counted" panel (~:9740) carries the four readiness pillar
@@ -2282,6 +2296,34 @@ export default function HostShellV2() {
   // session — no resend, no "wrong address, try again," no way out short of
   // reloading the app. This is the only place authSent is ever reset.
   const resetAuthSent = () => { setAuthSent(false); setAuthCode(''); };
+  // ONE SIGN-IN FORM, TWO PLACES (owner, 11/16/2026): the account sheet and the
+  // inline "sign in to send" panel on a vendor card share this exact form and
+  // its state, so a host never meets two different sign-ins.
+  const signInFields = () => (authSent ? (
+                    <>
+                      <p className="grounding" style={{ margin: 0 }}>Check your email. Type the code from it here to sign in on this browser, where this plan is. A link tapped in a mail app can open a different browser that doesn’t have your plan.</p>
+                      <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email"
+                        value={authCode} onChange={e => setAuthCode(e.target.value)} aria-label="Sign-in code from the email"
+                        onKeyDown={e => { if (e.key === 'Enter') signInWithCode(); }} />
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="cta" disabled={authBusy || !signInCode(authCode)} onClick={signInWithCode}>{authBusy ? 'Signing in…' : 'Sign in with the code'}</button>
+                      </div>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="mini" onClick={resetAuthSent}>Use a different email</button>
+                        <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
+                        onChange={e => setAuthEmail(e.target.value)} aria-label="Email for sign-in link" />
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
+                      </div>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
+                      <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
+                    </>
+                  ));
   // THE CODE KEEPS YOU HERE (live smoke test, 11/7/2026). A link tapped in a
   // mail app opens that app's own browser, which has none of this plan, so the
   // host's event seemed to vanish. The same email carries a code; typing it
@@ -3707,7 +3749,16 @@ export default function HostShellV2() {
         .catch(() => { /* queued by events.js; the tombstone holds until it flushes */ });
     }
   };
-  const [demoBarOpen, setDemoBarOpen] = useState(true);   // opens on arrival; closes to an edge tab after Seed / Remove
+  // Opens on a tab's first arrival; closes to an edge tab after Seed / Remove / ✕.
+  // The choice is remembered for the tab (sessionStorage): a reload used to
+  // reopen the bar over the page's own buttons (owner's live shots, 11/16/2026).
+  const [demoBarOpen, setDemoBarOpenRaw] = useState(() => {
+    try { return sessionStorage.getItem('ngw-demo-bar') !== 'closed'; } catch { return true; }
+  });
+  const setDemoBarOpen = (open) => {
+    setDemoBarOpenRaw(open);
+    try { sessionStorage.setItem('ngw-demo-bar', open ? 'open' : 'closed'); } catch { /* private mode: the bar just reopens */ }
+  };
   const demoSeed = () => {
     const { events: next, removed } = withDemoSeeded(customs || []);
     const res = saveCustomEvents(next, { reason: 'hostshell:demo-seed', allowRemovingUserEvents: true });
@@ -3841,6 +3892,7 @@ export default function HostShellV2() {
     setToastMsg(msg);
     setToastAction(action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null));
     setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
+    setToastMeta({ title: (opts && opts.title) || null, spotlight: !!(opts && opts.spotlight) });
     clearTimeout(toastTimer.current);
     if (opts && opts.sticky) return;
     // An actionable toast lingers a little longer — the host needs a beat to
@@ -3869,7 +3921,7 @@ export default function HostShellV2() {
             analyticsNoticeAction(() => {
               setAnalyticsOff(true); patchProfile({ analyticsOff: true });
               setTimeout(() => toast('Analytics off — change it anytime in Settings.'), 0);
-            }));
+            }), null, { title: 'A note about privacy', spotlight: true });
         }, 1200);
       }
     } catch { /* a notice must never break boot */ }
@@ -4188,12 +4240,16 @@ export default function HostShellV2() {
   }, [vbSettledKey]);
   useEffect(() => { setVendorBrief(null); }, [eventId]); // never carry a stale link across an event switch
   const pendingBriefRef = useRef(null);   // the vendor whose details wait on sign-in
+  // SIGN IN WHERE YOU TAPPED (owner, 11/16/2026): the ask used to be a toast
+  // over the account sheet, which hid the form it pointed at and moved the host
+  // off the vendor. Now the card itself opens a sign-in panel under the button.
+  const [briefSignIn, setBriefSignIn] = useState(null);   // vendor id whose card shows it
   const askSignInToSend = (v) => {
     pendingBriefRef.current = v && v.id;
-    const who = vendorGreetingName(v);
-    toast(`Sign in to send ${who || 'them'} the details — their answer comes back to your account. Nothing was sent.`, null, null, { sticky: true });
-    setSheet({ kind: 'settings' });
+    setVendorBrief(null);   // one message, not a failed-link panel beside it
+    setBriefSignIn(v && v.id);
   };
+  const cancelSignInToSend = () => { pendingBriefRef.current = null; setBriefSignIn(null); };
   const shareVendorBrief = async (v) => {
     // MODEL D — door 1, at the only honest gate point: GENERATING a brief for
     // a new vendor (board 2026-08-18: "never mid-conversation" — an
@@ -4263,6 +4319,7 @@ export default function HostShellV2() {
     if (!session || !pendingBriefRef.current) return;
     const v = (event.vendors || []).find(x => x && x.id === pendingBriefRef.current);
     pendingBriefRef.current = null;
+    setBriefSignIn(null);
     if (!v) return;
     setSheet({ kind: 'vendors', focus: v.id });
     shareVendorBrief(v);
@@ -5148,6 +5205,8 @@ export default function HostShellV2() {
     if (sheet && sheet.kind === 'guests' && sheet.focus) {
       const targets = sheet.focus === 'entry'
         ? ['guests-entry-anchor', 'guests-counting-anchor']
+        : sheet.focus === 'questions' ? ['guests-questions-anchor']
+        : sheet.focus === 'photos' ? ['guests-photos-anchor']
         : ['guests-invites-anchor'];
       // `guests-counting-anchor` is inside the §25 fold on the redesigned
       // surface, so the scroll below would land on a collapsed section. Open it
@@ -7774,8 +7833,36 @@ export default function HostShellV2() {
     for (const a of helperAnswers) { const k = String(a && a.helper_key); if (k && !m[k]) m[k] = a; }
     return m;
   }, [helperAnswers]);
+  // ── GUEST QUESTIONS AND GUEST PHOTOS WAITING (owner rulings A and B, 11/16) ─
+  // Counts only, for one triage line each at L3 ("Who's confirmed" and the
+  // After section); the work itself is in the Guest list sheet, whose sections
+  // read the same routes and report fresh counts back. A refused read is 0,
+  // so the line simply doesn't show — it never claims "none waiting".
+  const [guestQuestionsWaiting, setGuestQuestionsWaiting] = useState(0);
+  const [guestPhotoList, setGuestPhotoList] = useState([]);
+  useEffect(() => {
+    setGuestQuestionsWaiting(0);
+    if (!isGuestMessagesApiConfigured() || !ownsEvent) return undefined;
+    let dead = false;
+    const pull = async () => {
+      const r = await fetchGuestThreads(event.id);
+      if (!dead) setGuestQuestionsWaiting(r.ok ? questionsWaiting(r.rows) : 0);
+    };
+    pull();
+    const onFocus = () => { pull(); };
+    window.addEventListener('focus', onFocus);
+    return () => { dead = true; window.removeEventListener('focus', onFocus); };
+  }, [event.id, ownsEvent]); // eslint-disable-line react-hooks/exhaustive-deps
+  const photosInPlay = days != null && days <= 0;        // the event day and after
+  useEffect(() => {
+    setGuestPhotoList([]);
+    if (!isGuestPhotosApiConfigured() || !ownsEvent || !photosInPlay) return undefined;
+    let dead = false;
+    fetchEventGuestPhotos(event.id).then((r) => { if (!dead) setGuestPhotoList(r.ok ? r.photos : []); });
+    return () => { dead = true; };
+  }, [event.id, ownsEvent, photosInPlay]); // eslint-disable-line react-hooks/exhaustive-deps
   // The helper who holds a checklist row, as the helper engine names them.
-  const helperForTask = (taskId) => (helperData.responsibilities || []).find(r => r.itemType === 'task' && r.itemId === taskId) || null;
+  const helperForTask =(taskId) => (helperData.responsibilities || []).find(r => r.itemType === 'task' && r.itemId === taskId) || null;
   const sendHelperJob = async (taskId) => {
     const resp = helperForTask(taskId);
     if (!resp) return;
@@ -13007,7 +13094,11 @@ export default function HostShellV2() {
               {!isPast && (() => {
                 let l = null;
                 try { l = whoIsConfirmedLines(summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey)); } catch { l = null; }
-                if (!l || !l.parts.length) return null;
+                // Guest questions waiting (owner ruling A, 11/16/2026): one line,
+                // only when there is one, opening the Guest list's section.
+                const qLine = questionsWaitingLine(guestQuestionsWaiting);
+                if ((!l || !l.parts.length) && !qLine) return null;
+                if (!l) l = { parts: [] };
                 const go = { vendors: () => setSheet({ kind: 'vendors' }), helpers: () => setSheet({ kind: 'space' }), guests: () => setSheet({ kind: 'guests' }) };
                 return (
                   <section data-who-confirmed aria-label="Who’s confirmed" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
@@ -13026,9 +13117,30 @@ export default function HostShellV2() {
                     {l.waiting && (
                       <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>
                     )}
+                    {qLine && (
+                      <button className="mini rowlink" data-who-questions style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                        onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{qLine}</button>
+                    )}
                   </section>
                 );
               })()}
+
+              {/* AFTER THE EVENT, guests' photos and questions still wait on the
+                  host (owner rulings A and B, 11/16/2026). "Who's confirmed" is
+                  done once the day is past, so these get their own line each, on
+                  the same home, only when one waits, into the Guest list sheet. */}
+              {isPast && (photosWaitingLine(guestPhotoList) || questionsWaitingLine(guestQuestionsWaiting)) && (
+                <section data-after-guest-lines aria-label="Waiting on you from guests" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
+                  {photosWaitingLine(guestPhotoList) && (
+                    <button className="mini rowlink" data-after-photos style={{ display: 'block', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                      onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosWaitingLine(guestPhotoList)}</button>
+                  )}
+                  {questionsWaitingLine(guestQuestionsWaiting) && (
+                    <button className="mini rowlink" data-after-questions style={{ display: 'block', marginTop: photosWaitingLine(guestPhotoList) ? 'var(--sp-2)' : 0, color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                      onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{questionsWaitingLine(guestQuestionsWaiting)}</button>
+                  )}
+                </section>
+              )}
 
               {/* Slide-down readouts: hidden until the "what's counted" caret is
                   tapped — never-dense doctrine. Pills = the 4 readiness pillars;
@@ -18273,6 +18385,12 @@ export default function HostShellV2() {
                     </button>
                   )}
                 </div>
+                {/* EVENT HASHTAG (owner ruling E, 11/16/2026): in the identity
+                    sheet beside the invite's own words, saved on its own tap
+                    (not by "Save it"), off until the host turns it on. */}
+                <div style={{ marginTop: 'var(--sp-5)', paddingTop: 'var(--sp-4)', borderTop: '1px solid var(--line-soft)' }}>
+                  <EventHashtag event={{ ...event, ...meaningDraft }} onSet={(tag, msg) => patchEvent({ hashtag: tag }, msg)} />
+                </div>
               </>
             )}
             {sheet.kind === 'sections' && (() => {
@@ -19624,31 +19742,7 @@ export default function HostShellV2() {
                         </form>
                       )}
                     </>
-                  ) : authSent ? (
-                    <>
-                      <p className="grounding" style={{ margin: 0 }}>Check your email. Type the code from it here to sign in on this browser, where this plan is. A link tapped in a mail app can open a different browser that doesn’t have your plan.</p>
-                      <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email"
-                        value={authCode} onChange={e => setAuthCode(e.target.value)} aria-label="Sign-in code from the email"
-                        onKeyDown={e => { if (e.key === 'Enter') signInWithCode(); }} />
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        <button className="cta" disabled={authBusy || !signInCode(authCode)} onClick={signInWithCode}>{authBusy ? 'Signing in…' : 'Sign in with the code'}</button>
-                      </div>
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        <button className="mini" onClick={resetAuthSent}>Use a different email</button>
-                        <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
-                        onChange={e => setAuthEmail(e.target.value)} aria-label="Email for sign-in link" />
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
-                      </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
-                      <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
-                    </>
-                  )}
+                  ) : signInFields()}
 
                   {/* SYNC-HONESTY-1: an honest per-event sync status, backed
                       entirely by the syncState reader — no status is ever
@@ -24212,6 +24306,17 @@ export default function HostShellV2() {
                               {vendorGreetingName(v) ? `Send ${vendorGreetingName(v)} the details` : 'Send the details'}
                             </button>
                           </div>
+                          {briefSignIn === v.id && (
+                            <div data-send-signin={v.id} ref={scrollIntoViewOnOpen(true)} role="group" aria-label={`Sign in to send ${vendorGreetingName(v) || 'them'} the details`}
+                              style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+                              <p className="vc-detail" style={{ margin: '0 0 var(--sp-1)', color: 'var(--ink)', fontWeight: 600 }}>Sign in to send {vendorGreetingName(v) || 'them'} the details</p>
+                              <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>Their answer comes back to your account. Nothing was sent yet — once you’re in, it goes on its own.</p>
+                              {isSupabaseConfigured() ? signInFields() : <p className="vc-detail" style={{ margin: 0 }}>Accounts aren’t turned on in this build.</p>}
+                              <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                                <button className="mini" onClick={cancelSignInToSend}>Not now</button>
+                              </div>
+                            </div>
+                          )}
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
                           {vendorBrief && vendorBrief.vendorId === v.id && (
@@ -26375,20 +26480,32 @@ export default function HostShellV2() {
               // mobile body read as one long stack on bare ground. The wrapper
               // is the same element at every width; only the second column is
               // conditional.
+              // ── QUESTIONS & UPDATES, INVITE OPENS, GUEST PHOTOS (owner rulings
+              // A–D, 11/16/2026). Sections of THIS sheet, under the roster work:
+              // the guest list is where guest work lives (no new tab). Server-
+              // backed, so only for an event saved to the account; each section
+              // names its own failure (signed out, offline) rather than look empty.
+              const guestComms = ownsEvent ? (
+                <div data-guest-comms>
+                  <HostQuestions eventId={event.id} onWaiting={setGuestQuestionsWaiting} />
+                  {photosInPlay && <HostGuestPhotos eventId={event.id} event={event} onPhotos={setGuestPhotoList} />}
+                  <HostInviteOpens eventId={event.id} />
+                </div>
+              ) : null;
               if (!peopleRailUp) {
                 return peopleMode ? (
                   <>
                     {peoplePlate}
-                    <div className="people-grid"><div className="people-main">{peopleBody}</div></div>
+                    <div className="people-grid"><div className="people-main">{peopleBody}{guestComms}</div></div>
                   </>
-                ) : peopleBody;
+                ) : <>{peopleBody}{guestComms}</>;
               }
               const sel = guestOpen != null ? (event.guests || [])[guestOpen] : null;
               return (
                 <>
                   {peoplePlate}
                   <div className="people-grid">
-                    <div className="people-main">{peopleBody}</div>
+                    <div className="people-main">{peopleBody}{guestComms}</div>
                     <div className="people-aside">
                       {sel ? guestDetail(sel, guestOpen) : peopleRail}
                     </div>
@@ -26616,9 +26733,11 @@ export default function HostShellV2() {
         <button data-demo-bar="closed" onClick={() => setDemoBarOpen(true)} aria-label="Show demo tools"
           style={{ position: 'fixed', left: 0, top: '42%', zIndex: 90, width: 14, height: 44, padding: 0, background: 'rgba(20,20,20,0.6)', border: 'none', borderRadius: '0 6px 6px 0', color: '#bbb', fontSize: 9 }}>D</button>
       ))}
+      {toastMsg && toastMeta.spotlight && <div className="toast-dim" aria-hidden="true" data-toast-dim />}
       {toastMsg && (
-        <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '')} role="status" aria-live="polite">
-          {toastMsg}
+        <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '') + (toastMeta.spotlight ? ' spot' : '')} role="status" aria-live="polite">
+          {toastMeta.title && <div className="toast-eye" data-toast-title>{toastMeta.title}</div>}
+          {toastMeta.title ? <div>{toastMsg}</div> : toastMsg}
           {toastAction && (
             <button className="toast-undo" onClick={() => {
               const fn = toastAction.fn;
@@ -26643,6 +26762,8 @@ export default function HostShellV2() {
             {event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
             {vf.name ? ` · ${vf.name}` : ''}{vf.city ? `, ${vf.city}` : ''}
             {event.rainPlan ? ` · If it rains: ${event.rainPlan}` : ''}
+            {/* The host's hashtag, when on (owner ruling E). */}
+            {String(event.hashtag || '').trim() ? ` · ${String(event.hashtag).trim()}` : ''}
           </p>
           <div className="p-head">Run of show</div>
           {ros.map((r, i) => (

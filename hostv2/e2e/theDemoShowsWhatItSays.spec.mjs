@@ -47,8 +47,14 @@ test('the demo bar closes to a tab after Seed, and covers nothing', async ({ pag
   const box = await tab.boundingBox();
   expect(box.x).toBe(0);
   expect(box.width).toBeLessThanOrEqual(14);
+  // A reload keeps it closed (live shots, 11/16/2026: it reopened over the
+  // page's own buttons after every reload).
+  await page.reload();
+  await settled(page);
+  await expect(page.locator('[data-demo-bar="closed"]')).toBeVisible();
+  await expect(page.locator('button', { hasText: /^Seed \/ reset$/ })).toHaveCount(0);
   // and it opens again on tap
-  await tab.click();
+  await page.locator('[data-demo-bar="closed"]').click();
   await expect(page.locator('button', { hasText: /^Seed \/ reset$/ })).toBeVisible();
 });
 

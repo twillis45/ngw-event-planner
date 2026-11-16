@@ -130,6 +130,12 @@ export default defineConfig(({ command, mode }) => {
         return { https: { key: fs.readFileSync(key), cert: fs.readFileSync(cert) } };
       })(),
     },
+    // ONE MADE-UP HOST FOR THE PREVIEW (11/16/2026). Analytics is off on
+    // localhost, so the first-open privacy notice could never be tested. The
+    // e2e browser maps `ngw.test` to the local preview so the bundle sees a real
+    // hostname (theAnalyticsNoticeStandsOut.spec.mjs). Preview server only; the
+    // name resolves nowhere outside that test browser.
+    preview: { allowedHosts: ['ngw.test'] },
     // ── VITEST SCOPE: test/, never e2e/ (2026-09-03) ────────────────────
     // Added with vitest as the SEAM into this tree. jest cannot reach hostv2 at
     // all — react-scripts pins its roots to demo/src — which is why 35 suites

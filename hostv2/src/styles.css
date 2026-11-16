@@ -1469,22 +1469,60 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .dock button[aria-current="true"]{background:var(--steel); color:var(--on-steel)}
 
 .toast{
-  position:absolute; left:50%; bottom:calc(84px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,0); z-index:60;
+  /* OFF THE PROGRESS ROW (owner, 11/16/2026). At 84px it sat on the home's
+     progress row and "The rest of your plan" bar, which take the bottom 111px
+     at every phone and tablet size measured (390, 430, 768, 1024 wide). 124px
+     clears them with a 12px gap. Desktop moves to the corner, below. */
+  position:absolute; left:50%; bottom:calc(124px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,0); z-index:60;
   /* NO WHITE SURFACES (host ruling 2026-07-28): the neutral toast was an
      INVERTED pill — background:var(--ink) is #eef0f4, i.e. a white card in a
      dark-only app, and it carried 84 of the 86 toast call sites. Studio Matte
      has one surface family: a raised carbon card on a hairline. Confirmations
      stay green via .toast.ok below. */
-  background:var(--card); color:var(--ink); border:1px solid var(--line-soft);
+  /* IT BLENDED IN (owner, 11/16/2026, screenshot at 1440): a --card toast on a
+     --card page, centered text, one hairline — it read as part of the page it
+     covered. Now an OVERLAY that announces itself without a new colour: a steel
+     tint lifts it one step off any surface, a steel hairline draws its edge, the
+     3px steel rule is UX_05's attention-card mark (steel = informational; amber
+     stays reserved for "needs you"), text reads left like every other card, and
+     the shadow is UX_01's one overlay level plus a ring that separates it from a
+     card beneath. */
+  background:color-mix(in srgb, var(--steel) 30%, var(--card)); color:var(--ink);
+  border:1px solid var(--steel-soft);
+  border-left:4px solid var(--steel-soft);
   font-size:var(--t-toast); font-weight:550;
-  padding:var(--sp-3) var(--sp-5); border-radius:var(--r-lg); width:max-content; max-width:min(88vw,356px); text-align:center; line-height:1.45;
-  box-shadow:0 12px 40px rgba(0,0,0,.45);
+  padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4); border-radius:var(--r-lg); width:max-content; max-width:min(88vw,400px); text-align:left; line-height:1.45;
+  /* A — LIT EDGE (owner pick, 11/16/2026): the steel glow the green "ok" toast
+     already wears, so every note reads as lit rather than as one more card. */
+  box-shadow:0 8px 32px rgba(0,0,0,.55), 0 0 0 1px color-mix(in srgb, var(--steel-soft) 40%, transparent),
+             0 0 28px -4px color-mix(in srgb, var(--steel-soft) 60%, transparent);
   animation:toastin var(--ms-escalation) var(--ease-out) both;
 }
 /* CONFIRM-GREEN (2026-07-16): a success confirmation reads green from ONE place —
    the same --ok / --on-ok pair the "all set" tile uses. Driven by toastTone==='ok'
    (every patchEvent write); error/neutral toasts keep the default carbon pill. */
 .toast.ok{ background:var(--ok); color:var(--on-ok); border-color:var(--ok); box-shadow:0 12px 40px rgba(47,107,70,.34); }
+/* The action sits on its own line under the message, right-aligned, so a long
+   notice reads as a sentence and then a choice — not a button mid-paragraph. */
+/* B — LABELED (opts.title): an eyebrow with a steel dot names the kind of note
+   before the sentence. Only where a toast is given a title. */
+.toast-eye{ display:flex; align-items:center; gap:8px; font-size:var(--t-overline, 11px); font-weight:700;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--steel-soft); margin-bottom:4px; }
+.toast-eye::before{ content:''; width:7px; height:7px; border-radius:50%; background:var(--steel-soft);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--steel-soft) 25%, transparent); }
+.toast.ok .toast-eye{ color:inherit; }
+.toast.ok .toast-eye::before{ background:currentColor; }
+/* C — SPOTLIGHT (opts.spotlight): the page dims behind a one-time notice so it
+   is the brightest thing on screen. Same containing block as the toast, so on
+   desktop it covers the rail too. It never takes a tap: the page stays usable. */
+/* z: above the rail (60, kept above overlays so navigation never dies) so the
+   rail dims too; pointer-events:none means it still takes every tap. */
+.toast-dim{ position:absolute; inset:0; z-index:61; background:rgba(8,9,11,.42); pointer-events:none;
+  animation:toastdim var(--ms-escalation) var(--ease-out) both; }
+@keyframes toastdim{ from{ opacity:0; } to{ opacity:1; } }
+.toast.spot{ z-index:62; }
+.toast:has(.toast-undo){ display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-2); }
+.toast:has(.toast-undo) .toast-undo{ margin-left:0; align-self:flex-end; }
 /* `@keyframes toastin` USED TO BE DEFINED HERE and was dead: an identical name
    at :3373 wins on source order, so this one had never run since the Motion
    System block landed. Deleted rather than left as a decoy (motion audit,
@@ -7552,3 +7590,65 @@ button.vc-pill::after{
   .vb2-stage, .vb2-stage .app{ height:auto !important; overflow:visible !important; box-shadow:none !important; }
   .vb2-tools, .vb2-confirm{ display:none !important; }
 }
+
+/* ── WHERE EVERYONE STAYS WEARS THE APP'S FRAME (owner, 11/16/2026) ────────────
+   "Wide screen and desktop lodging screens don't match the rest of the app."
+   Measured live at 1440 and 1920: every section sat in the rail frame (1px
+   --line-soft border, --r-xl corners, 1360 + rail wide), while the lodging
+   cockpit, a page of its own, still wore the 1280-wide phone bezel (48px radius,
+   11px carbon ring) from the :5907 block. Same frame here, declared last so it
+   wins on source order at equal specificity. Content keeps its own 1180 cap. */
+@media (min-width:1280px){
+  .stagewrap--responsive-lodging{
+    transform:none; transform-origin:initial;
+    width:min(100% - 48px, calc(1360px + var(--rail-w, 200px) + var(--sp-5)));
+    max-width:calc(1360px + var(--rail-w, 200px) + var(--sp-5));
+    height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+    margin:var(--sp-5) auto 40px;
+    border:1px solid var(--line-soft);
+    border-radius:var(--r-xl);
+    overflow:clip;
+  }
+  .stagewrap--responsive-lodging > .app{
+    border-radius:0; box-shadow:none; height:100%; min-height:0;
+  }
+}
+
+/* ── THE TOAST TAKES THE CORNER ON DESKTOP (owner, 11/16/2026) ───────────────
+   Centered at 1440 it covered the "Who's confirmed" card in the middle of the
+   plan. With the rail up, the bottom-right corner is quiet ground beside the
+   "Where you stand" column, so the toast lands there and covers no work. Its
+   own entrance, since toastin's keyframes carry the centering translate. */
+@media (min-width:1280px){
+  .toast{ left:auto; right:var(--sp-5); bottom:var(--sp-5); transform:none; animation-name:toastin-corner; }
+}
+@keyframes toastin-corner{ from{ opacity:0; transform:translateY(26px); } 60%{ transform:translateY(-4px); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce){ .toast, .toast-dim{ animation:none; } }
+
+/* ── Guest questions and guest photos (owner rulings A–D, 11/16/2026) ───────
+   Shared by the invite (GuestAskV2, GuestPhotosV2) and the host's Guest list
+   sheet (GuestInboxHost). Only the skin's own tokens, so the paper invite and
+   the matte host both read right. 390px first: one column of controls, every
+   tap target at least 44px, photo cells two-up on a phone. */
+.guest-optin{ display:flex; align-items:flex-start; gap:var(--sp-2); margin-top:var(--sp-2);
+  min-height:48px; padding:12px; border:1px solid var(--line); border-radius:var(--r-md);
+  background:var(--card); font-size:var(--t-body-s); font-weight:650; color:var(--ink); cursor:pointer; line-height:1.4; }
+.guest-optin input[type="checkbox"]{ width:22px; height:22px; flex:0 0 22px; margin:1px 0 0; accent-color:var(--steel); cursor:pointer; }
+.guest-optin-soon{ font-weight:500; color:var(--muted); }
+.guest-thread{ list-style:none; margin:0 0 var(--sp-2); padding:0; display:flex; flex-direction:column; gap:var(--sp-2); }
+.guest-msg{ padding:8px 12px; border-radius:var(--r-md); border:1px solid var(--line-soft); min-width:0; }
+.guest-msg.from-host{ background:var(--steel-tint); border-color:var(--steel-soft); }
+.guest-msg-who{ font-size:var(--t-meta); font-weight:750; color:var(--muted); margin-bottom:2px; }
+.guest-msg-body{ font-size:var(--t-body-s); color:var(--ink); white-space:pre-wrap; overflow-wrap:anywhere; }
+.photo-grid{ list-style:none; margin:0; padding:0; display:grid; gap:var(--sp-2);
+  grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+.photo-cell{ display:flex; flex-direction:column; gap:8px; min-width:0; }
+.photo-cell img, .photo-missing{ width:100%; aspect-ratio:1 / 1; object-fit:cover; border-radius:var(--r-md);
+  border:1px solid var(--line-soft); background:var(--bg-band); display:block; }
+.photo-missing{ display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:var(--t-meta); }
+.photo-meta{ font-size:var(--t-meta); color:var(--muted); font-weight:600; overflow-wrap:anywhere; }
+.photo-cell .mini, .photo-acts .mini{ white-space:normal; min-height:44px; }
+.photo-acts{ margin-top:0; flex-wrap:wrap; }
+.guest-photo-pick{ position:relative; cursor:pointer; }
+.guest-photo-pick[aria-disabled="true"]{ opacity:.6; cursor:default; }
+.guest-photo-pick input[type="file"]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
