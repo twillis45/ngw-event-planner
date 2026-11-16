@@ -173,6 +173,7 @@ import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
 import { marketFor } from '@app/lib/marketFor';
+import { metroForPlace } from '@app/lib/metroForPlace';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
@@ -2569,6 +2570,16 @@ export default function HostShellV2() {
   // market the host had already picked in the other.
   const metroId = marketFor(event);
   const metroMkt = metroId ? METRO_MARKETS.find(m => m.id === metroId) : null;
+  // A PROPOSAL from the venue's town (11/16/2026): with no market set, the row
+  // names the market the town is in and one tap accepts it. Prices stay on the
+  // national baseline until the host taps — nothing changes silently.
+  const metroSuggest = useMemo(() => {
+    if (metroId) return null;
+    const town = venueFor(event);
+    const id = metroForPlace({ city: town.city, state: town.state });
+    const m = id ? METRO_MARKETS.find(x => x.id === id) : null;
+    return m ? { market: m, from: `${town.city}, ${String(town.state).toUpperCase()}` } : null;
+  }, [event, metroId]);
   const vendorPlan = useMemo(() => {
     try {
       return buildVendorPlan(event, {
@@ -23355,7 +23366,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <span className="fstat-v">{metroMkt ? metroMkt.label : 'National baseline'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+                      <span className="fstat-v">{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}<span className="fstat-chev" aria-hidden="true">›</span></span>
                     </button>
                   </div>
                 ) : (
@@ -23364,6 +23375,12 @@ export default function HostShellV2() {
                       <span>Which market are you in?</span>
                       <button className="mini" onClick={() => setSheet(s => ({ ...s, marketOpen: false }))}>Done</button>
                     </label>
+                    {metroSuggest && (
+                      <button className="mini" style={{ display: 'block', margin: '0 0 var(--sp-2)' }}
+                        onClick={() => patchEvent({ market: metroSuggest.market.id, metroMarket: null }, `Estimates now use ${metroSuggest.market.label} typical rates.`)}>
+                        Use {metroSuggest.market.label} — from {metroSuggest.from}
+                      </button>
+                    )}
                     <select id="metro-market-pick" className="field" value={marketFor(event)}
                       onChange={e => {
                         const id = e.target.value;
