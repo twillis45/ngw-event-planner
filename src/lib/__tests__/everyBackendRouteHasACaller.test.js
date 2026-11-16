@@ -101,6 +101,7 @@ const CALLED_FROM_OUTSIDE = {
   '/api/docusign/callback': 'DocuSign redirects the browser here after the OAuth consent screen.',
   '/api/docusign/webhook': 'DocuSign Connect POSTs envelope events here.',
   '/api/stripe/webhook': 'Stripe POSTs checkout events here; the signature is verified server-side.',
+  '/api/public/questions/unsubscribe/{token}': 'The "Stop these emails" link in every reply notice (and a mail app\'s one-click List-Unsubscribe POST): opened from the guest\'s inbox, never from the app.',
   '/api/stripe/status': 'Operator probe — is the Stripe key set on this deployment.',
   '/api/weather/status': 'Operator probe — is the weather key set.',
   '/api/webhooks/status': 'Operator probe — is the relay configured.',

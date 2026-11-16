@@ -57,6 +57,7 @@ async def _send_via_resend(
     html: str,
     reply_to: Optional[str] = None,
     from_name: Optional[str] = None,
+    headers: Optional[dict] = None,
 ) -> dict:
     """Low-level Resend POST. Returns the Resend response JSON on success,
     raises on failure so callers can decide fail-soft vs. raise."""
@@ -69,6 +70,8 @@ async def _send_via_resend(
     }
     if reply_to:
         payload["reply_to"] = reply_to
+    if headers:
+        payload["headers"] = headers
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             "https://api.resend.com/emails",

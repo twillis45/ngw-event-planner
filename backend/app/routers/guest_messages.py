@@ -52,6 +52,7 @@ Security model:
 See supabase/migrations/024_guest_messages.sql for the tables.
 """
 import datetime as _dt
+import html
 import hashlib
 import hmac
 import os
@@ -61,10 +62,12 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..db import get_pool
 from ..host_alerts import alert_host
+from ..guest_notices import notify_guest_of_reply
 from ..auth import require_planner
 from .rsvp import _assert_event_studio_read, _client_ip, _rate_check, _resolve_event
 
@@ -423,6 +426,7 @@ async def host_reply(
     event_id: str,
     thread_id: str,
     payload: HostReply,
+    background: BackgroundTasks,
     authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
@@ -435,6 +439,8 @@ async def host_reply(
         if t["blocked_at"] is not None:
             raise HTTPException(409, "This thread is blocked. Unblock it to reply.")
         created = await _post(conn, t["id"], event_id, "host", payload.body)
+    # One email to the guest, only if they opted in (guest_notices decides).
+    background.add_task(notify_guest_of_reply, t["id"], payload.body)
     return {"ok": True, "message": {"author": "host", "body": payload.body, "created_at": _iso(created)}}
 
 
@@ -551,3 +557,44 @@ async def host_invite_opens(
     return {"ok": True, "guests": guests,
             "days": [{"day": d["day"].isoformat(), "opens": int(d["opens"]),
                       "distinct_devices": int(d["distinct_devices"])} for d in days]}
+
+
+# ── STOP THESE EMAILS (reply notices, 11/16/2026) ───────────────────────────
+# The link in every reply notice, keyed by the thread's guest_token (024: an
+# emailed-link credential returned to nobody else). GET only SHOWS a button:
+# mail scanners open links, and a scanner must never unsubscribe anyone. The
+# button, and a mail app's one-click List-Unsubscribe (RFC 8058), POST. Every
+# answer is the same page whether the token matched or not: no oracle.
+_STOP_PAGE = ("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
+              "<title>{title}</title><body style=\"font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem\">"
+              "<h1 style=\"font-size:1.25rem\">{title}</h1>{body}</body>")
+
+
+def _stop_token(token: str) -> str:
+    t = (token or "")[:80]
+    if len(t) < 22:
+        raise HTTPException(404, NOT_FOUND)
+    return t
+
+
+@router.get("/api/public/questions/unsubscribe/{token}", response_class=HTMLResponse)
+async def stop_emails_page(token: str, request: Request):
+    t = _stop_token(token)
+    _limit(request, "stop", write=False)
+    return HTMLResponse(_STOP_PAGE.format(
+        title="Stop these emails?",
+        body=(f"<p>You won't get an email when your host replies. Answers still show on your invite.</p>"
+              f"<form method=post action=\"{html.escape(t)}\"><button style=\"font:inherit;padding:.5rem 1rem\">Stop these emails</button></form>")))
+
+
+@router.post("/api/public/questions/unsubscribe/{token}", response_class=HTMLResponse)
+async def stop_emails(token: str, request: Request):
+    t = _stop_token(token)
+    _limit(request, "stop", write=True)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "update public.guest_threads set email_opt_in = false, guest_email = null where guest_token = $1", t)
+    return HTMLResponse(_STOP_PAGE.format(
+        title="You won't get these emails anymore",
+        body="<p>Your host's answers still show on your invite.</p>"))
