@@ -168,7 +168,7 @@ import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
-import { formatCurrency } from '@app/lib/currency';
+import { formatCurrency, roundCurrency } from '@app/lib/currency';
 import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
 import { budgetFor } from '@app/lib/budgetFor';
@@ -22775,7 +22775,7 @@ export default function HostShellV2() {
                                     value={tuneCost} onChange={e => { setTuneCost(e.target.value); setTuneEdited(true); }}
                                     onKeyDown={e => {
                                       if (e.key === 'Enter' && parseFloat(tuneCost) >= 0 && tuneCost !== '') {
-                                        const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
+                                        const n = Math.max(0, roundCurrency(parseFloat(tuneCost) || 0));   // cents kept: $42.50, not $43
                                         // Real receipt ONLY if the host typed a value; accepting the
                                         // store-based prefill unchanged stays an honest estimate.
                                         patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: tuneEdited } },
@@ -22785,7 +22785,7 @@ export default function HostShellV2() {
                                     }}
                                     onBlur={() => {
                                       if (parseFloat(tuneCost) >= 0 && tuneCost !== '') {
-                                        const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
+                                        const n = Math.max(0, roundCurrency(parseFloat(tuneCost) || 0));   // cents kept: $42.50, not $43
                                         patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: tuneEdited } },
                                           (it.short || it.item) + (tuneEdited ? ' set at ' + fmt(n) + ' — a real price now, not a range.' : ' set at ~' + fmt(n) + ' — the estimate; add the receipt total anytime.'));
                                         setTuneCost(''); setTuneEdited(false);
