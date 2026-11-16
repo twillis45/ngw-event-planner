@@ -37,3 +37,37 @@ test('the estimate toggle and the add-your-state link are at least 44px tall to 
     expect(await hitHeight(b), String(name)).toBeGreaterThanOrEqual(44);
   }
 });
+
+// 50-host run (11/16/2026): two more under the floor. The money sheet's inline
+// "Use $300" link (plan costs above the planning number) and the Space sheet's
+// open rows ("Venue / location ›"), whose padding sat on a wrapper, not the button.
+const FG = { id: 'cust-taps-fg', name: 'My Friendsgiving', type: 'Friendsgiving', date: dateIn(6),
+  guestEstimate: 20, guestMode: 'count', guestCountSource: 'host', budget: [], vendors: [], guests: [], timeline: [] };
+
+test('the "Use $…" link and the Space rows are big enough to tap', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((e) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, FG);
+  await page.goto('?elegant=1');
+  await settled(page);
+  await openSectionByName(page, 'Your money');
+  await settled(page);
+  // The INLINE link (not the big "Use $300" button, which is a .cta).
+  const use = page.locator('.sheet').last().locator('button:not(.cta)', { hasText: /^Use \$/ }).first();
+  await expect(use).toHaveCount(1);
+  await use.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  expect(await hitHeight(use), 'Use $… link').toBeGreaterThanOrEqual(44);
+
+  await openSectionByName(page, 'Space, seats');
+  await settled(page);
+  const row = page.getByRole('button', { name: /^Add note for / }).first();
+  await row.scrollIntoViewIfNeeded();
+  // A one-line row is only as tall as its text plus the BUTTON's own padding
+  // (a wrapping row is tall either way), so the padding is what is checked.
+  expect(await row.evaluate((b) => parseFloat(getComputedStyle(b).paddingTop)), 'Space row padding').toBeGreaterThanOrEqual(6);
+  expect(await hitHeight(row), 'Space row').toBeGreaterThanOrEqual(32);
+});

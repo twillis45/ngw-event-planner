@@ -287,6 +287,7 @@ import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGu
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
+import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
 import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
@@ -5100,6 +5101,10 @@ export default function HostShellV2() {
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
   const [sheet, setSheet] = useState(() => (OPEN_ON_LOAD ? { kind: OPEN_ON_LOAD } : null));   // deep-link landing: {kind, focus}
+  // The dietary panel closes when the sheet changes (round 2, 11/16/2026): opened
+  // on the food Plan tab, it stayed open on Shop and on every later visit,
+  // covering "The list". Plan, Shop and Bringing are separate sheet kinds.
+  useEffect(() => { setFoodSect((m) => (m && m.diet ? { ...m, diet: false } : m)); }, [sheet && sheet.kind]);
   useEffect(() => {
     if (sheet && sheet.kind === 'pass') recordPassFunnel('sheet_viewed', eventId);
   }, [sheet && sheet.kind, eventId]);
@@ -6534,7 +6539,11 @@ export default function HostShellV2() {
     // never un-buys (asymmetric on purpose).
     let extra = {};
     let boughtNote = '';
-    if (tl[i].done && /\b(buy|shop)\b|shopping/i.test(String(tl[i].task || ''))) {
+    // ONLY WHAT IT NAMES (50-host run, 11/16/2026): "Buy the turkey" used to mark
+    // the whole list bought. lib/shopTaskItems decides: named items, the whole
+    // list for a general shopping step, or nothing.
+    const buys = tl[i].done ? itemsBoughtByTask(tl[i].task, foodPlan && foodPlan.list) : { scope: 'none', ids: [] };
+    if (buys.scope !== 'none') {
       // UNGATED (matches toggleGot, 555e770): checking the shop step asserts
       // every open food line was bought. Price stays optional — an unpriced line
       // is marked bought at its honest estimate, never withheld. We surface how
@@ -6545,7 +6554,7 @@ export default function HostShellV2() {
       const real = (event.foodReal && typeof event.foodReal === 'object') ? event.foodReal : {};
       let n = 0, firm = 0;
       ((foodPlan && foodPlan.list) || []).forEach(it => {
-        if (!it || it.skipped || got[it.id]) return;
+        if (!it || it.skipped || got[it.id] || !buys.ids.includes(it.id)) return;
         got[it.id] = true; n += 1;
         if (it.added || (it.locked != null && real[it.id])) firm += 1;
       });
@@ -8898,7 +8907,7 @@ export default function HostShellV2() {
             const over = (() => { try { return planCostsAboveNote(spend && spend.expected, typical); } catch (_e) { return null; } })();
             return over ? (
               <Grounding gap={8}>
-                {over.text} <button style={linkBtn} onClick={() => setB(over.cover)}>Use {fmt(over.cover)}</button>
+                {over.text} <button className="tap-44" style={linkBtn} onClick={() => setB(over.cover)}>Use {fmt(over.cover)}</button>
               </Grounding>
             ) : null;
           })()}
@@ -8910,7 +8919,7 @@ export default function HostShellV2() {
               it no longer pretends to be the only figure in the room. */}
           {rowsStandIn && (
             <Grounding gap={8}>
-              Your categories already add up to {fmt(rowsStandIn.rowsSum)} across {rowsStandIn.rowCount} {rowsStandIn.rowCount === 1 ? 'line' : 'lines'} — <button style={linkBtn} onClick={() => setB(rowsStandIn.rowsSum)}>use that</button> if it is the ceiling you mean.
+              Your categories already add up to {fmt(rowsStandIn.rowsSum)} across {rowsStandIn.rowCount} {rowsStandIn.rowCount === 1 ? 'line' : 'lines'} — <button className="tap-44" style={linkBtn} onClick={() => setB(rowsStandIn.rowsSum)}>use that</button> if it is the ceiling you mean.
             </Grounding>
           )}
           {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
@@ -9022,7 +9031,7 @@ export default function HostShellV2() {
           </div>
         )}
         <CtaRow gap={ASK_COMPACT.whyToCta}>
-          <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field)' }}
+          <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field-pad)' }}
             type="number" inputMode="numeric" min="0" placeholder="Your own number"
             value={customBudget} onChange={e => setCustomBudget(e.target.value)}
             aria-label="Custom budget amount" />
@@ -9136,7 +9145,10 @@ export default function HostShellV2() {
         // be in any state"); creation was the one door that swallowed it.
         // `_cityDropped` is read just after the write to say the same sentence.
         const p = effCityText.trim() ? parseVenueLocation(effCityText.trim()) : null;
-        if (!p) return { venueCity: '' };
+        // The town the host typed is KEPT as heard (round 2, 11/16/2026), so the
+        // lodging step proposes "Asheville" instead of asking from scratch. It is
+        // never treated as a confirmed location.
+        if (!p) return { venueCity: '', ...(effCityText.trim() ? { cityHeard: effCityText.trim() } : {}) };
         return p.zip ? { venueCity: p.zip } : { venueCity: p.city, venueState: p.state };
       })()),
       guestMode: 'count',
@@ -14466,7 +14478,7 @@ export default function HostShellV2() {
                           ) : (<>
                             <span aria-hidden="true" style={{ color: 'var(--faint)' }}>·</span>
                             {cur.rel && <span style={{ color: 'var(--steel-soft)' }}>~{cur.rel}</span>}
-                            <button onClick={() => setTimeEditIds(s => { const n = new Set(s); n.add(cur.id); return n; })}
+                            <button className="tap-44" onClick={() => setTimeEditIds(s => { const n = new Set(s); n.add(cur.id); return n; })}
                               style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' }}>Set a time ›</button>
                           </>)) : null}
                         </p>
@@ -15736,8 +15748,10 @@ export default function HostShellV2() {
                     }
                     const isNoteOpen = placeNoteOpen === s.key;
                     return (
-                      <div key={s.key} style={{ padding: '7px 0' }}>
-                        <button style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0, display: 'flex' }}
+                      <div key={s.key}>
+                        {/* The 7px lives IN the button (50-host run, 11/16/2026): on the
+                            wrapper it left a one-line row a ~20px tap target. */}
+                        <button style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: '7px 0', display: 'flex' }}
                           onClick={() => { const opening = !isNoteOpen; setPlaceNoteOpen(opening ? s.key : null); if (opening) setPlaceNoteDraft(event[noteField] || ''); }} aria-label={'Add note for ' + s.label}>
                           <span style={{ fontSize: 'var(--t-body-s)' }}>
                             <strong style={{ color: rowColor }}>{s.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>{isNoteOpen ? '⌄' : '›'}</span></strong>
@@ -19258,7 +19272,7 @@ export default function HostShellV2() {
                   ))}
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Who’s actually picking?</div>
                   <div className={sheet.focus === 'pickers' ? 'rowfocus' : ''} style={{ display: 'flex', gap: 10, alignItems: 'center', borderRadius: 'var(--r-md)', padding: '6px var(--sp-1)' }}>
-                    <input id="crab-headcount" className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="0"
+                    <input id="crab-headcount" className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: 'var(--field-pad)' }} type="number" min="0"
                       placeholder={String(guests || '')} aria-label="Serious crab pickers"
                       value={cp.crabEatingHeadcount || ''}
                       onChange={e => { const n = parseInt(e.target.value, 10) || 0; writeCp({ crabEatingHeadcount: n || undefined }, n ? 'Sizing crabs to ' + n + ' pickers — kids and light eaters don’t drive the count.' : 'Back to the full headcount.'); }} />
@@ -19277,9 +19291,9 @@ export default function HostShellV2() {
                     options={['dozen', 'half_bushel', 'bushel'].map(u => ({ label: UNIT_LABEL[u], value: u }))}
                     value={crabAdd.unit} onPick={u => setCrabAdd(a => ({ ...a, unit: u }))} />
                   <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10, alignItems: 'center' }}>
-                    <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="1" aria-label="How many"
+                    <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: 'var(--field-pad)' }} type="number" min="1" aria-label="How many"
                       value={crabAdd.qty} onChange={e => setCrabAdd(a => ({ ...a, qty: Math.max(1, parseInt(e.target.value, 10) || 1) }))} />
-                    <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
+                    <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field-pad)' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
                       value={crabAdd.price} onChange={e => setCrabAdd(a => ({ ...a, price: e.target.value }))} />
                     <button className="cta" onClick={() => {
                       const l = { id: 'cl-' + lines.length + '-' + crabAdd.size + '-' + crabAdd.unit, size: crabAdd.size, unit: crabAdd.unit, quantity: crabAdd.qty, pricePerUnit: parseFloat(crabAdd.price) || undefined, estimatedCountPerUnit: defaultCountPerUnit(crabAdd.size, crabAdd.unit) || undefined };
@@ -21259,7 +21273,7 @@ export default function HostShellV2() {
                         </>
                       )}
                       {rest.length > 0 && (
-                        <button className="mini" style={{ marginTop: 6 }} onClick={() => setShowMoreDiets(true)}>
+                        <button className="mini" style={{ marginTop: 6, whiteSpace: 'normal', textAlign: 'left', maxWidth: '100%' }} onClick={() => setShowMoreDiets(true)}>
                           + {rest.length} more — {rest.slice(0, 4).join(' · ')}{rest.length > 4 ? ' …' : ''}
                         </button>
                       )}
@@ -24308,7 +24322,7 @@ export default function HostShellV2() {
                           </div>
                           {briefSignIn === v.id && (
                             <div data-send-signin={v.id} ref={scrollIntoViewOnOpen(true)} role="group" aria-label={`Sign in to send ${vendorGreetingName(v) || 'them'} the details`}
-                              style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+                              style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
                               <p className="vc-detail" style={{ margin: '0 0 var(--sp-1)', color: 'var(--ink)', fontWeight: 600 }}>Sign in to send {vendorGreetingName(v) || 'them'} the details</p>
                               <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>Their answer comes back to your account. Nothing was sent yet — once you’re in, it goes on its own.</p>
                               {isSupabaseConfigured() ? signInFields() : <p className="vc-detail" style={{ margin: 0 }}>Accounts aren’t turned on in this build.</p>}
@@ -24320,7 +24334,7 @@ export default function HostShellV2() {
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
                           {vendorBrief && vendorBrief.vendorId === v.id && (
-                            <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
+                            <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
                               {vendorBrief.minting ? (
                                 <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
                               ) : vendorBrief.error ? (
@@ -24714,7 +24728,10 @@ export default function HostShellV2() {
                                     midpoint of anything. A rate across a headcount is true
                                     in every one of those states; a multiplication is not. */}
                                 {foodPlan.guests > 0 && foodPlan.foodHigh > 0 && (
-                                  <>Full food and drink plan: ≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
+                                  // The plan sizes to the attendance CEILING, so it can sit
+                                  // above the host's own number ("21" for her 20). Said, not
+                                  // left to read as a typo (50-host run, 11/16/2026).
+                                  <>Full food and drink plan: ≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}{Number(event.guestEstimate) > 0 && foodPlan.guests > Number(event.guestEstimate) ? ` (your ${Number(event.guestEstimate)} plus a little extra)` : ''}. </>
                                 )}
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
@@ -25093,7 +25110,10 @@ export default function HostShellV2() {
                   n = chase ? heads : (event.guests || []).length;
                   const tail = planLbl ? ' — planning for ' + planLbl : bandLbl ? ' — likely ' + bandLbl + ' on the day' : '';
                   sub = !chase
-                    ? 'on the list — counted, never chased'
+                    // Says the plan's size when it is bigger than the list (round 2,
+                    // 11/16/2026): "Your people 4" beside a plan for 12 everywhere else
+                    // read as a contradiction.
+                    ? 'on the list — counted, never chased' + (planLbl ? ' · planning for ' + planLbl : '')
                     // FIX (host report): "said yes" must track the uncheck — never claim yeses
                     // when the count is 0.
                     : yes.length === 0
@@ -26038,7 +26058,7 @@ export default function HostShellV2() {
                       <div className="rrow" key={i}>
                         <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
                           <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
-                          <button style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}
+                          <button className="tap-44" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}
                             onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
                             {peopleMode ? (() => {
                               /* ── §7 · RELATIONSHIP GRAMMAR ───────────────────

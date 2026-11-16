@@ -358,27 +358,32 @@ export function parseSmartEventText(text, opts = {}) {
     // the single-date matcher below ate the first half and the confirm screen
     // told the host it had thrown "to June 17 2027" away. Four digits only, on
     // both sides, so "June 12-14, 20 cousins" still cannot read a count as a year.
-    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\s*(?:-|–|—|to|through|thru)\s*(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
+    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\s*(?:-|–|—|to|through|thru|(and))\s*(?:(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?,?\s+)?(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
     if (rng) {
       const m1 = MONTHS.indexOf(rng[1].slice(0, 3).toLowerCase());
-      const m2 = rng[4] ? MONTHS.indexOf(rng[4].slice(0, 3).toLowerCase()) : m1;
+      // "and" joins two DAYS ("Sat Nov 21 and Sun Nov 22", round 2, 11/16/2026)
+      // only when both name a month and the second is the next day; anything
+      // else ("Nov 21 and Nov 28", "Nov 21 and 25 guests") is not a span.
+      const viaAnd = !!rng[4];
+      const m2 = rng[5] ? MONTHS.indexOf(rng[5].slice(0, 3).toLowerCase()) : m1;
       // Either side's year anchors the START — "June 12-14, 2028" writes the
       // year once at the end and means it for both, and "June 14 2027 to June
       // 17 2027" writes it twice. The END takes its own year when the host gave
       // one ("Dec 30 2027 to Jan 2 2028"), otherwise it inherits the start's.
       const y1 = rng[3] ? parseInt(rng[3], 10) : null;
-      const y2 = rng[6] ? parseInt(rng[6], 10) : null;
+      const y2 = rng[7] ? parseInt(rng[7], 10) : null;
       const saidYear = y1 || y2;
       const start = new Date(saidYear || now.getFullYear(), m1, parseInt(rng[2], 10), 12);
       if (!saidYear && start < today0) start.setFullYear(start.getFullYear() + 1);
-      const end = new Date(y2 || start.getFullYear(), m2, parseInt(rng[5], 10), 12);
+      const end = new Date(y2 || start.getFullYear(), m2, parseInt(rng[6], 10), 12);
       // Year-straddling ranges ("Dec 30 – Jan 2") bump the end year — but ONLY
       // when a second month was explicitly said AND the host did not state the
       // end's own year; a same-month backwards "range" ("June 14-12") is noise
       // and must fail the end>start check, not get rescued into next year.
-      if (end < start && rng[4] && m2 !== m1 && !y2) end.setFullYear(end.getFullYear() + 1);
+      if (end < start && rng[5] && m2 !== m1 && !y2) end.setFullYear(end.getFullYear() + 1);
       // A same-month "range" running backwards ("June 14-12") is noise, not a span.
-      if (!isNaN(start) && !isNaN(end) && end > start) {
+      const andOk = !viaAnd || (rng[5] && Math.round((end - start) / 86400000) === 1);
+      if (!isNaN(start) && !isNaN(end) && end > start && andOk) {
         date = localISO(start);
         endDate = localISO(end);
       }
@@ -636,7 +641,7 @@ export function parseSmartEventText(text, opts = {}) {
   // match lower case and the whole distinction collapse. Written this way the
   // one guard serves both branches. (Measured: with a bare lower-case `day`,
   // "Mother's Day brunch" still returned the honoree "Mother".)
-  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool|[Bb][Bb][Qq]|[Cc]atering|[Cc]aterer|[Dd][Jj]|[Pp]hotography|[Bb]akery|[Ff]lorist)\\b)';
+  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool|[Ll]oft|[Tt]ownhouse|[Dd]orm|[Ll]ounge|[Rr]oom|[Oo]ffice|[Ss]tudio|[Cc]ottage|[Ff]riends\\s*giving|[Bb][Bb][Qq]|[Cc]atering|[Cc]aterer|[Dd][Jj]|[Pp]hotography|[Bb]akery|[Ff]lorist)\\b)';
   // ── A COUPLE IS TWO PEOPLE, AND WE WERE NAMING ONE ────────────────────
   //
   // "Mom and Dad's 50th anniversary" returned the honoree "Dad". Not a
@@ -1824,8 +1829,12 @@ export function parseSmartEventText(text, opts = {}) {
   // anywhere and nothing disclosed. A host is not an honoree — nobody is being
   // celebrated — so this is its own field, and only a capitalized name at the
   // very start of the sentence counts, never a pronoun or "This".
+  // A Friendsgiving celebrates nobody, so "Marcus's Friendsgiving" names whose
+  // table it is: the host (50-host run, 11/16/2026; NOT_WHO keeps it from
+  // becoming an honoree).
   const hostName = (() => {
-    const m = t.match(/^\s*([A-Z][a-z'’\-]{1,20})\s+(?:is|will\s+be)\s+(?:hosting|throwing|having)\b/);
+    const m = t.match(/^\s*([A-Z][a-z'’\-]{1,20})\s+(?:is|will\s+be)\s+(?:hosting|throwing|having)\b/)
+      || t.match(/\b([A-Z][a-z\-]{1,20})[’']s\s+friends\s*giving\b/i);
     if (!m) return null;
     return /^(?:this|that|it|he|she|we|they|there|who|everyone|someone|my|our)$/i.test(m[1]) ? null : m[1];
   })();
@@ -2126,7 +2135,15 @@ function _unusedClausesCore(text, opts = {}) {
     const leftUsed = runStart > 0 && used[runStart - 1];
     const rightUsed = endExclusive < words.length && used[endExclusive];
     const standsAlone = !leftUsed && !rightUsed;
-    const phrase = run.join(' ');
+    // Filler at either END is the edge of a phrase we DID use ("saturday at my
+    // backyard": "at my" belongs to the backyard), so it is trimmed from what the
+    // host is shown; the decision to report still reads the whole run (round 2,
+    // 11/16/2026: the list showed "saturday at my").
+    const bare = (w) => w.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    let a = 0, z = run.length;
+    while (a < z && _FILLER.has(bare(run[a]))) a += 1;
+    while (z > a && _FILLER.has(bare(run[z - 1]))) z -= 1;
+    const phrase = run.slice(a, z).join(' ');
     if (meaty && (run.length > 1 || standsAlone) && !alreadyInThePlan(phrase)) out.push(phrase);
     run = []; runStart = -1;
   };

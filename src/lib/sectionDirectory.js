@@ -127,7 +127,11 @@ export function sectionGroups(state) {
             : 'Rides, pickups, who drives' };
       })()] : []),
       ...(crab && crab.relevant ? [{ k: 'crabs', label: 'The crab order', sub: 'Bushels, pickers, the crab house' }] : []),
-      ...(ev.costSharing ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
+      // A TRIP GETS THE DOOR TOO (round 2, 11/16/2026): the sheet is where cost
+      // sharing is SET UP for a destination event, but the door showed only once
+      // it was already on, and the only other way in is missing from the
+      // default layout, so no trip host could reach it.
+      ...(ev.costSharing || (travel && travel.relevant) ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
     ] },
     { title: 'More', rows: [
       { k: 'meaning', label: 'Make it yours', sub: 'The moments that make it personal' },

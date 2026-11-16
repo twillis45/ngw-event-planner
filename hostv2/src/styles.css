@@ -67,7 +67,9 @@
   --pad-card-compact:var(--sp-3) var(--sp-4); /* dense list-group cards (12 v / 16 h) */
   --field-y:10px;                             /* field vertical padding role */
   --field-compact:6px 10px;                   /* the small inline input size (was 6/10, 5/10, 5/8 — now one) */
-  --field:10px var(--sp-3);                   /* the medium inline input size (was 10/12, 10/14, 10/6) */
+  /* Was --field, which theme.js ALSO sets (as the page ground colour), so every
+     padding:var(--field) resolved to a colour and rendered as 0 (11/16/2026). */
+  --field-pad:10px var(--sp-3);                   /* the medium inline input size (was 10/12, 10/14, 10/6) */
   /* ── THE TAP FLOOR, AS A TOKEN (2026-09-27) ────────────────────────────
      UX_03 sets 44px and this file honoured it in a dozen places as a raw
      literal, so nothing could state the rule or be swept when it moved. It

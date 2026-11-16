@@ -114,6 +114,9 @@ test('a 401 says to sign in and leads there — no link', async ({ page }) => {
   await expect(panel).toBeInViewport({ ratio: 0.5 });
   await expect(panel).toContainText('Sign in to send Spin Cycle the details');
   await expect(panel).toContainText('Nothing was sent yet');
+  // Its text sits inside the border (live shot 11/16: the padding token
+  // resolved to a colour, so the panel had none).
+  expect(await panel.evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft))).toBeGreaterThanOrEqual(8);
   await expect(page.locator('.toast', { hasText: 'Sign in to send' })).toHaveCount(0);
   await expect(page.locator('#sheet-title')).not.toHaveText('You & settings');
   await expect(card.locator('[data-vbrief-panel]')).toHaveCount(0);   // one message, not two

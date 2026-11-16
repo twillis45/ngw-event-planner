@@ -476,7 +476,7 @@ export default function LodgingCockpit() {
               <strong>The venue address isn’t set yet.</strong>{' '}
               Rooms booked now can be an hour away, and most aren’t
               refundable — ask hotels to <em>hold</em> instead.
-              <button type="button" className="lc-link" onClick={goAddVenue}>
+              <button type="button" className="lc-link tap-44" onClick={goAddVenue}>
                 Add the venue address
               </button>
             </p></>
@@ -527,6 +527,11 @@ function NoTown({ event, patch }) {
   const proposed = (() => {
     let vf = {}; try { vf = venueFor(event) || {}; } catch { vf = {}; }
     const value = [vf.city, vf.state].filter(Boolean).join(', ');
+    if (vf.city) return { value, basis: 'from the location already on this event' };
+    // A town typed at creation that could not be confirmed (no state): proposed,
+    // with where it came from, for the host to finish (round 2, 11/16/2026).
+    const heard = String(event.cityHeard || '').trim();
+    if (heard) return { value: heard, basis: 'from what you typed when you made this event' };
     return value ? { value, basis: 'from the location already on this event' } : null;
   })();
   const [town, setTown] = useState(proposed ? proposed.value : '');
