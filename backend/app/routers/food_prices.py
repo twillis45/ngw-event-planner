@@ -375,7 +375,13 @@ async def food_price_factor(region: Optional[str] = None, state: Optional[str] =
         _CACHE[(reg, month_key)] = (time.time() + _SUCCESS_TTL, result)
         return result
     except Exception as e:  # noqa: BLE001 — never break the food plan on a price miss
-        log.error("food_price_factor %s failed: %s", reg, e)
+        # Thin coverage is the owner's 2026-10-04 ruling working (BLS does not
+        # publish the whole basket for this region), not a fault: a WARNING, so
+        # Sentry does not page on it. A real outage stays an ERROR.
+        if isinstance(e, _InsufficientCoverage):
+            log.warning("food_price_factor %s: national fallback, %s", reg, e)
+        else:
+            log.error("food_price_factor %s failed: %s", reg, e)
         # ── A2: SAY WHICH KIND OF FALLBACK THIS IS (board, 2026-10-04) ──────
         # One note covered both an outage and permanently thin coverage, and
         # they want opposite things from a host: come back later, versus this

@@ -283,3 +283,36 @@ def test_an_expired_entry_is_refetched_rather_than_served_forever(monkeypatch):
     FP._CACHE[key] = (0, stale)                            # leash runs out
     assert call(region="south")["factor"] == 1.1           # BLS is back
     assert calls["n"] == 2
+
+
+# ── EXPECTED THIN COVERAGE IS NOT AN ERROR (Sentry, 11/16/2026) ─────────────
+# "food_price_factor west failed: 4 of 7 items resolved for west" reached the
+# owner as a Sentry ERROR issue. It is the owner's 2026-10-04 ruling working:
+# BLS no longer publishes the whole basket for the West, so the region falls
+# back to national prices with the reason named. Logged at ERROR, Sentry's
+# logging integration paged on it every refetch. Thin coverage is a WARNING;
+# a real outage (BLS unreachable) stays an ERROR, so the alert still means
+# something is broken.
+def _levels(caplog):
+    return {r.levelname for r in caplog.records if r.name == FP.log.name}
+
+
+def test_thin_coverage_logs_a_warning_not_an_error(monkeypatch, caplog):
+    async def sparse(ids):
+        first = list(FP._BASKET)[0]
+        return {i: 1.0 for i in ids if i.endswith(first)}, {i: "2026-08" for i in ids}
+    monkeypatch.setattr(FP, "_fetch_latest", sparse)
+    with caplog.at_level("DEBUG", logger=FP.log.name):
+        r = call(region="west")
+    assert r["fallback_reason"] == "coverage"
+    assert _levels(caplog) == {"WARNING"}
+
+
+def test_an_outage_still_logs_an_error(monkeypatch, caplog):
+    async def boom(ids):
+        raise RuntimeError("BLS down")
+    monkeypatch.setattr(FP, "_fetch_latest", boom)
+    with caplog.at_level("DEBUG", logger=FP.log.name):
+        r = call(region="west")
+    assert r["fallback_reason"] == "unavailable"
+    assert _levels(caplog) == {"ERROR"}
