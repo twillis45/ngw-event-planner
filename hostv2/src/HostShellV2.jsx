@@ -288,6 +288,7 @@ import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
+import { warmClosing } from '@app/lib/warmClosing';
 import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
@@ -6434,7 +6435,7 @@ export default function HostShellV2() {
   };
   // Tone variants are DETERMINISTIC rewrites of the same facts — mechanical
   // tightening/warming, never invented content (no fake AI doctrine).
-  const toneBody = (body, tone) => {
+  const toneBody = (body, tone, ctx) => {
     let b = String(body);
     if (tone === 'tighter') {
       const ps = b.split('\n\n');
@@ -6443,7 +6444,9 @@ export default function HostShellV2() {
       return [ps[0], ...mid, ps[ps.length - 1]].join('\n\n');
     }
     if (tone === 'warmer') {
-      const warm = 'So glad you’ll be part of it.';
+      // The closing fits who the note is for (lib/warmClosing, 11/16/2026): a
+      // vendor still quoting is thanked, not told they are part of it.
+      const warm = warmClosing(ctx || {});
       return b.includes(warm) ? b : b + '\n\n' + warm;
     }
     if (tone === 'playful') {
@@ -6465,7 +6468,10 @@ export default function HostShellV2() {
     }
     return b;
   };
-  const shownDraft = () => draftBody != null ? draftBody : toneBody(sheet && sheet.body, draftTone);
+  const shownDraft = () => draftBody != null ? draftBody : toneBody(sheet && sheet.body, draftTone, {
+    title: sheet && sheet.title,
+    vendor: (sheet && sheet.vendorId && (event.vendors || []).find(v => v && v.id === sheet.vendorId)) || null,
+  });
   const copyDraft = async (body) => {
     try { await navigator.clipboard.writeText(body); toast('Copied — paste it anywhere.'); feedback('act'); }
     catch { toast('Couldn’t copy on this browser — long-press to select it.'); }
