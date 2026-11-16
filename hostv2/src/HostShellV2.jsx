@@ -921,6 +921,19 @@ const OPEN_ON_LOAD = (() => {
 // The seeded event's id is 'demoqa-*' — neither 'cust-' nor 'ev-copy-', so
 // passGate treats it as a sample: it never consumes the free tier and never
 // gets gated, which is exactly right for a demo walkthrough.
+// SCROLL WHEN IT OPENS, NOT ON EVERY RENDER (owner's live hunt 11/15/2026, #134).
+// An inline `ref={el => { if (el && open) el.scrollIntoView(...) }}` runs on
+// EVERY render, so each tap or keystroke inside an open card re-centered it —
+// measured up to 1,150px on the live demo, which put the tap's result off
+// screen. This scrolls once when `active` turns true, and re-arms when it turns
+// false, so the next opening scrolls again. Pinned by anOpenCardHoldsStill.
+const scrollIntoViewOnOpen = (active) => (el) => {
+  if (!el) return;
+  if (!active) { delete el.dataset.scrolledOpen; return; }
+  if (el.dataset.scrolledOpen) return;
+  el.dataset.scrolledOpen = '1';
+  el.scrollIntoView({ block: 'center' });
+};
 const DEMO_TOOLS_ARMED = (() => {
   try {
     const p = new URLSearchParams(window.location.search).get('demo');
@@ -15077,7 +15090,7 @@ export default function HostShellV2() {
                     }
                     return (
                       <div key={r.id || i} data-flip={String(r.id || i)} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), cursor: 'default', ...heartStyle }}
-                        ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
+                        ref={scrollIntoViewOnOpen(focused)}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
                             {lateChip}
@@ -15145,7 +15158,7 @@ export default function HostShellV2() {
                     return (
                       <div key={r.id || i} data-flip={String(r.id || i)} style={{ ...heartStyle }}>
                         <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
-                          ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
+                          ref={scrollIntoViewOnOpen(focused)}>
                           <span className="f-main">
                             <span className="f-name">{r.label}
                               {lateChip}
@@ -15167,7 +15180,7 @@ export default function HostShellV2() {
                   return (
                     <div key={r.id || i} data-flip={String(r.id || i)} style={{ ...heartStyle }}>
                       <button className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
-                        ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                        ref={scrollIntoViewOnOpen(focused)}
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
@@ -15256,7 +15269,7 @@ export default function HostShellV2() {
                         // ground sheet's "Change the call") — same rowfocus
                         // landing as everywhere else, exact row, no hunting.
                         <div key={r.id || i} className={sheet.focus && sheet.focus === r.id ? 'rowfocus' : undefined}
-                          ref={el => { if (el && sheet.focus && sheet.focus === r.id) el.scrollIntoView({ block: 'center' }); }}>
+                          ref={scrollIntoViewOnOpen(sheet.focus && sheet.focus === r.id)}>
                           {/* FOLD-BEHIND-CHANGE (host, 2026-08-19: "ctas have random
                               horizontal placement — best placement vs leaders"). Two
                               hand-drawn attempts at this layout both left Change/Note-why
@@ -17195,7 +17208,7 @@ export default function HostShellV2() {
                           <div key={r.guestId != null ? r.guestId : 'g' + i}>
                             <button
                               className={'frow' + (sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId) ? ' rowfocus' : '')}
-                              ref={el => { if (el && sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId)) el.scrollIntoView({ block: 'center' }); }}
+                              ref={scrollIntoViewOnOpen(sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId))}
                               style={{ animation: rowEnter(i) }}
                               onClick={() => setLodgePickFor(lodgePickFor === rk ? null : rk)}
                               aria-expanded={lodgePickFor === rk} aria-haspopup="true"
@@ -17366,7 +17379,7 @@ export default function HostShellV2() {
                           return (
                             <div key={r.guestId != null ? r.guestId : 'g' + i}>
                               <button className={'frow' + (isFocus ? ' rowfocus' : '')}
-                                ref={el => { if (el && scrollHere) el.scrollIntoView({ block: 'center' }); }}
+                                ref={scrollIntoViewOnOpen(scrollHere)}
                                 style={{ animation: rowEnter(i) }}
                                 onClick={() => setRidePickFor(ridePickFor === rk ? null : rk)}
                                 aria-expanded={ridePickFor === rk} aria-haspopup="true"
@@ -17603,7 +17616,7 @@ export default function HostShellV2() {
                               return (
                                 <div key={r.guestId != null ? r.guestId : 'g' + (cl.day || 'u') + i}>
                                   <button className={'frow' + (isFocus ? ' rowfocus' : '')}
-                                    ref={el => { if (el && isFocus) el.scrollIntoView({ block: 'center' }); }}
+                                    ref={scrollIntoViewOnOpen(isFocus)}
                                     style={{ animation: rowEnter(i) }}
                                     onClick={() => (editing ? setFlightEdit(null) : openFlightEdit(r))}
                                     aria-label={r.name + ' — ' + (r.hasFlightInfo ? 'flight info on the board' : 'no flight info yet') + '. Tap to enter flights.'}>
@@ -17699,7 +17712,7 @@ export default function HostShellV2() {
                 const isPicked = seatPick != null && String(g.id) === String(seatPick);
                 return (
                   <div key={g.id} className={'frow' + (isFocus || isPicked ? ' rowfocus' : '') + (guestDrag && guestDrag.id === g.id ? ' dragging' : '')}
-                    ref={el => { if (el && isFocus) el.scrollIntoView({ block: 'center' }); }}
+                    ref={scrollIntoViewOnOpen(isFocus)}
                     style={{ cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} role="button" tabIndex={0}
                     onPointerDown={startGuestDrag(g)}
                     onClick={() => { if (guestDraggedRef.current) return; setSeatPick(isPicked ? null : g.id); }}
@@ -18048,7 +18061,7 @@ export default function HostShellV2() {
                   const focused = sheet.focus != null && String(sheet.focus) === String(r.type);
                   return (
                   <div key={'ctx-' + (r.type || i)} className={'brow' + (focused ? ' rowfocus' : '')}
-                    ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                    ref={scrollIntoViewOnOpen(focused)}
                     style={{ animation: rowEnter(i) }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
@@ -18084,7 +18097,7 @@ export default function HostShellV2() {
                   const focused = sheet.focus != null && String(sheet.focus) === String(r.id);
                   return (
                   <div key={r.id || i} className={'brow' + (focused ? ' rowfocus' : '')}
-                    ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                    ref={scrollIntoViewOnOpen(focused)}
                     style={{ animation: rowEnter(i) }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
@@ -20151,7 +20164,7 @@ export default function HostShellV2() {
                     const isCvbRow = /visitors bureau|convention .{0,3}visitors|\bcvb\b/i.test(String(t.task || ''));
                     const rowBtn = (
                     <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
-                      ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
+                      ref={scrollIntoViewOnOpen(sheet.focus && t.id === sheet.focus)}
                       style={{ animation: rowEnter(i) }}
                       onClick={() => toggleTask(i)}>
                       <span className="fcheck" aria-hidden="true" />
@@ -23371,7 +23384,7 @@ export default function HostShellV2() {
                     const vConfirm = confirmationByVendor[String(v.id)] || null;
                     return (
                       <div key={v.id} data-vid={v.id} className={'vcard' + (isOpen ? ' open' : '')}
-                        ref={el => { if (el && isOpen) el.scrollIntoView({ block: 'center' }); }}
+                        ref={scrollIntoViewOnOpen(isOpen)}
                         onClick={() => setSheet(s => ({ ...s, focus: isOpen ? null : v.id }))}>
                         <div className="vc-head">
                           <div className="vc-avatar" aria-hidden>{String(v.name || '?').trim().charAt(0).toUpperCase()}</div>
