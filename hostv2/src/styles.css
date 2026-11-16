@@ -2724,7 +2724,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .inv2-sheet .shelf-label{ color:var(--hue-deep); }
 .inv2-sheet .grounding{ color:var(--stock-sub); }
 /* the disclosure that the answer earns */
-.inv2-more{ opacity:0; max-height:0; overflow:hidden;
+/* overflow:clip, not hidden (11/16/2026): hidden makes the closed form a scroll
+   container, so focus or scrollIntoView on a field inside it scrolls the clip,
+   and the 0→1400px open then clamps that scroll back, sliding the field down
+   ~100px a frame under a finger or a click that was aimed at it. clip clips the
+   same pixels and cannot be scrolled. hidden stays first as the pre-Safari-16
+   fallback. */
+.inv2-more{ opacity:0; max-height:0; overflow:hidden; overflow:clip;
   transition:opacity var(--ms-slow) var(--ease-standard), max-height var(--ms-slow) var(--ease-standard); }
 .inv2-more.open{ opacity:1; max-height:1400px; }
 @media (prefers-reduced-motion: reduce){ .inv2-more{ transition:none; } }

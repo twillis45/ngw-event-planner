@@ -74,7 +74,7 @@ test('on sale: the refund rule sits above the buy button', async ({ page }) => {
   await boot(page, { stripe_configured: true, stripe_can_honour_purchases: true, pass_sales_paused: false });
   const rule = page.locator('[data-refund-rule]');
   const buy = page.getByRole('button', { name: 'Get the pass — $39', exact: true });
-  await expect(rule).toHaveText('Changed your mind before sending a new vendor brief? Get all $39 back within 14 days.');
+  await expect(rule).toHaveText('Changed your mind? If you haven’t sent the details to another vendor yet, get all $39 back within 14 days.');
   await rule.scrollIntoViewIfNeeded();
   await expect(rule).toBeVisible();
   const [r, b] = [await rule.boundingBox(), await buy.boundingBox()];
@@ -86,7 +86,7 @@ test('on sale: the refund rule sits above the buy button', async ({ page }) => {
 test('on sale: no perk the free tier already has, and the account is named', async ({ page }) => {
   await boot(page, { stripe_configured: true, stripe_can_honour_purchases: true, pass_sales_paused: false });
   await expect(page.getByText('Yours to keep')).toHaveCount(0);
-  await expect(page.getByText(/sharing one vendor brief with a free account/)).toBeVisible();
+  await expect(page.getByText(/sending one vendor the details with a free account/)).toBeVisible();
 });
 
 test('paused: no refund rule is offered for a sale that cannot happen', async ({ page }) => {

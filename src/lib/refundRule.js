@@ -19,4 +19,4 @@ export const REFUND_WINDOW_DAYS = 14;
 // you bought and lose the refund. The condition now leads, framed as what it
 // is — a change of mind before the pass is used.
 export const REFUND_LINE =
-  `Changed your mind before sending a new vendor brief? Get all $39 back within ${REFUND_WINDOW_DAYS} days.`;
+  `Changed your mind? If you haven’t sent the details to another vendor yet, get all $39 back within ${REFUND_WINDOW_DAYS} days.`;
